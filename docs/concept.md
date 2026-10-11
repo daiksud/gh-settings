@@ -16,7 +16,7 @@ This documentation records an agreed design for an **unimplemented tool**. Accep
 
 Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. This supports gradual adoption without claiming ownership of settings that maintainers have not declared. Null is not omission; its treatment remains undecided.
 
-Keep configuration field names, types, and any enum values aligned with GitHub's update API. Do not turn a repository response, including read-only metadata, into the configuration schema. The [settings page](settings.md) defines exactly five fields supported in the initial design. The [commands page](commands.md) defines their proposed command behavior.
+Follow the corresponding GitHub update API request schema for YAML keys and data structures, including field types and any enum values, as recorded in [ADR 0006](adr/0006-update-api-schema.md). Do not turn a repository response, including read-only metadata, into the configuration schema. The [settings page](settings.md) defines exactly five fields supported in the initial design. The [commands page](commands.md) defines their proposed command behavior.
 
 Separate observation from mutation: `plan` informs the maintainer about observed differences, while `apply` sends declared settings directly. A plan is not an execution artifact or a guarantee about later changes. Failures must be visible, without promises of transactional behavior or automatic recovery.
 
@@ -29,6 +29,7 @@ Each ADR records one independently reversible decision:
 - [Apply declared values directly](adr/0003-direct-apply.md)
 - [Validate strictly before mutation](adr/0004-strict-validation.md)
 - [Do not roll back automatically](adr/0005-no-automatic-rollback.md)
+- [Follow the update API request schema](adr/0006-update-api-schema.md)
 
 ## Future direction
 
@@ -48,4 +49,4 @@ Names also identify outer rulesets, ambiguous matches are errors, and there is n
 
 ## Unresolved decisions
 
-The exact YAML wrapper shape, null handling, implementation language, authentication details, and output options have not been decided. Future new-object required fields and inner rules identity are also unresolved. The configuration path and five MVP field names are agreed; examples must not imply that a complete YAML schema or these remaining choices are settled.
+Null handling, implementation language, authentication details, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current five-field configuration is a root mapping following the repository update request body; this does not settle those future composition choices or extend supported fields.

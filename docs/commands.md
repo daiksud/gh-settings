@@ -16,7 +16,7 @@ Saved plan artifacts and drift protection are outside the initial scope. GitHub 
 
 ## Proposed interface
 
-These examples illustrate the proposed interface only. They do not describe working software or an installation procedure. Flags, output formats, and the exact YAML wrapper shape remain undecided.
+These examples illustrate the proposed interface only. They do not describe working software or an installation procedure. Flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines the agreed root mapping for the current five-field scope.
 
 ```text
 gh settings export
@@ -36,7 +36,7 @@ The update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository]
 
 `apply` does not fetch current settings, compute differences, compare against a saved plan, or preserve external changes to managed values. If a managed value changes remotely after `plan`, `apply` still sends the YAML value. The observed plan diff can therefore differ from changes at apply time. Omitting a field leaves it outside the request.
 
-For example, declaring only `has_issues: false` means that apply sends that supported field with the declared value and sends none of the other four fields. This is a field-level example, not a decision about the full YAML wrapper shape.
+For example, declaring only `has_issues: false` means that apply sends that supported field with the declared value and sends none of the other four fields. The [configuration example](settings.md#configuration-semantics) places this field at the YAML root, following the update request body schema.
 
 ## Failures and limits
 
@@ -53,6 +53,6 @@ There is no automatic rollback and no transactional guarantee. A failure does no
 - Omitted fields are absent from the update request.
 - Permission or API failure produces a nonzero exit status without automatic rollback.
 
-These are intended acceptance conditions, not tests executed by this documentation change. The [settings page](settings.md#configuration-semantics) records the unresolved null handling and YAML shape needed before a complete validator or export format can be implemented.
+These are intended acceptance conditions, not tests executed by this documentation change. The [settings page](settings.md#configuration-semantics) records the agreed structure and unresolved null handling. Future composition across multiple update endpoints remains undecided.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the update endpoint and failure responses. This reference does not expand the supported scope.
