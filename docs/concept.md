@@ -16,7 +16,7 @@ This documentation records an agreed design for an **unimplemented tool**. Accep
 
 Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. This supports gradual adoption without claiming ownership of settings that maintainers have not declared. Null is not omission; its treatment remains undecided.
 
-Keep configuration field names, types, and any enum values aligned with GitHub's update API. Do not turn a repository response, including read-only metadata, into the configuration schema. The [MVP contract](mvp.md) defines exactly five supported fields.
+Keep configuration field names, types, and any enum values aligned with GitHub's update API. Do not turn a repository response, including read-only metadata, into the configuration schema. The [settings page](settings.md) defines exactly five fields supported in the initial design. The [commands page](commands.md) defines their proposed command behavior.
 
 Separate observation from mutation: `plan` informs the maintainer about observed differences, while `apply` sends declared settings directly. A plan is not an execution artifact or a guarantee about later changes. Failures must be visible, without promises of transactional behavior or automatic recovery.
 

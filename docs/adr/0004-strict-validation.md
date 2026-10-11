@@ -18,4 +18,4 @@ Reject unknown configuration keys and invalid values before API mutation.
 
 ## Consequences
 
-Typos and unsupported settings are errors. Local validation cannot guarantee API success. The [MVP](../mvp.md) defines supported fields; null handling and wrapper shape remain unresolved. This policy can change independently of direct apply and rollback behavior.
+Typos and unsupported settings are errors. Local validation cannot guarantee API success. The [settings page](../settings.md) defines supported fields; null handling and wrapper shape remain unresolved. This policy can change independently of direct apply and rollback behavior.

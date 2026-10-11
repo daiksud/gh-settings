@@ -1,7 +1,7 @@
 ---
 type: Specification
-title: Settings MVP
-description: Define the five supported settings and four proposed commands.
+title: Settings commands
+description: Define export, validate, plan, and apply behavior.
 sources:
   - id: github-update-repository
     resource: https://docs.github.com/en/rest/repos/repos#update-a-repository
@@ -10,23 +10,11 @@ sources:
 
 ## Scope and status
 
-The MVP is an unimplemented GitHub CLI extension, `gh settings`, operating on `.github/settings.yml` in the repository containing it. It manages repository settings only. See the [concept](concept.md) for ownership principles, future direction, and unresolved choices.
+`gh settings` is unimplemented. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They operate on the containing repository's `.github/settings.yml` using the five fields defined on the [settings page](settings.md). See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
 
-Exactly five basic fields are supported. These names and types match the body parameters of GitHub's repository update API.[^github-update-repository]
+Saved plan artifacts and drift protection are outside the initial scope. GitHub Action delivery is deferred.
 
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `description` | string | Repository description |
-| `homepage` | string | Repository homepage URL |
-| `has_issues` | boolean | Whether issues are enabled |
-| `has_projects` | boolean | Whether repository projects are enabled |
-| `has_wiki` | boolean | Whether the wiki is enabled |
-
-The three booleans take `true` or `false`. There are no enum-valued fields in this MVP. Null handling remains unresolved. Read-only response metadata and all other settings are excluded, even when GitHub exposes them as writable parameters. API defaults do not authorize sending omitted fields.
-
-Labels, rulesets, Pages, Actions settings, Organization settings, multi-repository management, saved plan artifacts, and drift protection are not part of the MVP. GitHub Action delivery is deferred.
-
-## Proposed commands
+## Proposed interface
 
 These examples illustrate the proposed interface only. They do not describe working software or an installation procedure. Flags, output formats, and the exact YAML wrapper shape remain undecided.
 
@@ -65,6 +53,6 @@ There is no automatic rollback and no transactional guarantee. A failure does no
 - Omitted fields are absent from the update request.
 - Permission or API failure produces a nonzero exit status without automatic rollback.
 
-These are intended acceptance conditions, not tests executed by this documentation change. Null handling and the exact YAML shape need decisions before a complete validator or export format can be implemented.
+These are intended acceptance conditions, not tests executed by this documentation change. The [settings page](settings.md#configuration-semantics) records the unresolved null handling and YAML shape needed before a complete validator or export format can be implemented.
 
-[^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five body parameters, update endpoint, and failure responses. This reference does not expand the supported scope.
+[^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the update endpoint and failure responses. This reference does not expand the supported scope.
