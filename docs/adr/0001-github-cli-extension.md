@@ -18,4 +18,4 @@ Deliver the initial tool as a GitHub CLI extension invoked as `gh settings`.
 
 ## Consequences
 
-The initial delivery target is the GitHub CLI extension interface. Packaging and implementation language remain unresolved. The deferred GitHub Action requirement is recorded separately in the [future direction](../concept.md#future-direction).
+The initial delivery target is the GitHub CLI extension interface. Packaging remains unresolved. [ADR 0007](0007-go-implementation.md) selects Go independently of this delivery decision. The deferred GitHub Action requirement is recorded separately in the [future direction](../concept.md#future-direction).

@@ -30,6 +30,10 @@ Each ADR records one independently reversible decision:
 - [Validate strictly before mutation](adr/0004-strict-validation.md)
 - [Do not roll back automatically](adr/0005-no-automatic-rollback.md)
 - [Follow the update API request schema](adr/0006-update-api-schema.md)
+- [Implement in Go](adr/0007-go-implementation.md)
+- [Use the official GitHub CLI Go library](adr/0008-official-go-gh-library.md)
+
+Go is the agreed implementation language, and `github.com/cli/go-gh/v2` is selected for API access and GitHub CLI authentication integration. Prefer the Go standard library where sufficient; no command framework is mandated. No official YAML package has been verified, so the YAML dependency remains undecided.
 
 ## Future direction
 
@@ -49,4 +53,4 @@ Names also identify outer rulesets, ambiguous matches are errors, and there is n
 
 ## Unresolved decisions
 
-Null handling, implementation language, authentication details, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current five-field configuration is a root mapping following the repository update request body; this does not settle those future composition choices or extend supported fields.
+Null handling, remaining authentication details, toolchain and dependency versions, release packaging, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current five-field configuration is a root mapping following the repository update request body; this does not settle those future composition choices or extend supported fields.

@@ -42,7 +42,7 @@ For example, declaring only `has_issues: false` means that apply sends that supp
 
 Unknown keys and invalid values fail before API mutation. Permission and API failures are reported with a nonzero exit status. GitHub may reject a request even when configuration passes local validation; successful validation does not guarantee successful mutation. The endpoint documents failure responses including permission and validation failures.[^github-update-repository]
 
-There is no automatic rollback and no transactional guarantee. A failure does not promise restoration of prior settings. Authentication details remain undecided; the tool must report access failures rather than claim that all declared settings can always be applied.
+There is no automatic rollback and no transactional guarantee. A failure does not promise restoration of prior settings. The [selected go-gh library](adr/0008-official-go-gh-library.md) provides GitHub CLI authentication integration; remaining authentication details are undecided, and the tool must report access failures rather than claim that all declared settings can always be applied.
 
 ## Acceptance boundaries for future implementation
 
