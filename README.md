@@ -4,7 +4,7 @@ A GitHub CLI extension for exporting the current repository's five basic setting
 
 ## Build and run from source
 
-Requires Go 1.25 or later, Git, and GitHub CLI with existing authentication for the repository. For development, install [mise](https://mise.jdx.dev/getting-started.html) and run `mise install` to get the exact tool versions in [mise.toml](mise.toml), including Go 1.26.0. No release binaries are published by this change.
+Requires Go 1.25 or later, Git, and GitHub CLI with existing authentication for the repository. For development, install [mise](https://mise.jdx.dev/getting-started.html) and run `mise install` to get the exact tool versions in [mise.toml](mise.toml), including Go 1.26.0.
 
 ```sh
 go build -o gh-settings .
@@ -16,6 +16,8 @@ From the repository whose settings you want to read:
 ```sh
 gh settings export
 ```
+
+`gh settings --version` prints the build version (`dev` for a source build).
 
 The current implementation selects the current Git checkout's `origin` remote, accepts GitHub.com HTTPS and SSH URLs, and ignores `GH_REPO`. A configuration file is not required to bootstrap export. The command performs a read only and writes exactly `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki` as a root YAML mapping to standard output, including false and empty strings. GitHub's null description/homepage values are exported as quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Errors go to standard error with a nonzero exit status.
 
@@ -40,6 +42,8 @@ mise exec -- go build ./...
 mise exec -- go mod verify
 mise exec -- go mod tidy -diff
 mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml
+mise exec -- shellcheck scripts/publish-release.sh tests/release.sh
+mise exec -- bash tests/release.sh
 mise exec -- rumdl check --no-cache --deny-config-warnings README.md docs
 ```
 
@@ -71,6 +75,18 @@ The approval workflow becomes available for comment events only after it exists 
 Markdown checks use the rumdl version pinned in [mise.toml](mise.toml) and the rules in [.rumdl.toml](.rumdl.toml). MD051 and MD057 validate local headings/fragments and file links; external HTTP availability is not a CI dependency. mise resolves rumdl, actionlint, and ShellCheck through its standard aqua registry. Go module library dependencies remain in `go.mod` and `go.sum`.
 
 The [export behavior specification](docs/features/export.feature.md) maps its user-visible scenarios to ordinary Go tests. No BDD runner is required.
+
+## Maintainer release
+
+The [manual release workflow](.github/workflows/release.yml) accepts a `vMAJOR.MINOR.PATCH` version when run from `main`. It freezes the latest main SHA at start, builds Linux amd64 and macOS arm64 on matching runners, runs commit and process acceptance checks, then stages a draft and publishes it only after validating the tested assets. It publishes raw GitHub CLI extension binaries, `SHA256SUMS`, and release notes. The workflow is not a scheduled or automatic release; merging its definition does not start a release.
+
+To start a release after reviewing the version and main commit:
+
+```sh
+gh workflow run release.yml --repo daiksud/gh-settings --ref main -f version=v1.2.3
+```
+
+The workflow never moves an existing tag or replaces an existing release asset. Re-running the same version resolves the then-current main again; recovery succeeds only if its SHA and freshly tested binary hashes match the tag and release manifest. If main has advanced, the old workflow run's frozen SHA remains available in its logs, but a new run will stop at the existing tag. Keep incomplete drafts for inspection; do not delete or replace them automatically. See the [release design](docs/releases.md) for identity and recovery details.
 
 - [Concept, design philosophy, and future direction](docs/concept.md)
 - [Supported settings and configuration semantics](docs/settings.md)

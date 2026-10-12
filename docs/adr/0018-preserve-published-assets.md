@@ -6,7 +6,7 @@ description: Keep a published asset name bound to its original bytes.
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented by the manual release workflow.
 
 ## Context
 

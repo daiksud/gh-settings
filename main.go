@@ -14,11 +14,21 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+// version is set with -ldflags at release build time.
+var version = "dev"
+
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, exportCurrent))
 }
 
 func run(args []string, stdout, stderr io.Writer, export func() ([]byte, error)) int {
+	if len(args) == 1 && (args[0] == "--version" || args[0] == "-v") {
+		if _, err := fmt.Fprintln(stdout, "gh-settings "+version); err != nil {
+			fmt.Fprintf(stderr, "gh settings: write version: %v\n", err)
+			return 1
+		}
+		return 0
+	}
 	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
 		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export\nExport the current repository's five basic settings as YAML to standard output."); err != nil {
 			fmt.Fprintf(stderr, "gh settings: write help: %v\n", err)

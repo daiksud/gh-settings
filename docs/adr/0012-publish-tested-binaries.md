@@ -6,7 +6,7 @@ description: Build each release target once and preserve binary identity through
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented by the manual release workflow.
 
 ## Context
 

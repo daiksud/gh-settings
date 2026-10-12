@@ -1,5 +1,14 @@
 name: Commit stage
 description: Check source and build the product binary once.
+inputs:
+  binary-name:
+    description: Output binary name.
+    required: false
+    default: gh-settings
+  version:
+    description: Version injected into a release build; empty for CI.
+    required: false
+    default: ''
 outputs:
   binary-path:
     description: Location of the built binary on this runner.
@@ -17,7 +26,9 @@ runs:
         cache: false
     - name: Check GitHub workflows and shell scripts
       shell: bash
-      run: actionlint -shellcheck shellcheck .github/workflows/*.yml
+      run: |
+        actionlint -shellcheck shellcheck .github/workflows/*.yml
+        shellcheck scripts/publish-release.sh tests/release.sh
     - name: Verify Go formatting
       shell: bash
       run: |
@@ -38,13 +49,23 @@ runs:
     - name: Test with race detection
       shell: bash
       run: go test -race -count=1 -vet=off ./...
+    - name: Test release recovery without GitHub
+      shell: bash
+      run: bash tests/release.sh
     - name: Build the product binary once
       id: build
       shell: bash
+      env:
+        BINARY_NAME: ${{ inputs.binary-name }}
+        BUILD_VERSION: ${{ inputs.version }}
       run: |
-        go build -o "$RUNNER_TEMP/gh-settings" .
-        printf 'binary-path=%s\n' "$RUNNER_TEMP/gh-settings" >> "$GITHUB_OUTPUT"
-        printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/gh-settings" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+        if [[ -n "$BUILD_VERSION" ]]; then
+          go build -trimpath -ldflags "-X main.version=$BUILD_VERSION" -o "$RUNNER_TEMP/$BINARY_NAME" .
+        else
+          go build -o "$RUNNER_TEMP/$BINARY_NAME" .
+        fi
+        printf 'binary-path=%s\n' "$RUNNER_TEMP/$BINARY_NAME" >> "$GITHUB_OUTPUT"
+        printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
     - name: Check Markdown and local links
       shell: bash
       run: rumdl check --no-cache --deny-config-warnings README.md docs

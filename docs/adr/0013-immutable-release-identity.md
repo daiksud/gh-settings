@@ -6,7 +6,7 @@ description: Keep a version tag bound to its original commit.
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented by the manual release workflow.
 
 ## Context
 

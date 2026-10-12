@@ -6,7 +6,7 @@ description: Stage and verify all required release contents before publication.
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented by the manual release workflow.
 
 ## Context
 

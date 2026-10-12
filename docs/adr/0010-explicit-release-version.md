@@ -6,7 +6,7 @@ description: Keep version selection manual in the first release workflow.
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented by the manual release workflow.
 
 ## Context
 
