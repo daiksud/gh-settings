@@ -1,0 +1,5 @@
+[tools]
+go = "1.26.0"
+rumdl = "0.2.79"
+actionlint = "1.7.12"
+shellcheck = "0.11.0"
