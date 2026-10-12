@@ -20,11 +20,11 @@ import (
 )
 
 type scenario struct {
-	name, body, errorText                        string
-	expected                                     map[string]any
-	noRepo, noRead, outputFailure, rewriteOrigin bool
-	args                                         []string
-	status                                       int
+	name, body, errorText                                     string
+	expected                                                  map[string]any
+	noRepo, noRead, outputFailure, rewriteOrigin, aliasOrigin bool
+	args                                                      []string
+	status                                                    int
 }
 
 func main() {
@@ -47,6 +47,7 @@ func main() {
 		{name: "unset-strings", body: `{"description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, expected: empty},
 		{name: "origin-override", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary},
 		{name: "origin-insteadof", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, rewriteOrigin: true},
+		{name: "origin-alias", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, aliasOrigin: true},
 		{name: "read-failure", body: `{"message":"Fixture access denied"}`, status: 403, errorText: "403"},
 		{name: "repository-failure", noRepo: true, noRead: true, errorText: "origin"},
 		{name: "incomplete-response", body: `{"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, errorText: "missing description"},
@@ -119,6 +120,19 @@ func check(binary string, test scenario) error {
 			cmd.Env = env
 			if output, err := cmd.CombinedOutput(); err != nil {
 				return fmt.Errorf("git rewrite: %w: %s", err, output)
+			}
+		}
+		if test.aliasOrigin {
+			for _, args := range [][]string{
+				{"remote", "set-url", "origin", "gh:owner/current.git"},
+				{"config", "--local", "url.https://github.com/.insteadOf", "gh:"},
+			} {
+				cmd := exec.Command("git", args...)
+				cmd.Dir = work
+				cmd.Env = env
+				if output, err := cmd.CombinedOutput(); err != nil {
+					return fmt.Errorf("git alias: %w: %s", err, output)
+				}
 			}
 		}
 	}

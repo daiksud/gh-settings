@@ -161,6 +161,42 @@ func TestExportUsesConfiguredOriginBeforeInsteadOf(t *testing.T) {
 	}
 }
 
+func TestExportUsesAliasRewrittenToGitHub(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	dir := t.TempDir()
+	for _, args := range [][]string{
+		{"init", "--quiet", dir},
+		{"-C", dir, "remote", "add", "origin", "gh:owner/current.git"},
+		{"-C", dir, "config", "--local", "url.https://github.com/.insteadOf", "gh:"},
+	} {
+		if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git: %v: %s", err, output)
+		}
+	}
+	t.Chdir(dir)
+	if output, err := exec.Command("git", "remote", "get-url", "origin").Output(); err != nil || string(output) != "https://github.com/owner/current.git\n" {
+		t.Fatalf("rewritten origin=%q err=%v", output, err)
+	}
+	repo, err := currentRepository()
+	if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
+		t.Fatalf("selected %+v, err=%v", repo, err)
+	}
+}
+
+func TestExportRejectsGlobalOriginOutsideCheckout(t *testing.T) {
+	config := filepath.Join(t.TempDir(), "global-gitconfig")
+	if err := os.WriteFile(config, []byte("[remote \"origin\"]\n\turl = https://github.com/owner/current.git\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", config)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Chdir(t.TempDir())
+	if repo, err := currentRepository(); err == nil {
+		t.Fatalf("selected global origin outside checkout: %+v", repo)
+	}
+}
+
 func TestExportRepositoryFailure(t *testing.T) {
 	t.Chdir(t.TempDir())
 	var stdout, stderr bytes.Buffer
