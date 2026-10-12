@@ -9,6 +9,9 @@ sources:
   - id: go-linker
     resource: https://pkg.go.dev/cmd/link#hdr-Command_Line
     title: Go linker command line
+  - id: github-rest-releases
+    resource: https://docs.github.com/en/rest/releases/releases
+    title: REST API endpoints for releases
 ---
 
 ## Status and initial targets
@@ -31,7 +34,7 @@ GitHub CLI recognizes precompiled extension assets with an OS-architecture suffi
 3. Each native runner downloads its current run's binary and checks the SHA-256 supplied by its build job. The shared [acceptance-stage](../.github/actions/acceptance-stage/action.yml) launches that exact binary against the local API fixture. The release job downloads both binaries again and checks those SHA-256 values before any tag is written.
 4. After both acceptance jobs pass, the release job creates a lightweight tag at the frozen SHA, creates a draft with generated change notes and an identity manifest, uploads the two binaries and `SHA256SUMS`, downloads any present assets to verify their bytes, and publishes only when all three required assets and metadata match.
 
-The draft body records version, pinned commit, both binary SHA-256 values, and the checksum file SHA-256 in a machine-readable comment. On retry, the release job compares that manifest, checks the existing tag target, downloads existing assets to compare their bytes, and uploads only missing assets. Unexpected assets, an altered manifest, hash mismatches, or a conflicting tag stop the run. An already published matching release is a verified no-op. There is no destructive cleanup or clobber. A new workflow run resolves current main, so a retry after main advances will stop at the old tag; the original frozen run remains the source of its SHA and artifacts.
+The draft body records version, pinned commit, both binary SHA-256 values, and the checksum file SHA-256 in a machine-readable comment. On retry, the release job finds the draft in the authenticated releases list and reads it by release ID; GitHub's tag lookup only returns published releases.[^github-rest-releases] It then compares the manifest, checks the existing tag target, downloads existing assets to compare their bytes, and uploads only missing assets. Unexpected assets, an altered manifest, hash mismatches, or a conflicting tag stop the run. An already published matching release is a verified no-op. There is no destructive cleanup or clobber. A new workflow run resolves current main, so a retry after main advances will stop at the old tag; the original frozen run remains the source of its SHA and artifacts.
 
 This release pipeline is separate from ordinary main CI. Its stage order is version injection and build, commit-stage validation, acceptance-stage validation, tag, then release publication. The [single-build decision](adr/0012-publish-tested-binaries.md) governs any refactoring of the existing composites.
 
@@ -57,3 +60,4 @@ The release tests in [tests/release.sh](../tests/release.sh) use a local `gh` st
 
 [^github-cli-extensions]: [Creating GitHub CLI extensions](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions), checked on 2026-10-12 for precompiled extension release asset naming.
 [^go-linker]: [Go linker command line](https://pkg.go.dev/cmd/link#hdr-Command_Line), checked on 2026-10-12 for the conditional `-X` string-symbol behavior.
+[^github-rest-releases]: [REST API endpoints for releases](https://docs.github.com/en/rest/releases/releases), checked on 2026-10-12 for draft visibility in authenticated release listings and published release tag lookup.

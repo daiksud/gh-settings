@@ -40,6 +40,18 @@ checksum_sha="$(digest "$RELEASE_DIR/$checksums")"
 manifest="$(jq -cn --arg v "$VERSION" --arg c "$SOURCE_SHA" --arg m "$MACOS_SHA256" --arg l "$LINUX_SHA256" --arg s "$checksum_sha" '{version:$v,commit:$c,macos_sha256:$m,linux_sha256:$l,checksums_sha256:$s}')"
 marker="<!-- gh-settings-release: $manifest -->"
 repo="$GITHUB_REPOSITORY"
+release_id=''
+find_release() {
+  local count
+  gh api "repos/$repo/releases?per_page=100" --paginate --slurp > "$work/releases.json"
+  count="$(jq --arg tag "$VERSION" '[.[][] | select(.tag_name == $tag)] | length' "$work/releases.json")"
+  [[ "$count" == 0 || "$count" == 1 ]] || fail 'multiple releases use the requested tag'
+  [[ "$count" == 1 ]] || return 1
+  release_id="$(jq -r --arg tag "$VERSION" '[.[][] | select(.tag_name == $tag)][0].id' "$work/releases.json")"
+  [[ "$release_id" =~ ^[1-9][0-9]*$ ]] || fail 'release has no valid ID'
+  gh api "repos/$repo/releases/$release_id" > "$work/release.json"
+  [[ "$(jq -r '.id' "$work/release.json")" == "$release_id" ]] || fail 'release ID changed'
+}
 
 # Resolve both lightweight and annotated tags without moving either.
 if optional_api "repos/$repo/git/ref/tags/$VERSION" "$work/tag.json"; then
@@ -55,7 +67,7 @@ else
   gh api -X POST "repos/$repo/git/refs" -f "ref=refs/tags/$VERSION" -f "sha=$SOURCE_SHA" > /dev/null
 fi
 
-if optional_api "repos/$repo/releases/tags/$VERSION" "$work/release.json"; then
+if find_release; then
   [[ "$(jq -r '.tag_name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another tag'
   [[ "$(jq -r '.name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another title'
   [[ "$(jq -r '.prerelease' "$work/release.json")" == false ]] || fail 'existing release is a prerelease'
@@ -79,15 +91,17 @@ $(cat "$RELEASE_DIR/$checksums")
 
 $(cat "$work/changes.md")
 EOF
-  gh release create "$VERSION" --repo "$repo" --verify-tag --draft --title "$VERSION" --notes-file "$work/notes.md" > /dev/null
-  gh api "repos/$repo/releases/tags/$VERSION" > "$work/release.json"
+  jq -n --arg tag "$VERSION" --arg commit "$SOURCE_SHA" --rawfile body "$work/notes.md" '{tag_name:$tag,target_commitish:$commit,name:$tag,body:$body,draft:true,prerelease:false}' > "$work/create.json"
+  gh api -X POST "repos/$repo/releases" --input "$work/create.json" > "$work/release.json"
+  release_id="$(jq -r '.id' "$work/release.json")"
+  [[ "$release_id" =~ ^[1-9][0-9]*$ ]] || fail 'created draft has no valid ID'
 fi
 [[ "$(jq -r '.draft' "$work/release.json")" == true || "$(jq -r '.draft' "$work/release.json")" == false ]] || fail 'unknown release state'
 jq -r '.body' "$work/release.json" | grep -Fxq -- "$marker" || fail 'release notes do not match tested identity'
 
 verify_assets() {
   local name expected download_dir
-  gh api "repos/$repo/releases/tags/$VERSION" > "$work/release.json"
+  gh api "repos/$repo/releases/$release_id" > "$work/release.json"
   [[ "$(jq -r '[.assets[].name] | unique | length' "$work/release.json")" == "$(jq -r '.assets | length' "$work/release.json")" ]] || fail 'duplicate asset names'
   jq -e --arg m "$macos" --arg l "$linux" --arg s "$checksums" 'all(.assets[].name; . == $m or . == $l or . == $s)' "$work/release.json" > /dev/null || fail 'unexpected release asset'
   download_dir="$(mktemp -d "$work/downloads.XXXXXX")"
@@ -131,7 +145,8 @@ if [[ "$tag_type" == tag ]]; then
   tag_sha="$(jq -r '.object.sha' "$work/annotated.json")"
 fi
 [[ "$tag_type" == commit && "$tag_sha" == "$SOURCE_SHA" ]] || fail 'tag changed before publication'
-gh release edit "$VERSION" --repo "$repo" --draft=false > /dev/null
-gh api "repos/$repo/releases/tags/$VERSION" > "$work/release.json"
+jq -n '{draft:false}' > "$work/publish.json"
+gh api -X PATCH "repos/$repo/releases/$release_id" --input "$work/publish.json" > /dev/null
+gh api "repos/$repo/releases/$release_id" > "$work/release.json"
 [[ "$(jq -r '.draft' "$work/release.json")" == false ]] || fail 'release publication not confirmed'
 printf 'published %s at %s with verified assets\n' "$VERSION" "$SOURCE_SHA"
