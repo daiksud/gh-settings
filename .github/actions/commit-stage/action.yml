@@ -1,0 +1,53 @@
+name: Commit stage
+description: Check source and build the product binary once.
+outputs:
+  binary-path:
+    description: Location of the built binary on this runner.
+    value: ${{ steps.build.outputs.binary-path }}
+  binary-sha256:
+    description: SHA-256 of the built product binary.
+    value: ${{ steps.build.outputs.binary-sha256 }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: '1.26.x'
+        check-latest: true
+        cache: true
+    - name: Verify Go formatting
+      shell: bash
+      run: |
+        unformatted="$(gofmt -l .)"
+        if [[ -n "$unformatted" ]]; then
+          printf 'Run gofmt on:\n%s\n' "$unformatted"
+          exit 1
+        fi
+    - name: Verify modules
+      shell: bash
+      run: |
+        go mod download
+        go mod verify
+        go mod tidy -diff
+    - name: Static analysis
+      shell: bash
+      run: go vet ./...
+    - name: Test with race detection
+      shell: bash
+      run: go test -race -count=1 -vet=off ./...
+    - name: Build the product binary once
+      id: build
+      shell: bash
+      run: |
+        go build -o "$RUNNER_TEMP/gh-settings" .
+        printf 'binary-path=%s\n' "$RUNNER_TEMP/gh-settings" >> "$GITHUB_OUTPUT"
+        printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/gh-settings" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+    - name: Install pinned Markdown checker
+      shell: bash
+      run: |
+        python3 -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes \
+          --target "$RUNNER_TEMP/ci-tools" -r .github/requirements-ci.txt
+    - name: Check Markdown and local links
+      shell: bash
+      run: '"$RUNNER_TEMP/ci-tools/bin/rumdl" check --no-cache --deny-config-warnings README.md docs'

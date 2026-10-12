@@ -1,0 +1,45 @@
+name: approve codex review
+
+on:
+  issue_comment: {types: [created, edited]}
+
+permissions: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: codex-approval-${{ github.repository }}-${{ github.event.issue.number }}
+  cancel-in-progress: false
+env:
+  GH_TOKEN: ${{ github.token }}
+  PR_NUMBER: ${{ github.event.issue.number }}
+
+jobs:
+  approve:
+    if: >-
+      github.event.issue.pull_request &&
+      github.event.comment.user.login == 'chatgpt-codex-connector[bot]' &&
+      startsWith(github.event.comment.body, '<!-- codex-pull-request-review-summary -->')
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions: {contents: read, pull-requests: write}
+    env:
+      COMMENT_ID: ${{ github.event.comment.id }}
+    steps:
+      - name: Approve completed Codex reviews
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {0..6}; do
+            summary=$(gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID" --jq .body)
+            [[ "$summary" == '<!-- codex-pull-request-review-summary -->'* ]] || exit 0
+            for kind in 'Code Review' 'Security Review'; do
+              grep -Eq "^\|[^|]*\*\*$kind\*\*[[:space:]]*\|[[:space:]]*✅ \*\*Completed\*\*([[:space:]]|\|)" <<<"$summary" || exit 0
+            done
+            reactions=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/reactions?per_page=100" --paginate --slurp)
+            if jq -e 'any(.[][]; .user.login == "chatgpt-codex-connector[bot]" and .content == "+1")' <<<"$reactions" >/dev/null; then
+              gh pr review "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --approve
+              exit 0
+            fi
+            [[ "$attempt" == 6 ]] || sleep 30
+          done

@@ -88,20 +88,20 @@ A repository maintainer can capture the current five supported settings as confi
 - And standard error identifies the unsupported command
 - And no API request is made
 
-### Go test mapping
+### Test mapping
 
-These scenarios map to ordinary Go tests, not a separate BDD runner:
+These scenarios map to ordinary Go tests and a [process acceptance harness](../../tests/acceptance/main.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
-| Scenario | Test |
-| --- | --- |
-| Export five settings successfully | `TestExportFiveSettings` |
-| Preserve false and empty string values | `TestExportPreservesZeroValues` |
-| Export unset strings as empty strings | `TestExportNormalizesUnsetStrings` |
-| Ignore a repository override | `TestExportUsesOrigin` |
-| Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` |
-| There is no usable current repository | `TestExportRepositoryFailure` |
-| The response cannot form a complete configuration | `TestExportRejectsIncompleteResponse` |
-| Standard output is unavailable | `TestExportOutputFailure` |
-| A command is not implemented | `TestUnsupportedCommand` |
+| Scenario | Go test | Process acceptance case |
+| --- | --- | --- |
+| Export five settings successfully | `TestExportFiveSettings` | `five-settings` |
+| Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |
+| Export unset strings as empty strings | `TestExportNormalizesUnsetStrings` | `unset-strings` |
+| Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
+| Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` | `read-failure` |
+| There is no usable current repository | `TestExportRepositoryFailure` | `repository-failure` |
+| The response cannot form a complete configuration | `TestExportRejectsIncompleteResponse` | `incomplete-response` |
+| Standard output is unavailable | `TestExportOutputFailure` | `output-failure` |
+| A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 
 The read-only export contract is separate from the future [mutation commands](../commands.md). Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. YAML configuration null handling for future input-consuming commands remains undecided.

@@ -39,7 +39,30 @@ go mod tidy -diff
 rumdl check --no-cache --deny-config-warnings README.md docs
 ```
 
-The [CI workflow](.github/workflows/ci.yml) runs the same checks plus Go formatting and module-download verification in one `pass` job on every PR (including drafts) and pushes to `main`. It uses one GitHub-hosted Linux runner and the latest patch in the Go 1.26 series; no matrix or aggregator job is needed. The tests use simulated API responses and temporary Git repositories, so CI needs no secrets or live API authentication. Build output stays in runner temporary storage; this workflow does not publish or release the tool.
+The [PR workflow](.github/workflows/ci-pr.yml) follows Draft → commit-stage → Ready → acceptance-stage → `pass`, matching the current apex/agents control flow. It runs on opened, synchronized, reopened, and edited PRs. The [main workflow](.github/workflows/ci-push.yml) runs commit-stage → acceptance-stage → `pass` on pushes to `main`. Failure, cancellation, or skipped acceptance prevents a successful `pass` result. This CI does not merge, publish, or deploy.
+
+Both workflows call [commit-stage](.github/actions/commit-stage/action.yml) for formatting, modules, vet, race tests, a single product build, and Markdown/local links. They transfer that same binary through an artifact, then call [acceptance-stage](.github/actions/acceptance-stage/action.yml) to verify its SHA-256 and launch it as a real process. The acceptance harness is compiled separately; the product is not rebuilt and the Go unit suite is not run again. Artifacts are retained for one day and downloaded only from the current workflow run.
+
+PR-code validation jobs have read permissions, no supplied secrets, and checkout credentials are not persisted. Draft/Ready control jobs have write permissions but do not check out or execute PR code, composites, or artifacts. Normal fork tokens are read-only, so automatic PR-state changes can be blocked on forks; this workflow does not bypass that restriction.
+
+### Local process acceptance
+
+Build the product once, then run the small Go harness against that executable:
+
+```sh
+go build -o /tmp/gh-settings-acceptance .
+go run ./tests/acceptance --binary /tmp/gh-settings-acceptance
+```
+
+The [harness](tests/acceptance/main.go) uses a local Unix-socket HTTP fixture and go-gh v2.16.2's `http_unix_socket` configuration in a temporary `GH_CONFIG_DIR`. Its dummy token never authenticates with GitHub. Checks cover YAML values, empty strings and false, GET null normalization, current-repository selection, exit codes, stderr, and failure paths. Temporary repositories/configuration are isolated and cleaned up. Product code needs no testing hook or test-only modification; Unix sockets are required.
+
+### Codex approval control
+
+The separate [approval workflow](.github/workflows/approve-codex-review.yml) uses the current apex/agents mechanism: a Codex summary must show both Code Review and Security Review as Completed, and Codex must have reacted 👍 to the PR body. It waits up to three minutes for that reaction, then may create a bot Approve. It runs trusted default-branch workflow code without checking out PR code.
+
+This mechanism does not verify the reviewed HEAD or latest Ready-triggered review cycle, and can reuse older completion/reaction information. A successful workflow run alone does not prove that an approval was created. Inspect new Ready-triggered reviews separately. PR body edits also start the CI state sequence again, even when the HEAD has not changed.
+
+The approval workflow becomes available for comment events only after it exists on the default branch. The repository currently has Actions review approvals disabled; enabling them requires a separate authorized settings change. No new token, secret, Ruleset, or branch protection is configured here. Making `pass` required is also a separate settings decision.
 
 Markdown checks use rumdl 0.2.79 with the repository's [.rumdl.toml](.rumdl.toml). MD051 and MD057 validate local headings/fragments and file links; external HTTP availability is not a CI dependency. The CI installation pins the Linux wheel's version and SHA-256 in [requirements-ci.txt](.github/requirements-ci.txt). Use an installed rumdl 0.2.79 for the local command above.
 
