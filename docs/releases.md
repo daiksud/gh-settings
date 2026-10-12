@@ -1,7 +1,7 @@
 ---
 type: Specification
 title: Release design
-description: Define the proposed release pipeline, distribution, recovery, and future version automation.
+description: Define the manual release pipeline, distribution, recovery, and future version automation.
 sources:
   - id: github-cli-extensions
     resource: https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions
@@ -9,11 +9,14 @@ sources:
   - id: go-linker
     resource: https://pkg.go.dev/cmd/link#hdr-Command_Line
     title: Go linker command line
+  - id: github-rest-releases
+    resource: https://docs.github.com/en/rest/releases/releases
+    title: REST API endpoints for releases
 ---
 
 ## Status and initial targets
 
-This page specifies a future release pipeline. No release workflow or publication mechanism is implemented by this documentation change. The existing [main CI](../.github/workflows/ci-push.yml) validates its own build; a release must build and validate its own platform binaries rather than reuse that CI artifact.
+The [manual release workflow](../.github/workflows/release.yml) implements the initial pipeline. The existing [main CI](../.github/workflows/ci-push.yml) validates its own build; the release builds and validates separate platform binaries. Merging the workflow does not trigger a release.
 
 The first releases target only these platforms:
 
@@ -22,16 +25,16 @@ The first releases target only these platforms:
 | macOS Apple Silicon | `darwin/arm64` | `gh-settings-darwin-arm64` |
 | Linux x86_64 | `linux/amd64` | `gh-settings-linux-amd64` |
 
-GitHub CLI recognizes precompiled extension assets with an OS-architecture suffix.[^github-cli-extensions] Publish raw, executable files under those names, plus SHA-256 checksums for the published binaries and release notes. The distribution contract follows common Go CLI release practice; adopting GoReleaser itself has not been decided. Additional platforms and archives are outside the initial release scope.
+GitHub CLI recognizes precompiled extension assets with an OS-architecture suffix.[^github-cli-extensions] The release publishes raw, executable files under those names, a `SHA256SUMS` asset, and release notes with installation guidance and generated changes. The binaries come from `go build`; GoReleaser is not used for this scope. Additional platforms and archives are outside the initial release scope.
 
 ## Initial release flow
 
-1. A maintainer starts a release workflow manually and supplies an explicit version. The workflow records the latest `main` commit once at its start. Every checkout, build, test, tag, and release operation uses that recorded commit, even if `main` advances during the run.
-2. Inject the supplied version while building each target binary, then complete the commit stage. Go's linker supports setting a string symbol with `-X` when its declaration is suitable; the exact symbol and build wiring remain implementation details.[^go-linker] Build each platform binary only once in this release pipeline.
-3. Run the acceptance stage against each exact binary intended for publication, on a compatible platform, and verify its SHA-256 across stage transfers. The existing [commit-stage](../.github/actions/commit-stage/action.yml) and [acceptance-stage](../.github/actions/acceptance-stage/action.yml) are intended for reuse or refactoring, but their current product build must not cause a second release build. A matching source commit and version alone do not prove that two binaries have identical bytes.
-4. Only after both targets pass, create the tag at the recorded commit and stage a draft GitHub Release for the supplied version. Upload the tested executables and their checksums, and prepare release notes. Verify the expected assets and metadata before publishing the draft.
+1. A maintainer starts the workflow on `main` with an explicit `vMAJOR.MINOR.PATCH` version. The resolve job reads `refs/heads/main` once through GitHub API and records its commit SHA. Every later checkout uses that SHA, even if `main` advances.
+2. The commit stage checks the pinned source and builds Linux amd64 once. The macOS arm64 runner builds its binary once after commit checks pass. Both use Go linker `-X main.version=...`; `gh settings --version` verifies the embedded value.[^go-linker]
+3. Each native runner downloads its current run's binary and checks the SHA-256 supplied by its build job. The shared [acceptance-stage](../.github/actions/acceptance-stage/action.yml) launches that exact binary against the local API fixture. The release job downloads both binaries again and checks those SHA-256 values before any tag is written.
+4. After both acceptance jobs pass, the release job creates a lightweight tag at the frozen SHA, creates a draft with generated change notes and an identity manifest, uploads the two binaries and `SHA256SUMS`, downloads any present assets to verify their bytes, and publishes only when all three required assets and metadata match.
 
-Do not overwrite an existing tag or a published release asset. A conflicting version, tag target, asset name, or artifact identity stops publication. After an interruption, inspect the tag, draft, and uploaded artifacts; resume unfinished steps only when the version, commit, and tested artifact bytes can be verified as identical. The recovery mechanism and evidence storage still need implementation design. An incomplete draft must not be presented as a published release.
+The draft body records version, pinned commit, both binary SHA-256 values, and the checksum file SHA-256 in a machine-readable comment. On retry, the release job finds the draft in the authenticated releases list and reads it by release ID; GitHub's tag lookup only returns published releases.[^github-rest-releases] It then compares the manifest, checks the existing tag target, downloads existing assets to compare their bytes, and uploads only missing assets. Unexpected assets, an altered manifest, hash mismatches, a conflicting tag, or a missing tag for an existing release stop the run without recreating that tag. An already published matching release is a verified no-op. There is no destructive cleanup or clobber. A new workflow run resolves current main, so a retry after main advances will stop at the old tag; the original frozen run remains the source of its SHA and artifacts.
 
 This release pipeline is separate from ordinary main CI. Its stage order is version injection and build, commit-stage validation, acceptance-stage validation, tag, then release publication. The [single-build decision](adr/0012-publish-tested-binaries.md) governs any refactoring of the existing composites.
 
@@ -53,7 +56,8 @@ The exact title signal used to identify every breaking change remains unresolved
 - [ADR 0017: Derive future SemVer bumps from merged PRs](adr/0017-pr-based-semver.md)
 - [ADR 0018: Never overwrite published release assets](adr/0018-preserve-published-assets.md)
 
-Workflow implementation, the exact version and tag spelling, checksum file name, release-note generation, compatible acceptance runners, and recovery evidence storage remain open mechanics. GoReleaser adoption is undecided. These details must preserve the contracts above.
+The release tests in [tests/release.sh](../tests/release.sh) use a local `gh` stand-in and create no real tags or releases. They cover a first publication, completed retry, incomplete draft recovery, version rejection, conflicting tag and manifest, and altered asset bytes. A live release is not exercised by these tests. Future automatic versioning remains deferred.
 
 [^github-cli-extensions]: [Creating GitHub CLI extensions](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions), checked on 2026-10-12 for precompiled extension release asset naming.
 [^go-linker]: [Go linker command line](https://pkg.go.dev/cmd/link#hdr-Command_Line), checked on 2026-10-12 for the conditional `-X` string-symbol behavior.
+[^github-rest-releases]: [REST API endpoints for releases](https://docs.github.com/en/rest/releases/releases), checked on 2026-10-12 for draft visibility in authenticated release listings and published release tag lookup.

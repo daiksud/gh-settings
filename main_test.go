@@ -52,6 +52,17 @@ func TestExportFiveSettings(t *testing.T) {
 	}
 }
 
+func TestVersion(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"--version"}, &stdout, &stderr, func() ([]byte, error) {
+		t.Fatal("version command must not call GitHub")
+		return nil, nil
+	})
+	if code != 0 || stdout.String() != "gh-settings "+version+"\n" || stderr.Len() != 0 {
+		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
 type transportFunc func(*http.Request) (*http.Response, error)
 
 func (f transportFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }

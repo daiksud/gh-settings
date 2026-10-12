@@ -6,7 +6,7 @@ description: Prevent a moving main branch from changing the release source mid-r
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented by the manual release workflow.
 
 ## Context
 
