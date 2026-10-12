@@ -52,6 +52,19 @@ find_release() {
   gh api "repos/$repo/releases/$release_id" > "$work/release.json"
   [[ "$(jq -r '.id' "$work/release.json")" == "$release_id" ]] || fail 'release ID changed'
 }
+check_marker() {
+  jq -e --arg marker "$marker" '.body | startswith($marker + "\n")' "$work/release.json" > /dev/null
+}
+
+# Inspect existing release identity before creating any missing tag.
+release_exists=false
+if find_release; then
+  release_exists=true
+  [[ "$(jq -r '.tag_name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another tag'
+  [[ "$(jq -r '.name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another title'
+  [[ "$(jq -r '.prerelease' "$work/release.json")" == false ]] || fail 'existing release is a prerelease'
+  check_marker || fail 'existing release lacks matching version, commit, and binary identity evidence'
+fi
 
 # Resolve both lightweight and annotated tags without moving either.
 if optional_api "repos/$repo/git/ref/tags/$VERSION" "$work/tag.json"; then
@@ -64,15 +77,11 @@ if optional_api "repos/$repo/git/ref/tags/$VERSION" "$work/tag.json"; then
   fi
   [[ "$tag_type" == commit && "$tag_sha" == "$SOURCE_SHA" ]] || fail 'existing tag targets another commit'
 else
+  [[ "$release_exists" == false ]] || fail 'existing release has no tag; refusing to recreate it'
   gh api -X POST "repos/$repo/git/refs" -f "ref=refs/tags/$VERSION" -f "sha=$SOURCE_SHA" > /dev/null
 fi
 
-if find_release; then
-  [[ "$(jq -r '.tag_name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another tag'
-  [[ "$(jq -r '.name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another title'
-  [[ "$(jq -r '.prerelease' "$work/release.json")" == false ]] || fail 'existing release is a prerelease'
-  jq -r '.body' "$work/release.json" | grep -Fxq -- "$marker" || fail 'existing release lacks matching version, commit, and binary identity evidence'
-else
+if [[ "$release_exists" == false ]]; then
   gh api -X POST "repos/$repo/releases/generate-notes" -f "tag_name=$VERSION" -f "target_commitish=$SOURCE_SHA" --jq .body > "$work/changes.md"
   cat > "$work/notes.md" <<EOF
 $marker
@@ -97,7 +106,7 @@ EOF
   [[ "$release_id" =~ ^[1-9][0-9]*$ ]] || fail 'created draft has no valid ID'
 fi
 [[ "$(jq -r '.draft' "$work/release.json")" == true || "$(jq -r '.draft' "$work/release.json")" == false ]] || fail 'unknown release state'
-jq -r '.body' "$work/release.json" | grep -Fxq -- "$marker" || fail 'release notes do not match tested identity'
+check_marker || fail 'release notes do not match tested identity'
 
 verify_assets() {
   local name expected download_dir
@@ -135,7 +144,7 @@ done
 verify_assets
 [[ "$(jq -r '.assets | length' "$work/release.json")" == 3 ]] || fail 'draft is missing assets'
 [[ "$(jq -r '.draft' "$work/release.json")" == true ]] || fail 'release changed state during upload'
-jq -r '.body' "$work/release.json" | grep -Fxq -- "$marker" || fail 'release notes changed during upload'
+check_marker || fail 'release notes changed during upload'
 gh api "repos/$repo/git/ref/tags/$VERSION" > "$work/tag.json"
 tag_type="$(jq -r '.object.type' "$work/tag.json")"
 tag_sha="$(jq -r '.object.sha' "$work/tag.json")"

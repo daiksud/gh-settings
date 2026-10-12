@@ -20,7 +20,11 @@ if [[ "$1" == api ]]; then
   if [[ "$1" == -X ]]; then
     case "$2:$3" in
       POST:*/releases/generate-notes)
-        printf '{"body":"- Test change"}\n' | jq -r .body ;;
+        if [[ "${MOCK_LONG_NOTES:-}" == 1 ]]; then
+          head -c 262144 /dev/zero | tr '\0' x
+        else
+          printf '{"body":"- Test change"}\n' | jq -r .body
+        fi ;;
       POST:*/git/refs)
         printf '{"object":{"type":"commit","sha":"%s"}}\n' "$SOURCE_SHA" > "$MOCK_ROOT/tag.json" ;;
       POST:*/releases)
@@ -93,6 +97,8 @@ printf 'linux-binary' > "$RELEASE_DIR/gh-settings-linux-amd64"
 MACOS_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-darwin-arm64" | cut -d ' ' -f 1)"
 LINUX_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-linux-amd64" | cut -d ' ' -f 1)"
 export MACOS_SHA256 LINUX_SHA256
+MOCK_LONG_NOTES="${MOCK_LONG_NOTES:-1}"
+export MOCK_LONG_NOTES
 publish() { bash "$repo_root/scripts/publish-release.sh"; }
 reject() {
   if publish > "$fixture/output" 2>&1; then
@@ -121,6 +127,10 @@ publish
 [[ "$(cat "$fixture/draft")" == false ]]
 
 # Version, tag target, draft manifest, and bytes each reject conflicts.
+rm "$fixture/tag.json"
+SOURCE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb reject
+[[ ! -e "$fixture/tag.json" ]] || { echo 'conflicting release recreated a missing tag' >&2; exit 1; }
+printf '{"object":{"type":"commit","sha":"%s"}}\n' "$SOURCE_SHA" > "$fixture/tag.json"
 VERSION='v1.2.3;unsafe' reject
 export VERSION=v1.2.3
 printf '{"object":{"type":"commit","sha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}\n' > "$fixture/tag.json"
