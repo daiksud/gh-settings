@@ -75,3 +75,4 @@ The [export behavior specification](docs/features/export.feature.md) maps its us
 - [Concept, design philosophy, and future direction](docs/concept.md)
 - [Supported settings and configuration semantics](docs/settings.md)
 - [Commands and failure behavior](docs/commands.md)
+- [Release design and future versioning](docs/releases.md)
