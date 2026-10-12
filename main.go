@@ -130,6 +130,10 @@ func currentRepository() (repository.Repository, error) {
 }
 
 func parseGitHubOrigin(remoteURL string) (repository.Repository, error) {
+	// go-gh recognizes full SSH URLs but not SCP syntax without a username.
+	if strings.HasPrefix(remoteURL, "github.com:") {
+		remoteURL = "ssh://github.com/" + strings.TrimPrefix(remoteURL, "github.com:")
+	}
 	if !strings.HasPrefix(remoteURL, "https://") && !strings.HasPrefix(remoteURL, "ssh://") && !strings.HasPrefix(remoteURL, "git@github.com:") {
 		return repository.Repository{}, fmt.Errorf("origin must be a GitHub HTTPS or SSH URL")
 	}

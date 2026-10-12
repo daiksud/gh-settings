@@ -48,6 +48,13 @@ A repository maintainer can capture the current five supported settings as confi
 - Then the settings are read from "owner/current"
 - And the override does not select another repository
 
+#### Scenario: Resolve an SCP origin without a username
+
+- Given the current checkout's origin is "github.com:owner/current.git"
+- When the maintainer runs `gh settings export`
+- Then the command succeeds
+- And the settings are read from "owner/current" on GitHub
+
 #### Scenario: Keep repository identity when Git rewrites its transport URL
 
 - Given the current checkout's configured origin identifies "owner/current" on GitHub
@@ -128,6 +135,7 @@ These scenarios map to ordinary Go tests and a [process acceptance harness](../.
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |
 | Export unset strings as empty strings | `TestExportNormalizesUnsetStrings` | `unset-strings` |
 | Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
+| Resolve an SCP origin without a username | `TestRepositoryRemotes` | `origin-scp-without-user` |
 | Keep repository identity when Git rewrites its transport URL | `TestExportUsesConfiguredOriginBeforeInsteadOf` | `origin-insteadof` |
 | Resolve a transport alias to GitHub | `TestExportUsesAliasRewrittenToGitHub` | `origin-alias` |
 | Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |

@@ -294,7 +294,7 @@ type brokenWriter struct{}
 func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("output unavailable") }
 
 func TestRepositoryRemotes(t *testing.T) {
-	for _, remote := range []string{"git@github.com:owner/current.git", "ssh://git@github.com/owner/current.git", "../owner/current", "owner/current", "https://gitlab.com/owner/current.git"} {
+	for _, remote := range []string{"git@github.com:owner/current.git", "github.com:owner/current.git", "ssh://git@github.com/owner/current.git", "../owner/current", "owner/current", "https://gitlab.com/owner/current.git"} {
 		t.Run(remote, func(t *testing.T) {
 			dir := t.TempDir()
 			for _, args := range [][]string{{"init", "--quiet", dir}, {"-C", dir, "remote", "add", "origin", remote}} {
@@ -309,7 +309,7 @@ func TestRepositoryRemotes(t *testing.T) {
 			t.Chdir(subdir)
 			repo, err := currentRepository()
 			if strings.Contains(remote, "github.com") {
-				if err != nil || repo.Owner != "owner" || repo.Name != "current" {
+				if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
 					t.Fatalf("repo=%+v err=%v", repo, err)
 				}
 			} else if err == nil {
