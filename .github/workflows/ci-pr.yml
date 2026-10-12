@@ -43,6 +43,7 @@ jobs:
           name: gh-settings
           path: ${{ steps.validation.outputs.binary-path }}
           if-no-files-found: error
+          overwrite: true
           retention-days: 1
   ready:
     needs: commit-stage
