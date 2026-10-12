@@ -23,6 +23,7 @@ type scenario struct {
 	name, body, errorText                                                     string
 	expected                                                                  map[string]any
 	noRepo, noRead, outputFailure, rewriteOrigin, aliasOrigin, worktreeOrigin bool
+	userlessOrigin                                                            bool
 	args                                                                      []string
 	status                                                                    int
 }
@@ -46,6 +47,7 @@ func main() {
 		{name: "zero-values", body: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`, expected: empty},
 		{name: "unset-strings", body: `{"description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, expected: empty},
 		{name: "origin-override", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary},
+		{name: "origin-scp-without-user", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, userlessOrigin: true},
 		{name: "origin-insteadof", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, rewriteOrigin: true},
 		{name: "origin-alias", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, aliasOrigin: true},
 		{name: "origin-worktree", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, worktreeOrigin: true},
@@ -109,7 +111,11 @@ func check(binary string, test scenario) error {
 	if !test.noRepo {
 		gitCommands := [][]string{{"init", "--quiet"}}
 		if !test.worktreeOrigin {
-			gitCommands = append(gitCommands, []string{"remote", "add", "origin", "https://github.com/owner/current.git"})
+			origin := "https://github.com/owner/current.git"
+			if test.userlessOrigin {
+				origin = "github.com:owner/current.git"
+			}
+			gitCommands = append(gitCommands, []string{"remote", "add", "origin", origin})
 		} else {
 			gitCommands = append(gitCommands,
 				[]string{"config", "--local", "extensions.worktreeConfig", "true"},
