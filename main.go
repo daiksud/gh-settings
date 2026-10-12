@@ -105,11 +105,15 @@ type settings struct {
 }
 
 func currentRepository() (repository.Repository, error) {
-	remote, err := exec.Command("git", "remote", "get-url", "origin").Output()
+	// Git remote get-url applies insteadOf transport rewrites, which can hide
+	// the configured GitHub repository behind a mirror URL.
+	remote, err := exec.Command("git", "config", "--get-all", "remote.origin.url").Output()
 	if err != nil {
 		return repository.Repository{}, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
 	}
-	remoteURL := strings.TrimSpace(string(remote))
+	// Match git remote get-url's first fetch URL when origin has multiple URLs.
+	firstURL, _, _ := strings.Cut(string(remote), "\n")
+	remoteURL := strings.TrimSpace(firstURL)
 	if !strings.HasPrefix(remoteURL, "https://") && !strings.HasPrefix(remoteURL, "ssh://") && !strings.HasPrefix(remoteURL, "git@github.com:") {
 		return repository.Repository{}, fmt.Errorf("origin must be a GitHub HTTPS or SSH URL")
 	}

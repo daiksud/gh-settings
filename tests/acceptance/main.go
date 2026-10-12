@@ -20,11 +20,11 @@ import (
 )
 
 type scenario struct {
-	name, body, errorText         string
-	expected                      map[string]any
-	noRepo, noRead, outputFailure bool
-	args                          []string
-	status                        int
+	name, body, errorText                        string
+	expected                                     map[string]any
+	noRepo, noRead, outputFailure, rewriteOrigin bool
+	args                                         []string
+	status                                       int
 }
 
 func main() {
@@ -46,6 +46,7 @@ func main() {
 		{name: "zero-values", body: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`, expected: empty},
 		{name: "unset-strings", body: `{"description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, expected: empty},
 		{name: "origin-override", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary},
+		{name: "origin-insteadof", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, rewriteOrigin: true},
 		{name: "read-failure", body: `{"message":"Fixture access denied"}`, status: 403, errorText: "403"},
 		{name: "repository-failure", noRepo: true, noRead: true, errorText: "origin"},
 		{name: "incomplete-response", body: `{"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, errorText: "missing description"},
@@ -110,6 +111,14 @@ func check(binary string, test scenario) error {
 			cmd.Env = env
 			if output, err := cmd.CombinedOutput(); err != nil {
 				return fmt.Errorf("git: %w: %s", err, output)
+			}
+		}
+		if test.rewriteOrigin {
+			cmd := exec.Command("git", "config", "--local", "url.https://mirror.example/.insteadOf", "https://github.com/")
+			cmd.Dir = work
+			cmd.Env = env
+			if output, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("git rewrite: %w: %s", err, output)
 			}
 		}
 	}

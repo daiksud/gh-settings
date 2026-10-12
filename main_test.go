@@ -137,6 +137,30 @@ func TestExportUsesOrigin(t *testing.T) {
 	}
 }
 
+func TestExportUsesConfiguredOriginBeforeInsteadOf(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	dir := t.TempDir()
+	for _, args := range [][]string{
+		{"init", "--quiet", dir},
+		{"-C", dir, "remote", "add", "origin", "https://github.com/owner/current.git"},
+		{"-C", dir, "remote", "set-url", "--add", "origin", "https://github.com/owner/other.git"},
+		{"-C", dir, "config", "--local", "url.https://mirror.example/.insteadOf", "https://github.com/"},
+	} {
+		if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git: %v: %s", err, output)
+		}
+	}
+	t.Chdir(dir)
+	if output, err := exec.Command("git", "remote", "get-url", "origin").Output(); err != nil || string(output) != "https://mirror.example/owner/current.git\n" {
+		t.Fatalf("rewritten origin=%q err=%v", output, err)
+	}
+	repo, err := currentRepository()
+	if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
+		t.Fatalf("selected %+v, err=%v", repo, err)
+	}
+}
+
 func TestExportRepositoryFailure(t *testing.T) {
 	t.Chdir(t.TempDir())
 	var stdout, stderr bytes.Buffer

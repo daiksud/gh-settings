@@ -48,6 +48,14 @@ A repository maintainer can capture the current five supported settings as confi
 - Then the settings are read from "owner/current"
 - And the override does not select another repository
 
+#### Scenario: Keep repository identity when Git rewrites its transport URL
+
+- Given the current checkout's configured origin identifies "owner/current" on GitHub
+- And Git `insteadOf` rewrites the transport URL to a non-GitHub mirror
+- When the maintainer runs `gh settings export`
+- Then the settings are read from "owner/current" on GitHub
+- And the rewritten transport URL does not change the selected repository
+
 ### Rule: Report failures without emitting a successful configuration
 
 #### Scenario: Settings cannot be retrieved
@@ -98,6 +106,7 @@ These scenarios map to ordinary Go tests and a [process acceptance harness](../.
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |
 | Export unset strings as empty strings | `TestExportNormalizesUnsetStrings` | `unset-strings` |
 | Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
+| Keep repository identity when Git rewrites its transport URL | `TestExportUsesConfiguredOriginBeforeInsteadOf` | `origin-insteadof` |
 | Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` | `read-failure` |
 | There is no usable current repository | `TestExportRepositoryFailure` | `repository-failure` |
 | The response cannot form a complete configuration | `TestExportRejectsIncompleteResponse` | `incomplete-response` |
