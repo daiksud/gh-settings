@@ -86,11 +86,11 @@ fi
 jq -r '.body' "$work/release.json" | grep -Fxq -- "$marker" || fail 'release notes do not match tested identity'
 
 verify_assets() {
-  local name expected
+  local name expected download_dir
   gh api "repos/$repo/releases/tags/$VERSION" > "$work/release.json"
   [[ "$(jq -r '[.assets[].name] | unique | length' "$work/release.json")" == "$(jq -r '.assets | length' "$work/release.json")" ]] || fail 'duplicate asset names'
   jq -e --arg m "$macos" --arg l "$linux" --arg s "$checksums" 'all(.assets[].name; . == $m or . == $l or . == $s)' "$work/release.json" > /dev/null || fail 'unexpected release asset'
-  mkdir -p "$work/downloads"
+  download_dir="$(mktemp -d "$work/downloads.XXXXXX")"
   for name in "$macos" "$linux" "$checksums"; do
     case "$name" in
       "$macos") expected="$MACOS_SHA256" ;;
@@ -98,8 +98,8 @@ verify_assets() {
       *) expected="$checksum_sha" ;;
     esac
     if jq -e --arg name "$name" '.assets[] | select(.name == $name)' "$work/release.json" > /dev/null; then
-      gh release download "$VERSION" --repo "$repo" --pattern "$name" --dir "$work/downloads" > /dev/null
-      check_hash "$work/downloads/$name" "$expected"
+      gh release download "$VERSION" --repo "$repo" --pattern "$name" --dir "$download_dir" > /dev/null
+      check_hash "$download_dir/$name" "$expected"
     fi
   done
 }

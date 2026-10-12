@@ -53,6 +53,7 @@ case "$2" in
         *) shift ;;
       esac
     done
+    [[ ! -e "$destination/$pattern" ]] || { echo "asset already exists at $destination/$pattern" >&2; exit 1; }
     cp "$MOCK_ROOT/assets/$pattern" "$destination/$pattern" ;;
   edit) printf 'false\n' > "$MOCK_ROOT/draft" ;;
   *) echo "unexpected release operation: $2" >&2; exit 1 ;;
