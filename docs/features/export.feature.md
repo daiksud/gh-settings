@@ -48,6 +48,28 @@ A repository maintainer can capture the current five supported settings as confi
 - Then the settings are read from "owner/current"
 - And the override does not select another repository
 
+#### Scenario: Keep repository identity when Git rewrites its transport URL
+
+- Given the current checkout's configured origin identifies "owner/current" on GitHub
+- And Git `insteadOf` rewrites the transport URL to a non-GitHub mirror
+- When the maintainer runs `gh settings export`
+- Then the settings are read from "owner/current" on GitHub
+- And the rewritten transport URL does not change the selected repository
+
+#### Scenario: Resolve a transport alias to GitHub
+
+- Given the current checkout's origin is a Git alias for "owner/current"
+- And Git `insteadOf` rewrites the alias to a GitHub URL
+- When the maintainer runs `gh settings export`
+- Then the settings are read from "owner/current" on GitHub
+
+#### Scenario: Read an origin from repository-specific Git configuration
+
+- Given the current checkout defines its origin in an included config or worktree config
+- And that origin identifies "owner/current" on GitHub
+- When the maintainer runs `gh settings export`
+- Then the settings are read from "owner/current" on GitHub
+
 ### Rule: Report failures without emitting a successful configuration
 
 #### Scenario: Settings cannot be retrieved
@@ -65,6 +87,14 @@ A repository maintainer can capture the current five supported settings as confi
 - Then the command exits with a nonzero status
 - And standard error explains the repository resolution failure
 - And standard output is empty
+
+#### Scenario: Global origin does not replace a missing checkout
+
+- Given the current directory is outside a Git checkout
+- And global Git configuration defines a GitHub origin
+- When the maintainer runs `gh settings export`
+- Then the command exits with a nonzero status
+- And no GitHub API request is made
 
 #### Scenario: The response cannot form a complete configuration
 
@@ -98,8 +128,12 @@ These scenarios map to ordinary Go tests and a [process acceptance harness](../.
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |
 | Export unset strings as empty strings | `TestExportNormalizesUnsetStrings` | `unset-strings` |
 | Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
+| Keep repository identity when Git rewrites its transport URL | `TestExportUsesConfiguredOriginBeforeInsteadOf` | `origin-insteadof` |
+| Resolve a transport alias to GitHub | `TestExportUsesAliasRewrittenToGitHub` | `origin-alias` |
+| Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |
 | Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` | `read-failure` |
 | There is no usable current repository | `TestExportRepositoryFailure` | `repository-failure` |
+| Global origin does not replace a missing checkout | `TestExportRejectsGlobalOriginOutsideCheckout` | — |
 | The response cannot form a complete configuration | `TestExportRejectsIncompleteResponse` | `incomplete-response` |
 | Standard output is unavailable | `TestExportOutputFailure` | `output-failure` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
