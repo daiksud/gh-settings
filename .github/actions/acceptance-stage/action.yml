@@ -1,0 +1,32 @@
+name: Acceptance stage
+description: Check the transferred product binary through a local API fixture.
+inputs:
+  binary-path:
+    description: Downloaded product binary, built in commit-stage.
+    required: true
+  binary-sha256:
+    description: Expected SHA-256 from commit-stage.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install Go for the acceptance harness
+      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.10.8
+        install_args: go
+        cache: false
+    - name: Verify the same product binary
+      shell: bash
+      env:
+        BINARY_PATH: ${{ inputs.binary-path }}
+        EXPECTED_SHA256: ${{ inputs.binary-sha256 }}
+      run: |
+        [[ "$EXPECTED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+        printf '%s  %s\n' "$EXPECTED_SHA256" "$BINARY_PATH" | sha256sum -c -
+        chmod +x "$BINARY_PATH"
+    - name: Run process-level acceptance checks
+      shell: bash
+      env:
+        BINARY_PATH: ${{ inputs.binary-path }}
+      run: go run ./tests/acceptance --binary "$BINARY_PATH"

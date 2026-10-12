@@ -1,0 +1,11 @@
+[global]
+disable = ["line-length", "no-inline-html", "no-bare-urls", "first-line-heading"]
+extend-enable = ["link-fragments", "existing-relative-links"]
+
+[table-format]
+enabled = true
+style = "compact"
+
+[list-item-spacing]
+style = "tight"
+allow-loose-continuation = true
