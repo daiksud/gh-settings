@@ -10,13 +10,13 @@ sources:
 
 ## Scope and status
 
-`gh settings` is unimplemented. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They operate on the containing repository's `.github/settings.yml` using the five fields defined on the [settings page](settings.md). See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
+`gh settings export` is implemented; the other commands remain proposed. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The proposed mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
 
 Saved plan artifacts and drift protection are outside the initial scope. GitHub Action delivery is deferred.
 
-## Proposed interface
+## Interface and implementation status
 
-These examples illustrate the proposed interface only. They do not describe working software or an installation procedure. Flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines the agreed root mapping for the current five-field scope.
+The `export` example is implemented. `validate`, `plan`, and `apply` remain proposed and are rejected by the current CLI. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines the agreed root mapping for the current five-field scope.
 
 ```text
 gh settings export
@@ -27,7 +27,7 @@ gh settings apply
 
 | Command | Contract |
 | --- | --- |
-| `export` | Read current supported settings and write them as configuration. Exclude unsupported fields and read-only metadata. |
+| `export` (implemented) | Read current supported settings and write YAML configuration to standard output. Exclude unsupported fields and read-only metadata. |
 | `validate` | Check configuration against the supported schema. Unknown keys and invalid values fail validation. |
 | `plan` | Read current settings and show differences for managed fields only. The result is informational. |
 | `apply` | Validate configuration, then send declared supported fields directly to the repository update API. Omitted fields are not sent. |
@@ -38,7 +38,11 @@ The update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository]
 
 For example, declaring only `has_issues: false` means that apply sends that supported field with the declared value and sends none of the other four fields. The [configuration example](settings.md#configuration-semantics) places this field at the YAML root, following the update request body schema.
 
-## Failures and limits
+## Export behavior
+
+Export resolves the current Git checkout's `origin` remote, including from subdirectories. The current implementation accepts GitHub.com HTTPS and SSH URLs and ignores `GH_REPO`. Missing or unsupported origins fail before the API read. GitHub API authentication uses the existing go-gh/gh integration. The command normalizes GitHub description/homepage nulls to empty strings; it distinguishes missing response keys from null and rejects missing keys or null booleans. The command preserves false and empty string values and does not write configuration files or change repository settings. Read, decoding, and output failures return a nonzero status; read and decoding failures leave standard output empty. See the [behavior specification and test mapping](features/export.feature.md).
+
+## Failures and limits for proposed mutation commands
 
 Unknown keys and invalid values fail before API mutation. Permission and API failures are reported with a nonzero exit status. GitHub may reject a request even when configuration passes local validation; successful validation does not guarantee successful mutation. The endpoint documents failure responses including permission and validation failures.[^github-update-repository]
 
@@ -53,6 +57,6 @@ There is no automatic rollback and no transactional guarantee. A failure does no
 - Omitted fields are absent from the update request.
 - Permission or API failure produces a nonzero exit status without automatic rollback.
 
-These are intended acceptance conditions, not tests executed by this documentation change. The [settings page](settings.md#configuration-semantics) records the agreed structure and unresolved null handling. Future composition across multiple update endpoints remains undecided.
+Export acceptance conditions are covered by the [implemented scenarios and Go tests](features/export.feature.md); the remaining conditions are intended for future implementation. The [settings page](settings.md#configuration-semantics) records the agreed structure and unresolved null handling for future YAML input. Future composition across multiple update endpoints remains undecided.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the update endpoint and failure responses. This reference does not expand the supported scope.

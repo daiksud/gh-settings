@@ -1,0 +1,107 @@
+---
+type: Feature
+title: Export repository settings
+description: Specify the user-visible YAML export and its ordinary Go test mapping.
+---
+
+## Feature: Export repository settings as YAML
+
+A repository maintainer can capture the current five supported settings as configuration without changing GitHub settings. `export` writes to standard output; creating `.github/settings.yml` is an explicit shell redirection, and an existing configuration file is not required.
+
+### Rule: Export only the current checkout's supported settings
+
+#### Scenario: Export five settings successfully
+
+- Given the current Git checkout has a GitHub `origin` remote
+- And its settings are description "Example repository", homepage "https://example.com", issues enabled, projects disabled, and wiki enabled
+- When the maintainer runs `gh settings export`
+- Then the command succeeds
+- And standard output is a YAML root mapping containing exactly those five fields and values
+- And response metadata and other settings are absent
+- And standard error is empty
+- And no repository settings are changed
+
+#### Scenario: Preserve false and empty string values
+
+- Given the repository's description and homepage are empty strings
+- And issues, projects, and wiki are disabled
+- When the maintainer runs `gh settings export`
+- Then the command succeeds
+- And all five keys are present in the YAML output
+- And the two string values remain empty strings
+- And the three boolean values remain false
+
+#### Scenario: Export unset strings as empty strings
+
+- Given GitHub returns null for the repository description or homepage
+- And the other string is null or an empty string
+- When the maintainer runs `gh settings export`
+- Then the command succeeds
+- And description and homepage are present as YAML empty strings, not YAML null values
+- And the boolean settings retain their values
+
+#### Scenario: Ignore a repository override
+
+- Given the current checkout's GitHub origin identifies "owner/current"
+- And `GH_REPO` identifies a different repository
+- When the maintainer runs `gh settings export`
+- Then the settings are read from "owner/current"
+- And the override does not select another repository
+
+### Rule: Report failures without emitting a successful configuration
+
+#### Scenario: Settings cannot be retrieved
+
+- Given GitHub rejects or cannot complete the settings read
+- When the maintainer runs `gh settings export`
+- Then the command exits with a nonzero status
+- And standard error describes the failure
+- And standard output is empty
+
+#### Scenario: There is no usable current repository
+
+- Given the current directory has no GitHub origin remote
+- When the maintainer runs `gh settings export`
+- Then the command exits with a nonzero status
+- And standard error explains the repository resolution failure
+- And standard output is empty
+
+#### Scenario: The response cannot form a complete configuration
+
+- Given GitHub returns malformed data or omits a supported setting
+- When the maintainer runs `gh settings export`
+- Then the command exits with a nonzero status
+- And standard error describes the invalid response
+- And standard output is empty
+
+#### Scenario: Standard output is unavailable
+
+- Given the output destination rejects the exported data
+- When the maintainer runs `gh settings export`
+- Then the command exits with a nonzero status
+- And standard error describes the output failure
+
+#### Scenario: A command is not implemented
+
+- When the maintainer runs `gh settings apply`
+- Then the command exits with a nonzero status
+- And standard error identifies the unsupported command
+- And no API request is made
+
+### Go test mapping
+
+These scenarios map to ordinary Go tests, not a separate BDD runner:
+
+| Scenario | Test |
+| --- | --- |
+| Export five settings successfully | `TestExportFiveSettings` |
+| Preserve false and empty string values | `TestExportPreservesZeroValues` |
+| Export unset strings as empty strings | `TestExportNormalizesUnsetStrings` |
+| Ignore a repository override | `TestExportUsesOrigin` |
+| Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` |
+| There is no usable current repository | `TestExportRepositoryFailure` |
+| The response cannot form a complete configuration | `TestExportRejectsIncompleteResponse` |
+| Standard output is unavailable | `TestExportOutputFailure` |
+| A command is not implemented | `TestUnsupportedCommand` |
+
+The read-only export contract is separate from the future [mutation commands](../commands.md). Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. YAML configuration null handling for future input-consuming commands remains undecided.
