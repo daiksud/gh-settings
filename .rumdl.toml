@@ -1,11 +1,11 @@
 [global]
-disable = ["MD013", "MD033", "MD034", "MD041"]
-extend-enable = ["MD051", "MD057"]
+disable = ["line-length", "no-inline-html", "no-bare-urls", "first-line-heading"]
+extend-enable = ["link-fragments", "existing-relative-links"]
 
-[MD060]
+[table-format]
 enabled = true
 style = "compact"
 
-[MD076]
+[list-item-spacing]
 style = "tight"
 allow-loose-continuation = true
