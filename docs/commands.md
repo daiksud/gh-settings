@@ -16,7 +16,7 @@ Saved plan artifacts and drift protection are outside the initial scope. GitHub 
 
 ## Interface and implementation status
 
-The `export` example is implemented. `validate`, `plan`, and `apply` remain proposed and are rejected by the current CLI. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines the agreed root mapping for the current five-field scope.
+The `export` example is implemented. `validate`, `plan`, and `apply` remain proposed and are rejected by the current CLI. This page records the agreed MVP contract for a tool that is not yet fully implemented; command names below are interface examples, not installation instructions. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines the supported field contract; the YAML wrapper shape remains undecided.
 
 ```text
 gh settings export
@@ -36,17 +36,17 @@ The update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository]
 
 `apply` does not fetch current settings, compute differences, compare against a saved plan, or preserve external changes to managed values. If a managed value changes remotely after `plan`, `apply` still sends the YAML value. The observed plan diff can therefore differ from changes at apply time. Omitting a field leaves it outside the request.
 
-For example, declaring only `has_issues: false` means that apply sends that supported field with the declared value and sends none of the other four fields. The [configuration example](settings.md#configuration-semantics) places this field at the YAML root, following the update request body schema.
+For example, when a configuration declares `has_issues: false`, apply sends that supported field with the declared value and sends none of the other four fields. The update payload shape is shown on the [settings page](settings.md#configuration-semantics); the corresponding YAML wrapper is still open.
 
 ## Export behavior
 
-Export resolves the current Git checkout's `origin` remote, including from subdirectories. The current implementation accepts GitHub.com HTTPS and SSH URLs and ignores `GH_REPO`. Missing or unsupported origins fail before the API read. GitHub API authentication uses the existing go-gh/gh integration. The command normalizes GitHub description/homepage nulls to empty strings; it distinguishes missing response keys from null and rejects missing keys or null booleans. The command preserves false and empty string values and does not write configuration files or change repository settings. Read, decoding, and output failures return a nonzero status; read and decoding failures leave standard output empty. See the [behavior specification and test mapping](features/export.feature.md).
+Export resolves the current Git checkout's `origin` remote, including from subdirectories. The current implementation accepts GitHub.com HTTPS and SSH URLs and ignores `GH_REPO`. Missing or unsupported origins fail before the API read. The implemented command uses the existing go-gh/gh integration; that implementation detail does not decide the authentication design for the complete tool. The command normalizes GitHub description/homepage nulls to empty strings; it distinguishes missing response keys from null and rejects missing keys or null booleans. The command preserves false and empty string values and does not write configuration files or change repository settings. Read, decoding, and output failures return a nonzero status; read and decoding failures leave standard output empty. See the [behavior specification and test mapping](features/export.feature.md).
 
 ## Failures and limits for proposed mutation commands
 
 Unknown keys and invalid values fail before API mutation. Permission and API failures are reported with a nonzero exit status. GitHub may reject a request even when configuration passes local validation; successful validation does not guarantee successful mutation. The endpoint documents failure responses including permission and validation failures.[^github-update-repository]
 
-There is no automatic rollback and no transactional guarantee. A failure does not promise restoration of prior settings. The [selected go-gh library](adr/0008-official-go-gh-library.md) provides GitHub CLI authentication integration; remaining authentication details are undecided, and the tool must report access failures rather than claim that all declared settings can always be applied.
+There is no automatic rollback and no transactional guarantee. A failure does not promise restoration of prior settings. Authentication details for the complete tool remain undecided, and it must report access failures rather than claim that all declared settings can always be applied.
 
 ## Acceptance boundaries for future implementation
 
