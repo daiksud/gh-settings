@@ -1,0 +1,3 @@
+# rumdl's Linux x86_64 wheel from PyPI; no runtime dependencies.
+rumdl==0.2.79 \
+    --hash=sha256:55a6bd374acf6693acbe19a71f1493bacbaca8846b945ebe1fb9430bc724f4a4

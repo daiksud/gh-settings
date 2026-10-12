@@ -31,10 +31,17 @@ Shell redirection can truncate an existing destination even if export fails. Ins
 ## Development checks
 
 ```sh
-go test ./...
+go test -race -count=1 -vet=off ./...
 go vet ./...
 go build ./...
+go mod verify
+go mod tidy -diff
+rumdl check --no-cache --deny-config-warnings README.md docs
 ```
+
+The [CI workflow](.github/workflows/ci.yml) runs the same checks plus Go formatting and module-download verification in one `pass` job on every PR (including drafts) and pushes to `main`. It uses one GitHub-hosted Linux runner and the latest patch in the Go 1.26 series; no matrix or aggregator job is needed. The tests use simulated API responses and temporary Git repositories, so CI needs no secrets or live API authentication. Build output stays in runner temporary storage; this workflow does not publish or release the tool.
+
+Markdown checks use rumdl 0.2.79 with the repository's [.rumdl.toml](.rumdl.toml). MD051 and MD057 validate local headings/fragments and file links; external HTTP availability is not a CI dependency. The CI installation pins the Linux wheel's version and SHA-256 in [requirements-ci.txt](.github/requirements-ci.txt). Use an installed rumdl 0.2.79 for the local command above.
 
 The [export behavior specification](docs/features/export.feature.md) maps its user-visible scenarios to ordinary Go tests. No BDD runner is required.
 
