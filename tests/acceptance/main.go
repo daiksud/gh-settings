@@ -20,11 +20,11 @@ import (
 )
 
 type scenario struct {
-	name, body, errorText                                     string
-	expected                                                  map[string]any
-	noRepo, noRead, outputFailure, rewriteOrigin, aliasOrigin bool
-	args                                                      []string
-	status                                                    int
+	name, body, errorText                                                     string
+	expected                                                                  map[string]any
+	noRepo, noRead, outputFailure, rewriteOrigin, aliasOrigin, worktreeOrigin bool
+	args                                                                      []string
+	status                                                                    int
 }
 
 func main() {
@@ -48,6 +48,7 @@ func main() {
 		{name: "origin-override", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary},
 		{name: "origin-insteadof", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, rewriteOrigin: true},
 		{name: "origin-alias", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, aliasOrigin: true},
+		{name: "origin-worktree", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, expected: ordinary, worktreeOrigin: true},
 		{name: "read-failure", body: `{"message":"Fixture access denied"}`, status: 403, errorText: "403"},
 		{name: "repository-failure", noRepo: true, noRead: true, errorText: "origin"},
 		{name: "incomplete-response", body: `{"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, errorText: "missing description"},
@@ -106,7 +107,15 @@ func check(binary string, test scenario) error {
 	}
 	env := fixtureEnv(cfg)
 	if !test.noRepo {
-		for _, args := range [][]string{{"init", "--quiet"}, {"remote", "add", "origin", "https://github.com/owner/current.git"}} {
+		gitCommands := [][]string{{"init", "--quiet"}}
+		if !test.worktreeOrigin {
+			gitCommands = append(gitCommands, []string{"remote", "add", "origin", "https://github.com/owner/current.git"})
+		} else {
+			gitCommands = append(gitCommands,
+				[]string{"config", "--local", "extensions.worktreeConfig", "true"},
+				[]string{"config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git"})
+		}
+		for _, args := range gitCommands {
 			cmd := exec.Command("git", args...)
 			cmd.Dir = work
 			cmd.Env = env

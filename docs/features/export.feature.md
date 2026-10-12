@@ -63,6 +63,13 @@ A repository maintainer can capture the current five supported settings as confi
 - When the maintainer runs `gh settings export`
 - Then the settings are read from "owner/current" on GitHub
 
+#### Scenario: Read an origin from repository-specific Git configuration
+
+- Given the current checkout defines its origin in an included config or worktree config
+- And that origin identifies "owner/current" on GitHub
+- When the maintainer runs `gh settings export`
+- Then the settings are read from "owner/current" on GitHub
+
 ### Rule: Report failures without emitting a successful configuration
 
 #### Scenario: Settings cannot be retrieved
@@ -123,6 +130,7 @@ These scenarios map to ordinary Go tests and a [process acceptance harness](../.
 | Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
 | Keep repository identity when Git rewrites its transport URL | `TestExportUsesConfiguredOriginBeforeInsteadOf` | `origin-insteadof` |
 | Resolve a transport alias to GitHub | `TestExportUsesAliasRewrittenToGitHub` | `origin-alias` |
+| Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |
 | Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` | `read-failure` |
 | There is no usable current repository | `TestExportRepositoryFailure` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestExportRejectsGlobalOriginOutsideCheckout` | — |

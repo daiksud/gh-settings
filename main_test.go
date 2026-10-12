@@ -197,6 +197,47 @@ func TestExportRejectsGlobalOriginOutsideCheckout(t *testing.T) {
 	}
 }
 
+func TestExportUsesRepositoryConfigSources(t *testing.T) {
+	for _, source := range []string{"include", "worktree"} {
+		t.Run(source, func(t *testing.T) {
+			t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+			dir := t.TempDir()
+			if output, err := exec.Command("git", "init", "--quiet", dir).CombinedOutput(); err != nil {
+				t.Fatalf("git init: %v: %s", err, output)
+			}
+			var commands [][]string
+			if source == "include" {
+				included := filepath.Join(dir, "included.conf")
+				if err := os.WriteFile(included, []byte("[remote \"origin\"]\n\turl = https://github.com/owner/current.git\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				commands = [][]string{{"config", "--local", "include.path", included}}
+			} else {
+				commands = [][]string{
+					{"config", "--local", "extensions.worktreeConfig", "true"},
+					{"config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git"},
+				}
+			}
+			for _, args := range commands {
+				cmd := exec.Command("git", args...)
+				cmd.Dir = dir
+				if output, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("git %v: %v: %s", args, err, output)
+				}
+			}
+			t.Chdir(dir)
+			if output, err := exec.Command("git", "remote", "get-url", "origin").Output(); err != nil || string(output) != "https://github.com/owner/current.git\n" {
+				t.Fatalf("origin=%q err=%v", output, err)
+			}
+			repo, err := currentRepository()
+			if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
+				t.Fatalf("selected %+v, err=%v", repo, err)
+			}
+		})
+	}
+}
+
 func TestExportRepositoryFailure(t *testing.T) {
 	t.Chdir(t.TempDir())
 	var stdout, stderr bytes.Buffer

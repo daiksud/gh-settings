@@ -105,9 +105,12 @@ type settings struct {
 }
 
 func currentRepository() (repository.Repository, error) {
+	if _, err := exec.Command("git", "rev-parse", "--show-toplevel").Output(); err != nil {
+		return repository.Repository{}, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
+	}
 	// Git remote get-url applies insteadOf transport rewrites, which can hide
 	// the configured GitHub repository behind a mirror URL.
-	remote, err := exec.Command("git", "config", "--local", "--get-all", "remote.origin.url").Output()
+	remote, err := exec.Command("git", "config", "--get-all", "remote.origin.url").Output()
 	if err != nil {
 		return repository.Repository{}, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
 	}
