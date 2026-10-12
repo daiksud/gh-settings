@@ -10,11 +10,11 @@ description: Define the purpose, ownership model, and future direction of gh set
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-This documentation records an agreed design for an **unimplemented tool**. Accepted ADRs mean agreed decisions, not completed implementation.
+The tool currently implements read-only `export`. The other commands and GitHub Action delivery remain future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
 
 ## Design philosophy
 
-Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. This supports gradual adoption without claiming ownership of settings that maintainers have not declared. Null is not omission; its treatment remains undecided.
+Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. This supports gradual adoption without claiming ownership of settings that maintainers have not declared. Null is not omission; its treatment in future YAML input remains undecided. Read-side description/homepage null normalization is described in the [settings page](settings.md).
 
 Follow the corresponding GitHub update API request schema for YAML keys and data structures, including field types and any enum values, as recorded in [ADR 0006](adr/0006-update-api-schema.md). Do not turn a repository response, including read-only metadata, into the configuration schema. The [settings page](settings.md) defines exactly five fields supported in the initial design. The [commands page](commands.md) defines their proposed command behavior.
 
@@ -54,4 +54,4 @@ Names also identify outer rulesets, ambiguous matches are errors, and there is n
 
 ## Unresolved decisions
 
-Null handling, remaining authentication details, toolchain and dependency versions, release packaging, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current five-field configuration is a root mapping following the repository update request body; this does not settle those future composition choices or extend supported fields.
+Explicit null handling in future YAML input, remaining authentication details, toolchain and dependency versions, release packaging, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current five-field configuration is a root mapping following the repository update request body; this does not settle those future composition choices or extend supported fields.
