@@ -32,8 +32,9 @@ Each ADR records one independently reversible decision:
 - [Follow the update API request schema](adr/0006-update-api-schema.md)
 - [Implement in Go](adr/0007-go-implementation.md)
 - [Use the official GitHub CLI Go library](adr/0008-official-go-gh-library.md)
+- [Use the YAML organization's Go YAML v4 library](adr/0009-yaml-v4-library.md)
 
-Go is the agreed implementation language, and `github.com/cli/go-gh/v2` is selected for API access and GitHub CLI authentication integration. Prefer the Go standard library where sufficient; no command framework is mandated. No official YAML package has been verified, so the YAML dependency remains undecided.
+Go is the agreed implementation language, and `github.com/cli/go-gh/v2` is selected for API access and GitHub CLI authentication integration. Prefer the Go standard library where sufficient; no command framework is mandated. The YAML organization's `go.yaml.in/yaml/v4` is selected for configuration reading and writing in [ADR 0009](adr/0009-yaml-v4-library.md), accepting release-candidate risk; it is not a Go team-maintained library.
 
 ## Future direction
 

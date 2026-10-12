@@ -24,6 +24,6 @@ Implement `gh settings` in Go.
 
 Future implementation will use the Go toolchain. Toolchain version and release packaging remain undecided. This decision does not select a command framework, YAML package, or GitHub API library; [ADR 0008](0008-official-go-gh-library.md) records the API library choice separately.
 
-Prefer the Go standard library where sufficient. No official YAML package has been verified for this design, so the YAML dependency remains undecided. This documentation change adds no Go code, module files, or dependencies.
+Prefer the Go standard library where sufficient. The YAML dependency is selected separately in [ADR 0009](0009-yaml-v4-library.md). This documentation change adds no Go code, module files, or dependencies.
 
 [^github-cli-extensions]: [Creating GitHub CLI extensions](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions), checked on 2026-10-11 for the documented Go extension path.
