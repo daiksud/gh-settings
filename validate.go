@@ -17,7 +17,7 @@ func validateCurrent() error {
 	if err != nil {
 		return fmt.Errorf("read %s: %w", settingsPath, err)
 	}
-	if err := validateSettings(data); err != nil {
+	if _, err := ParseConfig(data); err != nil {
 		return fmt.Errorf("validate %s: %w", settingsPath, err)
 	}
 	return nil

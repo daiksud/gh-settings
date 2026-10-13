@@ -132,13 +132,10 @@ func TestParseConfigErrorsReturnNoValues(t *testing.T) {
 		if err == nil || !reflect.DeepEqual(config, Config{}) {
 			t.Fatalf("config=%+v error=%v, want zero config and error", config, err)
 		}
-		if validationError := validateSettings([]byte(input)); validationError == nil || validationError.Error() != err.Error() {
-			t.Fatalf("parse error=%v, validate error=%v", err, validationError)
-		}
 	}
 }
 
-func TestValidateSettings(t *testing.T) {
+func TestParseConfigValidation(t *testing.T) {
 	tests := []struct {
 		name, input, errorText string
 	}{
@@ -200,7 +197,7 @@ func TestValidateSettings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateSettings([]byte(tt.input))
+			_, err := ParseConfig([]byte(tt.input))
 			if tt.errorText == "" {
 				if err != nil {
 					t.Fatal(err)
