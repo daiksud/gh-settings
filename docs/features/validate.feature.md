@@ -87,9 +87,9 @@ description: Specify local validation of the five supported YAML settings and it
 - When the maintainer runs `gh settings validate`
 - Then validation fails without a GitHub API request
 
-#### Scenario: A mapping has a contradictory YAML tag
+#### Scenario: A mapping or merge source has a contradictory YAML tag
 
-- Given a root, `settings`, or `repository` mapping is explicitly tagged as a string
+- Given a root, `settings`, `repository`, or merge-source mapping is explicitly tagged as a string
 - When the maintainer runs `gh settings validate`
 - Then validation fails because the value is not a YAML mapping
 
@@ -117,7 +117,7 @@ The scenarios map to ordinary Go tests and the [process acceptance harness](../.
 | Old flat configuration is rejected | `TestValidateSettings` | `validate-old-flat-format` |
 | The schema version is missing or unsupported | `TestValidateSettings` | `validate-missing-schema-version`, `validate-unsupported-schema-version` |
 | Invalid YAML key and scalar tags are rejected | `TestValidateSettings` | `validate-null-key`, `validate-alias-duplicate-key`, `validate-alias-merge-key`, `validate-binary-string`, `validate-legacy-tagged-boolean` |
-| A mapping has a contradictory YAML tag | `TestValidateSettings` | `validate-mistagged-mapping` |
+| A mapping or merge source has a contradictory YAML tag | `TestValidateSettings` | `validate-mistagged-mapping`, `validate-mistagged-merge-source` |
 | The configuration file is missing | `TestValidateCommandMissingFile` | `validate-missing-file` |
 
 The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for these five update-request fields. It does not establish how GitHub handles live null updates.

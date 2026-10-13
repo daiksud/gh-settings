@@ -153,6 +153,9 @@ func checkMappingKeys(node *yaml.Node, visited map[*yaml.Node]bool) error {
 	}
 	visited[node] = true
 	if node.Kind == yaml.MappingNode {
+		if node.Tag != "!!map" {
+			return fmt.Errorf("mapping must have YAML map tag at line %d", node.Line)
+		}
 		seen := make(map[string]bool)
 		for i := 0; i < len(node.Content); i += 2 {
 			rawKey := node.Content[i]
@@ -176,7 +179,16 @@ func checkMappingKeys(node *yaml.Node, visited map[*yaml.Node]bool) error {
 				return err
 			}
 		}
-	} else if node.Kind == yaml.DocumentNode || node.Kind == yaml.SequenceNode {
+	} else if node.Kind == yaml.SequenceNode {
+		if node.Tag != "!!seq" {
+			return fmt.Errorf("sequence must have YAML sequence tag at line %d", node.Line)
+		}
+		for _, child := range node.Content {
+			if err := checkMappingKeys(child, visited); err != nil {
+				return err
+			}
+		}
+	} else if node.Kind == yaml.DocumentNode {
 		for _, child := range node.Content {
 			if err := checkMappingKeys(child, visited); err != nil {
 				return err

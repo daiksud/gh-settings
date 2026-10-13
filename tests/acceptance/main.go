@@ -76,7 +76,8 @@ func main() {
 		{name: "validate-alias-merge-key", args: []string{"validate"}, input: repositoryInput("&merge <<: {has_issues: true}\n*merge: {visibility: private}\n"), noRead: true, errorText: "merge key cannot be an alias"},
 		{name: "validate-binary-string", args: []string{"validate"}, input: repositoryInput("description: !!binary /w==\n"), noRead: true, errorText: "must be a string"},
 		{name: "validate-legacy-tagged-boolean", args: []string{"validate"}, input: repositoryInput("has_issues: !!bool yes\n"), noRead: true, errorText: "spelled true or false"},
-		{name: "validate-mistagged-mapping", args: []string{"validate"}, input: "schemaVersion: 1\nsettings: !!str {}\n", noRead: true, errorText: "settings must be a mapping"},
+		{name: "validate-mistagged-mapping", args: []string{"validate"}, input: "schemaVersion: 1\nsettings: !!str {}\n", noRead: true, errorText: "mapping must have YAML map tag"},
+		{name: "validate-mistagged-merge-source", args: []string{"validate"}, input: repositoryInput("<<: !!str {has_issues: true}\n"), noRead: true, errorText: "mapping must have YAML map tag"},
 		{name: "validate-missing-file", args: []string{"validate"}, noRead: true, errorText: "settings.yml"},
 	}
 	for _, test := range cases {
