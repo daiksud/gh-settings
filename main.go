@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-
 )
 
 // version is set with -ldflags at release build time.

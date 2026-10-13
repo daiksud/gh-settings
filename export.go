@@ -60,3 +60,4 @@ type settings struct {
 	HasIssues   bool   `yaml:"has_issues"`
 	HasProjects bool   `yaml:"has_projects"`
 	HasWiki     bool   `yaml:"has_wiki"`
+}
