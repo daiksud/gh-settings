@@ -2,8 +2,6 @@
 package main
 
 import (
-	"bytes"
-	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -11,7 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
-	"time"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -157,56 +154,32 @@ func check(binary string, test scenario) error {
 			return err
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	args := test.args
-	if args == nil {
-		args = []string{"export"}
-	}
-	cmd := exec.CommandContext(ctx, binary, args...)
-	cmd.Dir = work
-	cmd.Env = env
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if test.outputFailure {
-		file := filepath.Join(root, "read-only-output")
-		if err := os.WriteFile(file, nil, 0600); err != nil {
-			return err
-		}
-		destination, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		defer destination.Close()
-		cmd.Stdout = destination
-	}
-	runErr := cmd.Run()
-	if ctx.Err() != nil {
-		return ctx.Err()
+	result, err := executeCLI(binary, work, root, env, test.args, test.outputFailure)
+	if err != nil {
+		return err
 	}
 	if err := fixture.checkRequests(test.noRead); err != nil {
 		return err
 	}
 	if test.success {
-		if runErr != nil || stdout.Len() != 0 || stderr.Len() != 0 {
-			return fmt.Errorf("execution: %v, stdout=%q stderr=%q", runErr, stdout.String(), stderr.String())
+		if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+			return fmt.Errorf("execution: %v, stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 		}
 	} else if test.expected != nil {
-		if runErr != nil || stderr.Len() != 0 {
-			return fmt.Errorf("execution: %v, stderr=%q", runErr, stderr.String())
+		if result.runErr != nil || result.stderr.Len() != 0 {
+			return fmt.Errorf("execution: %v, stderr=%q", result.runErr, result.stderr.String())
 		}
 		var actual map[string]any
-		if err := yaml.Unmarshal(stdout.Bytes(), &actual); err != nil {
+		if err := yaml.Unmarshal(result.stdout.Bytes(), &actual); err != nil {
 			return err
 		}
 		if !reflect.DeepEqual(actual, test.expected) {
 			return fmt.Errorf("YAML=%#v, want %#v", actual, test.expected)
 		}
 	} else {
-		exit, ok := runErr.(*exec.ExitError)
-		if !ok || exit.ExitCode() == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), test.errorText) {
-			return fmt.Errorf("execution: %v, stdout=%q stderr=%q", runErr, stdout.String(), stderr.String())
+		exit, ok := result.runErr.(*exec.ExitError)
+		if !ok || exit.ExitCode() == 0 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), test.errorText) {
+			return fmt.Errorf("execution: %v, stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 		}
 	}
 	if test.input != "" {
