@@ -42,4 +42,3 @@ func run(args []string, stdout, stderr io.Writer, export func() ([]byte, error))
 	}
 	return 0
 }
-

@@ -20,7 +20,6 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, exportCurrent))
 }
 
-
 func exportCurrent() ([]byte, error) {
 	repo, err := currentRepository()
 	if err != nil {
