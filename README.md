@@ -47,7 +47,7 @@ To check a saved configuration without contacting GitHub, run this from the repo
 gh settings validate
 ```
 
-`validate` reads the Git root's `.github/settings.yml` and accepts the five supported fields under `settings.repository` with their string or boolean types. For example, this declares one field:
+`validate` reads the Git root's `.github/settings.yml`. For example, this declares one repository field:
 
 ```yaml
 schemaVersion: 1
@@ -56,11 +56,11 @@ settings:
     has_issues: false
 ```
 
-It rejects missing or unsupported schema versions and duplicate or unknown keys. A versioned document with empty mappings or partial declarations is valid; false and empty strings remain valid values. It succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. Explicit null fails the five fields' string/boolean type check; [ADR 0019](docs/adr/0019-reject-explicit-null.md) records this decision. Earlier flat files need `schemaVersion: 1` added and their fields moved under `settings.repository`; they fail validation without that migration.
+The [configuration contract](docs/settings.md#configuration-semantics) explains the five supported fields, `schemaVersion`, grouping, value types, and migration from earlier flat files. Validation succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. See the [command behavior](docs/commands.md#validate-behavior) for its failure cases.
 
 `gh settings --version` prints the build version (`dev` for a source build).
 
-The current source implementation accepts GitHub.com HTTPS and SSH `origin` URLs. It outputs `schemaVersion: 1` and all five fields under `settings.repository`, including false and empty strings. GitHub's null description/homepage values become quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Errors go to standard error with a nonzero exit status.
+The current source export accepts GitHub.com HTTPS and SSH `origin` URLs and emits the [versioned configuration](docs/settings.md#configuration-semantics). See [export behavior](docs/commands.md#export-behavior) for response normalization and failure handling.
 
 ## Development checks
 

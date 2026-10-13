@@ -13,7 +13,7 @@ sources:
 
 ## Scope and status
 
-`gh settings` currently implements read-only export and local validation; planning and mutation remain proposed. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the agreed configuration contract for future commands. See the [commands](commands.md) for the proposed interface and the [concept](concept.md) for future direction and unresolved decisions.
+The current source implements read-only export and local validation; the published release implements only export and still emits the earlier flat format. Planning and mutation remain proposed. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the current source's versioned configuration contract. See the [commands](commands.md) for the proposed interface and the [concept](concept.md) for future direction and unresolved decisions.
 
 ## Supported fields
 
@@ -31,7 +31,7 @@ The three booleans take `true` or `false`. There are no enum-valued fields in th
 
 ## Configuration semantics
 
-Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. Apply sends only declared supported fields; it does not send omitted fields. Null is not omission; it fails local validation for these five fields under [ADR 0019](adr/0019-reject-explicit-null.md).
+Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. The proposed `apply` command would send only declared supported fields; it does not exist in the current CLI. Null is not omission; it fails local validation for these five fields under [ADR 0019](adr/0019-reject-explicit-null.md).
 
 Following [ADR 0020](adr/0020-group-settings-by-resource.md), the YAML document contains a `settings` mapping and a `repository` mapping within it. [ADR 0021](adr/0021-require-schema-version.md) requires root `schemaVersion: 1`, an integer file-format version independent of the CLI release. The five keys inside `repository` match the `Update a repository` request body fields.[^github-update-repository] The following configuration declares one managed field:
 
@@ -44,11 +44,22 @@ settings:
 
 Its future update request body would contain only `{"has_issues": false}`. The version and outer YAML mappings are not sent as API fields. The other four supported fields stay absent and unmanaged; no defaults are injected. A document containing only `schemaVersion: 1`, or also empty `settings` and `repository` mappings, manages no fields. Sending an update is not implemented.
 
-Earlier releases of `export` wrote the five fields directly at the YAML root. To use this version, add `schemaVersion: 1` and move those fields under `settings.repository` as shown above; the old flat document fails validation. Missing or unsupported versions also fail validation. No automatic migration or compatibility parsing is provided.
+The current source's `validate` command distinguishes these declarations:
 
-Export normalizes GET `description` and `homepage` nulls to empty strings, preserving existing empty strings too. Empty strings are serialized as YAML strings, not empty YAML values or null. The published read schema permits null for these fields, whereas the update body defines optional strings without `nullable`; export follows that writable representation.[^github-repository-openapi] This does not assert that the server rejects every null update, and no live update was performed to verify clearing. Missing response keys are errors, not nulls or defaults.
+| YAML under `settings.repository` | Meaning |
+| --- | --- |
+| Field omitted | Unmanaged; the proposed `apply` would leave it out of the request. |
+| `has_issues: false` | A declared boolean value, not omission. |
+| `description: ""` | A declared empty string, not omission. `description: ''` is equivalent. |
+| `description: null` or `has_issues: null` | Invalid for these string and boolean fields. A bare `description:` is also YAML null and invalid. |
 
-The current five-field validation rejects explicit null. New settings must follow their own update request schemas; this decision does not establish a general null rule. Root keys other than `schemaVersion` and `settings`, and other groups within `settings`, are not supported yet. How future settings from multiple update endpoints would compose remains unresolved; the grouping does not broaden the current five-field schema.
+The same type rules apply to `homepage`, `has_projects`, and `has_wiki`. Quoted `'null'` is a string value, not YAML null. Validation rejects unknown or duplicate keys and wrong types; it accepts partial declarations and empty mappings. These rules apply to the current five fields only, without defining null behavior for future settings.
+
+The published release's `export` writes the five fields directly at the YAML root. To validate that output with the current source, add `schemaVersion: 1` and move those fields under `settings.repository` as shown above; the old flat document fails source validation. Missing or unsupported versions also fail validation. No automatic migration or compatibility parsing is provided.
+
+The current source `export` normalizes GET `description` and `homepage` nulls to empty strings, preserving existing empty strings too. It serializes them as quoted YAML strings (`""`), not empty YAML values or null. This read-side conversion does not make explicit YAML null valid input. The published read schema permits null for these fields, whereas the update body defines optional strings without `nullable`; export follows that writable representation.[^github-repository-openapi] This does not assert that the server rejects every null update, and no live update was performed to verify clearing. Missing response keys and null booleans are errors, not nulls or defaults.
+
+Root keys other than `schemaVersion` and `settings`, and other groups within `settings`, are not supported yet. How future settings from multiple update endpoints would compose remains unresolved; the grouping does not broaden the current five-field schema.
 
 Labels, rulesets, Pages, and Actions settings are excluded from the initial design. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are outside repository scope. Confirmed future label semantics and unresolved ruleset collection behavior remain in the [future direction](concept.md#future-direction).
 
