@@ -27,86 +27,110 @@ type settings struct {
 }
 
 func validateSettings(data []byte) error {
+	_, err := ParseConfig(data)
+	return err
+}
+
+func ParseConfig(data []byte) (Config, error) {
 	rootNode, err := loadYAMLRoot(data)
 	if err != nil {
-		return err
+		return Config{}, err
 	}
 	if err := checkMappingKeys(rootNode, make(map[*yaml.Node]bool)); err != nil {
-		return err
+		return Config{}, err
 	}
 	root, err := loadMapping(rootNode, "root")
 	if err != nil {
-		return err
+		return Config{}, err
 	}
+	var config Config
 	for key, value := range root {
 		if key == "schemaVersion" {
 			resolved, err := resolveAlias(&value)
 			if err != nil {
-				return err
+				return Config{}, err
 			}
 			value = *resolved
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!int" {
-				return fmt.Errorf("schemaVersion must be integer 1")
+				return Config{}, fmt.Errorf("schemaVersion must be integer 1")
 			}
 			var version int
 			if err := value.Decode(&version); err != nil || version != 1 {
-				return fmt.Errorf("unsupported schemaVersion %q: expected 1", value.Value)
+				return Config{}, fmt.Errorf("unsupported schemaVersion %q: expected 1", value.Value)
 			}
+			config.SchemaVersion = version
 			continue
 		}
 		if key != "settings" {
-			return fmt.Errorf("unknown root key %q", key)
+			return Config{}, fmt.Errorf("unknown root key %q", key)
 		}
 		groups, err := loadMapping(&value, "settings")
 		if err != nil {
-			return err
+			return Config{}, err
 		}
 		for group, value := range groups {
 			if group != "repository" {
-				return fmt.Errorf("unknown settings group %q", group)
+				return Config{}, fmt.Errorf("unknown settings group %q", group)
 			}
-			if err := validateRepositoryFields(&value); err != nil {
-				return err
+			repository, err := parseRepositoryFields(&value)
+			if err != nil {
+				return Config{}, err
 			}
+			config.Settings.Repository = repository
 		}
 	}
 	if _, ok := root["schemaVersion"]; !ok {
-		return fmt.Errorf("missing schemaVersion: expected 1")
+		return Config{}, fmt.Errorf("missing schemaVersion: expected 1")
 	}
-	return nil
+	return config, nil
 }
 
-func validateRepositoryFields(node *yaml.Node) error {
+func parseRepositoryFields(node *yaml.Node) (settings, error) {
 	fields, err := loadMapping(node, "settings.repository")
 	if err != nil {
-		return err
+		return settings{}, err
 	}
+	var repository settings
 	for field, value := range fields {
 		value, err := resolveAlias(&value)
 		if err != nil {
-			return err
+			return settings{}, err
 		}
 		switch field {
 		case "description", "homepage":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
-				return fmt.Errorf("%s must be a string", field)
+				return settings{}, fmt.Errorf("%s must be a string", field)
+			}
+			text := value.Value
+			if field == "description" {
+				repository.Description = &text
+			} else {
+				repository.Homepage = &text
 			}
 		case "has_issues", "has_projects", "has_wiki":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
-				return fmt.Errorf("%s must be a boolean", field)
+				return settings{}, fmt.Errorf("%s must be a boolean", field)
 			}
 			if !strings.EqualFold(value.Value, "true") && !strings.EqualFold(value.Value, "false") {
-				return fmt.Errorf("%s must be a boolean spelled true or false", field)
+				return settings{}, fmt.Errorf("%s must be a boolean spelled true or false", field)
 			}
 			var parsed bool
 			if err := value.Decode(&parsed); err != nil {
-				return fmt.Errorf("%s must be a boolean: %w", field, err)
+				return settings{}, fmt.Errorf("%s must be a boolean: %w", field, err)
+			}
+			switch field {
+			case "has_issues":
+				repository.HasIssues = &parsed
+			case "has_projects":
+				repository.HasProjects = &parsed
+			case "has_wiki":
+				repository.HasWiki = &parsed
 			}
 		default:
-			return fmt.Errorf("unknown setting %q", field)
+			return settings{}, fmt.Errorf("unknown setting %q", field)
 		}
 	}
-	return nil
+	return repository, nil
 }
 
 func loadYAMLRoot(data []byte) (*yaml.Node, error) {
