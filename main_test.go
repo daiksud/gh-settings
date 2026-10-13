@@ -19,7 +19,7 @@ import (
 // TestExportFiveSettings covers the first export.feature.md scenario.
 func TestExportFiveSettings(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"export"}, &stdout, &stderr, func() ([]byte, error) {
+	code := run([]string{"export"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 		client, err := api.NewRESTClient(api.ClientOptions{
 			Host: "github.com", AuthToken: "test-token", LogIgnoreEnv: true,
 			Transport: transportFunc(func(req *http.Request) (*http.Response, error) {
@@ -33,7 +33,7 @@ func TestExportFiveSettings(t *testing.T) {
 			t.Fatal(err)
 		}
 		return exportSettings(repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, client)
-	})
+	}})
 	if code != 0 || stderr.Len() != 0 {
 		t.Fatalf("status=%d, stderr=%q", code, stderr.String())
 	}
@@ -51,12 +51,68 @@ func TestExportFiveSettings(t *testing.T) {
 
 func TestVersion(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"--version"}, &stdout, &stderr, func() ([]byte, error) {
+	code := run([]string{"--version"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 		t.Fatal("version command must not call GitHub")
 		return nil, nil
-	})
+	}})
 	if code != 0 || stdout.String() != "gh-settings "+version+"\n" || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestRunSelectsOperation(t *testing.T) {
+	operationError := errors.New("operation failed")
+	for _, test := range []struct {
+		name              string
+		args              []string
+		operationError    error
+		wantExportCalls   int
+		wantValidateCalls int
+		wantStatus        int
+	}{
+		{"export", []string{"export"}, nil, 1, 0, 0},
+		{"validate", []string{"validate"}, nil, 0, 1, 0},
+		{"export failure", []string{"export"}, operationError, 1, 0, 1},
+		{"validate failure", []string{"validate"}, operationError, 0, 1, 1},
+		{"help", []string{"--help"}, nil, 0, 0, 0},
+		{"short help", []string{"-h"}, nil, 0, 0, 0},
+		{"version", []string{"--version"}, nil, 0, 0, 0},
+		{"short version", []string{"-v"}, nil, 0, 0, 0},
+		{"no arguments", nil, nil, 0, 0, 1},
+		{"apply", []string{"apply"}, nil, 0, 0, 1},
+		{"plan", []string{"plan"}, nil, 0, 0, 1},
+		{"export arguments", []string{"export", "--repo", "owner/other"}, nil, 0, 0, 1},
+		{"validate arguments", []string{"validate", "--repo", "owner/other"}, nil, 0, 0, 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			exportCalls, validateCalls := 0, 0
+			status := run(test.args, &stdout, &stderr, commandOperations{
+				export: func() ([]byte, error) {
+					exportCalls++
+					return []byte("settings\n"), test.operationError
+				},
+				validate: func() error {
+					validateCalls++
+					return test.operationError
+				},
+			})
+			if exportCalls != test.wantExportCalls || validateCalls != test.wantValidateCalls {
+				t.Fatalf("export calls=%d, validate calls=%d", exportCalls, validateCalls)
+			}
+			if status != test.wantStatus {
+				t.Fatalf("status=%d stderr=%q", status, stderr.String())
+			}
+			if test.operationError != nil && (stdout.Len() != 0 || stderr.String() != "gh settings: operation failed\n") {
+				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+			if test.name == "validate" && (stdout.Len() != 0 || stderr.Len() != 0) {
+				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+			if test.name == "export" && (stdout.String() != "settings\n" || stderr.Len() != 0) {
+				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+		})
 	}
 }
 
@@ -122,9 +178,9 @@ func TestExportPreservesZeroValues(t *testing.T) {
 
 func TestExportReadFailure(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"export"}, &stdout, &stderr, func() ([]byte, error) {
+	code := run([]string{"export"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 		return exportSettings(repository.Repository{Owner: "owner", Name: "current"}, testClient(t, `{"message":"Resource not accessible"}`, 403))
-	})
+	}})
 	if code == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "403") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -252,7 +308,7 @@ func TestExportUsesRepositoryConfigSources(t *testing.T) {
 func TestExportRepositoryFailure(t *testing.T) {
 	t.Chdir(t.TempDir())
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"export"}, &stdout, &stderr, exportCurrent)
+	code := run([]string{"export"}, &stdout, &stderr, commandOperations{export: exportCurrent})
 	if code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -261,10 +317,10 @@ func TestExportRepositoryFailure(t *testing.T) {
 func TestUnsupportedCommand(t *testing.T) {
 	for _, args := range [][]string{nil, {"apply"}, {"plan"}, {"export", "--repo", "owner/other"}, {"validate", "--repo", "owner/other"}} {
 		var stdout, stderr bytes.Buffer
-		code := run(args, &stdout, &stderr, func() ([]byte, error) {
+		code := run(args, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 			t.Fatal("unsupported command invoked API operation")
 			return nil, errors.New("unexpected API call")
-		})
+		}})
 		if code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
 			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
 		}
@@ -282,9 +338,9 @@ func TestExportRejectsIncompleteResponse(t *testing.T) {
 	} {
 		t.Run(body, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			status := run([]string{"export"}, &stdout, &stderr, func() ([]byte, error) {
+			status := run([]string{"export"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 				return exportSettings(repository.Repository{Owner: "owner", Name: "current"}, testClient(t, body, 200))
-			})
+			}})
 			if status == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
 				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 			}
@@ -294,7 +350,7 @@ func TestExportRejectsIncompleteResponse(t *testing.T) {
 
 func TestExportOutputFailure(t *testing.T) {
 	var stderr bytes.Buffer
-	code := run([]string{"export"}, brokenWriter{}, &stderr, func() ([]byte, error) { return []byte("description: test\n"), nil })
+	code := run([]string{"export"}, brokenWriter{}, &stderr, commandOperations{export: func() ([]byte, error) { return []byte("description: test\n"), nil }})
 	if code == 0 || !strings.Contains(stderr.String(), "write output") {
 		t.Fatalf("status=%d stderr=%q", code, stderr.String())
 	}
@@ -336,9 +392,9 @@ func TestExportNetworkFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	status := run([]string{"export"}, &stdout, &stderr, func() ([]byte, error) {
+	status := run([]string{"export"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 		return exportSettings(repository.Repository{Owner: "owner", Name: "current"}, client)
-	})
+	}})
 	if status == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "network unavailable") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 	}
@@ -346,7 +402,7 @@ func TestExportNetworkFailure(t *testing.T) {
 
 func TestHelp(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	status := run([]string{"--help"}, &stdout, &stderr, func() ([]byte, error) { t.Fatal("help invoked API operation"); return nil, nil })
+	status := run([]string{"--help"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) { t.Fatal("help invoked API operation"); return nil, nil }})
 	if status != 0 || !strings.Contains(stdout.String(), "gh settings export") || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 	}
@@ -360,9 +416,9 @@ func TestExportNormalizesUnsetStrings(t *testing.T) {
 	} {
 		t.Run(body, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			status := run([]string{"export"}, &stdout, &stderr, func() ([]byte, error) {
+			status := run([]string{"export"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 				return exportSettings(repository.Repository{Owner: "owner", Name: "current"}, testClient(t, body, 200))
-			})
+			}})
 			if status != 0 || stderr.Len() != 0 {
 				t.Fatalf("status=%d stderr=%q", status, stderr.String())
 			}

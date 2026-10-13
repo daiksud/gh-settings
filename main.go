@@ -8,5 +8,8 @@ import (
 var version = "dev"
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, exportCurrent))
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, commandOperations{
+		export:   exportCurrent,
+		validate: validateCurrent,
+	}))
 }

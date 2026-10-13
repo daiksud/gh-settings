@@ -5,7 +5,12 @@ import (
 	"io"
 )
 
-func run(args []string, stdout, stderr io.Writer, export func() ([]byte, error)) int {
+type commandOperations struct {
+	export   func() ([]byte, error)
+	validate func() error
+}
+
+func run(args []string, stdout, stderr io.Writer, operations commandOperations) int {
 	if len(args) == 1 && (args[0] == "--version" || args[0] == "-v") {
 		if _, err := fmt.Fprintln(stdout, "gh-settings "+version); err != nil {
 			fmt.Fprintf(stderr, "gh settings: write version: %v\n", err)
@@ -25,13 +30,13 @@ func run(args []string, stdout, stderr io.Writer, export func() ([]byte, error))
 		return 1
 	}
 	if args[0] == "validate" {
-		if err := validateCurrent(); err != nil {
+		if err := operations.validate(); err != nil {
 			fmt.Fprintf(stderr, "gh settings: %v\n", err)
 			return 1
 		}
 		return 0
 	}
-	data, err := export()
+	data, err := operations.export()
 	if err != nil {
 		fmt.Fprintf(stderr, "gh settings: %v\n", err)
 		return 1
