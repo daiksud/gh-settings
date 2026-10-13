@@ -10,7 +10,7 @@ sources:
 
 ## Scope and status
 
-The current source implements `gh settings export` and `gh settings validate`; the published release implements only `export` and still emits the earlier flat YAML format. `plan` and `apply` remain proposed. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The proposed mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
+The published v0.2.0 release and current source implement `gh settings export` and `gh settings validate`; export emits the versioned `settings.repository` format. `plan` and `apply` remain proposed. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The proposed mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
 
 Saved plan artifacts and drift protection are outside the initial scope. GitHub Action delivery is deferred.
 
