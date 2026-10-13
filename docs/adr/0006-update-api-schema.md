@@ -26,6 +26,6 @@ For the current five-field scope, supported fields appear at the YAML root, matc
 
 Schema alignment does not mean supporting every API parameter. Only `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki` are in the current design. Read-only response metadata is excluded.
 
-[Declared-field ownership](0002-managed-fields.md) remains a separate decision: omitted fields stay absent and unmanaged, with no default injection. Null handling and future composition across multiple update endpoints remain unresolved. This decision does not add labels, rulesets, or other settings to the current scope.
+[Declared-field ownership](0002-managed-fields.md) remains a separate decision: omitted fields stay absent and unmanaged, with no default injection. [ADR 0019](0019-reject-explicit-null.md) separately decides null handling for the initial five fields. Future composition across multiple update endpoints remains unresolved. This decision does not add labels, rulesets, or other settings to the current scope.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five supported body parameters and request structure.

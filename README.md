@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting the current repository's five basic settings as YAML. The current release implements read-only `export`; `validate`, `plan`, `apply`, and GitHub Action delivery remain future work.
+A GitHub CLI extension for exporting and locally validating the current repository's five basic settings as YAML. The published release implements read-only `export`; this source also implements `validate`. `plan`, `apply`, and GitHub Action delivery remain future work.
 
 ## Install
 
@@ -41,9 +41,26 @@ go build -o gh-settings .
 gh extension install .
 ```
 
+To check a saved configuration without contacting GitHub, run this from the repository root or a subdirectory:
+
+```sh
+gh settings validate
+```
+
+`validate` reads the Git root's `.github/settings.yml` and accepts the five supported fields under `settings.repository` with their string or boolean types. For example, this declares one field:
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    has_issues: false
+```
+
+It rejects missing or unsupported schema versions and duplicate or unknown keys. A versioned document with empty mappings or partial declarations is valid; false and empty strings remain valid values. It succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. Explicit null fails the five fields' string/boolean type check; [ADR 0019](docs/adr/0019-reject-explicit-null.md) records this decision. Earlier flat files need `schemaVersion: 1` added and their fields moved under `settings.repository`; they fail validation without that migration.
+
 `gh settings --version` prints the build version (`dev` for a source build).
 
-The current source implementation accepts GitHub.com HTTPS and SSH `origin` URLs. It outputs root `schemaVersion: 1` and all five fields under `settings.repository`, including false and empty strings. GitHub's null description/homepage values become quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Earlier flat files need a version and their fields moved under `settings.repository` for the planned validation command; no automatic migration is provided. Errors go to standard error with a nonzero exit status.
+The current source implementation accepts GitHub.com HTTPS and SSH `origin` URLs. It outputs `schemaVersion: 1` and all five fields under `settings.repository`, including false and empty strings. GitHub's null description/homepage values become quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Errors go to standard error with a nonzero exit status.
 
 ## Development checks
 
@@ -89,7 +106,7 @@ The approval workflow becomes available for comment events only after it exists 
 
 Markdown checks use the rumdl version pinned in [mise.toml](mise.toml) and the rules in [.rumdl.toml](.rumdl.toml). MD051 and MD057 validate local headings/fragments and file links; external HTTP availability is not a CI dependency. mise resolves rumdl, actionlint, and ShellCheck through its standard aqua registry. Go module library dependencies remain in `go.mod` and `go.sum`.
 
-The [export behavior specification](docs/features/export.feature.md) maps its user-visible scenarios to ordinary Go tests. No BDD runner is required.
+The [export](docs/features/export.feature.md) and [validate](docs/features/validate.feature.md) behavior specifications map their user-visible scenarios to ordinary Go tests. No BDD runner is required.
 
 ## Maintainer release
 

@@ -10,11 +10,11 @@ description: Define the purpose, ownership model, and future direction of gh set
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-The tool currently implements read-only `export`. The other commands and GitHub Action delivery remain future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
+The tool currently implements read-only `export` and local `validate`. `plan`, `apply`, and GitHub Action delivery remain future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
 
 ## Design philosophy
 
-Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. This supports gradual adoption without claiming ownership of settings that maintainers have not declared. Null is not omission; its treatment in future YAML input remains undecided. Read-side description/homepage null normalization is described in the [settings page](settings.md).
+Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. This supports gradual adoption without claiming ownership of settings that maintainers have not declared. Null is not omission; [ADR 0019](adr/0019-reject-explicit-null.md) rejects it for the initial five update request fields while accepting explicit false and empty strings. Read-side description/homepage null normalization is described in the [settings page](settings.md).
 
 Follow the corresponding GitHub update API request schema for field keys and types, including any enum values, as recorded in [ADR 0006](adr/0006-update-api-schema.md). [ADR 0020](adr/0020-group-settings-by-resource.md) places the current fields under `settings.repository`; this configuration grouping is separate from the API request body. [ADR 0021](adr/0021-require-schema-version.md) requires root `schemaVersion: 1` for the file format. Do not turn a repository response, including read-only metadata, into the configuration schema. The [settings page](settings.md) defines exactly five fields supported in the initial design. The [commands page](commands.md) defines their proposed command behavior.
 
@@ -33,6 +33,7 @@ Each ADR records one independently reversible decision:
 - [Implement in Go](adr/0007-go-implementation.md)
 - [Use the official GitHub CLI Go library](adr/0008-official-go-gh-library.md)
 - [Use the YAML organization's Go YAML v4 library](adr/0009-yaml-v4-library.md)
+- [Reject explicit null for the first five settings](adr/0019-reject-explicit-null.md)
 - [Group repository fields within settings](adr/0020-group-settings-by-resource.md)
 - [Require a configuration schema version](adr/0021-require-schema-version.md)
 
@@ -56,4 +57,4 @@ Names also identify outer rulesets, ambiguous matches are errors, and there is n
 
 ## Unresolved decisions
 
-Explicit null handling in future YAML input, remaining authentication details, toolchain and dependency versions, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current format requires `schemaVersion: 1` and places the five fields within `settings.repository`; this does not settle those future composition choices or extend supported fields. Release decisions and open implementation mechanics are tracked on the [release page](releases.md).
+Null handling for future fields, remaining authentication details, toolchain and dependency versions, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current format requires `schemaVersion: 1` and places the five fields within `settings.repository`; this does not settle those future composition choices or extend supported fields. Release decisions and open implementation mechanics are tracked on the [release page](releases.md).

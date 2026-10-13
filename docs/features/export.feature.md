@@ -146,4 +146,4 @@ These scenarios map to ordinary Go tests and a [process acceptance harness](../.
 | Standard output is unavailable | `TestExportOutputFailure` | `output-failure` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 
-The read-only export contract is separate from the future [mutation commands](../commands.md). Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. YAML configuration null handling for future input-consuming commands remains undecided.
+The read-only export contract is separate from the future [mutation commands](../commands.md). Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.

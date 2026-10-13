@@ -6,7 +6,7 @@ description: Identify the YAML file format independently of the CLI release.
 
 ## Status
 
-Accepted — implemented by export; validation is future work.
+Accepted — implemented by export and validate.
 
 ## Context
 
@@ -14,7 +14,7 @@ The configuration now groups settings under `settings.repository`. As its shape 
 
 ## Decision
 
-Require root `schemaVersion: 1`, an integer identifying the configuration file format independently of the CLI release. `export` always emits it. The planned `validate` command will reject missing, mistyped, and unsupported versions; it will not infer a version from the rest of the document.
+Require root `schemaVersion: 1`, an integer identifying the configuration file format independently of the CLI release. `export` always emits it. `validate` rejects missing, mistyped, and unsupported versions; it does not infer a version from the rest of the document.
 
 ## Consequences
 
