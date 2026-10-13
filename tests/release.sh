@@ -47,7 +47,19 @@ if [[ "$1" == api ]]; then
   case "$1" in
     */git/ref/tags/*)
       [[ -f "$MOCK_ROOT/tag.json" ]] || { echo 'gh: Not Found (HTTP 404)' >&2; exit 1; }
+      if [[ "${MOCK_TAG_MOVE_ON_SECOND_READ:-}" == 1 ]]; then
+        reads=0
+        [[ ! -f "$MOCK_ROOT/tag-reads" ]] || reads="$(cat "$MOCK_ROOT/tag-reads")"
+        printf '%s\n' "$((reads + 1))" > "$MOCK_ROOT/tag-reads"
+        if [[ "$reads" == 1 ]]; then
+          printf '{"object":{"type":"commit","sha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}\n'
+          exit 0
+        fi
+      fi
       cat "$MOCK_ROOT/tag.json" ;;
+    */git/tags/*)
+      [[ -f "$MOCK_ROOT/annotated.json" ]] || { echo 'gh: Not Found (HTTP 404)' >&2; exit 1; }
+      cat "$MOCK_ROOT/annotated.json" ;;
     */releases/tags/*)
       [[ -f "$MOCK_ROOT/body" ]] || { echo 'gh: Not Found (HTTP 404)' >&2; exit 1; }
       [[ "$(cat "$MOCK_ROOT/draft")" == false ]] || { echo 'gh: Not Found (HTTP 404)' >&2; exit 1; }
@@ -142,4 +154,24 @@ reject
 cp "$fixture/body.saved" "$fixture/body"
 printf 'changed bytes' > "$fixture/assets/gh-settings-linux-amd64"
 reject
+
+# A tag moved after initial inspection must still block final publication.
+cp "$RELEASE_DIR/gh-settings-linux-amd64" "$fixture/assets/gh-settings-linux-amd64"
+printf 'true\n' > "$fixture/draft"
+previous_publishes="$(grep -c '^api -X PATCH ' "$fixture/calls")"
+export MOCK_TAG_MOVE_ON_SECOND_READ=1
+reject
+unset MOCK_TAG_MOVE_ON_SECOND_READ
+[[ "$(cat "$fixture/tag-reads")" == 2 ]]
+grep -q 'tag changed before publication' "$fixture/output"
+[[ "$(cat "$fixture/draft")" == true ]]
+[[ "$(grep -c '^api -X PATCH ' "$fixture/calls")" == "$previous_publishes" ]]
+
+# An annotated tag is resolved afresh at both checkpoints.
+printf '{"object":{"type":"tag","sha":"cccccccccccccccccccccccccccccccccccccccc"}}\n' > "$fixture/tag.json"
+printf '{"object":{"type":"commit","sha":"%s"}}\n' "$SOURCE_SHA" > "$fixture/annotated.json"
+previous_resolutions="$(grep -c '^api repos/owner/repo/git/tags/' "$fixture/calls" || true)"
+publish
+[[ "$(cat "$fixture/draft")" == false ]]
+[[ "$(grep -c '^api repos/owner/repo/git/tags/' "$fixture/calls")" == "$((previous_resolutions + 2))" ]]
 echo 'release mock tests passed'
