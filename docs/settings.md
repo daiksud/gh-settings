@@ -13,7 +13,7 @@ sources:
 
 ## Scope and status
 
-The current source implements read-only export and local validation; the published release implements only export and still emits the earlier flat format. Planning and mutation remain proposed. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the current source's versioned configuration contract. See the [commands](commands.md) for the proposed interface and the [concept](concept.md) for future direction and unresolved decisions.
+The published v0.2.0 release and current source implement read-only export and local validation with a versioned configuration format. Planning and mutation remain proposed. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the versioned configuration contract. See the [commands](commands.md) for the proposed interface and the [concept](concept.md) for future direction and unresolved decisions.
 
 ## Supported fields
 
@@ -44,7 +44,7 @@ settings:
 
 Its future update request body would contain only `{"has_issues": false}`. The version and outer YAML mappings are not sent as API fields. The other four supported fields stay absent and unmanaged; no defaults are injected. A document containing only `schemaVersion: 1`, or also empty `settings` and `repository` mappings, manages no fields. Sending an update is not implemented.
 
-The current source's `validate` command distinguishes these declarations:
+The `validate` command in v0.2.0 and the current source distinguishes these declarations:
 
 | YAML under `settings.repository` | Meaning |
 | --- | --- |
@@ -55,9 +55,9 @@ The current source's `validate` command distinguishes these declarations:
 
 The same type rules apply to `homepage`, `has_projects`, and `has_wiki`. Quoted `'null'` is a string value, not YAML null. Validation rejects unknown or duplicate keys and wrong types; it accepts partial declarations and empty mappings. These rules apply to the current five fields only, without defining null behavior for future settings.
 
-The published release's `export` writes the five fields directly at the YAML root. To validate that output with the current source, add `schemaVersion: 1` and move those fields under `settings.repository` as shown above; the old flat document fails source validation. Missing or unsupported versions also fail validation. No automatic migration or compatibility parsing is provided.
+Releases before v0.2.0 wrote the five fields directly at the YAML root. To validate one of those earlier files with v0.2.0 or the current source, add `schemaVersion: 1` and move those fields under `settings.repository` as shown above; the old flat document fails validation. Missing or unsupported versions also fail validation. No automatic migration or compatibility parsing is provided.
 
-The current source `export` normalizes GET `description` and `homepage` nulls to empty strings, preserving existing empty strings too. It serializes them as quoted YAML strings (`""`), not empty YAML values or null. This read-side conversion does not make explicit YAML null valid input. The published read schema permits null for these fields, whereas the update body defines optional strings without `nullable`; export follows that writable representation.[^github-repository-openapi] This does not assert that the server rejects every null update, and no live update was performed to verify clearing. Missing response keys and null booleans are errors, not nulls or defaults.
+In v0.2.0 and the current source, `export` normalizes GET `description` and `homepage` nulls to empty strings, preserving existing empty strings too. It serializes those values as quoted YAML strings (`""`), not empty YAML values or null. This read-side conversion does not make explicit YAML null valid input. The published read schema permits null for these fields, whereas the update body defines optional strings without `nullable`; export follows that writable representation.[^github-repository-openapi] This does not assert that the server rejects every null update, and no live update was performed to verify clearing. Missing response keys and null booleans are errors, not nulls or defaults.
 
 Root keys other than `schemaVersion` and `settings`, and other groups within `settings`, are not supported yet. How future settings from multiple update endpoints would compose remains unresolved; the grouping does not broaden the current five-field schema.
 

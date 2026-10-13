@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting and locally validating the current repository's five basic settings as YAML. The published release implements read-only `export`; this source also implements `validate`. `plan`, `apply`, and GitHub Action delivery remain future work.
+A GitHub CLI extension for exporting and locally validating the current repository's five basic settings as YAML. The published v0.2.0 release and current source implement read-only `export` and local `validate`. `plan`, `apply`, and GitHub Action delivery remain future work.
 
 ## Install
 
@@ -21,7 +21,7 @@ In the Git checkout whose settings you want to read, run:
 gh settings export
 ```
 
-The source version prints root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`. The published release still prints these fields at the YAML root. Export reads the checkout's GitHub.com `origin` remote; it does not use `GH_REPO` or require an existing `.github/settings.yml`. Export does not change repository settings or write a file. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
+The published v0.2.0 release and current source print root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`. Releases before v0.2.0 used a flat YAML format. Export reads the checkout's GitHub.com `origin` remote; it does not use `GH_REPO` or require an existing `.github/settings.yml`. Export does not change repository settings or write a file. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
 
 To save a copy, create `.github` first and redirect the output:
 
@@ -32,14 +32,7 @@ gh settings export > .github/settings.yml
 
 Shell redirection can truncate an existing destination even if export fails. Inspect the output before replacing an existing configuration you need to preserve.
 
-## Build and run from source
-
-To build from source, use Go 1.25 or later. The [development guide](docs/development.md) covers pinned tools and local checks.
-
-```sh
-go build -o gh-settings .
-gh extension install .
-```
+## Validate a saved configuration
 
 To check a saved configuration without contacting GitHub, run this from the repository root or a subdirectory:
 
@@ -58,9 +51,16 @@ settings:
 
 The [configuration contract](docs/settings.md#configuration-semantics) explains the five supported fields, `schemaVersion`, grouping, value types, and migration from earlier flat files. Validation succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. See the [command behavior](docs/commands.md#validate-behavior) for its failure cases.
 
-`gh settings --version` prints the build version (`dev` for a source build).
+## Build and run from source
 
-The current source export accepts GitHub.com HTTPS and SSH `origin` URLs and emits the [versioned configuration](docs/settings.md#configuration-semantics). See [export behavior](docs/commands.md#export-behavior) for response normalization and failure handling.
+To build from source, use Go 1.25 or later. The [development guide](docs/development.md) covers pinned tools and local checks.
+
+```sh
+go build -o gh-settings .
+gh extension install .
+```
+
+`gh settings --version` prints the build version (`dev` for a source build).
 
 ## Development checks
 
