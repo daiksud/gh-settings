@@ -60,6 +60,35 @@ func TestVersion(t *testing.T) {
 	}
 }
 
+func TestHelpAndVersionOutputFailure(t *testing.T) {
+	for _, test := range []struct {
+		arg        string
+		wantStderr string
+	}{
+		{"--help", "gh settings: write help: output unavailable\n"},
+		{"-h", "gh settings: write help: output unavailable\n"},
+		{"--version", "gh settings: write version: output unavailable\n"},
+		{"-v", "gh settings: write version: output unavailable\n"},
+	} {
+		t.Run(test.arg, func(t *testing.T) {
+			var stderr bytes.Buffer
+			status := run([]string{test.arg}, brokenWriter{}, &stderr, commandOperations{
+				export: func() ([]byte, error) {
+					t.Fatal("help/version output failure invoked export")
+					return nil, nil
+				},
+				validate: func() error {
+					t.Fatal("help/version output failure invoked validate")
+					return nil
+				},
+			})
+			if status != 1 || stderr.String() != test.wantStderr {
+				t.Fatalf("status=%d stderr=%q, want %q", status, stderr.String(), test.wantStderr)
+			}
+		})
+	}
+}
+
 func TestRunSelectsOperation(t *testing.T) {
 	operationError := errors.New("operation failed")
 	for _, test := range []struct {
@@ -321,7 +350,7 @@ func TestUnsupportedCommand(t *testing.T) {
 			t.Fatal("unsupported command invoked API operation")
 			return nil, errors.New("unexpected API call")
 		}})
-		if code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
+		if code != 1 || stdout.Len() != 0 || stderr.String() != "gh settings: unsupported command or arguments; usage: gh settings <export|validate>\n" {
 			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
 		}
 	}
@@ -351,7 +380,7 @@ func TestExportRejectsIncompleteResponse(t *testing.T) {
 func TestExportOutputFailure(t *testing.T) {
 	var stderr bytes.Buffer
 	code := run([]string{"export"}, brokenWriter{}, &stderr, commandOperations{export: func() ([]byte, error) { return []byte("description: test\n"), nil }})
-	if code == 0 || !strings.Contains(stderr.String(), "write output") {
+	if code != 1 || stderr.String() != "gh settings: write output: output unavailable\n" {
 		t.Fatalf("status=%d stderr=%q", code, stderr.String())
 	}
 }
