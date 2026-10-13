@@ -14,11 +14,11 @@ The tool currently implements read-only `export` and local `validate`. `plan`, `
 
 ## Design philosophy
 
-Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. This supports gradual adoption without claiming ownership of settings that maintainers have not declared. Null is not omission; [ADR 0019](adr/0019-reject-explicit-null.md) rejects it for the initial five update request fields while accepting explicit false and empty strings. Read-side description/homepage null normalization is described in the [settings page](settings.md).
+Written fields are managed, and YAML is authoritative for their values. Omitted fields are unmanaged, allowing gradual adoption. The [settings page](settings.md#configuration-semantics) defines the supported fields and the distinction among omission, explicit values, YAML null, and read-side null normalization.
 
-Follow the corresponding GitHub update API request schema for field keys and types, including any enum values, as recorded in [ADR 0006](adr/0006-update-api-schema.md). [ADR 0020](adr/0020-group-settings-by-resource.md) places the current fields under `settings.repository`; this configuration grouping is separate from the API request body. [ADR 0021](adr/0021-require-schema-version.md) requires root `schemaVersion: 1` for the file format. Do not turn a repository response, including read-only metadata, into the configuration schema. The [settings page](settings.md) defines exactly five fields supported in the initial design. The [commands page](commands.md) defines their proposed command behavior.
+Field keys and types follow the corresponding GitHub update request schema, as recorded in [ADR 0006](adr/0006-update-api-schema.md). Configuration grouping and versioning follow [ADR 0020](adr/0020-group-settings-by-resource.md) and [ADR 0021](adr/0021-require-schema-version.md). Repository response metadata does not become configuration. The [settings page](settings.md) gives the current five-field contract; the [commands page](commands.md) distinguishes implemented commands from proposed behavior.
 
-Separate observation from mutation: `plan` informs the maintainer about observed differences, while `apply` sends declared settings directly. A plan is not an execution artifact or a guarantee about later changes. Failures must be visible, without promises of transactional behavior or automatic recovery.
+The proposed mutation workflow separates observation from mutation: `plan` informs the maintainer about observed differences, while `apply` sends declared settings directly. A plan is not an execution artifact or a guarantee about later changes. Failures must be visible, without promises of transactional behavior or automatic recovery.
 
 ## Current decisions
 
@@ -57,4 +57,4 @@ Names also identify outer rulesets, ambiguous matches are errors, and there is n
 
 ## Unresolved decisions
 
-Null handling for future fields, remaining authentication details, toolchain and dependency versions, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The current format requires `schemaVersion: 1` and places the five fields within `settings.repository`; this does not settle those future composition choices or extend supported fields. Release decisions and open implementation mechanics are tracked on the [release page](releases.md).
+Null handling for future fields, remaining authentication details, toolchain and dependency versions, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The [current configuration contract](settings.md#configuration-semantics) does not settle those future choices or extend supported fields. Release decisions and open implementation mechanics are tracked on the [release page](releases.md).
