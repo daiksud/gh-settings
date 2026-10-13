@@ -185,6 +185,18 @@ func testClient(t *testing.T, body string, status int) *api.RESTClient {
 	return client
 }
 
+func TestReadRepositorySettings(t *testing.T) {
+	repo := repository.Repository{Owner: "owner", Name: "current"}
+	got, err := readRepositorySettings(repo, testClient(t, `{"description":null,"homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, 200))
+	if err != nil || got.Description == nil || *got.Description != "" || got.Homepage == nil || *got.Homepage != "https://example.com" || got.HasIssues == nil || !*got.HasIssues || got.HasProjects == nil || *got.HasProjects || got.HasWiki == nil || !*got.HasWiki {
+		t.Fatalf("settings=%+v err=%v, want typed values for all five fields", got, err)
+	}
+	_, err = readRepositorySettings(repo, testClient(t, `{"message":"Resource not accessible"}`, 403))
+	if err == nil || !strings.Contains(err.Error(), "read repository settings:") {
+		t.Fatalf("read error=%v, want repository read context", err)
+	}
+}
+
 func TestExportLiteralOutput(t *testing.T) {
 	for _, test := range []struct {
 		name     string
