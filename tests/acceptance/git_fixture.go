@@ -9,7 +9,10 @@ func setupGitCheckout(work string, env []string, test scenario) error {
 	if test.noRepo {
 		return nil
 	}
-	gitCommands := [][]string{{"init", "--quiet"}}
+	if err := initGitCheckout(work, env); err != nil {
+		return err
+	}
+	var gitCommands [][]string
 	if !test.worktreeOrigin {
 		origin := "https://github.com/owner/current.git"
 		if test.userlessOrigin {
@@ -49,6 +52,16 @@ func setupGitCheckout(work string, env []string, test scenario) error {
 				return fmt.Errorf("git alias: %w: %s", err, output)
 			}
 		}
+	}
+	return nil
+}
+
+func initGitCheckout(work string, env []string) error {
+	cmd := exec.Command("git", "init", "--quiet")
+	cmd.Dir = work
+	cmd.Env = env
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git: %w: %s", err, output)
 	}
 	return nil
 }
