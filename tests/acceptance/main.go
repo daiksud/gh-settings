@@ -12,12 +12,12 @@ import (
 )
 
 type scenario struct {
-	name, body, errorText                                                     string
-	expected                                                                  map[string]any
-	noRepo, noRead, outputFailure, rewriteOrigin, aliasOrigin, worktreeOrigin bool
-	userlessOrigin                                                            bool
-	args                                                                      []string
-	status                                                                    int
+	name, body, errorText string
+	expected              map[string]any
+	noRead, outputFailure bool
+	gitSetup              func(string, []string) error
+	args                  []string
+	status                int
 }
 
 func check(binary string, test scenario) error {
@@ -28,8 +28,10 @@ func check(binary string, test scenario) error {
 	defer fixture.close()
 	root, work, cfg := fixture.root, fixture.work, fixture.cfg
 	env := exportFixtureEnv(cfg)
-	if err := setupGitCheckout(work, env, test); err != nil {
-		return err
+	if test.gitSetup != nil {
+		if err := test.gitSetup(work, env); err != nil {
+			return err
+		}
 	}
 	result, err := executeCLI(binary, work, root, env, test.args, test.outputFailure)
 	if err != nil {
