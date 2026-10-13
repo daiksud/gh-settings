@@ -26,11 +26,6 @@ type settings struct {
 	HasWiki     *bool   `yaml:"has_wiki,omitempty"`
 }
 
-func validateSettings(data []byte) error {
-	_, err := ParseConfig(data)
-	return err
-}
-
 func ParseConfig(data []byte) (Config, error) {
 	rootNode, err := loadYAMLRoot(data)
 	if err != nil {
