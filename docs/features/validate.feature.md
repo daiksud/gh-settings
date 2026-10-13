@@ -101,23 +101,37 @@ description: Specify local validation of the five supported YAML settings and it
 
 ### Test mapping
 
-The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture.
+The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture. Detailed YAML parser cases remain in `TestParseConfigValidation`; the process cases retain the CLI, file, Git, output, and request-observation checks.
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
-| Validate all supported settings | `TestValidateSettings` | `validate-all-fields` |
-| Preserve partial declarations and zero values | `TestValidateSettings`, `TestValidateCommandReadsOnlySettingsFile` | `validate-partial-zero-values` |
-| Resolve an alias or merge key | `TestValidateSettings` | `validate-alias`, `validate-merge` |
-| An unknown key is declared | `TestValidateSettings` | `validate-unknown-key` |
-| A key is declared twice | `TestValidateSettings` | `validate-duplicate-key` |
-| A value has the wrong type | `TestValidateSettings` | `validate-wrong-type` |
-| Explicit null is not a typed value | `TestValidateSettings` | `validate-null-string`, `validate-null-boolean` |
-| Quoted null is a string | `TestValidateSettings` | `validate-quoted-null-string` |
-| YAML is malformed or has more than one document | `TestValidateSettings` | `validate-malformed`, `validate-multiple-documents` |
-| Old flat configuration is rejected | `TestValidateSettings` | `validate-old-flat-format` |
-| The schema version is missing or unsupported | `TestValidateSettings` | `validate-missing-schema-version`, `validate-unsupported-schema-version` |
-| Invalid YAML key and scalar tags are rejected | `TestValidateSettings` | `validate-null-key`, `validate-alias-duplicate-key`, `validate-alias-merge-key`, `validate-binary-string`, `validate-legacy-tagged-boolean` |
-| A mapping or merge source has a contradictory YAML tag | `TestValidateSettings` | `validate-mistagged-mapping`, `validate-mistagged-merge-source` |
+| Validate all supported settings | `TestParseConfigValues/all_fields` | `validate-all-fields` |
+| Preserve partial declarations and zero values | `TestParseConfigValues/partial_zero_values`, `TestValidateCommandReadsOnlySettingsFile` | `validate-partial-zero-values` |
+| Resolve an alias or merge key | `TestParseConfigValidation/alias_value`, `TestParseConfigValidation/merge_key` | `validate-alias`, `validate-merge` |
+| An unknown key is declared | `TestParseConfigValidation/unknown_field` | `validate-unknown-key` |
+| A key is declared twice | `TestParseConfigValidation/duplicate_field` | `validate-duplicate-key` |
+| A value has the wrong type | `TestParseConfigValidation/string_instead_of_boolean` | `validate-wrong-type` |
+| Explicit null is not a typed value | `TestParseConfigValidation/null_instead_of_string`, `TestParseConfigValidation/null_instead_of_boolean` | `validate-null-boolean` |
+| Quoted null is a string | `TestParseConfigValidation/quoted_null_is_a_string` | — |
+| YAML is malformed or has more than one document | `TestParseConfigValidation/malformed_YAML`, `TestParseConfigValidation/two_documents` | `validate-malformed` |
+| Old flat configuration is rejected | `TestParseConfigValidation/old_flat_format` | — |
+| The schema version is missing or unsupported | `TestParseConfigValidation/missing_schema_version`, `TestParseConfigValidation/unsupported_schema_version` | `validate-missing-schema-version`, `validate-unsupported-schema-version` |
+| Invalid YAML key and scalar tags are rejected | `TestParseConfigValidation/null_key`, `TestParseConfigValidation/duplicate_alias_key`, `TestParseConfigValidation/alias_merge_key`, `TestParseConfigValidation/binary_instead_of_string`, `TestParseConfigValidation/legacy_boolean_yes` | `validate-legacy-tagged-boolean` |
+| A mapping or merge source has a contradictory YAML tag | `TestParseConfigValidation/tagged_settings_mapping_as_string`, `TestParseConfigValidation/mistagged_merge_mapping` | `validate-mistagged-mapping` |
 | The configuration file is missing | `TestValidateCommandMissingFile` | `validate-missing-file` |
+
+The following parser-only process cases were removed. Their exact YAML inputs and outcomes remain in the named parser subtests:
+
+| Removed process case | Retained parser subtest |
+| --- | --- |
+| `validate-quoted-null-string` | `TestParseConfigValidation/quoted_null_is_a_string` |
+| `validate-null-string` | `TestParseConfigValidation/null_instead_of_string` |
+| `validate-multiple-documents` | `TestParseConfigValidation/two_documents` |
+| `validate-old-flat-format` | `TestParseConfigValidation/old_flat_format` |
+| `validate-null-key` | `TestParseConfigValidation/null_key` |
+| `validate-alias-duplicate-key` | `TestParseConfigValidation/duplicate_alias_key` |
+| `validate-alias-merge-key` | `TestParseConfigValidation/alias_merge_key` |
+| `validate-binary-string` | `TestParseConfigValidation/binary_instead_of_string` |
+| `validate-mistagged-merge-source` | `TestParseConfigValidation/mistagged_merge_mapping` |
 
 The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for these five update-request fields. It does not establish how GitHub handles live null updates.
