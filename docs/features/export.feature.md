@@ -77,6 +77,17 @@ A repository maintainer can capture the current five supported settings as confi
 - When the maintainer runs `gh settings export`
 - Then the settings are read from "owner/current" on GitHub
 
+### Rule: Exported settings can be validated unchanged
+
+#### Scenario: Save export output and validate it locally
+
+- Given the current checkout has ordinary settings or zero values with an unset string
+- When the maintainer saves `gh settings export` output as `.github/settings.yml`
+- And runs `gh settings validate` with the same executable
+- Then the exported document contains `schemaVersion: 1`, `settings.repository`, and exactly the five supported values
+- And validation succeeds without output or changing the saved file bytes
+- And export makes one settings read while validation makes no API request
+
 ### Rule: Report failures without emitting a successful configuration
 
 #### Scenario: Settings cannot be retrieved
@@ -127,7 +138,7 @@ A repository maintainer can capture the current five supported settings as confi
 
 ### Test mapping
 
-These scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_export.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
+These scenarios map to ordinary Go tests, [export process cases](../../tests/acceptance/scenarios_export.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
@@ -139,6 +150,7 @@ These scenarios map to ordinary Go tests and [process acceptance cases](../../te
 | Keep repository identity when Git rewrites its transport URL | `TestExportUsesConfiguredOriginBeforeInsteadOf` | `origin-insteadof` |
 | Resolve a transport alias to GitHub | `TestExportUsesAliasRewrittenToGitHub` | `origin-alias` |
 | Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |
+| Save export output and validate it locally | — | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
 | Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` | `read-failure` |
 | There is no usable current repository | `TestExportRepositoryFailure` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestExportRejectsGlobalOriginOutsideCheckout` | — |
