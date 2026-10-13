@@ -26,9 +26,16 @@ func TestAcceptance(t *testing.T) {
 	if !info.Mode().IsRegular() {
 		t.Fatalf("acceptance binary %q is not a regular file", path)
 	}
-	for _, test := range append(exportScenarios(), validateScenarios()...) {
+	for _, test := range exportScenarios() {
 		t.Run(test.name, func(t *testing.T) {
 			if err := check(path, test); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	for _, test := range validateScenarios() {
+		t.Run(test.name, func(t *testing.T) {
+			if err := checkValidate(path, test); err != nil {
 				t.Fatal(err)
 			}
 		})

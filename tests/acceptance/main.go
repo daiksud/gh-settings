@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -13,24 +12,12 @@ import (
 )
 
 type scenario struct {
-	name, body, errorText, input                                              string
+	name, body, errorText                                                     string
 	expected                                                                  map[string]any
 	noRepo, noRead, outputFailure, rewriteOrigin, aliasOrigin, worktreeOrigin bool
-	userlessOrigin, success                                                   bool
+	userlessOrigin                                                            bool
 	args                                                                      []string
 	status                                                                    int
-}
-
-func repositoryInput(fields string) string {
-	var result strings.Builder
-	result.WriteString("schemaVersion: 1\nsettings:\n  repository:\n")
-	for _, line := range strings.SplitAfter(fields, "\n") {
-		if line != "" {
-			result.WriteString("    ")
-			result.WriteString(line)
-		}
-	}
-	return result.String()
 }
 
 func check(binary string, test scenario) error {
@@ -40,17 +27,9 @@ func check(binary string, test scenario) error {
 	}
 	defer fixture.close()
 	root, work, cfg := fixture.root, fixture.work, fixture.cfg
-	env := fixtureEnv(cfg)
+	env := exportFixtureEnv(cfg)
 	if err := setupGitCheckout(work, env, test); err != nil {
 		return err
-	}
-	if test.input != "" {
-		if err := os.Mkdir(filepath.Join(work, ".github"), 0700); err != nil {
-			return err
-		}
-		if err := os.WriteFile(filepath.Join(work, ".github", "settings.yml"), []byte(test.input), 0600); err != nil {
-			return err
-		}
 	}
 	result, err := executeCLI(binary, work, root, env, test.args, test.outputFailure)
 	if err != nil {
@@ -59,11 +38,7 @@ func check(binary string, test scenario) error {
 	if err := fixture.checkRequests(test.noRead); err != nil {
 		return err
 	}
-	if test.success {
-		if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
-			return fmt.Errorf("execution: %v, stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
-		}
-	} else if test.expected != nil {
+	if test.expected != nil {
 		if result.runErr != nil || result.stderr.Len() != 0 {
 			return fmt.Errorf("execution: %v, stderr=%q", result.runErr, result.stderr.String())
 		}
@@ -80,12 +55,6 @@ func check(binary string, test scenario) error {
 			return fmt.Errorf("execution: %v, stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 		}
 	}
-	if test.input != "" {
-		unchanged, err := os.ReadFile(filepath.Join(work, ".github", "settings.yml"))
-		if err != nil || string(unchanged) != test.input {
-			return fmt.Errorf("configuration changed: %q, error=%v", unchanged, err)
-		}
-	}
 	return nil
 }
 
@@ -98,5 +67,9 @@ func fixtureEnv(config string) []string {
 		}
 		env = append(env, entry)
 	}
-	return append(env, "GH_CONFIG_DIR="+config, "GH_TOKEN=fixture-only-token", "GH_REPO=other/repository", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0")
+	return append(env, "GH_CONFIG_DIR="+config, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0")
+}
+
+func exportFixtureEnv(config string) []string {
+	return append(fixtureEnv(config), "GH_TOKEN=fixture-only-token", "GH_REPO=other/repository")
 }
