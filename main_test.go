@@ -37,10 +37,7 @@ func TestExportFiveSettings(t *testing.T) {
 	if code != 0 || stderr.Len() != 0 {
 		t.Fatalf("status=%d, stderr=%q", code, stderr.String())
 	}
-	var output map[string]any
-	if err := yaml.Unmarshal(stdout.Bytes(), &output); err != nil {
-		t.Fatal(err)
-	}
+	output := exportedRepository(t, stdout.Bytes())
 	expected := map[string]any{"description": "Example repository", "homepage": "https://example.com", "has_issues": true, "has_projects": false, "has_wiki": true}
 	if len(output) != len(expected) {
 		t.Fatalf("keys=%v", output)
@@ -67,6 +64,23 @@ type transportFunc func(*http.Request) (*http.Response, error)
 
 func (f transportFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
+func exportedRepository(t *testing.T, data []byte) map[string]any {
+	t.Helper()
+	var root map[string]any
+	if err := yaml.Unmarshal(data, &root); err != nil {
+		t.Fatal(err)
+	}
+	groups, ok := root["settings"].(map[string]any)
+	if !ok || len(root) != 2 || root["schemaVersion"] != 1 || len(groups) != 1 {
+		t.Fatalf("export root=%v, want schemaVersion: 1 and settings.repository", root)
+	}
+	repository, ok := groups["repository"].(map[string]any)
+	if !ok {
+		t.Fatalf("settings=%v, want repository mapping", groups)
+	}
+	return repository
+}
+
 func testClient(t *testing.T, body string, status int) *api.RESTClient {
 	t.Helper()
 	t.Setenv("GH_CONFIG_DIR", t.TempDir())
@@ -90,10 +104,7 @@ func TestExportPreservesZeroValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var result map[string]any
-	if err := yaml.Unmarshal(data, &result); err != nil {
-		t.Fatal(err)
-	}
+	result := exportedRepository(t, data)
 	if len(result) != 5 {
 		t.Fatalf("fields: %v", result)
 	}
@@ -355,10 +366,7 @@ func TestExportNormalizesUnsetStrings(t *testing.T) {
 			if status != 0 || stderr.Len() != 0 {
 				t.Fatalf("status=%d stderr=%q", status, stderr.String())
 			}
-			var result map[string]any
-			if err := yaml.Unmarshal(stdout.Bytes(), &result); err != nil {
-				t.Fatal(err)
-			}
+			result := exportedRepository(t, stdout.Bytes())
 			if len(result) != 5 {
 				t.Fatalf("fields=%v", result)
 			}

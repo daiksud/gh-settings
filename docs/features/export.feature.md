@@ -16,7 +16,7 @@ A repository maintainer can capture the current five supported settings as confi
 - And its settings are description "Example repository", homepage "https://example.com", issues enabled, projects disabled, and wiki enabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And standard output is a YAML root mapping containing exactly those five fields and values
+- And standard output has root `schemaVersion: 1` and `settings.repository` containing those five fields and values
 - And response metadata and other settings are absent
 - And standard error is empty
 - And no repository settings are changed

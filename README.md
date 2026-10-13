@@ -21,7 +21,7 @@ In the Git checkout whose settings you want to read, run:
 gh settings export
 ```
 
-The command prints a YAML mapping with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`. It reads the checkout's GitHub.com `origin` remote; it does not use `GH_REPO` or require an existing `.github/settings.yml`. Export does not change repository settings or write a file. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
+The source version prints root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`. The published release still prints these fields at the YAML root. Export reads the checkout's GitHub.com `origin` remote; it does not use `GH_REPO` or require an existing `.github/settings.yml`. Export does not change repository settings or write a file. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
 
 To save a copy, create `.github` first and redirect the output:
 
@@ -43,7 +43,7 @@ gh extension install .
 
 `gh settings --version` prints the build version (`dev` for a source build).
 
-The current implementation accepts GitHub.com HTTPS and SSH `origin` URLs. It outputs all five fields as a root YAML mapping, including false and empty strings. GitHub's null description/homepage values become quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Errors go to standard error with a nonzero exit status.
+The current source implementation accepts GitHub.com HTTPS and SSH `origin` URLs. It outputs root `schemaVersion: 1` and all five fields under `settings.repository`, including false and empty strings. GitHub's null description/homepage values become quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Earlier flat files need a version and their fields moved under `settings.repository` for the planned validation command; no automatic migration is provided. Errors go to standard error with a nonzero exit status.
 
 ## Development checks
 

@@ -16,7 +16,7 @@ Saved plan artifacts and drift protection are outside the initial scope. GitHub 
 
 ## Interface and implementation status
 
-The `export` example is implemented. `validate`, `plan`, and `apply` remain proposed and are rejected by the current CLI. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines the agreed root mapping for the current five-field scope.
+The `export` example is implemented. `validate`, `plan`, and `apply` remain proposed and are rejected by the current CLI. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
 
 ```text
 gh settings export
@@ -36,7 +36,7 @@ The update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository]
 
 `apply` does not fetch current settings, compute differences, compare against a saved plan, or preserve external changes to managed values. If a managed value changes remotely after `plan`, `apply` still sends the YAML value. The observed plan diff can therefore differ from changes at apply time. Omitting a field leaves it outside the request.
 
-For example, declaring only `has_issues: false` means that apply sends that supported field with the declared value and sends none of the other four fields. The [configuration example](settings.md#configuration-semantics) places this field at the YAML root, following the update request body schema.
+For example, declaring only `settings.repository.has_issues: false` means that a future apply sends that supported field with the declared value and sends none of the other four fields. The [configuration example](settings.md#configuration-semantics) shows the YAML mapping; the update request body contains only `has_issues`.
 
 ## Export behavior
 

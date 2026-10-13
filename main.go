@@ -93,7 +93,7 @@ func exportSettings(repo repository.Repository, client *api.RESTClient) ([]byte,
 			return nil, fmt.Errorf("decode %s: %w", field.name, err)
 		}
 	}
-	return yaml.Marshal(result)
+	return yaml.Marshal(map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": result}})
 }
 
 type settings struct {

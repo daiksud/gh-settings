@@ -10,7 +10,7 @@ sources:
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted for field keys and types. The YAML root-placement consequence below was superseded by [ADR 0020](0020-group-settings-by-resource.md).
 
 ## Context
 
