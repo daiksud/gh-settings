@@ -103,48 +103,8 @@ func check(binary string, test scenario) error {
 	defer fixture.close()
 	root, work, cfg := fixture.root, fixture.work, fixture.cfg
 	env := fixtureEnv(cfg)
-	if !test.noRepo {
-		gitCommands := [][]string{{"init", "--quiet"}}
-		if !test.worktreeOrigin {
-			origin := "https://github.com/owner/current.git"
-			if test.userlessOrigin {
-				origin = "github.com:owner/current.git"
-			}
-			gitCommands = append(gitCommands, []string{"remote", "add", "origin", origin})
-		} else {
-			gitCommands = append(gitCommands,
-				[]string{"config", "--local", "extensions.worktreeConfig", "true"},
-				[]string{"config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git"})
-		}
-		for _, args := range gitCommands {
-			cmd := exec.Command("git", args...)
-			cmd.Dir = work
-			cmd.Env = env
-			if output, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("git: %w: %s", err, output)
-			}
-		}
-		if test.rewriteOrigin {
-			cmd := exec.Command("git", "config", "--local", "url.https://mirror.example/.insteadOf", "https://github.com/")
-			cmd.Dir = work
-			cmd.Env = env
-			if output, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("git rewrite: %w: %s", err, output)
-			}
-		}
-		if test.aliasOrigin {
-			for _, args := range [][]string{
-				{"remote", "set-url", "origin", "gh:owner/current.git"},
-				{"config", "--local", "url.https://github.com/.insteadOf", "gh:"},
-			} {
-				cmd := exec.Command("git", args...)
-				cmd.Dir = work
-				cmd.Env = env
-				if output, err := cmd.CombinedOutput(); err != nil {
-					return fmt.Errorf("git alias: %w: %s", err, output)
-				}
-			}
-		}
+	if err := setupGitCheckout(work, env, test); err != nil {
+		return err
 	}
 	if test.input != "" {
 		if err := os.Mkdir(filepath.Join(work, ".github"), 0700); err != nil {
