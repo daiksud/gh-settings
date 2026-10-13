@@ -27,16 +27,30 @@ The first releases target only these platforms:
 
 GitHub CLI recognizes precompiled extension assets with an OS-architecture suffix.[^github-cli-extensions] The release publishes raw, executable files under those names, a `SHA256SUMS` asset, and release notes with installation guidance and generated changes. The binaries come from `go build`; GoReleaser is not used for this scope. Additional platforms and archives are outside the initial release scope.
 
+## Start a manual release
+
+Review the intended version and current `main` commit, then explicitly start the [release workflow](../.github/workflows/release.yml) from `main` with its required `version` input (`vMAJOR.MINOR.PATCH`):
+
+```sh
+gh workflow run release.yml --repo daiksud/gh-settings --ref main -f version=v1.2.3
+```
+
+The workflow is not scheduled and does not run when code is merged. Its resolve job validates the version and freezes the then-current `main` SHA for every build and check in that run. A later run resolves `main` again; it does not reuse the earlier run's frozen SHA.
+
 ## Initial release flow
 
-1. A maintainer starts the workflow on `main` with an explicit `vMAJOR.MINOR.PATCH` version. The resolve job reads `refs/heads/main` once through GitHub API and records its commit SHA. Every later checkout uses that SHA, even if `main` advances.
+1. The resolve job reads `refs/heads/main` once through GitHub API and records its commit SHA. Every later checkout uses that SHA, even if `main` advances.
 2. The commit stage checks the pinned source and builds Linux amd64 once. The macOS arm64 runner builds its binary once after commit checks pass. Both use Go linker `-X main.version=...`; `gh settings --version` verifies the embedded value.[^go-linker]
 3. Each native runner downloads its current run's binary and checks the SHA-256 supplied by its build job. The shared [acceptance-stage](../.github/actions/acceptance-stage/action.yml) launches that exact binary against the local API fixture. The release job downloads both binaries again and checks those SHA-256 values before any tag is written.
-4. After both acceptance jobs pass, the release job creates a lightweight tag at the frozen SHA, creates a draft with generated change notes and an identity manifest, uploads the two binaries and `SHA256SUMS`, downloads any present assets to verify their bytes, and publishes only when all three required assets and metadata match.
+4. After both acceptance jobs pass, the release job creates a lightweight tag at the frozen SHA if the tag is absent, creates a draft with generated change notes and an identity manifest, uploads the two binaries and `SHA256SUMS`, downloads any present assets to verify their bytes, and publishes only when all three required assets and metadata match.
 
-The draft body records version, pinned commit, both binary SHA-256 values, and the checksum file SHA-256 in a machine-readable comment. On retry, the release job finds the draft in the authenticated releases list and reads it by release ID; GitHub's tag lookup only returns published releases.[^github-rest-releases] It then compares the manifest, checks the existing tag target, downloads existing assets to compare their bytes, and uploads only missing assets. Unexpected assets, an altered manifest, hash mismatches, a conflicting tag, or a missing tag for an existing release stop the run without recreating that tag. An already published matching release is a verified no-op. There is no destructive cleanup or clobber. A new workflow run resolves current main, so a retry after main advances will stop at the old tag; the original frozen run remains the source of its SHA and artifacts.
+## Retry and recovery
 
-This release pipeline is separate from ordinary main CI. Its stage order is version injection and build, commit-stage validation, acceptance-stage validation, tag, then release publication. The [single-build decision](adr/0012-publish-tested-binaries.md) governs any refactoring of the existing composites.
+The draft body records version, pinned commit, both binary SHA-256 values, and the checksum file SHA-256 in a machine-readable comment. On retry, the release job finds the draft in the authenticated releases list and reads it by release ID; GitHub's tag lookup only returns published releases.[^github-rest-releases] It then compares the manifest, checks the existing lightweight or annotated tag target, downloads existing assets to compare their bytes, and uploads only missing assets. Immediately before publication it fetches and checks the tag again. Unexpected assets, an altered manifest, hash mismatches, a conflicting tag, or a missing tag for an existing release stop the run without recreating or moving that tag. An already published matching release is a verified no-op; published assets are never replaced.
+
+A new workflow run resolves current `main`. If the earlier run created the tag, a different SHA stops at that existing tag. If the earlier run failed before tag creation, a new run can publish the same version from the newly resolved SHA; review that commit and confirm it is the intended release source before dispatching again. The original run's frozen SHA remains available in its logs; its artifacts are retained for one day. Keep incomplete drafts for inspection rather than deleting or replacing them automatically. There is no destructive cleanup or clobber.
+
+This release pipeline is separate from ordinary main CI. Source resolution precedes the commit-stage validation and Linux build. The macOS build and Linux acceptance can then run concurrently; macOS acceptance waits for its build. Publication waits for both acceptance jobs before creating or checking the tag and release. The [single-build decision](adr/0012-publish-tested-binaries.md) governs any refactoring of the existing composites.
 
 ## Future automatic versioning
 
@@ -56,7 +70,7 @@ The exact title signal used to identify every breaking change remains unresolved
 - [ADR 0017: Derive future SemVer bumps from merged PRs](adr/0017-pr-based-semver.md)
 - [ADR 0018: Never overwrite published release assets](adr/0018-preserve-published-assets.md)
 
-The release tests in [tests/release.sh](../tests/release.sh) use a local `gh` stand-in and create no real tags or releases. They cover a first publication, completed retry, incomplete draft recovery, version rejection, conflicting tag and manifest, and altered asset bytes. A live release is not exercised by these tests. Future automatic versioning remains deferred.
+The release tests in [tests/release.sh](../tests/release.sh) use a local `gh` stand-in and create no real tags or releases. They cover a first publication, completed retry, incomplete draft recovery, version rejection, conflicting tag and manifest, altered asset bytes, a tag change before publication, and annotated tag resolution at both checks. A live release is not exercised by these tests. Future automatic versioning remains deferred.
 
 [^github-cli-extensions]: [Creating GitHub CLI extensions](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions), checked on 2026-10-12 for precompiled extension release asset naming.
 [^go-linker]: [Go linker command line](https://pkg.go.dev/cmd/link#hdr-Command_Line), checked on 2026-10-12 for the conditional `-X` string-symbol behavior.

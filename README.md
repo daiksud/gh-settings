@@ -70,15 +70,7 @@ The [export](docs/features/export.feature.md) and [validate](docs/features/valid
 
 ## Maintainer release
 
-The [manual release workflow](.github/workflows/release.yml) accepts a `vMAJOR.MINOR.PATCH` version when run from `main`. It freezes the latest main SHA at start, builds Linux amd64 and macOS arm64 on matching runners, runs commit and process acceptance checks, then stages a draft and publishes it only after validating the tested assets. It publishes raw GitHub CLI extension binaries, `SHA256SUMS`, and release notes. The workflow is not a scheduled or automatic release; merging its definition does not start a release.
-
-To start a release after reviewing the version and main commit:
-
-```sh
-gh workflow run release.yml --repo daiksud/gh-settings --ref main -f version=v1.2.3
-```
-
-The workflow never moves an existing tag or replaces an existing release asset. Re-running the same version resolves the then-current main again; recovery succeeds only if its SHA and freshly tested binary hashes match the tag and release manifest. If main has advanced, the old workflow run's frozen SHA remains available in its logs, but a new run will stop at the existing tag. Keep incomplete drafts for inspection; do not delete or replace them automatically. See the [release design](docs/releases.md) for identity and recovery details.
+Releases require an explicit run of the manual workflow from `main`; merging code does not publish a release. The workflow tests platform binaries before publishing them with checksums and release notes. See the [maintainer release procedure](docs/releases.md#start-a-manual-release) for initiation, identity checks, and recovery.
 
 - [Concept, design philosophy, and future direction](docs/concept.md)
 - [Supported settings and configuration semantics](docs/settings.md)
