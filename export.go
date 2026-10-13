@@ -31,7 +31,7 @@ func exportSettings(repo repository.Repository, client *api.RESTClient) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	return yaml.Marshal(map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": result}})
+	return yaml.Marshal(Config{SchemaVersion: 1, Settings: configSettings{Repository: result}})
 }
 
 func decodeRepositoryResponse(response map[string]json.RawMessage) (settings, error) {
@@ -60,12 +60,4 @@ func decodeRepositoryResponse(response map[string]json.RawMessage) (settings, er
 		}
 	}
 	return result, nil
-}
-
-type settings struct {
-	Description string `yaml:"description"`
-	Homepage    string `yaml:"homepage"`
-	HasIssues   bool   `yaml:"has_issues"`
-	HasProjects bool   `yaml:"has_projects"`
-	HasWiki     bool   `yaml:"has_wiki"`
 }

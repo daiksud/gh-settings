@@ -185,6 +185,32 @@ func testClient(t *testing.T, body string, status int) *api.RESTClient {
 	return client
 }
 
+func TestExportLiteralOutput(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		response string
+		want     string
+	}{
+		{
+			name:     "five values",
+			response: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`,
+			want:     "schemaVersion: 1\nsettings:\n    repository:\n        description: Example repository\n        homepage: https://example.com\n        has_issues: true\n        has_projects: false\n        has_wiki: true\n",
+		},
+		{
+			name:     "zero values",
+			response: `{"description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`,
+			want:     "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        homepage: \"\"\n        has_issues: false\n        has_projects: false\n        has_wiki: false\n",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := exportSettings(repository.Repository{Owner: "owner", Name: "current"}, testClient(t, test.response, 200))
+			if err != nil || string(got) != test.want {
+				t.Fatalf("output=%q err=%v, want %q", got, err, test.want)
+			}
+		})
+	}
+}
+
 func TestExportPreservesZeroValues(t *testing.T) {
 	data, err := exportSettings(repository.Repository{Owner: "owner", Name: "current"}, testClient(t, `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`, 200))
 	if err != nil {

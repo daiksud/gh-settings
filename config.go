@@ -9,6 +9,23 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+type Config struct {
+	SchemaVersion int            `yaml:"schemaVersion"`
+	Settings      configSettings `yaml:"settings"`
+}
+
+type configSettings struct {
+	Repository settings `yaml:"repository"`
+}
+
+type settings struct {
+	Description string `yaml:"description"`
+	Homepage    string `yaml:"homepage"`
+	HasIssues   bool   `yaml:"has_issues"`
+	HasProjects bool   `yaml:"has_projects"`
+	HasWiki     bool   `yaml:"has_wiki"`
+}
+
 func validateSettings(data []byte) error {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	var document yaml.Node
