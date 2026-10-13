@@ -7,7 +7,44 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
+
+func TestLoadYAMLRootPreservesSource(t *testing.T) {
+	root, err := loadYAMLRoot([]byte(repositoryYAML("description: &text Example\nhomepage: *text\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root.Kind != yaml.MappingNode || root.Tag != "!!map" || root.Line != 1 {
+		t.Fatalf("root kind=%d tag=%q line=%d", root.Kind, root.Tag, root.Line)
+	}
+	repository := root.Content[3].Content[1]
+	description, homepage := repository.Content[1], repository.Content[3]
+	if description.Line != 4 || homepage.Line != 5 || homepage.Kind != yaml.AliasNode || homepage.Alias != description {
+		t.Fatalf("description=%+v homepage=%+v; source lines and alias must be preserved", description, homepage)
+	}
+}
+
+func TestLoadYAMLRootErrors(t *testing.T) {
+	for _, test := range []struct {
+		name, input, want string
+	}{
+		{"empty", "", "decode YAML:"},
+		{"malformed", "schemaVersion: [\n", "decode YAML:"},
+		{"multiple documents", "schemaVersion: 1\n---\nschemaVersion: 1\n", "expected one YAML document"},
+		{"scalar root", "true\n", "expected a root mapping"},
+		{"sequence root", "- true\n", "expected a root mapping"},
+		{"contradictory root tag", "!!str {schemaVersion: 1}\n", "expected a root mapping"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root, err := loadYAMLRoot([]byte(test.input))
+			if root != nil || err == nil || !strings.HasPrefix(err.Error(), test.want) {
+				t.Fatalf("root=%+v error=%v, want prefix %q", root, err, test.want)
+			}
+		})
+	}
+}
 
 func TestValidateSettings(t *testing.T) {
 	tests := []struct {

@@ -27,25 +27,14 @@ type settings struct {
 }
 
 func validateSettings(data []byte) error {
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	var document yaml.Node
-	if err := decoder.Decode(&document); err != nil {
-		return fmt.Errorf("decode YAML: %w", err)
-	}
-	var extra yaml.Node
-	if err := decoder.Decode(&extra); err != io.EOF {
-		if err != nil {
-			return fmt.Errorf("decode YAML: %w", err)
-		}
-		return fmt.Errorf("expected one YAML document")
-	}
-	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode || document.Content[0].Tag != "!!map" {
-		return fmt.Errorf("expected a root mapping")
-	}
-	if err := checkMappingKeys(&document, make(map[*yaml.Node]bool)); err != nil {
+	rootNode, err := loadYAMLRoot(data)
+	if err != nil {
 		return err
 	}
-	root, err := loadMapping(document.Content[0], "root")
+	if err := checkMappingKeys(rootNode, make(map[*yaml.Node]bool)); err != nil {
+		return err
+	}
+	root, err := loadMapping(rootNode, "root")
 	if err != nil {
 		return err
 	}
@@ -111,6 +100,25 @@ func validateSettings(data []byte) error {
 		return fmt.Errorf("missing schemaVersion: expected 1")
 	}
 	return nil
+}
+
+func loadYAMLRoot(data []byte) (*yaml.Node, error) {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var document yaml.Node
+	if err := decoder.Decode(&document); err != nil {
+		return nil, fmt.Errorf("decode YAML: %w", err)
+	}
+	var extra yaml.Node
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err != nil {
+			return nil, fmt.Errorf("decode YAML: %w", err)
+		}
+		return nil, fmt.Errorf("expected one YAML document")
+	}
+	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode || document.Content[0].Tag != "!!map" {
+		return nil, fmt.Errorf("expected a root mapping")
+	}
+	return document.Content[0], nil
 }
 
 func loadMapping(node *yaml.Node, name string) (map[string]yaml.Node, error) {
