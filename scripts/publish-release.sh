@@ -55,6 +55,17 @@ find_release() {
 check_marker() {
   jq -e --arg marker "$marker" '.body | startswith($marker + "\n")' "$work/release.json" > /dev/null
 }
+verify_tag_target() {
+  local error_context="$1" tag_type tag_sha
+  tag_type="$(jq -r '.object.type' "$work/tag.json")"
+  tag_sha="$(jq -r '.object.sha' "$work/tag.json")"
+  if [[ "$tag_type" == tag ]]; then
+    gh api "repos/$repo/git/tags/$tag_sha" > "$work/annotated.json"
+    tag_type="$(jq -r '.object.type' "$work/annotated.json")"
+    tag_sha="$(jq -r '.object.sha' "$work/annotated.json")"
+  fi
+  [[ "$tag_type" == commit && "$tag_sha" == "$SOURCE_SHA" ]] || fail "$error_context"
+}
 
 # Inspect existing release identity before creating any missing tag.
 release_exists=false
@@ -68,14 +79,7 @@ fi
 
 # Resolve both lightweight and annotated tags without moving either.
 if optional_api "repos/$repo/git/ref/tags/$VERSION" "$work/tag.json"; then
-  tag_type="$(jq -r '.object.type' "$work/tag.json")"
-  tag_sha="$(jq -r '.object.sha' "$work/tag.json")"
-  if [[ "$tag_type" == tag ]]; then
-    gh api "repos/$repo/git/tags/$tag_sha" > "$work/annotated.json"
-    tag_type="$(jq -r '.object.type' "$work/annotated.json")"
-    tag_sha="$(jq -r '.object.sha' "$work/annotated.json")"
-  fi
-  [[ "$tag_type" == commit && "$tag_sha" == "$SOURCE_SHA" ]] || fail 'existing tag targets another commit'
+  verify_tag_target 'existing tag targets another commit'
 else
   [[ "$release_exists" == false ]] || fail 'existing release has no tag; refusing to recreate it'
   gh api -X POST "repos/$repo/git/refs" -f "ref=refs/tags/$VERSION" -f "sha=$SOURCE_SHA" > /dev/null
@@ -146,14 +150,7 @@ verify_assets
 [[ "$(jq -r '.draft' "$work/release.json")" == true ]] || fail 'release changed state during upload'
 check_marker || fail 'release notes changed during upload'
 gh api "repos/$repo/git/ref/tags/$VERSION" > "$work/tag.json"
-tag_type="$(jq -r '.object.type' "$work/tag.json")"
-tag_sha="$(jq -r '.object.sha' "$work/tag.json")"
-if [[ "$tag_type" == tag ]]; then
-  gh api "repos/$repo/git/tags/$tag_sha" > "$work/annotated.json"
-  tag_type="$(jq -r '.object.type' "$work/annotated.json")"
-  tag_sha="$(jq -r '.object.sha' "$work/annotated.json")"
-fi
-[[ "$tag_type" == commit && "$tag_sha" == "$SOURCE_SHA" ]] || fail 'tag changed before publication'
+verify_tag_target 'tag changed before publication'
 jq -n '{draft:false}' > "$work/publish.json"
 gh api -X PATCH "repos/$repo/releases/$release_id" --input "$work/publish.json" > /dev/null
 gh api "repos/$repo/releases/$release_id" > "$work/release.json"
