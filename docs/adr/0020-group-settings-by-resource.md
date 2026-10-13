@@ -6,7 +6,7 @@ description: Place API-aligned repository fields under settings.repository in co
 
 ## Status
 
-Accepted — implemented by export; validation is future work. Supersedes the root-placement consequence of [ADR 0006](0006-update-api-schema.md). [ADR 0021](0021-require-schema-version.md) subsequently defines the first root metadata key.
+Accepted — implemented by export and validate. Supersedes the root-placement consequence of [ADR 0006](0006-update-api-schema.md). [ADR 0021](0021-require-schema-version.md) subsequently defines the first root metadata key.
 
 ## Context
 
@@ -18,4 +18,4 @@ Use `settings` as the root settings container and `settings.repository` for the 
 
 ## Consequences
 
-`export` emits the nested structure. The planned `validate` command will reject the earlier flat structure and unknown keys or groups. Existing flat configuration must move its five fields under `settings.repository`. Omitted mappings and empty mappings manage no fields; explicit false and empty strings remain declared values. The outer `settings` and `repository` keys are configuration grouping and are not PATCH body fields. No other settings, commands, or migration mechanism are added.
+`export` emits the nested structure, and `validate` rejects the earlier flat structure and unknown keys or groups. Existing flat configuration must move its five fields under `settings.repository`. Omitted mappings and empty mappings manage no fields; explicit false and empty strings remain declared values. The outer `settings` and `repository` keys are configuration grouping and are not PATCH body fields. No other settings, commands, or migration mechanism are added.

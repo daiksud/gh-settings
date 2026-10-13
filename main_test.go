@@ -259,7 +259,7 @@ func TestExportRepositoryFailure(t *testing.T) {
 }
 
 func TestUnsupportedCommand(t *testing.T) {
-	for _, args := range [][]string{nil, {"apply"}, {"plan"}, {"validate"}, {"export", "--repo", "owner/other"}} {
+	for _, args := range [][]string{nil, {"apply"}, {"plan"}, {"export", "--repo", "owner/other"}, {"validate", "--repo", "owner/other"}} {
 		var stdout, stderr bytes.Buffer
 		code := run(args, &stdout, &stderr, func() ([]byte, error) {
 			t.Fatal("unsupported command invoked API operation")

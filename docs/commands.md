@@ -10,13 +10,13 @@ sources:
 
 ## Scope and status
 
-`gh settings export` is implemented; the other commands remain proposed. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The proposed mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
+`gh settings export` and `gh settings validate` are implemented; `plan` and `apply` remain proposed. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The proposed mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
 
 Saved plan artifacts and drift protection are outside the initial scope. GitHub Action delivery is deferred.
 
 ## Interface and implementation status
 
-The `export` example is implemented. `validate`, `plan`, and `apply` remain proposed and are rejected by the current CLI. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
+The `export` and `validate` examples are implemented. `plan` and `apply` remain proposed and are rejected by the current CLI. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
 
 ```text
 gh settings export
@@ -28,7 +28,7 @@ gh settings apply
 | Command | Contract |
 | --- | --- |
 | `export` (implemented) | Read current supported settings and write YAML configuration to standard output. Exclude unsupported fields and read-only metadata. |
-| `validate` | Check configuration against the supported schema. Unknown keys and invalid values fail validation. |
+| `validate` (implemented) | Check `.github/settings.yml` locally against the supported schema. Unknown or duplicate keys and invalid values fail validation. |
 | `plan` | Read current settings and show differences for managed fields only. The result is informational. |
 | `apply` | Validate configuration, then send declared supported fields directly to the repository update API. Omitted fields are not sent. |
 
@@ -41,6 +41,12 @@ For example, declaring only `settings.repository.has_issues: false` means that a
 ## Export behavior
 
 Export resolves the current Git checkout's configured `origin` remote, including from subdirectories and repository-specific included or worktree configuration. A configured GitHub URL keeps its repository identity when Git `insteadOf` changes its transport destination; an alias rewritten to a GitHub URL remains usable. Global Git configuration cannot supply an origin outside the checkout. The current implementation accepts GitHub.com HTTPS and SSH URLs and ignores `GH_REPO`. Missing or unsupported origins fail before the API read. GitHub API authentication uses the existing go-gh/gh integration. The command normalizes GitHub description/homepage nulls to empty strings; it distinguishes missing response keys from null and rejects missing keys or null booleans. The command preserves false and empty string values and does not write configuration files or change repository settings. Read, decoding, and output failures return a nonzero status; read and decoding failures leave standard output empty. See the [behavior specification and test mapping](features/export.feature.md).
+
+## Validate behavior
+
+Validate reads `.github/settings.yml` at the current Git checkout's root, including when run from a subdirectory. It checks one YAML root mapping with required integer `schemaVersion: 1`, optional `settings.repository`, and the five supported fields. `description` and `homepage` must be strings; `has_issues`, `has_projects`, and `has_wiki` must be booleans. It rejects missing or unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple YAML documents, and values with the wrong shape or type. Empty settings mappings and partial declarations are valid. Omitted fields remain omitted; explicit false and empty strings are valid. Explicit null fails the string/boolean type check under [ADR 0019](adr/0019-reject-explicit-null.md). Alias and merge values are checked after YAML resolves them. Earlier flat YAML files fail validation and need a version plus their fields moved under `settings.repository`. This check does not verify GitHub's server-side behavior for null updates.
+
+Success is silent with exit status zero. Failure reports a diagnostic on standard error and exits nonzero with no standard output. Validate reads no GitHub settings, requires no GitHub origin or authentication, and does not change the file or repository settings. See the [behavior specification and test mapping](features/validate.feature.md).
 
 ## Failures and limits for proposed mutation commands
 
@@ -57,6 +63,6 @@ There is no automatic rollback and no transactional guarantee. A failure does no
 - Omitted fields are absent from the update request.
 - Permission or API failure produces a nonzero exit status without automatic rollback.
 
-Export acceptance conditions are covered by the [implemented scenarios and Go tests](features/export.feature.md); the remaining conditions are intended for future implementation. The [settings page](settings.md#configuration-semantics) records the agreed structure and unresolved null handling for future YAML input. Future composition across multiple update endpoints remains undecided.
+Export and validate acceptance conditions are covered by their implemented behavior specifications and Go tests ([export](features/export.feature.md), [validate](features/validate.feature.md)); plan and apply conditions are intended for future implementation. The [settings page](settings.md#configuration-semantics) records the agreed structure and null handling for these five fields. Future composition across multiple update endpoints remains undecided.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the update endpoint and failure responses. This reference does not expand the supported scope.
