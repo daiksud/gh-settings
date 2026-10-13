@@ -27,6 +27,14 @@ func exportSettings(repo repository.Repository, client *api.RESTClient) ([]byte,
 	if err := client.Get("repos/"+repo.Owner+"/"+repo.Name, &response); err != nil {
 		return nil, fmt.Errorf("read repository settings: %w", err)
 	}
+	result, err := decodeRepositoryResponse(response)
+	if err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": result}})
+}
+
+func decodeRepositoryResponse(response map[string]json.RawMessage) (settings, error) {
 	var result settings
 	fields := []struct {
 		name   string
@@ -38,20 +46,20 @@ func exportSettings(repo repository.Repository, client *api.RESTClient) ([]byte,
 	for _, field := range fields {
 		value, present := response[field.name]
 		if !present {
-			return nil, fmt.Errorf("GitHub response is missing %s", field.name)
+			return settings{}, fmt.Errorf("GitHub response is missing %s", field.name)
 		}
 		if string(value) == "null" {
 			if field.name == "description" || field.name == "homepage" {
 				// GET uses null for unset strings; export uses the update schema's empty string.
 				continue
 			}
-			return nil, fmt.Errorf("GitHub returned null for %s", field.name)
+			return settings{}, fmt.Errorf("GitHub returned null for %s", field.name)
 		}
 		if err := json.Unmarshal(value, field.target); err != nil {
-			return nil, fmt.Errorf("decode %s: %w", field.name, err)
+			return settings{}, fmt.Errorf("decode %s: %w", field.name, err)
 		}
 	}
-	return yaml.Marshal(map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": result}})
+	return result, nil
 }
 
 type settings struct {
