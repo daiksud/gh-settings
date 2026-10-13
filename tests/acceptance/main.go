@@ -2,7 +2,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -20,28 +19,6 @@ type scenario struct {
 	userlessOrigin, success                                                   bool
 	args                                                                      []string
 	status                                                                    int
-}
-
-func main() {
-	binary := flag.String("binary", "", "path to the already-built gh-settings executable")
-	flag.Parse()
-	if *binary == "" || flag.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, "usage: acceptance --binary PATH")
-		os.Exit(2)
-	}
-	path, err := filepath.Abs(*binary)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	cases := append(exportScenarios(), validateScenarios()...)
-	for _, test := range cases {
-		if err := check(path, test); err != nil {
-			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", test.name, err)
-			os.Exit(1)
-		}
-		fmt.Printf("PASS %s\n", test.name)
-	}
 }
 
 func repositoryInput(fields string) string {

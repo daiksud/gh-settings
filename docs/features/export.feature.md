@@ -127,7 +127,7 @@ A repository maintainer can capture the current five supported settings as confi
 
 ### Test mapping
 
-These scenarios map to ordinary Go tests and a [process acceptance harness](../../tests/acceptance/main.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
+These scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_export.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
