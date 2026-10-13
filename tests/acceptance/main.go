@@ -73,7 +73,10 @@ func main() {
 		{name: "validate-unsupported-schema-version", args: []string{"validate"}, input: "schemaVersion: 2\n", noRead: true, errorText: "unsupported schemaVersion"},
 		{name: "validate-null-key", args: []string{"validate"}, input: "schemaVersion: 1\nnull: ignored\n", noRead: true, errorText: "mapping keys must be strings"},
 		{name: "validate-alias-duplicate-key", args: []string{"validate"}, input: repositoryInput("&field has_issues: true\n*field: false\n"), noRead: true, errorText: "duplicate key"},
+		{name: "validate-alias-merge-key", args: []string{"validate"}, input: repositoryInput("&merge <<: {has_issues: true}\n*merge: {visibility: private}\n"), noRead: true, errorText: "merge key cannot be an alias"},
 		{name: "validate-binary-string", args: []string{"validate"}, input: repositoryInput("description: !!binary /w==\n"), noRead: true, errorText: "must be a string"},
+		{name: "validate-legacy-tagged-boolean", args: []string{"validate"}, input: repositoryInput("has_issues: !!bool yes\n"), noRead: true, errorText: "spelled true or false"},
+		{name: "validate-mistagged-mapping", args: []string{"validate"}, input: "schemaVersion: 1\nsettings: !!str {}\n", noRead: true, errorText: "settings must be a mapping"},
 		{name: "validate-missing-file", args: []string{"validate"}, noRead: true, errorText: "settings.yml"},
 	}
 	for _, test := range cases {

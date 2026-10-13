@@ -42,7 +42,7 @@ func validateSettings(data []byte) error {
 		}
 		return fmt.Errorf("expected one YAML document")
 	}
-	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode {
+	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode || document.Content[0].Tag != "!!map" {
 		return fmt.Errorf("expected a root mapping")
 	}
 	if err := checkMappingKeys(&document, make(map[*yaml.Node]bool)); err != nil {
@@ -97,6 +97,9 @@ func validateSettings(data []byte) error {
 					if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
 						return fmt.Errorf("%s must be a boolean", field)
 					}
+					if !strings.EqualFold(value.Value, "true") && !strings.EqualFold(value.Value, "false") {
+						return fmt.Errorf("%s must be a boolean spelled true or false", field)
+					}
 					var parsed bool
 					if err := value.Decode(&parsed); err != nil {
 						return fmt.Errorf("%s must be a boolean: %w", field, err)
@@ -118,7 +121,7 @@ func loadMapping(node *yaml.Node, name string) (map[string]yaml.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if node.Kind != yaml.MappingNode {
+	if node.Kind != yaml.MappingNode || node.Tag != "!!map" {
 		return nil, fmt.Errorf("%s must be a mapping", name)
 	}
 	var values map[string]yaml.Node
@@ -152,9 +155,13 @@ func checkMappingKeys(node *yaml.Node, visited map[*yaml.Node]bool) error {
 	if node.Kind == yaml.MappingNode {
 		seen := make(map[string]bool)
 		for i := 0; i < len(node.Content); i += 2 {
-			key, err := resolveAlias(node.Content[i])
+			rawKey := node.Content[i]
+			key, err := resolveAlias(rawKey)
 			if err != nil {
 				return err
+			}
+			if rawKey.Kind == yaml.AliasNode && key.Tag == "!!merge" {
+				return fmt.Errorf("merge key cannot be an alias at line %d", rawKey.Line)
 			}
 			if key.Kind != yaml.ScalarNode || (key.Tag != "!!str" && key.Tag != "!!merge") {
 				return fmt.Errorf("mapping keys must be strings at line %d", key.Line)
