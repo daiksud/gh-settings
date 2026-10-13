@@ -211,6 +211,38 @@ func TestExportLiteralOutput(t *testing.T) {
 	}
 }
 
+func TestConfigLeafPresence(t *testing.T) {
+	empty := ""
+	disabled := false
+	for _, test := range []struct {
+		name       string
+		repository settings
+		want       string
+	}{
+		{
+			name: "all absent",
+			want: "schemaVersion: 1\nsettings:\n    repository: {}\n",
+		},
+		{
+			name:       "some present zero",
+			repository: settings{Description: &empty, HasIssues: &disabled},
+			want:       "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        has_issues: false\n",
+		},
+		{
+			name:       "all present zero",
+			repository: settings{Description: &empty, Homepage: &empty, HasIssues: &disabled, HasProjects: &disabled, HasWiki: &disabled},
+			want:       "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        homepage: \"\"\n        has_issues: false\n        has_projects: false\n        has_wiki: false\n",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := yaml.Marshal(Config{SchemaVersion: 1, Settings: configSettings{Repository: test.repository}})
+			if err != nil || string(got) != test.want {
+				t.Fatalf("output=%q err=%v, want %q", got, err, test.want)
+			}
+		})
+	}
+}
+
 func TestExportPreservesZeroValues(t *testing.T) {
 	data, err := exportSettings(repository.Repository{Owner: "owner", Name: "current"}, testClient(t, `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`, 200))
 	if err != nil {
@@ -506,10 +538,9 @@ func TestDecodeRepositoryResponse(t *testing.T) {
 		"has_wiki":     json.RawMessage(`true`),
 		"private":      json.RawMessage(`true`),
 	}
-	want := settings{Homepage: "https://example.com", HasIssues: true, HasWiki: true}
 	got, err := decodeRepositoryResponse(response)
-	if err != nil || got != want {
-		t.Fatalf("settings=%+v err=%v, want %+v", got, err, want)
+	if err != nil || got.Description == nil || *got.Description != "" || got.Homepage == nil || *got.Homepage != "https://example.com" || got.HasIssues == nil || !*got.HasIssues || got.HasProjects == nil || *got.HasProjects || got.HasWiki == nil || !*got.HasWiki {
+		t.Fatalf("settings=%+v err=%v, want all five present with normalized values", got, err)
 	}
 
 	for _, test := range []struct {
