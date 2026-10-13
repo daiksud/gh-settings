@@ -126,7 +126,7 @@ func TestParseConfigErrorsReturnNoValues(t *testing.T) {
 		"settings:\n  repository:\n    has_issues: false\n",
 		repositoryYAML("description: Example\nhas_wiki: null\n"),
 		repositoryYAML("description: Example\nvisibility: private\n"),
-		repositoryYAML("description: &value false\nhomepage: *value\n"),
+		repositoryYAML("has_issues: &value false\nhomepage: *value\n"),
 	} {
 		config, err := ParseConfig([]byte(input))
 		if err == nil || !reflect.DeepEqual(config, Config{}) {
