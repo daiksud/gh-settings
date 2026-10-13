@@ -19,11 +19,11 @@ type configSettings struct {
 }
 
 type settings struct {
-	Description string `yaml:"description"`
-	Homepage    string `yaml:"homepage"`
-	HasIssues   bool   `yaml:"has_issues"`
-	HasProjects bool   `yaml:"has_projects"`
-	HasWiki     bool   `yaml:"has_wiki"`
+	Description *string `yaml:"description,omitempty"`
+	Homepage    *string `yaml:"homepage,omitempty"`
+	HasIssues   *bool   `yaml:"has_issues,omitempty"`
+	HasProjects *bool   `yaml:"has_projects,omitempty"`
+	HasWiki     *bool   `yaml:"has_wiki,omitempty"`
 }
 
 func validateSettings(data []byte) error {

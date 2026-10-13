@@ -49,11 +49,16 @@ func decodeRepositoryResponse(response map[string]json.RawMessage) (settings, er
 			return settings{}, fmt.Errorf("GitHub response is missing %s", field.name)
 		}
 		if string(value) == "null" {
-			if field.name == "description" || field.name == "homepage" {
+			switch field.name {
+			case "description":
 				// GET uses null for unset strings; export uses the update schema's empty string.
-				continue
+				result.Description = new(string)
+			case "homepage":
+				result.Homepage = new(string)
+			default:
+				return settings{}, fmt.Errorf("GitHub returned null for %s", field.name)
 			}
-			return settings{}, fmt.Errorf("GitHub returned null for %s", field.name)
+			continue
 		}
 		if err := json.Unmarshal(value, field.target); err != nil {
 			return settings{}, fmt.Errorf("decode %s: %w", field.name, err)
