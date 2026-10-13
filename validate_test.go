@@ -105,10 +105,10 @@ func TestValidateCommandReadsOnlySettingsFile(t *testing.T) {
 	}
 	t.Chdir(filepath.Join(dir, "nested")) // No origin or GitHub authentication is available.
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"validate"}, &stdout, &stderr, func() ([]byte, error) {
+	code := run([]string{"validate"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 		t.Fatal("validate must not call export or GitHub")
 		return nil, nil
-	})
+	}, validate: validateCurrent})
 	if code != 0 || stdout.Len() != 0 || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
@@ -125,7 +125,7 @@ func TestValidateCommandMissingFile(t *testing.T) {
 	}
 	t.Chdir(dir)
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"validate"}, &stdout, &stderr, nil); code == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), settingsPath) {
+	if code := run([]string{"validate"}, &stdout, &stderr, commandOperations{validate: validateCurrent}); code == 0 || stdout.Len() != 0 || !strings.Contains(stderr.String(), settingsPath) {
 		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }
@@ -143,7 +143,7 @@ func TestValidateCommandPreservesTrailingSpaceInGitRoot(t *testing.T) {
 	}
 	t.Chdir(dir)
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"validate"}, &stdout, &stderr, nil); code != 0 || stdout.Len() != 0 || stderr.Len() != 0 {
+	if code := run([]string{"validate"}, &stdout, &stderr, commandOperations{validate: validateCurrent}); code != 0 || stdout.Len() != 0 || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }
