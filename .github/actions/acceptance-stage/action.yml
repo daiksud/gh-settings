@@ -46,4 +46,4 @@ runs:
       shell: bash
       env:
         BINARY_PATH: ${{ inputs.binary-path }}
-      run: go run ./tests/acceptance --binary "$BINARY_PATH"
+      run: go test -tags=acceptance -count=1 ./tests/acceptance -args -binary "$BINARY_PATH"

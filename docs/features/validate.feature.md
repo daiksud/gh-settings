@@ -101,7 +101,7 @@ description: Specify local validation of the five supported YAML settings and it
 
 ### Test mapping
 
-The scenarios map to ordinary Go tests and the [process acceptance harness](../../tests/acceptance/main.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture.
+The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture.
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
