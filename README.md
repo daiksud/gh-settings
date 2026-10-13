@@ -1,34 +1,49 @@
 # gh-settings
 
-A GitHub CLI extension for exporting the current repository's five basic settings as YAML. Only `export` is implemented; `validate`, `plan`, `apply`, and GitHub Action delivery remain future work.
+A GitHub CLI extension for exporting the current repository's five basic settings as YAML. The current release implements read-only `export`; `validate`, `plan`, `apply`, and GitHub Action delivery remain future work.
 
-## Build and run from source
+## Install
 
-Requires Go 1.25 or later, Git, and GitHub CLI with existing authentication for the repository. For development, install [mise](https://mise.jdx.dev/getting-started.html) and run `mise install` to get the exact tool versions in [mise.toml](mise.toml), including Go 1.26.0.
+Install [GitHub CLI](https://cli.github.com/) and Git, then authenticate to GitHub.com with `gh auth login` if needed. Check your authentication with `gh auth status`. The published extension has binaries for macOS on Apple Silicon (`arm64`) and Linux on x86-64 (`amd64`); see the [latest release](https://github.com/daiksud/gh-settings/releases/latest) for its assets and checksums.
 
 ```sh
-go build -o gh-settings .
-gh extension install .
+gh extension install daiksud/gh-settings
+gh settings --version
 ```
 
-From the repository whose settings you want to read:
+To update or remove the installed extension, use `gh extension upgrade gh-settings` or `gh extension remove gh-settings`. See the [GitHub CLI extension manual](https://cli.github.com/manual/gh_extension) for extension management.
+
+## Quick start
+
+In the Git checkout whose settings you want to read, run:
 
 ```sh
 gh settings export
 ```
 
-`gh settings --version` prints the build version (`dev` for a source build).
+The command prints a YAML mapping with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`. It reads the checkout's GitHub.com `origin` remote; it does not use `GH_REPO` or require an existing `.github/settings.yml`. Export does not change repository settings or write a file. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
 
-The current implementation selects the current Git checkout's `origin` remote, accepts GitHub.com HTTPS and SSH URLs, and ignores `GH_REPO`. A configuration file is not required to bootstrap export. The command performs a read only and writes exactly `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki` as a root YAML mapping to standard output, including false and empty strings. GitHub's null description/homepage values are exported as quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Errors go to standard error with a nonzero exit status.
-
-To save the output explicitly, redirect it after creating `.github`:
+To save a copy, create `.github` first and redirect the output:
 
 ```sh
 mkdir -p .github
 gh settings export > .github/settings.yml
 ```
 
-Shell redirection can truncate an existing destination even if export fails. Inspect the output before replacing an existing configuration you need to preserve. `export` itself does not write files or change GitHub settings.
+Shell redirection can truncate an existing destination even if export fails. Inspect the output before replacing an existing configuration you need to preserve.
+
+## Build and run from source
+
+For development, use Go 1.25 or later and install [mise](https://mise.jdx.dev/getting-started.html). Run `mise install` to get the exact tool versions in [mise.toml](mise.toml), including Go 1.26.0.
+
+```sh
+go build -o gh-settings .
+gh extension install .
+```
+
+`gh settings --version` prints the build version (`dev` for a source build).
+
+The current implementation accepts GitHub.com HTTPS and SSH `origin` URLs. It outputs all five fields as a root YAML mapping, including false and empty strings. GitHub's null description/homepage values become quoted empty strings, never YAML null. Missing response fields and null booleans are errors. Errors go to standard error with a nonzero exit status.
 
 ## Development checks
 
