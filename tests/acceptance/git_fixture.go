@@ -5,59 +5,53 @@ import (
 	"os/exec"
 )
 
-func setupGitCheckout(work string, env []string, test scenario) error {
-	if test.noRepo {
-		return nil
-	}
+func setupOrdinaryOrigin(work string, env []string) error {
 	if err := initGitCheckout(work, env); err != nil {
 		return err
 	}
-	var gitCommands [][]string
-	if !test.worktreeOrigin {
-		origin := "https://github.com/owner/current.git"
-		if test.userlessOrigin {
-			origin = "github.com:owner/current.git"
-		}
-		gitCommands = append(gitCommands, []string{"remote", "add", "origin", origin})
-	} else {
-		gitCommands = append(gitCommands,
-			[]string{"config", "--local", "extensions.worktreeConfig", "true"},
-			[]string{"config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git"})
+	return runGit(work, env, "remote", "add", "origin", "https://github.com/owner/current.git")
+}
+
+func setupUserlessSCPOrigin(work string, env []string) error {
+	if err := initGitCheckout(work, env); err != nil {
+		return err
 	}
-	for _, args := range gitCommands {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = work
-		cmd.Env = env
-		if output, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git: %w: %s", err, output)
-		}
+	return runGit(work, env, "remote", "add", "origin", "github.com:owner/current.git")
+}
+
+func setupRewrittenOrigin(work string, env []string) error {
+	if err := setupOrdinaryOrigin(work, env); err != nil {
+		return err
 	}
-	if test.rewriteOrigin {
-		cmd := exec.Command("git", "config", "--local", "url.https://mirror.example/.insteadOf", "https://github.com/")
-		cmd.Dir = work
-		cmd.Env = env
-		if output, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git rewrite: %w: %s", err, output)
-		}
+	return runGit(work, env, "config", "--local", "url.https://mirror.example/.insteadOf", "https://github.com/")
+}
+
+func setupAliasedOrigin(work string, env []string) error {
+	if err := setupOrdinaryOrigin(work, env); err != nil {
+		return err
 	}
-	if test.aliasOrigin {
-		for _, args := range [][]string{
-			{"remote", "set-url", "origin", "gh:owner/current.git"},
-			{"config", "--local", "url.https://github.com/.insteadOf", "gh:"},
-		} {
-			cmd := exec.Command("git", args...)
-			cmd.Dir = work
-			cmd.Env = env
-			if output, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("git alias: %w: %s", err, output)
-			}
-		}
+	if err := runGit(work, env, "remote", "set-url", "origin", "gh:owner/current.git"); err != nil {
+		return err
 	}
-	return nil
+	return runGit(work, env, "config", "--local", "url.https://github.com/.insteadOf", "gh:")
+}
+
+func setupWorktreeOrigin(work string, env []string) error {
+	if err := initGitCheckout(work, env); err != nil {
+		return err
+	}
+	if err := runGit(work, env, "config", "--local", "extensions.worktreeConfig", "true"); err != nil {
+		return err
+	}
+	return runGit(work, env, "config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git")
 }
 
 func initGitCheckout(work string, env []string) error {
-	cmd := exec.Command("git", "init", "--quiet")
+	return runGit(work, env, "init", "--quiet")
+}
+
+func runGit(work string, env []string, args ...string) error {
+	cmd := exec.Command("git", args...)
 	cmd.Dir = work
 	cmd.Env = env
 	if output, err := cmd.CombinedOutput(); err != nil {
