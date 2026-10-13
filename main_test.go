@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -465,6 +466,50 @@ func TestExportNormalizesUnsetStrings(t *testing.T) {
 				if value, ok := result[key]; !ok || value != false {
 					t.Errorf("%s=%#v present=%v", key, value, ok)
 				}
+			}
+		})
+	}
+}
+
+func TestDecodeRepositoryResponse(t *testing.T) {
+	response := map[string]json.RawMessage{
+		"description":  json.RawMessage(`null`),
+		"homepage":     json.RawMessage(`"https://example.com"`),
+		"has_issues":   json.RawMessage(`true`),
+		"has_projects": json.RawMessage(`false`),
+		"has_wiki":     json.RawMessage(`true`),
+		"private":      json.RawMessage(`true`),
+	}
+	want := settings{Homepage: "https://example.com", HasIssues: true, HasWiki: true}
+	got, err := decodeRepositoryResponse(response)
+	if err != nil || got != want {
+		t.Fatalf("settings=%+v err=%v, want %+v", got, err, want)
+	}
+
+	for _, test := range []struct {
+		name      string
+		field     string
+		value     json.RawMessage
+		wantError string
+	}{
+		{"missing field", "homepage", nil, "GitHub response is missing homepage"},
+		{"null boolean", "has_issues", json.RawMessage(`null`), "GitHub returned null for has_issues"},
+		{"wrong string type", "homepage", json.RawMessage(`123`), "decode homepage: json: cannot unmarshal number into Go value of type string"},
+		{"wrong boolean type", "has_issues", json.RawMessage(`"true"`), "decode has_issues: json: cannot unmarshal string into Go value of type bool"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			invalid := make(map[string]json.RawMessage, len(response))
+			for key, value := range response {
+				invalid[key] = value
+			}
+			if test.value == nil {
+				delete(invalid, test.field)
+			} else {
+				invalid[test.field] = test.value
+			}
+			_, err := decodeRepositoryResponse(invalid)
+			if err == nil || err.Error() != test.wantError {
+				t.Fatalf("error=%v, want %q", err, test.wantError)
 			}
 		})
 	}
