@@ -34,7 +34,7 @@ Shell redirection can truncate an existing destination even if export fails. Ins
 
 ## Build and run from source
 
-For development, use Go 1.25 or later and install [mise](https://mise.jdx.dev/getting-started.html). Run `mise install` to get the exact tool versions in [mise.toml](mise.toml), including Go 1.26.0.
+To build from source, use Go 1.25 or later. The [development guide](docs/development.md) covers pinned tools and local checks.
 
 ```sh
 go build -o gh-settings .
@@ -64,37 +64,13 @@ The current source implementation accepts GitHub.com HTTPS and SSH `origin` URLs
 
 ## Development checks
 
-Install the tools declared in [mise.toml](mise.toml), then run checks through mise so the local versions match CI:
-
-```sh
-mise install
-mise exec -- go test -race -count=1 -vet=off ./...
-mise exec -- go vet ./...
-mise exec -- go build ./...
-mise exec -- go mod verify
-mise exec -- go mod tidy -diff
-mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml
-mise exec -- shellcheck scripts/publish-release.sh tests/release.sh
-mise exec -- bash tests/release.sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md docs
-```
+See the [development guide](docs/development.md) for tool setup, local checks, and process acceptance against one built binary.
 
 The [PR workflow](.github/workflows/ci-pr.yml) follows Draft → commit-stage → Ready → acceptance-stage → `pass`, matching the current apex/agents control flow. It runs on opened, synchronized, reopened, and edited PRs. The [main workflow](.github/workflows/ci-push.yml) runs commit-stage → acceptance-stage → `pass` on pushes to `main`. Failure, cancellation, or skipped acceptance prevents a successful `pass` result. This CI does not merge, publish, or deploy.
 
 Both workflows call [commit-stage](.github/actions/commit-stage/action.yml) for formatting, modules, vet, race tests, GitHub workflow/shell checks, a single product build, and Markdown/local links. CI installs the same pinned development tools from [mise.toml](mise.toml) with the official mise Action. The acceptance stage installs only Go from that configuration. Tool caches are disabled so PR jobs do not supply installed executables to later runs. They transfer that same binary through an artifact, then call [acceptance-stage](.github/actions/acceptance-stage/action.yml) to verify its SHA-256 and launch it as a real process. The tagged acceptance Go tests are compiled separately with caching disabled; the product is not rebuilt and the ordinary Go unit suite is not run again. Artifacts are retained for one day and downloaded only from the current workflow run.
 
 PR-code validation jobs have read permissions, no supplied secrets, and checkout credentials are not persisted. Draft/Ready control jobs have write permissions but do not check out or execute PR code, composites, or artifacts. Normal fork tokens are read-only, so automatic PR-state changes can be blocked on forks; this workflow does not bypass that restriction.
-
-### Local process acceptance
-
-Build the product once, then run the tagged Go acceptance tests against that executable:
-
-```sh
-mise exec -- go build -o /tmp/gh-settings-acceptance .
-mise exec -- go test -tags=acceptance -count=1 ./tests/acceptance -args -binary /tmp/gh-settings-acceptance
-```
-
-The [acceptance tests](tests/acceptance/acceptance_test.go) require an explicit existing binary path and use a local Unix-socket HTTP fixture and go-gh v2.16.2's `http_unix_socket` configuration in a temporary `GH_CONFIG_DIR`. Their dummy token never authenticates with GitHub. Checks cover YAML values, empty strings and false, GET null normalization, current-repository selection, exit codes, stderr, and failure paths. Temporary repositories/configuration are isolated and cleaned up. Product code needs no testing hook or test-only modification; Unix sockets are required.
 
 ### Codex approval control
 
