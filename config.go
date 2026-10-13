@@ -65,39 +65,46 @@ func validateSettings(data []byte) error {
 			if group != "repository" {
 				return fmt.Errorf("unknown settings group %q", group)
 			}
-			fields, err := loadMapping(&value, "settings.repository")
-			if err != nil {
+			if err := validateRepositoryFields(&value); err != nil {
 				return err
-			}
-			for field, value := range fields {
-				value, err := resolveAlias(&value)
-				if err != nil {
-					return err
-				}
-				switch field {
-				case "description", "homepage":
-					if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
-						return fmt.Errorf("%s must be a string", field)
-					}
-				case "has_issues", "has_projects", "has_wiki":
-					if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
-						return fmt.Errorf("%s must be a boolean", field)
-					}
-					if !strings.EqualFold(value.Value, "true") && !strings.EqualFold(value.Value, "false") {
-						return fmt.Errorf("%s must be a boolean spelled true or false", field)
-					}
-					var parsed bool
-					if err := value.Decode(&parsed); err != nil {
-						return fmt.Errorf("%s must be a boolean: %w", field, err)
-					}
-				default:
-					return fmt.Errorf("unknown setting %q", field)
-				}
 			}
 		}
 	}
 	if _, ok := root["schemaVersion"]; !ok {
 		return fmt.Errorf("missing schemaVersion: expected 1")
+	}
+	return nil
+}
+
+func validateRepositoryFields(node *yaml.Node) error {
+	fields, err := loadMapping(node, "settings.repository")
+	if err != nil {
+		return err
+	}
+	for field, value := range fields {
+		value, err := resolveAlias(&value)
+		if err != nil {
+			return err
+		}
+		switch field {
+		case "description", "homepage":
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
+				return fmt.Errorf("%s must be a string", field)
+			}
+		case "has_issues", "has_projects", "has_wiki":
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
+				return fmt.Errorf("%s must be a boolean", field)
+			}
+			if !strings.EqualFold(value.Value, "true") && !strings.EqualFold(value.Value, "false") {
+				return fmt.Errorf("%s must be a boolean spelled true or false", field)
+			}
+			var parsed bool
+			if err := value.Decode(&parsed); err != nil {
+				return fmt.Errorf("%s must be a boolean: %w", field, err)
+			}
+		default:
+			return fmt.Errorf("unknown setting %q", field)
+		}
 	}
 	return nil
 }

@@ -46,6 +46,37 @@ func TestLoadYAMLRootErrors(t *testing.T) {
 	}
 }
 
+func TestValidateRepositoryFields(t *testing.T) {
+	for _, test := range []struct {
+		name, input, wantError string
+	}{
+		{"partial zero values", "description: ''\nhas_issues: false\n", ""},
+		{"alias and uppercase boolean", "description: &text Example\nhomepage: *text\nhas_issues: !!bool TRUE\n", ""},
+		{"merge", "<<: {has_issues: false}\n", ""},
+		{"null string", "description: null\n", "description must be a string"},
+		{"null boolean", "has_wiki: null\n", "has_wiki must be a boolean"},
+		{"unknown field", "visibility: private\n", "unknown setting \"visibility\""},
+		{"legacy boolean", "has_issues: !!bool yes\n", "has_issues must be a boolean spelled true or false"},
+		{"duplicate field", "has_issues: true\nhas_issues: false\n", "already defined"},
+		{"contradictory mapping tag", "!!str {has_issues: true}\n", "settings.repository must be a mapping"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var document yaml.Node
+			if err := yaml.Unmarshal([]byte(test.input), &document); err != nil {
+				t.Fatal(err)
+			}
+			err := validateRepositoryFields(document.Content[0])
+			if test.wantError == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), test.wantError) {
+				t.Fatalf("error=%v, want %q", err, test.wantError)
+			}
+		})
+	}
+}
+
 func TestValidateSettings(t *testing.T) {
 	tests := []struct {
 		name, input, errorText string
