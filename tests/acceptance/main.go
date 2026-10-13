@@ -6,14 +6,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"go.yaml.in/yaml/v4"
@@ -102,46 +99,12 @@ func repositoryInput(fields string) string {
 }
 
 func check(binary string, test scenario) error {
-	// A short /tmp path stays within Unix socket path limits on both macOS and Linux.
-	root, err := os.MkdirTemp("/tmp", "ghs-accept-")
+	fixture, err := startAPIFixture(test.body, test.status)
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(root)
-	work := filepath.Join(root, "repo")
-	cfg := filepath.Join(root, "config")
-	for _, dir := range []string{work, cfg} {
-		if err := os.Mkdir(dir, 0700); err != nil {
-			return err
-		}
-	}
-	socket := filepath.Join(root, "api.sock")
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		return err
-	}
-	var reads atomic.Int32
-	var invalid atomic.Bool
-	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reads.Add(1)
-		if r.Method != http.MethodGet || r.URL.Path != "/repos/owner/current" {
-			invalid.Store(true)
-			http.Error(w, "unexpected fixture request", 400)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		status := test.status
-		if status == 0 {
-			status = 200
-		}
-		w.WriteHeader(status)
-		fmt.Fprint(w, test.body)
-	})}
-	go func() { _ = server.Serve(listener) }()
-	defer server.Close()
-	if err := os.WriteFile(filepath.Join(cfg, "config.yml"), []byte("http_unix_socket: "+socket+"\n"), 0600); err != nil {
-		return err
-	}
+	defer fixture.close()
+	root, work, cfg := fixture.root, fixture.work, fixture.cfg
 	env := fixtureEnv(cfg)
 	if !test.noRepo {
 		gitCommands := [][]string{{"init", "--quiet"}}
@@ -222,15 +185,8 @@ func check(binary string, test scenario) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	if invalid.Load() {
-		return fmt.Errorf("request was not a read of the current repository")
-	}
-	if test.noRead {
-		if reads.Load() != 0 {
-			return fmt.Errorf("unexpected API request")
-		}
-	} else if reads.Load() == 0 {
-		return fmt.Errorf("CLI did not use the local API fixture")
+	if err := fixture.checkRequests(test.noRead); err != nil {
+		return err
 	}
 	if test.success {
 		if runErr != nil || stdout.Len() != 0 || stderr.Len() != 0 {
