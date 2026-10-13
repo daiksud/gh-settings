@@ -8,8 +8,16 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 )
 
+func gitRoot() (string, error) {
+	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(string(root), "\n"), nil
+}
+
 func currentRepository() (repository.Repository, error) {
-	if _, err := exec.Command("git", "rev-parse", "--show-toplevel").Output(); err != nil {
+	if _, err := gitRoot(); err != nil {
 		return repository.Repository{}, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
 	}
 	// Git remote get-url applies insteadOf transport rewrites, which can hide

@@ -3,19 +3,17 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 )
 
 const settingsPath = ".github/settings.yml"
 
 func validateCurrent() error {
-	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	root, err := gitRoot()
 	if err != nil {
 		return fmt.Errorf("locate %s: current directory is not in a Git repository: %w", settingsPath, err)
 	}
-	data, err := os.ReadFile(filepath.Join(strings.TrimSuffix(string(root), "\n"), settingsPath))
+	data, err := os.ReadFile(filepath.Join(root, settingsPath))
 	if err != nil {
 		return fmt.Errorf("read %s: %w", settingsPath, err)
 	}
