@@ -90,6 +90,23 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if strings.Contains(prText, "secrets.") || strings.Contains(prText, "environment:") || strings.Contains(prText, " apply") || strings.Contains(prText, "/apply.sh") {
 		t.Fatal("privileged PR path")
 	}
+	for event, keys := range map[string]map[string]bool{"push": {"branches": true, "paths": true}, "pull_request": {"types": true, "paths": true}} {
+		node := main.On[event]
+		if event == "pull_request" {
+			node = pr.On[event]
+		}
+		if node.Kind != yaml.MappingNode {
+			t.Fatal("unsupported trigger shape")
+		}
+		for i := 0; i < len(node.Content); i += 2 {
+			if !keys[node.Content[i].Value] {
+				t.Fatal("unmodeled trigger filter")
+			}
+		}
+	}
+	if permissions := pr.Jobs["plan"].Permissions; permissions != nil && !reflect.DeepEqual(permissions, map[string]string{"contents": "read"}) {
+		t.Fatal("PR read permission override")
+	}
 	var push struct {
 		Branches []string `yaml:"branches"`
 		Tags     []string `yaml:"tags"`
@@ -252,6 +269,9 @@ printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"` {
 	}
 	if findStep(t, apply, "apply").Env["SETTINGS_CLI"] != "${{ steps.cli.outputs.binary-path }}" {
 		t.Fatal("verified apply CLI binding changed")
+	}
+	if findStep(t, apply, "cli").Run != "bash examples/github-actions/verify-apply.sh" || findStep(t, apply, "apply").Run != "bash examples/github-actions/apply.sh" || strings.TrimSpace(apply.Steps[4].Run) != `printf '## Apply result\n\nCLI step outcome: %s. See the step log for errors.\n' "$APPLY_OUTCOME" >> "$GITHUB_STEP_SUMMARY"` {
+		t.Fatal("privileged run command changed")
 	}
 	app := findStep(t, apply, "app")
 	allowed := map[string]string{"client-id": "${{ vars.SETTINGS_APP_CLIENT_ID }}", "private-key": "${{ secrets.SETTINGS_APP_PRIVATE_KEY }}", "owner": "${{ github.repository_owner }}", "repositories": "${{ github.event.repository.name }}", "permission-administration": "write"}
