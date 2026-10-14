@@ -178,7 +178,7 @@ These scenarios map to ordinary Go tests, [export process cases](../../tests/acc
 | Export from a subdirectory without a settings directory | — | `TestExportSavesAtCheckoutRoot` |
 | Refresh an existing regular configuration | — | `TestExportExistingFile/replace` |
 | Report a failed write | — | `TestExportReportsWriteFailure` |
-| Refuse symlink destinations and non-regular files | — | `TestExportRejectsUnsafeDestination` |
+| Refuse symlink destinations and non-regular files | `TestWriteExportFileRejectsSymlinkReplacement` | `TestExportRejectsUnsafeDestination`, `TestExportRejectsCheckoutReplacementDuringAPIRead` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
 | Export five settings successfully | `TestExportFiveSettings` | `five-settings` |
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |
