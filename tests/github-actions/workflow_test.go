@@ -75,7 +75,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if len(pr.On) != 1 || pr.On["pull_request"].Kind == 0 || len(main.On) != 1 || main.On["push"].Kind == 0 {
 		t.Fatal("unexpected privileged trigger")
 	}
-	if strings.Contains(prText, "secrets.") || strings.Contains(prText, "environment:") || strings.Contains(prText, " apply") {
+	if strings.Contains(prText, "secrets.") || strings.Contains(prText, "environment:") || strings.Contains(prText, " apply") || strings.Contains(prText, "/apply.sh") {
 		t.Fatal("privileged PR path")
 	}
 	var push struct {
@@ -92,7 +92,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if len(pr.Permissions) != 1 || pr.Permissions["contents"] != "read" || len(main.Permissions) != 0 {
 		t.Fatal("workflow permissions widened")
 	}
-	if !pr.Concurrency.Cancel || main.Concurrency.Cancel || !strings.Contains(main.Concurrency.Group, "github.repository") {
+	if !pr.Concurrency.Cancel || main.Concurrency.Cancel || main.Concurrency.Group != "settings-main-${{ github.repository }}" || pr.Concurrency.Group != "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}" {
 		t.Fatal("concurrency contract changed")
 	}
 	pin := regexp.MustCompile(`^[^@]+@[0-9a-f]{40}$`)
@@ -137,8 +137,23 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 			t.Fatal("prepare credential path")
 		}
 	}
+	for _, j := range []job{prepare, apply} {
+		if len(j.Permissions) != 1 || j.Permissions["contents"] != "read" {
+			t.Fatal("missing required main read permission")
+		}
+	}
+	indices := map[string]int{}
+	for i, s := range apply.Steps {
+		indices[s.ID] = i
+	}
+	if !(indices["cli"] < indices["app"] && indices["app"] < indices["apply"]) {
+		t.Fatal("credential step order changed")
+	}
+	if findStep(t, apply, "apply").Env["SETTINGS_CLI"] != "${{ steps.cli.outputs.binary-path }}" {
+		t.Fatal("verified apply CLI binding changed")
+	}
 	app := findStep(t, apply, "app")
-	if app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || app.With["repositories"] != "${{ github.event.repository.name }}" || app.With["owner"] != "${{ github.repository_owner }}" || app.With["permission-administration"] != "write" || app.With["private-key"] != "${{ secrets.SETTINGS_APP_PRIVATE_KEY }}" || app.With["skip-token-revoke"] == "true" {
+	if app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || app.With["repositories"] != "${{ github.event.repository.name }}" || app.With["owner"] != "${{ github.repository_owner }}" || app.With["permission-administration"] != "write" || app.With["private-key"] != "${{ secrets.SETTINGS_APP_PRIVATE_KEY }}" || (app.With["skip-token-revoke"] != "" && app.With["skip-token-revoke"] != "false") || app.With["client-id"] != "${{ vars.SETTINGS_APP_CLIENT_ID }}" {
 		t.Fatal("App permission/key/revocation contract changed")
 	}
 	if strings.Count(mainText, "steps.app.outputs.token") != 1 || findStep(t, apply, "apply").Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" {
