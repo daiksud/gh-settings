@@ -28,7 +28,7 @@ runs:
       shell: bash
       run: |
         actionlint -shellcheck shellcheck .github/workflows/*.yml
-        shellcheck scripts/publish-release.sh tests/release.sh
+        shellcheck scripts/publish-release.sh tests/release.sh examples/github-actions/*.sh tests/github-actions/*.sh
     - name: Verify Go formatting
       shell: bash
       run: |
@@ -52,6 +52,9 @@ runs:
     - name: Test release recovery without GitHub
       shell: bash
       run: bash tests/release.sh
+    - name: Test example CLI bootstrap without GitHub
+      shell: bash
+      run: bash tests/github-actions/bootstrap.sh
     - name: Build the product binary once
       id: build
       shell: bash
@@ -68,4 +71,4 @@ runs:
         printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
     - name: Check Markdown and local links
       shell: bash
-      run: rumdl check --no-cache --deny-config-warnings README.md docs
+      run: rumdl check --no-cache --deny-config-warnings README.md docs examples/github-actions
