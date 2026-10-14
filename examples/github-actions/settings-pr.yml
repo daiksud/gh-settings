@@ -1,0 +1,36 @@
+name: Settings PR plan (example)
+on:
+  pull_request:
+    paths:
+      - .github/settings.yml
+      - .github/workflows/settings-pr.yml
+      - examples/github-actions/**
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout containing repository PR merge revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install verified released CLI
+        id: cli
+        run: |
+          binary=$(bash examples/github-actions/install-cli.sh "$RUNNER_TEMP/settings-cli")
+          printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
+      - name: Validate then read-only plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SETTINGS_CLI: ${{ steps.cli.outputs.binary-path }}
+        run: bash examples/github-actions/plan.sh "$SETTINGS_CLI" "$RUNNER_TEMP/settings-plan.txt"

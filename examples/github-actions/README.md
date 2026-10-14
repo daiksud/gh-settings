@@ -15,3 +15,9 @@ The script prints the verified executable path. It downloads `gh-settings-linux-
 Use the same script from the same configuration commit in prepare and apply. Do not cache PR-supplied executable content or build repository source for privileged use. Shared persistent self-hosted runners are outside the supported setup.
 
 Offline bootstrap fixtures run with `bash tests/github-actions/bootstrap.sh`; they stub downloading and replace only the expected digest for local test binaries. No token or GitHub update is used.
+
+## Read-only PR example
+
+`settings-pr.yml` uses `pull_request` and the containing repository's synthetic PR merge revision (`github.sha`), including for forks. Checkout binds the CLI's origin target to that repository and does not persist credentials. The verified released CLI runs validate before GET-only plan, with the ordinary read-scoped token only on that step. Missing/invalid configuration and API failures fail the job; differences still exit successfully. Plan output is visible in the run log. No protected Environment, App key, apply command, or privileged fallback exists in this example.
+
+The workflow remains outside `.github/workflows`. Later adoption must copy it deliberately, together with its support files; merging this example alone activates nothing. Lint with actionlint and run `bash tests/github-actions/plan.sh`. Existing built-product acceptance separately proves the CLI's GET-only plan and configuration preservation.
