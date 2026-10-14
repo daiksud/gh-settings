@@ -43,6 +43,7 @@ These are future owner operations, not actions performed by merging this guide. 
 4. **Authorize adoption and exact test settings (#94).** Name the target, reviewed example revision, concrete temporary before/desired values, activation, apply, and cleanup scope. Copy the two workflow examples to the destinations above only through a separately scoped adoption PR. Preserve the support files from that same reviewed revision. For repositories already containing the helpers, the later copy commands are:
 
    ```sh
+   mkdir -p .github/workflows
    cp examples/github-actions/settings-pr.yml .github/workflows/settings-pr.yml
    cp examples/github-actions/settings-main.yml .github/workflows/settings-main.yml
    ```
