@@ -10,13 +10,13 @@ sources:
 
 ## Scope and status
 
-The published v0.3.0 release implements `gh settings export`, `gh settings validate`, and read-only `gh settings plan`; export emits the versioned `settings.repository` format. Current source also implements `gh settings apply`; apply has not been released. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
+The published v0.4.0 release implements all four commands, with export writing YAML to stdout. Current source saves export directly to `.github/settings.yml`; that output change has not been released. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to that checkout's root `.github/settings.yml`; it does not require existing configuration. The mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
 
 Saved plan artifacts and drift protection are outside the initial scope. GitHub Action delivery is deferred.
 
 ## Interface and implementation status
 
-All four command examples are implemented in current source. Export, validate, and plan are available in v0.3.0; apply has not been released. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
+All four command examples are implemented in current source. All four are available in v0.4.0; the default file output for export is unreleased. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
 
 ```text
 gh settings export
@@ -27,10 +27,10 @@ gh settings apply
 
 | Command | Contract |
 | --- | --- |
-| `export` (implemented) | Read current supported settings and write YAML configuration to standard output. Exclude unsupported fields and read-only metadata. |
+| `export` (implemented) | Read current supported settings and save YAML configuration to the checkout root `.github/settings.yml`. Exclude unsupported fields and read-only metadata. |
 | `validate` (implemented) | Check `.github/settings.yml` locally against the supported schema. Unknown or duplicate keys and invalid values fail validation. |
 | `plan` (implemented) | Read current settings and show differences for managed fields only. The result is informational. |
-| `apply` (implemented in source) | Validate configuration, then send declared supported fields directly to the repository update API. Omitted fields are not sent. |
+| `apply` (implemented) | Validate configuration, then send declared supported fields directly to the repository update API. Omitted fields are not sent. |
 
 The update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository] The owner and repository identify the repository containing the configuration; this does not introduce a configurable list of targets.
 
@@ -40,7 +40,7 @@ For example, declaring only `settings.repository.has_issues: false` means that a
 
 ## Export behavior
 
-Export resolves the current Git checkout's configured checkout-scoped `origin` remote, including from subdirectories and repository-specific included or worktree configuration. A configured GitHub URL keeps its repository identity when Git `insteadOf` changes its transport destination; an alias rewritten to a GitHub URL remains usable. System, global, and command Git configuration cannot supply the origin target, even inside a checkout; only local/worktree origin values are eligible. URL rewrite rules still apply to a checkout-scoped alias. The current implementation accepts GitHub.com HTTPS and SSH URLs and ignores `GH_REPO`. Missing or unsupported origins fail before the API read. GitHub API authentication uses the existing go-gh/gh integration. The command normalizes GitHub description/homepage nulls to empty strings; it distinguishes missing response keys from null and rejects missing keys or null booleans. The command preserves false and empty string values and does not write configuration files or change repository settings. Read, decoding, and output failures return a nonzero status; read and decoding failures leave standard output empty. See the [behavior specification and test mapping](features/export.feature.md).
+Export resolves the current Git checkout's configured checkout-scoped `origin` remote, including from subdirectories and repository-specific included or worktree configuration. A configured GitHub URL keeps its repository identity when Git `insteadOf` changes its transport destination; an alias rewritten to a GitHub URL remains usable. System, global, and command Git configuration cannot supply the origin target, even inside a checkout; only local/worktree origin values are eligible. URL rewrite rules still apply to a checkout-scoped alias. The current implementation accepts GitHub.com HTTPS and SSH URLs and ignores `GH_REPO`. Missing or unsupported origins fail before the API read. GitHub API authentication uses the existing go-gh/gh integration. The command normalizes GitHub description/homepage nulls to empty strings; it distinguishes missing response keys from null and rejects missing keys or null booleans. The command preserves false and empty string values and saves the complete YAML to `.github/settings.yml` at the same checkout root, creating `.github` when missing. Success is silent with exit status zero; it changes no GitHub settings. An existing regular configuration file is atomically replaced with its permission bits preserved; new files use mode `0600` subject to umask. Symlinks at `.github` or `settings.yml` and other non-regular destinations are rejected. API reading and YAML serialization finish before file publication. Temporary write, flush, close and rename errors return a nonzero status and preserve an existing file; all failure diagnostics go to stderr with no stdout. The new default replaces stdout export in published v0.4.0 and earlier: remove shell redirection and read the saved file after success. See the [behavior specification and test mapping](features/export.feature.md).
 
 ## Validate behavior
 

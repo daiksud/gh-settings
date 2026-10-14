@@ -110,11 +110,15 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exported.runErr != nil || exported.stderr.Len() != 0 {
+	if exported.runErr != nil || exported.stdout.Len() != 0 || exported.stderr.Len() != 0 {
 		t.Fatalf("export: %v stderr=%q", exported.runErr, exported.stderr.String())
 	}
 	// Edit the exported YAML's issues value and preserve all other fields.
-	original := exported.stdout.String()
+	data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := string(data)
 	edited := strings.Replace(original, "has_issues: true", "has_issues: false", 1)
 	if original == edited {
 		t.Fatal("export did not contain expected issues field")

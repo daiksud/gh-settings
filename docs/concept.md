@@ -10,7 +10,7 @@ description: Define the purpose, ownership model, and future direction of gh set
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-The published v0.3.0 release implements read-only `export`, local `validate`, and read-only `plan`. Current source also implements direct `apply`; apply has not been released. GitHub Action delivery remains future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
+The published v0.4.0 release implements export, validation, planning, and direct apply. Current source saves export directly to `.github/settings.yml` instead of stdout; this output change has not been released. GitHub Action delivery remains future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
 
 ## Design philosophy
 

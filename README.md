@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.3.0 release implements read-only `export`, local `validate`, and read-only `plan`. Current source also implements `apply`; it has not been released. GitHub Action delivery remains future work.
+A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.4.0 release implements all four commands, with export writing YAML to stdout. Current source saves export directly to `.github/settings.yml`; this output change has not been released. GitHub Action delivery remains future work.
 
 ## Install
 
@@ -21,16 +21,19 @@ In the Git checkout whose settings you want to read, run:
 gh settings export
 ```
 
-The published v0.2.0 release and current source print root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`. Releases before v0.2.0 used a flat YAML format. Export reads the checkout's GitHub.com `origin` remote; it does not use `GH_REPO` or require an existing `.github/settings.yml`. Export does not change repository settings or write a file. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
+In current source, export saves root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki` to `.github/settings.yml` at the Git checkout root, including from subdirectories. It creates a missing `.github` directory and succeeds silently. Export reads that checkout's GitHub.com `origin`, ignores `GH_REPO`, and does not change GitHub settings. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
 
-To save a copy, create `.github` first and redirect the output:
+An existing regular configuration file is completely replaced after the settings have been read, serialized, written to a temporary file, flushed and closed. Its permission bits are preserved; a new file is created with mode `0600` subject to the caller's umask. API, serialization and file publication errors leave an existing file unchanged. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+
+### Migrating from stdout export
+
+Published v0.4.0 and earlier export YAML to stdout; current source writes the file and produces no stdout. Remove shell redirection when moving to the new behavior: the shell can truncate a destination before export runs. To inspect the saved configuration, run:
 
 ```sh
-mkdir -p .github
-gh settings export > .github/settings.yml
+cat .github/settings.yml
 ```
 
-Shell redirection can truncate an existing destination even if export fails. Inspect the output before replacing an existing configuration you need to preserve.
+Scripts that consumed export stdout should read the saved checkout-root file after successful export. No output flags are supported. Releases before v0.2.0 used a flat YAML format.
 
 ## Validate a saved configuration
 

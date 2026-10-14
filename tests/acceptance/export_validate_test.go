@@ -3,6 +3,8 @@
 package acceptance
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -47,7 +49,7 @@ func TestExportThenValidate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if exported.runErr != nil || exported.stderr.Len() != 0 {
+			if exported.runErr != nil || exported.stdout.Len() != 0 || exported.stderr.Len() != 0 {
 				t.Fatalf("export: %v, stderr=%q", exported.runErr, exported.stderr.String())
 			}
 			if err := fixture.checkRequests(false); err != nil {
@@ -58,17 +60,18 @@ func TestExportThenValidate(t *testing.T) {
 			}
 
 			var actual map[string]any
-			if err := yaml.Unmarshal(exported.stdout.Bytes(), &actual); err != nil {
+			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := yaml.Unmarshal(data, &actual); err != nil {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(actual, test.want) {
 				t.Fatalf("exported YAML=%#v, want %#v", actual, test.want)
 			}
 
-			original := exported.stdout.String()
-			if err := writeSettingsFile(fixture.work, original); err != nil {
-				t.Fatal(err)
-			}
+			original := string(data)
 			validated, err := executeCLI(path, fixture.work, fixture.root, fixtureEnv(fixture.cfg), []string{"validate"}, false)
 			if err != nil {
 				t.Fatal(err)

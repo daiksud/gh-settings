@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -41,11 +42,15 @@ func check(binary string, test scenario) error {
 		return err
 	}
 	if test.expected != nil {
-		if result.runErr != nil || result.stderr.Len() != 0 {
+		if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
 			return fmt.Errorf("execution: %v, stderr=%q", result.runErr, result.stderr.String())
 		}
 		var actual map[string]any
-		if err := yaml.Unmarshal(result.stdout.Bytes(), &actual); err != nil {
+		data, err := os.ReadFile(filepath.Join(work, ".github", "settings.yml"))
+		if err != nil {
+			return err
+		}
+		if err := yaml.Unmarshal(data, &actual); err != nil {
 			return err
 		}
 		if !reflect.DeepEqual(actual, test.expected) {
