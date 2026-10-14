@@ -21,3 +21,9 @@ Offline bootstrap fixtures run with `bash tests/github-actions/bootstrap.sh`; th
 `settings-pr.yml` uses `pull_request` and the containing repository's synthetic PR merge revision (`github.sha`), including for forks. Checkout binds the CLI's origin target to that repository and does not persist credentials. The verified released CLI runs validate before GET-only plan, with the ordinary read-scoped token only on that step. Missing/invalid configuration and API failures fail the job; differences still exit successfully. Plan output is visible in the run log. No protected Environment, App key, apply command, or privileged fallback exists in this example.
 
 The workflow remains outside `.github/workflows`. Later adoption must copy it deliberately, together with its support files; merging this example alone activates nothing. Lint with actionlint and run `bash tests/github-actions/plan.sh`. Existing built-product acceptance separately proves the CLI's GET-only plan and configuration preservation.
+
+## Auditable review Summary
+
+`render-summary.py OUTPUT_FILE EXIT_STATUS` uses Python 3's standard library to render explicit `SETTINGS_*` run metadata and the CLI output. Its tests list the required context fields. Workflow-source and configuration SHAs have separate exact-revision links. Original and initiating/rerun actors, run/attempt, event, target, and verified CLI identity appear separately from quoted settings data. No full GitHub context or credentials are dumped.
+
+The renderer distinguishes changes, no differences, no managed fields, and errors. It quotes output inside an escaped HTML data block, so settings text cannot close the block and forge approval context. Test it with `python3 tests/github-actions/summary.py`. The later main prepare example supplies these fields and writes the result to GitHub's Summary.
