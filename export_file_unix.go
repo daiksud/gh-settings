@@ -9,16 +9,21 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func writeExportFile(root string, data []byte) error {
+func openExportRoot(root string) (*os.File, error) {
 	flags := unix.O_RDONLY | unix.O_DIRECTORY | unix.O_NOFOLLOW | unix.O_CLOEXEC
 	rootFD, err := unix.Open(root, flags, 0)
 	if err != nil {
-		return fmt.Errorf("open checkout directory: %w", err)
+		return nil, err
 	}
-	defer unix.Close(rootFD)
+	return os.NewFile(uintptr(rootFD), root), nil
+}
+
+func writeExportFile(root *os.File, data []byte) error {
+	rootFD := int(root.Fd())
 	if err := unix.Mkdirat(rootFD, ".github", 0755); err != nil && err != unix.EEXIST {
 		return fmt.Errorf("create .github: %w", err)
 	}
+	flags := unix.O_RDONLY | unix.O_DIRECTORY | unix.O_NOFOLLOW | unix.O_CLOEXEC
 	dirFD, err := unix.Openat(rootFD, ".github", flags, 0)
 	if err != nil {
 		return fmt.Errorf("open .github directory: %w", err)

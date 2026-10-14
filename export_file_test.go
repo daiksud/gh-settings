@@ -23,6 +23,11 @@ func TestWriteExportFileRejectsSymlinkReplacement(t *testing.T) {
 			if err := os.WriteFile(sentinel, []byte("external configuration\n"), 0644); err != nil {
 				t.Fatal(err)
 			}
+			rootDir, err := openExportRoot(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer rootDir.Close()
 			link, target := path, sentinel
 			if component == ".github" {
 				link, target = github, outside
@@ -34,7 +39,7 @@ func TestWriteExportFileRejectsSymlinkReplacement(t *testing.T) {
 			if err := os.Symlink(target, link); err != nil {
 				t.Fatal(err)
 			}
-			err := writeExportFile(root, []byte("exported configuration\n"))
+			err = writeExportFile(rootDir, []byte("exported configuration\n"))
 			data, readErr := os.ReadFile(sentinel)
 			if err == nil || readErr != nil || string(data) != "external configuration\n" {
 				t.Fatalf("write error=%v external target=%q read error=%v", err, data, readErr)

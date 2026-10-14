@@ -40,6 +40,13 @@ A repository maintainer can capture the current five supported settings as confi
 - Then the command fails with a diagnostic on standard error
 - And the symlink and its target remain unchanged
 
+#### Scenario: Keep the checkout selected before the API read
+
+- Given the current checkout's root directory is replaced while the API read is in flight
+- When the maintainer runs `gh settings export`
+- Then the complete configuration is saved in the originally selected checkout
+- And the replacement directory or symlink target remains unchanged
+
 ### Rule: Export only the current checkout's supported settings
 
 #### Scenario: Export five settings successfully
@@ -178,7 +185,8 @@ These scenarios map to ordinary Go tests, [export process cases](../../tests/acc
 | Export from a subdirectory without a settings directory | — | `TestExportSavesAtCheckoutRoot` |
 | Refresh an existing regular configuration | — | `TestExportExistingFile/replace` |
 | Report a failed write | — | `TestExportReportsWriteFailure` |
-| Refuse symlink destinations and non-regular files | `TestWriteExportFileRejectsSymlinkReplacement` | `TestExportRejectsUnsafeDestination`, `TestExportRejectsCheckoutReplacementDuringAPIRead` |
+| Refuse symlink destinations and non-regular files | `TestWriteExportFileRejectsSymlinkReplacement` | `TestExportRejectsUnsafeDestination` |
+| Keep the checkout selected before the API read | — | `TestExportPinsCheckoutDuringAPIRead` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
 | Export five settings successfully | `TestExportFiveSettings` | `five-settings` |
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |

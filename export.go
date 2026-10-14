@@ -18,6 +18,11 @@ func exportCurrent() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("locate %s: %w", settingsPath, err)
 	}
+	rootDir, err := openExportRoot(root)
+	if err != nil {
+		return nil, fmt.Errorf("open checkout for %s: %w", settingsPath, err)
+	}
+	defer rootDir.Close()
 	client, err := api.NewRESTClient(api.ClientOptions{Host: repo.Host, Timeout: 30 * time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("configure GitHub API client: %w", err)
@@ -26,7 +31,7 @@ func exportCurrent() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := writeExportFile(root, data); err != nil {
+	if err := writeExportFile(rootDir, data); err != nil {
 		return nil, fmt.Errorf("write %s: %w", settingsPath, err)
 	}
 	return nil, nil
