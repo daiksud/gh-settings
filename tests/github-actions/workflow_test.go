@@ -1,6 +1,7 @@
 package githubactions
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,12 @@ import (
 )
 
 type workflow struct {
+	Name     string `yaml:"name"`
+	Defaults struct {
+		Run struct {
+			Shell string `yaml:"shell"`
+		} `yaml:"run"`
+	} `yaml:"defaults"`
 	On          map[string]yaml.Node `yaml:"on"`
 	Env         map[string]string    `yaml:"env"`
 	Permissions map[string]string    `yaml:"permissions"`
@@ -24,6 +31,7 @@ type workflow struct {
 	Jobs map[string]job `yaml:"jobs"`
 }
 type job struct {
+	Timeout     int               `yaml:"timeout-minutes"`
 	Needs       string            `yaml:"needs"`
 	If          string            `yaml:"if"`
 	Environment string            `yaml:"environment"`
@@ -35,6 +43,7 @@ type job struct {
 	Steps       []step            `yaml:"steps"`
 }
 type step struct {
+	Name     string            `yaml:"name"`
 	ID       string            `yaml:"id"`
 	Uses     string            `yaml:"uses"`
 	Run      string            `yaml:"run"`
@@ -55,7 +64,9 @@ func readWorkflow(t *testing.T, name string) (workflow, string) {
 		t.Fatal(err)
 	}
 	var w workflow
-	if err = yaml.Unmarshal(data, &w); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err = decoder.Decode(&w); err != nil {
 		t.Fatal(err)
 	}
 	return w, string(data)
@@ -86,6 +97,30 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	node := main.On["push"]
 	if err := node.Decode(&push); err != nil {
 		t.Fatal(err)
+	}
+	var pull struct {
+		Types []string `yaml:"types"`
+		Paths []string `yaml:"paths"`
+	}
+	prNode := pr.On["pull_request"]
+	if err := prNode.Decode(&pull); err != nil {
+		t.Fatal(err)
+	}
+	if len(pull.Types) != 0 {
+		for _, required := range []string{"opened", "synchronize", "reopened"} {
+			found := false
+			for _, event := range pull.Types {
+				if event == required {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("required PR event disabled")
+			}
+		}
+	}
+	if main.Defaults.Run.Shell != "bash" || pr.Defaults.Run.Shell != "bash" {
+		t.Fatal("runner shell contract changed")
 	}
 	if len(push.Branches) != 1 || push.Branches[0] != "main" || len(push.Tags) != 0 {
 		t.Fatal("main trigger scope changed")
@@ -134,6 +169,15 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	}
 	for _, j := range []job{pr.Jobs["plan"], prepare, apply} {
 		for i, s := range j.Steps {
+			if i == 0 {
+				expectedRef := "${{ github.sha }}"
+				if j.Environment == "settings-apply" {
+					expectedRef = "${{ needs.prepare.outputs.config-sha }}"
+				}
+				if !reflect.DeepEqual(s.With, map[string]string{"repository": "${{ github.repository }}", "ref": expectedRef, "persist-credentials": "false"}) {
+					t.Fatal("checkout inputs/credential contract changed")
+				}
+			}
 			if i == 0 && (!strings.HasPrefix(s.Uses, "actions/checkout@") || s.With["ref"] == "") {
 				t.Fatal("missing fixed checkout")
 			}
