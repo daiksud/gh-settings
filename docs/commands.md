@@ -10,13 +10,13 @@ sources:
 
 ## Scope and status
 
-The published v0.2.0 release and current source implement `gh settings export` and `gh settings validate`; export emits the versioned `settings.repository` format. `plan` and `apply` remain proposed. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The proposed mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
+The published v0.2.2 release implements `gh settings export` and `gh settings validate`; export emits the versioned `settings.repository` format. Current source also implements read-only `gh settings plan`. `apply` remains proposed. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to standard output; it does not require or read `.github/settings.yml`. The proposed mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
 
 Saved plan artifacts and drift protection are outside the initial scope. GitHub Action delivery is deferred.
 
 ## Interface and implementation status
 
-The `export` and `validate` examples are implemented. `plan` and `apply` remain proposed and are rejected by the current CLI. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
+The `export`, `validate`, and `plan` examples are implemented in current source. `apply` remains proposed and is rejected by the current CLI. Plan has not been released. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
 
 ```text
 gh settings export
@@ -29,7 +29,7 @@ gh settings apply
 | --- | --- |
 | `export` (implemented) | Read current supported settings and write YAML configuration to standard output. Exclude unsupported fields and read-only metadata. |
 | `validate` (implemented) | Check `.github/settings.yml` locally against the supported schema. Unknown or duplicate keys and invalid values fail validation. |
-| `plan` | Read current settings and show differences for managed fields only. The result is informational. |
+| `plan` (implemented in source) | Read current settings and show differences for managed fields only. The result is informational. |
 | `apply` | Validate configuration, then send declared supported fields directly to the repository update API. Omitted fields are not sent. |
 
 The update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository] The owner and repository identify the repository containing the configuration; this does not introduce a configurable list of targets.
@@ -48,13 +48,21 @@ Validate reads `.github/settings.yml` at the current Git checkout's root, includ
 
 Success is silent with exit status zero. Failure reports a diagnostic on standard error and exits nonzero with no standard output. Validate reads no GitHub settings, requires no GitHub origin or authentication, and does not change the file or repository settings. See the [behavior specification and test mapping](features/validate.feature.md).
 
+## Plan behavior
+
+Plan reads and validates the Git root's `.github/settings.yml` before resolving origin, configuring authentication, or reading GitHub. It uses export's current-repository resolution and GET response handling, including null string normalization and go-gh's existing sanitization of some API control characters to caret notation. It compares only declared fields; omitted fields are unmanaged, while false and empty strings are explicit managed values. It reads the current five fields even when none are managed, so origin, authentication, and API errors still fail.
+
+Changed fields appear in fixed order: description, homepage, has_issues, has_projects, has_wiki. Each line uses `settings.repository.FIELD: CURRENT → DESIRED`. Strings are double-quoted using Go string escaping, including quotes, backslashes, newlines, and control characters; booleans use `true` or `false`. Equal managed values are omitted. When all managed values match, output is `No differences for managed repository settings.` When no fields are declared, output is `No managed repository settings.`
+
+Successful comparison exits 0 whether differences exist or not. File, validation, origin, authentication, API, decoding, and output errors exit 1 and report a diagnostic on standard error. Failures before writing output leave standard output empty. Plan does not edit configuration or mutate repository settings. See the [behavior specification and test mapping](features/plan.feature.md). Its observation does not change the independent direct-update contract for future apply.
+
 ## Failures and limits for proposed mutation commands
 
 Unknown keys and invalid values fail before API mutation. Permission and API failures are reported with a nonzero exit status. GitHub may reject a request even when configuration passes local validation; successful validation does not guarantee successful mutation. The endpoint documents failure responses including permission and validation failures.[^github-update-repository]
 
 There is no automatic rollback and no transactional guarantee. A failure does not promise restoration of prior settings. The [selected go-gh library](adr/0008-official-go-gh-library.md) provides GitHub CLI authentication integration; remaining authentication details are undecided, and the tool must report access failures rather than claim that all declared settings can always be applied.
 
-## Acceptance boundaries for future implementation
+## Acceptance boundaries
 
 - Export includes only the five supported settings as configuration.
 - Validation rejects unsupported keys and values of the wrong type before mutation.
@@ -63,6 +71,6 @@ There is no automatic rollback and no transactional guarantee. A failure does no
 - Omitted fields are absent from the update request.
 - Permission or API failure produces a nonzero exit status without automatic rollback.
 
-Export and validate acceptance conditions are covered by their implemented behavior specifications and Go tests ([export](features/export.feature.md), [validate](features/validate.feature.md)); plan and apply conditions are intended for future implementation. The [settings page](settings.md#configuration-semantics) records the agreed structure and null handling for these five fields. Future composition across multiple update endpoints remains undecided.
+Export, validate, and plan acceptance conditions are covered by their implemented behavior specifications and Go tests ([export](features/export.feature.md), [validate](features/validate.feature.md), [plan](features/plan.feature.md)); apply conditions are intended for future implementation. The [settings page](settings.md#configuration-semantics) records the agreed structure and null handling for these five fields. Future composition across multiple update endpoints remains undecided.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the update endpoint and failure responses. This reference does not expand the supported scope.

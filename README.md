@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting and locally validating the current repository's five basic settings as YAML. The published v0.2.0 release and current source implement read-only `export` and local `validate`. `plan`, `apply`, and GitHub Action delivery remain future work.
+A GitHub CLI extension for exporting, validating, and planning the current repository's five basic settings. The published v0.2.2 release implements read-only `export` and local `validate`. Current source also implements read-only `plan`; `apply` and GitHub Action delivery remain future work.
 
 ## Install
 
@@ -51,6 +51,23 @@ settings:
 
 The [configuration contract](docs/settings.md#configuration-semantics) explains the five supported fields, `schemaVersion`, grouping, value types, and migration from earlier flat files. Validation succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. See the [command behavior](docs/commands.md#validate-behavior) for its failure cases.
 
+## Plan a saved configuration
+
+With a source build, edit `.github/settings.yml`, validate it, then inspect differences:
+
+```sh
+gh settings validate
+gh settings plan
+```
+
+Plan validates before reading GitHub and compares only declared fields. For the example above, when issues are currently enabled, it prints:
+
+```text
+settings.repository.has_issues: true → false
+```
+
+Successful comparison exits 0 with or without differences. Strings are quoted and escaped; omitted fields are unmanaged. The command reports no differences or no managed fields with a short message. It does not change the file or repository settings. See [plan behavior](docs/commands.md#plan-behavior). Plan is not yet in a published release.
+
 ## Build and run from source
 
 To build from source, use Go 1.25 or later. The [development guide](docs/development.md) covers pinned tools and local checks.
@@ -66,7 +83,7 @@ gh extension install .
 
 See the [development guide](docs/development.md) for tool setup and local checks, [CI stages](docs/development.md#ci-validation), and [Codex approval control](docs/development.md#codex-approval-control).
 
-The [export](docs/features/export.feature.md) and [validate](docs/features/validate.feature.md) behavior specifications map their user-visible scenarios to ordinary Go tests. No BDD runner is required.
+The [export](docs/features/export.feature.md), [validate](docs/features/validate.feature.md), and [plan](docs/features/plan.feature.md) behavior specifications map their user-visible scenarios to ordinary Go tests. No BDD runner is required.
 
 ## Maintainer release
 
