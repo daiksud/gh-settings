@@ -10,6 +10,7 @@ type commandOperations struct {
 	export   func() ([]byte, error)
 	validate func() error
 	plan     func() ([]byte, error)
+	apply    func() ([]byte, error)
 }
 
 func run(args []string, stdout, stderr io.Writer, operations commandOperations) int {
@@ -28,13 +29,13 @@ func executeCommand(args []string, stdout io.Writer, operations commandOperation
 		return nil
 	}
 	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan\nExport the current repository's five basic settings as YAML to standard output.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan\n       gh settings apply\nExport the current repository's five basic settings as YAML to standard output.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 		return nil
 	}
-	if len(args) != 1 || (args[0] != "export" && args[0] != "validate" && args[0] != "plan") {
-		return errors.New("unsupported command or arguments; usage: gh settings <export|validate|plan>")
+	if len(args) != 1 || (args[0] != "export" && args[0] != "validate" && args[0] != "plan" && args[0] != "apply") {
+		return errors.New("unsupported command or arguments; usage: gh settings <export|validate|plan|apply>")
 	}
 	if args[0] == "validate" {
 		return operations.validate()
@@ -42,6 +43,8 @@ func executeCommand(args []string, stdout io.Writer, operations commandOperation
 	operation := operations.export
 	if args[0] == "plan" {
 		operation = operations.plan
+	} else if args[0] == "apply" {
+		operation = operations.apply
 	}
 	data, err := operation()
 	if err != nil {

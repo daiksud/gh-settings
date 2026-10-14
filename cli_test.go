@@ -56,27 +56,30 @@ func TestRunSelectsOperation(t *testing.T) {
 		wantExportCalls   int
 		wantValidateCalls int
 		wantPlanCalls     int
+		wantApplyCalls    int
 		wantStatus        int
 	}{
-		{"export", []string{"export"}, nil, 1, 0, 0, 0},
-		{"validate", []string{"validate"}, nil, 0, 1, 0, 0},
-		{"export failure", []string{"export"}, operationError, 1, 0, 0, 1},
-		{"validate failure", []string{"validate"}, operationError, 0, 1, 0, 1},
-		{"help", []string{"--help"}, nil, 0, 0, 0, 0},
-		{"short help", []string{"-h"}, nil, 0, 0, 0, 0},
-		{"version", []string{"--version"}, nil, 0, 0, 0, 0},
-		{"short version", []string{"-v"}, nil, 0, 0, 0, 0},
-		{"no arguments", nil, nil, 0, 0, 0, 1},
-		{"apply", []string{"apply"}, nil, 0, 0, 0, 1},
-		{"plan", []string{"plan"}, nil, 0, 0, 1, 0},
-		{"plan failure", []string{"plan"}, operationError, 0, 0, 1, 1},
-		{"plan arguments", []string{"plan", "--json"}, nil, 0, 0, 0, 1},
-		{"export arguments", []string{"export", "--repo", "owner/other"}, nil, 0, 0, 0, 1},
-		{"validate arguments", []string{"validate", "--repo", "owner/other"}, nil, 0, 0, 0, 1},
+		{"export", []string{"export"}, nil, 1, 0, 0, 0, 0},
+		{"validate", []string{"validate"}, nil, 0, 1, 0, 0, 0},
+		{"export failure", []string{"export"}, operationError, 1, 0, 0, 0, 1},
+		{"validate failure", []string{"validate"}, operationError, 0, 1, 0, 0, 1},
+		{"help", []string{"--help"}, nil, 0, 0, 0, 0, 0},
+		{"short help", []string{"-h"}, nil, 0, 0, 0, 0, 0},
+		{"version", []string{"--version"}, nil, 0, 0, 0, 0, 0},
+		{"short version", []string{"-v"}, nil, 0, 0, 0, 0, 0},
+		{"no arguments", nil, nil, 0, 0, 0, 0, 1},
+		{"apply", []string{"apply"}, nil, 0, 0, 0, 1, 0},
+		{"apply failure", []string{"apply"}, operationError, 0, 0, 0, 1, 1},
+		{"apply arguments", []string{"apply", "--plan", "saved"}, nil, 0, 0, 0, 0, 1},
+		{"plan", []string{"plan"}, nil, 0, 0, 1, 0, 0},
+		{"plan failure", []string{"plan"}, operationError, 0, 0, 1, 0, 1},
+		{"plan arguments", []string{"plan", "--json"}, nil, 0, 0, 0, 0, 1},
+		{"export arguments", []string{"export", "--repo", "owner/other"}, nil, 0, 0, 0, 0, 1},
+		{"validate arguments", []string{"validate", "--repo", "owner/other"}, nil, 0, 0, 0, 0, 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
-			exportCalls, validateCalls, planCalls := 0, 0, 0
+			exportCalls, validateCalls, planCalls, applyCalls := 0, 0, 0, 0
 			status := run(test.args, &stdout, &stderr, commandOperations{
 				export: func() ([]byte, error) {
 					exportCalls++
@@ -86,13 +89,17 @@ func TestRunSelectsOperation(t *testing.T) {
 					planCalls++
 					return []byte("plan\n"), test.operationError
 				},
+				apply: func() ([]byte, error) {
+					applyCalls++
+					return []byte("apply\n"), test.operationError
+				},
 				validate: func() error {
 					validateCalls++
 					return test.operationError
 				},
 			})
-			if exportCalls != test.wantExportCalls || validateCalls != test.wantValidateCalls || planCalls != test.wantPlanCalls {
-				t.Fatalf("export calls=%d, validate calls=%d, plan calls=%d", exportCalls, validateCalls, planCalls)
+			if exportCalls != test.wantExportCalls || validateCalls != test.wantValidateCalls || planCalls != test.wantPlanCalls || applyCalls != test.wantApplyCalls {
+				t.Fatalf("export calls=%d, validate calls=%d, plan calls=%d, apply calls=%d", exportCalls, validateCalls, planCalls, applyCalls)
 			}
 			if status != test.wantStatus {
 				t.Fatalf("status=%d stderr=%q", status, stderr.String())
@@ -106,6 +113,9 @@ func TestRunSelectsOperation(t *testing.T) {
 			if test.name == "plan" && (stdout.String() != "plan\n" || stderr.Len() != 0) {
 				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
+			if test.name == "apply" && (stdout.String() != "apply\n" || stderr.Len() != 0) {
+				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
 			if test.name == "export" && (stdout.String() != "settings\n" || stderr.Len() != 0) {
 				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
@@ -114,13 +124,13 @@ func TestRunSelectsOperation(t *testing.T) {
 }
 
 func TestUnsupportedCommand(t *testing.T) {
-	for _, args := range [][]string{nil, {"apply"}, {"plan", "--json"}, {"export", "--repo", "owner/other"}, {"validate", "--repo", "owner/other"}} {
+	for _, args := range [][]string{nil, {"unknown"}, {"apply", "extra"}, {"plan", "--json"}, {"export", "--repo", "owner/other"}, {"validate", "--repo", "owner/other"}} {
 		var stdout, stderr bytes.Buffer
 		code := run(args, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
 			t.Fatal("unsupported command invoked API operation")
 			return nil, errors.New("unexpected API call")
 		}})
-		if code != 1 || stdout.Len() != 0 || stderr.String() != "gh settings: unsupported command or arguments; usage: gh settings <export|validate|plan>\n" {
+		if code != 1 || stdout.Len() != 0 || stderr.String() != "gh settings: unsupported command or arguments; usage: gh settings <export|validate|plan|apply>\n" {
 			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
 		}
 	}

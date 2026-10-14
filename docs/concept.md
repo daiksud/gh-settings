@@ -10,15 +10,15 @@ description: Define the purpose, ownership model, and future direction of gh set
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-The published v0.2.2 release implements read-only `export` and local `validate`. Current source also implements read-only `plan`; `apply` and GitHub Action delivery remain future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
+The published v0.3.0 release implements read-only `export`, local `validate`, and read-only `plan`. Current source also implements direct `apply`; apply has not been released. GitHub Action delivery remains future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
 
 ## Design philosophy
 
 Written fields are managed, and YAML is authoritative for their values. Omitted fields are unmanaged, allowing gradual adoption. The [settings page](settings.md#configuration-semantics) defines the supported fields and the distinction among omission, explicit values, YAML null, and read-side null normalization.
 
-Field keys and types follow the corresponding GitHub update request schema, as recorded in [ADR 0006](adr/0006-update-api-schema.md). Configuration grouping and versioning follow [ADR 0020](adr/0020-group-settings-by-resource.md) and [ADR 0021](adr/0021-require-schema-version.md). Repository response metadata does not become configuration. The [settings page](settings.md) gives the current five-field contract; the [commands page](commands.md) distinguishes implemented commands from proposed behavior.
+Field keys and types follow the corresponding GitHub update request schema, as recorded in [ADR 0006](adr/0006-update-api-schema.md). Configuration grouping and versioning follow [ADR 0020](adr/0020-group-settings-by-resource.md) and [ADR 0021](adr/0021-require-schema-version.md). Repository response metadata does not become configuration. The [settings page](settings.md) gives the current five-field contract; the [commands page](commands.md) records command behavior and release status.
 
-The proposed mutation workflow separates observation from mutation: `plan` informs the maintainer about observed differences, while `apply` sends declared settings directly. A plan is not an execution artifact or a guarantee about later changes. Failures must be visible, without promises of transactional behavior or automatic recovery.
+The mutation workflow separates observation from mutation: `plan` informs the maintainer about observed differences, while `apply` sends declared settings directly. A plan is not an execution artifact or a guarantee about later changes. Failures must be visible, without promises of transactional behavior or automatic recovery.
 
 ## Current decisions
 

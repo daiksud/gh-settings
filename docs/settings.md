@@ -13,7 +13,7 @@ sources:
 
 ## Scope and status
 
-The published v0.2.2 release implements read-only export and local validation with a versioned configuration format. Current source also implements read-only planning; mutation remains proposed. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the versioned configuration contract. See the [commands](commands.md) for the proposed interface and the [concept](concept.md) for future direction and unresolved decisions.
+The published v0.3.0 release implements read-only export, local validation, and read-only planning with a versioned configuration format. Current source also implements direct apply; apply has not been released. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the versioned configuration contract. See the [commands](commands.md) for the interface and the [concept](concept.md) for future direction and unresolved decisions.
 
 ## Supported fields
 
@@ -31,7 +31,7 @@ The three booleans take `true` or `false`. There are no enum-valued fields in th
 
 ## Configuration semantics
 
-Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. The proposed `apply` command would send only declared supported fields; it does not exist in the current CLI. Null is not omission; it fails local validation for these five fields under [ADR 0019](adr/0019-reject-explicit-null.md).
+Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. The source `apply` command sends only declared supported fields. Null is not omission; it fails local validation for these five fields under [ADR 0019](adr/0019-reject-explicit-null.md).
 
 Following [ADR 0020](adr/0020-group-settings-by-resource.md), the YAML document contains a `settings` mapping and a `repository` mapping within it. [ADR 0021](adr/0021-require-schema-version.md) requires root `schemaVersion: 1`, an integer file-format version independent of the CLI release. The five keys inside `repository` match the `Update a repository` request body fields.[^github-update-repository] The following configuration declares one managed field:
 
@@ -42,13 +42,13 @@ settings:
     has_issues: false
 ```
 
-Its future update request body would contain only `{"has_issues": false}`. The version and outer YAML mappings are not sent as API fields. The other four supported fields stay absent and unmanaged; no defaults are injected. A document containing only `schemaVersion: 1`, or also empty `settings` and `repository` mappings, manages no fields. Sending an update is not implemented.
+Its update request body contains only `{"has_issues": false}`. The version and outer YAML mappings are not sent as API fields. The other four supported fields stay absent and unmanaged; no defaults are injected. A document containing only `schemaVersion: 1`, or also empty `settings` and `repository` mappings, manages no fields. Apply succeeds without an API request when no fields are managed.
 
 The `validate` command in v0.2.0 and the current source distinguishes these declarations:
 
 | YAML under `settings.repository` | Meaning |
 | --- | --- |
-| Field omitted | Unmanaged; the proposed `apply` would leave it out of the request. |
+| Field omitted | Unmanaged; `apply` leaves it out of the request. |
 | `has_issues: false` | A declared boolean value, not omission. |
 | `description: ""` | A declared empty string, not omission. `description: ''` is equivalent. |
 | `description: null` or `has_issues: null` | Invalid for these string and boolean fields. A bare `description:` is also YAML null and invalid. |

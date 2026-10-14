@@ -12,5 +12,6 @@ func main() {
 		export:   exportCurrent,
 		validate: validateCurrent,
 		plan:     planCurrent,
+		apply:    applyCurrent,
 	}))
 }

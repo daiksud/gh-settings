@@ -162,3 +162,64 @@ func TestRepositoryRemotes(t *testing.T) {
 		})
 	}
 }
+
+func TestRepositoryIgnoresUnscopedOrigins(t *testing.T) {
+	for _, source := range []string{"global", "system", "command"} {
+		for _, checkout := range []string{"missing", "local", "include", "worktree", "alias"} {
+			t.Run(source+"/"+checkout, func(t *testing.T) {
+				dir := t.TempDir()
+				config := filepath.Join(t.TempDir(), "unscoped.conf")
+				if err := os.WriteFile(config, []byte("[remote \"origin\"]\n\turl = https://github.com/unrelated/wrong.git\n[url \"https://github.com/owner/\"]\n\tinsteadOf = gh:\n[url \"https://github.com/owner/current.git\"]\n\tinsteadOf = gh:current\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+				t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+				t.Setenv("GIT_CONFIG_NOSYSTEM", "0")
+				t.Setenv("GIT_CONFIG_COUNT", "0")
+				if source == "global" {
+					t.Setenv("GIT_CONFIG_GLOBAL", config)
+				}
+				if source == "system" {
+					t.Setenv("GIT_CONFIG_SYSTEM", config)
+				}
+				if source == "command" {
+					t.Setenv("GIT_CONFIG_COUNT", "1")
+					t.Setenv("GIT_CONFIG_KEY_0", "remote.origin.url")
+					t.Setenv("GIT_CONFIG_VALUE_0", "https://github.com/unrelated/wrong.git")
+				}
+				if output, err := exec.Command("git", "init", "--quiet", dir).CombinedOutput(); err != nil {
+					t.Fatalf("git init: %v: %s", err, output)
+				}
+				t.Chdir(dir)
+				var commands [][]string
+				switch checkout {
+				case "local":
+					commands = [][]string{{"config", "--local", "remote.origin.url", "https://github.com/owner/current.git"}}
+				case "include":
+					included := filepath.Join(dir, "included.conf")
+					if err := os.WriteFile(included, []byte("[remote \"origin\"]\n\turl = https://github.com/owner/current.git\n"), 0600); err != nil {
+						t.Fatal(err)
+					}
+					commands = [][]string{{"config", "--local", "include.path", included}}
+				case "worktree":
+					commands = [][]string{{"config", "--local", "extensions.worktreeConfig", "true"}, {"config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git"}}
+				case "alias":
+					commands = [][]string{{"config", "--local", "remote.origin.url", "gh:current"}, {"config", "--local", "url.https://github.com/owner/current.git.insteadOf", "gh:current"}}
+				}
+				for _, args := range commands {
+					if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+						t.Fatalf("git %v: %v: %s", args, err, output)
+					}
+				}
+				repo, err := currentRepository()
+				if checkout == "missing" {
+					if err == nil || !strings.Contains(err.Error(), "checkout-scoped") {
+						t.Fatalf("repo=%+v err=%v", repo, err)
+					}
+				} else if err != nil || repo.Owner != "owner" || repo.Name != "current" {
+					t.Fatalf("repo=%+v err=%v", repo, err)
+				}
+			})
+		}
+	}
+}
