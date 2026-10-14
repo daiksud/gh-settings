@@ -53,4 +53,4 @@ The approval workflow becomes available for comment events only after it exists 
 
 ## Settings example verification
 
-The inert [settings examples](../examples/github-actions/README.md) are linted and tested in commit-stage. Focused shell/Python fixtures cover each helper, while ordinary Go tests run the real YAML commands with local approval/token stubs and check the cross-job credential/input boundary. Actual Environment approval, branch/tag enforcement, and real token revocation remain unverified until the separately authorized [adoption checklist](github-actions.md#ordered-owner-setup).
+The inert [settings examples](../examples/github-actions/README.md) are linted and tested in commit-stage. Focused shell/Python fixtures cover each helper, while ordinary Go tests run the real YAML commands with a mock CLI and local approval/token stubs and check the cross-job credential/input boundary. Actual Environment approval, branch/tag enforcement, and real token revocation remain unverified until the separately authorized [adoption checklist](github-actions.md#ordered-owner-setup).

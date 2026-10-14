@@ -29,7 +29,7 @@ Use one reviewed repository revision for both workflow examples and all six supp
 
 Keep the helpers at those paths in the target repository. Prepare and apply check out the same triggering configuration commit. Neither job builds source, imports a PR artifact, nor replays a saved plan. Declare supported values in `.github/settings.yml` using [schemaVersion 1](settings.md#configuration-semantics); omitted fields stay unmanaged. Do not use export redirection with v0.5.0.
 
-The [development checks](development.md#development-checks) run Actionlint, ShellCheck, bootstrap/plan/prepare/apply fixtures, Summary tests, and the composed Go tests alongside the existing product checks. The composed fixture runs the real YAML shell commands with local approval/token stubs. It does not establish actual GitHub protection or revocation.
+The [development checks](development.md#development-checks) run Actionlint, ShellCheck, bootstrap/plan/prepare/apply fixtures, Summary tests, and the composed Go tests alongside the existing product checks. The composed fixture runs the real YAML shell commands with a mock CLI and local approval/token stubs. Existing built-product acceptance separately exercises the real CLI against a local API fixture. It does not establish actual GitHub protection or revocation.
 
 The CLI pin is `v0.5.0`, asset `gh-settings-linux-amd64`, SHA-256 `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`. Review version, asset, and committed digest together against published assets before updating. Review the checkout and official token Action full-SHA pins and their exact supported inputs; the token Action currently uses v3.3.0's `client-id` and explicit `permission-administration: write`. Do not resolve `latest` or a moving Action tag at runtime, cache PR-supplied executables, or disable token revocation.
 
@@ -49,7 +49,29 @@ These are future owner operations, not actions performed by merging this guide. 
    ```
 
    Merge this adoption only after its ordinary review/CI gates and explicit activation scope are satisfied. This project does not assume self-management of `daiksud/gh-settings`.
-5. **Verify real gates and results (#94).** Exercise valid/invalid PR plan; inspect a known main prepare Summary. Observe apply waiting before any key/token use. Reject one run and confirm no update; approve an eligible run as the owner, including intentional self-approval for an owner-triggered run. Test other branches and a same-named tag without loosening rules. Read applied values and omitted fields back, inspect token cleanup evidence, and safely verify revocation where possible. Record rerun/attempt actors and run URLs. Restore only explicitly approved temporary values and read them back. Unverified platform checks remain open.
+5. **Verify real gates and results (#94).** Exercise valid/invalid PR plan; inspect a known main prepare Summary. Observe apply waiting before any key/token use. Reject one run and confirm no update; approve an eligible run as the owner, including intentional self-approval for an owner-triggered run. Test actual Environment branch/tag enforcement with the temporary probe below, separately from main workflow filtering, without loosening rules. Read applied values and omitted fields back, inspect token cleanup evidence, and safely verify revocation where possible. Record rerun/attempt actors and run URLs. Restore only explicitly approved temporary values and read them back. Unverified platform checks remain open.
+
+## Distinguish workflow filtering from Environment enforcement
+
+A non-main branch or tag cannot reach the main example's guarded apply job. That observation proves workflow filtering, not Environment branch/tag enforcement. Include a separately reviewed temporary probe, its exact source/refs, and removal in #94's owner authorization. On the approved test target only, use `.github/workflows/settings-environment-probe.yml` with this minimal shape:
+
+```yaml
+name: Temporary settings Environment probe
+on:
+  push:
+    branches: [main, settings-gate-probe]
+    tags: [main]
+permissions: {}
+jobs:
+  probe:
+    environment: settings-apply
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: echo 'Environment admitted this ref.'
+```
+
+The probe has no checkout, secret reference, App token, or settings mutation. Ensure the reviewed probe file exists at each tested commit before pushing its approved branch/tag. Expect the main deployment to wait for owner review, while `settings-gate-probe` and Tag `main` are denied by the unchanged Environment rules. Inspect the actual deployment/job denial evidence; absence of a workflow run proves nothing. Do not overwrite an existing branch/tag to obtain evidence. Remove only the authorized temporary probe and refs afterward. Never broaden the privileged main workflow's triggers for this test.
 
 ## Review a pending run
 
