@@ -1,5 +1,5 @@
 // Acceptance checks launch an already-built CLI against a local Unix-socket API fixture.
-package main
+package acceptance
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package main
+package acceptance
 
 func exportScenarios() []scenario {
 	ordinary := map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": map[string]any{"description": "Example repository", "homepage": "https://example.com", "has_issues": true, "has_projects": false, "has_wiki": true}}}

@@ -1,6 +1,6 @@
 //go:build acceptance
 
-package main
+package acceptance
 
 import (
 	"flag"
