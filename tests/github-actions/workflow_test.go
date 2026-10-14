@@ -93,6 +93,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	var push struct {
 		Branches []string `yaml:"branches"`
 		Tags     []string `yaml:"tags"`
+		Paths    []string `yaml:"paths"`
 	}
 	node := main.On["push"]
 	if err := node.Decode(&push); err != nil {
@@ -119,6 +120,12 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 			}
 		}
 	}
+	if !reflect.DeepEqual(push.Paths, []string{".github/settings.yml", ".github/workflows/settings-main.yml", "examples/github-actions/**"}) || !reflect.DeepEqual(pull.Paths, []string{".github/settings.yml", ".github/workflows/settings-pr.yml", "examples/github-actions/**"}) {
+		t.Fatal("required trigger paths changed")
+	}
+	if pr.Jobs["plan"].If != "" {
+		t.Fatal("conditional PR job")
+	}
 	if main.Defaults.Run.Shell != "bash" || pr.Defaults.Run.Shell != "bash" {
 		t.Fatal("runner shell contract changed")
 	}
@@ -142,7 +149,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 					t.Fatal("job permissions widened")
 				}
 			}
-			if j.Runner != "ubuntu-24.04" || len(j.Env) != 0 || j.Continue {
+			if j.Runner != "ubuntu-24.04" || len(j.Env) != 0 || j.Continue || j.Timeout != 5 {
 				t.Fatal("runner, job token or failure boundary changed")
 			}
 			for _, output := range j.Outputs {
@@ -170,6 +177,9 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	for _, j := range []job{pr.Jobs["plan"], prepare, apply} {
 		for i, s := range j.Steps {
 			if i == 0 {
+				if len(s.Env) != 0 {
+					t.Fatal("checkout credential environment")
+				}
 				expectedRef := "${{ github.sha }}"
 				if j.Environment == "settings-apply" {
 					expectedRef = "${{ needs.prepare.outputs.config-sha }}"
@@ -188,6 +198,12 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	}
 	if pr.Jobs["plan"].Steps[0].With["ref"] != "${{ github.sha }}" || prepare.Steps[0].With["ref"] != "${{ github.sha }}" {
 		t.Fatal("moving PR/prepare checkout")
+	}
+	if len(pr.Jobs["plan"].Steps[1].Env) != 0 || len(findStep(t, apply, "app").Env) != 0 {
+		t.Fatal("unexpected install/token environment")
+	}
+	if !reflect.DeepEqual(findStep(t, apply, "apply").Env, map[string]string{"GH_TOKEN": "${{ steps.app.outputs.token }}", "SETTINGS_CLI": "${{ steps.cli.outputs.binary-path }}"}) {
+		t.Fatal("apply credential environment changed")
 	}
 	prPlan := pr.Jobs["plan"].Steps[2]
 	if prPlan.Run != `bash examples/github-actions/plan.sh "$SETTINGS_CLI" "$RUNNER_TEMP/settings-plan.txt"` || !reflect.DeepEqual(prPlan.Env, map[string]string{"GH_TOKEN": "${{ github.token }}", "SETTINGS_CLI": "${{ steps.cli.outputs.binary-path }}"}) {
