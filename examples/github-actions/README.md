@@ -30,6 +30,14 @@ The renderer distinguishes changes, no differences, no managed fields, and error
 
 ## Main prepare example
 
-`settings-main.yml` currently prepares a `push` to Branch `main`; the dependent approved apply job follows separately. `prepare.sh` installs the pinned CLI from the triggering configuration checkout, validates/plans with the ordinary read token, and writes the Summary before exposing only configuration SHA, CLI version/checksum, and target. A later moving main cannot change the checkout input. Failures, including detectable rendering/write failures, block successful prepare.
+`settings-main.yml` prepares a `push` to Branch `main`, followed by the dependent approved apply job. `prepare.sh` installs the pinned CLI from the triggering configuration checkout, validates/plans with the ordinary read token, and writes the Summary before exposing only configuration SHA, CLI version/checksum, and target. A later moving main cannot change the checkout input. Failures, including detectable rendering/write failures, block successful prepare.
 
 The owner must not approve a run whose review Summary is missing or incomplete: successful prepare does not prove publication. No publication polling is added. Main concurrency is one repository group with `cancel-in-progress: false`; normal GitHub pending-run replacement applies. Run offline checks with `bash tests/github-actions/prepare.sh`. This example remains inert outside `.github/workflows`.
+
+## Approved apply example
+
+Apply needs successful prepare and waits at the fixed `settings-apply` Environment. Before adoption, the owner must configure that Environment with the owner reviewer, self-approval allowed, administrator bypass disabled, and only a Branch `main` rule with no Tag rule. The owner must securely enter Environment secret `SETTINGS_APP_PRIVATE_KEY` and variable `SETTINGS_APP_CLIENT_ID` for a dedicated selected-repository App with Administration write. An Environment name is not a workflow allowlist; review all eligible workflows/helpers/pins.
+
+Apply checks out prepare's configuration commit and verifies the same CLI version/checksum before token minting. The official token Action is pinned to v3.3.0's full SHA and requests Administration write for the containing repository only, with normal revocation retained. Its masked token output is consumed only by the direct apply step; it is not a job/workflow output or checkout/bootstrap/Summary credential. The outcome Summary reports success, failure, or skipped from the actual step. No rollback, saved-plan, drift, or freshness mechanism is added.
+
+Run `bash tests/github-actions/apply.sh` for offline input/token fixtures. Actual Environment gates and token revocation require separately authorized [manual verification](https://github.com/daiksud/gh-settings/issues/94). No App, key, Environment, activation, or live update is created by merging this example.

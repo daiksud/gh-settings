@@ -59,6 +59,7 @@ runs:
         bash tests/github-actions/plan.sh
         python3 tests/github-actions/summary.py
         bash tests/github-actions/prepare.sh
+        bash tests/github-actions/apply.sh
     - name: Build the product binary once
       id: build
       shell: bash
