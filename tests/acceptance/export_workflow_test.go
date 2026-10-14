@@ -34,10 +34,6 @@ func TestExportExistingFile(t *testing.T) {
 			if err := writeSettingsFile(fixture.work, original); err != nil {
 				t.Fatal(err)
 			}
-			path := filepath.Join(fixture.work, ".github", "settings.yml")
-			if err := os.Chmod(path, 0640); err != nil {
-				t.Fatal(err)
-			}
 			// Export has no stdout output, including when stdout cannot be written.
 			result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"export"}, true)
 			if err != nil {
@@ -57,14 +53,6 @@ func TestExportExistingFile(t *testing.T) {
 			}
 			if err := checkSettingsUnchanged(fixture.work, want); err != nil {
 				t.Fatal(err)
-			}
-			info, err := os.Stat(path)
-			if err != nil || info.Mode().Perm() != 0640 {
-				t.Fatalf("permissions changed: info=%v error=%v", info, err)
-			}
-			entries, err := os.ReadDir(filepath.Dir(path))
-			if err != nil || len(entries) != 1 || entries[0].Name() != "settings.yml" {
-				t.Fatalf("unexpected files: entries=%v error=%v", entries, err)
 			}
 			if err := fixture.checkRequests(false); err != nil {
 				t.Fatal(err)

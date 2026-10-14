@@ -23,7 +23,7 @@ gh settings export
 
 In current source, export saves root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki` to `.github/settings.yml` at the Git checkout root, including from subdirectories. It creates a missing `.github` directory and succeeds silently. Export reads that checkout's GitHub.com `origin`, ignores `GH_REPO`, and does not change GitHub settings. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
 
-An existing regular configuration file is completely replaced after the settings have been read, serialized, written to a temporary file, flushed and closed. Its permission bits are preserved; a new file is created with mode `0600` subject to the caller's umask. API, serialization and file publication errors leave an existing file unchanged. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+Export always overwrites an existing regular configuration file after reading the settings and serializing the complete YAML. A write failure reports an error and can leave the destination truncated or partially written; use Git to restore tracked configuration. Symlinks at `.github` or `settings.yml`, including dangling links, and non-regular destinations are rejected.
 
 ### Migrating from stdout export
 

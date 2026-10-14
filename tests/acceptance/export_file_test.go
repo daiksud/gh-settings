@@ -146,7 +146,7 @@ func TestExportRejectsUnsafeDestination(t *testing.T) {
 	}
 }
 
-func TestExportPreservesFileWhenWriteFails(t *testing.T) {
+func TestExportReportsWriteFailure(t *testing.T) {
 	body, err := json.Marshal(map[string]any{"description": strings.Repeat("x", 8192), "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false})
 	if err != nil {
 		t.Fatal(err)
@@ -160,12 +160,7 @@ func TestExportPreservesFileWhenWriteFails(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	original := "configuration to preserve\n"
-	if err := writeSettingsFile(fixture.work, original); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(fixture.work, ".github", "settings.yml")
-	if err := os.Chmod(path, 0640); err != nil {
+	if err := writeSettingsFile(fixture.work, "existing configuration\n"); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -179,17 +174,6 @@ func TestExportPreservesFileWhenWriteFails(t *testing.T) {
 	exit, ok := runErr.(*exec.ExitError)
 	if ctx.Err() != nil || !ok || exit.ExitCode() != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "write .github/settings.yml") {
 		t.Fatalf("execution=%v timeout=%v stdout=%q stderr=%q", runErr, ctx.Err(), stdout.String(), stderr.String())
-	}
-	if err := checkSettingsUnchanged(fixture.work, original); err != nil {
-		t.Fatal(err)
-	}
-	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != 0640 {
-		t.Fatalf("file mode not preserved: info=%v error=%v", info, err)
-	}
-	entries, err := os.ReadDir(filepath.Dir(path))
-	if err != nil || len(entries) != 1 || entries[0].Name() != "settings.yml" {
-		t.Fatalf("unexpected files after failure: entries=%v error=%v", entries, err)
 	}
 	if err := fixture.checkRequests(false); err != nil {
 		t.Fatal(err)

@@ -40,42 +40,17 @@ func exportCurrent() ([]byte, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf(".github must be a directory, not a symlink or other file")
 	}
-	if err := writeExportFile(path, data); err != nil {
+	info, err = os.Lstat(path)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("inspect %s: %w", settingsPath, err)
+	}
+	if info != nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s must be a regular file, not a symlink or other file", settingsPath)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		return nil, fmt.Errorf("write %s: %w", settingsPath, err)
 	}
 	return nil, nil
-}
-
-func writeExportFile(path string, data []byte) error {
-	info, err := os.Lstat(path)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	if info != nil && !info.Mode().IsRegular() {
-		return fmt.Errorf("destination must be a regular file, not a symlink or other file")
-	}
-	temp, err := os.CreateTemp(filepath.Dir(path), ".settings-*.yml")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(temp.Name())
-	defer temp.Close()
-	if info != nil && info.Mode().IsRegular() {
-		if err := temp.Chmod(info.Mode().Perm()); err != nil {
-			return err
-		}
-	}
-	if _, err := temp.Write(data); err != nil {
-		return err
-	}
-	if err := temp.Sync(); err != nil {
-		return err
-	}
-	if err := temp.Close(); err != nil {
-		return err
-	}
-	// Publish only after every fallible file operation has completed.
-	return os.Rename(temp.Name(), path)
 }
 
 func exportSettings(repo repository.Repository, client *api.RESTClient) ([]byte, error) {
