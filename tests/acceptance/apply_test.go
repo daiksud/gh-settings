@@ -19,10 +19,10 @@ import (
 func TestApplyAcceptance(t *testing.T) {
 	binary := acceptanceBinary(t)
 	for _, test := range []struct {
-		name, input, payload, wantError                string
-		status                                         int
-		noAPI, noOrigin, noAuth, nested, outputFailure bool
-		gitSetup                                       func(string, []string) error
+		name, input, payload, wantError                              string
+		status                                                       int
+		noAPI, noOrigin, noAuth, nested, outputFailure, globalOrigin bool
+		gitSetup                                                     func(string, []string) error
 	}{
 		{name: "partial-false", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, nested: true},
 		{name: "all-zero-values", input: repositoryInput("description: ''\nhomepage: ''\nhas_issues: false\nhas_projects: false\nhas_wiki: false\n"), payload: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`},
@@ -30,6 +30,10 @@ func TestApplyAcceptance(t *testing.T) {
 		{name: "rewritten-origin", input: repositoryInput("has_projects: true\n"), payload: `{"has_projects":true}`, gitSetup: setupRewrittenOrigin},
 		{name: "aliased-origin", input: repositoryInput("homepage: ''\n"), payload: `{"homepage":""}`, gitSetup: setupAliasedOrigin},
 		{name: "worktree-origin", input: repositoryInput("description: new\n"), payload: `{"description":"new"}`, gitSetup: setupWorktreeOrigin},
+		{name: "global-origin-before-local", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, globalOrigin: true},
+		{name: "global-origin-before-alias", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, globalOrigin: true, gitSetup: setupAliasedOrigin},
+		{name: "global-origin-before-worktree", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, globalOrigin: true, gitSetup: setupWorktreeOrigin},
+		{name: "global-only-origin", input: repositoryInput("has_issues: false\n"), wantError: "checkout-scoped", noAPI: true, noOrigin: true, globalOrigin: true},
 		{name: "no-managed-fields", input: "schemaVersion: 1\n", noAPI: true, noAuth: true, noOrigin: true},
 		{name: "empty-settings", input: "schemaVersion: 1\nsettings: {}\n", noAPI: true, noAuth: true, noOrigin: true},
 		{name: "empty-repository", input: "schemaVersion: 1\nsettings:\n  repository: {}\n", noAPI: true, noAuth: true, noOrigin: true},
@@ -94,6 +98,19 @@ func TestApplyAcceptance(t *testing.T) {
 			}
 			if err := setup(fixture.work, env); err != nil {
 				t.Fatal(err)
+			}
+			if test.globalOrigin {
+				global := filepath.Join(fixture.root, "global.conf")
+				if err := os.WriteFile(global, []byte("[remote \"origin\"]\n\turl = https://github.com/unrelated/wrong.git\n"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				var isolated []string
+				for _, entry := range env {
+					if !strings.HasPrefix(entry, "GIT_CONFIG_GLOBAL=") {
+						isolated = append(isolated, entry)
+					}
+				}
+				env = append(isolated, "GIT_CONFIG_GLOBAL="+global)
 			}
 			if err := writeSettingsFile(fixture.work, test.input); err != nil {
 				t.Fatal(err)

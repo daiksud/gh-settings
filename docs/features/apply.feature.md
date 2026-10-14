@@ -12,6 +12,7 @@ description: Send declared repository fields directly after local validation.
 - Reuse the schemaVersion 1 typed parser and reject invalid or missing configuration before origin, authentication, or API access.
 - A valid document with no managed fields prints `No managed repository settings.` and exits 0 without origin, authentication, or API access.
 - Otherwise resolve the same GitHub.com origin as export and ignore `GH_REPO`.
+- Accept origin values only from checkout-local/worktree scopes, including their included files; system/global/command origin values cannot select the mutation target.
 
 ### Rule: Send the declaration directly
 
@@ -38,7 +39,8 @@ Unit tests use fake transports. Process acceptance uses the already-built execut
 | --- | --- |
 | Exact PATCH payload, omission, five fields, false/empty strings, escaping | `TestApplySettings` |
 | HTTP/response/transport failures and CLI failure output | `TestApplySettingsFailures` |
+| System/global/command origins ignored; local/includes/worktree/aliases preserved | `TestRepositoryIgnoresUnscopedOrigins` |
 | Validation before origin/authentication and local no-op | `TestApplyCurrentValidatesAndNoopsLocally` |
 | Command dispatch, arguments, output failures | `TestRunSelectsOperation`, `TestUnsupportedCommand`, `TestApplyOutputFailure` |
-| Built product: exact PATCH, subdirectory/origin resolution, no GET, invalid YAML, no-op, auth/API/redirect/output failures, unchanged file | `TestApplyAcceptance` |
+| Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, unchanged file | `TestApplyAcceptance` |
 | Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |
