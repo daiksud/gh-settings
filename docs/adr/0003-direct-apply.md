@@ -6,7 +6,7 @@ description: Record the agreed decision to apply declared values directly.
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented in source; not yet released.
 
 ## Context
 

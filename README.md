@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting, validating, and planning the current repository's five basic settings. The published v0.2.2 release implements read-only `export` and local `validate`. Current source also implements read-only `plan`; `apply` and GitHub Action delivery remain future work.
+A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.3.0 release implements read-only `export`, local `validate`, and read-only `plan`. Current source also implements `apply`; it has not been released. GitHub Action delivery remains future work.
 
 ## Install
 
@@ -53,7 +53,7 @@ The [configuration contract](docs/settings.md#configuration-semantics) explains 
 
 ## Plan a saved configuration
 
-With a source build, edit `.github/settings.yml`, validate it, then inspect differences:
+Edit `.github/settings.yml`, validate it, then inspect differences:
 
 ```sh
 gh settings validate
@@ -66,7 +66,19 @@ Plan validates before reading GitHub and compares only declared fields. For the 
 settings.repository.has_issues: true → false
 ```
 
-Successful comparison exits 0 with or without differences. Strings are quoted and escaped; omitted fields are unmanaged. The command reports no differences or no managed fields with a short message. It does not change the file or repository settings. See [plan behavior](docs/commands.md#plan-behavior). Plan is not yet in a published release.
+Successful comparison exits 0 with or without differences. Strings are quoted and escaped; omitted fields are unmanaged. The command reports no differences or no managed fields with a short message. It does not change the file or repository settings. See [plan behavior](docs/commands.md#plan-behavior). Plan is available in v0.3.0.
+
+## Apply a saved configuration
+
+With a source build, send declared values directly:
+
+```sh
+gh settings apply
+```
+
+Apply validates `.github/settings.yml` before contacting GitHub, then sends only declared fields to the checkout's origin repository. False and empty strings are explicit values; omitted fields stay outside the request. A declaration with no managed fields succeeds without origin or authentication. Successful updates print `Applied repository settings.` and exit 0.
+
+Apply works independently of plan and does not fetch current settings. Remote changes to declared fields can be overwritten. Errors exit 1; an output failure can occur after an update succeeds, and there is no automatic rollback. See [apply behavior](docs/commands.md#apply-behavior). Apply is not in v0.3.0.
 
 ## Build and run from source
 
@@ -83,7 +95,7 @@ gh extension install .
 
 See the [development guide](docs/development.md) for tool setup and local checks, [CI stages](docs/development.md#ci-validation), and [Codex approval control](docs/development.md#codex-approval-control).
 
-The [export](docs/features/export.feature.md), [validate](docs/features/validate.feature.md), and [plan](docs/features/plan.feature.md) behavior specifications map their user-visible scenarios to ordinary Go tests. No BDD runner is required.
+The [export](docs/features/export.feature.md), [validate](docs/features/validate.feature.md), [plan](docs/features/plan.feature.md), and [apply](docs/features/apply.feature.md) behavior specifications map their user-visible scenarios to ordinary Go tests. No BDD runner is required.
 
 ## Maintainer release
 

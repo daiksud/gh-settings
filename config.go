@@ -19,11 +19,11 @@ type configSettings struct {
 }
 
 type settings struct {
-	Description *string `yaml:"description,omitempty"`
-	Homepage    *string `yaml:"homepage,omitempty"`
-	HasIssues   *bool   `yaml:"has_issues,omitempty"`
-	HasProjects *bool   `yaml:"has_projects,omitempty"`
-	HasWiki     *bool   `yaml:"has_wiki,omitempty"`
+	Description *string `yaml:"description,omitempty" json:"description,omitempty"`
+	Homepage    *string `yaml:"homepage,omitempty" json:"homepage,omitempty"`
+	HasIssues   *bool   `yaml:"has_issues,omitempty" json:"has_issues,omitempty"`
+	HasProjects *bool   `yaml:"has_projects,omitempty" json:"has_projects,omitempty"`
+	HasWiki     *bool   `yaml:"has_wiki,omitempty" json:"has_wiki,omitempty"`
 }
 
 func ParseConfig(data []byte) (Config, error) {

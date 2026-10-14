@@ -18,6 +18,21 @@ type apiFixture struct {
 }
 
 func startAPIFixture(body string, status int) (*apiFixture, error) {
+	if status == 0 {
+		status = 200
+	}
+	return startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/repos/owner/current" {
+			http.Error(w, "unexpected fixture request", 400)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		fmt.Fprint(w, body)
+	}, true)
+}
+
+func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, error) {
 	// A short /tmp path stays within Unix socket path limits on both macOS and Linux.
 	root, err := os.MkdirTemp("/tmp", "ghs-accept-")
 	if err != nil {
@@ -42,18 +57,12 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
-		if r.Method != http.MethodGet || r.URL.Path != "/repos/owner/current" {
+		if readOnly && (r.Method != http.MethodGet || r.URL.Path != "/repos/owner/current") {
 			fixture.invalid.Store(true)
 			http.Error(w, "unexpected fixture request", 400)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		responseStatus := status
-		if responseStatus == 0 {
-			responseStatus = 200
-		}
-		w.WriteHeader(responseStatus)
-		fmt.Fprint(w, body)
+		handler(w, r)
 	})}
 	go func() { _ = fixture.server.Serve(listener) }()
 	if err := os.WriteFile(filepath.Join(fixture.cfg, "config.yml"), []byte("http_unix_socket: "+socket+"\n"), 0600); err != nil {

@@ -69,7 +69,7 @@ func fixtureEnv(config string) []string {
 		}
 		env = append(env, entry)
 	}
-	return append(env, "GH_CONFIG_DIR="+config, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0")
+	return append(env, "GH_CONFIG_DIR="+config, "GH_PATH="+config+"/disabled-gh", "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL=/dev/null", "GIT_TERMINAL_PROMPT=0")
 }
 
 func exportFixtureEnv(config string) []string {
