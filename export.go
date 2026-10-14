@@ -10,19 +10,19 @@ import (
 )
 
 func exportCurrent() ([]byte, error) {
-	repo, err := currentRepository()
-	if err != nil {
-		return nil, err
-	}
 	root, err := gitRoot()
 	if err != nil {
-		return nil, fmt.Errorf("locate %s: %w", settingsPath, err)
+		return nil, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
 	}
 	rootDir, err := openExportRoot(root)
 	if err != nil {
 		return nil, fmt.Errorf("open checkout for %s: %w", settingsPath, err)
 	}
 	defer rootDir.Close()
+	repo, err := currentRepositoryAt(rootDir)
+	if err != nil {
+		return nil, err
+	}
 	client, err := api.NewRESTClient(api.ClientOptions{Host: repo.Host, Timeout: 30 * time.Second})
 	if err != nil {
 		return nil, fmt.Errorf("configure GitHub API client: %w", err)

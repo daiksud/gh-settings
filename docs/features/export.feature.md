@@ -49,6 +49,13 @@ A repository maintainer can capture the current five supported settings as confi
 
 ### Rule: Export only the current checkout's supported settings
 
+#### Scenario: Resolve the origin from the checkout receiving the file
+
+- Given the checkout pathname is replaced during Git discovery
+- When the maintainer runs `gh settings export`
+- Then the API origin is resolved from the same held checkout that receives the file
+- And a different checkout does not receive settings from that origin
+
 #### Scenario: Export five settings successfully
 
 - Given the current Git checkout has a GitHub `origin` remote
@@ -187,6 +194,7 @@ These scenarios map to ordinary Go tests, [export process cases](../../tests/acc
 | Report a failed write | — | `TestExportReportsWriteFailure` |
 | Refuse symlink destinations and non-regular files | `TestWriteExportFileRejectsSymlinkReplacement` | `TestExportRejectsUnsafeDestination` |
 | Keep the checkout selected before the API read | — | `TestExportPinsCheckoutDuringAPIRead` |
+| Resolve the origin from the checkout receiving the file | `TestRepositoryDiscoveryRequiresHeldCheckoutRoot`, `TestRepositoryDiscoveryRestoresWorkingDirectory` | `TestExportKeepsOriginAndDestinationTogether` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
 | Export five settings successfully | `TestExportFiveSettings` | `five-settings` |
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |

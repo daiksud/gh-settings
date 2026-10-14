@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -14,6 +15,34 @@ func gitRoot() (string, error) {
 		return "", err
 	}
 	return strings.TrimSuffix(string(root), "\n"), nil
+}
+
+// Repository discovery is serial in this CLI and finishes before API setup.
+// Enter the held checkout by descriptor so Git inherits its directory identity;
+// restore the caller's directory by descriptor on success and failure.
+func currentRepositoryAt(root *os.File) (repo repository.Repository, err error) {
+	previous, err := os.Open(".")
+	if err != nil {
+		return repo, fmt.Errorf("save current directory: %w", err)
+	}
+	defer previous.Close()
+	if err := root.Chdir(); err != nil {
+		return repo, fmt.Errorf("enter export checkout: %w", err)
+	}
+	defer func() {
+		if restoreErr := previous.Chdir(); restoreErr != nil {
+			repo = repository.Repository{}
+			err = fmt.Errorf("restore current directory: %w", restoreErr)
+		}
+	}()
+	prefix, err := exec.Command("git", "rev-parse", "--show-prefix").Output()
+	if err != nil {
+		return repo, fmt.Errorf("verify export checkout root: %w", err)
+	}
+	if strings.TrimSuffix(string(prefix), "\n") != "" {
+		return repo, fmt.Errorf("export destination must be the checkout root")
+	}
+	return currentRepository()
 }
 
 func currentRepository() (repository.Repository, error) {
