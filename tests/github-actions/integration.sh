@@ -17,6 +17,7 @@ EXPECTED_TARGET="$(sed -n 's/^target=//p' "$GITHUB_OUTPUT")"
 EXPECTED_CLI_VERSION="$(sed -n 's/^cli-version=//p' "$GITHUB_OUTPUT")"
 EXPECTED_CLI_SHA256="$(sed -n 's/^cli-sha256=//p' "$GITHUB_OUTPUT")"
 export CONFIG_SHA EXPECTED_TARGET EXPECTED_CLI_VERSION EXPECTED_CLI_SHA256
+fresh_apply_checkout
 export GITHUB_OUTPUT="$fixture/apply-output" RUNNER_TEMP="$fixture/apply-runner"
 mkdir -p "$RUNNER_TEMP"
 rm "$fixture/calls"
