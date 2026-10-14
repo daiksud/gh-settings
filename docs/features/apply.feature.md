@@ -16,6 +16,7 @@ description: Send declared repository fields directly after local validation.
 ### Rule: Send the declaration directly
 
 - Send exactly one PATCH to the current repository with only declared supported fields.
+- Reject redirects, including those that would convert PATCH into GET.
 - Omit schemaVersion, outer YAML mappings, and every undeclared field.
 - Preserve false and empty strings as explicit values.
 - Do not fetch current settings, reconcile differences, or require a saved plan.
@@ -39,5 +40,5 @@ Unit tests use fake transports. Process acceptance uses the already-built execut
 | HTTP/response/transport failures and CLI failure output | `TestApplySettingsFailures` |
 | Validation before origin/authentication and local no-op | `TestApplyCurrentValidatesAndNoopsLocally` |
 | Command dispatch, arguments, output failures | `TestRunSelectsOperation`, `TestUnsupportedCommand`, `TestApplyOutputFailure` |
-| Built product: exact PATCH, subdirectory/origin resolution, no GET, invalid YAML, no-op, auth/API/output failures, unchanged file | `TestApplyAcceptance` |
+| Built product: exact PATCH, subdirectory/origin resolution, no GET, invalid YAML, no-op, auth/API/redirect/output failures, unchanged file | `TestApplyAcceptance` |
 | Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |

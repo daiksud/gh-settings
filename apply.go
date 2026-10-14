@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -23,7 +24,11 @@ func applyCurrent() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := api.NewRESTClient(api.ClientOptions{Host: repo.Host, Timeout: 30 * time.Second})
+	client, err := api.NewRESTClient(api.ClientOptions{
+		Host: repo.Host, Timeout: 30 * time.Second,
+		// Redirects can convert PATCH to GET and report success without updating.
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	})
 	if err != nil {
 		return nil, fmt.Errorf("configure GitHub API client: %w", err)
 	}

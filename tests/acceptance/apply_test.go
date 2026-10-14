@@ -47,6 +47,11 @@ func TestApplyAcceptance(t *testing.T) {
 		{name: "unauthorized", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 401, wantError: "401"},
 		{name: "forbidden", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 403, wantError: "403"},
 		{name: "server-validation", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 422, wantError: "422"},
+		{name: "redirect-301", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 301, wantError: "301"},
+		{name: "redirect-302", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 302, wantError: "302"},
+		{name: "redirect-303", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 303, wantError: "303"},
+		{name: "redirect-307", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 307, wantError: "307"},
+		{name: "redirect-308", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 308, wantError: "308"},
 		{name: "output-after-patch", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, outputFailure: true, wantError: "write output:"},
 		{name: "no-op-output-failure", input: "schemaVersion: 1\n", noAPI: true, noAuth: true, noOrigin: true, outputFailure: true, wantError: "write output:"},
 	} {
@@ -62,6 +67,13 @@ func TestApplyAcceptance(t *testing.T) {
 				status := test.status
 				if status == 0 {
 					status = 200
+				}
+				if status >= 300 && status < 400 {
+					if r.URL.Path == "/repos/owner/current" {
+						w.Header().Set("Location", "/repos/owner/renamed")
+					} else {
+						status = 200
+					}
 				}
 				w.WriteHeader(status)
 				fmt.Fprint(w, `{"message":"fixture response"}`)
