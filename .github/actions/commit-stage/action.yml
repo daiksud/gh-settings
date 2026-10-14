@@ -27,7 +27,7 @@ runs:
     - name: Check GitHub workflows and shell scripts
       shell: bash
       run: |
-        actionlint -shellcheck shellcheck .github/workflows/*.yml
+        actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
         shellcheck scripts/publish-release.sh tests/release.sh examples/github-actions/*.sh tests/github-actions/*.sh
     - name: Verify Go formatting
       shell: bash
@@ -54,7 +54,9 @@ runs:
       run: bash tests/release.sh
     - name: Test example CLI bootstrap without GitHub
       shell: bash
-      run: bash tests/github-actions/bootstrap.sh
+      run: |
+        bash tests/github-actions/bootstrap.sh
+        bash tests/github-actions/plan.sh
     - name: Build the product binary once
       id: build
       shell: bash

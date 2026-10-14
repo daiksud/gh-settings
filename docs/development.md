@@ -11,10 +11,12 @@ mise exec -- go vet ./...
 mise exec -- go build ./...
 mise exec -- go mod verify
 mise exec -- go mod tidy -diff
-mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml
-mise exec -- shellcheck scripts/publish-release.sh tests/release.sh
+mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
+mise exec -- shellcheck scripts/publish-release.sh tests/release.sh examples/github-actions/*.sh tests/github-actions/*.sh
 mise exec -- bash tests/release.sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md docs
+mise exec -- bash tests/github-actions/bootstrap.sh
+mise exec -- bash tests/github-actions/plan.sh
+mise exec -- rumdl check --no-cache --deny-config-warnings README.md docs examples/github-actions
 ```
 
 ## Local process acceptance
