@@ -10,13 +10,13 @@ sources:
 
 ## Scope and status
 
-The published v0.4.0 release implements all four commands, with export writing YAML to stdout. Current source saves export directly to `.github/settings.yml`; that output change has not been released. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to that checkout's root `.github/settings.yml`; it does not require existing configuration. The mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
+The published v0.5.0 release implements all four commands, with export saving `.github/settings.yml`. The agreed initial interface has exactly four commands: `export`, `validate`, `plan`, and `apply`. They share the five fields defined on the [settings page](settings.md). Export reads the current checkout's repository and writes configuration to that checkout's root `.github/settings.yml`; it does not require existing configuration. The mutation workflow targets the repository containing that configuration. See the [concept](concept.md) for decision reasoning, future direction, and unresolved choices.
 
-Saved plan artifacts and drift protection are outside the initial scope. GitHub Action delivery is deferred.
+Saved plan artifacts and drift protection are outside the initial scope. [Inert GitHub Actions examples](github-actions.md) compose these commands; security setup and activation remain separate.
 
 ## Interface and implementation status
 
-All four command examples are implemented in current source. All four are available in v0.4.0; the default file output for export is unreleased. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
+All four command examples are implemented in current source. All four are available in v0.5.0, including the default file output for export. No target override or output-format flags are implemented. Additional flags and output formats remain undecided. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the current five-field scope.
 
 ```text
 gh settings export

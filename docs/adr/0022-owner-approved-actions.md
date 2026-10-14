@@ -6,7 +6,7 @@ description: Keep PR plans read-only and gate direct main apply with owner appro
 
 ## Status
 
-Accepted — implementation starts with inert examples.
+Accepted — implemented as inert examples; operational setup and activation remain separate.
 
 ## Context
 

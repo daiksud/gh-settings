@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.4.0 release implements all four commands, with export writing YAML to stdout. Current source saves export directly to `.github/settings.yml`; this output change has not been released. GitHub Action delivery remains future work.
+A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.5.0 release implements all four commands, with export saving `.github/settings.yml`. [Inert GitHub Actions examples](docs/github-actions.md) provide PR plans and owner-approved main apply; setup and activation are separate operations.
 
 ## Install
 
@@ -27,7 +27,7 @@ Export always overwrites an existing regular configuration file after reading th
 
 ### Migrating from stdout export
 
-Published v0.4.0 and earlier export YAML to stdout; current source writes the file and produces no stdout. Remove shell redirection when moving to the new behavior: the shell can truncate a destination before export runs. To inspect the saved configuration, run:
+Published v0.4.0 and earlier export YAML to stdout; v0.5.0 and current source write the file and produce no stdout. Remove shell redirection when moving to the new behavior: the shell can truncate a destination before export runs. To inspect the saved configuration, run:
 
 ```sh
 cat .github/settings.yml
@@ -73,7 +73,7 @@ Successful comparison exits 0 with or without differences. Strings are quoted an
 
 ## Apply a saved configuration
 
-With a source build, send declared values directly:
+Send declared values directly:
 
 ```sh
 gh settings apply
@@ -81,7 +81,7 @@ gh settings apply
 
 Apply validates `.github/settings.yml` before contacting GitHub, then sends only declared fields to the checkout's origin repository. False and empty strings are explicit values; omitted fields stay outside the request. A declaration with no managed fields succeeds without origin or authentication. Successful updates print `Applied repository settings.` and exit 0.
 
-Apply works independently of plan and does not fetch current settings. Remote changes to declared fields can be overwritten. Errors exit 1; an output failure can occur after an update succeeds, and there is no automatic rollback. See [apply behavior](docs/commands.md#apply-behavior). Apply is not in v0.3.0.
+Apply works independently of plan and does not fetch current settings. Remote changes to declared fields can be overwritten. Errors exit 1; an output failure can occur after an update succeeds, and there is no automatic rollback. See [apply behavior](docs/commands.md#apply-behavior). Apply is available since v0.4.0.
 
 ## Build and run from source
 
@@ -105,6 +105,7 @@ The [export](docs/features/export.feature.md), [validate](docs/features/validate
 Releases require an explicit run of the manual workflow from `main`; merging code does not publish a release. The workflow tests platform binaries before publishing them with checksums and release notes. See the [maintainer release procedure](docs/releases.md#start-a-manual-release) for initiation, identity checks, and recovery.
 
 - [Concept, design philosophy, and future direction](docs/concept.md)
+- [GitHub Actions setup, review, and recovery](docs/github-actions.md)
 - [Supported settings and configuration semantics](docs/settings.md)
 - [Commands and failure behavior](docs/commands.md)
 - [Release design and future versioning](docs/releases.md)

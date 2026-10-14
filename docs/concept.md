@@ -10,7 +10,7 @@ description: Define the purpose, ownership model, and future direction of gh set
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-The published v0.4.0 release implements export, validation, planning, and direct apply. Current source saves export directly to `.github/settings.yml` instead of stdout; this output change has not been released. GitHub Action delivery remains future work. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
+The published v0.5.0 release implements export, validation, planning, and direct apply, with export saving `.github/settings.yml`. [Inert Actions examples](github-actions.md) compose the released CLI with owner-approved main apply; operational setup and activation remain separate. Accepted ADRs record agreed decisions; current implementation status is described in the [commands page](commands.md).
 
 ## Design philosophy
 
@@ -36,12 +36,13 @@ Each ADR records one independently reversible decision:
 - [Reject explicit null for the first five settings](adr/0019-reject-explicit-null.md)
 - [Group repository fields within settings](adr/0020-group-settings-by-resource.md)
 - [Require a configuration schema version](adr/0021-require-schema-version.md)
+- [Gate Actions apply with owner approval](adr/0022-owner-approved-actions.md)
 
 Go is the agreed implementation language, and `github.com/cli/go-gh/v2` is selected for API access and GitHub CLI authentication integration. Prefer the Go standard library where sufficient; no command framework is mandated. The YAML organization's `go.yaml.in/yaml/v4` is selected for configuration reading and writing in [ADR 0009](adr/0009-yaml-v4-library.md), accepting release-candidate risk; it is not a Go team-maintained library. The [release design](releases.md) records separate distribution decisions and their ADRs.
 
 ## Future direction
 
-A GitHub Action is an eventual delivery requirement, deferred from initial implementation. Its trigger, packaging, and authentication design are not decided. Labels, rulesets, Pages, and Actions settings are excluded from the MVP; this section does not commit to implementing all of them.
+The [Actions contract](adr/0022-owner-approved-actions.md) is delivered as CLI-calling examples, with read-only PRs and main prepare followed by Environment-gated App apply. A root reusable Action framework is not part of this delivery. Labels, rulesets, Pages, and Actions settings are excluded from the MVP; this section does not commit to implementing all of them.
 
 The following label semantics are agreed for a future extension of scope:
 

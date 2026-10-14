@@ -50,3 +50,7 @@ The separate [approval workflow](../.github/workflows/approve-codex-review.yml) 
 This mechanism does not verify the reviewed HEAD or latest Ready-triggered review cycle, and can reuse older completion/reaction information. A successful workflow run alone does not prove that an approval was created. Inspect new Ready-triggered reviews separately. PR body edits also start the CI state sequence again, even when the HEAD has not changed.
 
 The approval workflow becomes available for comment events only after it exists on the default branch. For this workflow to create an approving review, repository settings must allow GitHub Actions to create and approve pull requests. Verify that setting before relying on the workflow. The workflow does not configure tokens, secrets, Rulesets, branch protection, or whether `pass` is a required check.
+
+## Settings example verification
+
+The inert [settings examples](../examples/github-actions/README.md) are linted and tested in commit-stage. Focused shell/Python fixtures cover each helper, while ordinary Go tests run the real YAML commands with a mock CLI and local approval/token stubs and check the cross-job credential/input boundary. Actual Environment approval, branch/tag enforcement, and real token revocation remain unverified until the separately authorized [adoption checklist](github-actions.md#ordered-owner-setup).
