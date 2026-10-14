@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime"
 	"strings"
@@ -128,6 +129,46 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		}
 	}
 	prepare, apply := main.Jobs["prepare"], main.Jobs["apply"]
+	if len(main.Jobs) != 2 || len(pr.Jobs) != 1 || len(pr.Jobs["plan"].Steps) != 3 || len(prepare.Steps) != 2 || len(apply.Steps) != 5 {
+		t.Fatal("required job/step structure changed")
+	}
+	for _, j := range []job{pr.Jobs["plan"], prepare, apply} {
+		for i, s := range j.Steps {
+			if i == 0 && (!strings.HasPrefix(s.Uses, "actions/checkout@") || s.With["ref"] == "") {
+				t.Fatal("missing fixed checkout")
+			}
+			if s.If != "" && !(j.Environment == "settings-apply" && i == 4 && s.If == "always()") {
+				t.Fatal("conditional required step")
+			}
+		}
+	}
+	if pr.Jobs["plan"].Steps[0].With["ref"] != "${{ github.sha }}" || prepare.Steps[0].With["ref"] != "${{ github.sha }}" {
+		t.Fatal("moving PR/prepare checkout")
+	}
+	prPlan := pr.Jobs["plan"].Steps[2]
+	if prPlan.Run != `bash examples/github-actions/plan.sh "$SETTINGS_CLI" "$RUNNER_TEMP/settings-plan.txt"` || !reflect.DeepEqual(prPlan.Env, map[string]string{"GH_TOKEN": "${{ github.token }}", "SETTINGS_CLI": "${{ steps.cli.outputs.binary-path }}"}) {
+		t.Fatal("PR verified plan binding changed")
+	}
+	if pr.Jobs["plan"].Steps[1].ID != "cli" || strings.TrimSpace(pr.Jobs["plan"].Steps[1].Run) != `binary=$(bash examples/github-actions/install-cli.sh "$RUNNER_TEMP/settings-cli")
+printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"` {
+		t.Fatal("PR verified CLI install changed")
+	}
+	if findStep(t, prepare, "prepare").Run != "bash examples/github-actions/prepare.sh" || !reflect.DeepEqual(findStep(t, prepare, "prepare").Env, map[string]string{"GH_TOKEN": "${{ github.token }}"}) {
+		t.Fatal("prepare read-token binding changed")
+	}
+	if !reflect.DeepEqual(prepare.Outputs, map[string]string{
+		"config-sha": "${{ steps.prepare.outputs.config-sha }}", "cli-version": "${{ steps.prepare.outputs.cli-version }}", "cli-sha256": "${{ steps.prepare.outputs.cli-sha256 }}", "target": "${{ steps.prepare.outputs.target }}",
+	}) {
+		t.Fatal("prepare output handoff changed")
+	}
+	if !reflect.DeepEqual(findStep(t, apply, "cli").Env, map[string]string{
+		"CONFIG_SHA": "${{ needs.prepare.outputs.config-sha }}", "EXPECTED_TARGET": "${{ needs.prepare.outputs.target }}", "EXPECTED_CLI_VERSION": "${{ needs.prepare.outputs.cli-version }}", "EXPECTED_CLI_SHA256": "${{ needs.prepare.outputs.cli-sha256 }}",
+	}) {
+		t.Fatal("verify input handoff changed")
+	}
+	if !reflect.DeepEqual(apply.Steps[4].Env, map[string]string{"APPLY_OUTCOME": "${{ steps.apply.outcome }}"}) || apply.Steps[4].If != "always()" {
+		t.Fatal("Summary outcome binding changed")
+	}
 	guard := "github.event_name == 'push' && github.ref == 'refs/heads/main'"
 	if prepare.If != guard || apply.If != guard || apply.Needs != "prepare" || apply.Environment != "settings-apply" || prepare.Environment != "" {
 		t.Fatal("prepare/approval/apply graph changed")
@@ -153,6 +194,15 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		t.Fatal("verified apply CLI binding changed")
 	}
 	app := findStep(t, apply, "app")
+	allowed := map[string]string{"client-id": "${{ vars.SETTINGS_APP_CLIENT_ID }}", "private-key": "${{ secrets.SETTINGS_APP_PRIVATE_KEY }}", "owner": "${{ github.repository_owner }}", "repositories": "${{ github.event.repository.name }}", "permission-administration": "write"}
+	for key, value := range app.With {
+		if key == "skip-token-revoke" && value == "false" {
+			continue
+		}
+		if allowed[key] != value {
+			t.Fatal("unexpected App input/permission")
+		}
+	}
 	if app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || app.With["repositories"] != "${{ github.event.repository.name }}" || app.With["owner"] != "${{ github.repository_owner }}" || app.With["permission-administration"] != "write" || app.With["private-key"] != "${{ secrets.SETTINGS_APP_PRIVATE_KEY }}" || (app.With["skip-token-revoke"] != "" && app.With["skip-token-revoke"] != "false") || app.With["client-id"] != "${{ vars.SETTINGS_APP_CLIENT_ID }}" {
 		t.Fatal("App permission/key/revocation contract changed")
 	}
