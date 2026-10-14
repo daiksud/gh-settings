@@ -6,8 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,66 +17,6 @@ import (
 
 	"go.yaml.in/yaml/v4"
 )
-
-func TestExportPinsCheckoutDuringAPIRead(t *testing.T) {
-	for _, replacement := range []string{"symlink", "directory"} {
-		t.Run(replacement, func(t *testing.T) {
-			var fixture *apiFixture
-			replaced := make(chan error, 1)
-			var err error
-			fixture, err = startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
-				outside := filepath.Join(fixture.root, "outside")
-				err := os.Rename(fixture.work, filepath.Join(fixture.root, "moved"))
-				if err == nil {
-					if replacement == "symlink" {
-						err = os.Symlink(outside, fixture.work)
-					} else {
-						err = os.Rename(outside, fixture.work)
-					}
-				}
-				replaced <- err
-				fmt.Fprint(w, planResponse)
-			}, true)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer fixture.close()
-			env := exportFixtureEnv(fixture.cfg)
-			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
-				t.Fatal(err)
-			}
-			outside := filepath.Join(fixture.root, "outside")
-			if err := writeSettingsFile(outside, "external configuration\n"); err != nil {
-				t.Fatal(err)
-			}
-			result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"export"}, false)
-			if err != nil {
-				t.Fatal(err)
-			}
-			select {
-			case err := <-replaced:
-				if err != nil {
-					t.Fatal(err)
-				}
-			default:
-				t.Fatalf("API read did not occur: execution=%v stderr=%q", result.runErr, result.stderr.String())
-			}
-			if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
-				t.Errorf("execution=%v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
-			}
-			if err := checkSettingsUnchanged(fixture.work, "external configuration\n"); err != nil {
-				t.Error(err)
-			}
-			data, err := os.ReadFile(filepath.Join(fixture.root, "moved", ".github", "settings.yml"))
-			if err != nil || !strings.Contains(string(data), "description: old\n") {
-				t.Errorf("original checkout configuration=%q error=%v", data, err)
-			}
-			if err := fixture.checkRequests(false); err != nil {
-				t.Fatal(err)
-			}
-		})
-	}
-}
 
 func TestExportSavesAtCheckoutRoot(t *testing.T) {
 	fixture, err := startAPIFixture(`{"description":"Example repository","homepage":"","has_issues":true,"has_projects":false,"has_wiki":false}`, 200)

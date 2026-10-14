@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -10,18 +12,13 @@ import (
 )
 
 func exportCurrent() ([]byte, error) {
-	root, err := gitRoot()
-	if err != nil {
-		return nil, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
-	}
-	rootDir, err := openExportRoot(root)
-	if err != nil {
-		return nil, fmt.Errorf("open checkout for %s: %w", settingsPath, err)
-	}
-	defer rootDir.Close()
-	repo, err := currentRepositoryAt(rootDir)
+	repo, err := currentRepository()
 	if err != nil {
 		return nil, err
+	}
+	root, err := gitRoot()
+	if err != nil {
+		return nil, fmt.Errorf("locate %s: %w", settingsPath, err)
 	}
 	client, err := api.NewRESTClient(api.ClientOptions{Host: repo.Host, Timeout: 30 * time.Second})
 	if err != nil {
@@ -31,7 +28,26 @@ func exportCurrent() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := writeExportFile(rootDir, data); err != nil {
+	path := filepath.Join(root, settingsPath)
+	dir := filepath.Dir(path)
+	if err := os.Mkdir(dir, 0755); err != nil && !os.IsExist(err) {
+		return nil, fmt.Errorf("create .github: %w", err)
+	}
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return nil, fmt.Errorf("inspect .github: %w", err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf(".github must be a directory, not a symlink or other file")
+	}
+	info, err = os.Lstat(path)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("inspect %s: %w", settingsPath, err)
+	}
+	if info != nil && !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s must be a regular file, not a symlink or other file", settingsPath)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		return nil, fmt.Errorf("write %s: %w", settingsPath, err)
 	}
 	return nil, nil

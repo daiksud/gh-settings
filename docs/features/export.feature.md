@@ -8,6 +8,8 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 A repository maintainer can capture the current five supported settings as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
 
+This feature assumes an owner-controlled checkout whose directory and link entries remain stable during export. Concurrent replacement of those entries is outside its scope.
+
 ### Rule: Save configuration in the checkout selected by origin
 
 #### Scenario: Export from a subdirectory without a settings directory
@@ -40,21 +42,7 @@ A repository maintainer can capture the current five supported settings as confi
 - Then the command fails with a diagnostic on standard error
 - And the symlink and its target remain unchanged
 
-#### Scenario: Keep the checkout selected before the API read
-
-- Given the current checkout's root directory is replaced while the API read is in flight
-- When the maintainer runs `gh settings export`
-- Then the complete configuration is saved in the originally selected checkout
-- And the replacement directory or symlink target remains unchanged
-
 ### Rule: Export only the current checkout's supported settings
-
-#### Scenario: Resolve the origin from the checkout receiving the file
-
-- Given the checkout pathname is replaced during Git discovery
-- When the maintainer runs `gh settings export`
-- Then the API origin is resolved from the same held checkout that receives the file
-- And a different checkout does not receive settings from that origin
 
 #### Scenario: Export five settings successfully
 
@@ -192,9 +180,7 @@ These scenarios map to ordinary Go tests, [export process cases](../../tests/acc
 | Export from a subdirectory without a settings directory | — | `TestExportSavesAtCheckoutRoot` |
 | Refresh an existing regular configuration | — | `TestExportExistingFile/replace` |
 | Report a failed write | — | `TestExportReportsWriteFailure` |
-| Refuse symlink destinations and non-regular files | `TestWriteExportFileRejectsSymlinkReplacement` | `TestExportRejectsUnsafeDestination` |
-| Keep the checkout selected before the API read | — | `TestExportPinsCheckoutDuringAPIRead` |
-| Resolve the origin from the checkout receiving the file | `TestRepositoryDiscoveryRequiresHeldCheckoutRoot`, `TestRepositoryDiscoveryRestoresWorkingDirectory` | `TestExportKeepsOriginAndDestinationTogether` |
+| Refuse symlink destinations and non-regular files | — | `TestExportRejectsUnsafeDestination` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
 | Export five settings successfully | `TestExportFiveSettings` | `five-settings` |
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |

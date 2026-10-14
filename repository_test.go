@@ -2,89 +2,12 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-func TestRepositoryDiscoveryRestoresWorkingDirectory(t *testing.T) {
-	for _, hasOrigin := range []bool{true, false} {
-		t.Run(fmt.Sprintf("origin-%t", hasOrigin), func(t *testing.T) {
-			t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-			checkout := t.TempDir()
-			if output, err := exec.Command("git", "init", "--quiet", checkout).CombinedOutput(); err != nil {
-				t.Fatalf("git init: %v: %s", err, output)
-			}
-			if hasOrigin {
-				if output, err := exec.Command("git", "-C", checkout, "remote", "add", "origin", "https://github.com/owner/current.git").CombinedOutput(); err != nil {
-					t.Fatalf("git origin: %v: %s", err, output)
-				}
-			}
-			t.Chdir(t.TempDir())
-			before, err := os.Stat(".")
-			if err != nil {
-				t.Fatal(err)
-			}
-			root, err := openExportRoot(checkout)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer root.Close()
-			repo, discoveryErr := currentRepositoryAt(root)
-			after, err := os.Stat(".")
-			if err != nil || !os.SameFile(before, after) {
-				t.Fatalf("working directory changed: error=%v", err)
-			}
-			if hasOrigin {
-				if discoveryErr != nil || repo.Owner != "owner" || repo.Name != "current" {
-					t.Fatalf("repository=%+v error=%v", repo, discoveryErr)
-				}
-			} else if discoveryErr == nil || !strings.Contains(discoveryErr.Error(), "origin") {
-				t.Fatalf("missing origin error=%v", discoveryErr)
-			}
-		})
-	}
-}
-
-func TestRepositoryDiscoveryRequiresHeldCheckoutRoot(t *testing.T) {
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-	parent := t.TempDir()
-	for _, args := range [][]string{
-		{"init", "--quiet", parent},
-		{"-C", parent, "remote", "add", "origin", "https://github.com/owner/parent.git"},
-	} {
-		if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
-			t.Fatalf("git: %v: %s", err, output)
-		}
-	}
-	child := filepath.Join(parent, "child")
-	if err := os.Mkdir(child, 0700); err != nil {
-		t.Fatal(err)
-	}
-	root, err := openExportRoot(child)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer root.Close()
-	t.Chdir(t.TempDir())
-	before, err := os.Stat(".")
-	if err != nil {
-		t.Fatal(err)
-	}
-	repo, discoveryErr := currentRepositoryAt(root)
-	after, err := os.Stat(".")
-	if discoveryErr == nil || !strings.Contains(discoveryErr.Error(), "checkout root") {
-		t.Errorf("accepted parent origin for child destination: repository=%+v error=%v", repo, discoveryErr)
-	}
-	if err != nil || !os.SameFile(before, after) {
-		t.Fatalf("working directory changed: error=%v", err)
-	}
-}
 
 func TestExportUsesOrigin(t *testing.T) {
 	dir := t.TempDir()
