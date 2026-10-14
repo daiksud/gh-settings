@@ -199,8 +199,12 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		t.Fatal(err)
 	}
 	exported, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
-	if err != nil || exported.runErr != nil || !strings.Contains(exported.stdout.String(), "has_issues: true") || exported.stderr.Len() != 0 {
+	if err != nil || exported.runErr != nil || exported.stdout.Len() != 0 || exported.stderr.Len() != 0 {
 		t.Fatalf("export=%v result=%+v", err, exported)
+	}
+	data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
+	if err != nil || !strings.Contains(string(data), "has_issues: true") {
+		t.Fatalf("exported file=%q error=%v", data, err)
 	}
 	// Edit to own only issues; omit the exported string/project/wiki fields.
 	input := repositoryInput("has_issues: false\n")

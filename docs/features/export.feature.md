@@ -6,7 +6,41 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 ## Feature: Export repository settings as YAML
 
-A repository maintainer can capture the current five supported settings as configuration without changing GitHub settings. `export` writes to standard output; creating `.github/settings.yml` is an explicit shell redirection, and an existing configuration file is not required.
+A repository maintainer can capture the current five supported settings as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+
+This feature assumes an owner-controlled checkout whose directory and link entries remain stable during export. Concurrent replacement of those entries is outside its scope.
+
+### Rule: Save configuration in the checkout selected by origin
+
+#### Scenario: Export from a subdirectory without a settings directory
+
+- Given the current Git checkout has a GitHub `origin` remote
+- And it has no `.github` directory
+- When the maintainer runs `gh settings export` from a subdirectory
+- Then `.github/settings.yml` at that checkout's root contains the exported settings
+- And standard output and standard error are empty
+- And configuration is not written beneath the subdirectory
+
+#### Scenario: Refresh an existing regular configuration
+
+- Given `.github/settings.yml` is an existing regular file
+- When the maintainer successfully runs `gh settings export`
+- Then that file contains the complete exported configuration
+
+#### Scenario: Report a failed write
+
+- Given `.github/settings.yml` is an existing regular file
+- When a file write error prevents export from saving the complete configuration
+- Then the command fails with a diagnostic on standard error
+- And standard output is empty
+- And the maintainer may need Git to restore a truncated or partial configuration
+
+#### Scenario: Refuse symlink destinations
+
+- Given `.github` or `.github/settings.yml` is a symlink, including a dangling symlink
+- When the maintainer runs `gh settings export`
+- Then the command fails with a diagnostic on standard error
+- And the symlink and its target remain unchanged
 
 ### Rule: Export only the current checkout's supported settings
 
@@ -16,9 +50,10 @@ A repository maintainer can capture the current five supported settings as confi
 - And its settings are description "Example repository", homepage "https://example.com", issues enabled, projects disabled, and wiki enabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And standard output has root `schemaVersion: 1` and `settings.repository` containing those five fields and values
+- And `.github/settings.yml` has root `schemaVersion: 1` and `settings.repository` containing those five fields and values
 - And response metadata and other settings are absent
 - And standard error is empty
+- And standard output is empty
 - And no repository settings are changed
 
 #### Scenario: Preserve false and empty string values
@@ -82,13 +117,13 @@ A repository maintainer can capture the current five supported settings as confi
 #### Scenario: Save export output and validate it locally
 
 - Given the current checkout has ordinary settings or zero values with an unset string
-- When the maintainer saves `gh settings export` output as `.github/settings.yml`
+- When the maintainer runs `gh settings export`
 - And runs `gh settings validate` with the same executable
 - Then the exported document contains `schemaVersion: 1`, `settings.repository`, and exactly the five supported values
 - And validation succeeds without output or changing the saved file bytes
 - And export makes one settings read while validation makes no API request
 
-### Rule: Report failures without emitting a successful configuration
+### Rule: Report export failures
 
 #### Scenario: Settings cannot be retrieved
 
@@ -124,24 +159,29 @@ A repository maintainer can capture the current five supported settings as confi
 
 #### Scenario: Standard output is unavailable
 
-- Given the output destination rejects the exported data
+- Given standard output cannot be written
 - When the maintainer runs `gh settings export`
-- Then the command exits with a nonzero status
-- And standard error describes the output failure
+- Then the command succeeds and saves `.github/settings.yml`
+- And standard error is empty
 
 #### Scenario: A command is not implemented
 
-- When the maintainer runs `gh settings apply`
+- When the maintainer runs `gh settings unknown`
 - Then the command exits with a nonzero status
 - And standard error identifies the unsupported command
 - And no API request is made
 
 ### Test mapping
 
-These scenarios map to ordinary Go tests, [export process cases](../../tests/acceptance/scenarios_export.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
+These scenarios map to ordinary Go tests, [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
+| Export from a subdirectory without a settings directory | — | `TestExportSavesAtCheckoutRoot` |
+| Refresh an existing regular configuration | — | `TestExportExistingFile/replace` |
+| Report a failed write | — | `TestExportReportsWriteFailure` |
+| Refuse symlink destinations and non-regular files | — | `TestExportRejectsUnsafeDestination` |
+| Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
 | Export five settings successfully | `TestExportFiveSettings` | `five-settings` |
 | Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |
 | Export unset strings as empty strings | `TestExportNormalizesUnsetStrings` | `unset-strings` |
@@ -151,11 +191,11 @@ These scenarios map to ordinary Go tests, [export process cases](../../tests/acc
 | Resolve a transport alias to GitHub | `TestExportUsesAliasRewrittenToGitHub` | `origin-alias` |
 | Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |
 | Save export output and validate it locally | — | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
-| Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` | `read-failure` |
+| Settings cannot be retrieved | `TestExportReadFailure`, `TestExportNetworkFailure` | `read-failure`, `TestExportExistingFile/api-failure` |
 | There is no usable current repository | `TestExportRepositoryFailure` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestExportRejectsGlobalOriginOutsideCheckout` | — |
-| The response cannot form a complete configuration | `TestExportRejectsIncompleteResponse` | `incomplete-response` |
-| Standard output is unavailable | `TestExportOutputFailure` | `output-failure` |
+| The response cannot form a complete configuration | `TestExportRejectsIncompleteResponse` | `incomplete-response`, `TestExportExistingFile/malformed-response`, `TestExportExistingFile/incomplete-response` |
+| Standard output is unavailable | `TestExportDoesNotWriteStdout` | `TestExportExistingFile/replace` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 
-The read-only export contract is separate from the future [mutation commands](../commands.md). Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.
+Export changes the local configuration but only reads GitHub settings; [apply](../commands.md#apply-behavior) owns GitHub mutation. Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.

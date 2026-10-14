@@ -10,7 +10,7 @@ func writeSettingsFile(work, input string) error {
 	if input == "" {
 		return nil
 	}
-	if err := os.Mkdir(filepath.Join(work, ".github"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(work, ".github"), 0700); err != nil {
 		return err
 	}
 	return os.WriteFile(filepath.Join(work, ".github", "settings.yml"), []byte(input), 0600)

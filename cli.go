@@ -29,7 +29,7 @@ func executeCommand(args []string, stdout io.Writer, operations commandOperation
 		return nil
 	}
 	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan\n       gh settings apply\nExport the current repository's five basic settings as YAML to standard output.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan\n       gh settings apply\nExport the current repository's five basic settings as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 		return nil
@@ -49,6 +49,9 @@ func executeCommand(args []string, stdout io.Writer, operations commandOperation
 	data, err := operation()
 	if err != nil {
 		return err
+	}
+	if len(data) == 0 {
+		return nil
 	}
 	if _, err := stdout.Write(data); err != nil {
 		return fmt.Errorf("write output: %w", err)

@@ -83,7 +83,7 @@ func TestRunSelectsOperation(t *testing.T) {
 			status := run(test.args, &stdout, &stderr, commandOperations{
 				export: func() ([]byte, error) {
 					exportCalls++
-					return []byte("settings\n"), test.operationError
+					return nil, test.operationError
 				},
 				plan: func() ([]byte, error) {
 					planCalls++
@@ -116,7 +116,7 @@ func TestRunSelectsOperation(t *testing.T) {
 			if test.name == "apply" && (stdout.String() != "apply\n" || stderr.Len() != 0) {
 				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
-			if test.name == "export" && (stdout.String() != "settings\n" || stderr.Len() != 0) {
+			if test.name == "export" && (stdout.Len() != 0 || stderr.Len() != 0) {
 				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
 		})
@@ -136,10 +136,10 @@ func TestUnsupportedCommand(t *testing.T) {
 	}
 }
 
-func TestExportOutputFailure(t *testing.T) {
+func TestExportDoesNotWriteStdout(t *testing.T) {
 	var stderr bytes.Buffer
-	code := run([]string{"export"}, brokenWriter{}, &stderr, commandOperations{export: func() ([]byte, error) { return []byte("description: test\n"), nil }})
-	if code != 1 || stderr.String() != "gh settings: write output: output unavailable\n" {
+	code := run([]string{"export"}, brokenWriter{}, &stderr, commandOperations{export: func() ([]byte, error) { return nil, nil }})
+	if code != 0 || stderr.Len() != 0 {
 		t.Fatalf("status=%d stderr=%q", code, stderr.String())
 	}
 }
@@ -151,7 +151,7 @@ func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("output un
 func TestHelp(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	status := run([]string{"--help"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) { t.Fatal("help invoked API operation"); return nil, nil }})
-	if status != 0 || !strings.Contains(stdout.String(), "gh settings export") || stderr.Len() != 0 {
+	if status != 0 || !strings.Contains(stdout.String(), "as YAML to .github/settings.yml at the checkout root") || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 	}
 }

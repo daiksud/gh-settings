@@ -15,7 +15,6 @@ func exportScenarios() []scenario {
 		{name: "read-failure", body: `{"message":"Fixture access denied"}`, status: 403, errorText: "403", gitSetup: setupOrdinaryOrigin},
 		{name: "repository-failure", noRead: true, errorText: "origin"},
 		{name: "incomplete-response", body: `{"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, errorText: "missing description", gitSetup: setupOrdinaryOrigin},
-		{name: "output-failure", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, outputFailure: true, errorText: "write output", gitSetup: setupOrdinaryOrigin},
 		{name: "unsupported-command", args: []string{"unknown"}, noRead: true, errorText: "unsupported", gitSetup: setupOrdinaryOrigin},
 	}
 }

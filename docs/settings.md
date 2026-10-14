@@ -13,7 +13,7 @@ sources:
 
 ## Scope and status
 
-The published v0.3.0 release implements read-only export, local validation, and read-only planning with a versioned configuration format. Current source also implements direct apply; apply has not been released. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the versioned configuration contract. See the [commands](commands.md) for the interface and the [concept](concept.md) for future direction and unresolved decisions.
+The published v0.4.0 release implements export, validation, planning, and direct apply. Current source saves export directly to `.github/settings.yml` instead of stdout; this output change has not been released. Configuration lives in `.github/settings.yml` and targets only the repository containing it. This page defines the five fields available to export and the versioned configuration contract. See the [commands](commands.md) for the interface and the [concept](concept.md) for future direction and unresolved decisions.
 
 ## Supported fields
 
