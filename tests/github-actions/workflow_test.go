@@ -188,6 +188,9 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		}
 	}
 	prepare, apply := main.Jobs["prepare"], main.Jobs["apply"]
+	if pr.Jobs["plan"].Environment != "" || len(pr.Jobs["plan"].Outputs) != 0 || len(apply.Outputs) != 0 {
+		t.Fatal("PR Environment or credential output contract changed")
+	}
 	if len(main.Jobs) != 2 || len(pr.Jobs) != 1 || len(pr.Jobs["plan"].Steps) != 3 || len(prepare.Steps) != 2 || len(apply.Steps) != 5 {
 		t.Fatal("required job/step structure changed")
 	}
@@ -205,7 +208,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 					t.Fatal("checkout inputs/credential contract changed")
 				}
 			}
-			if i == 0 && (!strings.HasPrefix(s.Uses, "actions/checkout@") || s.With["ref"] == "") {
+			if i == 0 && (s.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || s.With["ref"] == "") {
 				t.Fatal("missing fixed checkout")
 			}
 			if s.If != "" && !(j.Environment == "settings-apply" && i == 4 && s.If == "always()") {
