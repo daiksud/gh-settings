@@ -17,6 +17,7 @@ mise exec -- bash tests/release.sh
 mise exec -- bash tests/github-actions/bootstrap.sh
 mise exec -- bash tests/github-actions/plan.sh
 python3 tests/github-actions/summary.py
+mise exec -- bash tests/github-actions/prepare.sh
 mise exec -- rumdl check --no-cache --deny-config-warnings README.md docs examples/github-actions
 ```
 

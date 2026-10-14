@@ -27,3 +27,9 @@ The workflow remains outside `.github/workflows`. Later adoption must copy it de
 `render-summary.py OUTPUT_FILE EXIT_STATUS` uses Python 3's standard library to render explicit `SETTINGS_*` run metadata and the CLI output. Its tests list the required context fields. Workflow-source and configuration SHAs have separate exact-revision links. Original and initiating/rerun actors, run/attempt, event, target, and verified CLI identity appear separately from quoted settings data. No full GitHub context or credentials are dumped.
 
 The renderer distinguishes changes, no differences, no managed fields, and errors. It quotes output inside an escaped HTML data block, so settings text cannot close the block and forge approval context. Test it with `python3 tests/github-actions/summary.py`. The later main prepare example supplies these fields and writes the result to GitHub's Summary.
+
+## Main prepare example
+
+`settings-main.yml` currently prepares a `push` to Branch `main`; the dependent approved apply job follows separately. `prepare.sh` installs the pinned CLI from the triggering configuration checkout, validates/plans with the ordinary read token, and writes the Summary before exposing only configuration SHA, CLI version/checksum, and target. A later moving main cannot change the checkout input. Failures, including detectable rendering/write failures, block successful prepare.
+
+The owner must not approve a run whose review Summary is missing or incomplete: successful prepare does not prove publication. No publication polling is added. Main concurrency is one repository group with `cancel-in-progress: false`; normal GitHub pending-run replacement applies. Run offline checks with `bash tests/github-actions/prepare.sh`. This example remains inert outside `.github/workflows`.

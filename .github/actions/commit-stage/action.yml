@@ -52,12 +52,13 @@ runs:
     - name: Test release recovery without GitHub
       shell: bash
       run: bash tests/release.sh
-    - name: Test example CLI bootstrap without GitHub
+    - name: Test settings examples without GitHub
       shell: bash
       run: |
         bash tests/github-actions/bootstrap.sh
         bash tests/github-actions/plan.sh
         python3 tests/github-actions/summary.py
+        bash tests/github-actions/prepare.sh
     - name: Build the product binary once
       id: build
       shell: bash

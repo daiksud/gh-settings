@@ -1,0 +1,39 @@
+name: Settings main apply (example)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/settings.yml
+      - .github/workflows/settings-main.yml
+      - examples/github-actions/**
+permissions: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: settings-main-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      config-sha: ${{ steps.prepare.outputs.config-sha }}
+      cli-version: ${{ steps.prepare.outputs.cli-version }}
+      cli-sha256: ${{ steps.prepare.outputs.cli-sha256 }}
+      target: ${{ steps.prepare.outputs.target }}
+    steps:
+      - name: Checkout triggering configuration commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate, plan and write review Summary
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash examples/github-actions/prepare.sh
