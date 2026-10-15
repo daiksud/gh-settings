@@ -26,6 +26,9 @@ def render(output, status, env):
     source = workflow_ref.split("@", 1)[0]
     owner, repository, workflow_path = source.split("/", 2)
     run_url = f'https://github.com/{owner}/{repository}/actions/runs/{value("RUN_ID")}'
+    action_repository, action_ref = "Local checkout", "Unavailable (local action)"
+    if env.get("SETTINGS_ACTION_REPOSITORY") or env.get("SETTINGS_ACTION_REF"):
+        action_repository, action_ref = value("ACTION_REPOSITORY"), value("ACTION_REF")
     rows = [
         ("Original actor", quoted(value("ACTOR"))),
         ("Initiating / rerun actor", quoted(value("TRIGGERING_ACTOR"))),
@@ -35,8 +38,8 @@ def render(output, status, env):
         ("Workflow revision", link(f"https://github.com/{owner}/{repository}/blob/{workflow_sha}/{workflow_path}", workflow_sha)),
         ("Target repository", link(f"https://github.com/{target}", target)),
         ("Configuration revision", link(f"https://github.com/{target}/blob/{config_sha}/.github/settings.yml", config_sha)),
-        ("Action repository", quoted(value("ACTION_REPOSITORY"))),
-        ("Action ref", quoted(value("ACTION_REF"))),
+        ("Action repository", quoted(action_repository)),
+        ("Action ref", quoted(action_ref)),
         ("CLI version", quoted(value("CLI_VERSION"))),
         ("CLI SHA-256", quoted(value("CLI_SHA256"))),
     ]

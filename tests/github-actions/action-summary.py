@@ -31,6 +31,18 @@ class SummaryTest(unittest.TestCase):
         self.assertIn('https://github.com/workflow-owner/workflow-repo/blob/' + 'a' * 40, rendered)
         self.assertIn('https://github.com/config-owner/config-repo/blob/' + 'b' * 40 + '/.github/settings.yml', rendered)
 
+    def test_local_action_has_no_invented_remote_pin(self):
+        for value in ('', None):
+            env = dict(self.env)
+            for key in ('SETTINGS_ACTION_REPOSITORY', 'SETTINGS_ACTION_REF'):
+                if value is None:
+                    del env[key]
+                else:
+                    env[key] = value
+            rendered = summary.render('', 0, env)
+            self.assertIn('Action repository</th><td>Local checkout', rendered)
+            self.assertIn('Action ref</th><td>Unavailable (local action)', rendered)
+
     def test_first_run_and_rerun_exact_links(self):
         first = summary.render("settings.repository.has_issues: true → false\n", 0, self.env)
         self.assertIn("Observed before → desired after", first)
