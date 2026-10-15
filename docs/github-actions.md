@@ -1,81 +1,74 @@
 ---
 type: Guide
-title: Adopt owner-approved settings workflows
-description: Set up, review, and recover the inert GitHub Actions examples.
+title: Use the public settings Action
+description: Invoke the composite Action and separately adopt owner-approved consumer workflows.
+sources:
+  - id: composite-metadata
+    resource: https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax
+  - id: environment-controls
+    resource: https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments
+  - id: app-token-action
+    resource: https://github.com/actions/create-github-app-token/tree/64ab729a6294000f5aa4a4bc0b73d1f32bc45510
 ---
 
-## Delivery and adoption boundary
+## Public Action and supported checkout
 
-The [examples](../examples/github-actions/README.md) compose the released CLI; they are not a root reusable Action. Merging them installs no settings workflow and changes no repository setting. The [contract](adr/0022-owner-approved-actions.md) and [scenarios](features/actions.feature.md) define the supported behavior.
+The root [composite Action](../action.yml) implements the [ADR 0023 contract](adr/0023-public-composite-action.md) and [behavior specification](features/actions.feature.md#public-composite-action-contract). Invoke it as `uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70`. This reviewed full SHA contains the completed Action package; it is independent of the workflow/configuration revision and the CLI release. Composite inputs/outputs use normal `with` and step-output bindings.[^composite-metadata]
 
-Every job runs on a fresh GitHub-hosted `ubuntu-24.04` runner. Bash, curl, GNU sha256sum, Git, and Python 3 are runner prerequisites. Shared persistent self-hosted runners are outside this setup. Workflow and configuration commits must remain available for ordinary reruns.
+Only a fresh GitHub-hosted `ubuntu-24.04` x64 job is supported, with Bash, curl, GNU sha256sum, Git and Python 3. macOS, Windows, ARM, containers and self-hosted runners are outside this contract. The caller checks out its configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and commits `.github/settings.yml` at that root. A resolvable checkout commit and checkout-scoped GitHub.com `origin` are required even for validate's output metadata. The Action repository is not the target; `GH_REPO` does not override the CLI's origin resolution. See the [configuration semantics](settings.md#configuration-semantics).
 
-Implementation is complete independently of operational setup. [#92](https://github.com/daiksud/gh-settings/issues/92), [#93](https://github.com/daiksud/gh-settings/issues/93), and [#94](https://github.com/daiksud/gh-settings/issues/94) remain manual checks until real evidence is recorded. No first target has been assumed. Prefer an owner-approved disposable/test repository for verification.
+The Action uses its own packaged helpers and verified absolute CLI in a per-invocation runner-temp directory; consumers do not install an extension or copy Action internals. Validate needs no settings authentication/API access, but the Action still downloads the public CLI asset. Workflow, configuration and Action revisions must remain available for ordinary reruns.
 
-## Files and checks
+## Inputs, outputs and failures
 
-Use one reviewed repository revision for both workflow examples and all six support files:
-
-| Inert source | Adoption destination / purpose |
+| Input | Contract |
 | --- | --- |
-| `examples/github-actions/settings-pr.yml` | `.github/workflows/settings-pr.yml` — PR validate and read-only plan |
-| `examples/github-actions/settings-main.yml` | `.github/workflows/settings-main.yml` — main prepare and approved apply |
-| `examples/github-actions/install-cli.sh` | Same path — fixed released binary, checksum/version verification |
-| `examples/github-actions/plan.sh` | Same path — validate before plan |
-| `examples/github-actions/render-summary.py` | Same path — quoted review Summary |
-| `examples/github-actions/prepare.sh` | Same path — exact configuration/CLI/target handoff |
-| `examples/github-actions/verify-apply.sh` | Same path — verify handoff before token minting |
-| `examples/github-actions/apply.sh` | Same path — direct CLI apply with step-scoped token |
+| `command` | Required, no default; exactly `validate`, `plan` or `apply`. |
+| `token` | No default; unused for validate, required and nonempty for plan/apply. Supply it explicitly; no ambient or implicit `github.token` fallback. |
 
-Keep the helpers at those paths in the target repository. Prepare and apply check out the same triggering configuration commit. Neither job builds source, imports a PR artifact, nor replays a saved plan. Declare supported values in `.github/settings.yml` using [schemaVersion 1](settings.md#configuration-semantics); omitted fields stay unmanaged. Do not use export redirection with v0.5.0.
+Validate checks local configuration without credentials. Plan validates first, then reads settings with an explicit read-only caller token, for example `token: ${{ github.token }}` in the read-only PR/prepare jobs. Apply directly invokes the existing CLI using the caller's approved, target-scoped App installation token with Administration write. The Action does not verify the token's actual grants or create it. No export, arbitrary arguments, configuration-path, target, version or download-URL input is supported.
 
-The [development checks](development.md#development-checks) run Actionlint, ShellCheck, bootstrap/plan/prepare/apply fixtures, Summary tests, and the composed Go tests alongside the existing product checks. The composed fixture runs the real YAML shell commands with a mock CLI and local approval/token stubs. Existing built-product acceptance separately exercises the real CLI against a local API fixture. It does not establish actual GitHub protection or revocation.
+| Success output | Meaning |
+| --- | --- |
+| `config-sha` | Full checked-out configuration commit (`HEAD`), not the file hash, workflow SHA or Action SHA. |
+| `target` | Configuration checkout's resolved GitHub `origin`, in `OWNER/REPO` form. |
+| `cli-version` | Verified fixed CLI release, `v0.5.0`. |
+| `cli-sha256` | Verified binary SHA-256, `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`. |
 
-The CLI pin is `v0.5.0`, asset `gh-settings-linux-amd64`, SHA-256 `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`. Review version, asset, and committed digest together against published assets before updating. Review the checkout and official token Action full-SHA pins and their exact supported inputs; the token Action currently uses v3.3.0's `client-id` and explicit `permission-administration: write`. Do not resolve `latest` or a moving Action tag at runtime, cache PR-supplied executables, or disable token revocation.
+Use `steps.<id>.outputs.<name>` only after successful completion. Outputs are published after the command and, for plan, successful Summary rendering/writing. Missing command/token, unsupported prerequisites, install/metadata/output failures and CLI/configuration/API errors fail the Action. CLI failure status is preserved; differences, no differences and no managed fields all exit successfully. Failed calls have no successful output contract. Plan Summary quotes settings/error text and separates workflow, configuration, Action and CLI identities; validate/apply do not render a plan Summary. A caller can record apply's actual step outcome, as the main example does.
+
+The CLI pin is `v0.5.0`, asset `gh-settings-linux-amd64`, with the digest above and exact reported version `gh-settings v0.5.0`. The immutable CLI tag has no root `action.yml`; never use `@v0.5.0` as this Action. Review package/CLI version/asset/checksum together for updates. Existing CLI assets/tags remain unchanged; a first Action release number needs a separate owner decision. This guide does not publish a release, moving tag or Marketplace listing.
+
+## Consumer files and compatibility
+
+The [inert PR/main examples](../examples/github-actions/README.md) already use the public Action. Use the same reviewed example source revision for both YAML files and their caller verifier; `897eab7fc143d848abf37d7355bd64126527ef4c` contains this complete set. Its Action package matches the `93d8217d146f5d430aaf90597119114218990e70` pin used in both workflows.
+
+| Inert source | Consumer destination / purpose |
+| --- | --- |
+| `examples/github-actions/settings-pr.yml` | `.github/workflows/settings-pr.yml`: PR validate/plan with explicit read token. |
+| `examples/github-actions/settings-main.yml` | `.github/workflows/settings-main.yml`: read-only prepare, then approved direct apply. |
+| `examples/github-actions/verify-action-handoff.sh` | Same path: compare prepared configuration/target/Action/CLI identity before token minting. |
+
+Keep the caller verifier at that path in the configuration checkout. Do not copy root `action.yml` or `action/` into the consumer. Prepare exposes the four Action outputs plus separately labeled caller-owned `action-sha`; the latter is not a fifth Action output. Apply checks out prepare's exact configuration commit, verifies the handoff and same reviewed Action pin, then mints its token. Neither job builds source, imports PR executables/artifacts nor replays a saved plan.
+
+The active workflows in this repository still use the legacy shell composition. They are separate from these inert examples and remain unchanged. Changes under `examples/github-actions/**`, including this directory's README, can match their existing path filters and run current read-only PR plan/main prepare. This does not adopt the public examples or authorize approving a waiting apply. The [helper inventory](../examples/github-actions/README.md#retained-helper-inventory) lists why all existing helpers and their tests remain. Existing #83–#94 work is completed prior art, not a new setup backlog or evidence for every future installation.
 
 ## Ordered owner setup
 
-These are future owner operations, not actions performed by merging this guide. Record non-secret evidence in the matching manual issues. Never put private keys, token values, or credential screenshots in repository files, issues, logs, artifacts, or chat.
+The Action does not select an Environment, request approval, mint/revoke tokens or configure concurrency. Its token input becomes `GH_TOKEN` only for the plan/apply command step; installation, validation, Summary and metadata/output steps do not receive that token input. This scopes environment exposure, not process isolation: composite steps share the caller job. Trust all code in a credential-bearing job and keep privileged credentials out of untrusted PR code.
 
-1. **Choose the target and scope (#92).** Name the exact repository, dedicated App, and approved persistent permissions. Approve a selected-repositories installation limited to that target set. Grant repository **Administration: read and write**, automatic **Metadata: read**, and no unrelated repository/organization access. Do not substitute a broad App or personal access token. Record only non-secret App/client/installation identifiers and selected repository names. The workflow separately requests a token for only its containing repository.
-2. **Configure the target Environment (#93).** Verify the target plan/visibility supports the controls; stop if unsupported. Create `settings-apply`, require the verified owner as reviewer (`daiksud` only when that is the target owner), leave prevention of self-review disabled, and disable administrator bypass. Select deployment branches/tags and add only a **Branch** rule named `main`. Add no Tag rule, wildcard, PR ref, or protected-branches-only fallback. Read the rules back before storing credentials.
-3. **Enter credentials securely (#92/#93).** The owner generates/handles the dedicated App key through GitHub's secure flow. After protection is verified, the owner submits Environment secret `SETTINGS_APP_PRIVATE_KEY` and Environment variable `SETTINGS_APP_CLIENT_ID`. Record names/existence only. There must be no repository/organization-wide key fallback. Review every eligible workflow, helper, Action, and CLI pin: an Environment name is not a workflow allowlist, and anyone who can change approved code can change privileged behavior.
-4. **Authorize adoption and exact test settings (#94).** Name the target, reviewed example revision, concrete temporary before/desired values, activation, apply, and cleanup scope. Copy the two workflow examples to the destinations above only through a separately scoped adoption PR. Preserve the support files from that same reviewed revision. For repositories already containing the helpers, the later copy commands are:
+For a new installation, the owner must verify supported Environment controls and separately authorize these operations. GitHub's availability varies by plan/visibility; unsupported controls are a stop condition.[^environment-controls]
 
-   ```sh
-   mkdir -p .github/workflows
-   cp examples/github-actions/settings-pr.yml .github/workflows/settings-pr.yml
-   cp examples/github-actions/settings-main.yml .github/workflows/settings-main.yml
-   ```
+1. Select the exact target and a dedicated selected-repositories App with Administration read/write and automatic Metadata read, without unrelated access. The caller requests Administration write for just its containing repository using explicit owner/repositories; the installation's persistent grants are the owner's responsibility.
+2. Protect the example's `settings-apply` Environment with the owner reviewer, self-approval allowed, administrator bypass disabled and only a Branch `main` rule (no Tag/wildcard rule). Verify protection before securely entering Environment variable `SETTINGS_APP_CLIENT_ID` and secret `SETTINGS_APP_PRIVATE_KEY`; no repository/organization-wide key fallback. An Environment name is not a workflow allowlist.
+3. In a separately authorized adoption PR, copy the three files above from the same reviewed source, preserve credential-free checkout and event/ref guards, and inspect trigger/path effects. The main workflow permits only a main-branch push; apply depends on successful prepare and Environment approval before any App mint. The official pinned token Action requests only that repository's Administration write, and retains default post-job revocation. Its token stays within the approved job and is passed only to `command: apply`.[^app-token-action]
+4. Stop at owner review of the concrete PR and activation/test/cleanup scope. Merging an adoption PR can trigger read-only prepare and a waiting apply; approve nothing without inspecting the complete Summary. Actual waiting/rejection, branch/tag enforcement and revocation need separately authorized platform checks. Workflow filtering alone does not prove Environment enforcement; do not add temporary probe refs or broaden rules without their own concrete authorization.
 
-   Merge this adoption only after its ordinary review/CI gates and explicit activation scope are satisfied. This project does not assume self-management of `daiksud/gh-settings`.
-5. **Verify real gates and results (#94).** Exercise valid/invalid PR plan; inspect a known main prepare Summary. Observe apply waiting before any key/token use. Reject one run and confirm no update; approve an eligible run as the owner, including intentional self-approval for an owner-triggered run. Test actual Environment branch/tag enforcement with the temporary probe below, separately from main workflow filtering, without loosening rules. Read applied values and omitted fields back, inspect token cleanup evidence, and safely verify revocation where possible. Record rerun/attempt actors and run URLs. Restore only explicitly approved temporary values and read them back. Unverified platform checks remain open.
-
-## Distinguish workflow filtering from Environment enforcement
-
-A non-main branch or tag cannot reach the main example's guarded apply job. That observation proves workflow filtering, not Environment branch/tag enforcement. Include a separately reviewed temporary probe, its exact source/refs, and removal in #94's owner authorization. On the approved test target only, use `.github/workflows/settings-environment-probe.yml` with this minimal shape:
-
-```yaml
-name: Temporary settings Environment probe
-on:
-  push:
-    branches: [main, settings-gate-probe]
-    tags: [main]
-permissions: {}
-jobs:
-  probe:
-    environment: settings-apply
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - run: echo 'Environment admitted this ref.'
-```
-
-The probe has no checkout, secret reference, App token, or settings mutation. Ensure the reviewed probe file exists at each tested commit before pushing its approved branch/tag. Expect the main deployment to wait for owner review, while `settings-gate-probe` and Tag `main` are denied by the unchanged Environment rules. Inspect the actual deployment/job denial evidence; absence of a workflow run proves nothing. Do not overwrite an existing branch/tag to obtain evidence. Remove only the authorized temporary probe and refs afterward. Never broaden the privileged main workflow's triggers for this test.
+For this repository's future adoption, preserve Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID`, `ANSWER26_PRIVATE_KEY` and the unchanged declaration. The inert names `settings-apply` / `SETTINGS_APP_*` are not instructions to rename or replace existing resources. A future PR must explicitly map those existing names, choose a reviewed full Action SHA, retain guards/permissions/concurrency and document exact trigger effects. Review it through ordinary CI/approval, then stop for owner activation authorization. This documentation authorizes no workflow switch, credential/security edit, live apply or release, and creates no duplicate tracking Issue.
 
 ## Review a pending run
 
-Open the Actions run Summary before approving its waiting `settings-apply` deployment. Check the original actor and initiating/rerun actor, event, run/attempt, workflow path/ref and exact workflow-source revision, target, configuration revision/file link, pinned CLI identity, and observed before → desired after values. The workflow-source SHA and configuration SHA are separate identities; each link uses its displayed revision.
+Open the Actions run Summary before approving its waiting `settings-apply` deployment. Check the original actor and initiating/rerun actor, event, run/attempt, workflow path/ref and exact workflow-source revision, target, configuration revision/file link, distinct Action repository/ref, pinned CLI identity, and observed before → desired after values. The workflow-source SHA and configuration SHA are separate identities; each link uses its displayed revision.
 
 Do not approve a missing or incomplete review Summary. A successful prepare does not prove that GitHub published it. Detectable rendering/write failure fails prepare; no publication polling or additional approval mechanism is provided. Quoted settings are data, including apparent HTML, Markdown headings/fences, and workflow commands.
 
@@ -101,3 +94,7 @@ PR concurrency cancels superseded PR runs. Main uses one repository-scoped group
 - [GitHub contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts)
 - [Environment setup and supported controls](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 - [Official token Action at the reviewed revision](https://github.com/actions/create-github-app-token/tree/64ab729a6294000f5aa4a4bc0b73d1f32bc45510)
+
+[^composite-metadata]: [GitHub composite metadata syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax). Inputs and mapped step outputs; runtime checks remain Action-owned.
+[^environment-controls]: [GitHub Environment controls](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). Check availability and protection rules for the actual target before owner setup.
+[^app-token-action]: [Official token Action at the reviewed revision](https://github.com/actions/create-github-app-token/tree/64ab729a6294000f5aa4a4bc0b73d1f32bc45510). Explicit target/permission inputs and default post-job revocation; actual revocation needs runtime evidence.
