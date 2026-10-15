@@ -66,7 +66,16 @@ class SummaryTest(unittest.TestCase):
         self.assertIn("Original actor</th><td>owner", rerun)
         self.assertIn("Initiating / rerun actor</th><td>maintainer", rerun)
         self.assertIn("</a> / 2", rerun)
-        self.assertIn("prepare failed", rerun)
+        self.assertIn("plan failed", rerun)
+
+    def test_failed_plan_is_an_error_without_claiming_apply_gating(self):
+        rendered = summary.render('API request failed\n', 37, self.env)
+        self.assertIn('Error — plan failed.', rendered)
+        self.assertIn('Exit status: 37.', rendered)
+        self.assertIn('can overwrite intervening remote changes', rendered)
+        self.assertIn('does not prove publication', rendered)
+        self.assertNotIn('apply remains blocked', rendered)
+        self.assertNotIn('successful prepare', rendered)
 
     def test_no_change_and_unmanaged(self):
         for output, expected in [("No differences for managed repository settings.\n", "No differences for managed settings."), ("No managed repository settings.\n", "No managed settings.")]:

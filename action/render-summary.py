@@ -45,7 +45,7 @@ def render(output, status, env):
         ("CLI SHA-256", quoted(value("CLI_SHA256"))),
     ]
     if status:
-        result = "Error — prepare failed; apply remains blocked."
+        result = "Error — plan failed."
     elif output.strip() == "No differences for managed repository settings.":
         result = "No differences for managed settings."
     elif output.strip() == "No managed repository settings.":
@@ -58,7 +58,7 @@ def render(output, status, env):
         + f"<p>{quoted(result)} Exit status: {status}.</p>\n\n"
         + "<pre>" + html.escape(output, quote=True) + "</pre>\n\n"
         + "Direct apply uses the declaration and can overwrite intervening remote changes to managed fields. "
-        + "Approve only after inspecting this complete Summary; successful prepare alone does not prove publication.\n"
+        + "Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n"
     )
 
 
