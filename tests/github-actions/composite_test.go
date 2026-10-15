@@ -128,6 +128,29 @@ func TestRootCompositePreservesCLIStatus(t *testing.T) {
 	}
 }
 
+func TestRootCompositeSummaryFailure(t *testing.T) {
+	for _, failure := range []string{"render", "write"} {
+		for _, status := range []string{"0", "37"} {
+			t.Run(failure+status, func(t *testing.T) {
+				extra := map[string]string{"MOCK_REMOTE_STATUS": status}
+				if failure == "render" {
+					extra["github.run_id"] = ""
+				} else {
+					extra["SUMMARY_DIRECTORY"] = "1"
+				}
+				result := runComposite(t, "plan", "fixture-token", extra)
+				want := 1
+				if status == "37" {
+					want = 37
+				}
+				if result.status != want || len(result.outputs) != 0 || !strings.Contains(result.log, "Could not render or write plan Summary.") || strings.Contains(result.log, "fixture-token") {
+					t.Fatalf("status=%d want%d outputs=%v\n%s", result.status, want, result.outputs, result.log)
+				}
+			})
+		}
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
@@ -218,7 +241,14 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 	values := map[string]string{"inputs.command": command, "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
 		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": "approved-action-ref"}
 	for key, value := range extra {
-		base[key] = value
+		if key == "github.run_id" {
+			values[key] = value
+		} else {
+			base[key] = value
+		}
+	}
+	if extra["SUMMARY_DIRECTORY"] == "1" {
+		base["GITHUB_STEP_SUMMARY"] = caller
 	}
 	resolve := func(value string) string {
 		t.Helper()
