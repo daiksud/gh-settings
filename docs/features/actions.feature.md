@@ -58,7 +58,7 @@ description: Specify inert workflow examples and the public composite Action aro
 
 Each implementation PR adds its focused offline checks; composed coverage follows before adoption. Markdown/local-link checks validate this contract. Actual Environment waiting/rejection, branch/tag enforcement, and token revocation require separately authorized GitHub verification; offline fixtures cannot establish those platform behaviors.
 
-## Feature: Use the public composite Action
+### Public composite Action contract
 
 Consumers can validate, inspect, or directly apply their checked-out repository settings through a reviewed Action package without copying helper files. This is the accepted contract for staged implementation in [ADR 0023](../adr/0023-public-composite-action.md), not a claim that the root Action already exists. The preceding workflow-example rules remain applicable to those examples.
 

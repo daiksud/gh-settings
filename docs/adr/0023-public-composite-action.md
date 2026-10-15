@@ -13,7 +13,7 @@ sources:
 
 Accepted — contract only; implementation follows in separate PRs.
 
-Narrowly supersedes the reusable-Action non-goal in [ADR 0022](0022-owner-approved-actions.md). Its owner approval, direct-apply, concurrency, and credential decisions remain in force. The [behavior specification](../features/actions.feature.md#feature-use-the-public-composite-action) defines the public inputs, outputs, and failure contract.
+Narrowly supersedes the reusable-Action non-goal in [ADR 0022](0022-owner-approved-actions.md). Its owner approval, direct-apply, concurrency, and credential decisions remain in force. The [behavior specification](../features/actions.feature.md#public-composite-action-contract) defines the public inputs, outputs, and failure contract.
 
 ## Context
 
