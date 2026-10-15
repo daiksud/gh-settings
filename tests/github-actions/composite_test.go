@@ -82,8 +82,20 @@ func TestRootCompositeApply(t *testing.T) {
 	}
 }
 
+func TestRootCompositeRejectsUnknownCommand(t *testing.T) {
+	for _, command := range []string{"", "export", "validate --flag", `$(touch "$GITHUB_WORKSPACE/injected")`} {
+		t.Run(command, func(t *testing.T) {
+			result := runComposite(t, command, "", nil)
+			if result.status == 0 || result.downloaded || result.calls != "" || len(result.outputs) != 0 || result.injected {
+				t.Fatalf("status=%d downloaded=%t calls=%q outputs=%v injected=%t\n%s", result.status, result.downloaded, result.calls, result.outputs, result.injected, result.log)
+			}
+		})
+	}
+}
+
 type compositeResult struct {
 	status                           int
+	downloaded, injected             bool
 	outputs                          map[string]string
 	log, calls, summary, sha, digest string
 }
@@ -125,7 +137,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0' ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo validate >> \"$MOCK_CALLS\" ;;\nplan|apply) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; echo \"$1\" >> \"$MOCK_CALLS\"; echo 'before → desired' ;;\n*) exit 99 ;;\nesac\n"
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
 	write(filepath.Join(fixture, "asset"), asset)
-	write(filepath.Join(bin, "curl"), "#!/usr/bin/env bash\nset -euo pipefail\nwhile [[ $# -gt 0 ]]; do\nif [[ $1 == --output ]]; then cp \"$MOCK_ASSET\" \"$2\"; exit; fi\nshift\ndone\nexit 1\n")
+	write(filepath.Join(bin, "curl"), "#!/usr/bin/env bash\nset -euo pipefail\ntouch \"$MOCK_DOWNLOAD\"\nwhile [[ $# -gt 0 ]]; do\nif [[ $1 == --output ]]; then cp \"$MOCK_ASSET\" \"$2\"; exit; fi\nshift\ndone\nexit 1\n")
 	write(filepath.Join(bin, "sha256sum"), "#!/usr/bin/env bash\nexec shasum -a 256 \"$@\"\n")
 	files, err := os.ReadDir(filepath.Join(root(), "action"))
 	if err != nil {
@@ -145,6 +157,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 		write(filepath.Join(packagePath, "action", file.Name()), string(content))
 	}
 	base := map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "HOME": fixture, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(fixture, "gitconfig"), "GITHUB_WORKSPACE": caller, "RUNNER_TEMP": filepath.Join(fixture, "runner temp"), "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "GITHUB_STEP_SUMMARY": filepath.Join(fixture, "summary"), "MOCK_ASSET": filepath.Join(fixture, "asset"), "MOCK_CALLS": filepath.Join(fixture, "calls")}
+	base["MOCK_DOWNLOAD"] = filepath.Join(fixture, "download")
 	environment := func(values map[string]string) []string {
 		var env []string
 		for key, value := range values {
@@ -252,5 +265,9 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 	result.calls = string(calls)
 	summary, _ := os.ReadFile(base["GITHUB_STEP_SUMMARY"])
 	result.summary = string(summary)
+	_, err = os.Stat(base["MOCK_DOWNLOAD"])
+	result.downloaded = err == nil
+	_, err = os.Stat(filepath.Join(caller, "injected"))
+	result.injected = err == nil
 	return result
 }

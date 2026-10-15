@@ -24,6 +24,15 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Check command
+      shell: bash
+      env:
+        SETTINGS_COMMAND: ${{ inputs.command }}
+      run: |
+        case "$SETTINGS_COMMAND" in
+          validate|plan|apply) ;;
+          *) echo 'command must be validate, plan or apply' >&2; exit 1 ;;
+        esac
     - name: Install CLI and resolve checkout metadata
       id: setup
       shell: bash
