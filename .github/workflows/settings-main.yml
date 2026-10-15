@@ -1,0 +1,83 @@
+name: Settings main apply (example)
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/settings.yml
+      - .github/workflows/settings-main.yml
+      - examples/github-actions/**
+permissions: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: settings-main-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      config-sha: ${{ steps.prepare.outputs.config-sha }}
+      cli-version: ${{ steps.prepare.outputs.cli-version }}
+      cli-sha256: ${{ steps.prepare.outputs.cli-sha256 }}
+      target: ${{ steps.prepare.outputs.target }}
+    steps:
+      - name: Checkout triggering configuration commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Validate, plan and write review Summary
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash examples/github-actions/prepare.sh
+  apply:
+    needs: prepare
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: answer26
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout prepared configuration commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ needs.prepare.outputs.config-sha }}
+          persist-credentials: false
+      - name: Verify prepared inputs and released CLI
+        id: cli
+        env:
+          CONFIG_SHA: ${{ needs.prepare.outputs.config-sha }}
+          EXPECTED_TARGET: ${{ needs.prepare.outputs.target }}
+          EXPECTED_CLI_VERSION: ${{ needs.prepare.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.prepare.outputs.cli-sha256 }}
+        run: bash examples/github-actions/verify-apply.sh
+      - name: Mint token for this target only
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.ANSWER26_CLIENT_ID }}
+          private-key: ${{ secrets.ANSWER26_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-administration: write
+      - name: Apply declared settings directly
+        id: apply
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SETTINGS_CLI: ${{ steps.cli.outputs.binary-path }}
+        run: bash examples/github-actions/apply.sh
+      - name: Record apply outcome
+        if: always()
+        env:
+          APPLY_OUTCOME: ${{ steps.apply.outcome }}
+        run: |
+          printf '## Apply result\n\nCLI step outcome: %s. See the step log for errors.\n' "$APPLY_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
