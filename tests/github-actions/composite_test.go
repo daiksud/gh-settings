@@ -176,6 +176,10 @@ func TestRootCompositeOriginFormats(t *testing.T) {
 		{"github.com:owner/config.git", "owner/config"},
 		{"ssh://git@github.com/owner/config.git", "owner/config"},
 		{"https://github.com/owner/config%2Drepo.git", "owner/config-repo"},
+		{"https://www.github.com/owner/config.git", "owner/config"},
+		{"https://GitHub.com/owner/config.git", "owner/config"},
+		{"HTTPS://GitHub.com/owner/config.git", ""},
+		{"https://WWW.github.com/owner/config.git", ""},
 		{"https://gitlab.com/owner/config.git", ""},
 		{"https://github.com/owner/config%0Ainjected%3Dyes.git", ""},
 	} {

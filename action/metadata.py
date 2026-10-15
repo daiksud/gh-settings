@@ -18,8 +18,12 @@ def git(*args):
 def repository(origin):
     if origin.startswith(("git@github.com:", "github.com:")):
         origin = "ssh://" + origin.replace(":", "/", 1)
+    if not origin.startswith(("https://", "ssh://")):
+        raise ValueError("origin must use a supported literal protocol prefix")
     url = urlsplit(origin)
-    if url.scheme not in ("https", "ssh") or (url.hostname or "").removeprefix("www.") != "github.com":
+    # Match go-gh's literal www. removal before lowercasing, not urlsplit.hostname.
+    host = url.netloc.rsplit("@", 1)[-1].split(":", 1)[0]
+    if host.removeprefix("www.").lower() != "github.com":
         raise ValueError("a checkout-scoped GitHub origin is required")
     owner, name = unquote(url.path).strip("/").split("/")
     return f"{owner}/{name.removesuffix('.git')}"
