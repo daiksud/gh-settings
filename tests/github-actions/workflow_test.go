@@ -191,7 +191,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if pr.Jobs["plan"].Environment != "" || len(pr.Jobs["plan"].Outputs) != 0 || len(apply.Outputs) != 0 {
 		t.Fatal("PR Environment or credential output contract changed")
 	}
-	if len(main.Jobs) != 2 || len(pr.Jobs) != 1 || len(pr.Jobs["plan"].Steps) != 2 || len(prepare.Steps) != 2 || len(apply.Steps) != 5 {
+	if len(main.Jobs) != 2 || len(pr.Jobs) != 1 || len(pr.Jobs["plan"].Steps) != 2 || len(prepare.Steps) != 3 || len(apply.Steps) != 5 {
 		t.Fatal("required job/step structure changed")
 	}
 	for _, j := range []job{pr.Jobs["plan"], prepare, apply} {
@@ -222,23 +222,31 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if len(pr.Jobs["plan"].Steps[1].Env) != 0 || len(findStep(t, apply, "app").Env) != 0 {
 		t.Fatal("unexpected caller-step token environment")
 	}
-	if !reflect.DeepEqual(findStep(t, apply, "apply").Env, map[string]string{"GH_TOKEN": "${{ steps.app.outputs.token }}", "SETTINGS_CLI": "${{ steps.cli.outputs.binary-path }}"}) {
-		t.Fatal("apply credential environment changed")
-	}
 	prPlan := pr.Jobs["plan"].Steps[1]
 	if prPlan.Uses != "daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70" || prPlan.Run != "" || !reflect.DeepEqual(prPlan.With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
 		t.Fatal("PR public Action/read-token binding changed")
 	}
-	if findStep(t, prepare, "prepare").Run != "bash examples/github-actions/prepare.sh" || !reflect.DeepEqual(findStep(t, prepare, "prepare").Env, map[string]string{"GH_TOKEN": "${{ github.token }}"}) {
-		t.Fatal("prepare read-token binding changed")
+	plan := findStep(t, prepare, "prepare")
+	if plan.Uses != prPlan.Uses || plan.Run != "" || len(plan.Env) != 0 || !reflect.DeepEqual(plan.With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
+		t.Fatal("prepare public Action/read-token binding changed")
+	}
+	guardStep := findStep(t, prepare, "guard")
+	if guardStep.Run == "" || guardStep.Uses != "" || len(guardStep.Env) != 0 || len(guardStep.With) != 0 {
+		t.Fatal("prepare checkout guard credential boundary changed")
+	}
+	applyAction := findStep(t, apply, "apply")
+	if applyAction.Uses != plan.Uses || applyAction.Run != "" || len(applyAction.Env) != 0 || !reflect.DeepEqual(applyAction.With, map[string]string{"command": "apply", "token": "${{ steps.app.outputs.token }}"}) {
+		t.Fatal("apply public Action/token binding changed")
 	}
 	if !reflect.DeepEqual(prepare.Outputs, map[string]string{
 		"config-sha": "${{ steps.prepare.outputs.config-sha }}", "cli-version": "${{ steps.prepare.outputs.cli-version }}", "cli-sha256": "${{ steps.prepare.outputs.cli-sha256 }}", "target": "${{ steps.prepare.outputs.target }}",
+		"action-sha": "93d8217d146f5d430aaf90597119114218990e70",
 	}) {
 		t.Fatal("prepare output handoff changed")
 	}
-	if !reflect.DeepEqual(findStep(t, apply, "cli").Env, map[string]string{
+	if !reflect.DeepEqual(findStep(t, apply, "handoff").Env, map[string]string{
 		"CONFIG_SHA": "${{ needs.prepare.outputs.config-sha }}", "EXPECTED_TARGET": "${{ needs.prepare.outputs.target }}", "EXPECTED_CLI_VERSION": "${{ needs.prepare.outputs.cli-version }}", "EXPECTED_CLI_SHA256": "${{ needs.prepare.outputs.cli-sha256 }}",
+		"EXPECTED_ACTION_SHA": "${{ needs.prepare.outputs.action-sha }}", "REVIEWED_ACTION_SHA": "93d8217d146f5d430aaf90597119114218990e70",
 	}) {
 		t.Fatal("verify input handoff changed")
 	}
@@ -263,13 +271,10 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	for i, s := range apply.Steps {
 		indices[s.ID] = i
 	}
-	if !(indices["cli"] < indices["app"] && indices["app"] < indices["apply"]) {
+	if !(indices["handoff"] < indices["app"] && indices["app"] < indices["apply"]) {
 		t.Fatal("credential step order changed")
 	}
-	if findStep(t, apply, "apply").Env["SETTINGS_CLI"] != "${{ steps.cli.outputs.binary-path }}" {
-		t.Fatal("verified apply CLI binding changed")
-	}
-	if findStep(t, apply, "cli").Run != "bash examples/github-actions/verify-apply.sh" || findStep(t, apply, "apply").Run != "bash examples/github-actions/apply.sh" || strings.TrimSpace(apply.Steps[4].Run) != `printf '## Apply result\n\nCLI step outcome: %s. See the step log for errors.\n' "$APPLY_OUTCOME" >> "$GITHUB_STEP_SUMMARY"` {
+	if findStep(t, apply, "handoff").Run != "bash examples/github-actions/verify-action-handoff.sh" || strings.TrimSpace(apply.Steps[4].Run) != `printf '## Apply result\n\nCLI step outcome: %s. See the step log for errors.\n' "$APPLY_OUTCOME" >> "$GITHUB_STEP_SUMMARY"` {
 		t.Fatal("privileged run command changed")
 	}
 	app := findStep(t, apply, "app")
@@ -285,7 +290,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || app.With["repositories"] != "${{ github.event.repository.name }}" || app.With["owner"] != "${{ github.repository_owner }}" || app.With["permission-administration"] != "write" || app.With["private-key"] != "${{ secrets.SETTINGS_APP_PRIVATE_KEY }}" || (app.With["skip-token-revoke"] != "" && app.With["skip-token-revoke"] != "false") || app.With["client-id"] != "${{ vars.SETTINGS_APP_CLIENT_ID }}" {
 		t.Fatal("App permission/key/revocation contract changed")
 	}
-	if strings.Count(mainText, "steps.app.outputs.token") != 1 || findStep(t, apply, "apply").Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" {
+	if strings.Count(mainText, "steps.app.outputs.token") != 1 || applyAction.With["token"] != "${{ steps.app.outputs.token }}" {
 		t.Fatal("App token escaped apply step")
 	}
 	if apply.Steps[0].With["ref"] != "${{ needs.prepare.outputs.config-sha }}" {
@@ -299,8 +304,38 @@ func mapValues(m map[string]string) []string {
 	}
 	return v
 }
-func TestComposedOfflineWorkflow(t *testing.T) {
+func TestMainPrepareCheckoutGuard(t *testing.T) {
 	w, _ := readWorkflow(t, "settings-main.yml")
+	guard := findStep(t, w.Jobs["prepare"], "guard")
+	cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", `source tests/github-actions/fixture.sh
+bash -e -o pipefail -c "$PREPARE_GUARD"
+for context in 'pull_request refs/heads/main' 'push refs/heads/other' 'push refs/tags/main'; do
+  read -r event ref <<< "$context"
+  if GITHUB_EVENT_NAME="$event" GITHUB_REF="$ref" bash -e -o pipefail -c "$PREPARE_GUARD" > "$fixture/log" 2>&1; then exit 1; fi
+done
+if GITHUB_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb bash -e -o pipefail -c "$PREPARE_GUARD" > "$fixture/log" 2>&1; then exit 1; fi
+git remote set-url origin https://github.com/owner/other
+if bash -e -o pipefail -c "$PREPARE_GUARD" > "$fixture/log" 2>&1; then exit 1; fi
+[[ ! -e "$fixture/calls" && ! -e "$fixture/api" && ! -e "$GITHUB_OUTPUT" ]]`)
+	cmd.Dir = root()
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + os.Getenv("HOME"), "TMPDIR=" + os.Getenv("TMPDIR"), "PREPARE_GUARD=" + guard.Run}
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("prepare checkout guard failed: %v\n%s", err, output)
+	}
+}
+func TestMainActionHandoff(t *testing.T) {
+	w, _ := readWorkflow(t, "settings-main.yml")
+	handoff := findStep(t, w.Jobs["apply"], "handoff")
+	cmd := exec.Command("bash", filepath.Join(root(), "tests/github-actions/action-handoff.sh"))
+	cmd.Dir = root()
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + os.Getenv("HOME"), "TMPDIR=" + os.Getenv("TMPDIR"), "VERIFY_COMMAND=" + handoff.Run, "REVIEWED_ACTION_SHA=" + handoff.Env["REVIEWED_ACTION_SHA"]}
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("public Action caller handoff failed: %v\n%s", err, output)
+	}
+}
+func TestLegacyOperationalWorkflow(t *testing.T) {
+	// Preserve the legacy operational workflow coverage while inert callers adopt the public Action.
+	w, _ := readWorkflow(t, "../../.github/workflows/settings-main.yml")
 	prepare, apply := w.Jobs["prepare"], w.Jobs["apply"]
 	var summary step
 	for _, s := range apply.Steps {
