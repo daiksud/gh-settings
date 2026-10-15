@@ -35,11 +35,49 @@ runs:
         python3 "$ACTION_PATH/action/metadata.py" "$binary" >> "$GITHUB_OUTPUT"
         printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
     - name: Validate checkout settings without authentication
+      if: inputs.command == 'validate'
       shell: bash
       env:
         ACTION_PATH: ${{ github.action_path }}
         SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
       run: bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" validate "${SETTINGS_CLI%/*}/output.txt"
+    - name: Execute plan with the caller token
+      id: execute
+      if: inputs.command == 'plan'
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+        SETTINGS_COMMAND: ${{ inputs.command }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        unset GITHUB_TOKEN
+        status=0
+        bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" "$SETTINGS_COMMAND" "${SETTINGS_CLI%/*}/output.txt" || status=$?
+        printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+    - name: Render plan Summary and return the plan status
+      if: inputs.command == 'plan'
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+        PLAN_STATUS: ${{ steps.execute.outputs.exit-status }}
+        SETTINGS_ACTOR: ${{ github.actor }}
+        SETTINGS_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        SETTINGS_EVENT: ${{ github.event_name }}
+        SETTINGS_RUN_ID: ${{ github.run_id }}
+        SETTINGS_RUN_ATTEMPT: ${{ github.run_attempt }}
+        SETTINGS_WORKFLOW_REF: ${{ github.workflow_ref }}
+        SETTINGS_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        SETTINGS_ACTION_REPOSITORY: ${{ github.action_repository }}
+        SETTINGS_ACTION_REF: ${{ github.action_ref }}
+        SETTINGS_CONFIG_SHA: ${{ steps.setup.outputs.config-sha }}
+        SETTINGS_TARGET: ${{ steps.setup.outputs.target }}
+        SETTINGS_CLI_VERSION: ${{ steps.setup.outputs.cli-version }}
+        SETTINGS_CLI_SHA256: ${{ steps.setup.outputs.cli-sha256 }}
+      run: |
+        unset GH_TOKEN GITHUB_TOKEN
+        python3 "$ACTION_PATH/action/render-summary.py" "${SETTINGS_CLI%/*}/output.txt" "$PLAN_STATUS"
     - name: Publish successful result
       id: result
       shell: bash

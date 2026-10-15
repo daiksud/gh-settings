@@ -57,6 +57,24 @@ func TestRootCompositeValidate(t *testing.T) {
 	}
 }
 
+func TestRootCompositePlan(t *testing.T) {
+	result := runComposite(t, "plan", "fixture-token", nil)
+	if result.status != 0 || len(result.outputs) != 4 {
+		t.Fatalf("status=%d outputs=%v\n%s", result.status, result.outputs, result.log)
+	}
+	if result.calls != "validate\nplan\n" {
+		t.Fatalf("settings calls=%q", result.calls)
+	}
+	for _, text := range []string{"Settings review", "before → desired", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", "approved-action-ref", strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
+		if !strings.Contains(result.summary, text) {
+			t.Errorf("Summary missing %q: %s", text, result.summary)
+		}
+	}
+	if strings.Contains(result.summary+result.log, "fixture-token") {
+		t.Fatal("token escaped execution environment")
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	outputs                          map[string]string
@@ -97,7 +115,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			t.Fatal(err)
 		}
 	}
-	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0' ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo validate >> \"$MOCK_CALLS\" ;;\n*) exit 99 ;;\nesac\n"
+	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0' ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo validate >> \"$MOCK_CALLS\" ;;\nplan) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; echo plan >> \"$MOCK_CALLS\"; echo 'before → desired' ;;\n*) exit 99 ;;\nesac\n"
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
 	write(filepath.Join(fixture, "asset"), asset)
 	write(filepath.Join(bin, "curl"), "#!/usr/bin/env bash\nset -euo pipefail\nwhile [[ $# -gt 0 ]]; do\nif [[ $1 == --output ]]; then cp \"$MOCK_ASSET\" \"$2\"; exit; fi\nshift\ndone\nexit 1\n")
@@ -142,7 +160,8 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 	git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "fixture")
 	git("remote", "add", "origin", "https://github.com/owner/config.git")
 	sha := git("rev-parse", "HEAD")
-	values := map[string]string{"inputs.command": command, "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath}
+	values := map[string]string{"inputs.command": command, "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
+		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": "approved-action-ref"}
 	for key, value := range extra {
 		base[key] = value
 	}
@@ -163,7 +182,17 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 		if step.Shell != "bash" || step.Run == "" || strings.Contains(step.Run, "${{") {
 			t.Fatal("composite command must use explicit Bash and env-bound contexts")
 		}
-		if step.If != "" {
+		switch step.If {
+		case "":
+		case "inputs.command == 'validate'":
+			if command != "validate" {
+				continue
+			}
+		case "inputs.command == 'plan'":
+			if command != "plan" {
+				continue
+			}
+		default:
 			t.Fatalf("unmodeled selected-path condition %q", step.If)
 		}
 		env := map[string]string{}
@@ -171,6 +200,9 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			env[key] = value
 		}
 		for key, value := range step.Env {
+			if strings.Contains(value, "inputs.token") && (key != "GH_TOKEN" || step.If != "inputs.command == 'plan'") {
+				t.Fatal("token input outside authenticated execution boundary")
+			}
 			env[key] = resolve(value)
 		}
 		outputPath := filepath.Join(fixture, fmt.Sprintf("step-%d", i))
