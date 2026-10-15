@@ -111,7 +111,10 @@ LINUX_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-linux-amd64" | cut -d ' ' -f
 export MACOS_SHA256 LINUX_SHA256
 MOCK_LONG_NOTES="${MOCK_LONG_NOTES:-1}"
 export MOCK_LONG_NOTES
-publish() { bash "$repo_root/scripts/publish-release.sh"; }
+mkdir -p "$fixture/source/scripts" "$fixture/source/action"
+cp "$repo_root/scripts/publish-release.sh" "$fixture/source/scripts/publish-release.sh"
+printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
+publish() { bash "$fixture/source/scripts/publish-release.sh"; }
 reject() {
   if publish > "$fixture/output" 2>&1; then
     cat "$fixture/output" >&2
@@ -119,6 +122,13 @@ reject() {
     exit 1
   fi
 }
+
+# The source version must agree before any GitHub lookup or mutation.
+printf 'v1.2.4\n' > "$fixture/source/action/cli-version"
+reject
+[[ ! -e "$fixture/calls" ]]
+grep -q 'committed CLI version' "$fixture/output"
+printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
 
 # The tag endpoint hides drafts in this mock, as it does in GitHub's REST API.
 # First run must use the created draft ID, then publish its three assets.

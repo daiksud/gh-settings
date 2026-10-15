@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# Fixed upstream release. Review version, asset and checksum together when updating.
-version=v0.5.0
 asset=gh-settings-linux-amd64
-checksum=b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4
 [[ "${RUNNER_OS:-}" == Linux && "${RUNNER_ARCH:-}" == X64 ]] || {
   echo 'requires Linux/X64; use a fresh GitHub-hosted Ubuntu 24.04 x64 runner' >&2; exit 1
 }
@@ -13,9 +10,25 @@ checksum=b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4
 for tool in curl sha256sum; do
   command -v "$tool" > /dev/null || { printf 'required tool not found on PATH: %s\n' "$tool" >&2; exit 1; }
 done
+version="$(cat "${BASH_SOURCE[0]%/*}/cli-version")"
+[[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
+  echo 'committed CLI version must be vMAJOR.MINOR.PATCH' >&2; exit 1
+}
 directory="$(mktemp -d "$RUNNER_TEMP/gh-settings-cli.XXXXXX")"
 binary="$directory/gh-settings"
 trap 'rm -rf "$directory"' EXIT
+# Both files come from one explicitly selected upstream release over HTTPS.
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  "https://github.com/daiksud/gh-settings/releases/download/$version/SHA256SUMS" --output "$directory/SHA256SUMS"
+checksum=''
+while read -r hash name extra; do
+  [[ "$name" == "$asset" ]] || continue
+  [[ "$hash" =~ ^[0-9a-f]{64}$ && -z "$extra" && -z "$checksum" ]] || {
+    echo 'invalid or duplicate CLI checksum' >&2; exit 1
+  }
+  checksum="$hash"
+done < "$directory/SHA256SUMS"
+[[ -n "$checksum" ]] || { echo 'missing CLI checksum' >&2; exit 1; }
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   "https://github.com/daiksud/gh-settings/releases/download/$version/$asset" --output "$binary"
 printf '%s  %s\n' "$checksum" "$binary" | sha256sum --check --status

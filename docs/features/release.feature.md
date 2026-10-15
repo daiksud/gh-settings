@@ -14,6 +14,7 @@ A maintainer can start a release from `main` with an explicit version. The workf
 
 - Given the maintainer dispatches the workflow from `main` with version `v1.2.3`
 - And latest `main` resolves to commit A at workflow start
+- And commit A records CLI version `v1.2.3` in `action/cli-version`
 - When `main` advances to commit B while the workflow runs
 - Then both release binaries are built once from commit A with embedded version `v1.2.3`
 - And commit checks pass before native acceptance checks run
@@ -22,6 +23,13 @@ A maintainer can start a release from `main` with an explicit version. The workf
 - And tag `v1.2.3` points to commit A
 - And the GitHub Release contains exactly the two raw binaries and `SHA256SUMS`
 - And the release notes identify commit A and include changes and installation guidance
+
+#### Scenario: Source version differs from the requested tag
+
+- Given the frozen source records CLI version `v1.2.3`
+- When the maintainer requests release `v1.2.4`
+- Then the workflow fails before building or creating a tag or release
+- And it does not silently publish an Action that installs the older CLI
 
 #### Scenario: Validation fails before the tag
 

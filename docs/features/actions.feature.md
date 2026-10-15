@@ -62,11 +62,11 @@ Focused offline checks and composed consumer coverage run in required CI, alongs
 
 Consumers can validate, inspect, or directly apply their checked-out repository settings through a reviewed Action package without copying helper files. The implemented root Action follows [ADR 0023](../adr/0023-public-composite-action.md); the [usage guide](../github-actions.md) identifies reviewed full-SHA calls and supported consumer files. The preceding workflow-example rules remain applicable to those examples.
 
-### Rule: Action revision and CLI release are independent
+### Rule: A release selects the same Action and CLI version
 
 - Invoke the root Action as `uses: daiksud/gh-settings@<approved full commit SHA>`; use a reviewed revision containing the implemented package.
 - The Action revision selects packaged support code. Published `v0.5.0` is a CLI release with no root `action.yml`; keep that immutable tag and its assets unchanged.
-- Install only CLI `v0.5.0`, asset `gh-settings-linux-amd64`, SHA-256 `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`, and verify exact reported version `gh-settings v0.5.0` before settings execution.
+- The committed `action/cli-version` selects an explicit CLI release. Download only its `gh-settings-linux-amd64` asset and `SHA256SUMS` through fixed upstream HTTPS paths; require one well-formed checksum for that asset, verify it before execution, and check the exact reported version. A SHA pin fixes the version; the checksum is trusted from that GitHub release. Never fall back to latest or accept an arbitrary URL.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.
 - Read only checkout-root `.github/settings.yml`; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target.
 - Action-owned installation, execution, and Summary helpers come from the Action package, independently of caller helper files. Execute only the verified absolute CLI path in a per-invocation runner-temp location.
