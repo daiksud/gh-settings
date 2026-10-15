@@ -1,0 +1,113 @@
+name: GitHub repository settings
+author: Daiki Sudo
+description: Validate, plan or directly apply checkout-root settings with the verified v0.5.0 CLI on GitHub-hosted Ubuntu 24.04 x64.
+inputs:
+  command:
+    description: Required command, exactly validate, plan or apply.
+    required: true
+  token:
+    description: >-
+      Explicit read token for plan or target-scoped App installation token with
+      Administration write for apply; unused for validate. Exposure is scoped to
+      the command-step environment; the composite shares the caller job. The caller
+      owns approval and token lifecycle.
+    required: false
+outputs:
+  config-sha:
+    description: Full checked-out configuration commit SHA.
+    value: ${{ steps.result.outputs.config-sha }}
+  target:
+    description: Configuration checkout origin in OWNER/REPO form.
+    value: ${{ steps.result.outputs.target }}
+  cli-version:
+    description: Verified installed CLI release version.
+    value: ${{ steps.result.outputs.cli-version }}
+  cli-sha256:
+    description: SHA-256 of the verified installed CLI binary.
+    value: ${{ steps.result.outputs.cli-sha256 }}
+runs:
+  using: composite
+  steps:
+    - name: Check command and explicit token requirement
+      shell: bash
+      env:
+        SETTINGS_COMMAND: ${{ inputs.command }}
+        HAS_TOKEN: ${{ inputs.token != '' }}
+      run: |
+        case "$SETTINGS_COMMAND" in
+          validate|plan|apply) ;;
+          *) echo 'command must be validate, plan or apply' >&2; exit 1 ;;
+        esac
+        if [[ "$SETTINGS_COMMAND" != validate && "$HAS_TOKEN" != true ]]; then
+          echo 'plan and apply require an explicit token input' >&2
+          exit 1
+        fi
+    - name: Install CLI and resolve checkout metadata
+      id: setup
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        unset GH_TOKEN GITHUB_TOKEN
+        binary=$(bash "$ACTION_PATH/action/install-cli.sh")
+        python3 "$ACTION_PATH/action/metadata.py" "$binary" >> "$GITHUB_OUTPUT"
+        printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
+    - name: Validate checkout settings without authentication
+      if: inputs.command == 'validate'
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+      run: bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" validate "${SETTINGS_CLI%/*}/output.txt"
+    - name: Execute plan or apply with the caller token
+      id: execute
+      if: inputs.command != 'validate'
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+        SETTINGS_COMMAND: ${{ inputs.command }}
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        unset GITHUB_TOKEN
+        status=0
+        bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" "$SETTINGS_COMMAND" "${SETTINGS_CLI%/*}/output.txt" || status=$?
+        [[ "$SETTINGS_COMMAND" == plan ]] || exit "$status"
+        if ! printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"; then
+          [[ "$status" != 0 ]] || status=1
+          exit "$status"
+        fi
+    - name: Render plan Summary and return the plan status
+      if: inputs.command == 'plan'
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+        PLAN_STATUS: ${{ steps.execute.outputs.exit-status }}
+        SETTINGS_ACTOR: ${{ github.actor }}
+        SETTINGS_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+        SETTINGS_EVENT: ${{ github.event_name }}
+        SETTINGS_RUN_ID: ${{ github.run_id }}
+        SETTINGS_RUN_ATTEMPT: ${{ github.run_attempt }}
+        SETTINGS_WORKFLOW_REF: ${{ github.workflow_ref }}
+        SETTINGS_WORKFLOW_SHA: ${{ github.workflow_sha }}
+        SETTINGS_ACTION_REPOSITORY: ${{ github.action_repository }}
+        SETTINGS_ACTION_REF: ${{ github.action_ref }}
+        SETTINGS_CONFIG_SHA: ${{ steps.setup.outputs.config-sha }}
+        SETTINGS_TARGET: ${{ steps.setup.outputs.target }}
+        SETTINGS_CLI_VERSION: ${{ steps.setup.outputs.cli-version }}
+        SETTINGS_CLI_SHA256: ${{ steps.setup.outputs.cli-sha256 }}
+      run: |
+        unset GH_TOKEN GITHUB_TOKEN
+        python3 "$ACTION_PATH/action/render-summary.py" "${SETTINGS_CLI%/*}/output.txt" "$PLAN_STATUS"
+    - name: Publish successful result
+      id: result
+      shell: bash
+      env:
+        CONFIG_SHA: ${{ steps.setup.outputs.config-sha }}
+        TARGET: ${{ steps.setup.outputs.target }}
+        CLI_VERSION: ${{ steps.setup.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.setup.outputs.cli-sha256 }}
+      run: |
+        printf 'config-sha=%s\ntarget=%s\ncli-version=%s\ncli-sha256=%s\n' \
+          "$CONFIG_SHA" "$TARGET" "$CLI_VERSION" "$CLI_SHA256" >> "$GITHUB_OUTPUT"
