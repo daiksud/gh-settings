@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import importlib.util
+from html import unescape
 from pathlib import Path
 import unittest
 
@@ -81,6 +82,34 @@ class SummaryTest(unittest.TestCase):
         self.assertEqual(rendered.count("</pre>"), 1)
         self.assertNotIn("<script>", rendered)
         self.assertIn("<pre>", rendered)
+
+    def test_metadata_is_escaped_without_dumping_other_environment(self):
+        attack = '\"</td><script>bad</script>[link](https://example.invalid)\n## Forged & text'
+        expected = '&quot;&lt;/td&gt;&lt;script&gt;bad&lt;/script&gt;[link](https://example.invalid)'
+        for key in self.env:
+            env = dict(self.env)
+            env.update(GH_TOKEN='unrelated-secret-fixture', GITHUB_TOKEN='unrelated-secret-fixture',
+                       SETTINGS_TOKEN='unrelated-secret-fixture', UNRELATED_ENV='unrelated-secret-fixture')
+            env[key] = attack
+            if key == 'SETTINGS_WORKFLOW_REF':
+                env[key] = 'owner/repo/.github/workflows/' + attack + '.yml@refs/heads/main'
+            rendered = summary.render('plain CLI text\n', 0, env)
+            with self.subTest(key=key):
+                self.assertIn(expected, rendered)
+                self.assertIn('## Forged &amp; text', rendered)
+                self.assertIn(attack, unescape(rendered))
+                self.assertNotIn('<script>', rendered)
+                self.assertNotIn('unrelated-secret-fixture', rendered)
+
+    def test_blank_metadata_lines_cannot_start_markdown(self):
+        for newline in ('\n', '\r', '\r\n'):
+            attack = f'ordinary{newline}{newline}## Forged approval{newline}{newline}[Approve](https://example.invalid){newline}{newline}'
+            env = dict(self.env, SETTINGS_ACTOR=attack)
+            rendered = summary.render('', 0, env)
+            normalized = rendered.replace('\r\n', '\n').replace('\r', '\n')
+            with self.subTest(newline=repr(newline)):
+                self.assertNotIn('\n\n## Forged approval', normalized)
+                self.assertIn(attack, unescape(rendered))
 
     def test_missing_context_fails(self):
         for key in self.env:

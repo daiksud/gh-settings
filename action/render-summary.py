@@ -14,7 +14,8 @@ def render(output, status, env):
         return result
 
     def quoted(text):
-        return html.escape(str(text), quote=True)
+        # Raw metadata blank lines can end a GFM HTML table block.
+        return html.escape(str(text), quote=True).replace("\r", "&#13;").replace("\n", "&#10;")
 
     def link(url, label):
         return f'<a href="{quoted(url)}">{quoted(label)}</a>'
@@ -55,7 +56,7 @@ def render(output, status, env):
     return (
         "## Settings review\n\n<table>\n" + table + "\n</table>\n\n"
         + f"<p>{quoted(result)} Exit status: {status}.</p>\n\n"
-        + "<pre>" + quoted(output) + "</pre>\n\n"
+        + "<pre>" + html.escape(output, quote=True) + "</pre>\n\n"
         + "Direct apply uses the declaration and can overwrite intervening remote changes to managed fields. "
         + "Approve only after inspecting this complete Summary; successful prepare alone does not prove publication.\n"
     )
