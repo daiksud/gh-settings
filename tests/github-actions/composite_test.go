@@ -93,6 +93,22 @@ func TestRootCompositeRejectsUnknownCommand(t *testing.T) {
 	}
 }
 
+func TestRootCompositeRequiresExplicitToken(t *testing.T) {
+	ambient := map[string]string{"GH_TOKEN": "ambient-fixture", "GITHUB_TOKEN": "ambient-fixture"}
+	for _, command := range []string{"plan", "apply"} {
+		t.Run(command, func(t *testing.T) {
+			result := runComposite(t, command, "", ambient)
+			if result.status == 0 || result.downloaded || result.calls != "" || len(result.outputs) != 0 {
+				t.Fatalf("status=%d downloaded=%t calls=%q outputs=%v\n%s", result.status, result.downloaded, result.calls, result.outputs, result.log)
+			}
+		})
+	}
+	result := runComposite(t, "validate", "unused-fixture-token", ambient)
+	if result.status != 0 || len(result.outputs) != 4 || result.calls != "validate\n" {
+		t.Fatalf("validate did not ignore credentials: %+v", result)
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
@@ -224,7 +240,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			env[key] = value
 		}
 		for key, value := range step.Env {
-			if strings.Contains(value, "inputs.token") && (key != "GH_TOKEN" || (step.If != "inputs.command == 'plan'" && step.If != "inputs.command != 'validate'")) {
+			if strings.Contains(value, "inputs.token") && value != "${{ inputs.token != '' }}" && (key != "GH_TOKEN" || step.If != "inputs.command != 'validate'") {
 				t.Fatal("token input outside authenticated execution boundary")
 			}
 			env[key] = resolve(value)

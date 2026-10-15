@@ -24,15 +24,20 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Check command
+    - name: Check command and explicit token requirement
       shell: bash
       env:
         SETTINGS_COMMAND: ${{ inputs.command }}
+        HAS_TOKEN: ${{ inputs.token != '' }}
       run: |
         case "$SETTINGS_COMMAND" in
           validate|plan|apply) ;;
           *) echo 'command must be validate, plan or apply' >&2; exit 1 ;;
         esac
+        if [[ "$SETTINGS_COMMAND" != validate && "$HAS_TOKEN" != true ]]; then
+          echo 'plan and apply require an explicit token input' >&2
+          exit 1
+        fi
     - name: Install CLI and resolve checkout metadata
       id: setup
       shell: bash
