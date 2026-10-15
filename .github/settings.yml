@@ -1,5 +1,6 @@
 schemaVersion: 1
 settings:
   repository:
+    # Omitted fields remain unmanaged.
     description: "Manage GitHub repository settings as code"
-    has_issues: "invalid"
+    has_issues: true
