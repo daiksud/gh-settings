@@ -170,6 +170,30 @@ func TestRootCompositeFailureGates(t *testing.T) {
 	}
 }
 
+func TestRootCompositeOriginFormats(t *testing.T) {
+	for _, test := range []struct{ origin, target string }{
+		{"git@github.com:owner/config.git", "owner/config"},
+		{"github.com:owner/config.git", "owner/config"},
+		{"ssh://git@github.com/owner/config.git", "owner/config"},
+		{"https://github.com/owner/config%2Drepo.git", "owner/config-repo"},
+		{"https://gitlab.com/owner/config.git", ""},
+		{"https://github.com/owner/config%0Ainjected%3Dyes.git", ""},
+	} {
+		t.Run(test.origin, func(t *testing.T) {
+			result := runComposite(t, "validate", "", nil, func(git func(...string) string) { git("remote", "set-url", "origin", test.origin) })
+			if test.target == "" {
+				if result.status == 0 || len(result.outputs) != 0 {
+					t.Fatalf("unsafe origin accepted: %+v", result)
+				}
+				return
+			}
+			if result.status != 0 || result.outputs["target"] != test.target {
+				t.Fatalf("target=%q want%q status=%d\n%s", result.outputs["target"], test.target, result.status, result.log)
+			}
+		})
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
@@ -177,7 +201,7 @@ type compositeResult struct {
 	log, calls, summary, sha, digest string
 }
 
-func runComposite(t *testing.T, command, token string, extra map[string]string) compositeResult {
+func runComposite(t *testing.T, command, token string, extra map[string]string, configure ...func(func(...string) string)) compositeResult {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), "action.yml"))
 	if err != nil {
@@ -269,6 +293,9 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 	git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "fixture")
 	git("remote", "add", "origin", "https://github.com/owner/config.git")
 	sha := git("rev-parse", "HEAD")
+	for _, setup := range configure {
+		setup(git)
+	}
 	values := map[string]string{"inputs.command": command, "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
 		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": "approved-action-ref"}
 	for key, value := range extra {
