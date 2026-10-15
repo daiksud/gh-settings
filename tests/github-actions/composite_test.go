@@ -151,6 +151,25 @@ func TestRootCompositeSummaryFailure(t *testing.T) {
 	}
 }
 
+func TestRootCompositeFailureGates(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		extra map[string]string
+		calls string
+	}{
+		{"installation", map[string]string{"RUNNER_OS": "Windows"}, ""},
+		{"metadata", map[string]string{"GITHUB_WORKSPACE": "/nonexistent-gh-settings-fixture"}, ""},
+		{"output", map[string]string{"OUTPUT_DIRECTORY": "1"}, "validate\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := runComposite(t, "validate", "", test.extra)
+			if result.status == 0 || len(result.outputs) != 0 || result.calls != test.calls || result.injected {
+				t.Fatalf("failure gate did not hold: %+v", result)
+			}
+		})
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
@@ -192,6 +211,17 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			t.Fatal(err)
 		}
 	}
+	for _, dir := range []string{filepath.Join(caller, "action"), filepath.Join(caller, ".github")} {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	poison := "#!/usr/bin/env bash\ntouch \"$GITHUB_WORKSPACE/injected\"\nexit 99\n"
+	for _, name := range []string{"install-cli.sh", "run-command.sh", "render-summary.py", "metadata.py"} {
+		write(filepath.Join(caller, "action", name), poison)
+	}
+	write(filepath.Join(bin, "gh-settings"), poison)
+	write(filepath.Join(caller, ".github/settings.yml"), "schemaVersion: 1\n")
 	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0'; exit ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; status=${MOCK_VALIDATE_STATUS:-0} ;;\nplan|apply) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; status=${MOCK_REMOTE_STATUS:-0} ;;\n*) exit 99 ;;\nesac\necho \"$1\" >> \"$MOCK_CALLS\"\nif [[ $status != 0 ]]; then echo 'fixture command error' >&2; else echo 'before → desired'; fi\nexit \"$status\"\n"
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
 	write(filepath.Join(fixture, "asset"), asset)
@@ -235,6 +265,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 		return strings.TrimSpace(string(output))
 	}
 	git("init", "--quiet")
+	git("add", ".github/settings.yml")
 	git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "fixture")
 	git("remote", "add", "origin", "https://github.com/owner/config.git")
 	sha := git("rev-parse", "HEAD")
@@ -295,6 +326,13 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			env[key] = resolve(value)
 		}
 		outputPath := filepath.Join(fixture, fmt.Sprintf("step-%d", i))
+		if extra["OUTPUT_DIRECTORY"] == "1" {
+			for _, field := range action.Outputs {
+				if strings.HasPrefix(field.Value, "${{ steps."+step.ID+".outputs.") {
+					outputPath = caller
+				}
+			}
+		}
 		env["GITHUB_OUTPUT"] = outputPath
 		cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", step.Run)
 		cmd.Dir = caller
