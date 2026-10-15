@@ -29,6 +29,7 @@ runs:
       run: |
         actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
         shellcheck scripts/publish-release.sh tests/release.sh examples/github-actions/*.sh tests/github-actions/*.sh
+        shellcheck action/*.sh
     - name: Verify Go formatting
       shell: bash
       run: |
@@ -55,6 +56,7 @@ runs:
     - name: Test settings examples without GitHub
       shell: bash
       run: |
+        bash tests/github-actions/action-install.sh
         bash tests/github-actions/bootstrap.sh
         bash tests/github-actions/plan.sh
         python3 tests/github-actions/summary.py
