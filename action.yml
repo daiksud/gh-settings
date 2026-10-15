@@ -69,7 +69,10 @@ runs:
         status=0
         bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" "$SETTINGS_COMMAND" "${SETTINGS_CLI%/*}/output.txt" || status=$?
         [[ "$SETTINGS_COMMAND" == plan ]] || exit "$status"
-        printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+        if ! printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"; then
+          [[ "$status" != 0 ]] || status=1
+          exit "$status"
+        fi
     - name: Render plan Summary and return the plan status
       if: inputs.command == 'plan'
       shell: bash

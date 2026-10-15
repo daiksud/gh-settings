@@ -258,6 +258,21 @@ func TestRootCompositeOriginAlias(t *testing.T) {
 	}
 }
 
+func TestRootCompositeStatusHandoffFailure(t *testing.T) {
+	for _, status := range []string{"0", "37"} {
+		t.Run(status, func(t *testing.T) {
+			result := runComposite(t, "plan", "fixture-token", map[string]string{"MOCK_REMOTE_STATUS": status, "STATUS_DIRECTORY": "1"})
+			want := 1
+			if status == "37" {
+				want = 37
+			}
+			if result.status != want || len(result.outputs) != 0 || result.calls != "validate\nplan\n" {
+				t.Fatalf("handoff status=%d want%d outputs=%v calls=%q\n%s", result.status, want, result.outputs, result.calls, result.log)
+			}
+		})
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
@@ -417,6 +432,9 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 			env[key] = resolve(value)
 		}
 		outputPath := filepath.Join(fixture, fmt.Sprintf("step-%d", i))
+		if extra["STATUS_DIRECTORY"] == "1" && step.Env["GH_TOKEN"] == "${{ inputs.token }}" {
+			outputPath = caller
+		}
 		if extra["OUTPUT_DIRECTORY"] == "1" {
 			for _, field := range action.Outputs {
 				if strings.HasPrefix(field.Value, "${{ steps."+step.ID+".outputs.") {
