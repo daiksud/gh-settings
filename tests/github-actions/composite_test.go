@@ -109,6 +109,25 @@ func TestRootCompositeRequiresExplicitToken(t *testing.T) {
 	}
 }
 
+func TestRootCompositePreservesCLIStatus(t *testing.T) {
+	for _, test := range []struct{ name, command, failure, calls string }{
+		{"validate", "validate", "MOCK_VALIDATE_STATUS", "validate\n"},
+		{"pre-plan validate", "plan", "MOCK_VALIDATE_STATUS", "validate\n"},
+		{"plan", "plan", "MOCK_REMOTE_STATUS", "validate\nplan\n"},
+		{"apply", "apply", "MOCK_REMOTE_STATUS", "apply\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := runComposite(t, test.command, "fixture-token", map[string]string{test.failure: "37"})
+			if result.status != 37 || len(result.outputs) != 0 || result.calls != test.calls {
+				t.Fatalf("status=%d outputs=%v calls=%q\n%s", result.status, result.outputs, result.calls, result.log)
+			}
+			if test.command == "plan" && (!strings.Contains(result.summary, "Error — plan failed.") || !strings.Contains(result.summary, "fixture command error")) {
+				t.Fatalf("missing failed-plan review: %s", result.summary)
+			}
+		})
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
@@ -150,7 +169,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			t.Fatal(err)
 		}
 	}
-	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0' ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo validate >> \"$MOCK_CALLS\" ;;\nplan|apply) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; echo \"$1\" >> \"$MOCK_CALLS\"; echo 'before → desired' ;;\n*) exit 99 ;;\nesac\n"
+	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0'; exit ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; status=${MOCK_VALIDATE_STATUS:-0} ;;\nplan|apply) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; status=${MOCK_REMOTE_STATUS:-0} ;;\n*) exit 99 ;;\nesac\necho \"$1\" >> \"$MOCK_CALLS\"\nif [[ $status != 0 ]]; then echo 'fixture command error' >&2; else echo 'before → desired'; fi\nexit \"$status\"\n"
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
 	write(filepath.Join(fixture, "asset"), asset)
 	write(filepath.Join(bin, "curl"), "#!/usr/bin/env bash\nset -euo pipefail\ntouch \"$MOCK_DOWNLOAD\"\nwhile [[ $# -gt 0 ]]; do\nif [[ $1 == --output ]]; then cp \"$MOCK_ASSET\" \"$2\"; exit; fi\nshift\ndone\nexit 1\n")
