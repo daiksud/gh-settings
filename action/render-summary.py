@@ -65,4 +65,8 @@ def render(output, status, env):
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         raise SystemExit("usage: render-summary.py OUTPUT_FILE EXIT_STATUS")
-    print(render(Path(sys.argv[1]).read_text(), int(sys.argv[2]), os.environ), end="")
+    status = int(sys.argv[2])
+    content = render(Path(sys.argv[1]).read_text(encoding="utf-8"), status, os.environ)
+    with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as output:
+        output.write(content)
+    raise SystemExit(status)

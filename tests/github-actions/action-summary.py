@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 import importlib.util
 from html import unescape
+import os
 from pathlib import Path
+import subprocess
+import sys
+import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location("summary", Path(__file__).resolve().parents[2] / "action/render-summary.py")
@@ -119,6 +123,23 @@ class SummaryTest(unittest.TestCase):
             with self.subTest(newline=repr(newline)):
                 self.assertNotIn('\n\n## Forged approval', normalized)
                 self.assertIn(attack, unescape(rendered))
+
+    def test_cli_appends_summary_without_logging_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory).resolve()
+            cli_text = fixture / 'CLI text.txt'
+            cli_text.write_text('No differences for managed repository settings.\n')
+            summary_file = fixture / 'step Summary.md'
+            summary_file.write_text('existing Summary\n')
+            env = dict(os.environ, **self.env, GITHUB_STEP_SUMMARY=str(summary_file), GH_TOKEN='unrelated-secret-fixture')
+            result = subprocess.run([sys.executable, str(Path(summary.__file__)), str(cli_text), '0'],
+                                    env=env, cwd=fixture, capture_output=True, text=True)
+            written = summary_file.read_text()
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, '')
+            self.assertTrue(written.startswith('existing Summary\n'))
+            self.assertIn('No differences for managed settings.', written)
+            self.assertNotIn('unrelated-secret-fixture', written + result.stdout + result.stderr)
 
     def test_missing_context_fails(self):
         for key in self.env:
