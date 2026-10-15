@@ -124,22 +124,28 @@ class SummaryTest(unittest.TestCase):
                 self.assertNotIn('\n\n## Forged approval', normalized)
                 self.assertIn(attack, unescape(rendered))
 
-    def test_cli_appends_summary_without_logging_it(self):
-        with tempfile.TemporaryDirectory() as directory:
-            fixture = Path(directory).resolve()
-            cli_text = fixture / 'CLI text.txt'
-            cli_text.write_text('No differences for managed repository settings.\n')
-            summary_file = fixture / 'step Summary.md'
-            summary_file.write_text('existing Summary\n')
-            env = dict(os.environ, **self.env, GITHUB_STEP_SUMMARY=str(summary_file), GH_TOKEN='unrelated-secret-fixture')
-            result = subprocess.run([sys.executable, str(Path(summary.__file__)), str(cli_text), '0'],
-                                    env=env, cwd=fixture, capture_output=True, text=True)
-            written = summary_file.read_text()
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(result.stdout, '')
-            self.assertTrue(written.startswith('existing Summary\n'))
-            self.assertIn('No differences for managed settings.', written)
-            self.assertNotIn('unrelated-secret-fixture', written + result.stdout + result.stderr)
+    def test_cli_appends_summary_and_preserves_plan_status(self):
+        for status, cli_output, expected in (
+            (0, 'No differences for managed repository settings.\n', 'No differences for managed settings.'),
+            (37, 'API failure\n', 'Error — plan failed.'),
+        ):
+            with tempfile.TemporaryDirectory() as directory:
+                fixture = Path(directory).resolve()
+                cli_text = fixture / 'CLI text.txt'
+                cli_text.write_text(cli_output)
+                summary_file = fixture / 'step Summary.md'
+                summary_file.write_text('existing Summary\n')
+                env = dict(os.environ, **self.env, GITHUB_STEP_SUMMARY=str(summary_file), GH_TOKEN='unrelated-secret-fixture')
+                result = subprocess.run([sys.executable, str(Path(summary.__file__)), str(cli_text), str(status)],
+                                        env=env, cwd=fixture, capture_output=True, text=True)
+                written = summary_file.read_text()
+                self.assertEqual(result.returncode, status, result.stderr)
+                self.assertEqual(result.stdout, '')
+                self.assertTrue(written.startswith('existing Summary\n'))
+                self.assertIn(expected, written)
+                self.assertIn(cli_output, written)
+                self.assertIn(f'Exit status: {status}.', written)
+                self.assertNotIn('unrelated-secret-fixture', written + result.stdout + result.stderr)
 
     def test_missing_context_fails(self):
         for key in self.env:
