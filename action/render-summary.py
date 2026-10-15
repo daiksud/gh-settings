@@ -25,7 +25,7 @@ def render(output, status, env):
     workflow_ref = value("WORKFLOW_REF")
     source = workflow_ref.split("@", 1)[0]
     owner, repository, workflow_path = source.split("/", 2)
-    run_url = f'https://github.com/{target}/actions/runs/{value("RUN_ID")}'
+    run_url = f'https://github.com/{owner}/{repository}/actions/runs/{value("RUN_ID")}'
     rows = [
         ("Original actor", quoted(value("ACTOR"))),
         ("Initiating / rerun actor", quoted(value("TRIGGERING_ACTOR"))),

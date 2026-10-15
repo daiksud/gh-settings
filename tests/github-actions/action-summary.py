@@ -23,6 +23,14 @@ class SummaryTest(unittest.TestCase):
         self.assertIn('Action repository</th><td>action-owner/action-repo', rendered)
         self.assertIn('Action ref</th><td>' + 'd' * 40, rendered)
 
+    def test_run_and_configuration_links_use_their_own_repositories(self):
+        self.env['SETTINGS_TARGET'] = 'config-owner/config-repo'
+        self.env['SETTINGS_WORKFLOW_REF'] = 'workflow-owner/workflow-repo/.github/workflows/settings.yml@refs/heads/main'
+        rendered = summary.render('', 0, self.env)
+        self.assertIn('https://github.com/workflow-owner/workflow-repo/actions/runs/123', rendered)
+        self.assertIn('https://github.com/workflow-owner/workflow-repo/blob/' + 'a' * 40, rendered)
+        self.assertIn('https://github.com/config-owner/config-repo/blob/' + 'b' * 40 + '/.github/settings.yml', rendered)
+
     def test_first_run_and_rerun_exact_links(self):
         first = summary.render("settings.repository.has_issues: true → false\n", 0, self.env)
         self.assertIn("Observed before → desired after", first)
