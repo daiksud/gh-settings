@@ -25,10 +25,30 @@ def repository(origin):
     return f"{owner}/{name.removesuffix('.git')}"
 
 
+def rewritten_origin(origin):
+    try:
+        rules = git("config", "--null", "--get-regexp", r"^url\..*\.insteadof$")
+    except subprocess.CalledProcessError as error:
+        if error.returncode != 1:
+            raise
+        rules = ""
+    rewritten, longest = origin, -1
+    for entry in rules.split("\0"):
+        key, separator, prefix = entry.partition("\n")
+        if separator and origin.startswith(prefix) and len(prefix) > longest:
+            rewritten = key.removeprefix("url.").removesuffix(".insteadof") + origin[len(prefix):]
+            longest = len(prefix)
+    return rewritten
+
+
 def metadata(binary):
     entries = git("config", "--null", "--show-scope", "--get-all", "remote.origin.url").split("\0")
     origin = next(value.strip() for scope, value in zip(entries[::2], entries[1::2]) if scope in ("local", "worktree"))
-    target = repository(origin)
+    try:
+        target = repository(origin)
+    except ValueError:
+        # Preserve a configured GitHub target before transport rewrites, as the CLI does.
+        target = repository(rewritten_origin(origin))
     version = subprocess.check_output([binary, "--version"], text=True).strip().removeprefix("gh-settings ")
     return {
         "config-sha": git("rev-parse", "HEAD").strip(),

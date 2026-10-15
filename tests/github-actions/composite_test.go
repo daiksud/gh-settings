@@ -226,6 +226,38 @@ func TestRootCompositeOriginScope(t *testing.T) {
 	}
 }
 
+func TestRootCompositeOriginAlias(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		rules  [][]string
+		target string
+	}{
+		{"alias", [][]string{{"config", "--local", "url.https://github.com/owner/config.git.insteadOf", "gh:config"}}, "owner/config"},
+		{"longest", [][]string{{"config", "--global", "remote.origin.url", "https://github.com/wrong/global.git"}, {"config", "--global", "url.https://github.com/wrong/.insteadOf", "gh:"}, {"config", "--local", "url.https://github.com/owner/config.git.insteadOf", "gh:config"}}, "owner/config"},
+		{"no rule", nil, ""},
+		{"nonmatching", [][]string{{"config", "--local", "url.https://github.com/owner/.insteadOf", "other:"}}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			extra := map[string]string{"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "remote.origin.url", "GIT_CONFIG_VALUE_0": "https://github.com/wrong/command.git"}
+			result := runComposite(t, "validate", "", extra, func(git func(...string) string) {
+				git("remote", "set-url", "origin", "gh:config")
+				for _, args := range test.rules {
+					git(args...)
+				}
+			})
+			if test.target == "" {
+				if result.status == 0 || len(result.outputs) != 0 {
+					t.Fatalf("unresolved alias accepted: %+v", result)
+				}
+				return
+			}
+			if result.status != 0 || result.outputs["target"] != test.target {
+				t.Fatalf("wrong alias target: %+v", result)
+			}
+		})
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
