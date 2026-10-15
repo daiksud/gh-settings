@@ -1,4 +1,5 @@
 schemaVersion: 1
 settings:
   repository:
+    description: "Manage GitHub repository settings as code"
     has_issues: true
