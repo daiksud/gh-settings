@@ -29,7 +29,7 @@ GitHub CLI recognizes precompiled extension assets with an OS-architecture suffi
 
 ## Start a manual release
 
-Review the intended version and current `main` commit, then explicitly start the [release workflow](../.github/workflows/release.yml) from `main` with its required `version` input (`vMAJOR.MINOR.PATCH`):
+After the owner chooses the intended version, update `action/cli-version` to it through an ordinary reviewed PR and verify main CI. The Action and CLI share that version: the release workflow rejects any differing input before building, and the publish script checks again before creating a tag or release. Then review the version and current `main` commit and explicitly start the [release workflow](../.github/workflows/release.yml) from `main` with its required `version` input (`vMAJOR.MINOR.PATCH`):
 
 ```sh
 gh workflow run release.yml --repo daiksud/gh-settings --ref main -f version=v1.2.3
@@ -40,9 +40,17 @@ The workflow is not scheduled and does not run when code is merged. Its resolve 
 ## Initial release flow
 
 1. The resolve job reads `refs/heads/main` once through GitHub API and records its commit SHA. Every later checkout uses that SHA, even if `main` advances.
-2. The commit stage checks the pinned source and builds Linux amd64 once. The macOS arm64 runner builds its binary once after commit checks pass. Both use Go linker `-X main.version=...`; `gh settings --version` verifies the embedded value.[^go-linker]
+2. The commit stage first requires the pinned source's `action/cli-version` to equal the requested version, then checks that source and builds Linux amd64 once. The macOS arm64 runner builds its binary once after commit checks pass. Both use Go linker `-X main.version=...`; `gh settings --version` verifies the embedded value.[^go-linker]
 3. Each native runner downloads its current run's binary and checks the SHA-256 supplied by its build job. The shared [acceptance-stage](../.github/actions/acceptance-stage/action.yml) launches that exact binary against the local API fixture. The release job downloads both binaries again and checks those SHA-256 values before any tag is written.
 4. After both acceptance jobs pass, the release job creates a lightweight tag at the frozen SHA if the tag is absent, creates a draft with generated change notes and an identity manifest, uploads the two binaries and `SHA256SUMS`, downloads any present assets to verify their bytes, and publishes only when all three required assets and metadata match.
+
+## Action version and pre-release checks
+
+A versioned Action installs the CLI version committed in its package, and a strict version-tag invocation must match that file. Reviewed SHA pins also select the committed version, without a mutable latest lookup. The installer verifies the exact release's `SHA256SUMS` before executing the fixed Linux asset and checking its reported version. The digest is trusted from that GitHub release over fixed HTTPS paths rather than embedded in the Action source; this avoids requiring a binary checksum inside the source commit used to build that binary.
+
+Pre-release PR/main CI checks the actual changed root Action using an explicit published v0.6.0 CLI fixture: only the copied package's version file is overridden, its original version is logged, and the real binary/version/digest are checked. This permits a future version-preparation PR before that version's assets exist. Offline fixtures separately check committed-version selection, strict tag mismatch, checksum failures, and the publication guard. Product installation never silently substitutes an older release.
+
+Published v0.6.0 predates this synchronization and its immutable Action still installs CLI v0.5.0. Retain its tag and assets with accurate limitation guidance; changing main cannot repair that revision. A reviewed SHA containing the fix can use the already-published v0.6.0 CLI. Publishing a corrected version requires separate owner authorization; no replacement version is selected here.
 
 ## Retry and recovery
 

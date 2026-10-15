@@ -91,6 +91,13 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           path: .action
           persist-credentials: false
+      - name: Select a published CLI fixture for unreleased-source smoke
+        run: |
+          source_version="$(cat .action/action/cli-version)"
+          [[ "$source_version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          printf 'Source CLI version: %s\n' "$source_version"
+          printf 'v0.6.0\n' > .action/action/cli-version
+          echo 'Smoke CLI fixture: v0.6.0 (version file overridden only in this CI checkout)'
       - name: Create a configuration-only consumer checkout
         run: |
           [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
@@ -121,8 +128,8 @@ jobs:
           [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
           [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
           [[ "$TARGET" == example-owner/settings-fixture ]]
-          [[ "$CLI_VERSION" == v0.5.0 ]]
-          [[ "$CLI_SHA256" == b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4 ]]
+          [[ "$CLI_VERSION" == v0.6.0 ]]
+          [[ "$CLI_SHA256" == b56e85b0172f214c835c19968c3d859a89d9ea3c98e8f29faab171ad9bb57f4f ]]
           printf 'Action checkout: %s at %s\nConsumer checkout: %s at %s\n' \
             "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
             "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"

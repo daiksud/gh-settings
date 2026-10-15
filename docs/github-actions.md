@@ -13,7 +13,7 @@ sources:
 
 ## Public Action and supported checkout
 
-The root [composite Action](../action.yml) implements the [ADR 0023 contract](adr/0023-public-composite-action.md) and [behavior specification](features/actions.feature.md#public-composite-action-contract). Invoke it as `uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70`. This reviewed full SHA contains the completed Action package; it is independent of the workflow/configuration revision and the CLI release. Composite inputs/outputs use normal `with` and step-output bindings.[^composite-metadata]
+The root [composite Action](../action.yml) implements the [ADR 0023 contract](adr/0023-public-composite-action.md) and [behavior specification](features/actions.feature.md#public-composite-action-contract). Invoke it as `uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70`. This historical reviewed SHA contains the completed Action package and installs CLI v0.5.0. It remains the pin in the inert examples; changing current source does not change that immutable package. Workflow/configuration, Action and CLI identities are displayed separately. Composite inputs/outputs use normal `with` and step-output bindings.[^composite-metadata]
 
 Only a fresh GitHub-hosted `ubuntu-24.04` x64 job is supported, with Bash, curl, GNU sha256sum, Git and Python 3. macOS, Windows, ARM, containers and self-hosted runners are outside this contract. The caller checks out its configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and commits `.github/settings.yml` at that root. A resolvable checkout commit and checkout-scoped GitHub.com `origin` are required even for validate's output metadata. The Action repository is not the target; `GH_REPO` does not override the CLI's origin resolution. See the [configuration semantics](settings.md#configuration-semantics).
 
@@ -32,12 +32,14 @@ Validate checks local configuration without credentials. Plan validates first, t
 | --- | --- |
 | `config-sha` | Full checked-out configuration commit (`HEAD`), not the file hash, workflow SHA or Action SHA. |
 | `target` | Configuration checkout's resolved GitHub `origin`, in `OWNER/REPO` form. |
-| `cli-version` | Verified fixed CLI release, `v0.5.0`. |
-| `cli-sha256` | Verified binary SHA-256, `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`. |
+| `cli-version` | Verified installed CLI release selected by the Action package. |
+| `cli-sha256` | SHA-256 of the verified installed binary. |
 
 Use `steps.<id>.outputs.<name>` only after successful completion. Outputs are published after the command and, for plan, successful Summary rendering/writing. Missing command/token, unsupported prerequisites, install/metadata/output failures and CLI/configuration/API errors fail the Action. CLI failure status is preserved; differences, no differences and no managed fields all exit successfully. Failed calls have no successful output contract. Plan Summary quotes settings/error text and separates workflow, configuration, Action and CLI identities; validate/apply do not render a plan Summary. A caller can record apply's actual step outcome, as the main example does.
 
-The CLI pin is `v0.5.0`, asset `gh-settings-linux-amd64`, with the digest above and exact reported version `gh-settings v0.5.0`. The immutable CLI tag has no root `action.yml`; never use `@v0.5.0` as this Action. Review package/CLI version/asset/checksum together for updates. Existing CLI assets/tags remain unchanged; a first Action release number needs a separate owner decision. This guide does not publish a release, moving tag or Marketplace listing.
+Current source records CLI `v0.6.0` in [`action/cli-version`](../action/cli-version). A reviewed full SHA pins that file and therefore the CLI version. Future version-tag calls must agree with the file; release publication rejects a different requested version. Installation downloads only that version's `gh-settings-linux-amd64` and `SHA256SUMS` from fixed upstream HTTPS paths, requires one valid checksum for the exact asset, verifies before execution, and checks exact `gh-settings <version>` output. The SHA pin fixes the version; it does not commit the binary digest. The checksum trust source is the same GitHub release, including its integrity over HTTPS. There is no latest fallback or caller version/URL override.
+
+Published `v0.6.0` points to the earlier implementation and still installs CLI `v0.5.0`; the immutable tag/assets are retained. Do not claim that updating main repairs it. Use a reviewed SHA containing this fix for the current committed CLI version, or wait for a separately authorized corrected release. Do not retag or replace assets. The historical `93d8217d146f5d430aaf90597119114218990e70` examples still use CLI `v0.5.0`, digest `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`; their verifier deliberately retains that identity. The v0.5.0 tag has no root Action. This guide does not publish any release or Marketplace listing.
 
 ## Consumer files and compatibility
 

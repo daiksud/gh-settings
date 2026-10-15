@@ -48,8 +48,8 @@ cp "$repo_root/action/install-cli.sh" "$installer"
 printf 'v0.6.0\n' > "$fixture/action/cli-version"
 printf '%s  gh-settings-linux-amd64\n' "$(sha256sum "$MOCK_ASSET" | cut -d ' ' -f 1)" > "$MOCK_CHECKSUMS"
 cd "$fixture/caller"
-binary="$(bash "$installer")"
-second_binary="$(bash "$installer")"
+binary="$(SETTINGS_ACTION_REF=v0.6.0 bash "$installer")"
+second_binary="$(SETTINGS_ACTION_REF=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa bash "$installer")"
 [[ "$binary" == "$RUNNER_TEMP/"* && -x "$binary" ]] || exit 1
 [[ "$("$binary" --version)" == 'gh-settings v0.6.0' ]] || exit 1
 [[ "$(cat "$MOCK_URLS")" == $'https://github.com/daiksud/gh-settings/releases/download/v0.6.0/SHA256SUMS\nhttps://github.com/daiksud/gh-settings/releases/download/v0.6.0/gh-settings-linux-amd64\nhttps://github.com/daiksud/gh-settings/releases/download/v0.6.0/SHA256SUMS\nhttps://github.com/daiksud/gh-settings/releases/download/v0.6.0/gh-settings-linux-amd64' ]] || exit 1
@@ -71,6 +71,19 @@ expect_failure() {
 }
 export RUNNER_TEMP="$fixture/failed runner"
 mkdir -p "$RUNNER_TEMP"
+SETTINGS_ACTION_REF=v0.7.0 expect_failure
+grep -q 'Action tag differs from committed CLI version' "$fixture/error"
+cp "$MOCK_CHECKSUMS" "$fixture/good-checksums"
+for invalid_manifest in missing duplicate malformed; do
+  case "$invalid_manifest" in
+    missing) printf '%064d  other-asset\n' 0 > "$MOCK_CHECKSUMS" ;;
+    duplicate) cat "$fixture/good-checksums" "$fixture/good-checksums" > "$MOCK_CHECKSUMS" ;;
+    malformed) printf 'not-a-sha256  gh-settings-linux-amd64\n' > "$MOCK_CHECKSUMS" ;;
+  esac
+  expect_failure
+  grep -q 'CLI checksum' "$fixture/error"
+done
+cp "$fixture/good-checksums" "$MOCK_CHECKSUMS"
 FAIL_DOWNLOAD=1 expect_failure
 cp "$MOCK_ASSET" "$fixture/good-asset"
 printf '\n# tampered\n' >> "$MOCK_ASSET"

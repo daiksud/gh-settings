@@ -11,7 +11,7 @@ description: Specify inert workflow examples and the public composite Action aro
 - Workflow examples and support files live under `examples/github-actions/`.
 - Merging examples does not enable settings workflows, install an App, enter secrets, or apply settings.
 - Every job uses a fresh GitHub-hosted Linux runner and reviewed full-SHA Action pins.
-- The CLI is a fixed released binary verified against its committed SHA-256 before execution; prepare and apply use the same pin from the same configuration commit.
+- The historical example CLI is a fixed released binary verified against its committed SHA-256 before execution; prepare and apply use the same pin from the same configuration commit.
 
 ### Rule: PRs have only read access
 
@@ -65,8 +65,10 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 ### Rule: A release selects the same Action and CLI version
 
 - Invoke the root Action as `uses: daiksud/gh-settings@<approved full commit SHA>`; use a reviewed revision containing the implemented package.
+- Published `v0.6.0` retains the earlier installer using CLI `v0.5.0`; changing main does not repair that immutable tag. Preserve it and its assets; a corrected release requires separate authorization.
 - The Action revision selects packaged support code. Published `v0.5.0` is a CLI release with no root `action.yml`; keep that immutable tag and its assets unchanged.
 - The committed `action/cli-version` selects an explicit CLI release. Download only its `gh-settings-linux-amd64` asset and `SHA256SUMS` through fixed upstream HTTPS paths; require one well-formed checksum for that asset, verify it before execution, and check the exact reported version. A SHA pin fixes the version; the checksum is trusted from that GitHub release. Never fall back to latest or accept an arbitrary URL.
+- A strict version-tag invocation must agree with the committed CLI version or fail before download. SHA-pinned and local invocations read the committed version. Future release publication requires that same version; it cannot silently retain an older CLI.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.
 - Read only checkout-root `.github/settings.yml`; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target.
 - Action-owned installation, execution, and Summary helpers come from the Action package, independently of caller helper files. Execute only the verified absolute CLI path in a per-invocation runner-temp location.
@@ -104,8 +106,8 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 | --- | --- |
 | `config-sha` | Full checked-out configuration commit SHA (`HEAD`), not a configuration-file hash, workflow SHA, or Action revision. |
 | `target` | Resolved configuration checkout's GitHub repository in `OWNER/REPO` form, consistent with CLI `origin` semantics. |
-| `cli-version` | Verified installed release version, `v0.5.0`. |
-| `cli-sha256` | Verified CLI binary SHA-256, `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`. |
+| `cli-version` | Verified installed release version selected by the committed package version. |
+| `cli-sha256` | SHA-256 of the verified installed CLI binary. |
 
 - Emit these outputs only after command success and, for plan, successful Summary render/write. Composite outputs map to actual step outputs.
 - A validate success includes metadata resolution for these outputs; inability to resolve the checkout commit or target fails the Action even though local CLI validation itself needs no origin or credentials.
@@ -133,4 +135,4 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 ### Public contract verification boundary
 
-Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, hosted validate against the fixed release, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; only dummy checksum data changes in copied installer/verifier fixtures. Existing production-identity and active legacy-workflow tests remain. Usage documentation is checked against the actual contract, snippets, example copies and helper references. Offline checks do not prove Environment enforcement, token revocation, Summary publication, or a live update.
+Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, hosted validate against the fixed release, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; copied packages use local dummy release responses, and historical consumer fixtures explicitly select v0.5.0 with a dummy verifier checksum. Hosted smoke explicitly selects published v0.6.0 in the copied version file, logs the source version separately, and asserts the real release digest; this verifies unreleased package behavior without requiring future assets. It does not prove a future release has been published. Existing production-identity and active legacy-workflow tests remain. Usage documentation is checked against the actual contract, snippets, example copies and helper references. Offline checks do not prove Environment enforcement, token revocation, Summary publication, or a live update.

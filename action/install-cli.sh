@@ -14,6 +14,9 @@ version="$(cat "${BASH_SOURCE[0]%/*}/cli-version")"
 [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || {
   echo 'committed CLI version must be vMAJOR.MINOR.PATCH' >&2; exit 1
 }
+if [[ "${SETTINGS_ACTION_REF:-}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+  [[ "$SETTINGS_ACTION_REF" == "$version" ]] || { echo 'Action tag differs from committed CLI version' >&2; exit 1; }
+fi
 directory="$(mktemp -d "$RUNNER_TEMP/gh-settings-cli.XXXXXX")"
 binary="$directory/gh-settings"
 trap 'rm -rf "$directory"' EXIT
