@@ -75,6 +75,13 @@ func TestRootCompositePlan(t *testing.T) {
 	}
 }
 
+func TestRootCompositeApply(t *testing.T) {
+	result := runComposite(t, "apply", "fixture-token", nil)
+	if result.status != 0 || len(result.outputs) != 4 || result.calls != "apply\n" || result.summary != "" {
+		t.Fatalf("status=%d outputs=%v calls=%q Summary=%s\n%s", result.status, result.outputs, result.calls, result.summary, result.log)
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	outputs                          map[string]string
@@ -115,7 +122,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			t.Fatal(err)
 		}
 	}
-	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0' ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo validate >> \"$MOCK_CALLS\" ;;\nplan) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; echo plan >> \"$MOCK_CALLS\"; echo 'before → desired' ;;\n*) exit 99 ;;\nesac\n"
+	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0' ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo validate >> \"$MOCK_CALLS\" ;;\nplan|apply) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; echo \"$1\" >> \"$MOCK_CALLS\"; echo 'before → desired' ;;\n*) exit 99 ;;\nesac\n"
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
 	write(filepath.Join(fixture, "asset"), asset)
 	write(filepath.Join(bin, "curl"), "#!/usr/bin/env bash\nset -euo pipefail\nwhile [[ $# -gt 0 ]]; do\nif [[ $1 == --output ]]; then cp \"$MOCK_ASSET\" \"$2\"; exit; fi\nshift\ndone\nexit 1\n")
@@ -192,6 +199,10 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			if command != "plan" {
 				continue
 			}
+		case "inputs.command != 'validate'":
+			if command == "validate" {
+				continue
+			}
 		default:
 			t.Fatalf("unmodeled selected-path condition %q", step.If)
 		}
@@ -200,7 +211,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string) 
 			env[key] = value
 		}
 		for key, value := range step.Env {
-			if strings.Contains(value, "inputs.token") && (key != "GH_TOKEN" || step.If != "inputs.command == 'plan'") {
+			if strings.Contains(value, "inputs.token") && (key != "GH_TOKEN" || (step.If != "inputs.command == 'plan'" && step.If != "inputs.command != 'validate'")) {
 				t.Fatal("token input outside authenticated execution boundary")
 			}
 			env[key] = resolve(value)
