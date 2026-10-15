@@ -157,42 +157,44 @@ class SummaryTest(unittest.TestCase):
                 self.assertNotIn('unrelated-secret-fixture', written + result.stdout + result.stderr)
 
     def test_cli_render_failure_preserves_existing_summary_and_outputs(self):
-        with tempfile.TemporaryDirectory() as directory:
-            fixture = Path(directory).resolve()
-            cli_text = fixture / 'CLI text.txt'
-            cli_text.write_text('No differences for managed repository settings.\n')
-            summary_file = fixture / 'step Summary.md'
-            summary_file.write_text('existing Summary\n')
-            outputs = fixture / 'success outputs.txt'
-            outputs.write_text('existing outputs\n')
-            env = dict(os.environ, **self.env, GITHUB_STEP_SUMMARY=str(summary_file), GITHUB_OUTPUT=str(outputs),
-                       GH_TOKEN='unrelated-secret-fixture')
-            del env['SETTINGS_CONFIG_SHA']
-            result = subprocess.run([sys.executable, str(Path(summary.__file__)), str(cli_text), '0'],
-                                    env=env, cwd=fixture, capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(result.stdout, '')
-            self.assertEqual(summary_file.read_text(), 'existing Summary\n')
-            self.assertEqual(outputs.read_text(), 'existing outputs\n')
-            self.assertNotIn('unrelated-secret-fixture', result.stdout + result.stderr)
+        for status in (0, 37):
+            with tempfile.TemporaryDirectory() as directory:
+                fixture = Path(directory).resolve()
+                cli_text = fixture / 'CLI text.txt'
+                cli_text.write_text('No differences for managed repository settings.\n')
+                summary_file = fixture / 'step Summary.md'
+                summary_file.write_text('existing Summary\n')
+                outputs = fixture / 'success outputs.txt'
+                outputs.write_text('existing outputs\n')
+                env = dict(os.environ, **self.env, GITHUB_STEP_SUMMARY=str(summary_file), GITHUB_OUTPUT=str(outputs),
+                           GH_TOKEN='unrelated-secret-fixture')
+                del env['SETTINGS_CONFIG_SHA']
+                result = subprocess.run([sys.executable, str(Path(summary.__file__)), str(cli_text), str(status)],
+                                        env=env, cwd=fixture, capture_output=True, text=True)
+                self.assertEqual(result.returncode, status or 1, result.stderr)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(summary_file.read_text(), 'existing Summary\n')
+                self.assertEqual(outputs.read_text(), 'existing outputs\n')
+                self.assertNotIn('unrelated-secret-fixture', result.stdout + result.stderr)
 
     def test_cli_summary_write_failure_emits_no_success_outputs(self):
-        with tempfile.TemporaryDirectory() as directory:
-            fixture = Path(directory).resolve()
-            cli_text = fixture / 'CLI text.txt'
-            cli_text.write_text('No differences for managed repository settings.\n')
-            summary_file = fixture / 'step Summary.md'
-            summary_file.mkdir()
-            outputs = fixture / 'success outputs.txt'
-            outputs.write_text('existing outputs\n')
-            env = dict(os.environ, **self.env, GITHUB_STEP_SUMMARY=str(summary_file), GITHUB_OUTPUT=str(outputs),
-                       GH_TOKEN='unrelated-secret-fixture')
-            result = subprocess.run([sys.executable, str(Path(summary.__file__)), str(cli_text), '0'],
-                                    env=env, cwd=fixture, capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(result.stdout, '')
-            self.assertEqual(outputs.read_text(), 'existing outputs\n')
-            self.assertNotIn('unrelated-secret-fixture', result.stdout + result.stderr)
+        for status in (0, 37):
+            with tempfile.TemporaryDirectory() as directory:
+                fixture = Path(directory).resolve()
+                cli_text = fixture / 'CLI text.txt'
+                cli_text.write_text('No differences for managed repository settings.\n')
+                summary_file = fixture / 'step Summary.md'
+                summary_file.mkdir()
+                outputs = fixture / 'success outputs.txt'
+                outputs.write_text('existing outputs\n')
+                env = dict(os.environ, **self.env, GITHUB_STEP_SUMMARY=str(summary_file), GITHUB_OUTPUT=str(outputs),
+                           GH_TOKEN='unrelated-secret-fixture')
+                result = subprocess.run([sys.executable, str(Path(summary.__file__)), str(cli_text), str(status)],
+                                        env=env, cwd=fixture, capture_output=True, text=True)
+                self.assertEqual(result.returncode, status or 1, result.stderr)
+                self.assertEqual(result.stdout, '')
+                self.assertEqual(outputs.read_text(), 'existing outputs\n')
+                self.assertNotIn('unrelated-secret-fixture', result.stdout + result.stderr)
 
     def test_missing_context_fails(self):
         for key in self.env:
