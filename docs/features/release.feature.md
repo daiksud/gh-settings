@@ -23,6 +23,8 @@ A maintainer can start a release from `main` with an explicit version. The workf
 - And tag `v1.2.3` points to commit A
 - And the GitHub Release contains exactly the two raw binaries and `SHA256SUMS`
 - And the release notes identify commit A and include changes and installation guidance
+- And a supported Ubuntu runner checks out the published tag and verifies it is commit A before executing its root Action
+- And credential-free validate reports the requested CLI version and accepted Linux binary digest for a separate configuration-only checkout
 
 #### Scenario: Source version differs from the requested tag
 
