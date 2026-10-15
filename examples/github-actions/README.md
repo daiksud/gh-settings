@@ -1,47 +1,62 @@
-# GitHub Actions examples
+# GitHub Actions consumer examples
 
-These support files are inert. No settings workflow is installed in `.github/workflows` by merging them. The [approved contract](../../docs/adr/0022-owner-approved-actions.md) separates code delivery from later owner-authorized setup and adoption.
+These inert workflows use the public root composite Action. Merging changes under this directory does not install these examples as workflows. This repository also has separately maintained active legacy workflows under `.github/workflows`; their settings automation is unchanged. This directory matches their existing path filters, so even documentation changes may trigger current read-only plan/prepare; that is not public-Action adoption or permission to approve apply. See the [public contract](../../docs/adr/0023-public-composite-action.md) and [setup/review/recovery guide](../../docs/github-actions.md).
 
-## Fixed CLI bootstrap
+## Reviewed source and Action identity
 
-On a fresh GitHub-hosted Linux x86-64 runner with Bash, curl, GNU sha256sum, and Git, run from the checkout root:
+Both examples pin `daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70`. That full SHA contains the implemented root `action.yml` and packaged helpers, independently of the caller's workflow/configuration commits. Example source revision `897eab7fc143d848abf37d7355bd64126527ef4c` contains both updated workflows and the caller verifier below; its Action package matches the examples' pin.
+
+The Action fixes CLI `v0.5.0`, asset `gh-settings-linux-amd64`, SHA-256 `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`, and checks exact reported version before execution. CLI tag `v0.5.0` has no root Action: it cannot replace the Action SHA. Existing tags/assets stay immutable. Choosing a first Action release number or publishing a release/Marketplace listing is separate work requiring the owner's decision.
+
+## Copy only the caller files
+
+From the reviewed source checkout, place these three files in the configuration repository:
+
+| Source | Destination |
+| --- | --- |
+| `settings-pr.yml` | `.github/workflows/settings-pr.yml` |
+| `settings-main.yml` | `.github/workflows/settings-main.yml` |
+| `verify-action-handoff.sh` | `examples/github-actions/verify-action-handoff.sh` |
+
+For example, with `source_dir` set to the absolute reviewed source checkout and the current directory at the target repository root:
 
 ```sh
-bash examples/github-actions/install-cli.sh "$RUNNER_TEMP/settings-cli"
+mkdir -p .github/workflows examples/github-actions
+cp "$source_dir/examples/github-actions/settings-pr.yml" .github/workflows/settings-pr.yml
+cp "$source_dir/examples/github-actions/settings-main.yml" .github/workflows/settings-main.yml
+cp "$source_dir/examples/github-actions/verify-action-handoff.sh" examples/github-actions/verify-action-handoff.sh
 ```
 
-The script prints the verified executable path. It downloads `gh-settings-linux-amd64` from the fixed upstream `v0.5.0` release, verifies the committed SHA-256 before making it executable, and checks `gh-settings v0.5.0`. Failures remove the destination. Review the version, asset, and checksum together when updating the script. The initial digest was checked against the release's `SHA256SUMS` and GitHub asset digest.
+Use this as a future PR preparation procedure, not an activation command for an existing installation. Inspect existing destination files before copying; reconcile them in the PR rather than overwriting operational configuration. Commit root `.github/settings.yml` with [schemaVersion 1](../../docs/settings.md#configuration-semantics). No root `action.yml`, `action/`, old installer, plan wrapper or Summary renderer is needed in the consumer. Keep the caller verifier at the path used by the workflow.
 
-Use the same script from the same configuration commit in prepare and apply. Do not cache PR-supplied executable content or build repository source for privileged use. Shared persistent self-hosted runners are outside the supported setup.
+Use fresh GitHub-hosted Ubuntu 24.04 x64 jobs, with Bash, curl, GNU sha256sum, Git and Python 3. Configuration checkout belongs directly at `GITHUB_WORKSPACE`, has a checkout-scoped GitHub.com `origin` and persists no credentials. Other runners/nested checkouts are unsupported. The Action downloads its fixed CLI even for credential-free validate.
 
-Offline bootstrap fixtures run with `bash tests/github-actions/bootstrap.sh`; they stub downloading and replace only the expected digest for local test binaries. No token or GitHub update is used.
+## PR review and approved main apply
 
-## Read-only PR example
+`settings-pr.yml` uses `pull_request` and the containing repository's synthetic merge revision (`github.sha`), including fork PRs. Its actual public call supplies `command: plan` and an explicit ordinary read token. The Action validates first, renders the quoted review Summary and publishes four success outputs: `config-sha`, `target`, `cli-version`, `cli-sha256`. Invalid configuration/read failure fails the call; diff/no-diff/no managed fields succeed. No App credential, protected Environment or apply path is available to PR code.
 
-`settings-pr.yml` uses `pull_request` and the containing repository's synthetic PR merge revision (`github.sha`), including for forks. Checkout binds the CLI's origin target to that repository and does not persist credentials. The verified released CLI runs validate before GET-only plan, with the ordinary read-scoped token only on that step. Missing/invalid configuration and API failures fail the job; differences still exit successfully. Plan output is visible in the run log. No protected Environment, App key, apply command, or privileged fallback exists in this example.
+`settings-main.yml` permits only a push to Branch `main`. The prepare job guards the triggering checkout, calls the same read-only plan and maps the four outputs directly. Its additional `action-sha` is caller metadata, not an Action output. Failed prepare or detectable Summary rendering/write failure blocks apply. Successful writing does not prove publication; the owner must inspect a complete Summary before approval.
 
-The workflow remains outside `.github/workflows`. Later adoption must copy it deliberately, together with its support files; merging this example alone activates nothing. Lint with actionlint and run `bash tests/github-actions/plan.sh`. Existing built-product acceptance separately proves the CLI's GET-only plan and configuration preservation.
+Apply needs prepare and waits at `settings-apply`. After owner approval, it checks out the prepared configuration commit and runs the local verifier against configuration, target, reviewed Action and fixed CLI identities. Only then does the pinned official token Action mint a one-repository Administration-write installation token and pass it to public `command: apply`, retaining default post-job revocation. The always-outcome Summary records the actual apply step as success, failure or skipped. The caller owns Environment protection, App scope, secure credential entry, mint/revoke and concurrency; the composite is not a credential sandbox.
 
-## Auditable review Summary
+For new installations, the example names are Environment `settings-apply`, variable `SETTINGS_APP_CLIENT_ID` and secret `SETTINGS_APP_PRIVATE_KEY`. Configure verified owner review, self-approval allowed, no administrator bypass and only a Branch `main` deployment rule before storing credentials. See the [ordered adoption boundary](../../docs/github-actions.md#ordered-owner-setup) for plan/visibility prerequisites and trust limits. No setup or live execution is performed by this documentation.
 
-`render-summary.py OUTPUT_FILE EXIT_STATUS` uses Python 3's standard library to render explicit `SETTINGS_*` run metadata and the CLI output. Its tests list the required context fields. Workflow-source and configuration SHAs have separate exact-revision links. Original and initiating/rerun actors, run/attempt, event, target, and verified CLI identity appear separately from quoted settings data. No full GitHub context or credentials are dumped.
+PR concurrency cancels superseded PR runs; main uses a repository-scoped group with `cancel-in-progress: false`, subject to GitHub's pending-run replacement. Direct apply sends declared values without rereading remote state or consuming a saved plan. It can overwrite intervening changes, and output failure can follow a successful update; no rollback, drift/freshness guard or custom approval mechanism is promised.
 
-The renderer distinguishes changes, no differences, no managed fields, and errors. It quotes output inside an escaped HTML data block, so settings text cannot close the block and forge approval context. Test it with `python3 tests/github-actions/summary.py`. The later main prepare example supplies these fields and writes the result to GitHub's Summary.
+For this repository's future adoption, preserve Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID`, `ANSWER26_PRIVATE_KEY` and the declaration. Do not replace them with the inert names. Prepare a separate reviewed adoption PR with explicit mappings and trigger effects, then stop for owner activation approval. Do not switch workflows, enter credentials, approve a deployment, run live plan/apply or release as part of documentation completion.
 
-## Main prepare example
+## Retained helper inventory
 
-`settings-main.yml` prepares a `push` to Branch `main`, followed by the dependent approved apply job. `prepare.sh` installs the pinned CLI from the triggering configuration checkout, validates/plans with the ordinary read token, and writes the Summary before exposing only configuration SHA, CLI version/checksum, and target. A later moving main cannot change the checkout input. Failures, including detectable rendering/write failures, block successful prepare.
+Every existing helper still has a consumer, so none is removed:
 
-The owner must not approve a run whose review Summary is missing or incomplete: successful prepare does not prove publication. No publication polling is added. Main concurrency is one repository group with `cancel-in-progress: false`; normal GitHub pending-run replacement applies. Run offline checks with `bash tests/github-actions/prepare.sh`. This example remains inert outside `.github/workflows`.
+| Retained file | Existing reference / compatibility reason |
+| --- | --- |
+| `install-cli.sh` | Active PR workflow; legacy prepare/verify wrappers. Fixed CLI installer retained with bootstrap fixtures. |
+| `plan.sh` | Active PR workflow and legacy prepare; retained validate-before-plan fixtures. |
+| `render-summary.py` | Legacy prepare; retained escaped Summary fixtures. |
+| `prepare.sh` | Active main prepare; retained handoff/prepare fixtures. |
+| `verify-apply.sh` | Active main pre-token verification; retained approved-apply fixtures. |
+| `apply.sh` | Active main apply; retained step-token/failure fixtures. |
+| `verify-action-handoff.sh` | Inert public-Action main caller; required consumer file, production-identity and integration fixtures. |
 
-## Approved apply example
-
-Apply needs successful prepare and waits at the fixed `settings-apply` Environment. Before adoption, the owner must configure that Environment with the owner reviewer, self-approval allowed, administrator bypass disabled, and only a Branch `main` rule with no Tag rule. The owner must securely enter Environment secret `SETTINGS_APP_PRIVATE_KEY` and variable `SETTINGS_APP_CLIENT_ID` for a dedicated selected-repository App with Administration write. An Environment name is not a workflow allowlist; review all eligible workflows/helpers/pins.
-
-Apply checks out prepare's configuration commit and verifies the same CLI version/checksum before token minting. The official token Action is pinned to v3.3.0's full SHA and requests Administration write for the containing repository only, with normal revocation retained. Its masked token output is consumed only by the direct apply step; it is not a job/workflow output or checkout/bootstrap/Summary credential. The outcome Summary reports success, failure, or skipped from the actual step. No rollback, saved-plan, drift, or freshness mechanism is added.
-
-Run `bash tests/github-actions/apply.sh` for offline input/token fixtures. Actual Environment gates and token revocation require separately authorized [manual verification](https://github.com/daiksud/gh-settings/issues/94). No App, key, Environment, activation, or live update is created by merging this example.
-
-## Composed boundary checks
-
-The ordinary Go suite runs `TestWorkflowCredentialBoundaries` and `TestComposedOfflineWorkflow`. The latter takes the actual YAML shell commands and composes the real prepare/verify/apply helpers in isolated local checkouts, with dummy approval/token providers. It covers successful apply, failed prepare, denied/waiting approval, target/missing handoff, tampered binary, missing key, and failed apply; dummy cleanup runs on normal/error paths. These checks do not establish real Environment approval, branch/tag enforcement, or real token revocation; those remain [#94](https://github.com/daiksud/gh-settings/issues/94).
+The ordinary CI keeps `bootstrap.sh`, `plan.sh`, `summary.py`, `prepare.sh`, `apply.sh` and `TestLegacyOperationalWorkflow` while the active shell workflows need them. Separately, root Action tests and fifteen PR/main consumer scenarios execute actual checked-in YAML/composite boundaries using isolated local Git, dummy downloads/CLI responses, approval and token providers. Only dummy release checksum data changes in copied fixture installer/verifier. Hosted Ubuntu 24.04 smoke uses the real fixed release for validate; built-product acceptance separately checks real CLI semantics. None of these fixtures proves actual Environment enforcement, Summary publication or real token revocation; those need separately authorized platform evidence.

@@ -56,15 +56,15 @@ description: Specify inert workflow examples and the public composite Action aro
 
 ### Verification boundary
 
-Each implementation PR adds its focused offline checks; composed coverage follows before adoption. Markdown/local-link checks validate this contract. Actual Environment waiting/rejection, branch/tag enforcement, and token revocation require separately authorized GitHub verification; offline fixtures cannot establish those platform behaviors.
+Focused offline checks and composed consumer coverage run in required CI, alongside hosted validate smoke and built-product acceptance. Markdown/local-link checks validate document structure; they do not prove runtime behavior. Actual Environment waiting/rejection, branch/tag enforcement, and token revocation require separately authorized GitHub verification; offline fixtures cannot establish those platform behaviors.
 
 ### Public composite Action contract
 
-Consumers can validate, inspect, or directly apply their checked-out repository settings through a reviewed Action package without copying helper files. This is the accepted contract for staged implementation in [ADR 0023](../adr/0023-public-composite-action.md), not a claim that the root Action already exists. The preceding workflow-example rules remain applicable to those examples.
+Consumers can validate, inspect, or directly apply their checked-out repository settings through a reviewed Action package without copying helper files. The implemented root Action follows [ADR 0023](../adr/0023-public-composite-action.md); the [usage guide](../github-actions.md) identifies reviewed full-SHA calls and supported consumer files. The preceding workflow-example rules remain applicable to those examples.
 
 ### Rule: Action revision and CLI release are independent
 
-- Invoke the root Action as `uses: daiksud/gh-settings@<approved full commit SHA>` after its implementation.
+- Invoke the root Action as `uses: daiksud/gh-settings@<approved full commit SHA>`; use a reviewed revision containing the implemented package.
 - The Action revision selects packaged support code. Published `v0.5.0` is a CLI release with no root `action.yml`; keep that immutable tag and its assets unchanged.
 - Install only CLI `v0.5.0`, asset `gh-settings-linux-amd64`, SHA-256 `b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4`, and verify exact reported version `gh-settings v0.5.0` before settings execution.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.
@@ -133,4 +133,4 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 ### Public contract verification boundary
 
-This documentation change uses Markdown/local-link checks and comparison with existing CLI commands, features, the fixed release asset, and official composite metadata syntax. Installer, command, renderer, wiring, hosted validate, and consumer integration checks belong to their focused implementation Issues in ADR 0023's order. Offline checks do not prove Environment enforcement, token revocation, Summary publication, or a live update.
+Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, hosted validate against the fixed release, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; only dummy checksum data changes in copied installer/verifier fixtures. Existing production-identity and active legacy-workflow tests remain. Usage documentation is checked against the actual contract, snippets, example copies and helper references. Offline checks do not prove Environment enforcement, token revocation, Summary publication, or a live update.

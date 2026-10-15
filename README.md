@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.5.0 release implements all four commands, with export saving `.github/settings.yml`. [Inert GitHub Actions examples](docs/github-actions.md) provide PR plans and owner-approved main apply; setup and activation are separate operations.
+A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.5.0 release implements all four commands, with export saving `.github/settings.yml`. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; its inert consumer examples keep setup and activation separate.
 
 ## Install
 
@@ -82,6 +82,34 @@ gh settings apply
 Apply validates `.github/settings.yml` before contacting GitHub, then sends only declared fields to the checkout's origin repository. False and empty strings are explicit values; omitted fields stay outside the request. A declaration with no managed fields succeeds without origin or authentication. Successful updates print `Applied repository settings.` and exit 0.
 
 Apply works independently of plan and does not fetch current settings. Remote changes to declared fields can be overwritten. Errors exit 1; an output failure can occur after an update succeeds, and there is no automatic rollback. See [apply behavior](docs/commands.md#apply-behavior). Apply is available since v0.4.0.
+
+## Use as a GitHub Action
+
+Commit `.github/settings.yml` in the configuration repository, then use a fresh GitHub-hosted Ubuntu 24.04 x64 job. Checkout belongs at `GITHUB_WORKSPACE`, with a GitHub `origin` and no persisted credentials. This credential-free validation example uses the reviewed full Action SHA:
+
+```yaml
+name: Validate repository settings
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70 # Action revision; CLI v0.5.0
+        id: settings
+        with:
+          command: validate
+```
+
+`command` is exactly `validate`, `plan`, or `apply`. Validate needs no token; plan requires an explicit read token; apply requires a target-scoped App installation token with Administration write. The caller owns its Environment/approval, token mint/revoke and concurrency. Use the [inert PR/main examples](examples/github-actions/README.md) for read-only review followed by separately approved apply; do not give privileged credentials to PR code.
+
+Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. The Action SHA selects packaged code; the installed CLI stays at v0.5.0. The immutable CLI tag v0.5.0 has no root Action and is not a valid substitute for this SHA. No Action release number or Marketplace publication is promised. See the [complete contract, runner limits and adoption boundary](docs/github-actions.md).
 
 ## Build and run from source
 
