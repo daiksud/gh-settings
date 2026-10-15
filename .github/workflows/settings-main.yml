@@ -40,7 +40,7 @@ jobs:
   apply:
     needs: prepare
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: answer26
+    environment: gh-settings
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
