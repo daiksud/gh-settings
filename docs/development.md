@@ -1,4 +1,8 @@
-# Local development
+---
+type: Guide
+title: Local development
+description: Run local checks and understand the repository CI validation boundaries.
+---
 
 Use Go 1.25 or later and install [mise](https://mise.jdx.dev/getting-started.html). From the repository root, use the commands below to install the exact tool versions in [mise.toml](../mise.toml), including Go 1.26.0, and run checks through mise so the local versions match CI.
 
@@ -12,11 +16,14 @@ mise exec -- go build ./...
 mise exec -- go mod verify
 mise exec -- go mod tidy -diff
 mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
-mise exec -- shellcheck scripts/publish-release.sh tests/release.sh examples/github-actions/*.sh tests/github-actions/*.sh
+mise exec -- shellcheck scripts/publish-release.sh tests/release.sh examples/github-actions/*.sh tests/github-actions/*.sh action/*.sh
 mise exec -- bash tests/release.sh
+mise exec -- bash tests/github-actions/action-install.sh
+mise exec -- bash tests/github-actions/action-command.sh
 mise exec -- bash tests/github-actions/bootstrap.sh
 mise exec -- bash tests/github-actions/plan.sh
 python3 tests/github-actions/summary.py
+python3 tests/github-actions/action-summary.py
 mise exec -- bash tests/github-actions/prepare.sh
 mise exec -- bash tests/github-actions/apply.sh
 mise exec -- rumdl check --no-cache --deny-config-warnings README.md docs examples/github-actions
@@ -35,9 +42,13 @@ The [acceptance tests](../tests/acceptance/acceptance_test.go) require an explic
 
 ## CI validation
 
-The [PR workflow](../.github/workflows/ci-pr.yml) follows Draft → commit-stage → Ready → acceptance-stage → `pass`. It runs on opened, synchronized, reopened, and edited PRs. The [main workflow](../.github/workflows/ci-push.yml) runs commit-stage → acceptance-stage → `pass` on pushes to `main`. Failure, cancellation, or skipped acceptance prevents a successful `pass` result. This CI does not merge, publish, or deploy.
+The [PR workflow](../.github/workflows/ci-pr.yml) follows Draft → commit-stage → Ready → acceptance-stage and composite-smoke → `pass`. It runs on opened, synchronized, reopened, and edited PRs. The [main workflow](../.github/workflows/ci-push.yml) runs commit-stage → acceptance-stage and composite-smoke → `pass` on pushes to `main`. Failure, cancellation, or skipping either validation job prevents a successful `pass` result. This CI does not merge, publish, or deploy.
 
 Both workflows call [commit-stage](../.github/actions/commit-stage/action.yml) for formatting, modules, vet, race tests, GitHub workflow/shell checks, a single product build, and Markdown/local links. CI installs the same pinned development tools from [mise.toml](../mise.toml) with the official mise Action. The acceptance stage installs only Go from that configuration. Tool caches are disabled so PR jobs do not supply installed executables to later runs. They transfer that same binary through an artifact, then call [acceptance-stage](../.github/actions/acceptance-stage/action.yml) to verify its SHA-256 and launch it as a real process. The tagged acceptance Go tests are compiled separately with caching disabled; the product is not rebuilt and the ordinary Go unit suite is not run again. Artifacts are retained for one day and downloaded only from the current workflow run.
+
+The separate `composite-smoke` job uses the public Action's supported GitHub-hosted Ubuntu 24.04 x64 runner; the existing stages remain on `ubuntu-slim`. It checks out the Action source into `.action` at the PR head repository/SHA or triggering main SHA, then creates a fixture Git repository at the workspace root tracking only `.github/settings.yml`. The nested `.action` directory remains a separate, untracked checkout inside the workspace. The consumer has no root `action.yml` or `action/` helpers. A real local `uses: ./.action` invocation selects `command: validate` without a token input and exercises the fixed released CLI download, checksum/version verification and local validation.
+
+The following step asserts all four actual composite outputs against the fixture commit/origin and fixed CLI version/checksum, and logs the distinct source/consumer roots and SHAs. Download, composite or assertion failure fails the existing aggregate gate; none is converted to a skipped success. Inspect the exact-head hosted `composite-smoke` log for this integration evidence. The local Go suite covers actual metadata-command fixtures and the existing shell/Python commands cover the owned helpers; CI already runs these checks and `action/*.sh` lint once in commit-stage. Those offline checks do not execute GitHub's composite expansion or the real Linux release binary.
 
 PR-code validation jobs have read permissions, no supplied secrets, and checkout credentials are not persisted. Draft/Ready control jobs have write permissions but do not check out or execute PR code, composites, or artifacts. Normal fork tokens are read-only, so automatic PR-state changes can be blocked on forks; this workflow does not bypass that restriction.
 

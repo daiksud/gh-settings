@@ -77,13 +77,63 @@ jobs:
         with:
           binary-path: ${{ runner.temp }}/product/gh-settings
           binary-sha256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+  composite-smoke:
+    needs: [commit-stage, ready]
+    # Exercise the public Action's supported runner, independently of ubuntu-slim CI.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {contents: read}
+    steps:
+      - name: Checkout the Action under test separately
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: .action
+          persist-credentials: false
+      - name: Create a configuration-only consumer checkout
+        run: |
+          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+          [[ ! -e .git && ! -e action.yml && ! -e action ]]
+          mkdir -p .github
+          printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: Hosted composite fixture\n' > .github/settings.yml
+          git init --quiet
+          git remote add origin https://github.com/example-owner/settings-fixture.git
+          git add .github/settings.yml
+          git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: initialize consumer fixture'
+          [[ "$(git rev-parse --show-toplevel)" != "$(git -C .action rev-parse --show-toplevel)" ]]
+      - name: Validate through the actual root composite
+        id: validate
+        uses: ./.action
+        with:
+          command: validate
+      - name: Assert consumer identity and all public outputs
+        env:
+          ACTION_SHA: ${{ github.event.pull_request.head.sha }}
+          CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
+          TARGET: ${{ steps.validate.outputs.target }}
+          CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
+        run: |
+          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+          [[ ! -e action.yml && ! -e action ]]
+          [[ "$(git ls-files)" == .github/settings.yml ]]
+          [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
+          [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
+          [[ "$TARGET" == example-owner/settings-fixture ]]
+          [[ "$CLI_VERSION" == v0.5.0 ]]
+          [[ "$CLI_SHA256" == b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4 ]]
+          printf 'Action checkout: %s at %s\nConsumer checkout: %s at %s\n' \
+            "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
+            "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
+          printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
   pass:
-    needs: acceptance-stage
+    needs: [acceptance-stage, composite-smoke]
     if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {}
     steps:
       - name: Reject failed or cancelled validation
-        if: cancelled() || needs['acceptance-stage'].result != 'success'
+        if: cancelled() || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'
         run: exit 1
