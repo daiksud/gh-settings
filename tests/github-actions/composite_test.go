@@ -295,7 +295,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 	if action.Name == "" || action.Description == "" || action.Runs.Using != "composite" {
 		t.Fatal("missing composite metadata")
 	}
-	if len(action.Inputs) != 2 || !action.Inputs["command"].Required || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
+	if len(action.Inputs) != 2 || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
 		t.Fatal("input contract changed")
 	}
 	if len(action.Outputs) != 4 {

@@ -6,7 +6,11 @@ inputs:
     description: Required command, exactly validate, plan or apply.
     required: true
   token:
-    description: Explicit read token for plan or target-scoped App installation token with Administration write for apply; unused for validate. The caller owns approval and token lifecycle.
+    description: >-
+      Explicit read token for plan or target-scoped App installation token with
+      Administration write for apply; unused for validate. Exposure is scoped to
+      the command-step environment; the composite shares the caller job. The caller
+      owns approval and token lifecycle.
     required: false
 outputs:
   config-sha:
