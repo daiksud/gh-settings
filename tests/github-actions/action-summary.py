@@ -43,6 +43,17 @@ class SummaryTest(unittest.TestCase):
             self.assertIn('Action repository</th><td>Local checkout', rendered)
             self.assertIn('Action ref</th><td>Unavailable (local action)', rendered)
 
+    def test_incomplete_remote_action_identity_fails(self):
+        for key in ('SETTINGS_ACTION_REPOSITORY', 'SETTINGS_ACTION_REF'):
+            for value in ('', None):
+                env = dict(self.env)
+                if value is None:
+                    del env[key]
+                else:
+                    env[key] = value
+                with self.subTest(key=key, value=value), self.assertRaises((KeyError, ValueError)):
+                    summary.render('', 0, env)
+
     def test_first_run_and_rerun_exact_links(self):
         first = summary.render("settings.repository.has_issues: true → false\n", 0, self.env)
         self.assertIn("Observed before → desired after", first)
