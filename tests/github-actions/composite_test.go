@@ -290,13 +290,37 @@ func TestRootCompositeStatusHandoffFailure(t *testing.T) {
 }
 
 type compositeResult struct {
-	status                           int
-	downloaded, injected             bool
-	outputs                          map[string]string
-	log, calls, summary, sha, digest string
+	status                                int
+	downloaded, injected                  bool
+	outputs                               map[string]string
+	log, calls, summary, sha, digest, api string
+}
+
+type compositeFixture struct {
+	action                           composite
+	caller, packagePath, sha, digest string
+	base                             map[string]string
+	git                              func(...string) string
+	write                            func(string, string)
 }
 
 func runComposite(t *testing.T, command, token string, extra map[string]string, configure ...func(func(...string) string)) compositeResult {
+	f := newCompositeFixture(t)
+	for _, setup := range configure {
+		setup(f.git)
+	}
+	return f.run(t, command, token, extra)
+}
+
+func fixtureEnvironment(values map[string]string) []string {
+	var env []string
+	for key, value := range values {
+		env = append(env, key+"="+value)
+	}
+	return env
+}
+
+func newCompositeFixture(t *testing.T) *compositeFixture {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), "action.yml"))
 	if err != nil {
@@ -341,7 +365,27 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 	}
 	write(filepath.Join(bin, "gh-settings"), poison)
 	write(filepath.Join(caller, ".github/settings.yml"), "schemaVersion: 1\n")
-	asset := "#!/usr/bin/env bash\nset -euo pipefail\ncase \"$1\" in\n--version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; echo 'gh-settings v0.5.0'; exit ;;\nvalidate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]; status=${MOCK_VALIDATE_STATUS:-0} ;;\nplan|apply) [[ ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} ]]; status=${MOCK_REMOTE_STATUS:-0} ;;\n*) exit 99 ;;\nesac\necho \"$1\" >> \"$MOCK_CALLS\"\nif [[ $status != 0 ]]; then echo 'fixture command error' >&2; else echo 'before → desired'; fi\nexit \"$status\"\n"
+	asset := `#!/usr/bin/env bash
+set -euo pipefail
+case "$1" in
+  --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo 'gh-settings v0.5.0'; exit ;;
+  validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
+  plan) [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_REMOTE_STATUS:-0} ;;
+  apply)
+    [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == app-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
+    printf 'PATCH\n' >> "$MOCK_API"
+    status=${MOCK_REMOTE_STATUS:-0} ;;
+  *) exit 99 ;;
+esac
+echo "$1" >> "$MOCK_CALLS"
+if [[ $status != 0 ]]; then
+  echo 'fixture command error' >&2
+elif [[ $1 == plan ]]; then
+  printf '%s\n' "${MOCK_PLAN_OUTPUT:-before → desired}"
+fi
+exit "$status"
+`
+
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
 	write(filepath.Join(fixture, "asset"), asset)
 	write(filepath.Join(bin, "curl"), "#!/usr/bin/env bash\nset -euo pipefail\ntouch \"$MOCK_DOWNLOAD\"\nwhile [[ $# -gt 0 ]]; do\nif [[ $1 == --output ]]; then cp \"$MOCK_ASSET\" \"$2\"; exit; fi\nshift\ndone\nexit 1\n")
@@ -365,18 +409,12 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 	}
 	base := map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "HOME": fixture, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(fixture, "gitconfig"), "GITHUB_WORKSPACE": caller, "RUNNER_TEMP": filepath.Join(fixture, "runner temp"), "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "GITHUB_STEP_SUMMARY": filepath.Join(fixture, "summary"), "MOCK_ASSET": filepath.Join(fixture, "asset"), "MOCK_CALLS": filepath.Join(fixture, "calls")}
 	base["MOCK_DOWNLOAD"] = filepath.Join(fixture, "download")
-	environment := func(values map[string]string) []string {
-		var env []string
-		for key, value := range values {
-			env = append(env, key+"="+value)
-		}
-		return env
-	}
+	base["MOCK_API"] = filepath.Join(fixture, "api")
 	git := func(args ...string) string {
 		t.Helper()
 		cmd := exec.Command("git", args...)
 		cmd.Dir = caller
-		cmd.Env = environment(base)
+		cmd.Env = fixtureEnvironment(base)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, output)
@@ -388,13 +426,26 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 	git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "fixture")
 	git("remote", "add", "origin", "https://github.com/owner/config.git")
 	sha := git("rev-parse", "HEAD")
-	for _, setup := range configure {
-		setup(git)
+	return &compositeFixture{action: action, caller: caller, packagePath: packagePath, sha: sha, digest: digest, base: base, git: git, write: write}
+}
+
+func (f *compositeFixture) run(t *testing.T, command, token string, extra map[string]string) compositeResult {
+	t.Helper()
+	caller, packagePath, sha, digest, action := f.caller, f.packagePath, f.sha, f.digest, f.action
+	base := map[string]string{}
+	for key, value := range f.base {
+		base[key] = value
 	}
+	for _, key := range []string{"MOCK_CALLS", "MOCK_DOWNLOAD", "MOCK_API", "GITHUB_STEP_SUMMARY"} {
+		if err := os.Remove(base[key]); err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	}
+	outputDirectory := t.TempDir()
 	values := map[string]string{"inputs.command": command, "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
 		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": "approved-action-ref"}
 	for key, value := range extra {
-		if key == "github.run_id" {
+		if _, known := values[key]; known && strings.HasPrefix(key, "github.") {
 			values[key] = value
 		} else {
 			base[key] = value
@@ -403,18 +454,8 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 	if extra["SUMMARY_DIRECTORY"] == "1" {
 		base["GITHUB_STEP_SUMMARY"] = caller
 	}
-	resolve := func(value string) string {
-		t.Helper()
-		if strings.HasPrefix(value, "${{ ") && strings.HasSuffix(value, " }}") {
-			key := strings.TrimSuffix(strings.TrimPrefix(value, "${{ "), " }}")
-			resolved, ok := values[key]
-			if !ok {
-				t.Fatalf("unbound fixture context %s", key)
-			}
-			return resolved
-		}
-		return value
-	}
+	resolve := func(value string) string { return fixtureValue(t, value, values) }
+
 	result := compositeResult{outputs: map[string]string{}, sha: sha, digest: digest}
 	for i, step := range action.Runs.Steps {
 		if step.Shell != "bash" || step.Run == "" || strings.Contains(step.Run, "${{") {
@@ -447,7 +488,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 			}
 			env[key] = resolve(value)
 		}
-		outputPath := filepath.Join(fixture, fmt.Sprintf("step-%d", i))
+		outputPath := filepath.Join(outputDirectory, fmt.Sprintf("step-%d", i))
 		if extra["STATUS_DIRECTORY"] == "1" && step.Env["GH_TOKEN"] == "${{ inputs.token }}" {
 			outputPath = caller
 		}
@@ -461,7 +502,7 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 		env["GITHUB_OUTPUT"] = outputPath
 		cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", step.Run)
 		cmd.Dir = caller
-		cmd.Env = environment(env)
+		cmd.Env = fixtureEnvironment(env)
 		output, err := cmd.CombinedOutput()
 		result.log += string(output)
 		if err != nil {
@@ -493,9 +534,25 @@ func runComposite(t *testing.T, command, token string, extra map[string]string, 
 	result.calls = string(calls)
 	summary, _ := os.ReadFile(base["GITHUB_STEP_SUMMARY"])
 	result.summary = string(summary)
-	_, err = os.Stat(base["MOCK_DOWNLOAD"])
+	api, _ := os.ReadFile(base["MOCK_API"])
+	result.api = string(api)
+	_, err := os.Stat(base["MOCK_DOWNLOAD"])
 	result.downloaded = err == nil
 	_, err = os.Stat(filepath.Join(caller, "injected"))
 	result.injected = err == nil
 	return result
+}
+
+// fixtureValue resolves only exact contexts already present in the known examples/composite.
+func fixtureValue(t *testing.T, value string, values map[string]string) string {
+	t.Helper()
+	if strings.HasPrefix(value, "${{ ") && strings.HasSuffix(value, " }}") {
+		key := strings.TrimSuffix(strings.TrimPrefix(value, "${{ "), " }}")
+		resolved, ok := values[key]
+		if !ok {
+			t.Fatalf("unbound fixture context %s", key)
+		}
+		return resolved
+	}
+	return value
 }
