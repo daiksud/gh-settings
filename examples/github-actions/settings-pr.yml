@@ -24,13 +24,8 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Install verified released CLI
-        id: cli
-        run: |
-          binary=$(bash examples/github-actions/install-cli.sh "$RUNNER_TEMP/settings-cli")
-          printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
-      - name: Validate then read-only plan
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SETTINGS_CLI: ${{ steps.cli.outputs.binary-path }}
-        run: bash examples/github-actions/plan.sh "$SETTINGS_CLI" "$RUNNER_TEMP/settings-plan.txt"
+      - name: Validate and plan with the Action Summary
+        uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70 # Action revision; CLI v0.5.0
+        with:
+          command: plan
+          token: ${{ github.token }}

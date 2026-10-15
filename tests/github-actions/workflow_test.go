@@ -191,7 +191,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if pr.Jobs["plan"].Environment != "" || len(pr.Jobs["plan"].Outputs) != 0 || len(apply.Outputs) != 0 {
 		t.Fatal("PR Environment or credential output contract changed")
 	}
-	if len(main.Jobs) != 2 || len(pr.Jobs) != 1 || len(pr.Jobs["plan"].Steps) != 3 || len(prepare.Steps) != 2 || len(apply.Steps) != 5 {
+	if len(main.Jobs) != 2 || len(pr.Jobs) != 1 || len(pr.Jobs["plan"].Steps) != 2 || len(prepare.Steps) != 2 || len(apply.Steps) != 5 {
 		t.Fatal("required job/step structure changed")
 	}
 	for _, j := range []job{pr.Jobs["plan"], prepare, apply} {
@@ -220,18 +220,14 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		t.Fatal("moving PR/prepare checkout")
 	}
 	if len(pr.Jobs["plan"].Steps[1].Env) != 0 || len(findStep(t, apply, "app").Env) != 0 {
-		t.Fatal("unexpected install/token environment")
+		t.Fatal("unexpected caller-step token environment")
 	}
 	if !reflect.DeepEqual(findStep(t, apply, "apply").Env, map[string]string{"GH_TOKEN": "${{ steps.app.outputs.token }}", "SETTINGS_CLI": "${{ steps.cli.outputs.binary-path }}"}) {
 		t.Fatal("apply credential environment changed")
 	}
-	prPlan := pr.Jobs["plan"].Steps[2]
-	if prPlan.Run != `bash examples/github-actions/plan.sh "$SETTINGS_CLI" "$RUNNER_TEMP/settings-plan.txt"` || !reflect.DeepEqual(prPlan.Env, map[string]string{"GH_TOKEN": "${{ github.token }}", "SETTINGS_CLI": "${{ steps.cli.outputs.binary-path }}"}) {
-		t.Fatal("PR verified plan binding changed")
-	}
-	if pr.Jobs["plan"].Steps[1].ID != "cli" || strings.TrimSpace(pr.Jobs["plan"].Steps[1].Run) != `binary=$(bash examples/github-actions/install-cli.sh "$RUNNER_TEMP/settings-cli")
-printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"` {
-		t.Fatal("PR verified CLI install changed")
+	prPlan := pr.Jobs["plan"].Steps[1]
+	if prPlan.Uses != "daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70" || prPlan.Run != "" || !reflect.DeepEqual(prPlan.With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
+		t.Fatal("PR public Action/read-token binding changed")
 	}
 	if findStep(t, prepare, "prepare").Run != "bash examples/github-actions/prepare.sh" || !reflect.DeepEqual(findStep(t, prepare, "prepare").Env, map[string]string{"GH_TOKEN": "${{ github.token }}"}) {
 		t.Fatal("prepare read-token binding changed")
