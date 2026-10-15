@@ -328,7 +328,7 @@ func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
 func (f *compositeFixture) call(t *testing.T, call step, context, extra map[string]string) compositeResult {
 	t.Helper()
 	// These inert callers pin the historical Action93 and its v0.5.0 CLI.
-	// Simulate that release identity in the copied package; current-root tests use v0.6.0.
+	// Simulate that release identity in the copied package; current-root tests follow the committed version.
 	f.write(filepath.Join(f.packagePath, "action/cli-version"), "v0.5.0\n")
 	f.base["MOCK_CLI_VERSION"] = "v0.5.0"
 	repository, ref, ok := strings.Cut(call.Uses, "@")

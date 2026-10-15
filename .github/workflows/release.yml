@@ -191,3 +191,66 @@ jobs:
           MACOS_SHA256: ${{ needs.build-macos.outputs.binary-sha256 }}
           RELEASE_DIR: ${{ runner.temp }}/release
         run: bash scripts/publish-release.sh
+  published-action-smoke:
+    needs: [resolve, commit-stage, publish]
+    # Validate the published Action on its supported runner after immutable publication.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {contents: read}
+    steps:
+      - name: Checkout the published Action tag separately
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.version }}
+          path: .action
+          persist-credentials: false
+      - name: Verify the published tag matches the accepted source
+        env:
+          SOURCE_SHA: ${{ needs.resolve.outputs.source-sha }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+          [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]] || {
+            echo 'published tag differs from accepted source' >&2; exit 1
+          }
+          [[ "$(cat .action/action/cli-version)" == "$RELEASE_VERSION" ]] || {
+            echo 'published Action version differs from release' >&2; exit 1
+          }
+      - name: Create a configuration-only consumer checkout
+        run: |
+          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+          [[ ! -e .git && ! -e action.yml && ! -e action ]]
+          mkdir -p .github
+          printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: Hosted composite fixture\n' > .github/settings.yml
+          git init --quiet
+          git remote add origin https://github.com/example-owner/settings-fixture.git
+          git add .github/settings.yml
+          git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: initialize consumer fixture'
+          [[ "$(git rev-parse --show-toplevel)" != "$(git -C .action rev-parse --show-toplevel)" ]]
+      - name: Validate through the published root composite
+        id: validate
+        uses: ./.action
+        with:
+          command: validate
+      - name: Assert consumer identity and all public outputs
+        env:
+          ACTION_SHA: ${{ needs.resolve.outputs.source-sha }}
+          CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
+          TARGET: ${{ steps.validate.outputs.target }}
+          EXPECTED_VERSION: ${{ inputs.version }}
+          EXPECTED_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+          CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
+        run: |
+          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+          [[ ! -e action.yml && ! -e action ]]
+          [[ "$(git ls-files)" == .github/settings.yml ]]
+          [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
+          [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
+          [[ "$TARGET" == example-owner/settings-fixture ]]
+          [[ "$CLI_VERSION" == "$EXPECTED_VERSION" ]]
+          [[ "$CLI_SHA256" == "$EXPECTED_SHA256" ]]
+          printf 'Action checkout: %s at %s\nConsumer checkout: %s at %s\n' \
+            "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
+            "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
+          printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
