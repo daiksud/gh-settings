@@ -83,9 +83,17 @@ class SummaryTest(unittest.TestCase):
         self.assertIn("<pre>", rendered)
 
     def test_missing_context_fails(self):
-        del self.env["SETTINGS_CONFIG_SHA"]
-        with self.assertRaises(KeyError):
-            summary.render("", 0, self.env)
+        for key in self.env:
+            if key.startswith('SETTINGS_ACTION_'):
+                continue
+            for value in ('', None):
+                env = dict(self.env)
+                if value is None:
+                    del env[key]
+                else:
+                    env[key] = value
+                with self.subTest(key=key, value=value), self.assertRaises((KeyError, ValueError)):
+                    summary.render('', 0, env)
 
 
 if __name__ == "__main__":
