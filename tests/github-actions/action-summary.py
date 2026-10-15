@@ -1,16 +1,28 @@
 #!/usr/bin/env python3
 import importlib.util
 from html import unescape
+from html.parser import HTMLParser
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from urllib.parse import unquote, urlsplit
 
 spec = importlib.util.spec_from_file_location("summary", Path(__file__).resolve().parents[2] / "action/render-summary.py")
 summary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(summary)
+
+
+class Links(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.hrefs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'a':
+            self.hrefs.append(dict(attrs)['href'])
 
 
 class SummaryTest(unittest.TestCase):
@@ -41,9 +53,25 @@ class SummaryTest(unittest.TestCase):
             path = f'.github/workflows/review@prod.{extension}'
             workflow_ref = f'owner/repo/{path}@refs/heads/release@candidate'
             rendered = summary.render('', 0, dict(self.env, SETTINGS_WORKFLOW_REF=workflow_ref))
+            links = Links()
+            links.feed(rendered)
+            url = next(urlsplit(href) for href in links.hrefs if '/blob/' + 'a' * 40 + '/' in href)
             with self.subTest(extension=extension):
-                self.assertIn('https://github.com/owner/repo/blob/' + 'a' * 40 + '/' + path, rendered)
+                self.assertEqual(unquote(url.path), '/owner/repo/blob/' + 'a' * 40 + '/' + path)
                 self.assertIn(workflow_ref, rendered)
+
+    def test_workflow_revision_url_preserves_reserved_filename_characters(self):
+        for marker in ('#', '?', '%23'):
+            path = f'.github/workflows/review{marker}prod.yml'
+            env = dict(self.env, SETTINGS_WORKFLOW_REF=f'owner/repo/{path}@refs/heads/main')
+            rendered = summary.render('', 0, env)
+            links = Links()
+            links.feed(rendered)
+            url = next(urlsplit(href) for href in links.hrefs if '/blob/' + 'a' * 40 + '/' in href)
+            with self.subTest(marker=marker):
+                self.assertEqual(unquote(url.path), '/owner/repo/blob/' + 'a' * 40 + '/' + path)
+                self.assertEqual(url.query, '')
+                self.assertEqual(url.fragment, '')
 
     def test_local_action_has_no_invented_remote_pin(self):
         for value in ('', None):

@@ -4,6 +4,7 @@ import html
 import os
 from pathlib import Path
 import sys
+from urllib.parse import quote
 
 
 def render(output, status, env):
@@ -36,7 +37,7 @@ def render(output, status, env):
         ("Event", quoted(value("EVENT"))),
         ("Run / attempt", link(run_url, value("RUN_ID")) + " / " + quoted(value("RUN_ATTEMPT"))),
         ("Workflow path / ref", quoted(workflow_ref)),
-        ("Workflow revision", link(f"https://github.com/{owner}/{repository}/blob/{workflow_sha}/{workflow_path}", workflow_sha)),
+        ("Workflow revision", link(f"https://github.com/{owner}/{repository}/blob/{workflow_sha}/{quote(workflow_path, safe='/')}", workflow_sha)),
         ("Target repository", link(f"https://github.com/{target}", target)),
         ("Configuration revision", link(f"https://github.com/{target}/blob/{config_sha}/.github/settings.yml", config_sha)),
         ("Action repository", quoted(action_repository)),
