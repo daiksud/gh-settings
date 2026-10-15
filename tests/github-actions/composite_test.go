@@ -40,12 +40,21 @@ type composite struct {
 	} `yaml:"runs"`
 }
 
+func committedCLIVersion(t *testing.T) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root(), "action/cli-version"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.TrimSpace(string(data))
+}
+
 func TestRootCompositeValidate(t *testing.T) {
 	result := runComposite(t, "validate", "", nil)
 	if result.status != 0 {
 		t.Fatalf("status=%d\n%s", result.status, result.log)
 	}
-	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": "v0.5.0", "cli-sha256": result.digest}
+	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.digest}
 	if !reflect.DeepEqual(result.outputs, want) {
 		t.Fatalf("outputs=%v, want %v", result.outputs, want)
 	}
@@ -54,6 +63,17 @@ func TestRootCompositeValidate(t *testing.T) {
 	}
 	if result.summary != "" {
 		t.Fatalf("unexpected Summary: %s", result.summary)
+	}
+}
+
+func TestRootCompositeRejectsMismatchedReleaseTag(t *testing.T) {
+	ref := "v0.0.0"
+	if ref == committedCLIVersion(t) {
+		ref = "v0.0.1"
+	}
+	result := runComposite(t, "validate", "", map[string]string{"github.action_ref": ref})
+	if result.status == 0 || len(result.outputs) != 0 || result.calls != "" || result.downloaded || !strings.Contains(result.log, "Action tag differs from committed CLI version") {
+		t.Fatalf("mismatched release tag reached installation: %+v", result)
 	}
 }
 
@@ -368,7 +388,7 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 	asset := `#!/usr/bin/env bash
 set -euo pipefail
 case "$1" in
-  --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo 'gh-settings v0.5.0'; exit ;;
+  --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo "gh-settings $MOCK_CLI_VERSION"; exit ;;
   validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
   plan) [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_REMOTE_STATUS:-0} ;;
   apply)
@@ -388,7 +408,18 @@ exit "$status"
 
 	digest := fmt.Sprintf("%x", sha256.Sum256([]byte(asset)))
 	write(filepath.Join(fixture, "asset"), asset)
-	write(filepath.Join(bin, "curl"), "#!/usr/bin/env bash\nset -euo pipefail\ntouch \"$MOCK_DOWNLOAD\"\nwhile [[ $# -gt 0 ]]; do\nif [[ $1 == --output ]]; then cp \"$MOCK_ASSET\" \"$2\"; exit; fi\nshift\ndone\nexit 1\n")
+	write(filepath.Join(fixture, "checksums"), digest+"  gh-settings-linux-amd64\n")
+	write(filepath.Join(bin, "curl"), `#!/usr/bin/env bash
+set -euo pipefail
+touch "$MOCK_DOWNLOAD"
+asset="$MOCK_ASSET"
+while [[ $# -gt 0 ]]; do
+  [[ "$1" != */SHA256SUMS ]] || asset="$MOCK_CHECKSUMS"
+  if [[ "$1" == --output ]]; then cp "$asset" "$2"; exit; fi
+  shift
+done
+exit 1
+`)
 	write(filepath.Join(bin, "sha256sum"), "#!/usr/bin/env bash\nexec shasum -a 256 \"$@\"\n")
 	files, err := os.ReadDir(filepath.Join(root(), "action"))
 	if err != nil {
@@ -399,15 +430,14 @@ exit "$status"
 		if err != nil {
 			t.Fatal(err)
 		}
-		if file.Name() == "install-cli.sh" {
-			content = []byte(strings.ReplaceAll(string(content), "b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4", digest))
-		}
 		if err := os.MkdirAll(filepath.Join(packagePath, "action"), 0700); err != nil {
 			t.Fatal(err)
 		}
 		write(filepath.Join(packagePath, "action", file.Name()), string(content))
 	}
 	base := map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "HOME": fixture, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(fixture, "gitconfig"), "GITHUB_WORKSPACE": caller, "RUNNER_TEMP": filepath.Join(fixture, "runner temp"), "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "GITHUB_STEP_SUMMARY": filepath.Join(fixture, "summary"), "MOCK_ASSET": filepath.Join(fixture, "asset"), "MOCK_CALLS": filepath.Join(fixture, "calls")}
+	base["MOCK_CLI_VERSION"] = committedCLIVersion(t)
+	base["MOCK_CHECKSUMS"] = filepath.Join(fixture, "checksums")
 	base["MOCK_DOWNLOAD"] = filepath.Join(fixture, "download")
 	base["MOCK_API"] = filepath.Join(fixture, "api")
 	git := func(args ...string) string {

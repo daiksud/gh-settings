@@ -47,6 +47,13 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.source-sha }}
           persist-credentials: false
+      - name: Require the committed CLI version to match the release tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$(cat action/cli-version)" == "$VERSION" ]] || {
+            echo 'release version differs from committed CLI version' >&2; exit 1
+          }
       - name: Commit stage and Linux release build
         id: validation
         uses: ./.github/actions/commit-stage

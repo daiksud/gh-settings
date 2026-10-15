@@ -197,7 +197,7 @@ func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Only dummy-release identity data changes, as in the copied Action installer.
+	// Only dummy-release checksum data changes in the copied verifier.
 	// The production verifier remains covered without substitution by TestMainActionHandoff.
 	prepare.write(filepath.Join(prepare.caller, "examples/github-actions/verify-action-handoff.sh"), strings.ReplaceAll(string(verifier), "b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4", prepare.digest))
 	prepare.git("add", ".github/workflows/settings-main.yml", "examples/github-actions/verify-action-handoff.sh")
@@ -327,6 +327,10 @@ func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
 
 func (f *compositeFixture) call(t *testing.T, call step, context, extra map[string]string) compositeResult {
 	t.Helper()
+	// These inert callers pin the historical Action93 and its v0.5.0 CLI.
+	// Simulate that release identity in the copied package; current-root tests use v0.6.0.
+	f.write(filepath.Join(f.packagePath, "action/cli-version"), "v0.5.0\n")
+	f.base["MOCK_CLI_VERSION"] = "v0.5.0"
 	repository, ref, ok := strings.Cut(call.Uses, "@")
 	if !ok || repository != "daiksud/gh-settings" {
 		t.Fatalf("unexpected public Action call %s", call.Uses)

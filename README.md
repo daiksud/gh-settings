@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.5.0 release implements all four commands, with export saving `.github/settings.yml`. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; its inert consumer examples keep setup and activation separate.
+A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.6.0 release implements all four commands, with export saving `.github/settings.yml`. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; its inert consumer examples keep setup and activation separate.
 
 ## Install
 
@@ -109,7 +109,7 @@ jobs:
 
 `command` is exactly `validate`, `plan`, or `apply`. Validate needs no token; plan requires an explicit read token; apply requires a target-scoped App installation token with Administration write. The caller owns its Environment/approval, token mint/revoke and concurrency. Use the [inert PR/main examples](examples/github-actions/README.md) for read-only review followed by separately approved apply; do not give privileged credentials to PR code.
 
-Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. The Action SHA selects packaged code; the installed CLI stays at v0.5.0. The immutable CLI tag v0.5.0 has no root Action and is not a valid substitute for this SHA. No Action release number or Marketplace publication is promised. See the [complete contract, runner limits and adoption boundary](docs/github-actions.md).
+Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet retains the historical Action pin and its v0.5.0 CLI. Current source selects the explicit version in `action/cli-version`; future release tags must match it, and reviewed SHA pins select that committed CLI version. The immutable v0.5.0 tag has no root Action. Published v0.6.0 contains the older installer and still uses CLI v0.5.0; changing main cannot repair that immutable tag. A corrected release requires a separately chosen version and explicit publication. See the [complete contract, runner limits and adoption boundary](docs/github-actions.md).
 
 ## Build and run from source
 

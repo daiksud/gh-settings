@@ -1,6 +1,6 @@
 name: GitHub repository settings
 author: Daiki Sudo
-description: Validate, plan or directly apply checkout-root settings with the verified v0.5.0 CLI on GitHub-hosted Ubuntu 24.04 x64.
+description: Validate, plan or directly apply checkout-root settings with its verified release CLI on GitHub-hosted Ubuntu 24.04 x64.
 inputs:
   command:
     description: Required command, exactly validate, plan or apply.
@@ -47,6 +47,7 @@ runs:
       shell: bash
       env:
         ACTION_PATH: ${{ github.action_path }}
+        SETTINGS_ACTION_REF: ${{ github.action_ref }}
       run: |
         unset GH_TOKEN GITHUB_TOKEN
         binary=$(bash "$ACTION_PATH/action/install-cli.sh")

@@ -20,6 +20,7 @@ check_hash() {
 }
 
 [[ "${VERSION:-}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail 'version must be vMAJOR.MINOR.PATCH'
+[[ "$VERSION" == "$(cat "${BASH_SOURCE[0]%/*}/../action/cli-version")" ]] || fail 'release version differs from committed CLI version'
 [[ "${SOURCE_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || fail 'invalid source commit'
 [[ "${LINUX_SHA256:-}" =~ ^[0-9a-f]{64}$ && "${MACOS_SHA256:-}" =~ ^[0-9a-f]{64}$ ]] || fail 'invalid expected binary hash'
 [[ "${GITHUB_REPOSITORY:-}" == */* ]] || fail 'missing repository'
