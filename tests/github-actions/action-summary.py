@@ -36,6 +36,15 @@ class SummaryTest(unittest.TestCase):
         self.assertIn('https://github.com/workflow-owner/workflow-repo/blob/' + 'a' * 40, rendered)
         self.assertIn('https://github.com/config-owner/config-repo/blob/' + 'b' * 40 + '/.github/settings.yml', rendered)
 
+    def test_workflow_filename_and_ref_can_contain_at(self):
+        for extension in ('yml', 'yaml'):
+            path = f'.github/workflows/review@prod.{extension}'
+            workflow_ref = f'owner/repo/{path}@refs/heads/release@candidate'
+            rendered = summary.render('', 0, dict(self.env, SETTINGS_WORKFLOW_REF=workflow_ref))
+            with self.subTest(extension=extension):
+                self.assertIn('https://github.com/owner/repo/blob/' + 'a' * 40 + '/' + path, rendered)
+                self.assertIn(workflow_ref, rendered)
+
     def test_local_action_has_no_invented_remote_pin(self):
         for value in ('', None):
             env = dict(self.env)

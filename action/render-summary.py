@@ -24,7 +24,7 @@ def render(output, status, env):
     config_sha = value("CONFIG_SHA")
     workflow_sha = value("WORKFLOW_SHA")
     workflow_ref = value("WORKFLOW_REF")
-    source = workflow_ref.split("@", 1)[0]
+    source, _ = workflow_ref.split("@refs/", 1)
     owner, repository, workflow_path = source.split("/", 2)
     run_url = f'https://github.com/{owner}/{repository}/actions/runs/{value("RUN_ID")}'
     action_repository, action_ref = "Local checkout", "Unavailable (local action)"
