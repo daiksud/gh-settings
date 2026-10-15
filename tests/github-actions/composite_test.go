@@ -194,6 +194,38 @@ func TestRootCompositeOriginFormats(t *testing.T) {
 	}
 }
 
+func TestRootCompositeOriginScope(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		commands [][]string
+		rejected bool
+	}{
+		{"first scoped", [][]string{{"config", "--global", "remote.origin.url", "https://github.com/wrong/global.git"}, {"remote", "set-url", "--add", "origin", "https://github.com/wrong/second.git"}}, false},
+		{"direct before rewrite", [][]string{{"config", "--global", "url.https://mirror.example/.insteadOf", "https://github.com/"}}, false},
+		{"included", [][]string{{"config", "--local", "--unset-all", "remote.origin.url"}, {"config", "--file", ".git/included-config", "remote.origin.url", "https://github.com/owner/config.git"}, {"config", "--local", "include.path", "included-config"}}, false},
+		{"worktree", [][]string{{"config", "--local", "--unset-all", "remote.origin.url"}, {"config", "--local", "extensions.worktreeConfig", "true"}, {"config", "--worktree", "remote.origin.url", "https://github.com/owner/config.git"}}, false},
+		{"global only", [][]string{{"remote", "remove", "origin"}, {"config", "--global", "remote.origin.url", "https://github.com/wrong/global.git"}}, true},
+		{"no origin", [][]string{{"remote", "remove", "origin"}}, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := runComposite(t, "validate", "", nil, func(git func(...string) string) {
+				for _, args := range test.commands {
+					git(args...)
+				}
+			})
+			if test.rejected {
+				if result.status == 0 || len(result.outputs) != 0 {
+					t.Fatalf("unscoped/missing origin accepted: %+v", result)
+				}
+				return
+			}
+			if result.status != 0 || result.outputs["target"] != "owner/config" {
+				t.Fatalf("wrong checkout origin: %+v", result)
+			}
+		})
+	}
+}
+
 type compositeResult struct {
 	status                           int
 	downloaded, injected             bool
