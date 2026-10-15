@@ -4,6 +4,7 @@
 import hashlib
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 from urllib.parse import unquote, urlsplit
@@ -20,9 +21,20 @@ def repository(origin):
         origin = "ssh://" + origin.replace(":", "/", 1)
     if not origin.startswith(("https://", "ssh://")):
         raise ValueError("origin must use a supported literal protocol prefix")
+    address, _, fragment = origin.partition("#")
+    if any(ord(char) < 32 or ord(char) == 127 for char in address):
+        raise ValueError("origin contains an invalid URL control character")
+    # Go decodes the authority, path and fragment, but leaves RawQuery unchanged.
+    if any(re.search(r"%(?![0-9A-Fa-f]{2})", part) for part in (address.split("?", 1)[0], fragment)):
+        raise ValueError("origin contains an invalid URL escape")
     url = urlsplit(origin)
     # Match go-gh's literal www. removal before lowercasing, not urlsplit.hostname.
-    host = url.netloc.rsplit("@", 1)[-1].split(":", 1)[0]
+    userinfo, at, hostport = url.netloc.rpartition("@")
+    if at and re.search(r"[^A-Za-z0-9._~!$&'()*+,;=:%@-]", userinfo):
+        raise ValueError("origin contains invalid userinfo")
+    host, colon, port = hostport.partition(":")
+    if colon and not re.fullmatch(r"[0-9]*", port):
+        raise ValueError("origin contains an invalid port")
     if host.removeprefix("www.").lower() != "github.com":
         raise ValueError("a checkout-scoped GitHub origin is required")
     owner, name = unquote(url.path).strip("/").split("/")
