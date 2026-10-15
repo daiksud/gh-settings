@@ -1,0 +1,53 @@
+name: GitHub repository settings
+author: Daiki Sudo
+description: Validate, plan or directly apply checkout-root settings with the verified v0.5.0 CLI on GitHub-hosted Ubuntu 24.04 x64.
+inputs:
+  command:
+    description: Required command, exactly validate, plan or apply.
+    required: true
+  token:
+    description: Explicit read token for plan or target-scoped App installation token with Administration write for apply; unused for validate. The caller owns approval and token lifecycle.
+    required: false
+outputs:
+  config-sha:
+    description: Full checked-out configuration commit SHA.
+    value: ${{ steps.result.outputs.config-sha }}
+  target:
+    description: Configuration checkout origin in OWNER/REPO form.
+    value: ${{ steps.result.outputs.target }}
+  cli-version:
+    description: Verified installed CLI release version.
+    value: ${{ steps.result.outputs.cli-version }}
+  cli-sha256:
+    description: SHA-256 of the verified installed CLI binary.
+    value: ${{ steps.result.outputs.cli-sha256 }}
+runs:
+  using: composite
+  steps:
+    - name: Install CLI and resolve checkout metadata
+      id: setup
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        unset GH_TOKEN GITHUB_TOKEN
+        binary=$(bash "$ACTION_PATH/action/install-cli.sh")
+        python3 "$ACTION_PATH/action/metadata.py" "$binary" >> "$GITHUB_OUTPUT"
+        printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
+    - name: Validate checkout settings without authentication
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+      run: bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" validate "${SETTINGS_CLI%/*}/output.txt"
+    - name: Publish successful result
+      id: result
+      shell: bash
+      env:
+        CONFIG_SHA: ${{ steps.setup.outputs.config-sha }}
+        TARGET: ${{ steps.setup.outputs.target }}
+        CLI_VERSION: ${{ steps.setup.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.setup.outputs.cli-sha256 }}
+      run: |
+        printf 'config-sha=%s\ntarget=%s\ncli-version=%s\ncli-sha256=%s\n' \
+          "$CONFIG_SHA" "$TARGET" "$CLI_VERSION" "$CLI_SHA256" >> "$GITHUB_OUTPUT"
