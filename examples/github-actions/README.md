@@ -1,6 +1,6 @@
 # GitHub Actions consumer examples
 
-These inert workflows use the public root composite Action. Merging changes under this directory does not install these examples as workflows. This repository also has separately maintained active legacy workflows under `.github/workflows`; their settings automation is unchanged. This directory matches their existing path filters, so even documentation changes may trigger current read-only plan/prepare; that is not public-Action adoption or permission to approve apply. See the [public contract](../../docs/adr/0023-public-composite-action.md) and [setup/review/recovery guide](../../docs/github-actions.md).
+These inert workflows use the public root composite Action. Merging changes under this directory does not install these examples as workflows. This repository's separately maintained active workflows under `.github/workflows` use the released v0.6.1 Action, while these examples retain their historical pin. This directory matches the active path filters, so even documentation changes may trigger read-only plan/prepare and queue apply for owner approval. That does not approve apply. See the [public contract](../../docs/adr/0023-public-composite-action.md) and [setup/review/recovery guide](../../docs/github-actions.md).
 
 ## Reviewed source and Action identity
 
@@ -43,20 +43,20 @@ For new installations, the example names are Environment `settings-apply`, varia
 
 PR concurrency cancels superseded PR runs; main uses a repository-scoped group with `cancel-in-progress: false`, subject to GitHub's pending-run replacement. Direct apply sends declared values without rereading remote state or consuming a saved plan. It can overwrite intervening changes, and output failure can follow a successful update; no rollback, drift/freshness guard or custom approval mechanism is promised.
 
-For this repository's future adoption, preserve Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID`, `ANSWER26_PRIVATE_KEY` and the declaration. Do not replace them with the inert names. Prepare a separate reviewed adoption PR with explicit mappings and trigger effects, then stop for owner activation approval. Do not switch workflows, enter credentials, approve a deployment, run live plan/apply or release as part of documentation completion.
+This repository's active callers use Action SHA `9d01d3258d9f42239b2daeb1ac26bc532cd56105` (v0.6.1), Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID`, `ANSWER26_PRIVATE_KEY` and the unchanged declaration. Their caller verifier is `.github/scripts/verify-settings-handoff.sh`. Do not replace these resources with the inert names. Main prepare remains read-only; apply still requires the owner's existing Environment approval. Updating this documentation does not approve a deployment or publish a release.
 
 ## Retained helper inventory
 
-Every existing helper still has a consumer, so none is removed:
+The active workflows call the public Action and their own handoff verifier. Historical helpers remain with their focused compatibility fixtures:
 
 | Retained file | Existing reference / compatibility reason |
 | --- | --- |
-| `install-cli.sh` | Active PR workflow; legacy prepare/verify wrappers. Fixed CLI installer retained with bootstrap fixtures. |
-| `plan.sh` | Active PR workflow and legacy prepare; retained validate-before-plan fixtures. |
+| `install-cli.sh` | Legacy prepare/verify wrappers; fixed CLI installer retained with bootstrap fixtures. |
+| `plan.sh` | Legacy prepare; retained validate-before-plan fixtures. |
 | `render-summary.py` | Legacy prepare; retained escaped Summary fixtures. |
-| `prepare.sh` | Active main prepare; retained handoff/prepare fixtures. |
-| `verify-apply.sh` | Active main pre-token verification; retained approved-apply fixtures. |
-| `apply.sh` | Active main apply; retained step-token/failure fixtures. |
+| `prepare.sh` | Retained legacy handoff/prepare fixtures. |
+| `verify-apply.sh` | Retained legacy approved-apply fixtures. |
+| `apply.sh` | Retained legacy step-token/failure fixtures. |
 | `verify-action-handoff.sh` | Inert public-Action main caller; required consumer file, production-identity and integration fixtures. |
 
-The ordinary CI keeps `bootstrap.sh`, `plan.sh`, `summary.py`, `prepare.sh`, `apply.sh` and `TestLegacyOperationalWorkflow` while the active shell workflows need them. Separately, root Action tests and fifteen PR/main consumer scenarios execute actual checked-in YAML/composite boundaries using isolated local Git, dummy downloads/CLI responses, approval and token providers. Dummy release responses are local; the historical consumer simulation sets only the copied package version to v0.5.0 and the verifier checksum to its dummy binary digest. Current root tests use the current committed version. Hosted Ubuntu 24.04 smoke explicitly sets its copied package version to published v0.6.0 and uses that real release for validate; built-product acceptance separately checks real CLI semantics. None of these fixtures proves actual Environment enforcement, Summary publication or real token revocation; those need separately authorized platform evidence.
+The ordinary CI keeps the focused legacy helper fixtures. Operational PR/main coverage now executes the actual public-Action caller YAML through the existing composite fixtures; the obsolete legacy workflow integration test and its sole runner were removed. Tests use isolated local Git, dummy downloads/CLI responses, approval and token providers. Both historical v0.5.0 and operational v0.6.1 identities are modeled explicitly; copied verifiers use the corresponding dummy binary checksum. Operational failure coverage includes install failure after token minting, with no apply/API call and normal simulated revocation. Current root tests use the current committed version. Hosted Ubuntu 24.04 smoke explicitly sets its copied package version to published v0.6.0 and uses that real release for validate; built-product acceptance separately checks real CLI semantics. None of these fixtures proves actual Environment enforcement, Summary publication or real token revocation; those need separately authorized platform evidence.

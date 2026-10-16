@@ -333,31 +333,3 @@ func TestMainActionHandoff(t *testing.T) {
 		t.Fatalf("public Action caller handoff failed: %v\n%s", err, output)
 	}
 }
-func TestLegacyOperationalWorkflow(t *testing.T) {
-	// Preserve the legacy operational workflow coverage while inert callers adopt the public Action.
-	w, _ := readWorkflow(t, "../../.github/workflows/settings-main.yml")
-	prepare, apply := w.Jobs["prepare"], w.Jobs["apply"]
-	var summary step
-	for _, s := range apply.Steps {
-		if s.If == "always()" {
-			summary = s
-		}
-	}
-	if summary.Run == "" {
-		t.Fatal("missing outcome Summary")
-	}
-	for _, scenario := range []string{"approved", "failed-prepare", "denied", "waiting", "target-mismatch", "missing-handoff", "unverified-binary", "missing-key", "apply-failure"} {
-		t.Run(scenario, func(t *testing.T) {
-			cmd := exec.Command("bash", filepath.Join(root(), "tests/github-actions/integration.sh"))
-			cmd.Dir = root()
-			// Real secrets are not passed to the fixture process.
-			cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + os.Getenv("HOME"), "TMPDIR=" + os.Getenv("TMPDIR"), "SCENARIO=" + scenario,
-				"PREPARE_COMMAND=" + findStep(t, prepare, "prepare").Run, "VERIFY_COMMAND=" + findStep(t, apply, "cli").Run,
-				"APPLY_COMMAND=" + findStep(t, apply, "apply").Run, "SUMMARY_COMMAND=" + summary.Run,
-				"TOKEN_PERMISSION=" + findStep(t, apply, "app").With["permission-administration"]}
-			if output, err := cmd.CombinedOutput(); err != nil {
-				t.Fatalf("%v\n%s", err, output)
-			}
-		})
-	}
-}

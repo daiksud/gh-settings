@@ -180,27 +180,34 @@ func (result consumerResult) assertNoCredentials(t *testing.T) {
 }
 
 func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
+	return runMainConsumerWorkflow(t, scenario, "settings-main.yml")
+}
+
+func runMainConsumerWorkflow(t *testing.T, scenario, workflowFile string) (result consumerResult) {
 	t.Helper()
-	w, text := readWorkflow(t, "settings-main.yml")
+	w, text := readWorkflow(t, workflowFile)
 	prepareJob, applyJob := w.Jobs["prepare"], w.Jobs["apply"]
 	prepare := newCompositeFixture(t)
 	if err := os.RemoveAll(filepath.Join(prepare.caller, "action")); err != nil {
 		t.Fatal(err)
 	}
-	for _, directory := range []string{".github/workflows", "examples/github-actions"} {
+	verifierPath := strings.TrimPrefix(findStep(t, applyJob, "handoff").Run, "bash ")
+	for _, directory := range []string{".github/workflows", filepath.Dir(verifierPath)} {
 		if err := os.MkdirAll(filepath.Join(prepare.caller, directory), 0700); err != nil {
 			t.Fatal(err)
 		}
 	}
 	prepare.write(filepath.Join(prepare.caller, ".github/workflows/settings-main.yml"), text)
-	verifier, err := os.ReadFile(filepath.Join(root(), "examples/github-actions/verify-action-handoff.sh"))
+	verifier, err := os.ReadFile(filepath.Join(root(), verifierPath))
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Only dummy-release checksum data changes in the copied verifier.
-	// The production verifier remains covered without substitution by TestMainActionHandoff.
-	prepare.write(filepath.Join(prepare.caller, "examples/github-actions/verify-action-handoff.sh"), strings.ReplaceAll(string(verifier), "b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4", prepare.digest))
-	prepare.git("add", ".github/workflows/settings-main.yml", "examples/github-actions/verify-action-handoff.sh")
+	// Each production verifier also has an unchanged-identity handoff test.
+	checksums := strings.NewReplacer("b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4", prepare.digest,
+		"7b93802a64609ed5daf1b3bd02e33ad9384fda26b7776233cd094c8dd85d5874", prepare.digest)
+	prepare.write(filepath.Join(prepare.caller, verifierPath), checksums.Replace(string(verifier)))
+	prepare.git("add", ".github/workflows/settings-main.yml", verifierPath)
 	prepare.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "consumer")
 	prepare.sha = prepare.git("rev-parse", "HEAD")
 	prepare.base["GITHUB_EVENT_NAME"], prepare.base["GITHUB_REF"] = "push", "refs/heads/main"
@@ -295,9 +302,13 @@ func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
 		return
 	}
 	result.trace = append(result.trace, "verify")
-	context["vars.SETTINGS_APP_CLIENT_ID"], context["secrets.SETTINGS_APP_PRIVATE_KEY"] = "fixture-client", "fixture-key"
+	clientID, privateKey := "vars.SETTINGS_APP_CLIENT_ID", "secrets.SETTINGS_APP_PRIVATE_KEY"
+	if applyJob.Environment == "gh-settings" {
+		clientID, privateKey = "vars.ANSWER26_CLIENT_ID", "secrets.ANSWER26_PRIVATE_KEY"
+	}
+	context[clientID], context[privateKey] = "fixture-client", "fixture-key"
 	if scenario == "mint failure" {
-		context["secrets.SETTINGS_APP_PRIVATE_KEY"] = ""
+		context[privateKey] = ""
 	}
 	app := findStep(t, applyJob, "app")
 	for key, want := range map[string]string{"owner": "owner", "repositories": "config", "permission-administration": "write", "client-id": "fixture-client", "private-key": "fixture-key"} {
@@ -314,6 +325,9 @@ func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
 	if scenario == "apply failure" {
 		applyExtra["MOCK_REMOTE_STATUS"] = "37"
 	}
+	if scenario == "apply installation failure" {
+		applyExtra["RUNNER_OS"] = "Windows"
+	}
 	result.applied = apply.call(t, findStep(t, applyJob, "apply"), context, applyExtra)
 	result.status = result.applied.status
 	result.log += result.applied.log
@@ -327,14 +341,22 @@ func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
 
 func (f *compositeFixture) call(t *testing.T, call step, context, extra map[string]string) compositeResult {
 	t.Helper()
-	// These inert callers pin the historical Action93 and its v0.5.0 CLI.
-	// Simulate that release identity in the copied package; current-root tests follow the committed version.
-	f.write(filepath.Join(f.packagePath, "action/cli-version"), "v0.5.0\n")
-	f.base["MOCK_CLI_VERSION"] = "v0.5.0"
 	repository, ref, ok := strings.Cut(call.Uses, "@")
 	if !ok || repository != "daiksud/gh-settings" {
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
+	// Simulate each caller's reviewed release identity in the copied package.
+	version := ""
+	switch ref {
+	case "93d8217d146f5d430aaf90597119114218990e70":
+		version = "v0.5.0"
+	case "9d01d3258d9f42239b2daeb1ac26bc532cd56105":
+		version = "v0.6.1"
+	default:
+		t.Fatalf("unmodeled public Action revision %s", ref)
+	}
+	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
+	f.base["MOCK_CLI_VERSION"] = version
 	overrides := map[string]string{
 		"github.action_repository": repository, "github.action_ref": ref,
 		"github.event_name": f.base["GITHUB_EVENT_NAME"], "github.workflow_ref": f.base["GITHUB_WORKFLOW_REF"], "github.workflow_sha": f.base["GITHUB_WORKFLOW_SHA"],
