@@ -45,6 +45,10 @@ The source-only [Actions metadata entry](commands.md#source-actions-metadata) is
 
 The Linux-only `TestMetadataUsesRunningImage` [regression](../internal/actions/metadata_linux_test.go) launches an owned copy of the test executable and atomically replaces only that child's pathname before requesting metadata. Its digest must still identify the original running image; the parent test runner is never replaced. Other native platforms check an unchanged executable path and do not establish this Linux-specific evidence. Cross-compilation alone does not execute the regression.
 
+The source-only [plan report entry](commands.md#source-actions-plan-report) binds one real `app.Plan` dependency to the [Actions adapter and JSON DTO](../internal/actions/plan.go). [Application failure stages](../internal/app/plan.go) preserve original diagnostics, unwrapping and zero results; only a read failure carries an already-resolved target. Actions owns safe categorical JSON diagnostics and keeps planning failures nonzero. Pure settings types have no report JSON tags.
+
+[Actual candidate process tests](../tests/acceptance/plan_report_test.go) cover changed native string/false values, unmanaged local no-op, invalid configuration before API and a real local 403 without sensitive report content. [Public adapter tests](../internal/actions/plan_test.go) cover no differences, real shared target failure and unavailable report storage, including simultaneous planning/storage failure. Tests inspect semantic JSON rather than key order. The report is not saved-plan apply input; the composite and Python plan/Summary helpers remain unchanged until #156.
+
 ## CI validation
 
 The [PR workflow](../.github/workflows/ci-pr.yml) follows Draft → commit-stage → Ready → acceptance-stage and composite-smoke → `pass`. It runs on opened, synchronized, reopened, and edited PRs. The [main workflow](../.github/workflows/ci-push.yml) runs commit-stage → acceptance-stage and composite-smoke → `pass` on pushes to `main`. Failure, cancellation, or skipping either validation job prevents a successful `pass` result. This CI does not merge, publish, or deploy.

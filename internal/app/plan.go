@@ -13,22 +13,32 @@ type PlanResult struct {
 	Comparison settings.RepositoryComparison
 }
 
+// PlanError identifies a failed planning stage without changing its diagnostic.
+type PlanError struct {
+	Stage  string
+	Target repository.Repository
+	Err    error
+}
+
+func (e *PlanError) Error() string { return e.Err.Error() }
+func (e *PlanError) Unwrap() error { return e.Err }
+
 // Plan validates locally, then reads and compares only when fields are declared.
 func Plan(readRepository func(repository.Repository) (settings.RepositoryState, error)) (PlanResult, error) {
 	desired, err := Validate()
 	if err != nil {
-		return PlanResult{}, err
+		return PlanResult{}, &PlanError{Stage: "invalid-config", Err: err}
 	}
 	if desired.Empty() {
 		return PlanResult{}, nil
 	}
 	repo, err := workspace.CurrentRepository()
 	if err != nil {
-		return PlanResult{}, err
+		return PlanResult{}, &PlanError{Stage: "target-failure", Err: err}
 	}
 	current, err := readRepository(repo)
 	if err != nil {
-		return PlanResult{}, err
+		return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 	}
 	return PlanResult{Target: repo, Comparison: settings.CompareRepository(current, desired)}, nil
 }

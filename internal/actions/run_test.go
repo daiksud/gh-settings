@@ -31,7 +31,7 @@ func TestMetadataRequiresCheckoutIdentity(t *testing.T) {
 				git(t, "remote", "add", "origin", "https://github.com/owner/current.git")
 			}
 			var stdout, stderr bytes.Buffer
-			status := actions.Run([]string{"metadata"}, &stdout, &stderr, "fixture-version")
+			status := actions.Run([]string{"metadata"}, &stdout, &stderr, "fixture-version", nil)
 			if status != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), test.wantError) {
 				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 			}
@@ -58,7 +58,7 @@ func TestMetadataRejectsInvalidOutputValues(t *testing.T) {
 			metadataCheckout(t)
 			git(t, "remote", "set-url", "origin", test.origin)
 			var stdout, stderr bytes.Buffer
-			status := actions.Run([]string{"metadata"}, &stdout, &stderr, test.version)
+			status := actions.Run([]string{"metadata"}, &stdout, &stderr, test.version, nil)
 			if status != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "metadata values must be nonempty single-line values") {
 				t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 			}
@@ -79,7 +79,7 @@ func metadataCheckout(t *testing.T) {
 func TestMetadataOutputFailure(t *testing.T) {
 	metadataCheckout(t)
 	var stderr bytes.Buffer
-	status := actions.Run([]string{"metadata"}, failingWriter{}, &stderr, "fixture-version")
+	status := actions.Run([]string{"metadata"}, failingWriter{}, &stderr, "fixture-version", nil)
 	if status != 1 || !strings.Contains(stderr.String(), "write metadata: output unavailable") {
 		t.Fatalf("status=%d stderr=%q", status, stderr.String())
 	}
@@ -91,10 +91,10 @@ func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("output u
 
 func TestUnsupportedActionArguments(t *testing.T) {
 	t.Chdir(t.TempDir())
-	for _, args := range [][]string{nil, {"unknown"}, {"metadata", "extra"}} {
+	for _, args := range [][]string{nil, {"unknown"}, {"metadata", "extra"}, {"plan"}} {
 		var stdout, stderr bytes.Buffer
-		status := actions.Run(args, &stdout, &stderr, "fixture-version")
-		if status != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "usage: gh settings action metadata") {
+		status := actions.Run(args, &stdout, &stderr, "fixture-version", nil)
+		if status != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "usage: gh settings action <metadata|plan REPORT_PATH>") {
 			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, status, stdout.String(), stderr.String())
 		}
 	}
