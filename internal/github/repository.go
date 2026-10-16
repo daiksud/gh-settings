@@ -10,7 +10,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// Client reads repository settings through the selected GitHub REST client.
+// Client reads and updates repository settings through the selected REST client.
 type Client struct {
 	rest *api.RESTClient
 }
