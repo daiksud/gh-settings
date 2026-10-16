@@ -10,6 +10,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func applyCurrent() ([]byte, error) {
@@ -20,7 +21,7 @@ func applyCurrent() ([]byte, error) {
 	if desired == (settings.RepositoryDeclaration{}) {
 		return []byte("No managed repository settings.\n"), nil
 	}
-	repo, err := currentRepository()
+	repo, err := workspace.CurrentRepository()
 	if err != nil {
 		return nil, err
 	}

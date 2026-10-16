@@ -8,6 +8,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/cli"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func planCurrent() ([]byte, error) {
@@ -15,7 +16,7 @@ func planCurrent() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	repo, err := currentRepository()
+	repo, err := workspace.CurrentRepository()
 	if err != nil {
 		return nil, err
 	}

@@ -264,3 +264,12 @@ func TestDecodeRepositoryResponse(t *testing.T) {
 		})
 	}
 }
+
+func TestExportRepositoryFailure(t *testing.T) {
+	t.Chdir(t.TempDir())
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"export"}, &stdout, &stderr, commandOperations{export: exportCurrent})
+	if code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
+		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}

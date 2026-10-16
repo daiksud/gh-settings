@@ -1,7 +1,6 @@
-package main
+package workspace
 
 import (
-	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,7 +17,7 @@ func TestExportUsesOrigin(t *testing.T) {
 	}
 	t.Chdir(dir)
 	t.Setenv("GH_REPO", "other/repository")
-	repo, err := currentRepository()
+	repo, err := CurrentRepository()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +44,7 @@ func TestExportUsesConfiguredOriginBeforeInsteadOf(t *testing.T) {
 	if output, err := exec.Command("git", "remote", "get-url", "origin").Output(); err != nil || string(output) != "https://mirror.example/owner/current.git\n" {
 		t.Fatalf("rewritten origin=%q err=%v", output, err)
 	}
-	repo, err := currentRepository()
+	repo, err := CurrentRepository()
 	if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
 		t.Fatalf("selected %+v, err=%v", repo, err)
 	}
@@ -68,7 +67,7 @@ func TestExportUsesAliasRewrittenToGitHub(t *testing.T) {
 	if output, err := exec.Command("git", "remote", "get-url", "origin").Output(); err != nil || string(output) != "https://github.com/owner/current.git\n" {
 		t.Fatalf("rewritten origin=%q err=%v", output, err)
 	}
-	repo, err := currentRepository()
+	repo, err := CurrentRepository()
 	if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
 		t.Fatalf("selected %+v, err=%v", repo, err)
 	}
@@ -82,7 +81,7 @@ func TestExportRejectsGlobalOriginOutsideCheckout(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", config)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	t.Chdir(t.TempDir())
-	if repo, err := currentRepository(); err == nil {
+	if repo, err := CurrentRepository(); err == nil {
 		t.Fatalf("selected global origin outside checkout: %+v", repo)
 	}
 }
@@ -120,20 +119,11 @@ func TestExportUsesRepositoryConfigSources(t *testing.T) {
 			if output, err := exec.Command("git", "remote", "get-url", "origin").Output(); err != nil || string(output) != "https://github.com/owner/current.git\n" {
 				t.Fatalf("origin=%q err=%v", output, err)
 			}
-			repo, err := currentRepository()
+			repo, err := CurrentRepository()
 			if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
 				t.Fatalf("selected %+v, err=%v", repo, err)
 			}
 		})
-	}
-}
-
-func TestExportRepositoryFailure(t *testing.T) {
-	t.Chdir(t.TempDir())
-	var stdout, stderr bytes.Buffer
-	code := run([]string{"export"}, &stdout, &stderr, commandOperations{export: exportCurrent})
-	if code == 0 || stdout.Len() != 0 || stderr.Len() == 0 {
-		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }
 
@@ -151,7 +141,7 @@ func TestRepositoryRemotes(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(subdir)
-			repo, err := currentRepository()
+			repo, err := CurrentRepository()
 			if strings.Contains(remote, "github.com") {
 				if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
 					t.Fatalf("repo=%+v err=%v", repo, err)
@@ -211,7 +201,7 @@ func TestRepositoryIgnoresUnscopedOrigins(t *testing.T) {
 						t.Fatalf("git %v: %v: %s", args, err, output)
 					}
 				}
-				repo, err := currentRepository()
+				repo, err := CurrentRepository()
 				if checkout == "missing" {
 					if err == nil || !strings.Contains(err.Error(), "checkout-scoped") {
 						t.Fatalf("repo=%+v err=%v", repo, err)
