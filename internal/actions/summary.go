@@ -140,6 +140,7 @@ func validatePlanReport(report PlanReport, target string) error {
 	if !valid {
 		return fmt.Errorf("invalid plan report state")
 	}
+	seen := make(map[string]bool, len(report.Changes))
 	for _, change := range report.Changes {
 		nativePair := false
 		switch change.Field {
@@ -152,9 +153,10 @@ func validatePlanReport(report PlanReport, target string) error {
 			_, after := change.After.(bool)
 			nativePair = before && after
 		}
-		if !nativePair {
+		if !nativePair || seen[change.Field] || change.Before == change.After {
 			return fmt.Errorf("invalid plan report change")
 		}
+		seen[change.Field] = true
 	}
 	return nil
 }

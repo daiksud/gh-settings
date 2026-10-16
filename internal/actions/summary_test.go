@@ -85,6 +85,8 @@ func TestSummaryRequiresNativeChanges(t *testing.T) {
 		{"description booleans", actions.PlanChange{Field: "description", Before: true, After: false}},
 		{"issues strings", actions.PlanChange{Field: "has_issues", Before: "yes", After: "no"}},
 		{"unknown field", actions.PlanChange{Field: "unknown", Before: "before", After: "after"}},
+		{"equal strings", actions.PlanChange{Field: "description", Before: "same", After: "same"}},
+		{"equal booleans", actions.PlanChange{Field: "has_issues", Before: false, After: false}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{test.change}}
@@ -114,6 +116,7 @@ func TestSummaryRequiresValidReportState(t *testing.T) {
 		{"arbitrary diagnostic", actions.PlanReport{Outcome: "target-failure", Diagnostic: "arbitrary failure text", Changes: empty}},
 		{"read failure without target", actions.PlanReport{Outcome: "read-failure", Diagnostic: "repository read failed", Changes: empty}},
 		{"target mismatch", actions.PlanReport{Outcome: "no-difference", Target: "other/repo", Managed: 1, Changes: empty}},
+		{"duplicate field", actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 2, Changes: []actions.PlanChange{{Field: "description", Before: "before", After: "after"}, {Field: "description", Before: "before", After: "conflicting"}}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			content, err := actions.RenderSummary(test.report, summaryMetadata())
