@@ -17,6 +17,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
+type transportFunc func(*http.Request) (*http.Response, error)
+
+func (f transportFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
 func TestApplySettings(t *testing.T) {
 	for _, test := range []struct{ name, input, want string }{
 		{"partial", repositoryYAML("has_issues: false\n"), `{"has_issues":false}`},

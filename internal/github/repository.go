@@ -1,17 +1,32 @@
-package main
+package github
 
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func readRepositorySettings(repo repository.Repository, client *api.RESTClient) (settings.RepositoryState, error) {
+// Client reads repository settings through the selected GitHub REST client.
+type Client struct {
+	rest *api.RESTClient
+}
+
+// NewReadClient configures the existing gh authentication and read timeout.
+func NewReadClient(host string) (*Client, error) {
+	rest, err := api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second})
+	if err != nil {
+		return nil, fmt.Errorf("configure GitHub API client: %w", err)
+	}
+	return &Client{rest: rest}, nil
+}
+
+func (client *Client) ReadRepository(repo repository.Repository) (settings.RepositoryState, error) {
 	var response map[string]json.RawMessage
-	if err := client.Get("repos/"+repo.Owner+"/"+repo.Name, &response); err != nil {
+	if err := client.rest.Get("repos/"+repo.Owner+"/"+repo.Name, &response); err != nil {
 		return settings.RepositoryState{}, fmt.Errorf("read repository settings: %w", err)
 	}
 	return decodeRepositoryResponse(response)

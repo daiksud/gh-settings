@@ -36,9 +36,9 @@ Focused comparison and CLI tests cover declaration semantics, exact output, and 
 
 | Behavior | Test |
 | --- | --- |
-| Five-field order, omission, false, empty strings, escaping, equality, no managed fields | `TestRepositoryPlan` |
+| Five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../internal/settings/comparison_test.go), [TestRenderRepositoryComparison](../../internal/cli/comparison_test.go) |
 | CLI operation selection and output failure | `TestRunSelectsOperation`, `TestPlanOutputFailure` |
-| API, decoding, transport failures and GET-only access | `TestPlanSettingsReadFailures` |
+| API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../internal/github/repository_test.go) |
 | Validation before origin/authentication | `TestPlanCurrentValidatesFirst` |
 | File/subdirectory, partial/empty declarations, GET nulls, API/output failures, no PATCH | `TestPlanAcceptance` |
 | Export → edit → validate → plan | `TestExportEditValidatePlan` |
