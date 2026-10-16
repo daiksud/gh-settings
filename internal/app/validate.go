@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -7,12 +7,8 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-func validateCurrent() error {
-	_, err := loadCurrentConfig()
-	return err
-}
-
-func loadCurrentConfig() (settings.RepositoryDeclaration, error) {
+// Validate reads the current checkout's declaration without remote access or writes.
+func Validate() (settings.RepositoryDeclaration, error) {
 	root, err := workspace.GitRoot()
 	if err != nil {
 		return settings.RepositoryDeclaration{}, fmt.Errorf("locate %s: current directory is not in a Git repository: %w", workspace.SettingsPath, err)

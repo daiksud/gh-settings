@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/cli"
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -8,7 +9,7 @@ import (
 )
 
 func planCurrent() ([]byte, error) {
-	desired, err := loadCurrentConfig()
+	desired, err := app.Validate()
 	if err != nil {
 		return nil, err
 	}
