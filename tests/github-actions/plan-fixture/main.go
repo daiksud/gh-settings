@@ -43,6 +43,11 @@ func run() error {
 		}
 		fmt.Fprintln(log, r.Method, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
+		if _, err := os.Stat(filepath.Join(root, "read403")); err == nil {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintln(w, `{"message":"fixture read denied"}`)
+			return
+		}
 		fmt.Fprintln(w, `{"description":"before <b>bold</b>\nline","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true}`)
 	})}
 	stopped := make(chan os.Signal, 1)

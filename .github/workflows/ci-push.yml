@@ -160,6 +160,26 @@ jobs:
           EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
           EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
         run: bash .action/tests/github-actions/candidate-plan.sh assert
+      - name: Prepare the repository read failure
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare read-failure
+      - name: Plan through an actual local read403
+        id: read-failure
+        continue-on-error: true
+        uses: ./.action
+        with:
+          command: plan
+          token: plan-fixture-read
+      - name: Require read failure and diagnostic Summary
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.read-failure.outcome }}
+          CONFIG_SHA: ${{ steps.read-failure.outputs.config-sha }}
+          TARGET: ${{ steps.read-failure.outputs.target }}
+          CLI_VERSION: ${{ steps.read-failure.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.read-failure.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert read-failure
       - name: Stop the owned local plan API
         if: always()
         run: bash .action/tests/github-actions/candidate-plan.sh stop
