@@ -223,7 +223,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		t.Fatal("unexpected caller-step token environment")
 	}
 	prPlan := pr.Jobs["plan"].Steps[1]
-	if prPlan.Uses != "daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70" || prPlan.Run != "" || !reflect.DeepEqual(prPlan.With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
+	if prPlan.Uses != "daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105" || prPlan.Run != "" || !reflect.DeepEqual(prPlan.With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
 		t.Fatal("PR public Action/read-token binding changed")
 	}
 	plan := findStep(t, prepare, "prepare")
@@ -240,13 +240,13 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	}
 	if !reflect.DeepEqual(prepare.Outputs, map[string]string{
 		"config-sha": "${{ steps.prepare.outputs.config-sha }}", "cli-version": "${{ steps.prepare.outputs.cli-version }}", "cli-sha256": "${{ steps.prepare.outputs.cli-sha256 }}", "target": "${{ steps.prepare.outputs.target }}",
-		"action-sha": "93d8217d146f5d430aaf90597119114218990e70",
+		"action-sha": "9d01d3258d9f42239b2daeb1ac26bc532cd56105",
 	}) {
 		t.Fatal("prepare output handoff changed")
 	}
 	if !reflect.DeepEqual(findStep(t, apply, "handoff").Env, map[string]string{
 		"CONFIG_SHA": "${{ needs.prepare.outputs.config-sha }}", "EXPECTED_TARGET": "${{ needs.prepare.outputs.target }}", "EXPECTED_CLI_VERSION": "${{ needs.prepare.outputs.cli-version }}", "EXPECTED_CLI_SHA256": "${{ needs.prepare.outputs.cli-sha256 }}",
-		"EXPECTED_ACTION_SHA": "${{ needs.prepare.outputs.action-sha }}", "REVIEWED_ACTION_SHA": "93d8217d146f5d430aaf90597119114218990e70",
+		"EXPECTED_ACTION_SHA": "${{ needs.prepare.outputs.action-sha }}", "REVIEWED_ACTION_SHA": "9d01d3258d9f42239b2daeb1ac26bc532cd56105",
 	}) {
 		t.Fatal("verify input handoff changed")
 	}

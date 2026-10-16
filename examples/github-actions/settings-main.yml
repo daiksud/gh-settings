@@ -26,7 +26,7 @@ jobs:
       cli-sha256: ${{ steps.prepare.outputs.cli-sha256 }}
       target: ${{ steps.prepare.outputs.target }}
       # Caller metadata; the Action exposes only the four outputs above.
-      action-sha: 93d8217d146f5d430aaf90597119114218990e70
+      action-sha: 9d01d3258d9f42239b2daeb1ac26bc532cd56105
     steps:
       - name: Checkout triggering configuration commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,7 +42,7 @@ jobs:
           [[ "$(git remote get-url origin)" == "https://github.com/$GITHUB_REPOSITORY" || "$(git remote get-url origin)" == "https://github.com/$GITHUB_REPOSITORY.git" ]] || { echo 'checkout target mismatch' >&2; exit 1; }
       - name: Validate and plan with the Action Summary
         id: prepare
-        uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70 # Action revision; CLI v0.5.0
+        uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # Action revision; CLI v0.6.1
         with:
           command: plan
           token: ${{ github.token }}
@@ -69,7 +69,7 @@ jobs:
           EXPECTED_CLI_VERSION: ${{ needs.prepare.outputs.cli-version }}
           EXPECTED_CLI_SHA256: ${{ needs.prepare.outputs.cli-sha256 }}
           EXPECTED_ACTION_SHA: ${{ needs.prepare.outputs.action-sha }}
-          REVIEWED_ACTION_SHA: 93d8217d146f5d430aaf90597119114218990e70
+          REVIEWED_ACTION_SHA: 9d01d3258d9f42239b2daeb1ac26bc532cd56105
         run: bash examples/github-actions/verify-action-handoff.sh
       - name: Mint token for this target only
         id: app
@@ -82,7 +82,7 @@ jobs:
           permission-administration: write
       - name: Apply declared settings directly
         id: apply
-        uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70 # Action revision; CLI v0.5.0
+        uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # Action revision; CLI v0.6.1
         with:
           command: apply
           token: ${{ steps.app.outputs.token }}
