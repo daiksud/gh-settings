@@ -32,13 +32,14 @@ description: Observe differences for declared repository fields without mutation
 
 ### Test mapping
 
-Focused comparison and CLI tests cover declaration semantics, exact output, and failures. Process acceptance uses the already-built executable with an isolated local API fixture, checks exact exit codes and output, observes GET-only requests, and verifies configuration preservation.
+Focused application, comparison and CLI tests cover target selection, declaration semantics, exact output, and failures. Process acceptance uses the already-built executable with an isolated local API fixture, checks exact exit codes and output, observes GET-only requests, and verifies configuration preservation.
 
 | Behavior | Test |
 | --- | --- |
 | Five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../internal/settings/comparison_test.go), [TestRenderRepositoryComparison](../../internal/cli/comparison_test.go) |
 | CLI operation selection and output failure | `TestRunSelectsOperation`, `TestPlanOutputFailure` |
 | API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../internal/github/repository_test.go) |
-| Validation before origin/authentication | `TestPlanCurrentValidatesFirst` |
+| Typed target/comparison, changes/no differences/no managed fields, unchanged configuration | [TestPlanResults](../../internal/app/plan_test.go) |
+| Validation before target/read, target failure before read, read failures | [TestPlanValidatesBeforeRead, TestPlanTargetFailureBeforeRead and TestPlanReadFailure](../../internal/app/plan_test.go) |
 | File/subdirectory, partial/empty declarations, GET nulls, API/output failures, no PATCH | `TestPlanAcceptance` |
 | Export → edit → validate → plan | `TestExportEditValidatePlan` |
