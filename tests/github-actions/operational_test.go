@@ -68,3 +68,50 @@ func TestOperationalActionHandoff(t *testing.T) {
 		t.Fatalf("operational pre-token handoff failed: %v\n%s", err, output)
 	}
 }
+
+func TestOperationalMainConsumer(t *testing.T) {
+	w, text := readWorkflow(t, "../../.github/workflows/settings-main.yml")
+	prepare, apply := w.Jobs["prepare"], w.Jobs["apply"]
+	if len(prepare.Steps) != 3 || len(apply.Steps) != 5 || findStep(t, prepare, "prepare").Uses != operationalAction || findStep(t, apply, "apply").Uses != operationalAction {
+		t.Fatal("operational prepare/apply must use the same reviewed public Action")
+	}
+	guard := "github.event_name == 'push' && github.ref == 'refs/heads/main'"
+	if len(w.On) != 1 || w.On["push"].Kind == 0 || len(w.Jobs) != 2 || prepare.If != guard || apply.If != guard || apply.Needs != "prepare" || apply.Environment != "gh-settings" || prepare.Environment != "" || len(w.Permissions) != 0 || w.Concurrency.Cancel || w.Concurrency.Group != "settings-main-${{ github.repository }}" {
+		t.Fatal("operational approval, event or concurrency boundary changed")
+	}
+	for _, j := range []job{prepare, apply} {
+		if !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Env) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 5 {
+			t.Fatal("operational job permissions, runner or failure boundary changed")
+		}
+	}
+	if prepare.Steps[0].With["ref"] != "${{ github.sha }}" || apply.Steps[0].With["ref"] != "${{ needs.prepare.outputs.config-sha }}" || prepare.Steps[0].With["persist-credentials"] != "false" || apply.Steps[0].With["persist-credentials"] != "false" {
+		t.Fatal("prepare/apply configuration checkout changed")
+	}
+	if !reflect.DeepEqual(findStep(t, prepare, "prepare").With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) || !reflect.DeepEqual(findStep(t, apply, "apply").With, map[string]string{"command": "apply", "token": "${{ steps.app.outputs.token }}"}) {
+		t.Fatal("read/write token destination changed")
+	}
+	app := findStep(t, apply, "app")
+	if app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(app.With, map[string]string{"client-id": "${{ vars.ANSWER26_CLIENT_ID }}", "private-key": "${{ secrets.ANSWER26_PRIVATE_KEY }}", "owner": "${{ github.repository_owner }}", "repositories": "${{ github.event.repository.name }}", "permission-administration": "write"}) || apply.Steps[1].ID != "handoff" || apply.Steps[2].ID != "app" || apply.Steps[3].ID != "apply" {
+		t.Fatal("pre-mint verification, existing App scope or default revocation changed")
+	}
+	if strings.Contains(text, "examples/github-actions/prepare.sh") || strings.Contains(text, "examples/github-actions/apply.sh") || len(apply.Outputs) != 0 {
+		t.Fatal("legacy execution or credential output retained")
+	}
+	for _, scenario := range []string{"approved", "failed plan", "waiting", "rejected", "config mismatch", "target mismatch", "Action mismatch", "mint failure", "apply failure", "apply installation failure"} {
+		t.Run(scenario, func(t *testing.T) {
+			r := runMainConsumerWorkflow(t, scenario, "../../.github/workflows/settings-main.yml")
+			r.assertNoCredentials(t)
+			if scenario == "approved" || scenario == "apply failure" {
+				if !r.minted || !r.revoked || r.applied.api != "PATCH\n" || r.prepared.sha != r.applied.sha || r.prepared.outputs["cli-version"] != "v0.6.1" || (r.status == 0) != (scenario == "approved") {
+					t.Fatalf("approved operational result: %+v", r)
+				}
+			} else if scenario == "apply installation failure" {
+				if r.status == 0 || !r.minted || !r.revoked || r.applied.api != "" || r.applied.calls != "" || len(r.applied.outputs) != 0 || !strings.Contains(r.summary, "CLI step outcome: failure") || !reflect.DeepEqual(r.trace, []string{"guard", "validate", "plan", "approved", "verify", "mint", "summary", "revoke"}) {
+					t.Fatalf("post-mint installation failure boundary: %+v", r)
+				}
+			} else if r.minted || r.revoked || r.applied.sha != "" || r.prepared.api+r.applied.api != "" || (r.status == 0) != (scenario == "waiting" || scenario == "rejected") {
+				t.Fatalf("blocked operational result: %+v", r)
+			}
+		})
+	}
+}

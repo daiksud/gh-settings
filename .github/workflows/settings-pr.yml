@@ -5,6 +5,7 @@ on:
       - .github/settings.yml
       - .github/workflows/settings-pr.yml
       - examples/github-actions/**
+      - .github/scripts/verify-settings-handoff.sh
 permissions:
   contents: read
 defaults:

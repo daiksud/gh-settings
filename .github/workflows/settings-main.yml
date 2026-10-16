@@ -1,4 +1,4 @@
-name: Settings main apply (example)
+name: Settings main apply
 on:
   push:
     branches: [main]
@@ -6,6 +6,7 @@ on:
       - .github/settings.yml
       - .github/workflows/settings-main.yml
       - examples/github-actions/**
+      - .github/scripts/verify-settings-handoff.sh
 permissions: {}
 defaults:
   run:
@@ -25,6 +26,8 @@ jobs:
       cli-version: ${{ steps.prepare.outputs.cli-version }}
       cli-sha256: ${{ steps.prepare.outputs.cli-sha256 }}
       target: ${{ steps.prepare.outputs.target }}
+      # Caller metadata; the Action exposes only the four outputs above.
+      action-sha: 9d01d3258d9f42239b2daeb1ac26bc532cd56105
     steps:
       - name: Checkout triggering configuration commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -32,11 +35,18 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Validate, plan and write review Summary
+      - name: Verify the triggering configuration checkout
+        id: guard
+        run: |
+          [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]] || { echo 'prepare requires a main branch push' >&2; exit 1; }
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || { echo 'configuration commit mismatch' >&2; exit 1; }
+          [[ "$(git remote get-url origin)" == "https://github.com/$GITHUB_REPOSITORY" || "$(git remote get-url origin)" == "https://github.com/$GITHUB_REPOSITORY.git" ]] || { echo 'checkout target mismatch' >&2; exit 1; }
+      - name: Validate and plan with the Action Summary
         id: prepare
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash examples/github-actions/prepare.sh
+        uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # v0.6.1
+        with:
+          command: plan
+          token: ${{ github.token }}
   apply:
     needs: prepare
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -52,14 +62,16 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ needs.prepare.outputs.config-sha }}
           persist-credentials: false
-      - name: Verify prepared inputs and released CLI
-        id: cli
+      - name: Verify prepared configuration and reviewed Action identity
+        id: handoff
         env:
           CONFIG_SHA: ${{ needs.prepare.outputs.config-sha }}
           EXPECTED_TARGET: ${{ needs.prepare.outputs.target }}
           EXPECTED_CLI_VERSION: ${{ needs.prepare.outputs.cli-version }}
           EXPECTED_CLI_SHA256: ${{ needs.prepare.outputs.cli-sha256 }}
-        run: bash examples/github-actions/verify-apply.sh
+          EXPECTED_ACTION_SHA: ${{ needs.prepare.outputs.action-sha }}
+          REVIEWED_ACTION_SHA: 9d01d3258d9f42239b2daeb1ac26bc532cd56105
+        run: bash .github/scripts/verify-settings-handoff.sh
       - name: Mint token for this target only
         id: app
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -71,10 +83,10 @@ jobs:
           permission-administration: write
       - name: Apply declared settings directly
         id: apply
-        env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
-          SETTINGS_CLI: ${{ steps.cli.outputs.binary-path }}
-        run: bash examples/github-actions/apply.sh
+        uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # v0.6.1
+        with:
+          command: apply
+          token: ${{ steps.app.outputs.token }}
       - name: Record apply outcome
         if: always()
         env:
