@@ -135,7 +135,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 ### Rule: Source metadata identifies the consumer and executing binary
 
-The source-only `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback; composite adoption remains separate.
+The source-only `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback. The current source migration selects explicitly unreleased CLI v0.7.0 and binds composite setup directly to this verified executable entry from the consumer working directory. The released v0.6.1 Action/CLI pins remain unchanged. Setup receives no caller token; metadata failure must stop settings execution and successful result publication. Python Summary adoption remains separate.
 
 The [public adapter tests](../../internal/actions/run_test.go) cover identity/output failures; `TestActionMetadata` in the [actual candidate acceptance suite](../../tests/acceptance/metadata_test.go) covers the normal consumer and executing-binary identities without API access. The [source interface](../commands.md#source-actions-metadata) describes output and failure semantics.
 
@@ -148,6 +148,15 @@ On the supported Linux runner, the digest remains bound to the running image aft
 - When metadata is requested from a consumer subdirectory
 - Then the four records identify the consumer commit and origin, injected version and actual candidate digest
 - And no API request occurs
+
+#### Scenario: The unreleased composite uses verified Go metadata
+
+- Given the source composite installs and verifies its committed unreleased CLI version
+- And the consumer checkout is separate from the Action package
+- When validate runs without caller credentials
+- Then setup invokes that verified executable's `action metadata` entry from the consumer directory
+- And the four successful audit outputs identify that consumer and candidate executable
+- And metadata failure stops before settings execution or successful output publication
 
 ### Rule: Source planning writes ephemeral typed presentation data
 
@@ -180,6 +189,6 @@ Changed values retain native string/bool meaning. No-difference, unmanaged and p
 
 ### Public contract verification boundary
 
-Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, same-run candidate composite validate, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked v0.6.1 CLI and published Action identity, replacing only the copied verifier checksum. They do not load the pinned tag bytes.
+Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, same-run candidate composite validate, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked candidate-version CLI and published caller Action identity, replacing only the copied verifier expected version and dummy checksum. They do not load the pinned tag bytes.
 
 Hosted smoke uses the CLI built once with the committed candidate version and the Action from that producer's exact source SHA, including PR merge source. A bounded test-only download fixture verifies the transferred artifact/source/version and serves only the unchanged installer's fixed two URLs; missing/tampered artifacts and unexpected requests fail. Actual `uses` expansion validates a separate configuration-only checkout and compares all four outputs to this run's identities. There is no product rebuild, production input override, committed version rewrite or old-release fallback. Candidate-fixture evidence does not verify real release downloads, publication or immutable released assets. Production-identity checks and active public-Action caller tests remain. Usage documentation is checked against the actual contract, snippets, example copies and helper references. Offline checks do not prove Environment enforcement, token revocation, Summary publication, or a live update. See the [CI evidence boundary](../development.md#ci-validation).

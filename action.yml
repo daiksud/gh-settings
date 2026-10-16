@@ -51,7 +51,7 @@ runs:
       run: |
         unset GH_TOKEN GITHUB_TOKEN
         binary=$(bash "$ACTION_PATH/action/install-cli.sh")
-        python3 "$ACTION_PATH/action/metadata.py" "$binary" >> "$GITHUB_OUTPUT"
+        "$binary" action metadata >> "$GITHUB_OUTPUT"
         printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
     - name: Validate checkout settings without authentication
       if: inputs.command == 'validate'
