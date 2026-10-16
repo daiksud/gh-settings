@@ -74,6 +74,13 @@ jobs:
           ref: ${{ needs.commit-stage.outputs.source-sha }}
           path: .action
           persist-credentials: false
+      - name: Install Go for the local API fixture only
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          working_directory: .action
+          install_args: go
+          cache: false
       - name: Retrieve this run's candidate binary
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -128,6 +135,74 @@ jobs:
             "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
             "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
           printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
+      - name: Build and start the required local plan API
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          (cd .action && go build -o "$RUNNER_TEMP/plan-fixture" ./tests/github-actions/plan-fixture)
+          bash .action/tests/github-actions/candidate-plan.sh start "$RUNNER_TEMP/plan-fixture"
+      - name: Prepare the changed plan and Summary snapshot
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare
+      - name: Plan through the actual root composite
+        id: plan
+        uses: ./.action
+        with:
+          command: plan
+          token: plan-fixture-read
+      - name: Assert actual plan and Summary bytes
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          CONFIG_SHA: ${{ steps.plan.outputs.config-sha }}
+          TARGET: ${{ steps.plan.outputs.target }}
+          CLI_VERSION: ${{ steps.plan.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.plan.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert
+      - name: Prepare the repository read failure
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare read-failure
+      - name: Plan through an actual local read403
+        id: read-failure
+        continue-on-error: true
+        uses: ./.action
+        with:
+          command: plan
+          token: plan-fixture-read
+      - name: Require read failure and diagnostic Summary
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.read-failure.outcome }}
+          CONFIG_SHA: ${{ steps.read-failure.outputs.config-sha }}
+          TARGET: ${{ steps.read-failure.outputs.target }}
+          CLI_VERSION: ${{ steps.read-failure.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.read-failure.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert read-failure
+      - name: Prepare the committed invalid configuration
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare invalid-config
+      - name: Plan through an actual configuration failure
+        id: invalid-config
+        continue-on-error: true
+        uses: ./.action
+        with:
+          command: plan
+          token: plan-fixture-read
+      - name: Require config failure without API access
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.invalid-config.outcome }}
+          CONFIG_SHA: ${{ steps.invalid-config.outputs.config-sha }}
+          TARGET: ${{ steps.invalid-config.outputs.target }}
+          CLI_VERSION: ${{ steps.invalid-config.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.invalid-config.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert invalid-config
+      - name: Stop the owned local plan API
+        if: always()
+        run: bash .action/tests/github-actions/candidate-plan.sh stop
   pass:
     needs: [acceptance-stage, composite-smoke]
     if: always()
