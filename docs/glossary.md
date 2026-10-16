@@ -29,4 +29,6 @@ The shared [plan operation](../internal/app/plan.go) returns `app.PlanResult`: t
 
 The shared [apply operation](../internal/app/apply.go) returns `app.ApplyResult`: `Applied` is true only after writer success, while false without an error means local no-op. Validation and the empty-declaration guard precede target/writer access; CLI supplies the deferred write and formats the message. False with an error does not prove no remote mutation, and later output failure does not roll back success.
 
+The shared [export operation](../internal/app/export.go) converts complete observed state into a declaration of all five fields, serializes it and only then hands bytes to workspace storage. It does not validate the old file or format stdout. CLI plan/export share [deferred read wiring](../read.go), with no eager client initialization.
+
 The pure [comparison](../internal/settings/comparison.go) retains native string/string or bool/bool value pairs. Terminal messages, quoting and arrows belong to the [CLI renderer](../internal/cli/comparison.go); apply consumes the declaration directly.

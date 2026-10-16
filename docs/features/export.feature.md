@@ -173,17 +173,17 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 
 ### Test mapping
 
-These scenarios map to ordinary Go tests, [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
+These scenarios map to ordinary Go tests, [application export tests](../../internal/app/export_test.go), [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
 | Export from a subdirectory without a settings directory | — | `TestExportSavesAtCheckoutRoot` |
-| Refresh an existing regular configuration | — | `TestExportExistingFile/replace` |
+| Refresh an existing regular configuration | `TestExportStoredSettings/zero_values` | `TestExportExistingFile/replace` |
 | Report a failed write | — | `TestExportReportsWriteFailure` |
-| Refuse symlink destinations and non-regular files | — | `TestExportRejectsUnsafeDestination` |
+| Refuse symlink destinations and non-regular files | `TestWriteConfigRejectsUnsafeDestination`, `TestExportStorageFailure` | `TestExportRejectsUnsafeDestination` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
-| Export five settings successfully | `TestExportFiveSettings` | `five-settings` |
-| Preserve false and empty string values | `TestExportPreservesZeroValues` | `zero-values` |
+| Export five settings successfully | `TestExportStoredSettings/five_values` | `five-settings` |
+| Preserve false and empty string values | `TestExportStoredSettings/zero_values` | `zero-values` |
 | Export unset strings as empty strings | `TestReadRepositorySettings` | `unset-strings` |
 | Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
 | Resolve an SCP origin without a username | `TestRepositoryRemotes` | `origin-scp-without-user` |
@@ -191,8 +191,8 @@ These scenarios map to ordinary Go tests, [GitHub read adapter tests](../../inte
 | Resolve a transport alias to GitHub | `TestExportUsesAliasRewrittenToGitHub` | `origin-alias` |
 | Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |
 | Save export output and validate it locally | — | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
-| Settings cannot be retrieved | `TestReadRepositoryFailures` | `read-failure`, `TestExportExistingFile/api-failure` |
-| There is no usable current repository | `TestExportRepositoryFailure` | `repository-failure` |
+| Settings cannot be retrieved | `TestReadRepositoryFailures`, `TestExportReadFailure` | `read-failure`, `TestExportExistingFile/api-failure` |
+| There is no usable current repository | `TestExportTargetFailureBeforeRead` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestExportRejectsGlobalOriginOutsideCheckout` | — |
 | The response cannot form a complete configuration | `TestReadRepositoryFailures` | `incomplete-response`, `TestExportExistingFile/malformed-response`, `TestExportExistingFile/incomplete-response` |
 | Standard output is unavailable | `TestExportDoesNotWriteStdout` | `TestExportExistingFile/replace` |
