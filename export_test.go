@@ -88,7 +88,7 @@ func testClient(t *testing.T, body string, status int) *api.RESTClient {
 func TestReadRepositorySettings(t *testing.T) {
 	repo := repository.Repository{Owner: "owner", Name: "current"}
 	got, err := readRepositorySettings(repo, testClient(t, `{"description":null,"homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, 200))
-	if err != nil || got.Description == nil || *got.Description != "" || got.Homepage == nil || *got.Homepage != "https://example.com" || got.HasIssues == nil || !*got.HasIssues || got.HasProjects == nil || *got.HasProjects || got.HasWiki == nil || !*got.HasWiki {
+	if err != nil || got.Description != "" || got.Homepage != "https://example.com" || !got.HasIssues || got.HasProjects || !got.HasWiki {
 		t.Fatalf("settings=%+v err=%v, want typed values for all five fields", got, err)
 	}
 	_, err = readRepositorySettings(repo, testClient(t, `{"message":"Resource not accessible"}`, 403))
@@ -232,7 +232,7 @@ func TestDecodeRepositoryResponse(t *testing.T) {
 		"private":      json.RawMessage(`true`),
 	}
 	got, err := decodeRepositoryResponse(response)
-	if err != nil || got.Description == nil || *got.Description != "" || got.Homepage == nil || *got.Homepage != "https://example.com" || got.HasIssues == nil || !*got.HasIssues || got.HasProjects == nil || *got.HasProjects || got.HasWiki == nil || !*got.HasWiki {
+	if err != nil || got.Description != "" || got.Homepage != "https://example.com" || !got.HasIssues || got.HasProjects || !got.HasWiki {
 		t.Fatalf("settings=%+v err=%v, want all five present with normalized values", got, err)
 	}
 

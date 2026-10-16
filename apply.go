@@ -9,6 +9,7 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func applyCurrent() ([]byte, error) {
@@ -17,7 +18,7 @@ func applyCurrent() ([]byte, error) {
 		return nil, err
 	}
 	desired := config.Settings.Repository
-	if desired == (settings{}) {
+	if desired == (settings.RepositoryDeclaration{}) {
 		return []byte("No managed repository settings.\n"), nil
 	}
 	repo, err := currentRepository()
@@ -35,8 +36,18 @@ func applyCurrent() ([]byte, error) {
 	return applySettings(desired, repo, client)
 }
 
-func applySettings(desired settings, repo repository.Repository, client *api.RESTClient) ([]byte, error) {
-	body, err := json.Marshal(desired)
+func applySettings(desired settings.RepositoryDeclaration, repo repository.Repository, client *api.RESTClient) ([]byte, error) {
+	payload := struct {
+		Description *string `json:"description,omitempty"`
+		Homepage    *string `json:"homepage,omitempty"`
+		HasIssues   *bool   `json:"has_issues,omitempty"`
+		HasProjects *bool   `json:"has_projects,omitempty"`
+		HasWiki     *bool   `json:"has_wiki,omitempty"`
+	}{
+		Description: desired.Description, Homepage: desired.Homepage,
+		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki,
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("encode repository settings: %w", err)
 	}

@@ -41,6 +41,8 @@ Use one Go implementation shared by thin CLI and Action adapters. Keep three con
 - Observed state records normalized values read from GitHub.
 - A comparison describes differences for declared fields without owning terminal or review rendering.
 
+The [glossary](glossary.md) records the current declaration and observed-state names and model boundaries.
+
 Configuration storage, checkout/target resolution and GitHub communication serve the shared application operations. The CLI handles command selection, human-readable output and process exit. The composite retains necessary bootstrap and Actions wiring, while the verified Go executable owns the shared operations, metadata and typed plan/Summary processing. These are refactoring responsibilities, not a requirement for generic interfaces, registries or a package per concept.
 
 Extend useful existing structure when a real setting is requested; no new setting or future resource implementation belongs to this series. Current interfaces may remain where useful, without compatibility shims for retired wrappers, old internal interfaces, migration modes or historical CLI/Action combinations. Old tests and fixtures do not create a product obligation merely by existing. Retain tests at the owner of a current requirement and remove coverage belonging exclusively to deleted behavior.

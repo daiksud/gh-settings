@@ -13,6 +13,7 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func TestApplySettings(t *testing.T) {
@@ -80,7 +81,7 @@ func TestApplySettingsFailures(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			value := false
 			code := run([]string{"apply"}, &stdout, &stderr, commandOperations{apply: func() ([]byte, error) {
-				return applySettings(settings{HasIssues: &value}, repository.Repository{Owner: "owner", Name: "current"}, client)
+				return applySettings(settings.RepositoryDeclaration{HasIssues: &value}, repository.Repository{Owner: "owner", Name: "current"}, client)
 			}})
 			if code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), test.want) {
 				t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
