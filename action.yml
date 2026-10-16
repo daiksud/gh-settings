@@ -72,7 +72,11 @@ runs:
       run: |
         unset GITHUB_TOKEN
         status=0
-        bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" "$SETTINGS_COMMAND" "${SETTINGS_CLI%/*}/output.txt" || status=$?
+        if [[ "$SETTINGS_COMMAND" == plan ]]; then
+          "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" || status=$?
+        else
+          bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" apply "${SETTINGS_CLI%/*}/output.txt" || status=$?
+        fi
         [[ "$SETTINGS_COMMAND" == plan ]] || exit "$status"
         if ! printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"; then
           [[ "$status" != 0 ]] || status=1
@@ -82,7 +86,6 @@ runs:
       if: inputs.command == 'plan'
       shell: bash
       env:
-        ACTION_PATH: ${{ github.action_path }}
         SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
         PLAN_STATUS: ${{ steps.execute.outputs.exit-status }}
         SETTINGS_ACTOR: ${{ github.actor }}
@@ -100,7 +103,10 @@ runs:
         SETTINGS_CLI_SHA256: ${{ steps.setup.outputs.cli-sha256 }}
       run: |
         unset GH_TOKEN GITHUB_TOKEN
-        python3 "$ACTION_PATH/action/render-summary.py" "${SETTINGS_CLI%/*}/output.txt" "$PLAN_STATUS"
+        summary_status=0
+        "$SETTINGS_CLI" action summary "${SETTINGS_CLI%/*}/plan.json" "$GITHUB_STEP_SUMMARY" || summary_status=$?
+        [[ "$PLAN_STATUS" == 0 ]] || exit "${PLAN_STATUS:-1}"
+        exit "$summary_status"
     - name: Publish successful result
       id: result
       shell: bash

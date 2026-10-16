@@ -12,11 +12,11 @@ import (
 
 func TestPRConsumerPlan(t *testing.T) {
 	for _, test := range []struct {
-		name, output, review string
-		status               int
+		name, outcome, review string
+		status                int
 	}{
-		{"diff", "before → desired", "Observed before → desired after.", 0},
-		{"no diff", "No differences for managed repository settings.", "No differences for managed settings.", 0},
+		{"diff", "changed", "Observed before → desired after.", 0},
+		{"no diff", "no-difference", "No differences for managed settings.", 0},
 		{"invalid config", "", "Error — plan failed.", 37},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -41,13 +41,12 @@ func TestPRConsumerPlan(t *testing.T) {
 			f.base["GITHUB_EVENT_NAME"] = "pull_request"
 			f.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/settings-pr.yml@refs/pull/1/merge"
 			f.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
-			f.base["MOCK_PLAN_OUTPUT"] = test.output
+			f.base["MOCK_PLAN_OUTCOME"] = test.outcome
 			result := f.call(t, job.Steps[1], context, nil)
 			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": f.digest}
-			calls := "validate\nplan\n"
+			calls := "plan\n"
 			if test.status != 0 {
 				want = map[string]string{}
-				calls = "validate\n"
 			}
 			if result.status != test.status || result.calls != calls || result.api != "" || !reflect.DeepEqual(result.outputs, want) {
 				t.Fatalf("PR plan boundary failed: %+v", result)
@@ -85,7 +84,7 @@ func TestMainConsumerApply(t *testing.T) {
 			if !reflect.DeepEqual(result.prepared.outputs, want) || !reflect.DeepEqual(result.applied.outputs, wantApplied) || result.prepared.sha != result.applied.sha {
 				t.Fatalf("prepare=%v apply=%v want=%v", result.prepared.outputs, result.applied.outputs, want)
 			}
-			if !reflect.DeepEqual(result.trace, []string{"guard", "validate", "plan", "approved", "verify", "mint", "apply", "summary", "revoke"}) {
+			if !reflect.DeepEqual(result.trace, []string{"guard", "plan", "approved", "verify", "mint", "apply", "summary", "revoke"}) {
 				t.Fatalf("execution order=%v", result.trace)
 			}
 			if !strings.Contains(result.summary, "CLI step outcome: "+test.outcome) {
@@ -106,10 +105,10 @@ func TestMainConsumerPrepareFailure(t *testing.T) {
 		scenario, calls, diagnostic string
 		status                      int
 	}{
-		{"failed validate", "validate\n", "Error — plan failed.", 37},
-		{"failed plan", "validate\nplan\n", "Error — plan failed.", 37},
-		{"missing Summary", "validate\nplan\n", "Could not render or write plan Summary.", 1},
-		{"Summary write failure", "validate\nplan\n", "Could not render or write plan Summary.", 1},
+		{"failed validate", "plan\n", "configuration validation failed", 37},
+		{"failed plan", "plan\n", "repository read failed", 37},
+		{"missing Summary", "plan\n", "missing SETTINGS_RUN_ID", 1},
+		{"Summary write failure", "plan\n", "open Summary:", 1},
 	} {
 		t.Run(test.scenario, func(t *testing.T) {
 			result := runMainConsumer(t, test.scenario)
@@ -140,9 +139,9 @@ func TestMainConsumerBlocked(t *testing.T) {
 		t.Run(test.scenario, func(t *testing.T) {
 			result := runMainConsumer(t, test.scenario)
 			result.assertNoCredentials(t)
-			wantTrace := []string{"guard", "validate", "plan", test.scenario}
+			wantTrace := []string{"guard", "plan", test.scenario}
 			if test.status != 0 {
-				wantTrace = []string{"guard", "validate", "plan", "approved"}
+				wantTrace = []string{"guard", "plan", "approved"}
 				if test.scenario == "mint failure" {
 					wantTrace = append(wantTrace, "verify")
 				}
