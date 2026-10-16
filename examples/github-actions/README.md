@@ -47,16 +47,13 @@ This repository's active callers use Action SHA `9d01d3258d9f42239b2daeb1ac26bc5
 
 ## Retained helper inventory
 
-The active workflows call the public Action and their own handoff verifier. Historical helpers remain with their focused compatibility fixtures:
+The active workflows call the public Action and their own handoff verifier. The legacy installer, plan wrapper and Summary renderer remain with their focused fixtures; their orphan cleanup is tracked in [#135](https://github.com/daiksud/gh-settings/issues/135):
 
-| Retained file | Existing reference / compatibility reason |
+| Retained file | Current use |
 | --- | --- |
-| `install-cli.sh` | Legacy prepare/verify wrappers; fixed CLI installer retained with bootstrap fixtures. |
-| `plan.sh` | Legacy prepare; retained validate-before-plan fixtures. |
-| `render-summary.py` | Legacy prepare; retained escaped Summary fixtures. |
-| `prepare.sh` | Retained legacy handoff/prepare fixtures. |
-| `verify-apply.sh` | Retained legacy approved-apply fixtures. |
-| `apply.sh` | Retained legacy step-token/failure fixtures. |
+| `install-cli.sh` | Legacy fixed CLI installer retained with bootstrap and plan fixtures. |
+| `plan.sh` | Retained validate-before-plan fixtures. |
+| `render-summary.py` | Retained escaped Summary fixtures. |
 | `verify-action-handoff.sh` | Inert public-Action main caller; required consumer file, production-identity and integration fixtures. |
 
-The ordinary CI keeps the focused legacy helper fixtures. Operational PR/main coverage now executes the actual public-Action caller YAML through the existing composite fixtures; the obsolete legacy workflow integration test and its sole runner were removed. Tests use isolated local Git, dummy downloads/CLI responses, approval and token providers. Both historical v0.5.0 and operational v0.6.1 identities are modeled explicitly; copied verifiers use the corresponding dummy binary checksum. Operational failure coverage includes install failure after token minting, with no apply/API call and normal simulated revocation. Current root tests use the current committed version. Hosted Ubuntu 24.04 smoke explicitly sets its copied package version to published v0.6.0 and uses that real release for validate; built-product acceptance separately checks real CLI semantics. None of these fixtures proves actual Environment enforcement, Summary publication or real token revocation; those need separately authorized platform evidence.
+The ordinary CI keeps the remaining focused legacy helper fixtures. Operational PR/main coverage now executes the actual public-Action caller YAML through the existing composite fixtures; the obsolete legacy workflow integration test and its sole runner were removed. Tests use isolated local Git, dummy downloads/CLI responses, approval and token providers. Both historical v0.5.0 and operational v0.6.1 identities are modeled explicitly; copied verifiers use the corresponding dummy binary checksum. Operational failure coverage includes install failure after token minting, with no apply/API call and normal simulated revocation. Current root tests use the current committed version. Hosted Ubuntu 24.04 smoke explicitly sets its copied package version to published v0.6.0 and uses that real release for validate; built-product acceptance separately checks real CLI semantics. None of these fixtures proves actual Environment enforcement, Summary publication or real token revocation; those need separately authorized platform evidence.
