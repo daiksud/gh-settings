@@ -43,7 +43,7 @@ func TestPRConsumerPlan(t *testing.T) {
 			f.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
 			f.base["MOCK_PLAN_OUTPUT"] = test.output
 			result := f.call(t, job.Steps[1], context, nil)
-			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": "v0.6.1", "cli-sha256": f.digest}
+			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": f.digest}
 			calls := "validate\nplan\n"
 			if test.status != 0 {
 				want = map[string]string{}
@@ -77,7 +77,7 @@ func TestMainConsumerApply(t *testing.T) {
 			if result.status != test.status || !result.minted || !result.revoked || result.applied.api != "PATCH\n" {
 				t.Fatalf("status=%d minted=%t revoked=%t API=%q\n%s", result.status, result.minted, result.revoked, result.applied.api, result.log)
 			}
-			want := map[string]string{"config-sha": result.prepared.sha, "target": "owner/config", "cli-version": "v0.6.1", "cli-sha256": result.prepared.digest}
+			want := map[string]string{"config-sha": result.prepared.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.prepared.digest}
 			wantApplied := want
 			if test.status != 0 {
 				wantApplied = map[string]string{}
@@ -202,9 +202,10 @@ func runMainConsumerWorkflow(t *testing.T, scenario, workflowFile string) (resul
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Only dummy-release checksum data changes in the copied verifier.
+	// Only candidate version and dummy checksum data change in the copied verifier.
 	// Each production verifier also has an unchanged-identity handoff test.
-	prepare.write(filepath.Join(prepare.caller, verifierPath), strings.ReplaceAll(string(verifier), "7b93802a64609ed5daf1b3bd02e33ad9384fda26b7776233cd094c8dd85d5874", prepare.digest))
+	profile := strings.NewReplacer("== v0.6.1", "== "+committedCLIVersion(t), "7b93802a64609ed5daf1b3bd02e33ad9384fda26b7776233cd094c8dd85d5874", prepare.digest)
+	prepare.write(filepath.Join(prepare.caller, verifierPath), profile.Replace(string(verifier)))
 	prepare.git("add", ".github/workflows/settings-main.yml", verifierPath)
 	prepare.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "consumer")
 	prepare.sha = prepare.git("rev-parse", "HEAD")
@@ -343,13 +344,10 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 	if !ok || repository != "daiksud/gh-settings" {
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
-	// Model one published consumer context using the candidate package, not tag bytes.
+	// Model pinned caller wiring with candidate package bytes, not released tag bytes.
 	if ref != "9d01d3258d9f42239b2daeb1ac26bc532cd56105" {
 		t.Fatalf("unmodeled public Action revision %s", ref)
 	}
-	version := "v0.6.1"
-	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
-	f.base["MOCK_CLI_VERSION"] = version
 	overrides := map[string]string{
 		"github.action_repository": repository, "github.action_ref": ref,
 		"github.event_name": f.base["GITHUB_EVENT_NAME"], "github.workflow_ref": f.base["GITHUB_WORKFLOW_REF"], "github.workflow_sha": f.base["GITHUB_WORKFLOW_SHA"],

@@ -50,7 +50,7 @@ func committedCLIVersion(t *testing.T) string {
 }
 
 func TestRootCompositeValidate(t *testing.T) {
-	result := runComposite(t, "validate", "", nil)
+	result := runComposite(t, "validate", "unused-fixture-token", map[string]string{"GH_TOKEN": "ambient-fixture", "GITHUB_TOKEN": "ambient-fixture"})
 	if result.status != 0 {
 		t.Fatalf("status=%d\n%s", result.status, result.log)
 	}
@@ -58,8 +58,8 @@ func TestRootCompositeValidate(t *testing.T) {
 	if !reflect.DeepEqual(result.outputs, want) {
 		t.Fatalf("outputs=%v, want %v", result.outputs, want)
 	}
-	if result.calls != "validate\n" {
-		t.Fatalf("settings calls=%q", result.calls)
+	if result.calls != "validate\n" || result.metadataCalls != "action metadata\n" {
+		t.Fatalf("settings calls=%q metadata calls=%q", result.calls, result.metadataCalls)
 	}
 	if result.summary != "" {
 		t.Fatalf("unexpected Summary: %s", result.summary)
@@ -178,7 +178,7 @@ func TestRootCompositeFailureGates(t *testing.T) {
 		calls string
 	}{
 		{"installation", map[string]string{"RUNNER_OS": "Windows"}, ""},
-		{"metadata", map[string]string{"GITHUB_WORKSPACE": "/nonexistent-gh-settings-fixture"}, ""},
+		{"metadata", map[string]string{"MOCK_METADATA_STATUS": "37"}, ""},
 		{"output", map[string]string{"OUTPUT_DIRECTORY": "1"}, "validate\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -186,109 +186,8 @@ func TestRootCompositeFailureGates(t *testing.T) {
 			if result.status == 0 || len(result.outputs) != 0 || result.calls != test.calls || result.injected {
 				t.Fatalf("failure gate did not hold: %+v", result)
 			}
-		})
-	}
-}
-
-func TestRootCompositeOriginFormats(t *testing.T) {
-	for _, test := range []struct{ origin, target string }{
-		{"git@github.com:owner/config.git", "owner/config"},
-		{"github.com:owner/config.git", "owner/config"},
-		{"ssh://git@github.com/owner/config.git", "owner/config"},
-		{"https://github.com/owner/config%2Drepo.git", "owner/config-repo"},
-		{"https://github.com/owner/repo%ZZ", ""},
-		{"https://bad%ZZ@github.com/owner/config.git", ""},
-		{"https://github.com/owner/config.git#bad%ZZ", ""},
-		{"https://github.com/owner/config.git#%2\nF", ""},
-		{"https://github.com/owner/config.git?unused=%ZZ", "owner/config"},
-		{"https://github.com/own\ter/config.git", ""},
-		{"https://github.com/owner/config.git?unused=bad\nquery", ""},
-		{"https://github.com/owner/config.git#accepted\tfragment\ntext", "owner/config"},
-		{"https://github.com:bad/owner/config.git", ""},
-		{"https://bad user@github.com/owner/config.git", ""},
-		{"https://github.com:99999/owner/config.git", "owner/config"},
-		{"ssh://git%40example@github.com/owner/config.git", "owner/config"},
-		{"https://www.github.com/owner/config.git", "owner/config"},
-		{"https://GitHub.com/owner/config.git", "owner/config"},
-		{"HTTPS://GitHub.com/owner/config.git", ""},
-		{"https://WWW.github.com/owner/config.git", ""},
-		{"https://gitlab.com/owner/config.git", ""},
-		{"https://github.com/owner/config%0Ainjected%3Dyes.git", ""},
-	} {
-		t.Run(test.origin, func(t *testing.T) {
-			result := runComposite(t, "validate", "", nil, func(git func(...string) string) { git("remote", "set-url", "origin", test.origin) })
-			if test.target == "" {
-				if result.status == 0 || len(result.outputs) != 0 {
-					t.Fatalf("unsafe origin accepted: %+v", result)
-				}
-				return
-			}
-			if result.status != 0 || result.outputs["target"] != test.target {
-				t.Fatalf("target=%q want%q status=%d\n%s", result.outputs["target"], test.target, result.status, result.log)
-			}
-		})
-	}
-}
-
-func TestRootCompositeOriginScope(t *testing.T) {
-	for _, test := range []struct {
-		name     string
-		commands [][]string
-		rejected bool
-	}{
-		{"first scoped", [][]string{{"config", "--global", "remote.origin.url", "https://github.com/wrong/global.git"}, {"remote", "set-url", "--add", "origin", "https://github.com/wrong/second.git"}}, false},
-		{"direct before rewrite", [][]string{{"config", "--global", "url.https://mirror.example/.insteadOf", "https://github.com/"}}, false},
-		{"included", [][]string{{"config", "--local", "--unset-all", "remote.origin.url"}, {"config", "--file", ".git/included-config", "remote.origin.url", "https://github.com/owner/config.git"}, {"config", "--local", "include.path", "included-config"}}, false},
-		{"worktree", [][]string{{"config", "--local", "--unset-all", "remote.origin.url"}, {"config", "--local", "extensions.worktreeConfig", "true"}, {"config", "--worktree", "remote.origin.url", "https://github.com/owner/config.git"}}, false},
-		{"global only", [][]string{{"remote", "remove", "origin"}, {"config", "--global", "remote.origin.url", "https://github.com/wrong/global.git"}}, true},
-		{"no origin", [][]string{{"remote", "remove", "origin"}}, true},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			result := runComposite(t, "validate", "", nil, func(git func(...string) string) {
-				for _, args := range test.commands {
-					git(args...)
-				}
-			})
-			if test.rejected {
-				if result.status == 0 || len(result.outputs) != 0 {
-					t.Fatalf("unscoped/missing origin accepted: %+v", result)
-				}
-				return
-			}
-			if result.status != 0 || result.outputs["target"] != "owner/config" {
-				t.Fatalf("wrong checkout origin: %+v", result)
-			}
-		})
-	}
-}
-
-func TestRootCompositeOriginAlias(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		rules  [][]string
-		target string
-	}{
-		{"alias", [][]string{{"config", "--local", "url.https://github.com/owner/config.git.insteadOf", "gh:config"}}, "owner/config"},
-		{"longest", [][]string{{"config", "--global", "remote.origin.url", "https://github.com/wrong/global.git"}, {"config", "--global", "url.https://github.com/wrong/.insteadOf", "gh:"}, {"config", "--local", "url.https://github.com/owner/config.git.insteadOf", "gh:config"}}, "owner/config"},
-		{"no rule", nil, ""},
-		{"nonmatching", [][]string{{"config", "--local", "url.https://github.com/owner/.insteadOf", "other:"}}, ""},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			extra := map[string]string{"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "remote.origin.url", "GIT_CONFIG_VALUE_0": "https://github.com/wrong/command.git"}
-			result := runComposite(t, "validate", "", extra, func(git func(...string) string) {
-				git("remote", "set-url", "origin", "gh:config")
-				for _, args := range test.rules {
-					git(args...)
-				}
-			})
-			if test.target == "" {
-				if result.status == 0 || len(result.outputs) != 0 {
-					t.Fatalf("unresolved alias accepted: %+v", result)
-				}
-				return
-			}
-			if result.status != 0 || result.outputs["target"] != test.target {
-				t.Fatalf("wrong alias target: %+v", result)
+			if test.name == "metadata" && (!result.downloaded || result.metadataCalls != "action metadata\n") {
+				t.Fatalf("metadata failure occurred before the verified entry: %+v", result)
 			}
 		})
 	}
@@ -310,10 +209,10 @@ func TestRootCompositeStatusHandoffFailure(t *testing.T) {
 }
 
 type compositeResult struct {
-	status                                int
-	downloaded, injected                  bool
-	outputs                               map[string]string
-	log, calls, summary, sha, digest, api string
+	status                                               int
+	downloaded, injected                                 bool
+	outputs                                              map[string]string
+	log, calls, metadataCalls, summary, sha, digest, api string
 }
 
 type compositeFixture struct {
@@ -380,7 +279,7 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 		}
 	}
 	poison := "#!/usr/bin/env bash\ntouch \"$GITHUB_WORKSPACE/injected\"\nexit 99\n"
-	for _, name := range []string{"install-cli.sh", "run-command.sh", "render-summary.py", "metadata.py"} {
+	for _, name := range []string{"install-cli.sh", "run-command.sh", "render-summary.py"} {
 		write(filepath.Join(caller, "action", name), poison)
 	}
 	write(filepath.Join(bin, "gh-settings"), poison)
@@ -389,6 +288,11 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 set -euo pipefail
 case "$1" in
   --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo "gh-settings $MOCK_CLI_VERSION"; exit ;;
+  action)
+    [[ $# == 2 && $2 == metadata && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
+    printf 'action metadata\n' >> "$MOCK_METADATA_CALLS"
+    printf 'config-sha=%s\ntarget=owner/config\ncli-version=%s\ncli-sha256=%s\n' "$MOCK_CONFIG_SHA" "$MOCK_CLI_VERSION" "$MOCK_CLI_SHA256"
+    exit "${MOCK_METADATA_STATUS:-0}" ;;
   validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
   plan) [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_REMOTE_STATUS:-0} ;;
   apply)
@@ -437,6 +341,7 @@ exit 1
 	}
 	base := map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "HOME": fixture, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(fixture, "gitconfig"), "GITHUB_WORKSPACE": caller, "RUNNER_TEMP": filepath.Join(fixture, "runner temp"), "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "GITHUB_STEP_SUMMARY": filepath.Join(fixture, "summary"), "MOCK_ASSET": filepath.Join(fixture, "asset"), "MOCK_CALLS": filepath.Join(fixture, "calls")}
 	base["MOCK_CLI_VERSION"] = committedCLIVersion(t)
+	base["MOCK_METADATA_CALLS"] = filepath.Join(fixture, "metadata-calls")
 	base["MOCK_CHECKSUMS"] = filepath.Join(fixture, "checksums")
 	base["MOCK_DOWNLOAD"] = filepath.Join(fixture, "download")
 	base["MOCK_API"] = filepath.Join(fixture, "api")
@@ -466,11 +371,12 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	for key, value := range f.base {
 		base[key] = value
 	}
-	for _, key := range []string{"MOCK_CALLS", "MOCK_DOWNLOAD", "MOCK_API", "GITHUB_STEP_SUMMARY"} {
+	for _, key := range []string{"MOCK_CALLS", "MOCK_METADATA_CALLS", "MOCK_DOWNLOAD", "MOCK_API", "GITHUB_STEP_SUMMARY"} {
 		if err := os.Remove(base[key]); err != nil && !os.IsNotExist(err) {
 			t.Fatal(err)
 		}
 	}
+	base["MOCK_CONFIG_SHA"], base["MOCK_CLI_SHA256"] = sha, digest
 	outputDirectory := t.TempDir()
 	values := map[string]string{"inputs.command": command, "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
 		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": "approved-action-ref"}
@@ -562,6 +468,8 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	}
 	calls, _ := os.ReadFile(base["MOCK_CALLS"])
 	result.calls = string(calls)
+	metadataCalls, _ := os.ReadFile(base["MOCK_METADATA_CALLS"])
+	result.metadataCalls = string(metadataCalls)
 	summary, _ := os.ReadFile(base["GITHUB_STEP_SUMMARY"])
 	result.summary = string(summary)
 	api, _ := os.ReadFile(base["MOCK_API"])

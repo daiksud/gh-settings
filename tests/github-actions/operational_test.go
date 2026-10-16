@@ -47,7 +47,7 @@ func TestOperationalPRPlan(t *testing.T) {
 				t.Fatalf("operational PR result: %+v", r)
 			}
 			if scenario.status == 0 {
-				if r.calls != "validate\nplan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != "v0.6.1" || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalAction, "daiksud/gh-settings@")) {
+				if r.calls != "validate\nplan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalAction, "daiksud/gh-settings@")) {
 					t.Fatalf("operational PR identity or execution: %+v", r)
 				}
 			} else if r.calls != "validate\n" || len(r.outputs) != 0 {
@@ -101,7 +101,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 			r := runMainConsumerWorkflow(t, scenario, "../../.github/workflows/settings-main.yml")
 			r.assertNoCredentials(t)
 			if scenario == "approved" || scenario == "apply failure" {
-				if !r.minted || !r.revoked || r.applied.api != "PATCH\n" || r.prepared.sha != r.applied.sha || r.prepared.outputs["cli-version"] != "v0.6.1" || (r.status == 0) != (scenario == "approved") {
+				if !r.minted || !r.revoked || r.applied.api != "PATCH\n" || r.prepared.sha != r.applied.sha || r.prepared.outputs["cli-version"] != committedCLIVersion(t) || (r.status == 0) != (scenario == "approved") {
 					t.Fatalf("approved operational result: %+v", r)
 				}
 			} else if scenario == "apply installation failure" {
