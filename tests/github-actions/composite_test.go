@@ -3,7 +3,9 @@ package githubactions
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"html"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +14,17 @@ import (
 	"testing"
 
 	"go.yaml.in/yaml/v4"
+
+	"github.com/daiksud/gh-settings/internal/actions"
 )
+
+// The mock CLI delegates Summary to the real adapter without rebuilding the product.
+func TestMain(m *testing.M) {
+	if os.Getenv("GH_SETTINGS_SUMMARY_HELPER") == "1" {
+		os.Exit(actions.Run(append([]string{"summary"}, os.Args[1:]...), os.Stdout, os.Stderr, "", nil))
+	}
+	os.Exit(m.Run())
+}
 
 type actionField struct {
 	Description string  `yaml:"description"`
@@ -78,20 +90,50 @@ func TestRootCompositeRejectsMismatchedReleaseTag(t *testing.T) {
 }
 
 func TestRootCompositePlan(t *testing.T) {
-	result := runComposite(t, "plan", "fixture-token", nil)
+	result := runComposite(t, "plan", "fixture-token", map[string]string{"GH_TOKEN": "ambient-fixture", "GITHUB_TOKEN": "ambient-fixture"})
 	if result.status != 0 || len(result.outputs) != 4 {
 		t.Fatalf("status=%d outputs=%v\n%s", result.status, result.outputs, result.log)
 	}
-	if result.calls != "validate\nplan\n" {
-		t.Fatalf("settings calls=%q", result.calls)
+	if result.presentationCalls != "action plan\naction summary\n" || result.calls != "plan\n" {
+		t.Fatalf("presentation calls=%q settings calls=%q", result.presentationCalls, result.calls)
 	}
-	for _, text := range []string{"Settings review", "before → desired", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", "approved-action-ref", strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
-		if !strings.Contains(result.summary, text) {
+	for _, text := range []string{"Settings review", "settings.repository.description", `"before"`, `"desired"`, "settings.repository.has_issues: true → false", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", "approved-action-ref", strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
+		if !strings.Contains(html.UnescapeString(result.summary), text) {
 			t.Errorf("Summary missing %q: %s", text, result.summary)
 		}
 	}
 	if strings.Contains(result.summary+result.log, "fixture-token") {
 		t.Fatal("token escaped execution environment")
+	}
+}
+
+func TestRootCompositeUnmanagedPlan(t *testing.T) {
+	result := runComposite(t, "plan", "fixture-token", map[string]string{"MOCK_PLAN_OUTCOME": "unmanaged"})
+	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.digest}
+	if result.status != 0 || !reflect.DeepEqual(result.outputs, want) || result.calls != "plan\n" || result.presentationCalls != "action plan\naction summary\n" {
+		t.Fatalf("unmanaged plan: %+v", result)
+	}
+	if !strings.Contains(result.summary, "No managed settings.") || strings.Contains(result.summary, "Observed before") {
+		t.Fatalf("incorrect unmanaged review: %s", result.summary)
+	}
+	if strings.Contains(result.summary+result.log+fmt.Sprint(result.outputs), "fixture-token") {
+		t.Fatal("token escaped unmanaged planning")
+	}
+}
+
+func TestRootCompositeQuotesPlanData(t *testing.T) {
+	result := runComposite(t, "plan", "fixture-token", map[string]string{"MOCK_DESCRIPTION_BEFORE": "</pre><script>setting</script>\n\n::error::value", "github.actor": "<script>actor</script>\n\n## forged"})
+	want := map[string]string{"config-sha": result.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.digest}
+	if result.status != 0 || !reflect.DeepEqual(result.outputs, want) {
+		t.Fatalf("quoted plan: %+v", result)
+	}
+	for _, text := range []string{`&lt;/pre&gt;&lt;script&gt;setting&lt;/script&gt;\n\n::error::value`, "&lt;script&gt;actor&lt;/script&gt;&#10;&#10;## forged", "settings.repository.has_issues: true → false"} {
+		if !strings.Contains(result.summary, text) {
+			t.Fatalf("Summary lost quoted data %q: %s", text, result.summary)
+		}
+	}
+	if strings.Contains(result.summary, "<script>") || strings.Contains(result.summary, "\n\n## forged") || strings.Contains(result.summary+result.log+fmt.Sprint(result.outputs), "fixture-token") {
+		t.Fatalf("data escaped its presentation boundary: %+v", result)
 	}
 }
 
@@ -132,8 +174,8 @@ func TestRootCompositeRequiresExplicitToken(t *testing.T) {
 func TestRootCompositePreservesCLIStatus(t *testing.T) {
 	for _, test := range []struct{ name, command, failure, calls string }{
 		{"validate", "validate", "MOCK_VALIDATE_STATUS", "validate\n"},
-		{"pre-plan validate", "plan", "MOCK_VALIDATE_STATUS", "validate\n"},
-		{"plan", "plan", "MOCK_REMOTE_STATUS", "validate\nplan\n"},
+		{"shared plan validation", "plan", "MOCK_VALIDATE_STATUS", "plan\n"},
+		{"plan", "plan", "MOCK_REMOTE_STATUS", "plan\n"},
 		{"apply", "apply", "MOCK_REMOTE_STATUS", "apply\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -141,10 +183,40 @@ func TestRootCompositePreservesCLIStatus(t *testing.T) {
 			if result.status != 37 || len(result.outputs) != 0 || result.calls != test.calls {
 				t.Fatalf("status=%d outputs=%v calls=%q\n%s", result.status, result.outputs, result.calls, result.log)
 			}
-			if test.command == "plan" && (!strings.Contains(result.summary, "Error — plan failed.") || !strings.Contains(result.summary, "fixture command error")) {
-				t.Fatalf("missing failed-plan review: %s", result.summary)
+			if test.command == "plan" {
+				diagnostic := "repository read failed"
+				if test.failure == "MOCK_VALIDATE_STATUS" {
+					diagnostic = "configuration validation failed"
+				}
+				if !strings.Contains(result.summary, "Error — plan failed.") || !strings.Contains(result.summary, diagnostic) {
+					t.Fatalf("missing failed-plan review: %s", result.summary)
+				}
 			}
 		})
+	}
+}
+
+func TestRootCompositeUnusableReport(t *testing.T) {
+	for _, mode := range []string{"missing", "malformed"} {
+		for _, planStatus := range []string{"0", "37"} {
+			t.Run(mode+planStatus, func(t *testing.T) {
+				result := runComposite(t, "plan", "fixture-token", map[string]string{"MOCK_REPORT_MODE": mode, "MOCK_REMOTE_STATUS": planStatus})
+				want := 1
+				if planStatus == "37" {
+					want = 37
+				}
+				diagnostic := "read plan report:"
+				if mode == "malformed" {
+					diagnostic = "decode plan report:"
+				}
+				if result.status != want || len(result.outputs) != 0 || result.summary != "" || result.presentationCalls != "action plan\naction summary\n" {
+					t.Fatalf("unusable report: %+v", result)
+				}
+				if !strings.Contains(result.log, diagnostic) || strings.Contains(result.log+fmt.Sprint(result.outputs), "fixture-token") {
+					t.Fatalf("report diagnostic/token boundary: %s", result.log)
+				}
+			})
+		}
 	}
 }
 
@@ -163,7 +235,11 @@ func TestRootCompositeSummaryFailure(t *testing.T) {
 				if status == "37" {
 					want = 37
 				}
-				if result.status != want || len(result.outputs) != 0 || !strings.Contains(result.log, "Could not render or write plan Summary.") || strings.Contains(result.log, "fixture-token") {
+				diagnostic := "missing SETTINGS_RUN_ID"
+				if failure == "write" {
+					diagnostic = "open Summary:"
+				}
+				if result.status != want || len(result.outputs) != 0 || !strings.Contains(result.log, diagnostic) || strings.Contains(result.log, "fixture-token") {
 					t.Fatalf("status=%d want%d outputs=%v\n%s", result.status, want, result.outputs, result.log)
 				}
 			})
@@ -201,7 +277,7 @@ func TestRootCompositeStatusHandoffFailure(t *testing.T) {
 			if status == "37" {
 				want = 37
 			}
-			if result.status != want || len(result.outputs) != 0 || result.calls != "validate\nplan\n" {
+			if result.status != want || len(result.outputs) != 0 || result.calls != "plan\n" {
 				t.Fatalf("handoff status=%d want%d outputs=%v calls=%q\n%s", result.status, want, result.outputs, result.calls, result.log)
 			}
 		})
@@ -209,10 +285,10 @@ func TestRootCompositeStatusHandoffFailure(t *testing.T) {
 }
 
 type compositeResult struct {
-	status                                               int
-	downloaded, injected                                 bool
-	outputs                                              map[string]string
-	log, calls, metadataCalls, summary, sha, digest, api string
+	status                                                                  int
+	downloaded, injected                                                    bool
+	outputs                                                                 map[string]string
+	log, calls, metadataCalls, presentationCalls, summary, sha, digest, api string
 }
 
 type compositeFixture struct {
@@ -279,7 +355,7 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 		}
 	}
 	poison := "#!/usr/bin/env bash\ntouch \"$GITHUB_WORKSPACE/injected\"\nexit 99\n"
-	for _, name := range []string{"install-cli.sh", "run-command.sh", "render-summary.py"} {
+	for _, name := range []string{"install-cli.sh", "run-command.sh"} {
 		write(filepath.Join(caller, "action", name), poison)
 	}
 	write(filepath.Join(bin, "gh-settings"), poison)
@@ -289,12 +365,32 @@ set -euo pipefail
 case "$1" in
   --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo "gh-settings $MOCK_CLI_VERSION"; exit ;;
   action)
-    [[ $# == 2 && $2 == metadata && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
-    printf 'action metadata\n' >> "$MOCK_METADATA_CALLS"
-    printf 'config-sha=%s\ntarget=owner/config\ncli-version=%s\ncli-sha256=%s\n' "$MOCK_CONFIG_SHA" "$MOCK_CLI_VERSION" "$MOCK_CLI_SHA256"
-    exit "${MOCK_METADATA_STATUS:-0}" ;;
+    case "${2:-}" in
+      metadata)
+        [[ $# == 2 && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
+        printf 'action metadata\n' >> "$MOCK_METADATA_CALLS"
+        printf 'config-sha=%s\ntarget=owner/config\ncli-version=%s\ncli-sha256=%s\n' "$MOCK_CONFIG_SHA" "$MOCK_CLI_VERSION" "$MOCK_CLI_SHA256"
+        exit "${MOCK_METADATA_STATUS:-0}" ;;
+      plan)
+        [[ $# == 3 && (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
+        printf 'action plan\n' >> "$MOCK_PRESENTATION_CALLS"
+        printf 'plan\n' >> "$MOCK_CALLS"
+        case "${MOCK_REPORT_MODE:-}" in
+          missing) ;;
+          malformed) printf '{' > "$3" ;;
+          *) printf '%s\n' "$MOCK_PLAN_REPORT" > "$3" ;;
+        esac
+        status=${MOCK_VALIDATE_STATUS:-0}
+        [[ $status != 0 ]] || status=${MOCK_REMOTE_STATUS:-0}
+        if [[ $status != 0 ]]; then echo 'fixture command error' >&2; fi
+        exit "$status" ;;
+      summary)
+        [[ $# == 4 && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
+        printf 'action summary\n' >> "$MOCK_PRESENTATION_CALLS"
+        GH_SETTINGS_SUMMARY_HELPER=1 exec "$MOCK_TEST_BINARY" "$3" "$4" ;;
+      *) exit 99 ;;
+    esac ;;
   validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
-  plan) [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_REMOTE_STATUS:-0} ;;
   apply)
     [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == app-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
     printf 'PATCH\n' >> "$MOCK_API"
@@ -304,8 +400,6 @@ esac
 echo "$1" >> "$MOCK_CALLS"
 if [[ $status != 0 ]]; then
   echo 'fixture command error' >&2
-elif [[ $1 == plan ]]; then
-  printf '%s\n' "${MOCK_PLAN_OUTPUT:-before → desired}"
 fi
 exit "$status"
 `
@@ -340,6 +434,12 @@ exit 1
 		write(filepath.Join(packagePath, "action", file.Name()), string(content))
 	}
 	base := map[string]string{"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "HOME": fixture, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": filepath.Join(fixture, "gitconfig"), "GITHUB_WORKSPACE": caller, "RUNNER_TEMP": filepath.Join(fixture, "runner temp"), "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "GITHUB_STEP_SUMMARY": filepath.Join(fixture, "summary"), "MOCK_ASSET": filepath.Join(fixture, "asset"), "MOCK_CALLS": filepath.Join(fixture, "calls")}
+	testBinary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	base["MOCK_TEST_BINARY"] = testBinary
+	base["MOCK_PRESENTATION_CALLS"] = filepath.Join(fixture, "presentation-calls")
 	base["MOCK_CLI_VERSION"] = committedCLIVersion(t)
 	base["MOCK_METADATA_CALLS"] = filepath.Join(fixture, "metadata-calls")
 	base["MOCK_CHECKSUMS"] = filepath.Join(fixture, "checksums")
@@ -371,7 +471,7 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	for key, value := range f.base {
 		base[key] = value
 	}
-	for _, key := range []string{"MOCK_CALLS", "MOCK_METADATA_CALLS", "MOCK_DOWNLOAD", "MOCK_API", "GITHUB_STEP_SUMMARY"} {
+	for _, key := range []string{"MOCK_CALLS", "MOCK_METADATA_CALLS", "MOCK_PRESENTATION_CALLS", "MOCK_DOWNLOAD", "MOCK_API", "GITHUB_STEP_SUMMARY"} {
 		if err := os.Remove(base[key]); err != nil && !os.IsNotExist(err) {
 			t.Fatal(err)
 		}
@@ -387,6 +487,37 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 			base[key] = value
 		}
 	}
+	outcome := base["MOCK_PLAN_OUTCOME"]
+	if value := base["MOCK_VALIDATE_STATUS"]; value != "" && value != "0" {
+		outcome = "invalid-config"
+	} else if value := base["MOCK_REMOTE_STATUS"]; value != "" && value != "0" {
+		outcome = "read-failure"
+	}
+	report := actions.PlanReport{Outcome: "changed", Target: "owner/config", Managed: 2, Changes: []actions.PlanChange{{Field: "description", Before: "before", After: "desired"}, {Field: "has_issues", Before: true, After: false}}}
+	if before, supplied := base["MOCK_DESCRIPTION_BEFORE"]; supplied {
+		report.Changes[0].Before = before
+	}
+	switch outcome {
+	case "", "changed":
+	case "no-difference":
+		report.Outcome, report.Changes = outcome, []actions.PlanChange{}
+	case "unmanaged":
+		report.Outcome, report.Target, report.Managed, report.Changes = outcome, "", 0, []actions.PlanChange{}
+	case "invalid-config", "read-failure":
+		report.Outcome, report.Managed, report.Changes = outcome, 0, []actions.PlanChange{}
+		if outcome == "invalid-config" {
+			report.Target, report.Diagnostic = "", "configuration validation failed"
+		} else {
+			report.Diagnostic = "repository read failed"
+		}
+	default:
+		t.Fatalf("unsupported plan fixture outcome %q", outcome)
+	}
+	data, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base["MOCK_PLAN_REPORT"] = string(data)
 	if extra["SUMMARY_DIRECTORY"] == "1" {
 		base["GITHUB_STEP_SUMMARY"] = caller
 	}
@@ -470,11 +601,13 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	result.calls = string(calls)
 	metadataCalls, _ := os.ReadFile(base["MOCK_METADATA_CALLS"])
 	result.metadataCalls = string(metadataCalls)
+	presentationCalls, _ := os.ReadFile(base["MOCK_PRESENTATION_CALLS"])
+	result.presentationCalls = string(presentationCalls)
 	summary, _ := os.ReadFile(base["GITHUB_STEP_SUMMARY"])
 	result.summary = string(summary)
 	api, _ := os.ReadFile(base["MOCK_API"])
 	result.api = string(api)
-	_, err := os.Stat(base["MOCK_DOWNLOAD"])
+	_, err = os.Stat(base["MOCK_DOWNLOAD"])
 	result.downloaded = err == nil
 	_, err = os.Stat(filepath.Join(caller, "injected"))
 	result.injected = err == nil

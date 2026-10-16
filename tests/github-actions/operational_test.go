@@ -28,11 +28,11 @@ func TestOperationalPRPlan(t *testing.T) {
 		t.Fatal("operational PR must check out its exact merge configuration without persisted credentials")
 	}
 	for _, scenario := range []struct {
-		name, output string
-		status       int
+		name, outcome string
+		status        int
 	}{
-		{"differences", "before → desired", 0},
-		{"no differences", "No differences for managed repository settings.", 0},
+		{"differences", "changed", 0},
+		{"no differences", "no-difference", 0},
 		{"invalid configuration", "", 37},
 	} {
 		t.Run(scenario.name, func(t *testing.T) {
@@ -40,17 +40,17 @@ func TestOperationalPRPlan(t *testing.T) {
 			f.base["GITHUB_EVENT_NAME"] = "pull_request"
 			f.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/settings-pr.yml@refs/pull/1/merge"
 			f.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
-			f.base["MOCK_PLAN_OUTPUT"] = scenario.output
+			f.base["MOCK_PLAN_OUTCOME"] = scenario.outcome
 			f.base["MOCK_VALIDATE_STATUS"] = fmt.Sprint(scenario.status)
 			r := f.call(t, j.Steps[1], map[string]string{"github.token": "read-fixture"}, nil)
 			if r.status != scenario.status || r.api != "" || strings.Contains(r.log+r.summary+fmt.Sprint(r.outputs), "read-fixture") {
 				t.Fatalf("operational PR result: %+v", r)
 			}
 			if scenario.status == 0 {
-				if r.calls != "validate\nplan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalAction, "daiksud/gh-settings@")) {
+				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalAction, "daiksud/gh-settings@")) {
 					t.Fatalf("operational PR identity or execution: %+v", r)
 				}
-			} else if r.calls != "validate\n" || len(r.outputs) != 0 {
+			} else if r.calls != "plan\n" || len(r.outputs) != 0 {
 				t.Fatalf("invalid configuration reached plan or published outputs: %+v", r)
 			}
 		})
@@ -105,7 +105,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 					t.Fatalf("approved operational result: %+v", r)
 				}
 			} else if scenario == "apply installation failure" {
-				if r.status == 0 || !r.minted || !r.revoked || r.applied.api != "" || r.applied.calls != "" || len(r.applied.outputs) != 0 || !strings.Contains(r.summary, "CLI step outcome: failure") || !reflect.DeepEqual(r.trace, []string{"guard", "validate", "plan", "approved", "verify", "mint", "summary", "revoke"}) {
+				if r.status == 0 || !r.minted || !r.revoked || r.applied.api != "" || r.applied.calls != "" || len(r.applied.outputs) != 0 || !strings.Contains(r.summary, "CLI step outcome: failure") || !reflect.DeepEqual(r.trace, []string{"guard", "plan", "approved", "verify", "mint", "summary", "revoke"}) {
 					t.Fatalf("post-mint installation failure boundary: %+v", r)
 				}
 			} else if r.minted || r.revoked || r.applied.sha != "" || r.prepared.api+r.applied.api != "" || (r.status == 0) != (scenario == "waiting" || scenario == "rejected") {

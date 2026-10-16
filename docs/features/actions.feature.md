@@ -97,7 +97,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 - Given an explicit read-only token and invalid `.github/settings.yml`
 - When the caller selects `command: plan`
-- Then validation fails before plan or API execution
+- Then validation fails before comparison or API execution
 - And the Action fails without success outputs
 
 ### Rule: Only successful completion exposes four non-secret outputs
@@ -117,10 +117,10 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 ### Rule: Plan Summary separates execution identities and untrusted data
 
-- The Action owns plan Summary rendering/writing, including command status and CLI error output when available.
+- The Action owns plan Summary rendering/writing and distinguishes successful and failed planning. Current unreleased v0.7.0 uses typed reports and safe categorical Summary diagnostics; original CLI stderr remains in command logs. Released v0.6.1 retains its original quoted CLI-text presentation.
 - Include original and rerun actors, event, run URL/attempt, workflow path/ref and exact workflow revision, target, configuration commit and exact file link, distinct Action identity/ref, and CLI version/SHA-256.
 - Obtain Action identity/ref from supported composite context; never relabel workflow SHA as Action SHA. Identify local CI invocation honestly when there is no remote pin.
-- Present existing CLI text without a new diff schema; distinguish differences, no differences, no managed settings, and failures.
+- Current unreleased source distinguishes differences, no differences, no managed settings and failures from the same-version typed report, without classifying terminal sentences.
 - Escape untrusted values, including quotes, multiline text, Markdown, HTML, and workflow-command-like content, so they cannot forge Summary markup, links, or execution context.
 - State that the observed diff is informational and direct apply may overwrite intervening remote changes. A later apply is not bound to a saved plan.
 - Detectable render/write failure fails plan before success outputs. Successful writing does not prove GitHub published the Summary; the owner must not approve missing/incomplete content. No publication polling is required.
@@ -135,7 +135,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 ### Rule: Source metadata identifies the consumer and executing binary
 
-The source-only `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback. The current source migration selects explicitly unreleased CLI v0.7.0 and binds composite setup directly to this verified executable entry from the consumer working directory. The released v0.6.1 Action/CLI pins remain unchanged. Setup receives no caller token; metadata failure must stop settings execution and successful result publication. Python Summary adoption remains separate.
+The source-only `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback. The current source migration selects explicitly unreleased CLI v0.7.0 and binds composite setup directly to this verified executable entry from the consumer working directory. The released v0.6.1 Action/CLI pins remain unchanged. Setup receives no caller token; metadata failure must stop settings execution and successful result publication. Current source also adopts typed Go plan/Summary presentation; released v0.6.1 keeps its original helpers.
 
 The [public adapter tests](../../internal/actions/run_test.go) cover identity/output failures; `TestActionMetadata` in the [actual candidate acceptance suite](../../tests/acceptance/metadata_test.go) covers the normal consumer and executing-binary identities without API access. The [source interface](../commands.md#source-actions-metadata) describes output and failure semantics.
 
@@ -162,7 +162,7 @@ On the supported Linux runner, the digest remains bound to the running image aft
 
 The source-only `gh settings action plan REPORT_PATH` entry invokes shared application planning and writes one JSON report to a caller-owned runner-temporary file whose parent already exists. New report files use mode 0600. The same CLI/Action version owns the format: explicit outcome, available target, managed count and ordered changes with native string/bool before/after values. Changed, no-difference and unmanaged results are distinct without parsing terminal sentences. Invalid configuration and repository-read failure remain distinguishable failures with minimum safe categorical diagnostics; raw authentication errors, tokens, environment dumps and request headers are not serialized.
 
-Success is silent on stdout and exits zero. Planning or report-storage failure exits nonzero, including when a failure report was written; writing a report never turns a failed plan into success. Validation precedes API access, and unmanaged planning retains its local no-op. Target resolution has an explicit `target-failure` outcome without an unresolved target; read failures retain the available target. Failure reports have no comparison, so their zero managed count does not mean unmanaged. Apply never reads this report: it is ephemeral presentation data, not saved-plan execution. Composite adoption is separate; no multi-version protocol is defined.
+Success is silent on stdout and exits zero. Planning or report-storage failure exits nonzero, including when a failure report was written; writing a report never turns a failed plan into success. Validation precedes API access, and unmanaged planning retains its local no-op. Target resolution has an explicit `target-failure` outcome without an unresolved target; read failures retain the available target. Failure reports have no comparison, so their zero managed count does not mean unmanaged. Apply never reads this report: it is ephemeral presentation data, not saved-plan execution. The current unreleased composite invokes this entry directly with its explicit read token; shared application planning owns validation before API access. No separate CLI validation call or multi-version protocol is needed.
 
 #### Scenario: A changed report retains native values
 
@@ -176,7 +176,7 @@ Success is silent on stdout and exits zero. Planning or report-storage failure e
 
 The source-only `gh settings action summary REPORT_PATH SUMMARY_PATH` entry reads the same-version typed plan report and explicit nonsecret `SETTINGS_*` run metadata, then appends review content to the supplied Summary path. It does not read terminal plan sentences, configure authentication, call an API or dump the environment. Required context includes original and initiating/rerun actors, event, run/attempt, workflow path/ref and exact revision, configuration revision, target, distinct Action identity/ref and CLI version/checksum. Workflow and configuration links use their own repository and revision; local Action use has no invented remote pin.
 
-Changed values retain native string/bool meaning. No-difference, unmanaged and planning failures are distinct from the typed outcome, and a failed plan remains nonzero after successful Summary writing. Missing/malformed report or required metadata and detectable writing failures return nonzero. Input loading, validation and rendering precede opening the append destination. Untrusted multiline metadata and values remain quoted data, including blank lines, Markdown, HTML and workflow-command-like text. The Summary states that direct apply may overwrite intervening changes and that rendering/writing does not prove GitHub publication. No publication polling or saved-plan apply is added; composite adoption and Python deletion remain separate.
+Changed values retain native string/bool meaning. No-difference, unmanaged and planning failures are distinct from the typed outcome, and a failed plan remains nonzero after successful Summary writing. Missing/malformed report or required metadata and detectable writing failures return nonzero. Input loading, validation and rendering precede opening the append destination. Untrusted multiline metadata and values remain quoted data, including blank lines, Markdown, HTML and workflow-command-like text. The Summary states that direct apply may overwrite intervening changes and that rendering/writing does not prove GitHub publication. The current unreleased composite invokes this entry in a separate credential-free step after authenticated planning, using the same ephemeral report and verified executable. Original nonzero plan status wins over rendering status; otherwise a Summary failure determines failure. The four public outputs follow all required work. Python rendering and terminal-text classification are removed, without publication polling or saved-plan apply.
 
 #### Scenario: A changed Summary preserves review identities
 
@@ -187,8 +187,18 @@ Changed values retain native string/bool meaning. No-difference, unmanaged and p
 - Then it appends all required review context and observed/desired values without replacing prior content
 - And links use the displayed identities, success is silent, no API request occurs and unrelated environment data is absent
 
+#### Scenario: Composite plan separates authenticated execution from presentation
+
+- Given the unreleased composite has verified its same-version CLI and consumer metadata
+- And the caller supplies an explicit read token
+- When the authenticated step writes a typed plan report
+- Then a separate credential-free step renders that report with explicit nonsecret run metadata
+- And changed, unchanged, unmanaged and failed outcomes retain their intended review meaning
+- And a failed plan remains failed even after diagnostic rendering
+- And report, metadata, render, write or status-handoff failure prevents successful public outputs
+
 ### Public contract verification boundary
 
-Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, same-run candidate composite validate, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked candidate-version CLI and published caller Action identity, replacing only the copied verifier expected version and dummy checksum. They do not load the pinned tag bytes.
+Required CI includes installer/command fixtures, Go report/Summary owner tests, root composite and consumer YAML composition checks, same-run candidate composite validate, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked candidate-version CLI and published caller Action identity, replacing only the copied verifier expected version and dummy checksum. Their mock plan producer emits explicit typed fixture data, and presentation calls the actual Go Summary adapter through an owned test-executable child. They do not load the pinned tag bytes or rebuild the product. Hosted authenticated-plan proof remains #160.
 
 Hosted smoke uses the CLI built once with the committed candidate version and the Action from that producer's exact source SHA, including PR merge source. A bounded test-only download fixture verifies the transferred artifact/source/version and serves only the unchanged installer's fixed two URLs; missing/tampered artifacts and unexpected requests fail. Actual `uses` expansion validates a separate configuration-only checkout and compares all four outputs to this run's identities. There is no product rebuild, production input override, committed version rewrite or old-release fallback. Candidate-fixture evidence does not verify real release downloads, publication or immutable released assets. Production-identity checks and active public-Action caller tests remain. Usage documentation is checked against the actual contract, snippets, example copies and helper references. Offline checks do not prove Environment enforcement, token revocation, Summary publication, or a live update. See the [CI evidence boundary](../development.md#ci-validation).
