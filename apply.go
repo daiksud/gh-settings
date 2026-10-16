@@ -1,13 +1,14 @@
 package main
 
 import (
+	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func applyCurrent() ([]byte, error) {
-	desired, err := loadCurrentConfig()
+	desired, err := app.Validate()
 	if err != nil {
 		return nil, err
 	}

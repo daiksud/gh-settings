@@ -23,4 +23,6 @@ The [workspace file boundary](../internal/workspace/config_file.go) owns the fix
 
 The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-root and checkout-scoped GitHub target resolution through `GitRoot` and `CurrentRepository`. It ignores `GH_REPO` and unscoped origins, retaining the [existing origin and transport-rewrite contract](commands.md#export-behavior).
 
+The shared [local validation operation](../internal/app/validate.go), `app.Validate`, locates the checkout root and reads a typed repository declaration or returns an error. It does not resolve origin, configure authentication, access GitHub, write files or format CLI output. CLI validate adapts the error; plan and apply consume the validated declaration.
+
 The pure [comparison](../internal/settings/comparison.go) retains native string/string or bool/bool value pairs. Terminal messages, quoting and arrows belong to the [CLI renderer](../internal/cli/comparison.go); apply consumes the declaration directly.
