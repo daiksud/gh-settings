@@ -65,7 +65,7 @@ Focused application, comparison and CLI tests cover target selection, declaratio
 | Behavior | Test |
 | --- | --- |
 | Five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../internal/settings/comparison_test.go), [TestRenderRepositoryComparison](../../internal/cli/comparison_test.go) |
-| CLI operation selection and output failure | `TestRunSelectsOperation`, `TestPlanOutputFailure` |
+| CLI operation selection and output failure | [TestRunSelectsOperation and TestPlanOutputFailure](../../internal/cli/run_test.go) |
 | API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../internal/github/repository_test.go) |
 | Typed target/comparison, changes/no differences, unchanged configuration | [TestPlanResults](../../internal/app/plan_test.go) |
 | All three empty forms succeed before origin/read, zero result and unchanged file | [TestPlanNoManagedSettings](../../internal/app/plan_test.go) |

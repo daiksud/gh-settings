@@ -195,7 +195,7 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | There is no usable current repository | `TestExportTargetFailureBeforeRead` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestExportRejectsGlobalOriginOutsideCheckout` | — |
 | The response cannot form a complete configuration | `TestReadRepositoryFailures` | `incomplete-response`, `TestExportExistingFile/malformed-response`, `TestExportExistingFile/incomplete-response` |
-| Standard output is unavailable | `TestExportDoesNotWriteStdout` | `TestExportExistingFile/replace` |
+| Standard output is unavailable | [TestExportDoesNotWriteStdout](../../internal/cli/run_test.go) | `TestExportExistingFile/replace` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 
 Export changes the local configuration but only reads GitHub settings; [apply](../commands.md#apply-behavior) owns GitHub mutation. Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.

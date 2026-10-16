@@ -10,6 +10,8 @@ Use Go 1.25 or later and install [mise](https://mise.jdx.dev/getting-started.htm
 
 The [v0 simplification contract](concept.md#v0-simplification-contract) defines retained requirements and the shared Go ownership model. The [ordered series](https://github.com/daiksud/gh-settings/issues/133) delivers each issue through its own reviewed PR, tests and documentation; later planned behavior is not current behavior. Retired wrappers and historical fixture combinations may be deleted without forwarding adapters. The checks below describe the current tree and must lose obsolete invocations with the corresponding implementation change. Source integration does not publish a release, change active released consumer pins or approve a settings deployment.
 
+The [root entry point](../main.go) retains `main.version` for `-ldflags '-X main.version=...'` and wires deferred GitHub read/write dependencies into the four shared application operations. The [CLI adapter](../internal/cli/run.go) owns arguments, terminal rendering and status over those typed operations; its [public tests](../internal/cli/run_test.go) preserve dispatch, silent commands and output failures. Help/version do not invoke an application operation or need checkout/authentication. Root and extension builds still use `go build .`.
+
 ## Development checks
 
 ```sh
@@ -37,7 +39,7 @@ mise exec -- go build -o /tmp/gh-settings-acceptance .
 mise exec -- go test -tags=acceptance -count=1 ./tests/acceptance -args -binary /tmp/gh-settings-acceptance
 ```
 
-The [acceptance tests](../tests/acceptance/acceptance_test.go) require an explicit existing binary path and use a local Unix-socket HTTP fixture and go-gh v2.16.2's `http_unix_socket` configuration in a temporary `GH_CONFIG_DIR`. Their dummy token never authenticates with GitHub. Checks cover YAML values, empty strings and false, GET null normalization, current-repository selection, declared-field planning, export → edit → validate → plan → apply, exit codes, stderr, and failure paths. Plan cases verify GET-only access and unchanged configuration; apply cases verify exact PATCH payloads, omission preservation, and no GET. Invalid input and apply with no managed fields make no API request. Temporary repositories/configuration are isolated and cleaned up. Product code needs no testing hook or test-only modification; Unix sockets are required.
+The [acceptance tests](../tests/acceptance/acceptance_test.go) require an explicit existing binary path and use a local Unix-socket HTTP fixture and go-gh v2.16.2's `http_unix_socket` configuration in a temporary `GH_CONFIG_DIR`. Their dummy token never authenticates with GitHub. Checks cover YAML values, empty strings and false, GET null normalization, current-repository selection, declared-field planning, export → edit → validate → plan → apply, exit codes, stderr, and failure paths. Plan cases verify GET-only access and unchanged configuration; apply cases verify exact PATCH payloads, omission preservation, and no GET. Invalid input and plan/apply with no managed fields make no API request. Temporary repositories/configuration are isolated and cleaned up. Product code needs no testing hook or test-only modification; Unix sockets are required.
 
 ## CI validation
 

@@ -43,6 +43,6 @@ Application tests use real temporary checkouts/files and a writer spy; GitHub ad
 | Typed target/declaration, false/empty/omitted values, one write and unchanged file | [`TestApplyDeclaredSettings`](../../internal/app/apply_test.go) |
 | Validation before target/writer and local no-op | [TestApplyValidatesBeforeWrite and TestApplyNoManagedSettings](../../internal/app/apply_test.go) |
 | Target failure before write and write failure without applied status | [TestApplyTargetFailureBeforeWrite and TestApplyWriteFailure](../../internal/app/apply_test.go) |
-| Command dispatch, arguments, output failures | `TestRunSelectsOperation`, `TestUnsupportedCommand`, `TestApplyOutputFailure` |
+| Command dispatch, arguments, typed no-op message and output failures | [TestRunSelectsOperation, TestUnsupportedCommand, TestApplyNoManagedResult and TestApplyOutputFailure](../../internal/cli/run_test.go) |
 | Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, failure status/stderr/empty stdout, unchanged file | [`TestApplyAcceptance`](../../tests/acceptance/apply_test.go) |
 | Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |

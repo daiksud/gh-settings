@@ -1,19 +1,22 @@
-package main
+package cli
 
 import (
 	"bytes"
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/daiksud/gh-settings/internal/app"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func TestVersion(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"--version"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
+	code := Run([]string{"--version"}, &stdout, &stderr, "fixture-version", Operations{Export: func() error {
 		t.Fatal("version command must not call GitHub")
-		return nil, nil
+		return nil
 	}})
-	if code != 0 || stdout.String() != "gh-settings "+version+"\n" || stderr.Len() != 0 {
+	if code != 0 || stdout.String() != "gh-settings fixture-version\n" || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }
@@ -30,14 +33,14 @@ func TestHelpAndVersionOutputFailure(t *testing.T) {
 	} {
 		t.Run(test.arg, func(t *testing.T) {
 			var stderr bytes.Buffer
-			status := run([]string{test.arg}, brokenWriter{}, &stderr, commandOperations{
-				export: func() ([]byte, error) {
+			status := Run([]string{test.arg}, brokenWriter{}, &stderr, "fixture-version", Operations{
+				Export: func() error {
 					t.Fatal("help/version output failure invoked export")
-					return nil, nil
-				},
-				validate: func() error {
-					t.Fatal("help/version output failure invoked validate")
 					return nil
+				},
+				Validate: func() (settings.RepositoryDeclaration, error) {
+					t.Fatal("help/version output failure invoked validate")
+					return settings.RepositoryDeclaration{}, nil
 				},
 			})
 			if status != 1 || stderr.String() != test.wantStderr {
@@ -80,22 +83,22 @@ func TestRunSelectsOperation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			exportCalls, validateCalls, planCalls, applyCalls := 0, 0, 0, 0
-			status := run(test.args, &stdout, &stderr, commandOperations{
-				export: func() ([]byte, error) {
+			status := Run(test.args, &stdout, &stderr, "fixture-version", Operations{
+				Export: func() error {
 					exportCalls++
-					return nil, test.operationError
-				},
-				plan: func() ([]byte, error) {
-					planCalls++
-					return []byte("plan\n"), test.operationError
-				},
-				apply: func() ([]byte, error) {
-					applyCalls++
-					return []byte("apply\n"), test.operationError
-				},
-				validate: func() error {
-					validateCalls++
 					return test.operationError
+				},
+				Plan: func() (app.PlanResult, error) {
+					planCalls++
+					return app.PlanResult{Comparison: settings.RepositoryComparison{Managed: 1}}, test.operationError
+				},
+				Apply: func() (app.ApplyResult, error) {
+					applyCalls++
+					return app.ApplyResult{Applied: true}, test.operationError
+				},
+				Validate: func() (settings.RepositoryDeclaration, error) {
+					validateCalls++
+					return settings.RepositoryDeclaration{}, test.operationError
 				},
 			})
 			if exportCalls != test.wantExportCalls || validateCalls != test.wantValidateCalls || planCalls != test.wantPlanCalls || applyCalls != test.wantApplyCalls {
@@ -110,10 +113,10 @@ func TestRunSelectsOperation(t *testing.T) {
 			if test.name == "validate" && (stdout.Len() != 0 || stderr.Len() != 0) {
 				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
-			if test.name == "plan" && (stdout.String() != "plan\n" || stderr.Len() != 0) {
+			if test.name == "plan" && (stdout.String() != "No differences for managed repository settings.\n" || stderr.Len() != 0) {
 				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
-			if test.name == "apply" && (stdout.String() != "apply\n" || stderr.Len() != 0) {
+			if test.name == "apply" && (stdout.String() != "Applied repository settings.\n" || stderr.Len() != 0) {
 				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
 			}
 			if test.name == "export" && (stdout.Len() != 0 || stderr.Len() != 0) {
@@ -126,9 +129,9 @@ func TestRunSelectsOperation(t *testing.T) {
 func TestUnsupportedCommand(t *testing.T) {
 	for _, args := range [][]string{nil, {"unknown"}, {"apply", "extra"}, {"plan", "--json"}, {"export", "--repo", "owner/other"}, {"validate", "--repo", "owner/other"}} {
 		var stdout, stderr bytes.Buffer
-		code := run(args, &stdout, &stderr, commandOperations{export: func() ([]byte, error) {
+		code := Run(args, &stdout, &stderr, "fixture-version", Operations{Export: func() error {
 			t.Fatal("unsupported command invoked API operation")
-			return nil, errors.New("unexpected API call")
+			return errors.New("unexpected API call")
 		}})
 		if code != 1 || stdout.Len() != 0 || stderr.String() != "gh settings: unsupported command or arguments; usage: gh settings <export|validate|plan|apply>\n" {
 			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
@@ -138,7 +141,7 @@ func TestUnsupportedCommand(t *testing.T) {
 
 func TestExportDoesNotWriteStdout(t *testing.T) {
 	var stderr bytes.Buffer
-	code := run([]string{"export"}, brokenWriter{}, &stderr, commandOperations{export: func() ([]byte, error) { return nil, nil }})
+	code := Run([]string{"export"}, brokenWriter{}, &stderr, "fixture-version", Operations{Export: func() error { return nil }})
 	if code != 0 || stderr.Len() != 0 {
 		t.Fatalf("status=%d stderr=%q", code, stderr.String())
 	}
@@ -150,8 +153,48 @@ func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("output un
 
 func TestHelp(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	status := run([]string{"--help"}, &stdout, &stderr, commandOperations{export: func() ([]byte, error) { t.Fatal("help invoked API operation"); return nil, nil }})
+	status := Run([]string{"--help"}, &stdout, &stderr, "fixture-version", Operations{Export: func() error { t.Fatal("help invoked API operation"); return nil }})
 	if status != 0 || !strings.Contains(stdout.String(), "as YAML to .github/settings.yml at the checkout root") || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
+	}
+}
+
+func TestPlanOutputFailure(t *testing.T) {
+	var stderr bytes.Buffer
+	code := Run([]string{"plan"}, brokenWriter{}, &stderr, "fixture-version", Operations{
+		Plan: func() (app.PlanResult, error) { return app.PlanResult{}, nil },
+	})
+	if code != 1 || stderr.String() != "gh settings: write output: output unavailable\n" {
+		t.Fatalf("status=%d stderr=%q", code, stderr.String())
+	}
+}
+
+func TestApplyOutputFailure(t *testing.T) {
+	for _, applied := range []bool{true, false} {
+		var stderr bytes.Buffer
+		calls := 0
+		code := Run([]string{"apply"}, brokenWriter{}, &stderr, "fixture-version", Operations{
+			Apply: func() (app.ApplyResult, error) {
+				calls++
+				return app.ApplyResult{Applied: applied}, nil
+			},
+		})
+		if code != 1 || calls != 1 || stderr.String() != "gh settings: write output: output unavailable\n" {
+			t.Fatalf("status=%d calls=%d stderr=%q", code, calls, stderr.String())
+		}
+	}
+}
+
+func TestApplyNoManagedResult(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	calls := 0
+	status := Run([]string{"apply"}, &stdout, &stderr, "fixture-version", Operations{
+		Apply: func() (app.ApplyResult, error) {
+			calls++
+			return app.ApplyResult{}, nil
+		},
+	})
+	if status != 0 || calls != 1 || stdout.String() != "No managed repository settings.\n" || stderr.Len() != 0 {
+		t.Fatalf("status=%d calls=%d stdout=%q stderr=%q", status, calls, stdout.String(), stderr.String())
 	}
 }

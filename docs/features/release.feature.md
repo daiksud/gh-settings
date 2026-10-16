@@ -70,4 +70,4 @@ A maintainer can start a release from `main` with an explicit version. The workf
 
 ### Test mapping
 
-The [release mock tests](../../tests/release.sh) exercise first publication, complete and incomplete retries, version rejection, tag conflict, manifest conflict, and asset mismatch without contacting GitHub. The [Go test](../../cli_test.go) checks the version command. The native runner and job ordering contracts are declared in the [workflow](../../.github/workflows/release.yml) and require a real Actions run to confirm operationally. That run must only use a release version the maintainer authorizes.
+The [release mock tests](../../tests/release.sh) exercise first publication, complete and incomplete retries, version rejection, tag conflict, manifest conflict, and asset mismatch without contacting GitHub. The [CLI Go test](../../internal/cli/run_test.go) checks the explicit version command. The native runner and job ordering contracts are declared in the [workflow](../../.github/workflows/release.yml) and require a real Actions run to confirm operationally. That run must only use a release version the maintainer authorizes.
