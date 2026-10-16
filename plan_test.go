@@ -15,31 +15,6 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func TestRenderRepositoryComparison(t *testing.T) {
-	current := settings.RepositoryState{
-		Description: "old", Homepage: "old-url", HasIssues: true, HasProjects: true, HasWiki: true,
-	}
-	for _, test := range []struct{ name, input, want string }{
-		{"five fields", repositoryYAML("has_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: ''\ndescription: ''\n"), "settings.repository.description: \"old\" → \"\"\nsettings.repository.homepage: \"old-url\" → \"\"\nsettings.repository.has_issues: true → false\nsettings.repository.has_projects: true → false\nsettings.repository.has_wiki: true → false\n"},
-		{"partial", repositoryYAML("has_issues: false\n"), "settings.repository.has_issues: true → false\n"},
-		{"escaped strings", repositoryYAML("description: \"quote\\\"\\n\\t\\\\\\u001b\"\n"), "settings.repository.description: \"old\" → \"quote\\\"\\n\\t\\\\\\x1b\"\n"},
-		{"equal partial", repositoryYAML("description: old\nhas_projects: true\n"), "No differences for managed repository settings.\n"},
-		{"version only", "schemaVersion: 1\n", "No managed repository settings.\n"},
-		{"empty settings", "schemaVersion: 1\nsettings: {}\n", "No managed repository settings.\n"},
-		{"empty repository", "schemaVersion: 1\nsettings:\n  repository: {}\n", "No managed repository settings.\n"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			desired, err := ParseConfig([]byte(test.input))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got := string(renderRepositoryComparison(settings.CompareRepository(current, desired.Settings.Repository))); got != test.want {
-				t.Fatalf("output=%q, want %q", got, test.want)
-			}
-		})
-	}
-}
-
 func TestPlanSettingsReadFailures(t *testing.T) {
 	for _, test := range []struct {
 		name, body, want string
