@@ -1,12 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"time"
-
-	"github.com/cli/go-gh/v2/pkg/api"
-	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/cli"
+	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
@@ -20,15 +16,11 @@ func planCurrent() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := api.NewRESTClient(api.ClientOptions{Host: repo.Host, Timeout: 30 * time.Second})
+	client, err := github.NewReadClient(repo.Host)
 	if err != nil {
-		return nil, fmt.Errorf("configure GitHub API client: %w", err)
+		return nil, err
 	}
-	return planSettings(desired, repo, client)
-}
-
-func planSettings(desired settings.RepositoryDeclaration, repo repository.Repository, client *api.RESTClient) ([]byte, error) {
-	current, err := readRepositorySettings(repo, client)
+	current, err := client.ReadRepository(repo)
 	if err != nil {
 		return nil, err
 	}
