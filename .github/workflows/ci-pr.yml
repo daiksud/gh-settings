@@ -94,6 +94,13 @@ jobs:
           ref: ${{ needs.commit-stage.outputs.source-sha }}
           path: .action
           persist-credentials: false
+      - name: Install Go for the local API fixture only
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          working_directory: .action
+          install_args: go
+          cache: false
       - name: Retrieve this run's candidate binary
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -148,13 +155,6 @@ jobs:
             "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
             "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
           printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
-      - name: Install Go for the local API fixture only
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.10.8
-          working_directory: .action
-          install_args: go
-          cache: false
       - name: Build and start the required local plan API
         env:
           GOTOOLCHAIN: local
