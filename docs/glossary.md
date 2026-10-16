@@ -17,6 +17,8 @@ These terms describe the five managed repository fields in the [settings model](
 
 The [GitHub read adapter](../internal/github/repository.go) owns client construction and response normalization. `NewReadClient` retains gh authentication and the 30-second read timeout; `Client.ReadRepository` reads an explicitly resolved target, checks completeness and normalizes permitted null strings to empty strings in the observed state. Export declares every observed field; PATCH includes only declared fields. The [configuration codec](../internal/workspace/config.go) validates and encodes the [existing versioned/grouped YAML contract](settings.md#configuration-semantics), returning only a repository declaration to callers.
 
+The [GitHub write adapter](../internal/github/apply.go) owns declaration-to-JSON conversion and direct PATCH to an explicitly resolved target, without a preliminary GET. `NewWriteClient` retains the separate 30-second write timeout and rejects redirects; `Client.ApplyRepository` sends only declared values. A network error does not establish whether the remote update happened.
+
 The [workspace file boundary](../internal/workspace/config_file.go) owns the fixed checkout-root configuration path, reading and export writing. It delegates decoding to the pure codec and accepts already-encoded export bytes; GitHub access stays with its caller.
 
 The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-root and checkout-scoped GitHub target resolution through `GitRoot` and `CurrentRepository`. It ignores `GH_REPO` and unscoped origins, retaining the [existing origin and transport-rewrite contract](commands.md#export-behavior).

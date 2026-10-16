@@ -37,10 +37,10 @@ Unit tests use fake transports. Process acceptance uses the already-built execut
 
 | Behavior | Test |
 | --- | --- |
-| Exact PATCH payload, omission, five fields, false/empty strings, escaping | `TestApplySettings` |
-| HTTP/response/transport failures and CLI failure output | `TestApplySettingsFailures` |
+| Exact PATCH payload, omission, five fields, false/empty strings, escaping | [`TestApplyRepositorySettings`](../../internal/github/apply_test.go) |
+| HTTP/response/transport failures | [`TestApplyRepositoryFailures`](../../internal/github/apply_test.go) |
 | System/global/command origins ignored; local/includes/worktree/aliases preserved | `TestRepositoryIgnoresUnscopedOrigins` |
 | Validation before origin/authentication and local no-op | `TestApplyCurrentValidatesAndNoopsLocally` |
 | Command dispatch, arguments, output failures | `TestRunSelectsOperation`, `TestUnsupportedCommand`, `TestApplyOutputFailure` |
-| Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, unchanged file | `TestApplyAcceptance` |
+| Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, failure status/stderr/empty stdout, unchanged file | [`TestApplyAcceptance`](../../tests/acceptance/apply_test.go) |
 | Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |
