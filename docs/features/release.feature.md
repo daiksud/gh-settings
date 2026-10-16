@@ -19,6 +19,8 @@ A maintainer can start a release from `main` with an explicit version. The workf
 - Then both release binaries are built once from commit A with embedded version `v1.2.3`
 - And commit checks pass before native acceptance checks run
 - And each acceptance runner executes its own target binary after SHA-256 verification
+- And a read-only supported Ubuntu job validates a configuration-only consumer through commit A's actual root Action using the already-built Linux artifact
+- And its four outputs match the frozen Action source, consumer commit/target and accepted CLI version/digest before publication
 - And the release job verifies both accepted binary hashes before creating a tag
 - And tag `v1.2.3` points to commit A
 - And the GitHub Release contains exactly the two raw binaries and `SHA256SUMS`
@@ -38,6 +40,13 @@ A maintainer can start a release from `main` with an explicit version. The workf
 - Given a target binary fails commit checks, acceptance, or hash verification
 - When the workflow stops
 - Then no tag or release is created by that run
+
+#### Scenario: Candidate validation does not succeed
+
+- Given the mandatory pre-publication candidate job fails, is skipped or is cancelled
+- When the workflow evaluates the publication prerequisites
+- Then publish does not run and this run creates no tag or release
+- And no override treats the missing candidate validation as successful
 
 ### Rule: Preserve release identity across retries
 
@@ -70,4 +79,4 @@ A maintainer can start a release from `main` with an explicit version. The workf
 
 ### Test mapping
 
-The [release mock tests](../../tests/release.sh) exercise first publication, complete and incomplete retries, version rejection, tag conflict, manifest conflict, and asset mismatch without contacting GitHub. The [CLI Go test](../../internal/cli/run_test.go) checks the explicit version command. The native runner and job ordering contracts are declared in the [workflow](../../.github/workflows/release.yml) and require a real Actions run to confirm operationally. That run must only use a release version the maintainer authorizes.
+The [release mock tests](../../tests/release.sh) exercise first publication, complete and incomplete retries, version rejection, tag conflict, manifest conflict, and asset mismatch without contacting GitHub. The [CLI Go test](../../internal/cli/run_test.go) checks the explicit version command. The [candidate gate tests](../../tests/github-actions/release_test.go) inspect the actual workflow's frozen-source/artifact/version/output mappings and ordinary prerequisite-success dependency. They also execute the unchanged candidate helper with matching identities and separate source/version/checksum mismatches, checking exact local asset/manifest/version bytes and rejection before PATH publication without downloads. Regular PR/main CI executes the same-source candidate composite; these source/fixture checks do not dispatch the manual release or prove published downloads. The native runner and job ordering contracts are declared in the [workflow](../../.github/workflows/release.yml) and require a real Actions run to confirm operationally. That run must only use a release version the maintainer authorizes.
