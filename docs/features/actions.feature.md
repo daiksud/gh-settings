@@ -65,8 +65,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 ### Rule: A release selects the same Action and CLI version
 
 - Invoke the root Action as `uses: daiksud/gh-settings@<approved full commit SHA>`; use a reviewed revision containing the implemented package.
-- Published `v0.6.0` retains the earlier installer using CLI `v0.5.0`; changing main does not repair that immutable tag. Preserve it and its assets; a corrected release requires separate authorization.
-- The Action revision selects packaged support code. Published `v0.5.0` is a CLI release with no root `action.yml`; keep that immutable tag and its assets unchanged.
+- The Action revision selects packaged support code. Current source selects unreleased v0.7.0; published consumers retain the [v0.6.1 profile](../github-actions.md#published-package-and-consumer-pins). [Older release limitations](../releases.md#historical-release-limitations) remain historical; source changes never rewrite immutable tags or assets.
 - The committed `action/cli-version` selects an explicit CLI release. Download only its `gh-settings-linux-amd64` asset and `SHA256SUMS` through fixed upstream HTTPS paths; require one well-formed checksum for that asset, verify it before execution, and check the exact reported version. A SHA pin fixes the version; the checksum is trusted from that GitHub release. Never fall back to latest or accept an arbitrary URL.
 - A strict version-tag invocation must agree with the committed CLI version or fail before download. SHA-pinned and local invocations read the committed version. Future release publication requires that same version; it cannot silently retain an older CLI.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.

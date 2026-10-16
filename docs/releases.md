@@ -57,7 +57,11 @@ A versioned Action installs the CLI version committed in its package, and a stri
 
 Pre-release PR/main CI builds one current-source candidate with the committed CLI version. Acceptance and actual local composite validate, plan and direct apply use that same binary and the producer's exact source SHA through a bounded same-run download fixture, without a copied version override or old-release fallback. Plan uses a required Unix-socket API and dummy read token, including representative read/config failures and actual Summary-byte checks. Direct apply uses a separate dummy write token and exact received PATCH assertions, with representative write failure, invalid configuration and empty no-op cases; every apply case preserves the consumer and writes no new Settings review. This proves source integration and rendering before publication without requiring unpublished assets; it does not prove Summary publication or live API behavior. See the [CI validation boundary](development.md#ci-validation). Offline fixtures separately check committed-version selection, strict tag mismatch, checksum failures and the publication guard.
 
-Published v0.6.0 predates this synchronization and its immutable Action still installs CLI v0.5.0. Retain its tag and assets with accurate limitation guidance; changing main cannot repair that revision. A reviewed SHA containing the fix can use the already-published v0.6.0 CLI. Publishing a corrected version requires explicit owner authorization.
+## Historical release limitations
+
+The current published Action/CLI pair is [v0.6.1](https://github.com/daiksud/gh-settings/releases/tag/v0.6.1) at `9d01d3258d9f42239b2daeb1ac26bc532cd56105`; the [Actions guide](github-actions.md#published-package-and-consumer-pins) records its runtime and consumer profile. Current source selects unreleased v0.7.0. Source validation does not publish those assets or update consumers.
+
+Older releases remain immutable: v0.6.0's Action installs CLI v0.5.0, and v0.5.0 has no root Action. The CLI's earlier export formats also remain historical: v0.4.0 and earlier wrote stdout; releases before v0.2.0 used flat YAML. Current source saves the versioned/grouped checkout-root file. Preserve original tags/assets rather than repairing old releases in place; [ADR 0023](adr/0023-public-composite-action.md) retains the initial Action decision and its release-alignment correction.
 
 ## Retry and recovery
 

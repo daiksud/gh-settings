@@ -120,18 +120,4 @@ The scenarios map to ordinary Go tests and [process acceptance cases](../../test
 | A mapping or merge source has a contradictory YAML tag | `TestParseConfigValidation/tagged_settings_mapping_as_string`, `TestParseConfigValidation/mistagged_merge_mapping` | `validate-mistagged-mapping` |
 | The configuration file is missing | `TestValidateErrors/missing_file` | `validate-missing-file` |
 
-The following parser-only process cases were removed. Their exact YAML inputs and outcomes remain in the named parser subtests:
-
-| Removed process case | Retained parser subtest |
-| --- | --- |
-| `validate-quoted-null-string` | `TestParseConfigValidation/quoted_null_is_a_string` |
-| `validate-null-string` | `TestParseConfigValidation/null_instead_of_string` |
-| `validate-multiple-documents` | `TestParseConfigValidation/two_documents` |
-| `validate-old-flat-format` | `TestParseConfigValidation/old_flat_format` |
-| `validate-null-key` | `TestParseConfigValidation/null_key` |
-| `validate-alias-duplicate-key` | `TestParseConfigValidation/duplicate_alias_key` |
-| `validate-alias-merge-key` | `TestParseConfigValidation/alias_merge_key` |
-| `validate-binary-string` | `TestParseConfigValidation/binary_instead_of_string` |
-| `validate-mistagged-merge-source` | `TestParseConfigValidation/mistagged_merge_mapping` |
-
 The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for these five update-request fields. It does not establish how GitHub handles live null updates.
