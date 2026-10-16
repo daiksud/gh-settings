@@ -18,6 +18,8 @@ jobs:
       GOTOOLCHAIN: local
     outputs:
       binary-sha256: ${{ steps.validation.outputs.binary-sha256 }}
+      source-sha: ${{ steps.validation.outputs.source-sha }}
+      cli-version: ${{ steps.validation.outputs.cli-version }}
     steps:
       - name: Checkout validation source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,6 +47,7 @@ jobs:
       - name: Checkout validation source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.commit-stage.outputs.source-sha }}
           persist-credentials: false
       - name: Retrieve this run's product binary
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -57,6 +60,7 @@ jobs:
         with:
           binary-path: ${{ runner.temp }}/product/gh-settings
           binary-sha256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+          version: ${{ needs.commit-stage.outputs.cli-version }}
   composite-smoke:
     needs: commit-stage
     # Exercise the public Action's supported runner, independently of ubuntu-slim CI.
@@ -67,16 +71,25 @@ jobs:
       - name: Checkout the Action under test separately
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.commit-stage.outputs.source-sha }}
           path: .action
           persist-credentials: false
-      - name: Select a published CLI fixture for unreleased-source smoke
+      - name: Retrieve this run's candidate binary
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: gh-settings
+          path: ${{ runner.temp }}/product
+          digest-mismatch: error
+      - name: Prepare the bounded candidate download fixture
+        env:
+          BINARY_PATH: ${{ runner.temp }}/product/gh-settings
+          EXPECTED_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+          SOURCE_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
         run: |
-          source_version="$(cat .action/action/cli-version)"
-          [[ "$source_version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-          printf 'Source CLI version: %s\n' "$source_version"
-          printf 'v0.6.0\n' > .action/action/cli-version
-          echo 'Smoke CLI fixture: v0.6.0 (version file overridden only in this CI checkout)'
+          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+          bash .action/tests/github-actions/prepare-candidate-download.sh \
+            "$BINARY_PATH" "$EXPECTED_SHA256" "$SOURCE_SHA" "$CLI_VERSION"
       - name: Create a configuration-only consumer checkout
         run: |
           [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
@@ -95,11 +108,13 @@ jobs:
           command: validate
       - name: Assert consumer identity and all public outputs
         env:
-          ACTION_SHA: ${{ github.sha }}
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
           CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
           TARGET: ${{ steps.validate.outputs.target }}
           CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
           CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
         run: |
           [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
           [[ ! -e action.yml && ! -e action ]]
@@ -107,8 +122,8 @@ jobs:
           [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
           [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
           [[ "$TARGET" == example-owner/settings-fixture ]]
-          [[ "$CLI_VERSION" == v0.6.0 ]]
-          [[ "$CLI_SHA256" == b56e85b0172f214c835c19968c3d859a89d9ea3c98e8f29faab171ad9bb57f4f ]]
+          [[ "$CLI_VERSION" == "$EXPECTED_CLI_VERSION" ]]
+          [[ "$CLI_SHA256" == "$EXPECTED_CLI_SHA256" ]]
           printf 'Action checkout: %s at %s\nConsumer checkout: %s at %s\n' \
             "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
             "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
