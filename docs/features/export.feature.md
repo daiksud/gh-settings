@@ -83,12 +83,18 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - Then the settings are read from "owner/current"
 - And the override does not select another repository
 
-#### Scenario: Resolve an SCP origin without a username
+#### Scenario: Require a directly configured GitHub origin in current source
+
+- Given the current checkout's origin directly identifies "owner/current" through HTTPS, `git@github.com:owner/current.git` or a full SSH URL
+- When the maintainer runs the current unreleased CLI's `gh settings export`
+- Then the settings are read from "owner/current" on GitHub
+
+#### Scenario: Reject an SCP origin without a username in current source
 
 - Given the current checkout's origin is "github.com:owner/current.git"
-- When the maintainer runs `gh settings export`
-- Then the command succeeds
-- And the settings are read from "owner/current" on GitHub
+- When the maintainer runs the current unreleased CLI's `gh settings export`
+- Then the command fails with a repository-resolution diagnostic
+- And no GitHub API request is made
 
 #### Scenario: Keep repository identity when Git rewrites its transport URL
 
@@ -98,12 +104,15 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - Then the settings are read from "owner/current" on GitHub
 - And the rewritten transport URL does not change the selected repository
 
-#### Scenario: Resolve a transport alias to GitHub
+#### Scenario: Reject a rewrite-only transport alias in current source
 
 - Given the current checkout's origin is a Git alias for "owner/current"
 - And Git `insteadOf` rewrites the alias to a GitHub URL
-- When the maintainer runs `gh settings export`
-- Then the settings are read from "owner/current" on GitHub
+- When the maintainer runs the current unreleased CLI's `gh settings export`
+- Then the command fails with a repository-resolution diagnostic
+- And no GitHub API request is made
+
+Published v0.6.1 retains its original username-less SCP and rewrite-alias compatibility. The current source support reduction does not change settings YAML syntax or publish a release.
 
 #### Scenario: Read an origin from repository-specific Git configuration
 
@@ -186,9 +195,9 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | Preserve false and empty string values | `TestExportStoredSettings/zero_values` | `zero-values` |
 | Export unset strings as empty strings | `TestReadRepositorySettings` | `unset-strings` |
 | Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
-| Resolve an SCP origin without a username | `TestRepositoryRemotes` | `origin-scp-without-user` |
+| Require direct origins and reject username-less SCP | `TestRepositoryRemotes` | `origin-scp-without-user` |
 | Keep repository identity when Git rewrites its transport URL | `TestExportUsesConfiguredOriginBeforeInsteadOf` | `origin-insteadof` |
-| Resolve a transport alias to GitHub | `TestExportUsesAliasRewrittenToGitHub` | `origin-alias` |
+| Reject a rewrite-only transport alias | `TestExportRejectsAliasRewrittenToGitHub` | `origin-alias` |
 | Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |
 | Save export output and validate it locally | — | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
 | Settings cannot be retrieved | `TestReadRepositoryFailures`, `TestExportReadFailure` | `read-failure`, `TestExportExistingFile/api-failure` |
