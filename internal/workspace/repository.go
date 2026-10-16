@@ -17,6 +17,15 @@ func GitRoot() (string, error) {
 	return strings.TrimSuffix(string(root), "\n"), nil
 }
 
+// CurrentCommit returns the consumer checkout's resolved commit identity.
+func CurrentCommit() (string, error) {
+	commit, err := exec.Command("git", "rev-parse", "--verify", "HEAD^{commit}").Output()
+	if err != nil {
+		return "", fmt.Errorf("resolve checkout commit: %w", err)
+	}
+	return strings.TrimSuffix(string(commit), "\n"), nil
+}
+
 // CurrentRepository resolves the GitHub target from a checkout-scoped origin.
 func CurrentRepository() (repository.Repository, error) {
 	if _, err := GitRoot(); err != nil {
