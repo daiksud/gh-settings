@@ -45,7 +45,7 @@ func TestMetadataUsesRunningImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	status := actions.Run([]string{"metadata"}, &stdout, &stderr, "fixture-version")
+	status := actions.Run([]string{"metadata"}, &stdout, &stderr, "fixture-version", nil)
 	if status != 0 || stderr.Len() != 0 || !strings.Contains(stdout.String(), "cli-sha256="+digest+"\n") {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 	}

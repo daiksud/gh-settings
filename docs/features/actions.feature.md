@@ -149,6 +149,20 @@ On the supported Linux runner, the digest remains bound to the running image aft
 - Then the four records identify the consumer commit and origin, injected version and actual candidate digest
 - And no API request occurs
 
+### Rule: Source planning writes ephemeral typed presentation data
+
+The source-only `gh settings action plan REPORT_PATH` entry invokes shared application planning and writes one JSON report to a caller-owned runner-temporary file whose parent already exists. New report files use mode 0600. The same CLI/Action version owns the format: explicit outcome, available target, managed count and ordered changes with native string/bool before/after values. Changed, no-difference and unmanaged results are distinct without parsing terminal sentences. Invalid configuration and repository-read failure remain distinguishable failures with minimum safe categorical diagnostics; raw authentication errors, tokens, environment dumps and request headers are not serialized.
+
+Success is silent on stdout and exits zero. Planning or report-storage failure exits nonzero, including when a failure report was written; writing a report never turns a failed plan into success. Validation precedes API access, and unmanaged planning retains its local no-op. Target resolution has an explicit `target-failure` outcome without an unresolved target; read failures retain the available target. Failure reports have no comparison, so their zero managed count does not mean unmanaged. Apply never reads this report: it is ephemeral presentation data, not saved-plan execution. Composite adoption is separate; no multi-version protocol is defined.
+
+#### Scenario: A changed report retains native values
+
+- Given declared repository description and issues settings differ from the observed values
+- When the source plan entry writes its report
+- Then the outcome is `changed` with the target, two managed fields and their ordered changes
+- And descriptions remain JSON strings and issues values remain JSON booleans, including false
+- And planning reads once, changes no configuration and returns success without terminal plan text
+
 ### Public contract verification boundary
 
 Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, same-run candidate composite validate, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked v0.6.1 CLI and published Action identity, replacing only the copied verifier checksum. They do not load the pinned tag bytes.

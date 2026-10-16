@@ -16,7 +16,9 @@ var version = "dev"
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "action" {
-		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version))
+		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
+			return app.Plan(readRepository)
+		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export:   func() error { return app.Export(readRepository) },

@@ -84,6 +84,10 @@ func TestPlanValidatesBeforeRead(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "validate "+workspace.SettingsPath) || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, PlanResult{}) || calls != 0 {
 			t.Fatalf("result=%+v error=%v reads=%d, want validation %q before target/read", got, err, calls, test.want)
 		}
+		var failure *PlanError
+		if !errors.As(err, &failure) || failure.Stage != "invalid-config" || errors.Unwrap(err) == nil || err.Error() != errors.Unwrap(err).Error() {
+			t.Fatalf("validation failure lost stage, original text or cause: %v", err)
+		}
 	}
 }
 
@@ -97,6 +101,10 @@ func TestPlanTargetFailureBeforeRead(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "a GitHub origin remote is required") || !reflect.DeepEqual(got, PlanResult{}) || calls != 0 {
 		t.Fatalf("result=%+v error=%v reads=%d, want target failure before read", got, err, calls)
 	}
+	var failure *PlanError
+	if !errors.As(err, &failure) || failure.Stage != "target-failure" || errors.Unwrap(err) == nil || err.Error() != errors.Unwrap(err).Error() {
+		t.Fatalf("target failure lost stage, original text or cause: %v", err)
+	}
 }
 
 func TestPlanReadFailure(t *testing.T) {
@@ -109,5 +117,9 @@ func TestPlanReadFailure(t *testing.T) {
 	})
 	if !errors.Is(err, readError) || !reflect.DeepEqual(got, PlanResult{}) || calls != 1 {
 		t.Fatalf("result=%+v error=%v reads=%d, want read error and zero result", got, err, calls)
+	}
+	var failure *PlanError
+	if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target != (repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}) || err.Error() != readError.Error() {
+		t.Fatalf("read failure lost stage, target or original diagnostic: %v", err)
 	}
 }

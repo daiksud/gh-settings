@@ -9,21 +9,25 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 // Run writes nonsecret machine output and maps failures to diagnostics and status.
-func Run(args []string, stdout, stderr io.Writer, version string) int {
-	if err := execute(args, stdout, version); err != nil {
+func Run(args []string, stdout, stderr io.Writer, version string, plan func() (app.PlanResult, error)) int {
+	if err := execute(args, stdout, version, plan); err != nil {
 		fmt.Fprintf(stderr, "gh settings action: %v\n", err)
 		return 1
 	}
 	return 0
 }
 
-func execute(args []string, stdout io.Writer, version string) error {
+func execute(args []string, stdout io.Writer, version string, plan func() (app.PlanResult, error)) error {
+	if len(args) == 2 && args[0] == "plan" {
+		return writePlanReport(args[1], plan)
+	}
 	if len(args) != 1 || args[0] != "metadata" {
-		return fmt.Errorf("usage: gh settings action metadata")
+		return fmt.Errorf("usage: gh settings action <metadata|plan REPORT_PATH>")
 	}
 	repo, err := workspace.CurrentRepository()
 	if err != nil {
