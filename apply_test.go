@@ -14,6 +14,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func TestApplySettings(t *testing.T) {
@@ -23,7 +24,7 @@ func TestApplySettings(t *testing.T) {
 		{"strings and true", repositoryYAML("description: \"quote\\\"\\n\\\\\"\nhomepage: https://example.com\nhas_wiki: true\n"), `{"description":"quote\"\n\\","homepage":"https://example.com","has_wiki":true}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			config, err := ParseConfig([]byte(test.input))
+			desired, err := workspace.DecodeConfig([]byte(test.input))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -39,7 +40,7 @@ func TestApplySettings(t *testing.T) {
 				}
 				return &http.Response{Request: req, StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{}`))}, nil
 			})
-			got, err := applySettings(config.Settings.Repository, repository.Repository{Owner: "owner", Name: "current"}, client)
+			got, err := applySettings(desired, repository.Repository{Owner: "owner", Name: "current"}, client)
 			if err != nil || string(got) != "Applied repository settings.\n" || calls != 1 {
 				t.Fatalf("output=%q error=%v calls=%d", got, err, calls)
 			}

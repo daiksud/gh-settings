@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 const settingsPath = ".github/settings.yml"
@@ -13,18 +16,18 @@ func validateCurrent() error {
 	return err
 }
 
-func loadCurrentConfig() (Config, error) {
+func loadCurrentConfig() (settings.RepositoryDeclaration, error) {
 	root, err := gitRoot()
 	if err != nil {
-		return Config{}, fmt.Errorf("locate %s: current directory is not in a Git repository: %w", settingsPath, err)
+		return settings.RepositoryDeclaration{}, fmt.Errorf("locate %s: current directory is not in a Git repository: %w", settingsPath, err)
 	}
 	data, err := os.ReadFile(filepath.Join(root, settingsPath))
 	if err != nil {
-		return Config{}, fmt.Errorf("read %s: %w", settingsPath, err)
+		return settings.RepositoryDeclaration{}, fmt.Errorf("read %s: %w", settingsPath, err)
 	}
-	config, err := ParseConfig(data)
+	declaration, err := workspace.DecodeConfig(data)
 	if err != nil {
-		return Config{}, fmt.Errorf("validate %s: %w", settingsPath, err)
+		return settings.RepositoryDeclaration{}, fmt.Errorf("validate %s: %w", settingsPath, err)
 	}
-	return config, nil
+	return declaration, nil
 }

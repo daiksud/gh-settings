@@ -11,7 +11,7 @@ import (
 )
 
 func planCurrent() ([]byte, error) {
-	config, err := loadCurrentConfig()
+	desired, err := loadCurrentConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func planCurrent() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("configure GitHub API client: %w", err)
 	}
-	return planSettings(config.Settings.Repository, repo, client)
+	return planSettings(desired, repo, client)
 }
 
 func planSettings(desired settings.RepositoryDeclaration, repo repository.Repository, client *api.RESTClient) ([]byte, error) {

@@ -9,6 +9,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func exportCurrent() ([]byte, error) {
@@ -62,5 +63,5 @@ func exportSettings(repo repository.Repository, client *api.RESTClient) ([]byte,
 		Description: &result.Description, Homepage: &result.Homepage,
 		HasIssues: &result.HasIssues, HasProjects: &result.HasProjects, HasWiki: &result.HasWiki,
 	}
-	return marshalConfig(Config{SchemaVersion: 1, Settings: configSettings{Repository: declaration}})
+	return workspace.EncodeConfig(declaration)
 }

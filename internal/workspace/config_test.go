@@ -1,8 +1,7 @@
-package main
+package workspace
 
 import (
 	"github.com/daiksud/gh-settings/internal/settings"
-	"go.yaml.in/yaml/v4"
 	"reflect"
 	"strings"
 	"testing"
@@ -32,7 +31,7 @@ func TestConfigLeafPresence(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := marshalConfig(Config{SchemaVersion: 1, Settings: configSettings{Repository: test.repository}})
+			got, err := EncodeConfig(test.repository)
 			if err != nil || string(got) != test.want {
 				t.Fatalf("output=%q err=%v, want %q", got, err, test.want)
 			}
@@ -40,67 +39,29 @@ func TestConfigLeafPresence(t *testing.T) {
 	}
 }
 
-func TestLoadYAMLRootPreservesSource(t *testing.T) {
-	root, err := loadYAMLRoot([]byte(repositoryYAML("description: &text Example\nhomepage: *text\n")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if root.Kind != yaml.MappingNode || root.Tag != "!!map" || root.Line != 1 {
-		t.Fatalf("root kind=%d tag=%q line=%d", root.Kind, root.Tag, root.Line)
-	}
-	repository := root.Content[3].Content[1]
-	description, homepage := repository.Content[1], repository.Content[3]
-	if description.Line != 4 || homepage.Line != 5 || homepage.Kind != yaml.AliasNode || homepage.Alias != description {
-		t.Fatalf("description=%+v homepage=%+v; source lines and alias must be preserved", description, homepage)
-	}
-}
-
-func TestLoadYAMLRootErrors(t *testing.T) {
-	for _, test := range []struct {
-		name, input, want string
+func TestConfigRoundTrip(t *testing.T) {
+	description, homepage, empty := "Example", "https://example.com", ""
+	enabled, disabled := true, false
+	tests := []struct {
+		name        string
+		declaration settings.RepositoryDeclaration
 	}{
-		{"empty", "", "decode YAML:"},
-		{"malformed", "schemaVersion: [\n", "decode YAML:"},
-		{"multiple documents", "schemaVersion: 1\n---\nschemaVersion: 1\n", "expected one YAML document"},
-		{"scalar root", "true\n", "expected a root mapping"},
-		{"sequence root", "- true\n", "expected a root mapping"},
-		{"contradictory root tag", "!!str {schemaVersion: 1}\n", "expected a root mapping"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			root, err := loadYAMLRoot([]byte(test.input))
-			if root != nil || err == nil || !strings.HasPrefix(err.Error(), test.want) {
-				t.Fatalf("root=%+v error=%v, want prefix %q", root, err, test.want)
-			}
-		})
+		{name: "all omitted"},
+		{name: "partial zero values", declaration: settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}},
+		{name: "all fields", declaration: settings.RepositoryDeclaration{
+			Description: &description, Homepage: &homepage,
+			HasIssues: &enabled, HasProjects: &disabled, HasWiki: &enabled,
+		}},
 	}
-}
-
-func TestParseRepositoryFields(t *testing.T) {
-	for _, test := range []struct {
-		name, input, wantError string
-	}{
-		{"partial zero values", "description: ''\nhas_issues: false\n", ""},
-		{"alias and uppercase boolean", "description: &text Example\nhomepage: *text\nhas_issues: !!bool TRUE\n", ""},
-		{"merge", "<<: {has_issues: false}\n", ""},
-		{"null string", "description: null\n", "description must be a string"},
-		{"null boolean", "has_wiki: null\n", "has_wiki must be a boolean"},
-		{"unknown field", "visibility: private\n", "unknown setting \"visibility\""},
-		{"legacy boolean", "has_issues: !!bool yes\n", "has_issues must be a boolean spelled true or false"},
-		{"duplicate field", "has_issues: true\nhas_issues: false\n", "already defined"},
-		{"contradictory mapping tag", "!!str {has_issues: true}\n", "settings.repository must be a mapping"},
-	} {
+	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var document yaml.Node
-			if err := yaml.Unmarshal([]byte(test.input), &document); err != nil {
+			encoded, err := EncodeConfig(test.declaration)
+			if err != nil {
 				t.Fatal(err)
 			}
-			_, err := parseRepositoryFields(document.Content[0])
-			if test.wantError == "" {
-				if err != nil {
-					t.Fatal(err)
-				}
-			} else if err == nil || !strings.Contains(err.Error(), test.wantError) {
-				t.Fatalf("error=%v, want %q", err, test.wantError)
+			got, err := DecodeConfig(encoded)
+			if err != nil || !reflect.DeepEqual(got, test.declaration) {
+				t.Fatalf("declaration=%+v error=%v, want %+v", got, err, test.declaration)
 			}
 		})
 	}
@@ -138,12 +99,12 @@ func TestParseConfigValues(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			config, err := ParseConfig([]byte(test.input))
+			declaration, err := DecodeConfig([]byte(test.input))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if config.SchemaVersion != 1 || !reflect.DeepEqual(config.Settings.Repository, test.want) {
-				t.Fatalf("config=%+v, want schemaVersion=1 repository=%+v", config, test.want)
+			if !reflect.DeepEqual(declaration, test.want) {
+				t.Fatalf("declaration=%+v, want %+v", declaration, test.want)
 			}
 		})
 	}
@@ -156,9 +117,9 @@ func TestParseConfigErrorsReturnNoValues(t *testing.T) {
 		repositoryYAML("description: Example\nvisibility: private\n"),
 		repositoryYAML("has_issues: &value false\nhomepage: *value\n"),
 	} {
-		config, err := ParseConfig([]byte(input))
-		if err == nil || !reflect.DeepEqual(config, Config{}) {
-			t.Fatalf("config=%+v error=%v, want zero config and error", config, err)
+		declaration, err := DecodeConfig([]byte(input))
+		if err == nil || !reflect.DeepEqual(declaration, settings.RepositoryDeclaration{}) {
+			t.Fatalf("declaration=%+v error=%v, want zero declaration and error", declaration, err)
 		}
 	}
 }
@@ -225,7 +186,7 @@ func TestParseConfigValidation(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseConfig([]byte(tt.input))
+			_, err := DecodeConfig([]byte(tt.input))
 			if tt.errorText == "" {
 				if err != nil {
 					t.Fatal(err)

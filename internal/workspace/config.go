@@ -1,4 +1,4 @@
-package main
+package workspace
 
 import (
 	"bytes"
@@ -10,15 +10,6 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-type Config struct {
-	SchemaVersion int
-	Settings      configSettings
-}
-
-type configSettings struct {
-	Repository settings.RepositoryDeclaration
-}
-
 type repositoryDocument struct {
 	Description *string `yaml:"description,omitempty"`
 	Homepage    *string `yaml:"homepage,omitempty"`
@@ -27,15 +18,15 @@ type repositoryDocument struct {
 	HasWiki     *bool   `yaml:"has_wiki,omitempty"`
 }
 
-func marshalConfig(config Config) ([]byte, error) {
+// EncodeConfig writes the supported schemaVersion: 1 settings.repository envelope.
+func EncodeConfig(declaration settings.RepositoryDeclaration) ([]byte, error) {
 	var document struct {
 		SchemaVersion int `yaml:"schemaVersion"`
 		Settings      struct {
 			Repository repositoryDocument `yaml:"repository"`
 		} `yaml:"settings"`
 	}
-	document.SchemaVersion = config.SchemaVersion
-	declaration := config.Settings.Repository
+	document.SchemaVersion = 1
 	document.Settings.Repository = repositoryDocument{
 		Description: declaration.Description, Homepage: declaration.Homepage,
 		HasIssues: declaration.HasIssues, HasProjects: declaration.HasProjects, HasWiki: declaration.HasWiki,
@@ -43,58 +34,58 @@ func marshalConfig(config Config) ([]byte, error) {
 	return yaml.Marshal(document)
 }
 
-func ParseConfig(data []byte) (Config, error) {
+// DecodeConfig validates the YAML envelope and returns only its repository declaration.
+func DecodeConfig(data []byte) (settings.RepositoryDeclaration, error) {
 	rootNode, err := loadYAMLRoot(data)
 	if err != nil {
-		return Config{}, err
+		return settings.RepositoryDeclaration{}, err
 	}
 	if err := checkMappingKeys(rootNode, make(map[*yaml.Node]bool)); err != nil {
-		return Config{}, err
+		return settings.RepositoryDeclaration{}, err
 	}
 	root, err := loadMapping(rootNode, "root")
 	if err != nil {
-		return Config{}, err
+		return settings.RepositoryDeclaration{}, err
 	}
-	var config Config
+	var declaration settings.RepositoryDeclaration
 	for key, value := range root {
 		if key == "schemaVersion" {
 			resolved, err := resolveAlias(&value)
 			if err != nil {
-				return Config{}, err
+				return settings.RepositoryDeclaration{}, err
 			}
 			value = *resolved
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!int" {
-				return Config{}, fmt.Errorf("schemaVersion must be integer 1")
+				return settings.RepositoryDeclaration{}, fmt.Errorf("schemaVersion must be integer 1")
 			}
 			var version int
 			if err := value.Decode(&version); err != nil || version != 1 {
-				return Config{}, fmt.Errorf("unsupported schemaVersion %q: expected 1", value.Value)
+				return settings.RepositoryDeclaration{}, fmt.Errorf("unsupported schemaVersion %q: expected 1", value.Value)
 			}
-			config.SchemaVersion = version
 			continue
 		}
 		if key != "settings" {
-			return Config{}, fmt.Errorf("unknown root key %q", key)
+			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown root key %q", key)
 		}
 		groups, err := loadMapping(&value, "settings")
 		if err != nil {
-			return Config{}, err
+			return settings.RepositoryDeclaration{}, err
 		}
 		for group, value := range groups {
 			if group != "repository" {
-				return Config{}, fmt.Errorf("unknown settings group %q", group)
+				return settings.RepositoryDeclaration{}, fmt.Errorf("unknown settings group %q", group)
 			}
 			repository, err := parseRepositoryFields(&value)
 			if err != nil {
-				return Config{}, err
+				return settings.RepositoryDeclaration{}, err
 			}
-			config.Settings.Repository = repository
+			declaration = repository
 		}
 	}
 	if _, ok := root["schemaVersion"]; !ok {
-		return Config{}, fmt.Errorf("missing schemaVersion: expected 1")
+		return settings.RepositoryDeclaration{}, fmt.Errorf("missing schemaVersion: expected 1")
 	}
-	return config, nil
+	return declaration, nil
 }
 
 func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, error) {
