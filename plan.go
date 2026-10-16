@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/cli"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -31,19 +31,5 @@ func planSettings(desired settings.RepositoryDeclaration, repo repository.Reposi
 	if err != nil {
 		return nil, err
 	}
-	return renderRepositoryComparison(settings.CompareRepository(current, desired)), nil
-}
-
-func renderRepositoryComparison(comparison settings.RepositoryComparison) []byte {
-	var output strings.Builder
-	if comparison.Managed == 0 {
-		output.WriteString("No managed repository settings.\n")
-	} else if len(comparison.Changes) == 0 {
-		output.WriteString("No differences for managed repository settings.\n")
-	} else {
-		for _, change := range comparison.Changes {
-			fmt.Fprintf(&output, "settings.repository.%s: %#v → %#v\n", change.Field, change.Before, change.After)
-		}
-	}
-	return []byte(output.String())
+	return cli.RenderRepositoryComparison(settings.CompareRepository(current, desired)), nil
 }
