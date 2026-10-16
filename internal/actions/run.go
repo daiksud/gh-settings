@@ -23,11 +23,14 @@ func Run(args []string, stdout, stderr io.Writer, version string, plan func() (a
 }
 
 func execute(args []string, stdout io.Writer, version string, plan func() (app.PlanResult, error)) error {
+	if len(args) == 3 && args[0] == "summary" {
+		return writeSummary(args[1], args[2])
+	}
 	if len(args) == 2 && args[0] == "plan" {
 		return writePlanReport(args[1], plan)
 	}
 	if len(args) != 1 || args[0] != "metadata" {
-		return fmt.Errorf("usage: gh settings action <metadata|plan REPORT_PATH>")
+		return fmt.Errorf("usage: gh settings action <metadata|plan REPORT_PATH|summary REPORT_PATH SUMMARY_PATH>")
 	}
 	repo, err := workspace.CurrentRepository()
 	if err != nil {

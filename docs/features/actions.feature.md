@@ -163,6 +163,21 @@ Success is silent on stdout and exits zero. Planning or report-storage failure e
 - And descriptions remain JSON strings and issues values remain JSON booleans, including false
 - And planning reads once, changes no configuration and returns success without terminal plan text
 
+### Rule: Source Summary renders typed review data without credentials
+
+The source-only `gh settings action summary REPORT_PATH SUMMARY_PATH` entry reads the same-version typed plan report and explicit nonsecret `SETTINGS_*` run metadata, then appends review content to the supplied Summary path. It does not read terminal plan sentences, configure authentication, call an API or dump the environment. Required context includes original and initiating/rerun actors, event, run/attempt, workflow path/ref and exact revision, configuration revision, target, distinct Action identity/ref and CLI version/checksum. Workflow and configuration links use their own repository and revision; local Action use has no invented remote pin.
+
+Changed values retain native string/bool meaning. No-difference, unmanaged and planning failures are distinct from the typed outcome, and a failed plan remains nonzero after successful Summary writing. Missing/malformed report or required metadata and detectable writing failures return nonzero. Input loading, validation and rendering precede opening the append destination. Untrusted multiline metadata and values remain quoted data, including blank lines, Markdown, HTML and workflow-command-like text. The Summary states that direct apply may overwrite intervening changes and that rendering/writing does not prove GitHub publication. No publication polling or saved-plan apply is added; composite adoption and Python deletion remain separate.
+
+#### Scenario: A changed Summary preserves review identities
+
+- Given a changed typed report with native description and issues values
+- And explicit workflow, configuration, Action and CLI identities with distinct workflow and target repositories
+- And an existing caller-owned Summary
+- When the source Summary entry runs without credentials
+- Then it appends all required review context and observed/desired values without replacing prior content
+- And links use the displayed identities, success is silent, no API request occurs and unrelated environment data is absent
+
 ### Public contract verification boundary
 
 Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, same-run candidate composite validate, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked v0.6.1 CLI and published Action identity, replacing only the copied verifier checksum. They do not load the pinned tag bytes.
