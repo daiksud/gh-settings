@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/daiksud/gh-settings/internal/workspace"
@@ -37,9 +38,13 @@ func execute(args []string, stdout io.Writer, version string) error {
 			return fmt.Errorf("metadata values must be nonempty single-line values")
 		}
 	}
-	executable, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("locate executing binary: %w", err)
+	// Keep Linux image identity even when the launch pathname is replaced.
+	executable := "/proc/self/exe"
+	if runtime.GOOS != "linux" {
+		executable, err = os.Executable()
+		if err != nil {
+			return fmt.Errorf("locate executing binary: %w", err)
+		}
 	}
 	data, err := os.ReadFile(executable)
 	if err != nil {

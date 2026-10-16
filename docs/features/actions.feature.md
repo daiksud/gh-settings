@@ -139,6 +139,8 @@ The source-only `gh settings action metadata` interface emits the existing `conf
 
 The [public adapter tests](../../internal/actions/run_test.go) cover identity/output failures; `TestActionMetadata` in the [actual candidate acceptance suite](../../tests/acceptance/metadata_test.go) covers the normal consumer and executing-binary identities without API access. The [source interface](../commands.md#source-actions-metadata) describes output and failure semantics.
 
+On the supported Linux runner, the digest remains bound to the running image after its launch pathname is replaced or deleted. `TestMetadataUsesRunningImage` in the [Linux regression](../../internal/actions/metadata_linux_test.go) verifies replacement of an owned child copy. Native development checks on other platforms assume an unchanged executable path and add no supported Action platform.
+
 #### Scenario: A candidate reports its consumer identity
 
 - Given a committed consumer checkout with a GitHub origin and no settings file or credentials
