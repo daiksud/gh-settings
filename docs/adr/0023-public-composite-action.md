@@ -13,7 +13,7 @@ sources:
 
 ## Status
 
-Accepted — implemented through the focused [#108–#115 sequence](https://github.com/daiksud/gh-settings/issues/107). See the [usage guide](../github-actions.md) for reviewed Action pins and the separate operational-adoption boundary.
+Accepted — implemented through the focused [#108–#115 sequence](https://github.com/daiksud/gh-settings/issues/107). See the [usage guide](../github-actions.md) for reviewed Action pins and the separate operational-adoption boundary. The [v0 simplification contract](../concept.md#v0-simplification-contract) replaces implementation compatibility obligations: shell/Python helper ownership and historical example combinations may be retired as the shared Go implementation and thin adapters are delivered. Useful current public interfaces remain direct interfaces, without old-CLI fallback or migration adapters. This status update changes no code, active consumer pin or immutable release.
 
 Narrowly supersedes the reusable-Action non-goal in [ADR 0022](0022-owner-approved-actions.md). Its owner approval, direct-apply, concurrency, and credential decisions remain in force. The [behavior specification](../features/actions.feature.md#public-composite-action-contract) defines the public inputs, outputs, and failure contract.
 

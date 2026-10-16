@@ -6,7 +6,7 @@ description: Keep PR plans read-only and gate direct main apply with owner appro
 
 ## Status
 
-Accepted — implemented as inert examples; operational setup and activation remain separate.
+Accepted for owner approval, direct apply, concurrency and credential ownership. [ADR 0023](0023-public-composite-action.md) supersedes the original example-only delivery boundary with a public composite Action; operational callers now use that released package. The decision below records the original example delivery. Its shell wrappers and historical fixture combinations are not permanent compatibility obligations under the [v0 simplification contract](../concept.md#v0-simplification-contract). Operational setup, publication, adoption and deployment approval remain separate operations.
 
 ## Context
 

@@ -6,6 +6,10 @@ description: Run local checks and understand the repository CI validation bounda
 
 Use Go 1.25 or later and install [mise](https://mise.jdx.dev/getting-started.html). From the repository root, use the commands below to install the exact tool versions in [mise.toml](../mise.toml), including Go 1.26.0, and run checks through mise so the local versions match CI.
 
+## Refactoring direction
+
+The [v0 simplification contract](concept.md#v0-simplification-contract) defines retained requirements and the shared Go ownership model. The [ordered series](https://github.com/daiksud/gh-settings/issues/133) delivers each issue through its own reviewed PR, tests and documentation; later planned behavior is not current behavior. Retired wrappers and historical fixture combinations may be deleted without forwarding adapters. The checks below describe the current tree and must lose obsolete invocations with the corresponding implementation change. Source integration does not publish a release, change active released consumer pins or approve a settings deployment.
+
 ## Development checks
 
 ```sh
