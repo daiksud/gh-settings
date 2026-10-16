@@ -2,7 +2,7 @@
 
 A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. Export saves `.github/settings.yml`; omitted fields remain unmanaged. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; the caller owns approval and credentials.
 
-This checkout documents current **unreleased v0.7.0** source. The latest published package is [v0.6.1](https://github.com/daiksud/gh-settings/releases/tag/v0.6.1); installation and pinned consumer examples use that release. Source-only no-op/origin and Go Action changes below do not publish it or change active consumer pins. See the [released package boundary](docs/github-actions.md#published-package-and-consumer-pins) before adopting an Action revision.
+This checkout documents current **unreleased v0.7.0** source. The latest published package is [v0.6.1](https://github.com/daiksud/gh-settings/releases/tag/v0.6.1); installation and pinned consumer examples use that release. Source-only plan no-op/origin and Go Action changes below do not publish it or change active consumer pins. See the [released package boundary](docs/github-actions.md#published-package-and-consumer-pins) before adopting an Action revision.
 
 ## Install
 
