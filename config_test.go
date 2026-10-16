@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/daiksud/gh-settings/internal/settings"
 	"go.yaml.in/yaml/v4"
 	"reflect"
 	"strings"
@@ -12,7 +13,7 @@ func TestConfigLeafPresence(t *testing.T) {
 	disabled := false
 	for _, test := range []struct {
 		name       string
-		repository settings
+		repository settings.RepositoryDeclaration
 		want       string
 	}{
 		{
@@ -21,17 +22,17 @@ func TestConfigLeafPresence(t *testing.T) {
 		},
 		{
 			name:       "some present zero",
-			repository: settings{Description: &empty, HasIssues: &disabled},
+			repository: settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled},
 			want:       "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        has_issues: false\n",
 		},
 		{
 			name:       "all present zero",
-			repository: settings{Description: &empty, Homepage: &empty, HasIssues: &disabled, HasProjects: &disabled, HasWiki: &disabled},
+			repository: settings.RepositoryDeclaration{Description: &empty, Homepage: &empty, HasIssues: &disabled, HasProjects: &disabled, HasWiki: &disabled},
 			want:       "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        homepage: \"\"\n        has_issues: false\n        has_projects: false\n        has_wiki: false\n",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := yaml.Marshal(Config{SchemaVersion: 1, Settings: configSettings{Repository: test.repository}})
+			got, err := marshalConfig(Config{SchemaVersion: 1, Settings: configSettings{Repository: test.repository}})
 			if err != nil || string(got) != test.want {
 				t.Fatalf("output=%q err=%v, want %q", got, err, test.want)
 			}
@@ -110,29 +111,29 @@ func TestParseConfigValues(t *testing.T) {
 	boolValue := func(value bool) *bool { return &value }
 	for _, test := range []struct {
 		name, input string
-		want        settings
+		want        settings.RepositoryDeclaration
 	}{
-		{"all fields", repositoryYAML("description: Example\nhomepage: https://example.com\nhas_issues: true\nhas_projects: false\nhas_wiki: true\n"), settings{
+		{"all fields", repositoryYAML("description: Example\nhomepage: https://example.com\nhas_issues: true\nhas_projects: false\nhas_wiki: true\n"), settings.RepositoryDeclaration{
 			Description: stringValue("Example"), Homepage: stringValue("https://example.com"),
 			HasIssues: boolValue(true), HasProjects: boolValue(false), HasWiki: boolValue(true),
 		}},
-		{"partial zero values", repositoryYAML("description: ''\nhas_issues: false\n"), settings{
+		{"partial zero values", repositoryYAML("description: ''\nhas_issues: false\n"), settings.RepositoryDeclaration{
 			Description: stringValue(""), HasIssues: boolValue(false),
 		}},
-		{"version only", "schemaVersion: 1\n", settings{}},
-		{"empty settings", "schemaVersion: 1\nsettings: {}\n", settings{}},
-		{"empty repository", "schemaVersion: 1\nsettings:\n  repository: {}\n", settings{}},
-		{"root merge", "<<: {schemaVersion: 1, settings: {repository: {has_wiki: false}}}\n", settings{
+		{"version only", "schemaVersion: 1\n", settings.RepositoryDeclaration{}},
+		{"empty settings", "schemaVersion: 1\nsettings: {}\n", settings.RepositoryDeclaration{}},
+		{"empty repository", "schemaVersion: 1\nsettings:\n  repository: {}\n", settings.RepositoryDeclaration{}},
+		{"root merge", "<<: {schemaVersion: 1, settings: {repository: {has_wiki: false}}}\n", settings.RepositoryDeclaration{
 			HasWiki: boolValue(false),
 		}},
-		{"settings merge", "schemaVersion: 1\nsettings:\n  <<: {repository: {has_projects: true}}\n", settings{
+		{"settings merge", "schemaVersion: 1\nsettings:\n  <<: {repository: {has_projects: true}}\n", settings.RepositoryDeclaration{
 			HasProjects: boolValue(true),
 		}},
-		{"alias and merge", repositoryYAML("description: &text Example\nhomepage: *text\n<<: {has_issues: !!bool TRUE, has_wiki: false}\n"), settings{
+		{"alias and merge", repositoryYAML("description: &text Example\nhomepage: *text\n<<: {has_issues: !!bool TRUE, has_wiki: false}\n"), settings.RepositoryDeclaration{
 			Description: stringValue("Example"), Homepage: stringValue("Example"),
 			HasIssues: boolValue(true), HasWiki: boolValue(false),
 		}},
-		{"explicit value overrides merge", repositoryYAML("<<: {has_issues: true}\nhas_issues: false\n"), settings{
+		{"explicit value overrides merge", repositoryYAML("<<: {has_issues: true}\nhas_issues: false\n"), settings.RepositoryDeclaration{
 			HasIssues: boolValue(false),
 		}},
 	} {

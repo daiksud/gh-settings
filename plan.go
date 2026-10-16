@@ -8,6 +8,7 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func planCurrent() ([]byte, error) {
@@ -26,7 +27,7 @@ func planCurrent() ([]byte, error) {
 	return planSettings(config.Settings.Repository, repo, client)
 }
 
-func planSettings(desired settings, repo repository.Repository, client *api.RESTClient) ([]byte, error) {
+func planSettings(desired settings.RepositoryDeclaration, repo repository.Repository, client *api.RESTClient) ([]byte, error) {
 	current, err := readRepositorySettings(repo, client)
 	if err != nil {
 		return nil, err
@@ -34,26 +35,25 @@ func planSettings(desired settings, repo repository.Repository, client *api.REST
 	return repositoryPlan(current, desired), nil
 }
 
-// current contains all five fields after readRepositorySettings succeeds.
-func repositoryPlan(current, desired settings) []byte {
+func repositoryPlan(current settings.RepositoryState, desired settings.RepositoryDeclaration) []byte {
 	var output strings.Builder
 	managed := 0
-	stringField := func(name string, current, desired *string) {
+	stringField := func(name, current string, desired *string) {
 		if desired == nil {
 			return
 		}
 		managed++
-		if *current != *desired {
-			fmt.Fprintf(&output, "settings.repository.%s: %s → %s\n", name, strconv.Quote(*current), strconv.Quote(*desired))
+		if current != *desired {
+			fmt.Fprintf(&output, "settings.repository.%s: %s → %s\n", name, strconv.Quote(current), strconv.Quote(*desired))
 		}
 	}
-	boolField := func(name string, current, desired *bool) {
+	boolField := func(name string, current bool, desired *bool) {
 		if desired == nil {
 			return
 		}
 		managed++
-		if *current != *desired {
-			fmt.Fprintf(&output, "settings.repository.%s: %t → %t\n", name, *current, *desired)
+		if current != *desired {
+			fmt.Fprintf(&output, "settings.repository.%s: %t → %t\n", name, current, *desired)
 		}
 	}
 	stringField("description", current.Description, desired.Description)

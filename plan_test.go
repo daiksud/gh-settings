@@ -12,12 +12,12 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func TestRepositoryPlan(t *testing.T) {
-	current, err := ParseConfig([]byte(repositoryYAML("description: 'old'\nhomepage: 'old-url'\nhas_issues: true\nhas_projects: true\nhas_wiki: true\n")))
-	if err != nil {
-		t.Fatal(err)
+	current := settings.RepositoryState{
+		Description: "old", Homepage: "old-url", HasIssues: true, HasProjects: true, HasWiki: true,
 	}
 	for _, test := range []struct{ name, input, want string }{
 		{"five fields", repositoryYAML("has_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: ''\ndescription: ''\n"), "settings.repository.description: \"old\" → \"\"\nsettings.repository.homepage: \"old-url\" → \"\"\nsettings.repository.has_issues: true → false\nsettings.repository.has_projects: true → false\nsettings.repository.has_wiki: true → false\n"},
@@ -33,7 +33,7 @@ func TestRepositoryPlan(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := string(repositoryPlan(current.Settings.Repository, desired.Settings.Repository)); got != test.want {
+			if got := string(repositoryPlan(current, desired.Settings.Repository)); got != test.want {
 				t.Fatalf("output=%q, want %q", got, test.want)
 			}
 		})
@@ -54,7 +54,7 @@ func TestPlanSettingsReadFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			code := run([]string{"plan"}, &stdout, &stderr, commandOperations{plan: func() ([]byte, error) {
-				return planSettings(settings{}, repository.Repository{Owner: "owner", Name: "current"}, testClient(t, test.body, test.status))
+				return planSettings(settings.RepositoryDeclaration{}, repository.Repository{Owner: "owner", Name: "current"}, testClient(t, test.body, test.status))
 			}})
 			if code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), test.want) {
 				t.Fatalf("status=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
@@ -71,7 +71,7 @@ func TestPlanSettingsReadFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := planSettings(settings{}, repository.Repository{Owner: "owner", Name: "current"}, client)
+	got, err := planSettings(settings.RepositoryDeclaration{}, repository.Repository{Owner: "owner", Name: "current"}, client)
 	if len(got) != 0 || err == nil || !strings.Contains(err.Error(), "network unavailable") {
 		t.Fatalf("output=%q error=%v", got, err)
 	}

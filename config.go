@@ -6,24 +6,41 @@ import (
 	"io"
 	"strings"
 
+	"github.com/daiksud/gh-settings/internal/settings"
 	"go.yaml.in/yaml/v4"
 )
 
 type Config struct {
-	SchemaVersion int            `yaml:"schemaVersion"`
-	Settings      configSettings `yaml:"settings"`
+	SchemaVersion int
+	Settings      configSettings
 }
 
 type configSettings struct {
-	Repository settings `yaml:"repository"`
+	Repository settings.RepositoryDeclaration
 }
 
-type settings struct {
-	Description *string `yaml:"description,omitempty" json:"description,omitempty"`
-	Homepage    *string `yaml:"homepage,omitempty" json:"homepage,omitempty"`
-	HasIssues   *bool   `yaml:"has_issues,omitempty" json:"has_issues,omitempty"`
-	HasProjects *bool   `yaml:"has_projects,omitempty" json:"has_projects,omitempty"`
-	HasWiki     *bool   `yaml:"has_wiki,omitempty" json:"has_wiki,omitempty"`
+type repositoryDocument struct {
+	Description *string `yaml:"description,omitempty"`
+	Homepage    *string `yaml:"homepage,omitempty"`
+	HasIssues   *bool   `yaml:"has_issues,omitempty"`
+	HasProjects *bool   `yaml:"has_projects,omitempty"`
+	HasWiki     *bool   `yaml:"has_wiki,omitempty"`
+}
+
+func marshalConfig(config Config) ([]byte, error) {
+	var document struct {
+		SchemaVersion int `yaml:"schemaVersion"`
+		Settings      struct {
+			Repository repositoryDocument `yaml:"repository"`
+		} `yaml:"settings"`
+	}
+	document.SchemaVersion = config.SchemaVersion
+	declaration := config.Settings.Repository
+	document.Settings.Repository = repositoryDocument{
+		Description: declaration.Description, Homepage: declaration.Homepage,
+		HasIssues: declaration.HasIssues, HasProjects: declaration.HasProjects, HasWiki: declaration.HasWiki,
+	}
+	return yaml.Marshal(document)
 }
 
 func ParseConfig(data []byte) (Config, error) {
@@ -80,21 +97,21 @@ func ParseConfig(data []byte) (Config, error) {
 	return config, nil
 }
 
-func parseRepositoryFields(node *yaml.Node) (settings, error) {
+func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, error) {
 	fields, err := loadMapping(node, "settings.repository")
 	if err != nil {
-		return settings{}, err
+		return settings.RepositoryDeclaration{}, err
 	}
-	var repository settings
+	var repository settings.RepositoryDeclaration
 	for field, value := range fields {
 		value, err := resolveAlias(&value)
 		if err != nil {
-			return settings{}, err
+			return settings.RepositoryDeclaration{}, err
 		}
 		switch field {
 		case "description", "homepage":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
-				return settings{}, fmt.Errorf("%s must be a string", field)
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a string", field)
 			}
 			text := value.Value
 			if field == "description" {
@@ -104,14 +121,14 @@ func parseRepositoryFields(node *yaml.Node) (settings, error) {
 			}
 		case "has_issues", "has_projects", "has_wiki":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
-				return settings{}, fmt.Errorf("%s must be a boolean", field)
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean", field)
 			}
 			if !strings.EqualFold(value.Value, "true") && !strings.EqualFold(value.Value, "false") {
-				return settings{}, fmt.Errorf("%s must be a boolean spelled true or false", field)
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean spelled true or false", field)
 			}
 			var parsed bool
 			if err := value.Decode(&parsed); err != nil {
-				return settings{}, fmt.Errorf("%s must be a boolean: %w", field, err)
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean: %w", field, err)
 			}
 			switch field {
 			case "has_issues":
@@ -122,7 +139,7 @@ func parseRepositoryFields(node *yaml.Node) (settings, error) {
 				repository.HasWiki = &parsed
 			}
 		default:
-			return settings{}, fmt.Errorf("unknown setting %q", field)
+			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)
 		}
 	}
 	return repository, nil

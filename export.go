@@ -8,7 +8,7 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
-	"go.yaml.in/yaml/v4"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func exportCurrent() ([]byte, error) {
@@ -58,5 +58,9 @@ func exportSettings(repo repository.Repository, client *api.RESTClient) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	return yaml.Marshal(Config{SchemaVersion: 1, Settings: configSettings{Repository: result}})
+	declaration := settings.RepositoryDeclaration{
+		Description: &result.Description, Homepage: &result.Homepage,
+		HasIssues: &result.HasIssues, HasProjects: &result.HasProjects, HasWiki: &result.HasWiki,
+	}
+	return marshalConfig(Config{SchemaVersion: 1, Settings: configSettings{Repository: declaration}})
 }

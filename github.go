@@ -6,18 +6,19 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func readRepositorySettings(repo repository.Repository, client *api.RESTClient) (settings, error) {
+func readRepositorySettings(repo repository.Repository, client *api.RESTClient) (settings.RepositoryState, error) {
 	var response map[string]json.RawMessage
 	if err := client.Get("repos/"+repo.Owner+"/"+repo.Name, &response); err != nil {
-		return settings{}, fmt.Errorf("read repository settings: %w", err)
+		return settings.RepositoryState{}, fmt.Errorf("read repository settings: %w", err)
 	}
 	return decodeRepositoryResponse(response)
 }
 
-func decodeRepositoryResponse(response map[string]json.RawMessage) (settings, error) {
-	var result settings
+func decodeRepositoryResponse(response map[string]json.RawMessage) (settings.RepositoryState, error) {
+	var result settings.RepositoryState
 	fields := []struct {
 		name   string
 		target any
@@ -28,22 +29,17 @@ func decodeRepositoryResponse(response map[string]json.RawMessage) (settings, er
 	for _, field := range fields {
 		value, present := response[field.name]
 		if !present {
-			return settings{}, fmt.Errorf("GitHub response is missing %s", field.name)
+			return settings.RepositoryState{}, fmt.Errorf("GitHub response is missing %s", field.name)
 		}
 		if string(value) == "null" {
-			switch field.name {
-			case "description":
-				// GET uses null for unset strings; export uses the update schema's empty string.
-				result.Description = new(string)
-			case "homepage":
-				result.Homepage = new(string)
-			default:
-				return settings{}, fmt.Errorf("GitHub returned null for %s", field.name)
+			// GET uses null for unset strings; the complete state uses empty strings.
+			if field.name != "description" && field.name != "homepage" {
+				return settings.RepositoryState{}, fmt.Errorf("GitHub returned null for %s", field.name)
 			}
 			continue
 		}
 		if err := json.Unmarshal(value, field.target); err != nil {
-			return settings{}, fmt.Errorf("decode %s: %w", field.name, err)
+			return settings.RepositoryState{}, fmt.Errorf("decode %s: %w", field.name, err)
 		}
 	}
 	return result, nil
