@@ -200,6 +200,26 @@ jobs:
           EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
           EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
         run: bash .action/tests/github-actions/candidate-plan.sh assert read-failure
+      - name: Prepare the committed invalid configuration
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare invalid-config
+      - name: Plan through an actual configuration failure
+        id: invalid-config
+        continue-on-error: true
+        uses: ./.action
+        with:
+          command: plan
+          token: plan-fixture-read
+      - name: Require config failure without API access
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.invalid-config.outcome }}
+          CONFIG_SHA: ${{ steps.invalid-config.outputs.config-sha }}
+          TARGET: ${{ steps.invalid-config.outputs.target }}
+          CLI_VERSION: ${{ steps.invalid-config.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.invalid-config.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert invalid-config
       - name: Stop the owned local plan API
         if: always()
         run: bash .action/tests/github-actions/candidate-plan.sh stop

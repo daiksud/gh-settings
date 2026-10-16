@@ -28,7 +28,7 @@ case "${1:-}" in
     [[ $# -le 2 && -S "$PLAN_FIXTURE/api.sock" ]]
     [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} && -z ${GH_HOST:-} && -z ${GH_REPO:-} ]]
     case "${2:-normal}" in
-      normal) rm -f "$PLAN_FIXTURE/read403" ;;
+      normal|invalid-config) rm -f "$PLAN_FIXTURE/read403" ;;
       read-failure) touch "$PLAN_FIXTURE/read403" ;;
       *) exit 1 ;;
     esac
@@ -41,6 +41,9 @@ settings:
       line
     has_issues: false
 YAML
+    if [[ "${2:-normal}" == invalid-config ]]; then
+      printf 'schemaVersion: 1\nsettings:\n  repository:\n    has_issues: "invalid"\n' > .github/settings.yml
+    fi
     git add .github/settings.yml
     if ! git diff --cached --quiet; then
       git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: prepare candidate plan'
@@ -70,13 +73,17 @@ YAML
         [[ "$TARGET" == example-owner/settings-fixture ]]
         [[ "$CLI_VERSION" == "$EXPECTED_CLI_VERSION" && "$CLI_SHA256" == "$EXPECTED_CLI_SHA256" ]]
         ;;
-      read-failure)
+      read-failure|invalid-config)
         [[ "$PLAN_OUTCOME" == failure ]]
         [[ -z "$CONFIG_SHA$TARGET$CLI_VERSION$CLI_SHA256" ]]
         ;;
       *) exit 1 ;;
     esac
-    [[ "$(cat "$PLAN_FIXTURE/requests")" == 'GET /repos/example-owner/settings-fixture' ]]
+    if [[ "${2:-normal}" == invalid-config ]]; then
+      [[ ! -s "$PLAN_FIXTURE/requests" ]]
+    else
+      [[ "$(cat "$PLAN_FIXTURE/requests")" == 'GET /repos/example-owner/settings-fixture' ]]
+    fi
     matches=0
     shopt -s nullglob
     for summary in "${GITHUB_STEP_SUMMARY%/*}"/step_summary_*; do
@@ -100,7 +107,11 @@ YAML
       grep -Fq '&lt;script&gt;alert(\&#34;fixture\&#34;)&lt;/script&gt;\nline' "$summary"
     else
       grep -Fq 'Error — plan failed.' "$summary"
-      grep -Fq '<pre>repository read failed</pre>' "$summary"
+      if [[ "$2" == read-failure ]]; then
+        grep -Fq '<pre>repository read failed</pre>' "$summary"
+      else
+        grep -Fq '<pre>configuration validation failed</pre>' "$summary"
+      fi
     fi
     if grep -Fq '<script>' "$summary"; then exit 1; fi
     printf 'Candidate plan %s: source=%s config=%s version=%s sha256=%s outcome=%s\n' \
@@ -121,5 +132,5 @@ YAML
       rm -rf "$PLAN_FIXTURE"
     fi
     ;;
-  *) echo 'usage: candidate-plan.sh start FIXTURE_BINARY | prepare [read-failure] | assert [read-failure] | stop' >&2; exit 1 ;;
+  *) echo 'usage: candidate-plan.sh start FIXTURE_BINARY | prepare [read-failure|invalid-config] | assert [read-failure|invalid-config] | stop' >&2; exit 1 ;;
 esac
