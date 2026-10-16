@@ -1,4 +1,4 @@
-name: Settings PR plan (example)
+name: Settings PR plan
 on:
   pull_request:
     paths:
@@ -24,13 +24,8 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Install verified released CLI
-        id: cli
-        run: |
-          binary=$(bash examples/github-actions/install-cli.sh "$RUNNER_TEMP/settings-cli")
-          printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
-      - name: Validate then read-only plan
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SETTINGS_CLI: ${{ steps.cli.outputs.binary-path }}
-        run: bash examples/github-actions/plan.sh "$SETTINGS_CLI" "$RUNNER_TEMP/settings-plan.txt"
+      - name: Validate and plan with the public Action
+        uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # v0.6.1
+        with:
+          command: plan
+          token: ${{ github.token }}

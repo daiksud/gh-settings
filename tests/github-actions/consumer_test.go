@@ -327,14 +327,22 @@ func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
 
 func (f *compositeFixture) call(t *testing.T, call step, context, extra map[string]string) compositeResult {
 	t.Helper()
-	// These inert callers pin the historical Action93 and its v0.5.0 CLI.
-	// Simulate that release identity in the copied package; current-root tests follow the committed version.
-	f.write(filepath.Join(f.packagePath, "action/cli-version"), "v0.5.0\n")
-	f.base["MOCK_CLI_VERSION"] = "v0.5.0"
 	repository, ref, ok := strings.Cut(call.Uses, "@")
 	if !ok || repository != "daiksud/gh-settings" {
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
+	// Simulate each caller's reviewed release identity in the copied package.
+	version := ""
+	switch ref {
+	case "93d8217d146f5d430aaf90597119114218990e70":
+		version = "v0.5.0"
+	case "9d01d3258d9f42239b2daeb1ac26bc532cd56105":
+		version = "v0.6.1"
+	default:
+		t.Fatalf("unmodeled public Action revision %s", ref)
+	}
+	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
+	f.base["MOCK_CLI_VERSION"] = version
 	overrides := map[string]string{
 		"github.action_repository": repository, "github.action_ref": ref,
 		"github.event_name": f.base["GITHUB_EVENT_NAME"], "github.workflow_ref": f.base["GITHUB_WORKFLOW_REF"], "github.workflow_sha": f.base["GITHUB_WORKFLOW_SHA"],
