@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -26,7 +24,7 @@ func TestPlanResults(t *testing.T) {
 		{"no managed fields", "schemaVersion: 1\n", settings.RepositoryState{HasIssues: true}, settings.RepositoryComparison{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			path := planCheckout(t, test.input, true)
+			path := appCheckout(t, test.input, true)
 			t.Setenv("GH_REPO", "other/repository")
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			calls := 0
@@ -54,7 +52,7 @@ func TestPlanValidatesBeforeRead(t *testing.T) {
 		{"settings: {}\n", "missing schemaVersion"},
 		{"schemaVersion: 1\nsettings:\n  repository:\n    has_issues: [\n", "decode YAML"},
 	} {
-		planCheckout(t, test.input, false) // No origin: validation must win over target resolution.
+		appCheckout(t, test.input, false) // No origin: validation must win over target resolution.
 		calls := 0
 		got, err := Plan(func(repository.Repository) (settings.RepositoryState, error) {
 			calls++
@@ -67,7 +65,7 @@ func TestPlanValidatesBeforeRead(t *testing.T) {
 }
 
 func TestPlanTargetFailureBeforeRead(t *testing.T) {
-	planCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", false)
+	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", false)
 	calls := 0
 	got, err := Plan(func(repository.Repository) (settings.RepositoryState, error) {
 		calls++
@@ -79,7 +77,7 @@ func TestPlanTargetFailureBeforeRead(t *testing.T) {
 }
 
 func TestPlanReadFailure(t *testing.T) {
-	planCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", true)
+	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", true)
 	readError := errors.New("read unavailable")
 	calls := 0
 	got, err := Plan(func(repository.Repository) (settings.RepositoryState, error) {
@@ -89,26 +87,4 @@ func TestPlanReadFailure(t *testing.T) {
 	if !errors.Is(err, readError) || !reflect.DeepEqual(got, PlanResult{}) || calls != 1 {
 		t.Fatalf("result=%+v error=%v reads=%d, want read error and zero result", got, err, calls)
 	}
-}
-
-func planCheckout(t *testing.T, input string, origin bool) string {
-	t.Helper()
-	root := t.TempDir()
-	if output, err := exec.Command("git", "init", "--quiet", root).CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, output)
-	}
-	if origin {
-		if output, err := exec.Command("git", "-C", root, "remote", "add", "origin", "https://github.com/owner/current.git").CombinedOutput(); err != nil {
-			t.Fatalf("git origin: %v: %s", err, output)
-		}
-	}
-	if err := os.Mkdir(filepath.Join(root, ".github"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	path := filepath.Join(root, workspace.SettingsPath)
-	if err := os.WriteFile(path, []byte(input), 0600); err != nil {
-		t.Fatal(err)
-	}
-	t.Chdir(root)
-	return path
 }

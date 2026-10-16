@@ -27,4 +27,6 @@ The shared [local validation operation](../internal/app/validate.go), `app.Valid
 
 The shared [plan operation](../internal/app/plan.go) returns `app.PlanResult`: the resolved target plus a native repository comparison. It validates before resolving the target and invoking its reader dependency. CLI plan supplies the GitHub read and renders the comparison; valid empty declarations currently still resolve the target and perform the read.
 
+The shared [apply operation](../internal/app/apply.go) returns `app.ApplyResult`: `Applied` is true only after writer success, while false without an error means local no-op. Validation and the empty-declaration guard precede target/writer access; CLI supplies the deferred write and formats the message. False with an error does not prove no remote mutation, and later output failure does not roll back success.
+
 The pure [comparison](../internal/settings/comparison.go) retains native string/string or bool/bool value pairs. Terminal messages, quoting and arrows belong to the [CLI renderer](../internal/cli/comparison.go); apply consumes the declaration directly.

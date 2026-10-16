@@ -1,30 +1,25 @@
 package main
 
 import (
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func applyCurrent() ([]byte, error) {
-	desired, err := app.Validate()
+	result, err := app.Apply(func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+		client, err := github.NewWriteClient(repo.Host)
+		if err != nil {
+			return err
+		}
+		return client.ApplyRepository(repo, desired)
+	})
 	if err != nil {
 		return nil, err
 	}
-	if desired == (settings.RepositoryDeclaration{}) {
-		return []byte("No managed repository settings.\n"), nil
+	if result.Applied {
+		return []byte("Applied repository settings.\n"), nil
 	}
-	repo, err := workspace.CurrentRepository()
-	if err != nil {
-		return nil, err
-	}
-	client, err := github.NewWriteClient(repo.Host)
-	if err != nil {
-		return nil, err
-	}
-	if err := client.ApplyRepository(repo, desired); err != nil {
-		return nil, err
-	}
-	return []byte("Applied repository settings.\n"), nil
+	return []byte("No managed repository settings.\n"), nil
 }
