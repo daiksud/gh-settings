@@ -70,7 +70,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 - The committed `action/cli-version` selects an explicit CLI release. Download only its `gh-settings-linux-amd64` asset and `SHA256SUMS` through fixed upstream HTTPS paths; require one well-formed checksum for that asset, verify it before execution, and check the exact reported version. A SHA pin fixes the version; the checksum is trusted from that GitHub release. Never fall back to latest or accept an arbitrary URL.
 - A strict version-tag invocation must agree with the committed CLI version or fail before download. SHA-pinned and local invocations read the committed version. Future release publication requires that same version; it cannot silently retain an older CLI.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.
-- Read only checkout-root `.github/settings.yml`; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target.
+- Read only checkout-root `.github/settings.yml`; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target. Current unreleased source requires that selected origin to directly identify GitHub.com through HTTPS, `git@github.com:owner/repo.git` or full SSH. Transport mirror rewrites cannot change the direct identity; rewrite-only aliases and username-less SCP fail metadata before settings execution or successful outputs. Local/include/worktree selection and ignoring `GH_REPO` and system/global/command substitute origins remain shared CLI rules. Released v0.6.1 retains its original compatibility.
 - Action-owned installation bootstrap comes from the Action package, independently of caller helper files. Current unreleased v0.7.0 directly invokes validate/apply and Go metadata/plan/Summary entries through the verified absolute CLI path in a per-invocation runner-temp location. Shell retains necessary Actions wiring; released v0.6.1 retains its original helpers.
 
 ### Rule: Two inputs select one bounded command
@@ -137,7 +137,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 The source-only `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback. The current source migration selects explicitly unreleased CLI v0.7.0 and binds composite setup directly to this verified executable entry from the consumer working directory. The released v0.6.1 Action/CLI pins remain unchanged. Setup receives no caller token; metadata failure must stop settings execution and successful result publication. Current source also adopts typed Go plan/Summary presentation; released v0.6.1 keeps its original helpers.
 
-The [public adapter tests](../../internal/actions/run_test.go) cover identity/output failures; `TestActionMetadata` in the [actual candidate acceptance suite](../../tests/acceptance/metadata_test.go) covers the normal consumer and executing-binary identities without API access. The [source interface](../commands.md#source-actions-metadata) describes output and failure semantics.
+The [public adapter tests](../../internal/actions/run_test.go) cover identity/output failures; `TestActionMetadata` in the [actual candidate acceptance suite](../../tests/acceptance/metadata_test.go) covers the normal consumer and executing-binary identities without API access. `TestActionMetadataRejectsIndirectOrigin` covers both removed indirect forms in committed consumer checkouts, without credentials, identity output or API access. The [source interface](../commands.md#source-actions-metadata) describes output and failure semantics.
 
 On the supported Linux runner, the digest remains bound to the running image after its launch pathname is replaced or deleted. `TestMetadataUsesRunningImage` in the [Linux regression](../../internal/actions/metadata_linux_test.go) verifies replacement of an owned child copy. Native development checks on other platforms assume an unchanged executable path and add no supported Action platform.
 
@@ -147,6 +147,13 @@ On the supported Linux runner, the digest remains bound to the running image aft
 - And the candidate executable resides outside that checkout
 - When metadata is requested from a consumer subdirectory
 - Then the four records identify the consumer commit and origin, injected version and actual candidate digest
+- And no API request occurs
+
+#### Scenario: Source metadata rejects an indirect origin
+
+- Given a committed consumer checkout whose origin is a rewrite-only alias or username-less SCP form
+- When the current unreleased candidate is asked for Action metadata without credentials
+- Then it exits 1 with an origin diagnostic and no identity output
 - And no API request occurs
 
 #### Scenario: The unreleased composite uses verified Go metadata

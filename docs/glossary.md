@@ -21,7 +21,7 @@ The [GitHub write adapter](../internal/github/apply.go) owns declaration-to-JSON
 
 The [workspace file boundary](../internal/workspace/config_file.go) owns the fixed checkout-root configuration path, reading and export writing. It delegates decoding to the pure codec and accepts already-encoded export bytes; GitHub access stays with its caller.
 
-The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-root, commit and checkout-scoped GitHub target resolution through `GitRoot`, `CurrentCommit` and `CurrentRepository`. It ignores `GH_REPO` and unscoped origins, retaining the [existing origin and transport-rewrite contract](commands.md#export-behavior).
+The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-root, commit and checkout-scoped GitHub target resolution through `GitRoot`, `CurrentCommit` and `CurrentRepository`. It ignores `GH_REPO` and unscoped origins, retaining checkout-specific include/worktree and direct-origin mirror identity. Current source accepts direct GitHub.com HTTPS, git@ SCP and full SSH through the existing library, without custom alias rewriting or username-less adaptation; eligibility and host checks prevent default-host or override target selection. See the [direct-origin contract](commands.md#export-behavior).
 
 The shared [local validation operation](../internal/app/validate.go), `app.Validate`, locates the checkout root and reads a typed repository declaration or returns an error. It does not resolve origin, configure authentication, access GitHub, write files or format CLI output. CLI validate adapts the error; plan and apply consume the validated declaration.
 

@@ -69,3 +69,40 @@ func TestActionMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestActionMetadataRejectsIndirectOrigin(t *testing.T) {
+	binary := acceptanceBinary(t)
+	for _, test := range []struct {
+		name  string
+		setup func(string, []string) error
+	}{
+		{"rewrite-only-alias", setupAliasedOrigin},
+		{"username-less-scp", setupUserlessSCPOrigin},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			fixture, err := startAPIFixture("{}", 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer fixture.close()
+			env := append(fixtureEnv(fixture.cfg), "GH_REPO=other/repository")
+			if err := test.setup(fixture.work, env); err != nil {
+				t.Fatal(err)
+			}
+			if err := runGit(fixture.work, env, "-c", "commit.gpgsign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "--quiet", "--allow-empty", "-m", "test: consumer identity"); err != nil {
+				t.Fatal(err)
+			}
+			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "metadata"}, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			exit, ok := result.runErr.(*exec.ExitError)
+			if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "origin") {
+				t.Fatalf("metadata: %v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
+			}
+			if err := fixture.checkRequests(true); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

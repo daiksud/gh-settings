@@ -50,7 +50,7 @@ func TestExportUsesConfiguredOriginBeforeInsteadOf(t *testing.T) {
 	}
 }
 
-func TestExportUsesAliasRewrittenToGitHub(t *testing.T) {
+func TestExportRejectsAliasRewrittenToGitHub(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	dir := t.TempDir()
@@ -68,8 +68,8 @@ func TestExportUsesAliasRewrittenToGitHub(t *testing.T) {
 		t.Fatalf("rewritten origin=%q err=%v", output, err)
 	}
 	repo, err := CurrentRepository()
-	if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
-		t.Fatalf("selected %+v, err=%v", repo, err)
+	if err == nil || repo.Host != "" || repo.Owner != "" || repo.Name != "" {
+		t.Fatalf("rewrite-only alias selected %+v, err=%v", repo, err)
 	}
 }
 
@@ -128,10 +128,21 @@ func TestExportUsesRepositoryConfigSources(t *testing.T) {
 }
 
 func TestRepositoryRemotes(t *testing.T) {
-	for _, remote := range []string{"git@github.com:owner/current.git", "github.com:owner/current.git", "ssh://git@github.com/owner/current.git", "../owner/current", "owner/current", "https://gitlab.com/owner/current.git"} {
-		t.Run(remote, func(t *testing.T) {
+	for _, test := range []struct {
+		remote string
+		valid  bool
+	}{
+		{"https://github.com/owner/current.git", true},
+		{"git@github.com:owner/current.git", true},
+		{"ssh://git@github.com/owner/current.git", true},
+		{"github.com:owner/current.git", false},
+		{"../owner/current", false},
+		{"owner/current", false},
+		{"https://gitlab.com/owner/current.git", false},
+	} {
+		t.Run(test.remote, func(t *testing.T) {
 			dir := t.TempDir()
-			for _, args := range [][]string{{"init", "--quiet", dir}, {"-C", dir, "remote", "add", "origin", remote}} {
+			for _, args := range [][]string{{"init", "--quiet", dir}, {"-C", dir, "remote", "add", "origin", test.remote}} {
 				if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
 					t.Fatalf("git: %v: %s", err, out)
 				}
@@ -142,12 +153,12 @@ func TestRepositoryRemotes(t *testing.T) {
 			}
 			t.Chdir(subdir)
 			repo, err := CurrentRepository()
-			if strings.Contains(remote, "github.com") {
+			if test.valid {
 				if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
 					t.Fatalf("repo=%+v err=%v", repo, err)
 				}
-			} else if err == nil {
-				t.Fatalf("non-GitHub remote selected: %+v", repo)
+			} else if err == nil || repo.Host != "" || repo.Owner != "" || repo.Name != "" {
+				t.Fatalf("unsupported remote selected: %+v, err=%v", repo, err)
 			}
 		})
 	}
@@ -205,6 +216,10 @@ func TestRepositoryIgnoresUnscopedOrigins(t *testing.T) {
 				if checkout == "missing" {
 					if err == nil || !strings.Contains(err.Error(), "checkout-scoped") {
 						t.Fatalf("repo=%+v err=%v", repo, err)
+					}
+				} else if checkout == "alias" {
+					if err == nil || repo.Host != "" || repo.Owner != "" || repo.Name != "" {
+						t.Fatalf("rewrite-only alias selected %+v, err=%v", repo, err)
 					}
 				} else if err != nil || repo.Owner != "owner" || repo.Name != "current" {
 					t.Fatalf("repo=%+v err=%v", repo, err)
