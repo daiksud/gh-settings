@@ -24,9 +24,6 @@ mise exec -- shellcheck scripts/publish-release.sh tests/release.sh examples/git
 mise exec -- bash tests/release.sh
 mise exec -- bash tests/github-actions/action-install.sh
 mise exec -- bash tests/github-actions/action-command.sh
-mise exec -- bash tests/github-actions/bootstrap.sh
-mise exec -- bash tests/github-actions/plan.sh
-python3 tests/github-actions/summary.py
 python3 tests/github-actions/action-summary.py
 mise exec -- rumdl check --no-cache --deny-config-warnings README.md docs examples/github-actions
 ```
