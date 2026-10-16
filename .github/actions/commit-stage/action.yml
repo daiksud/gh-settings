@@ -6,7 +6,7 @@ inputs:
     required: false
     default: gh-settings
   version:
-    description: Version injected into a release build; empty for CI.
+    description: Explicit release version; empty uses the committed candidate version.
     required: false
     default: ''
 outputs:
@@ -16,6 +16,12 @@ outputs:
   binary-sha256:
     description: SHA-256 of the built product binary.
     value: ${{ steps.build.outputs.binary-sha256 }}
+  source-sha:
+    description: Full checked-out source commit used by this build.
+    value: ${{ steps.build.outputs.source-sha }}
+  cli-version:
+    description: CLI version injected into this product binary.
+    value: ${{ steps.build.outputs.cli-version }}
 runs:
   using: composite
   steps:
@@ -67,13 +73,14 @@ runs:
         BINARY_NAME: ${{ inputs.binary-name }}
         BUILD_VERSION: ${{ inputs.version }}
       run: |
-        if [[ -n "$BUILD_VERSION" ]]; then
-          go build -trimpath -ldflags "-X main.version=$BUILD_VERSION" -o "$RUNNER_TEMP/$BINARY_NAME" .
-        else
-          go build -o "$RUNNER_TEMP/$BINARY_NAME" .
-        fi
+        version="${BUILD_VERSION:-$(cat action/cli-version)}"
+        [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+        source_sha="$(git rev-parse HEAD)"
+        [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+        go build -trimpath -ldflags "-X main.version=$version" -o "$RUNNER_TEMP/$BINARY_NAME" .
         printf 'binary-path=%s\n' "$RUNNER_TEMP/$BINARY_NAME" >> "$GITHUB_OUTPUT"
         printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+        printf 'source-sha=%s\ncli-version=%s\n' "$source_sha" "$version" >> "$GITHUB_OUTPUT"
     - name: Check Markdown and local links
       shell: bash
       run: rumdl check --no-cache --deny-config-warnings README.md docs examples/github-actions
