@@ -119,7 +119,7 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 }
 
 func validatePlanReport(report PlanReport, target string) error {
-	if report.Changes == nil || report.Managed < len(report.Changes) {
+	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 5 {
 		return fmt.Errorf("invalid plan report comparison")
 	}
 	valid := false

@@ -15,7 +15,7 @@ import (
 )
 
 func TestNoDifferenceSummary(t *testing.T) {
-	content, err := actions.RenderSummary(actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}}, summaryMetadata())
+	content, err := actions.RenderSummary(actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 5, Changes: []actions.PlanChange{}}, summaryMetadata())
 	if err != nil || !strings.Contains(content, "No differences for managed settings.") || strings.Contains(content, "Observed before") {
 		t.Fatalf("summary=%q error=%v", content, err)
 	}
@@ -108,6 +108,7 @@ func TestSummaryRequiresValidReportState(t *testing.T) {
 		{"unknown outcome", actions.PlanReport{Outcome: "unknown", Changes: empty}},
 		{"missing changes", actions.PlanReport{Outcome: "unmanaged"}},
 		{"negative count", actions.PlanReport{Outcome: "unmanaged", Managed: -1, Changes: empty}},
+		{"excess count", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 6, Changes: empty}},
 		{"changed without changes", actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: empty}},
 		{"no difference with changes", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 1, Changes: change}},
 		{"unmanaged positive count", actions.PlanReport{Outcome: "unmanaged", Managed: 1, Changes: empty}},
