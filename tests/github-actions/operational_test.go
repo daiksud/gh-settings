@@ -62,8 +62,7 @@ func TestOperationalActionHandoff(t *testing.T) {
 	cmd.Dir = root()
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + os.Getenv("HOME"), "TMPDIR=" + os.Getenv("TMPDIR"),
 		"VERIFY_COMMAND=bash \"$VERIFY_SCRIPT\"", "VERIFY_SCRIPT=" + filepath.Join(root(), ".github/scripts/verify-settings-handoff.sh"),
-		"REVIEWED_ACTION_SHA=9d01d3258d9f42239b2daeb1ac26bc532cd56105", "FIXTURE_ACTION_SHA=9d01d3258d9f42239b2daeb1ac26bc532cd56105",
-		"FIXTURE_CLI_VERSION=v0.6.1", "FIXTURE_CLI_SHA256=7b93802a64609ed5daf1b3bd02e33ad9384fda26b7776233cd094c8dd85d5874"}
+		"REVIEWED_ACTION_SHA=9d01d3258d9f42239b2daeb1ac26bc532cd56105"}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("operational pre-token handoff failed: %v\n%s", err, output)
 	}

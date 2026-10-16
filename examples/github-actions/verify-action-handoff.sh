@@ -9,5 +9,5 @@ set -euo pipefail
 [[ "$(git remote get-url origin)" == "https://github.com/$EXPECTED_TARGET" || "$(git remote get-url origin)" == "https://github.com/$EXPECTED_TARGET.git" ]] || { echo 'checkout target mismatch' >&2; exit 1; }
 [[ "$EXPECTED_ACTION_SHA" == "$REVIEWED_ACTION_SHA" ]] || { echo 'prepare Action revision mismatch' >&2; exit 1; }
 # The reviewed immutable Action package fixes this CLI identity; it owns installation.
-[[ "$EXPECTED_CLI_VERSION" == v0.5.0 ]] || { echo 'prepare CLI version mismatch' >&2; exit 1; }
-[[ "$EXPECTED_CLI_SHA256" == b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4 ]] || { echo 'prepare CLI checksum mismatch' >&2; exit 1; }
+[[ "$EXPECTED_CLI_VERSION" == v0.6.1 ]] || { echo 'prepare CLI version mismatch' >&2; exit 1; }
+[[ "$EXPECTED_CLI_SHA256" == 7b93802a64609ed5daf1b3bd02e33ad9384fda26b7776233cd094c8dd85d5874 ]] || { echo 'prepare CLI checksum mismatch' >&2; exit 1; }

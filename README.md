@@ -101,7 +101,7 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@93d8217d146f5d430aaf90597119114218990e70 # Action revision; CLI v0.5.0
+      - uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # Action revision; CLI v0.6.1
         id: settings
         with:
           command: validate
@@ -109,7 +109,7 @@ jobs:
 
 `command` is exactly `validate`, `plan`, or `apply`. Validate needs no token; plan requires an explicit read token; apply requires a target-scoped App installation token with Administration write. The caller owns its Environment/approval, token mint/revoke and concurrency. Use the [inert PR/main examples](examples/github-actions/README.md) for read-only review followed by separately approved apply; do not give privileged credentials to PR code.
 
-Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet retains the historical Action pin and its v0.5.0 CLI. Current source selects the explicit version in `action/cli-version`; future release tags must match it, and reviewed SHA pins select that committed CLI version. The immutable v0.5.0 tag has no root Action. Published v0.6.0 contains the older installer and still uses CLI v0.5.0; changing main cannot repair that immutable tag. A corrected release requires a separately chosen version and explicit publication. See the [complete contract, runner limits and adoption boundary](docs/github-actions.md).
+Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet pins the released v0.6.1 Action and its v0.6.1 CLI. Current source selects the explicit version in `action/cli-version`; future release tags must match it, and reviewed SHA pins select that committed CLI version. The immutable v0.5.0 tag has no root Action. Published v0.6.0 contains the older installer and still uses CLI v0.5.0; changing main cannot repair that immutable tag. The corrected v0.6.1 release is published; existing tags/assets stay immutable and further publication requires separate authorization. See the [complete contract, runner limits and adoption boundary](docs/github-actions.md).
 
 ## Build and run from source
 

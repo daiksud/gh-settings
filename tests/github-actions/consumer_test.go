@@ -43,7 +43,7 @@ func TestPRConsumerPlan(t *testing.T) {
 			f.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
 			f.base["MOCK_PLAN_OUTPUT"] = test.output
 			result := f.call(t, job.Steps[1], context, nil)
-			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": "v0.5.0", "cli-sha256": f.digest}
+			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": "v0.6.1", "cli-sha256": f.digest}
 			calls := "validate\nplan\n"
 			if test.status != 0 {
 				want = map[string]string{}
@@ -52,7 +52,7 @@ func TestPRConsumerPlan(t *testing.T) {
 			if result.status != test.status || result.calls != calls || result.api != "" || !reflect.DeepEqual(result.outputs, want) {
 				t.Fatalf("PR plan boundary failed: %+v", result)
 			}
-			for _, value := range []string{test.review, f.sha, "pull_request", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", "93d8217d146f5d430aaf90597119114218990e70"} {
+			for _, value := range []string{test.review, f.sha, "pull_request", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", "9d01d3258d9f42239b2daeb1ac26bc532cd56105"} {
 				if !strings.Contains(result.summary, value) {
 					t.Fatalf("PR Summary missing %q: %s", value, result.summary)
 				}
@@ -77,7 +77,7 @@ func TestMainConsumerApply(t *testing.T) {
 			if result.status != test.status || !result.minted || !result.revoked || result.applied.api != "PATCH\n" {
 				t.Fatalf("status=%d minted=%t revoked=%t API=%q\n%s", result.status, result.minted, result.revoked, result.applied.api, result.log)
 			}
-			want := map[string]string{"config-sha": result.prepared.sha, "target": "owner/config", "cli-version": "v0.5.0", "cli-sha256": result.prepared.digest}
+			want := map[string]string{"config-sha": result.prepared.sha, "target": "owner/config", "cli-version": "v0.6.1", "cli-sha256": result.prepared.digest}
 			wantApplied := want
 			if test.status != 0 {
 				wantApplied = map[string]string{}
@@ -91,7 +91,7 @@ func TestMainConsumerApply(t *testing.T) {
 			if !strings.Contains(result.summary, "CLI step outcome: "+test.outcome) {
 				t.Fatalf("missing apply outcome: %s", result.summary)
 			}
-			for _, identity := range []string{"daiksud/gh-settings", "93d8217d146f5d430aaf90597119114218990e70", result.prepared.sha, ".github/workflows/settings-main.yml"} {
+			for _, identity := range []string{"daiksud/gh-settings", "9d01d3258d9f42239b2daeb1ac26bc532cd56105", result.prepared.sha, ".github/workflows/settings-main.yml"} {
 				if !strings.Contains(result.prepared.summary, identity) {
 					t.Fatalf("prepare Summary missing identity %q: %s", identity, result.prepared.summary)
 				}
@@ -204,9 +204,7 @@ func runMainConsumerWorkflow(t *testing.T, scenario, workflowFile string) (resul
 	}
 	// Only dummy-release checksum data changes in the copied verifier.
 	// Each production verifier also has an unchanged-identity handoff test.
-	checksums := strings.NewReplacer("b4a63eb8912657deabc5ea8909a7e6198d375c94cb0a9cd83f7d2179f7bbf5b4", prepare.digest,
-		"7b93802a64609ed5daf1b3bd02e33ad9384fda26b7776233cd094c8dd85d5874", prepare.digest)
-	prepare.write(filepath.Join(prepare.caller, verifierPath), checksums.Replace(string(verifier)))
+	prepare.write(filepath.Join(prepare.caller, verifierPath), strings.ReplaceAll(string(verifier), "7b93802a64609ed5daf1b3bd02e33ad9384fda26b7776233cd094c8dd85d5874", prepare.digest))
 	prepare.git("add", ".github/workflows/settings-main.yml", verifierPath)
 	prepare.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "consumer")
 	prepare.sha = prepare.git("rev-parse", "HEAD")
@@ -345,16 +343,11 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 	if !ok || repository != "daiksud/gh-settings" {
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
-	// Simulate each caller's reviewed release identity in the copied package.
-	version := ""
-	switch ref {
-	case "93d8217d146f5d430aaf90597119114218990e70":
-		version = "v0.5.0"
-	case "9d01d3258d9f42239b2daeb1ac26bc532cd56105":
-		version = "v0.6.1"
-	default:
+	// Model one published consumer context using the candidate package, not tag bytes.
+	if ref != "9d01d3258d9f42239b2daeb1ac26bc532cd56105" {
 		t.Fatalf("unmodeled public Action revision %s", ref)
 	}
+	version := "v0.6.1"
 	f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
 	f.base["MOCK_CLI_VERSION"] = version
 	overrides := map[string]string{
