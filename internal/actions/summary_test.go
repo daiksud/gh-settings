@@ -31,6 +31,8 @@ func TestSummaryInputAndStorageFailures(t *testing.T) {
 	}{
 		{"missing report", "", false, false},
 		{"malformed JSON", "{", false, false},
+		{"missing count", `{"outcome":"unmanaged","changes":[]}`, false, false},
+		{"null count", `{"outcome":"unmanaged","managed":null,"changes":[]}`, false, false},
 		{"invalid state", `{"outcome":"unknown","managed":0,"changes":[]}`, false, false},
 		{"missing actor", `{"outcome":"unmanaged","managed":0,"changes":[]}`, true, false},
 		{"directory", `{"outcome":"unmanaged","managed":0,"changes":[]}`, false, true},
@@ -80,6 +82,9 @@ func TestSummaryRequiresNativeChanges(t *testing.T) {
 		{"numeric pair", actions.PlanChange{Field: "description", Before: float64(1), After: float64(2)}},
 		{"mismatched pair", actions.PlanChange{Field: "description", Before: "before", After: false}},
 		{"null before", actions.PlanChange{Field: "description", After: "after"}},
+		{"description booleans", actions.PlanChange{Field: "description", Before: true, After: false}},
+		{"issues strings", actions.PlanChange{Field: "has_issues", Before: "yes", After: "no"}},
+		{"unknown field", actions.PlanChange{Field: "unknown", Before: "before", After: "after"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{test.change}}
@@ -105,6 +110,8 @@ func TestSummaryRequiresValidReportState(t *testing.T) {
 		{"no difference with changes", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 1, Changes: change}},
 		{"unmanaged positive count", actions.PlanReport{Outcome: "unmanaged", Managed: 1, Changes: empty}},
 		{"failure without diagnostic", actions.PlanReport{Outcome: "invalid-config", Changes: empty}},
+		{"wrong diagnostic category", actions.PlanReport{Outcome: "invalid-config", Diagnostic: "repository read failed", Changes: empty}},
+		{"arbitrary diagnostic", actions.PlanReport{Outcome: "target-failure", Diagnostic: "arbitrary failure text", Changes: empty}},
 		{"read failure without target", actions.PlanReport{Outcome: "read-failure", Diagnostic: "repository read failed", Changes: empty}},
 		{"target mismatch", actions.PlanReport{Outcome: "no-difference", Target: "other/repo", Managed: 1, Changes: empty}},
 	} {

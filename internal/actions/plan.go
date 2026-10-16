@@ -9,6 +9,12 @@ import (
 	"github.com/daiksud/gh-settings/internal/app"
 )
 
+const (
+	invalidConfigDiagnostic = "configuration validation failed"
+	targetFailureDiagnostic = "repository target resolution failed"
+	readFailureDiagnostic   = "repository read failed"
+)
+
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
 	Outcome    string       `json:"outcome"`
@@ -36,14 +42,14 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		switch failure.Stage {
 		case "invalid-config":
 			report.Outcome = "invalid-config"
-			report.Diagnostic = "configuration validation failed"
+			report.Diagnostic = invalidConfigDiagnostic
 		case "read-failure":
 			report.Outcome = "read-failure"
 			report.Target = failure.Target.Owner + "/" + failure.Target.Name
-			report.Diagnostic = "repository read failed"
+			report.Diagnostic = readFailureDiagnostic
 		case "target-failure":
 			report.Outcome = "target-failure"
-			report.Diagnostic = "repository target resolution failed"
+			report.Diagnostic = targetFailureDiagnostic
 		default:
 			return planErr
 		}

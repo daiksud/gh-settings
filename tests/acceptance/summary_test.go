@@ -31,7 +31,7 @@ func TestActionChangedSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	summaryPath := filepath.Join(fixture.root, "review Summary.md")
-	if err := os.WriteFile(summaryPath, []byte("existing Summary\n"), 0600); err != nil {
+	if err := os.WriteFile(summaryPath, []byte("existing Summary"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "summary", reportPath, summaryPath}, false)
@@ -47,7 +47,7 @@ func TestActionChangedSummary(t *testing.T) {
 	}
 	written := string(data)
 	visible := html.UnescapeString(written)
-	if !strings.HasPrefix(written, "existing Summary\n") || strings.Contains(written, "unrelated-secret-sentinel") {
+	if !strings.HasPrefix(written, "existing Summary\n\n## Settings review\n") || strings.Contains(written, "unrelated-secret-sentinel") {
 		t.Fatalf("Summary lost prior content or exposed unrelated data: %s", written)
 	}
 	for _, expected := range []string{

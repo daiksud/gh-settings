@@ -102,7 +102,7 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 		{"CLI SHA-256", quoteHTML(metadata.CLISHA256)},
 	}
 	var content strings.Builder
-	content.WriteString("## Settings review\n\n<table>\n")
+	content.WriteString("\n\n## Settings review\n\n<table>\n")
 	for _, row := range rows {
 		fmt.Fprintf(&content, "<tr><th>%s</th><td>%s</td></tr>\n", quoteHTML(row.label), row.value)
 	}
@@ -130,23 +130,29 @@ func validatePlanReport(report PlanReport, target string) error {
 		valid = report.Managed > 0 && len(report.Changes) == 0 && report.Diagnostic == "" && report.Target == target
 	case "unmanaged":
 		valid = report.Managed == 0 && report.Target == "" && report.Diagnostic == ""
-	case "invalid-config", "target-failure":
-		valid = report.Managed == 0 && report.Target == "" && report.Diagnostic != ""
+	case "invalid-config":
+		valid = report.Managed == 0 && report.Target == "" && report.Diagnostic == invalidConfigDiagnostic
+	case "target-failure":
+		valid = report.Managed == 0 && report.Target == "" && report.Diagnostic == targetFailureDiagnostic
 	case "read-failure":
-		valid = report.Managed == 0 && report.Target == target && report.Diagnostic != ""
+		valid = report.Managed == 0 && report.Target == target && report.Diagnostic == readFailureDiagnostic
 	}
 	if !valid {
 		return fmt.Errorf("invalid plan report state")
 	}
 	for _, change := range report.Changes {
 		nativePair := false
-		switch change.Before.(type) {
-		case string:
-			_, nativePair = change.After.(string)
-		case bool:
-			_, nativePair = change.After.(bool)
+		switch change.Field {
+		case "description", "homepage":
+			_, before := change.Before.(string)
+			_, after := change.After.(string)
+			nativePair = before && after
+		case "has_issues", "has_projects", "has_wiki":
+			_, before := change.Before.(bool)
+			_, after := change.After.(bool)
+			nativePair = before && after
 		}
-		if change.Field == "" || !nativePair {
+		if !nativePair {
 			return fmt.Errorf("invalid plan report change")
 		}
 	}
@@ -189,10 +195,18 @@ func writeSummary(reportPath, summaryPath string) error {
 	if err != nil {
 		return fmt.Errorf("read plan report: %w", err)
 	}
-	var report PlanReport
-	if err := json.Unmarshal(data, &report); err != nil {
+	var decoded struct {
+		PlanReport
+		Managed *int `json:"managed"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
 		return fmt.Errorf("decode plan report: %w", err)
 	}
+	if decoded.Managed == nil {
+		return fmt.Errorf("missing plan report managed count")
+	}
+	report := decoded.PlanReport
+	report.Managed = *decoded.Managed
 	content, err := RenderSummary(report, runMetadataFromEnv())
 	if err != nil {
 		return err
