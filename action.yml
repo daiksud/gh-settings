@@ -57,15 +57,15 @@ runs:
       if: inputs.command == 'validate'
       shell: bash
       env:
-        ACTION_PATH: ${{ github.action_path }}
         SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
-      run: bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" validate "${SETTINGS_CLI%/*}/output.txt"
+      run: |
+        unset GH_TOKEN GITHUB_TOKEN
+        "$SETTINGS_CLI" validate
     - name: Execute plan or apply with the caller token
       id: execute
       if: inputs.command != 'validate'
       shell: bash
       env:
-        ACTION_PATH: ${{ github.action_path }}
         SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
         SETTINGS_COMMAND: ${{ inputs.command }}
         GH_TOKEN: ${{ inputs.token }}
@@ -75,7 +75,7 @@ runs:
         if [[ "$SETTINGS_COMMAND" == plan ]]; then
           "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" || status=$?
         else
-          bash "$ACTION_PATH/action/run-command.sh" "$SETTINGS_CLI" apply "${SETTINGS_CLI%/*}/output.txt" || status=$?
+          "$SETTINGS_CLI" apply || status=$?
         fi
         [[ "$SETTINGS_COMMAND" == plan ]] || exit "$status"
         if ! printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"; then

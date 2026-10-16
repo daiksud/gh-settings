@@ -64,7 +64,6 @@ runs:
       shell: bash
       run: |
         bash tests/github-actions/action-install.sh
-        bash tests/github-actions/action-command.sh
     - name: Build the product binary once
       id: build
       shell: bash
