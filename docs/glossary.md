@@ -19,4 +19,6 @@ The GitHub read boundary checks completeness and normalizes permitted null strin
 
 The [workspace file boundary](../internal/workspace/config_file.go) owns the fixed checkout-root configuration path, reading and export writing. It delegates decoding to the pure codec and accepts already-encoded export bytes; GitHub access stays with its caller.
 
+The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-root and checkout-scoped GitHub target resolution through `GitRoot` and `CurrentRepository`. It ignores `GH_REPO` and unscoped origins, retaining the [existing origin and transport-rewrite contract](commands.md#export-behavior).
+
 The pure [comparison](../internal/settings/comparison.go) retains native string/string or bool/bool value pairs. Terminal messages, quoting and arrows belong to the [CLI renderer](../internal/cli/comparison.go); apply consumes the declaration directly.

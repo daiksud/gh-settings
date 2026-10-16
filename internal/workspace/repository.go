@@ -1,4 +1,4 @@
-package main
+package workspace
 
 import (
 	"fmt"
@@ -8,7 +8,8 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 )
 
-func gitRoot() (string, error) {
+// GitRoot returns the checkout root containing the current working directory.
+func GitRoot() (string, error) {
 	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
 		return "", err
@@ -16,8 +17,9 @@ func gitRoot() (string, error) {
 	return strings.TrimSuffix(string(root), "\n"), nil
 }
 
-func currentRepository() (repository.Repository, error) {
-	if _, err := gitRoot(); err != nil {
+// CurrentRepository resolves the GitHub target from a checkout-scoped origin.
+func CurrentRepository() (repository.Repository, error) {
+	if _, err := GitRoot(); err != nil {
 		return repository.Repository{}, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
 	}
 	// Git remote get-url applies insteadOf transport rewrites, which can hide

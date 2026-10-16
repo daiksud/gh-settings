@@ -11,11 +11,11 @@ import (
 )
 
 func exportCurrent() ([]byte, error) {
-	repo, err := currentRepository()
+	repo, err := workspace.CurrentRepository()
 	if err != nil {
 		return nil, err
 	}
-	root, err := gitRoot()
+	root, err := workspace.GitRoot()
 	if err != nil {
 		return nil, fmt.Errorf("locate %s: %w", workspace.SettingsPath, err)
 	}

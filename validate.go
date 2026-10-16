@@ -13,7 +13,7 @@ func validateCurrent() error {
 }
 
 func loadCurrentConfig() (settings.RepositoryDeclaration, error) {
-	root, err := gitRoot()
+	root, err := workspace.GitRoot()
 	if err != nil {
 		return settings.RepositoryDeclaration{}, fmt.Errorf("locate %s: current directory is not in a Git repository: %w", workspace.SettingsPath, err)
 	}
