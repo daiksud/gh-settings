@@ -25,4 +25,6 @@ The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-
 
 The shared [local validation operation](../internal/app/validate.go), `app.Validate`, locates the checkout root and reads a typed repository declaration or returns an error. It does not resolve origin, configure authentication, access GitHub, write files or format CLI output. CLI validate adapts the error; plan and apply consume the validated declaration.
 
+The shared [plan operation](../internal/app/plan.go) returns `app.PlanResult`: the resolved target plus a native repository comparison. It validates before resolving the target and invoking its reader dependency. CLI plan supplies the GitHub read and renders the comparison; valid empty declarations currently still resolve the target and perform the read.
+
 The pure [comparison](../internal/settings/comparison.go) retains native string/string or bool/bool value pairs. Terminal messages, quoting and arrows belong to the [CLI renderer](../internal/cli/comparison.go); apply consumes the declaration directly.
