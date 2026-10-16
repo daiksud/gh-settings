@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -32,39 +31,19 @@ func planSettings(desired settings.RepositoryDeclaration, repo repository.Reposi
 	if err != nil {
 		return nil, err
 	}
-	return repositoryPlan(current, desired), nil
+	return renderRepositoryComparison(settings.CompareRepository(current, desired)), nil
 }
 
-func repositoryPlan(current settings.RepositoryState, desired settings.RepositoryDeclaration) []byte {
+func renderRepositoryComparison(comparison settings.RepositoryComparison) []byte {
 	var output strings.Builder
-	managed := 0
-	stringField := func(name, current string, desired *string) {
-		if desired == nil {
-			return
-		}
-		managed++
-		if current != *desired {
-			fmt.Fprintf(&output, "settings.repository.%s: %s → %s\n", name, strconv.Quote(current), strconv.Quote(*desired))
-		}
-	}
-	boolField := func(name string, current bool, desired *bool) {
-		if desired == nil {
-			return
-		}
-		managed++
-		if current != *desired {
-			fmt.Fprintf(&output, "settings.repository.%s: %t → %t\n", name, current, *desired)
-		}
-	}
-	stringField("description", current.Description, desired.Description)
-	stringField("homepage", current.Homepage, desired.Homepage)
-	boolField("has_issues", current.HasIssues, desired.HasIssues)
-	boolField("has_projects", current.HasProjects, desired.HasProjects)
-	boolField("has_wiki", current.HasWiki, desired.HasWiki)
-	if managed == 0 {
+	if comparison.Managed == 0 {
 		output.WriteString("No managed repository settings.\n")
-	} else if output.Len() == 0 {
+	} else if len(comparison.Changes) == 0 {
 		output.WriteString("No differences for managed repository settings.\n")
+	} else {
+		for _, change := range comparison.Changes {
+			fmt.Fprintf(&output, "settings.repository.%s: %#v → %#v\n", change.Field, change.Before, change.After)
+		}
 	}
 	return []byte(output.String())
 }

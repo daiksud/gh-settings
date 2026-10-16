@@ -15,7 +15,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func TestRepositoryPlan(t *testing.T) {
+func TestRenderRepositoryComparison(t *testing.T) {
 	current := settings.RepositoryState{
 		Description: "old", Homepage: "old-url", HasIssues: true, HasProjects: true, HasWiki: true,
 	}
@@ -33,7 +33,7 @@ func TestRepositoryPlan(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := string(repositoryPlan(current, desired.Settings.Repository)); got != test.want {
+			if got := string(renderRepositoryComparison(settings.CompareRepository(current, desired.Settings.Repository))); got != test.want {
 				t.Fatalf("output=%q, want %q", got, test.want)
 			}
 		})
