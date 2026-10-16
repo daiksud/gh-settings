@@ -28,7 +28,7 @@ case "${1:-}" in
     [[ $# -le 2 && -S "$PLAN_FIXTURE/api.sock" ]]
     [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} && -z ${GH_HOST:-} && -z ${GH_REPO:-} ]]
     case "${2:-normal}" in
-      normal|invalid-config) rm -f "$PLAN_FIXTURE/read403" ;;
+      normal|invalid-config|apply) rm -f "$PLAN_FIXTURE/read403" ;;
       read-failure) touch "$PLAN_FIXTURE/read403" ;;
       *) exit 1 ;;
     esac
@@ -44,13 +44,17 @@ YAML
     if [[ "${2:-normal}" == invalid-config ]]; then
       printf 'schemaVersion: 1\nsettings:\n  repository:\n    has_issues: "invalid"\n' > .github/settings.yml
     fi
+    if [[ "${2:-normal}" == apply ]]; then
+      printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: ""\n    has_issues: false\n' > .github/settings.yml
+    fi
     git add .github/settings.yml
     if ! git diff --cached --quiet; then
-      git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: prepare candidate plan'
+      git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: prepare candidate configuration'
     fi
     git rev-parse HEAD > "$PLAN_FIXTURE/config-sha"
     sha256sum .github/settings.yml > "$PLAN_FIXTURE/config-checksum"
     : > "$PLAN_FIXTURE/requests"
+    rm -f "$PLAN_FIXTURE/patch.json"
     : > "$PLAN_FIXTURE/summaries-before"
     shopt -s nullglob
     for summary in "${GITHUB_STEP_SUMMARY%/*}"/step_summary_*; do
@@ -68,7 +72,7 @@ YAML
     consumer_sha=$(cat "$PLAN_FIXTURE/config-sha")
     [[ "$consumer_sha" != "$ACTION_SHA" ]]
     case "${2:-normal}" in
-      normal)
+      normal|apply)
         [[ "$PLAN_OUTCOME" == success && "$CONFIG_SHA" == "$consumer_sha" ]]
         [[ "$TARGET" == example-owner/settings-fixture ]]
         [[ "$CLI_VERSION" == "$EXPECTED_CLI_VERSION" && "$CLI_SHA256" == "$EXPECTED_CLI_SHA256" ]]
@@ -79,7 +83,10 @@ YAML
         ;;
       *) exit 1 ;;
     esac
-    if [[ "${2:-normal}" == invalid-config ]]; then
+    if [[ "${2:-normal}" == apply ]]; then
+      [[ "$(cat "$PLAN_FIXTURE/requests")" == 'PATCH /repos/example-owner/settings-fixture' ]]
+      [[ "$(jq -cS . "$PLAN_FIXTURE/patch.json")" == '{"description":"","has_issues":false}' ]]
+    elif [[ "${2:-normal}" == invalid-config ]]; then
       [[ ! -s "$PLAN_FIXTURE/requests" ]]
     else
       [[ "$(cat "$PLAN_FIXTURE/requests")" == 'GET /repos/example-owner/settings-fixture' ]]
@@ -94,6 +101,14 @@ YAML
         cp "$summary" "$PLAN_FIXTURE/summary"
       fi
     done
+    if [[ "${2:-normal}" == apply ]]; then
+      [[ "$matches" == 0 ]]
+      printf 'Candidate apply normal: source=%s config=%s version=%s sha256=%s outcome=%s\n' \
+        "$ACTION_SHA" "$consumer_sha" "$EXPECTED_CLI_VERSION" "$EXPECTED_CLI_SHA256" "$PLAN_OUTCOME"
+      cat "$PLAN_FIXTURE/requests" "$PLAN_FIXTURE/patch.json"
+      printf '\nExact received PATCH and unchanged consumer verified; no GET or new Settings review.\n'
+      exit 0
+    fi
     [[ "$matches" == 1 ]]
     summary="$PLAN_FIXTURE/summary"
     grep -Fq "$consumer_sha" "$summary"
@@ -132,5 +147,5 @@ YAML
       rm -rf "$PLAN_FIXTURE"
     fi
     ;;
-  *) echo 'usage: candidate-plan.sh start FIXTURE_BINARY | prepare [read-failure|invalid-config] | assert [read-failure|invalid-config] | stop' >&2; exit 1 ;;
+  *) echo 'usage: candidate-plan.sh start FIXTURE_BINARY | prepare [read-failure|invalid-config|apply] | assert [read-failure|invalid-config|apply] | stop' >&2; exit 1 ;;
 esac

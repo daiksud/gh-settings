@@ -2,8 +2,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -36,13 +38,35 @@ func run() error {
 	}
 	defer listener.Close()
 	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet || r.URL.RequestURI() != "/repos/example-owner/settings-fixture" || r.Host != "api.github.com" || r.Header.Get("Authorization") != "token plan-fixture-read" {
+		authorized := r.Method == http.MethodGet && r.Header.Get("Authorization") == "token plan-fixture-read" ||
+			r.Method == http.MethodPatch && r.Header.Get("Authorization") == "token apply-fixture-write"
+		if !authorized || r.URL.RequestURI() != "/repos/example-owner/settings-fixture" || r.Host != "api.github.com" {
 			fmt.Fprintln(log, "unexpected request")
 			http.Error(w, "unexpected fixture request", http.StatusBadRequest)
 			return
 		}
 		fmt.Fprintln(log, r.Method, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodPatch {
+			body, err := io.ReadAll(r.Body)
+			var payload map[string]any
+			if err == nil {
+				err = json.Unmarshal(body, &payload)
+			}
+			if err == nil {
+				body, err = json.Marshal(payload)
+			}
+			if err == nil {
+				err = os.WriteFile(filepath.Join(root, "patch.json"), body, 0600)
+			}
+			if err != nil {
+				fmt.Fprintln(log, "invalid PATCH payload")
+				http.Error(w, "invalid fixture payload", http.StatusBadRequest)
+				return
+			}
+			fmt.Fprintln(w, `{}`)
+			return
+		}
 		if _, err := os.Stat(filepath.Join(root, "read403")); err == nil {
 			w.WriteHeader(http.StatusForbidden)
 			fmt.Fprintln(w, `{"message":"fixture read denied"}`)

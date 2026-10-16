@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # CI-only stand-in: serve the same-run candidate through the unchanged installer.
 set -euo pipefail
+[[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
 url='' output=''
 while [[ $# -gt 0 ]]; do
   case "$1" in

@@ -135,7 +135,7 @@ jobs:
             "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
             "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
           printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
-      - name: Build and start the required local plan API
+      - name: Build and start the required local repository API
         env:
           GOTOOLCHAIN: local
         run: |
@@ -200,7 +200,26 @@ jobs:
           EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
           EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
         run: bash .action/tests/github-actions/candidate-plan.sh assert invalid-config
-      - name: Stop the owned local plan API
+      - name: Prepare the direct apply declaration and Summary snapshot
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare apply
+      - name: Apply through the actual root composite
+        id: apply
+        uses: ./.action
+        with:
+          command: apply
+          token: apply-fixture-write
+      - name: Require exact direct PATCH and all public outputs
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.apply.outcome }}
+          CONFIG_SHA: ${{ steps.apply.outputs.config-sha }}
+          TARGET: ${{ steps.apply.outputs.target }}
+          CLI_VERSION: ${{ steps.apply.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.apply.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert apply
+      - name: Stop the owned local repository API
         if: always()
         run: bash .action/tests/github-actions/candidate-plan.sh stop
   pass:
