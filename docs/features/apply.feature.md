@@ -33,14 +33,16 @@ description: Send declared repository fields directly after local validation.
 
 ### Test mapping
 
-Unit tests use fake transports. Process acceptance uses the already-built executable, isolated Git/configuration directories, a local Unix socket, and a dummy token. No test mutates real GitHub repository settings.
+Application tests use real temporary checkouts/files and a writer spy; GitHub adapter tests use fake transports. Process acceptance uses the already-built executable, isolated Git/configuration directories, a local Unix socket, and a dummy token. No test mutates real GitHub repository settings.
 
 | Behavior | Test |
 | --- | --- |
 | Exact PATCH payload, omission, five fields, false/empty strings, escaping | [`TestApplyRepositorySettings`](../../internal/github/apply_test.go) |
 | HTTP/response/transport failures | [`TestApplyRepositoryFailures`](../../internal/github/apply_test.go) |
 | System/global/command origins ignored; local/includes/worktree/aliases preserved | `TestRepositoryIgnoresUnscopedOrigins` |
-| Validation before origin/authentication and local no-op | `TestApplyCurrentValidatesAndNoopsLocally` |
+| Typed target/declaration, false/empty/omitted values, one write and unchanged file | [`TestApplyDeclaredSettings`](../../internal/app/apply_test.go) |
+| Validation before target/writer and local no-op | [TestApplyValidatesBeforeWrite and TestApplyNoManagedSettings](../../internal/app/apply_test.go) |
+| Target failure before write and write failure without applied status | [TestApplyTargetFailureBeforeWrite and TestApplyWriteFailure](../../internal/app/apply_test.go) |
 | Command dispatch, arguments, output failures | `TestRunSelectsOperation`, `TestUnsupportedCommand`, `TestApplyOutputFailure` |
 | Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, failure status/stderr/empty stdout, unchanged file | [`TestApplyAcceptance`](../../tests/acceptance/apply_test.go) |
 | Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |
