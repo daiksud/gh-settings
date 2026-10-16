@@ -216,6 +216,17 @@ The real composite plan cases use the required [Unix-socket API fixture](../../t
 | Local read403 | Exactly one repository GET | Failure and four empty outputs | Categorical repository-read failure |
 | Committed invalid boolean | Zero requests with a live required fixture | Failure and four empty outputs | Categorical configuration-validation failure |
 
-Unexpected method, target or dummy-token use is rejected. Missing local fixture, unavailable Summary bytes or failed assertions cannot become skipped success. No-difference/unmanaged details remain in owner tests. This is actual candidate execution and rendering evidence, not Summary publication, real credential lifecycle or live API proof. Composite apply evidence remains #161.
+The same composite also invokes real direct apply with a separate literal dummy write token. Its received PATCH is decoded and recorded, then independently compared as a complete native JSON object; no expected payload is manufactured by the server.
+
+| Candidate apply case | API observation | Action outcome and outputs | Summary observation |
+| --- | --- | --- | --- |
+| Declared empty string and false | Exactly one PATCH, no GET; only `description: ""` and `has_issues: false` | Success and four expected identities | No new Settings review |
+| Local write403 | Exactly one identical attempted PATCH, no GET | Failure and four empty outputs | No new Settings review |
+| Committed invalid boolean | Zero requests and no captured PATCH with a live fixture | Failure and four empty outputs | No new Settings review |
+| Empty `settings: {}` declaration | Zero requests and no captured PATCH with a live fixture | Success and four expected identities | No new Settings review |
+
+All apply cases preserve configuration bytes and commit. A write error does not establish the remote outcome. Empty apply retains the public composite's explicit token and metadata requirements. Existing composed tests own token-free setup/metadata/rendering and explicit execution-token boundaries; bounded caller fixtures retain their labeled approval/token-revocation simulations.
+
+Unexpected method, target or dummy-token use is rejected. Missing local fixture, unavailable Summary bytes or failed assertions cannot become skipped success. No-difference/unmanaged details remain in owner tests. This is actual candidate execution and rendering evidence, not Summary publication, real credential lifecycle or live API proof.
 
 Hosted smoke uses the CLI built once with the committed candidate version and the Action from that producer's exact source SHA, including PR merge source. A bounded test-only download fixture verifies the transferred artifact/source/version and serves only the unchanged installer's fixed two URLs; missing/tampered artifacts and unexpected requests fail. Actual `uses` expansion validates a separate configuration-only checkout and compares all four outputs to this run's identities. There is no product rebuild, production input override, committed version rewrite or old-release fallback. Candidate-fixture evidence does not verify real release downloads, publication or immutable released assets. Production-identity checks and active public-Action caller tests remain. Usage documentation is checked against the actual contract, snippets, example copies and helper references. Offline checks do not prove Environment enforcement, token revocation, Summary publication, or a live update. See the [CI evidence boundary](../development.md#ci-validation).

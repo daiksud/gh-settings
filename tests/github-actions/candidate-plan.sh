@@ -27,9 +27,11 @@ case "${1:-}" in
   prepare)
     [[ $# -le 2 && -S "$PLAN_FIXTURE/api.sock" ]]
     [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} && -z ${GH_HOST:-} && -z ${GH_REPO:-} ]]
+    rm -f "$PLAN_FIXTURE/read403" "$PLAN_FIXTURE/write403"
     case "${2:-normal}" in
-      normal|invalid-config|apply) rm -f "$PLAN_FIXTURE/read403" ;;
+      normal|invalid-config|apply|apply-invalid|apply-empty) ;;
       read-failure) touch "$PLAN_FIXTURE/read403" ;;
+      apply-write-failure) touch "$PLAN_FIXTURE/write403" ;;
       *) exit 1 ;;
     esac
     cat > .github/settings.yml <<'YAML'
@@ -41,11 +43,14 @@ settings:
       line
     has_issues: false
 YAML
-    if [[ "${2:-normal}" == invalid-config ]]; then
+    if [[ "${2:-normal}" == apply* ]]; then
+      printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: ""\n    has_issues: false\n' > .github/settings.yml
+    fi
+    if [[ "${2:-normal}" == invalid-config || "${2:-normal}" == apply-invalid ]]; then
       printf 'schemaVersion: 1\nsettings:\n  repository:\n    has_issues: "invalid"\n' > .github/settings.yml
     fi
-    if [[ "${2:-normal}" == apply ]]; then
-      printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: ""\n    has_issues: false\n' > .github/settings.yml
+    if [[ "${2:-normal}" == apply-empty ]]; then
+      printf 'schemaVersion: 1\nsettings: {}\n' > .github/settings.yml
     fi
     git add .github/settings.yml
     if ! git diff --cached --quiet; then
@@ -72,22 +77,22 @@ YAML
     consumer_sha=$(cat "$PLAN_FIXTURE/config-sha")
     [[ "$consumer_sha" != "$ACTION_SHA" ]]
     case "${2:-normal}" in
-      normal|apply)
+      normal|apply|apply-empty)
         [[ "$PLAN_OUTCOME" == success && "$CONFIG_SHA" == "$consumer_sha" ]]
         [[ "$TARGET" == example-owner/settings-fixture ]]
         [[ "$CLI_VERSION" == "$EXPECTED_CLI_VERSION" && "$CLI_SHA256" == "$EXPECTED_CLI_SHA256" ]]
         ;;
-      read-failure|invalid-config)
+      read-failure|invalid-config|apply-write-failure|apply-invalid)
         [[ "$PLAN_OUTCOME" == failure ]]
         [[ -z "$CONFIG_SHA$TARGET$CLI_VERSION$CLI_SHA256" ]]
         ;;
       *) exit 1 ;;
     esac
-    if [[ "${2:-normal}" == apply ]]; then
+    if [[ "${2:-normal}" == invalid-config || "${2:-normal}" == apply-invalid || "${2:-normal}" == apply-empty ]]; then
+      [[ ! -s "$PLAN_FIXTURE/requests" && ! -e "$PLAN_FIXTURE/patch.json" ]]
+    elif [[ "${2:-normal}" == apply* ]]; then
       [[ "$(cat "$PLAN_FIXTURE/requests")" == 'PATCH /repos/example-owner/settings-fixture' ]]
       [[ "$(jq -cS . "$PLAN_FIXTURE/patch.json")" == '{"description":"","has_issues":false}' ]]
-    elif [[ "${2:-normal}" == invalid-config ]]; then
-      [[ ! -s "$PLAN_FIXTURE/requests" ]]
     else
       [[ "$(cat "$PLAN_FIXTURE/requests")" == 'GET /repos/example-owner/settings-fixture' ]]
     fi
@@ -101,12 +106,21 @@ YAML
         cp "$summary" "$PLAN_FIXTURE/summary"
       fi
     done
-    if [[ "${2:-normal}" == apply ]]; then
+    if [[ "${2:-normal}" == apply* ]]; then
       [[ "$matches" == 0 ]]
-      printf 'Candidate apply normal: source=%s config=%s version=%s sha256=%s outcome=%s\n' \
-        "$ACTION_SHA" "$consumer_sha" "$EXPECTED_CLI_VERSION" "$EXPECTED_CLI_SHA256" "$PLAN_OUTCOME"
-      cat "$PLAN_FIXTURE/requests" "$PLAN_FIXTURE/patch.json"
-      printf '\nExact received PATCH and unchanged consumer verified; no GET or new Settings review.\n'
+      apply_case=${2#apply}
+      apply_case=${apply_case#-}
+      printf 'Candidate apply %s: source=%s config=%s version=%s sha256=%s outcome=%s\n' \
+        "${apply_case:-normal}" "$ACTION_SHA" "$consumer_sha" "$EXPECTED_CLI_VERSION" "$EXPECTED_CLI_SHA256" "$PLAN_OUTCOME"
+      if [[ "$2" == apply-invalid || "$2" == apply-empty ]]; then
+        printf 'Zero API requests or captured PATCH; unchanged consumer; no new Settings review.\n'
+      else
+        cat "$PLAN_FIXTURE/requests" "$PLAN_FIXTURE/patch.json"
+        printf '\nExact received PATCH and unchanged consumer verified; no GET or new Settings review.\n'
+      fi
+      if [[ "$2" == apply-write-failure ]]; then
+        printf 'A failed PATCH attempt does not establish the remote outcome.\n'
+      fi
       exit 0
     fi
     [[ "$matches" == 1 ]]
@@ -147,5 +161,5 @@ YAML
       rm -rf "$PLAN_FIXTURE"
     fi
     ;;
-  *) echo 'usage: candidate-plan.sh start FIXTURE_BINARY | prepare [read-failure|invalid-config|apply] | assert [read-failure|invalid-config|apply] | stop' >&2; exit 1 ;;
+  *) echo 'usage: candidate-plan.sh start FIXTURE_BINARY | prepare [read-failure|invalid-config|apply|apply-write-failure|apply-invalid|apply-empty] | assert [read-failure|invalid-config|apply|apply-write-failure|apply-invalid|apply-empty] | stop' >&2; exit 1 ;;
 esac

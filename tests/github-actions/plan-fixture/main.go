@@ -64,6 +64,11 @@ func run() error {
 				http.Error(w, "invalid fixture payload", http.StatusBadRequest)
 				return
 			}
+			if _, err := os.Stat(filepath.Join(root, "write403")); err == nil {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprintln(w, `{"message":"fixture write denied"}`)
+				return
+			}
 			fmt.Fprintln(w, `{}`)
 			return
 		}

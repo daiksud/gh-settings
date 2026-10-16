@@ -239,6 +239,65 @@ jobs:
           EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
           EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
         run: bash .action/tests/github-actions/candidate-plan.sh assert apply
+      - name: Prepare the local write failure
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare apply-write-failure
+      - name: Apply through an actual local write403
+        id: write-failure
+        continue-on-error: true
+        uses: ./.action
+        with:
+          command: apply
+          token: apply-fixture-write
+      - name: Require write failure and four empty outputs
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.write-failure.outcome }}
+          CONFIG_SHA: ${{ steps.write-failure.outputs.config-sha }}
+          TARGET: ${{ steps.write-failure.outputs.target }}
+          CLI_VERSION: ${{ steps.write-failure.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.write-failure.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert apply-write-failure
+      - name: Prepare the invalid apply declaration
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare apply-invalid
+      - name: Apply through an actual configuration failure
+        id: apply-invalid
+        continue-on-error: true
+        uses: ./.action
+        with:
+          command: apply
+          token: apply-fixture-write
+      - name: Require invalid apply failure without API access
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.apply-invalid.outcome }}
+          CONFIG_SHA: ${{ steps.apply-invalid.outputs.config-sha }}
+          TARGET: ${{ steps.apply-invalid.outputs.target }}
+          CLI_VERSION: ${{ steps.apply-invalid.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.apply-invalid.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert apply-invalid
+      - name: Prepare the empty apply declaration
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare apply-empty
+      - name: Apply an actual empty declaration
+        id: apply-empty
+        uses: ./.action
+        with:
+          command: apply
+          token: apply-fixture-write
+      - name: Require successful empty apply without API access
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.apply-empty.outcome }}
+          CONFIG_SHA: ${{ steps.apply-empty.outputs.config-sha }}
+          TARGET: ${{ steps.apply-empty.outputs.target }}
+          CLI_VERSION: ${{ steps.apply-empty.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.apply-empty.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert apply-empty
       - name: Stop the owned local repository API
         if: always()
         run: bash .action/tests/github-actions/candidate-plan.sh stop
