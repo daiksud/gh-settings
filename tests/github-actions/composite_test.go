@@ -18,8 +18,11 @@ import (
 	"github.com/daiksud/gh-settings/internal/actions"
 )
 
-// The mock CLI delegates Summary to the real adapter without rebuilding the product.
+// The mock CLI delegates selected metadata/Summary checks to the real adapter without a product build.
 func TestMain(m *testing.M) {
+	if os.Getenv("GH_SETTINGS_METADATA_HELPER") == "1" {
+		os.Exit(actions.Run([]string{"metadata"}, os.Stdout, os.Stderr, os.Getenv("MOCK_CLI_VERSION"), nil))
+	}
 	if os.Getenv("GH_SETTINGS_SUMMARY_HELPER") == "1" {
 		os.Exit(actions.Run(append([]string{"summary"}, os.Args[1:]...), os.Stdout, os.Stderr, "", nil))
 	}
@@ -75,6 +78,23 @@ func TestRootCompositeValidate(t *testing.T) {
 	}
 	if result.summary != "" {
 		t.Fatalf("unexpected Summary: %s", result.summary)
+	}
+}
+
+func TestRootCompositeRejectsGlobalOnlyOrigin(t *testing.T) {
+	f := newCompositeFixture(t)
+	f.git("remote", "remove", "origin")
+	f.write(f.base["GIT_CONFIG_GLOBAL"], "[remote \"origin\"]\n\turl = https://github.com/unrelated/wrong.git\n")
+	f.git("-C", f.packagePath, "init", "--quiet")
+	f.git("-C", f.packagePath, "remote", "add", "origin", "https://github.com/action-owner/source.git")
+	f.git("-C", f.packagePath, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "test: Action source identity")
+
+	result := f.run(t, "validate", "", map[string]string{"MOCK_REAL_METADATA": "1", "GH_REPO": "other/repository"})
+	if result.status != 1 || len(result.outputs) != 0 || result.calls != "" || result.api != "" || result.injected {
+		t.Fatalf("global-only origin escaped the scope boundary: %+v", result)
+	}
+	if !result.downloaded || result.metadataCalls != "action metadata\n" || !strings.Contains(result.log, "checkout-scoped GitHub origin remote is required") {
+		t.Fatalf("scope rejection did not use real Go metadata: %+v", result)
 	}
 }
 
@@ -299,11 +319,8 @@ type compositeFixture struct {
 	write                            func(string, string)
 }
 
-func runComposite(t *testing.T, command, token string, extra map[string]string, configure ...func(func(...string) string)) compositeResult {
+func runComposite(t *testing.T, command, token string, extra map[string]string) compositeResult {
 	f := newCompositeFixture(t)
-	for _, setup := range configure {
-		setup(f.git)
-	}
 	return f.run(t, command, token, extra)
 }
 
@@ -367,6 +384,9 @@ case "$1" in
       metadata)
         [[ $# == 2 && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
         printf 'action metadata\n' >> "$MOCK_METADATA_CALLS"
+        if [[ ${MOCK_REAL_METADATA:-} == 1 ]]; then
+          GH_SETTINGS_METADATA_HELPER=1 exec "$MOCK_TEST_BINARY"
+        fi
         printf 'config-sha=%s\ntarget=owner/config\ncli-version=%s\ncli-sha256=%s\n' "$MOCK_CONFIG_SHA" "$MOCK_CLI_VERSION" "$MOCK_CLI_SHA256"
         exit "${MOCK_METADATA_STATUS:-0}" ;;
       plan)

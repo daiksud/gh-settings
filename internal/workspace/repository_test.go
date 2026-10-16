@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestExportUsesOrigin(t *testing.T) {
+func TestCurrentRepositoryIgnoresOverride(t *testing.T) {
 	dir := t.TempDir()
 	for _, args := range [][]string{{"init", "--quiet", dir}, {"-C", dir, "remote", "add", "origin", "https://github.com/owner/current.git"}} {
 		if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
@@ -26,7 +26,7 @@ func TestExportUsesOrigin(t *testing.T) {
 	}
 }
 
-func TestExportUsesConfiguredOriginBeforeInsteadOf(t *testing.T) {
+func TestCurrentRepositoryKeepsDirectOriginBeforeTransportRewrite(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	dir := t.TempDir()
@@ -50,7 +50,7 @@ func TestExportUsesConfiguredOriginBeforeInsteadOf(t *testing.T) {
 	}
 }
 
-func TestExportRejectsAliasRewrittenToGitHub(t *testing.T) {
+func TestCurrentRepositoryRejectsRewriteOnlyAlias(t *testing.T) {
 	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
 	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	dir := t.TempDir()
@@ -73,7 +73,7 @@ func TestExportRejectsAliasRewrittenToGitHub(t *testing.T) {
 	}
 }
 
-func TestExportRejectsGlobalOriginOutsideCheckout(t *testing.T) {
+func TestCurrentRepositoryRequiresCheckout(t *testing.T) {
 	config := filepath.Join(t.TempDir(), "global-gitconfig")
 	if err := os.WriteFile(config, []byte("[remote \"origin\"]\n\turl = https://github.com/owner/current.git\n"), 0600); err != nil {
 		t.Fatal(err)
@@ -86,48 +86,7 @@ func TestExportRejectsGlobalOriginOutsideCheckout(t *testing.T) {
 	}
 }
 
-func TestExportUsesRepositoryConfigSources(t *testing.T) {
-	for _, source := range []string{"include", "worktree"} {
-		t.Run(source, func(t *testing.T) {
-			t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-			t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-			dir := t.TempDir()
-			if output, err := exec.Command("git", "init", "--quiet", dir).CombinedOutput(); err != nil {
-				t.Fatalf("git init: %v: %s", err, output)
-			}
-			var commands [][]string
-			if source == "include" {
-				included := filepath.Join(dir, "included.conf")
-				if err := os.WriteFile(included, []byte("[remote \"origin\"]\n\turl = https://github.com/owner/current.git\n"), 0600); err != nil {
-					t.Fatal(err)
-				}
-				commands = [][]string{{"config", "--local", "include.path", included}}
-			} else {
-				commands = [][]string{
-					{"config", "--local", "extensions.worktreeConfig", "true"},
-					{"config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git"},
-				}
-			}
-			for _, args := range commands {
-				cmd := exec.Command("git", args...)
-				cmd.Dir = dir
-				if output, err := cmd.CombinedOutput(); err != nil {
-					t.Fatalf("git %v: %v: %s", args, err, output)
-				}
-			}
-			t.Chdir(dir)
-			if output, err := exec.Command("git", "remote", "get-url", "origin").Output(); err != nil || string(output) != "https://github.com/owner/current.git\n" {
-				t.Fatalf("origin=%q err=%v", output, err)
-			}
-			repo, err := CurrentRepository()
-			if err != nil || repo.Host != "github.com" || repo.Owner != "owner" || repo.Name != "current" {
-				t.Fatalf("selected %+v, err=%v", repo, err)
-			}
-		})
-	}
-}
-
-func TestRepositoryRemotes(t *testing.T) {
+func TestCurrentRepositoryFormats(t *testing.T) {
 	for _, test := range []struct {
 		remote string
 		valid  bool
@@ -164,13 +123,13 @@ func TestRepositoryRemotes(t *testing.T) {
 	}
 }
 
-func TestRepositoryIgnoresUnscopedOrigins(t *testing.T) {
+func TestCurrentRepositoryIgnoresUnscopedOrigins(t *testing.T) {
 	for _, source := range []string{"global", "system", "command"} {
-		for _, checkout := range []string{"missing", "local", "include", "worktree", "alias"} {
+		for _, checkout := range []string{"missing", "local", "include", "worktree"} {
 			t.Run(source+"/"+checkout, func(t *testing.T) {
 				dir := t.TempDir()
 				config := filepath.Join(t.TempDir(), "unscoped.conf")
-				if err := os.WriteFile(config, []byte("[remote \"origin\"]\n\turl = https://github.com/unrelated/wrong.git\n[url \"https://github.com/owner/\"]\n\tinsteadOf = gh:\n[url \"https://github.com/owner/current.git\"]\n\tinsteadOf = gh:current\n"), 0600); err != nil {
+				if err := os.WriteFile(config, []byte("[remote \"origin\"]\n\turl = https://github.com/unrelated/wrong.git\n"), 0600); err != nil {
 					t.Fatal(err)
 				}
 				t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
@@ -204,8 +163,7 @@ func TestRepositoryIgnoresUnscopedOrigins(t *testing.T) {
 					commands = [][]string{{"config", "--local", "include.path", included}}
 				case "worktree":
 					commands = [][]string{{"config", "--local", "extensions.worktreeConfig", "true"}, {"config", "--worktree", "remote.origin.url", "https://github.com/owner/current.git"}}
-				case "alias":
-					commands = [][]string{{"config", "--local", "remote.origin.url", "gh:current"}, {"config", "--local", "url.https://github.com/owner/current.git.insteadOf", "gh:current"}}
+
 				}
 				for _, args := range commands {
 					if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
@@ -216,10 +174,6 @@ func TestRepositoryIgnoresUnscopedOrigins(t *testing.T) {
 				if checkout == "missing" {
 					if err == nil || !strings.Contains(err.Error(), "checkout-scoped") {
 						t.Fatalf("repo=%+v err=%v", repo, err)
-					}
-				} else if checkout == "alias" {
-					if err == nil || repo.Host != "" || repo.Owner != "" || repo.Name != "" {
-						t.Fatalf("rewrite-only alias selected %+v, err=%v", repo, err)
 					}
 				} else if err != nil || repo.Owner != "owner" || repo.Name != "current" {
 					t.Fatalf("repo=%+v err=%v", repo, err)
