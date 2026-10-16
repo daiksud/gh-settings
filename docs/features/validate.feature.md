@@ -101,7 +101,7 @@ description: Specify local validation of the five supported YAML settings and it
 
 ### Test mapping
 
-The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture. Detailed YAML parser cases remain in `TestParseConfigValidation` in the [workspace codec tests](../../internal/workspace/config_test.go); the process cases retain the CLI, file, Git, output, and request-observation checks.
+The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture. Detailed YAML parser cases remain in `TestParseConfigValidation` in the [workspace codec tests](../../internal/workspace/config_test.go). File-reading outcomes have [workspace file tests](../../internal/workspace/config_file_test.go); the process cases retain the CLI, file, Git, output, and request-observation checks.
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
