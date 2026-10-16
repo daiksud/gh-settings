@@ -17,3 +17,8 @@ type RepositoryDeclaration struct {
 	HasProjects *bool
 	HasWiki     *bool
 }
+
+// Empty reports whether every field is unmanaged, regardless of declared values.
+func (d RepositoryDeclaration) Empty() bool {
+	return d == (RepositoryDeclaration{})
+}

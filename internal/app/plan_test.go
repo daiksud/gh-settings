@@ -21,7 +21,6 @@ func TestPlanResults(t *testing.T) {
 	}{
 		{"changes", "schemaVersion: 1\nsettings:\n  repository:\n    description: after\n    has_issues: false\n", settings.RepositoryState{Description: "before", HasIssues: true}, settings.RepositoryComparison{Managed: 2, Changes: []settings.RepositoryChange{{Field: "description", Before: "before", After: "after"}, {Field: "has_issues", Before: true, After: false}}}},
 		{"no differences", "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", settings.RepositoryState{}, settings.RepositoryComparison{Managed: 1}},
-		{"no managed fields", "schemaVersion: 1\n", settings.RepositoryState{HasIssues: true}, settings.RepositoryComparison{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := appCheckout(t, test.input, true)
@@ -41,6 +40,30 @@ func TestPlanResults(t *testing.T) {
 			}
 			after, err := os.ReadFile(path)
 			if err != nil || !bytes.Equal(after, []byte(test.input)) {
+				t.Fatalf("settings changed: %q error=%v", after, err)
+			}
+		})
+	}
+}
+
+func TestPlanNoManagedSettings(t *testing.T) {
+	for _, test := range []struct{ name, input string }{
+		{"version only", "schemaVersion: 1\n"},
+		{"empty settings", "schemaVersion: 1\nsettings: {}\n"},
+		{"empty repository", "schemaVersion: 1\nsettings:\n  repository: {}\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			path := appCheckout(t, test.input, false)
+			calls := 0
+			got, err := Plan(func(repository.Repository) (settings.RepositoryState, error) {
+				calls++
+				return settings.RepositoryState{}, nil
+			})
+			if err != nil || !reflect.DeepEqual(got, PlanResult{}) || calls != 0 {
+				t.Fatalf("result=%+v error=%v reads=%d, want local no-op", got, err, calls)
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || string(after) != test.input {
 				t.Fatalf("settings changed: %q error=%v", after, err)
 			}
 		})

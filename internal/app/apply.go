@@ -18,7 +18,7 @@ func Apply(writeRepository func(repository.Repository, settings.RepositoryDeclar
 	if err != nil {
 		return ApplyResult{}, err
 	}
-	if desired == (settings.RepositoryDeclaration{}) {
+	if desired.Empty() {
 		return ApplyResult{}, nil
 	}
 	repo, err := workspace.CurrentRepository()

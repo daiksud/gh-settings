@@ -50,11 +50,13 @@ Success is silent with exit status zero. Failure reports a diagnostic on standar
 
 ## Plan behavior
 
-Plan reads and validates the Git root's `.github/settings.yml` before resolving origin, configuring authentication, or reading GitHub. It uses export's current-repository resolution and GET response handling, including null string normalization and go-gh's existing sanitization of some API control characters to caret notation. It compares only declared fields; omitted fields are unmanaged, while false and empty strings are explicit managed values. It reads the current five fields even when none are managed, so origin, authentication, and API errors still fail.
+Plan reads and validates the Git root's `.github/settings.yml` before resolving origin, configuring authentication, or reading GitHub. A valid version-only document, empty `settings` or empty `settings.repository` is a local no-op: it needs no origin or credentials and makes no API calls. Invalid configuration still fails validation. For declared fields, plan uses export's current-repository resolution and GET response handling, including null string normalization and go-gh's existing sanitization of some API control characters to caret notation. It compares only declared fields; omitted fields are unmanaged, while false and empty strings are explicit managed values.
 
 Changed fields appear in fixed order: description, homepage, has_issues, has_projects, has_wiki. Each line uses `settings.repository.FIELD: CURRENT → DESIRED`. Strings are double-quoted using Go string escaping, including quotes, backslashes, newlines, and control characters; booleans use `true` or `false`. Equal managed values are omitted. When all managed values match, output is `No differences for managed repository settings.` When no fields are declared, output is `No managed repository settings.`
 
 Successful comparison exits 0 whether differences exist or not. File, validation, origin, authentication, API, decoding, and output errors exit 1 and report a diagnostic on standard error. Failures before writing output leave standard output empty. Plan does not edit configuration or mutate repository settings. See the [behavior specification and test mapping](features/plan.feature.md). Its observation does not change the independent direct-update contract for apply.
+
+The [public Action](github-actions.md#inputs-outputs-and-failures) retains its independent target/commit metadata and explicit plan/apply token requirements, including for empty declarations. A standalone CLI no-op does not relax that audit contract.
 
 ## Apply behavior
 

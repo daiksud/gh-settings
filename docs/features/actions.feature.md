@@ -110,7 +110,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 | `cli-sha256` | SHA-256 of the verified installed CLI binary. |
 
 - Emit these outputs only after command success and, for plan, successful Summary render/write. Composite outputs map to actual step outputs.
-- A validate success includes metadata resolution for these outputs; inability to resolve the checkout commit or target fails the Action even though local CLI validation itself needs no origin or credentials.
+- Every successful command includes metadata resolution for these outputs; inability to resolve the checkout commit or target fails the Action even when standalone CLI validation or an empty Plan/Apply declaration needs no origin or credentials. Plan/apply still require their explicit token input for empty declarations; these independent audit requirements do not change with a CLI no-op.
 - Missing/unknown command, missing required token, unsupported execution prerequisites, installation/download/checksum/version failure, configuration/CLI/API failure, metadata/output failure, and detectable plan Summary failure fail visibly. Do not run settings commands after installation failure; stop plan after validation failure.
 - Preserve CLI failure status and ordinary plan exit 0 when differences exist. Error review content must not imply success. Failed runs have no successful output contract; no token is an output.
 - Output or Summary failure may occur after a remote update; no automatic rollback or atomicity is promised.
