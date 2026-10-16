@@ -11,7 +11,7 @@ These terms describe the five managed repository fields in the [settings model](
 
 | Term | Meaning | Go type |
 | --- | --- | --- |
-| Repository declaration | Only the fields the maintainer chose to manage. A nil field is omitted; explicit false and empty strings remain declared values. | `settings.RepositoryDeclaration` |
+| Repository declaration | Only the fields the maintainer chose to manage. A nil field is omitted; explicit false and empty strings remain declared values. `Empty` means all fields are omitted. | `settings.RepositoryDeclaration` |
 | Observed repository state | All five normalized values from a successful repository read. Ordinary string and boolean values represent the complete state; empty strings and false are observed values. | `settings.RepositoryState` |
 | Repository comparison | Managed-field count plus ordered changes between observed state and a declaration. A positive count with no changes differs from no managed fields. | `settings.RepositoryComparison` with `settings.RepositoryChange` entries |
 
@@ -25,7 +25,7 @@ The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-
 
 The shared [local validation operation](../internal/app/validate.go), `app.Validate`, locates the checkout root and reads a typed repository declaration or returns an error. It does not resolve origin, configure authentication, access GitHub, write files or format CLI output. CLI validate adapts the error; plan and apply consume the validated declaration.
 
-The shared [plan operation](../internal/app/plan.go) returns `app.PlanResult`: the resolved target plus a native repository comparison. It validates before resolving the target and invoking its reader dependency. CLI plan supplies the GitHub read and renders the comparison; valid empty declarations currently still resolve the target and perform the read.
+The shared [plan operation](../internal/app/plan.go) returns `app.PlanResult`: a native repository comparison and the target when fields are managed. After validation, an empty declaration returns a zero result without target resolution or a read. CLI plan supplies the deferred GitHub read and renders the comparison. Plan and apply use the declaration's single `Empty` definition before remote work; explicit false and empty values remain managed.
 
 The shared [apply operation](../internal/app/apply.go) returns `app.ApplyResult`: `Applied` is true only after writer success, while false without an error means local no-op. Validation and the empty-declaration guard precede target/writer access; CLI supplies the deferred write and formats the message. False with an error does not prove no remote mutation, and later output failure does not roll back success.
 

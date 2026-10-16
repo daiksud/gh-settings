@@ -15,24 +15,24 @@ const planResponse = `{"description":"old","homepage":"old-url","has_issues":tru
 func TestPlanAcceptance(t *testing.T) {
 	binary := acceptanceBinary(t)
 	for _, test := range []struct {
-		name, input, body, want, wantError      string
-		status                                  int
-		noRead, outputFailure, nested, noOrigin bool
+		name, input, body, want, wantError              string
+		status                                          int
+		noRead, outputFailure, nested, noOrigin, noAuth bool
 	}{
 		{name: "partial-zero-values", input: repositoryInput("description: ''\nhomepage: ''\nhas_issues: false\n"), want: "settings.repository.description: \"old\" → \"\"\nsettings.repository.homepage: \"old-url\" → \"\"\nsettings.repository.has_issues: true → false\n", nested: true},
 		{name: "no-differences", input: repositoryInput("has_wiki: true\n"), want: "No differences for managed repository settings.\n"},
 		{name: "all-fields", input: repositoryInput("has_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: new-url\ndescription: new\n"), want: "settings.repository.description: \"old\" → \"new\"\nsettings.repository.homepage: \"old-url\" → \"new-url\"\nsettings.repository.has_issues: true → false\nsettings.repository.has_projects: true → false\nsettings.repository.has_wiki: true → false\n"},
-		{name: "no-managed-fields", input: "schemaVersion: 1\n", want: "No managed repository settings.\n"},
-		{name: "empty-settings", input: "schemaVersion: 1\nsettings: {}\n", want: "No managed repository settings.\n"},
-		{name: "empty-repository", input: "schemaVersion: 1\nsettings:\n  repository: {}\n", want: "No managed repository settings.\n"},
+		{name: "no-managed-fields", input: "schemaVersion: 1\n", want: "No managed repository settings.\n", noRead: true, noOrigin: true, noAuth: true},
+		{name: "empty-settings", input: "schemaVersion: 1\nsettings: {}\n", want: "No managed repository settings.\n", noRead: true, noOrigin: true, noAuth: true},
+		{name: "empty-repository", input: "schemaVersion: 1\nsettings:\n  repository: {}\n", want: "No managed repository settings.\n", noRead: true, noOrigin: true, noAuth: true},
 		{name: "null-strings", input: repositoryInput("description: ''\nhomepage: ''\n"), body: `{"description":null,"homepage":null,"has_issues":true,"has_projects":true,"has_wiki":true}`, want: "No differences for managed repository settings.\n"},
 		{name: "escaped-strings", input: repositoryInput("description: \"new\\n\\\"\\\\\\u001b\"\n"), body: `{"description":"old\n\"\\\u001b","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true}`, want: "settings.repository.description: \"old\\n\\\"\\\\^[\" → \"new\\n\\\"\\\\\\x1b\"\n"},
 		{name: "malformed-before-api", input: repositoryInput("has_issues: [\n"), wantError: "validate .github/settings.yml: decode YAML", noRead: true},
 		{name: "invalid-before-origin", input: repositoryInput("has_issues: 'false'\n"), wantError: "must be a boolean", noRead: true, noOrigin: true},
 		{name: "missing-file", wantError: "read .github/settings.yml", noRead: true},
-		{name: "missing-origin", input: "schemaVersion: 1\n", wantError: "a GitHub origin remote is required", noRead: true, noOrigin: true},
+		{name: "missing-origin", input: repositoryInput("has_issues: false\n"), wantError: "a GitHub origin remote is required", noRead: true, noOrigin: true},
 		{name: "api-failure", input: repositoryInput("has_issues: false\n"), body: `{"message":"Resource not accessible"}`, status: 403, wantError: "403"},
-		{name: "decode-failure", input: "schemaVersion: 1\n", body: `{}`, wantError: "missing description"},
+		{name: "decode-failure", input: repositoryInput("has_issues: false\n"), body: `{}`, wantError: "missing description"},
 		{name: "output-failure", input: repositoryInput("has_issues: false\n"), outputFailure: true, wantError: "write output:"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -46,6 +46,9 @@ func TestPlanAcceptance(t *testing.T) {
 			}
 			defer fixture.close()
 			env := exportFixtureEnv(fixture.cfg)
+			if test.noAuth {
+				env = fixtureEnv(fixture.cfg)
+			}
 			if test.noOrigin {
 				err = initGitCheckout(fixture.work, env)
 			} else {

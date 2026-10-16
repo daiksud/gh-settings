@@ -10,9 +10,37 @@ description: Observe differences for declared repository fields without mutation
 
 - Read `.github/settings.yml` from the Git root, including from a subdirectory.
 - Reject missing files and invalid configuration before API access.
-- Resolve the same GitHub.com origin as export and ignore `GH_REPO`.
-- Read the current five fields using the existing GET normalization and validation.
+- For declared fields, resolve the same GitHub.com origin as export and ignore `GH_REPO`.
+- For declared fields, read the current five fields using the existing GET normalization and validation.
 - Never send PATCH or change the configuration file.
+
+### Rule: Empty declarations are local no-ops
+
+A valid document without managed fields succeeds before origin resolution, authentication or API access. Invalid documents still fail validation; explicit false and empty strings remain managed values. The [Action's metadata and explicit-token requirements](actions.feature.md#public-composite-action-contract) remain an independent audit contract.
+
+#### Scenario: A version-only declaration without origin or credentials
+
+- Given a Git checkout with `.github/settings.yml` containing only `schemaVersion: 1`
+- And no origin or authentication
+- When the maintainer runs plan
+- Then it prints `No managed repository settings.` and exits 0
+- And it makes no API calls or configuration changes
+
+#### Scenario: Empty settings without origin or credentials
+
+- Given a Git checkout with a version-1 declaration and `settings: {}`
+- And no origin or authentication
+- When the maintainer runs plan
+- Then it prints `No managed repository settings.` and exits 0
+- And it makes no API calls or configuration changes
+
+#### Scenario: An empty repository declaration without origin or credentials
+
+- Given a Git checkout with a version-1 declaration and `settings.repository: {}`
+- And no origin or authentication
+- When the maintainer runs plan
+- Then it prints `No managed repository settings.` and exits 0
+- And it makes no API calls or configuration changes
 
 ### Rule: Compare declared fields only
 
@@ -39,7 +67,9 @@ Focused application, comparison and CLI tests cover target selection, declaratio
 | Five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../internal/settings/comparison_test.go), [TestRenderRepositoryComparison](../../internal/cli/comparison_test.go) |
 | CLI operation selection and output failure | `TestRunSelectsOperation`, `TestPlanOutputFailure` |
 | API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../internal/github/repository_test.go) |
-| Typed target/comparison, changes/no differences/no managed fields, unchanged configuration | [TestPlanResults](../../internal/app/plan_test.go) |
+| Typed target/comparison, changes/no differences, unchanged configuration | [TestPlanResults](../../internal/app/plan_test.go) |
+| All three empty forms succeed before origin/read, zero result and unchanged file | [TestPlanNoManagedSettings](../../internal/app/plan_test.go) |
+| Omitted fields versus each explicit false/empty field | [TestRepositoryDeclarationEmpty](../../internal/settings/repository_test.go) |
 | Validation before target/read, target failure before read, read failures | [TestPlanValidatesBeforeRead, TestPlanTargetFailureBeforeRead and TestPlanReadFailure](../../internal/app/plan_test.go) |
-| File/subdirectory, partial/empty declarations, GET nulls, API/output failures, no PATCH | `TestPlanAcceptance` |
+| File/subdirectory, managed false/empty values, GET nulls, API/output failures, no PATCH; three empty forms without origin/auth/GET | [TestPlanAcceptance](../../tests/acceptance/plan_test.go) |
 | Export → edit → validate → plan | `TestExportEditValidatePlan` |
