@@ -13,11 +13,10 @@ import (
 )
 
 func applyCurrent() ([]byte, error) {
-	config, err := loadCurrentConfig()
+	desired, err := loadCurrentConfig()
 	if err != nil {
 		return nil, err
 	}
-	desired := config.Settings.Repository
 	if desired == (settings.RepositoryDeclaration{}) {
 		return []byte("No managed repository settings.\n"), nil
 	}
