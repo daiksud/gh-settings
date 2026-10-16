@@ -133,6 +133,22 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 - Preserve owner-approved main direct apply and repository-scoped concurrency without cancellation of running apply. PR plan remains read-only with no privileged fallback.
 - Active workflows keep Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID`, and `ANSWER26_PRIVATE_KEY`. Inert examples keep their existing `settings-apply` contract until separately adopted. This specification performs no operational migration, credential operation, release, or live apply.
 
+### Rule: Source metadata identifies the consumer and executing binary
+
+The source-only `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback; composite adoption remains separate.
+
+The [public adapter tests](../../internal/actions/run_test.go) cover identity/output failures; `TestActionMetadata` in the [actual candidate acceptance suite](../../tests/acceptance/metadata_test.go) covers the normal consumer and executing-binary identities without API access. The [source interface](../commands.md#source-actions-metadata) describes output and failure semantics.
+
+On the supported Linux runner, the digest remains bound to the running image after its launch pathname is replaced or deleted. `TestMetadataUsesRunningImage` in the [Linux regression](../../internal/actions/metadata_linux_test.go) verifies replacement of an owned child copy. Native development checks on other platforms assume an unchanged executable path and add no supported Action platform.
+
+#### Scenario: A candidate reports its consumer identity
+
+- Given a committed consumer checkout with a GitHub origin and no settings file or credentials
+- And the candidate executable resides outside that checkout
+- When metadata is requested from a consumer subdirectory
+- Then the four records identify the consumer commit and origin, injected version and actual candidate digest
+- And no API request occurs
+
 ### Public contract verification boundary
 
 Required CI includes installer/command/renderer fixtures, root composite and actual consumer YAML composition checks, same-run candidate composite validate, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked v0.6.1 CLI and published Action identity, replacing only the copied verifier checksum. They do not load the pinned tag bytes.

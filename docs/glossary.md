@@ -21,7 +21,7 @@ The [GitHub write adapter](../internal/github/apply.go) owns declaration-to-JSON
 
 The [workspace file boundary](../internal/workspace/config_file.go) owns the fixed checkout-root configuration path, reading and export writing. It delegates decoding to the pure codec and accepts already-encoded export bytes; GitHub access stays with its caller.
 
-The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-root and checkout-scoped GitHub target resolution through `GitRoot` and `CurrentRepository`. It ignores `GH_REPO` and unscoped origins, retaining the [existing origin and transport-rewrite contract](commands.md#export-behavior).
+The [workspace Git boundary](../internal/workspace/repository.go) owns checkout-root, commit and checkout-scoped GitHub target resolution through `GitRoot`, `CurrentCommit` and `CurrentRepository`. It ignores `GH_REPO` and unscoped origins, retaining the [existing origin and transport-rewrite contract](commands.md#export-behavior).
 
 The shared [local validation operation](../internal/app/validate.go), `app.Validate`, locates the checkout root and reads a typed repository declaration or returns an error. It does not resolve origin, configure authentication, access GitHub, write files or format CLI output. CLI validate adapts the error; plan and apply consume the validated declaration.
 
@@ -32,5 +32,7 @@ The shared [apply operation](../internal/app/apply.go) returns `app.ApplyResult`
 The shared [export operation](../internal/app/export.go) converts complete observed state into a declaration of all five fields, serializes it and only then hands bytes to workspace storage. It does not validate the old file or format stdout. Plan/export share [deferred read wiring](../main.go), with no eager client initialization.
 
 The [CLI adapter](../internal/cli/run.go), `cli.Run`, owns argument dispatch, help/version, typed Plan/Apply rendering, diagnostics and exit status. Its `Operations` value binds the four application signatures; export and validate remain silent. The [root entry point](../main.go) retains linker-injected `main.version` and concrete deferred dependencies, without command wrappers or application sequencing.
+
+The [Actions adapter](../internal/actions/run.go), `actions.Run`, owns the source-only `action metadata` command's four nonsecret records, single-line identity validation, diagnostics and status. Root dispatch passes its injected version directly. Shared workspace functions resolve the current consumer commit/target; the adapter hashes the actual executing binary. No settings operation, authentication or API client is involved. Composite adoption is separate from this same-version source interface.
 
 The pure [comparison](../internal/settings/comparison.go) retains native string/string or bool/bool value pairs. Terminal messages, quoting and arrows belong to the [CLI renderer](../internal/cli/comparison.go); apply consumes the declaration directly.
