@@ -59,9 +59,6 @@ runs:
       run: |
         bash tests/github-actions/action-install.sh
         bash tests/github-actions/action-command.sh
-        bash tests/github-actions/bootstrap.sh
-        bash tests/github-actions/plan.sh
-        python3 tests/github-actions/summary.py
         python3 tests/github-actions/action-summary.py
     - name: Build the product binary once
       id: build
