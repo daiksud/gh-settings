@@ -148,6 +148,41 @@ jobs:
             "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
             "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
           printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
+      - name: Install Go for the local API fixture only
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          working_directory: .action
+          install_args: go
+          cache: false
+      - name: Build and start the required local plan API
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          (cd .action && go build -o "$RUNNER_TEMP/plan-fixture" ./tests/github-actions/plan-fixture)
+          bash .action/tests/github-actions/candidate-plan.sh start "$RUNNER_TEMP/plan-fixture"
+      - name: Prepare the changed plan and Summary snapshot
+        run: bash .action/tests/github-actions/candidate-plan.sh prepare
+      - name: Plan through the actual root composite
+        id: plan
+        uses: ./.action
+        with:
+          command: plan
+          token: plan-fixture-read
+      - name: Assert actual plan and Summary bytes
+        env:
+          ACTION_SHA: ${{ needs.commit-stage.outputs.source-sha }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          CONFIG_SHA: ${{ steps.plan.outputs.config-sha }}
+          TARGET: ${{ steps.plan.outputs.target }}
+          CLI_VERSION: ${{ steps.plan.outputs.cli-version }}
+          CLI_SHA256: ${{ steps.plan.outputs.cli-sha256 }}
+          EXPECTED_CLI_VERSION: ${{ needs.commit-stage.outputs.cli-version }}
+          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
+        run: bash .action/tests/github-actions/candidate-plan.sh assert
+      - name: Stop the owned local plan API
+        if: always()
+        run: bash .action/tests/github-actions/candidate-plan.sh stop
   pass:
     needs: [acceptance-stage, composite-smoke]
     if: always()
