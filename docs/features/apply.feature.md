@@ -39,7 +39,7 @@ Application tests use real temporary checkouts/files and a writer spy; GitHub ad
 | --- | --- |
 | Exact PATCH payload, omission, five fields, false/empty strings, escaping | [`TestApplyRepositorySettings`](../../internal/github/apply_test.go) |
 | HTTP/response/transport failures | [`TestApplyRepositoryFailures`](../../internal/github/apply_test.go) |
-| System/global/command origins ignored; local/includes/worktree/aliases preserved | `TestRepositoryIgnoresUnscopedOrigins` |
+| System/global/command origins ignored; local/include/worktree selection retained; rewrite-only aliases rejected | [TestCurrentRepositoryIgnoresUnscopedOrigins and TestCurrentRepositoryRejectsRewriteOnlyAlias](../../internal/workspace/repository_test.go) |
 | Typed target/declaration, false/empty/omitted values, one write and unchanged file | [`TestApplyDeclaredSettings`](../../internal/app/apply_test.go) |
 | Validation before target/writer and local no-op | [TestApplyValidatesBeforeWrite and TestApplyNoManagedSettings](../../internal/app/apply_test.go) |
 | Target failure before write and write failure without applied status | [TestApplyTargetFailureBeforeWrite and TestApplyWriteFailure](../../internal/app/apply_test.go) |

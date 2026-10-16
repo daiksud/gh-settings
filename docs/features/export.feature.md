@@ -194,15 +194,15 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | Export five settings successfully | `TestExportStoredSettings/five_values` | `five-settings` |
 | Preserve false and empty string values | `TestExportStoredSettings/zero_values` | `zero-values` |
 | Export unset strings as empty strings | `TestReadRepositorySettings` | `unset-strings` |
-| Ignore a repository override | `TestExportUsesOrigin` | `origin-override` |
-| Require direct origins and reject username-less SCP | `TestRepositoryRemotes` | `origin-scp-without-user` |
-| Keep repository identity when Git rewrites its transport URL | `TestExportUsesConfiguredOriginBeforeInsteadOf` | `origin-insteadof` |
-| Reject a rewrite-only transport alias | `TestExportRejectsAliasRewrittenToGitHub` | `origin-alias` |
-| Read an origin from repository-specific Git configuration | `TestExportUsesRepositoryConfigSources` | `origin-worktree` |
+| Ignore a repository override | `TestCurrentRepositoryIgnoresOverride` | `origin-override` |
+| Require direct origins and reject username-less SCP | `TestCurrentRepositoryFormats` | `origin-scp-without-user` |
+| Keep repository identity when Git rewrites its transport URL | `TestCurrentRepositoryKeepsDirectOriginBeforeTransportRewrite` | `origin-insteadof` |
+| Reject a rewrite-only transport alias | `TestCurrentRepositoryRejectsRewriteOnlyAlias` | `origin-alias` |
+| Read an origin from repository-specific Git configuration | `TestCurrentRepositoryIgnoresUnscopedOrigins` | `origin-worktree` |
 | Save export output and validate it locally | — | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
 | Settings cannot be retrieved | `TestReadRepositoryFailures`, `TestExportReadFailure` | `read-failure`, `TestExportExistingFile/api-failure` |
 | There is no usable current repository | `TestExportTargetFailureBeforeRead` | `repository-failure` |
-| Global origin does not replace a missing checkout | `TestExportRejectsGlobalOriginOutsideCheckout` | — |
+| Global origin does not replace a missing checkout | `TestCurrentRepositoryRequiresCheckout` | — |
 | The response cannot form a complete configuration | `TestReadRepositoryFailures` | `incomplete-response`, `TestExportExistingFile/malformed-response`, `TestExportExistingFile/incomplete-response` |
 | Standard output is unavailable | [TestExportDoesNotWriteStdout](../../internal/cli/run_test.go) | `TestExportExistingFile/replace` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
