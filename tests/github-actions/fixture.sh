@@ -64,11 +64,3 @@ export GITHUB_WORKFLOW_REF=owner/repo/.github/workflows/settings-main.yml@refs/h
 export GITHUB_WORKFLOW_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 export RUNNER_TEMP="$fixture/runner" GITHUB_OUTPUT="$fixture/output" GITHUB_STEP_SUMMARY="$fixture/summary"
 mkdir -p "$RUNNER_TEMP"
-
-# Apply jobs start from committed input on a separate fresh runner/worktree.
-fresh_apply_checkout() {
-  git clone --quiet --no-local "$fixture/repo" "$fixture/apply-repo"
-  cd "$fixture/apply-repo"
-  git checkout -q "$CONFIG_SHA"
-  git remote set-url origin https://github.com/owner/repo
-}
