@@ -10,7 +10,7 @@ import (
 // A local no-op has no target and no managed fields.
 type PlanResult struct {
 	Target     repository.Repository
-	Comparison settings.RepositoryComparison
+	Comparison settings.Comparison
 }
 
 // PlanError identifies a failed planning stage without changing its diagnostic.
@@ -24,7 +24,7 @@ func (e *PlanError) Error() string { return e.Err.Error() }
 func (e *PlanError) Unwrap() error { return e.Err }
 
 // Plan validates locally, then reads and compares only when fields are declared.
-func Plan(readRepository func(repository.Repository) (settings.RepositoryState, error)) (PlanResult, error) {
+func Plan(read Reader) (PlanResult, error) {
 	desired, err := Validate()
 	if err != nil {
 		return PlanResult{}, &PlanError{Stage: "invalid-config", Err: err}
@@ -36,9 +36,22 @@ func Plan(readRepository func(repository.Repository) (settings.RepositoryState, 
 	if err != nil {
 		return PlanResult{}, &PlanError{Stage: "target-failure", Err: err}
 	}
-	current, err := readRepository(repo)
-	if err != nil {
-		return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+	var comparison settings.Comparison
+	if !desired.Repository.Empty() {
+		current, err := read.Repository(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison = settings.CompareRepository(current, desired.Repository)
 	}
-	return PlanResult{Target: repo, Comparison: settings.CompareRepository(current, desired)}, nil
+	if desired.Topics.Names != nil {
+		current, err := read.Topics(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		topics := settings.CompareTopics(current, desired.Topics)
+		comparison.Managed += topics.Managed
+		comparison.Changes = append(comparison.Changes, topics.Changes...)
+	}
+	return PlanResult{Target: repo, Comparison: comparison}, nil
 }

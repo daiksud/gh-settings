@@ -26,7 +26,7 @@ func TestActionChangedSummary(t *testing.T) {
 		"SETTINGS_ACTION_REPOSITORY=action-owner/action-repo", "SETTINGS_ACTION_REF="+actionRef, "SETTINGS_CLI_VERSION=v0.6.1", "SETTINGS_CLI_SHA256="+checksum,
 		"SETTINGS_TOKEN=unrelated-secret-sentinel", "UNRELATED_ENV=unrelated-secret-sentinel")
 	reportPath := filepath.Join(fixture.root, "plan.json")
-	report := `{"outcome":"changed","target":"config-owner/config-repo","managed":2,"changes":[{"field":"description","before":"old-description","after":"new-description"},{"field":"has_issues","before":true,"after":false}]}`
+	report := `{"outcome":"changed","target":"config-owner/config-repo","managed":3,"changes":[{"field":"repository.description","before":"old-description","after":"new-description"},{"field":"repository.has_issues","before":true,"after":false},{"field":"topics.names","before":["old"],"after":[]}]}`
 	if err := os.WriteFile(reportPath, []byte(report), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestActionChangedSummary(t *testing.T) {
 		"https://github.com/workflow-owner/workflows/actions/runs/123",
 		"https://github.com/workflow-owner/workflows/blob/" + workflowSHA + "/.github/workflows/settings-main.yml",
 		"https://github.com/config-owner/config-repo/blob/" + configSHA + "/.github/settings.yml",
-		"can overwrite intervening remote changes", "does not prove publication",
+		`settings.topics.names: ["old"] → []`, "can overwrite intervening remote changes", "does not prove publication",
 	} {
 		if !strings.Contains(visible, expected) {
 			t.Errorf("Summary missing %q: %s", expected, visible)

@@ -3,13 +3,12 @@ package app
 import (
 	"fmt"
 
-	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 // Export saves all observed fields only after a complete read and serialization.
-func Export(readRepository func(repository.Repository) (settings.RepositoryState, error)) error {
+func Export(read Reader) error {
 	repo, err := workspace.CurrentRepository()
 	if err != nil {
 		return err
@@ -18,14 +17,20 @@ func Export(readRepository func(repository.Repository) (settings.RepositoryState
 	if err != nil {
 		return fmt.Errorf("locate %s: %w", workspace.SettingsPath, err)
 	}
-	current, err := readRepository(repo)
+	current, err := read.Repository(repo)
 	if err != nil {
 		return err
 	}
-	declaration := settings.RepositoryDeclaration{
+	declaration := settings.Declaration{Repository: settings.RepositoryDeclaration{
 		Description: &current.Description, Homepage: &current.Homepage,
 		HasIssues: &current.HasIssues, HasProjects: &current.HasProjects, HasWiki: &current.HasWiki,
+	}}
+	names, err := read.Topics(repo)
+	if err != nil {
+		return err
 	}
+	names = settings.SortedTopics(names)
+	declaration.Topics.Names = &names
 	data, err := workspace.EncodeConfig(declaration)
 	if err != nil {
 		return err

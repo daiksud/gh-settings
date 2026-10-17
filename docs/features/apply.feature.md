@@ -16,7 +16,7 @@ description: Send declared repository fields directly after local validation.
 
 ### Rule: Send the declaration directly
 
-- Send exactly one PATCH to the current repository with only declared supported fields.
+- When repository fields are declared, send exactly one PATCH to the current repository with only those fields. Topics uses a separate PUT as specified below.
 - Reject redirects, including those that would convert PATCH into GET.
 - Omit schemaVersion, outer YAML mappings, and every undeclared field.
 - Preserve false and empty strings as explicit values.
@@ -46,3 +46,14 @@ Application tests use real temporary checkouts/files and a writer spy; GitHub ad
 | Command dispatch, arguments, typed no-op message and output failures | [TestRunSelectsOperation, TestUnsupportedCommand, TestApplyNoManagedResult and TestApplyOutputFailure](../../internal/cli/run_test.go) |
 | Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, failure status/stderr/empty stdout, unchanged file | [`TestApplyAcceptance`](../../tests/acceptance/apply_test.go) |
 | Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |
+
+### Rule: Apply declared resources independently
+
+- Given repository fields and topic names are declared.
+- When apply runs.
+- Then repository PATCH precedes topics PUT without a preliminary GET.
+- And the PUT contains only the sorted names array, including an explicit empty array.
+- And a failure stops later operations without rolling back successful writes.
+- And omitted names produce no topics request.
+
+Test mapping: [TestTopicsApplyOrderAndPartialFailures](../../internal/app/topics_test.go), [TestApplyTopicsPayloadAndErrors](../../internal/github/topics_test.go), [TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).

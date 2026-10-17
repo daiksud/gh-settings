@@ -1,8 +1,8 @@
 package acceptance
 
 func exportScenarios() []scenario {
-	ordinary := map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": map[string]any{"description": "Example repository", "homepage": "https://example.com", "has_issues": true, "has_projects": false, "has_wiki": true}}}
-	empty := map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": map[string]any{"description": "", "homepage": "", "has_issues": false, "has_projects": false, "has_wiki": false}}}
+	ordinary := map[string]any{"schemaVersion": 1, "settings": map[string]any{"topics": map[string]any{"names": []any{}}, "repository": map[string]any{"description": "Example repository", "homepage": "https://example.com", "has_issues": true, "has_projects": false, "has_wiki": true}}}
+	empty := map[string]any{"schemaVersion": 1, "settings": map[string]any{"topics": map[string]any{"names": []any{}}, "repository": map[string]any{"description": "", "homepage": "", "has_issues": false, "has_projects": false, "has_wiki": false}}}
 	return []scenario{
 		{name: "five-settings", body: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"id":123}`, expected: ordinary, gitSetup: setupOrdinaryOrigin},
 		{name: "zero-values", body: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`, expected: empty, gitSetup: setupOrdinaryOrigin},

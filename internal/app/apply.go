@@ -1,10 +1,6 @@
 package app
 
-import (
-	"github.com/cli/go-gh/v2/pkg/repository"
-	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
-)
+import "github.com/daiksud/gh-settings/internal/workspace"
 
 // ApplyResult distinguishes successful completion from a local no-op.
 // With an error, Applied:false does not establish the remote outcome.
@@ -13,7 +9,7 @@ type ApplyResult struct {
 }
 
 // Apply validates locally and sends the declaration directly without a preliminary read.
-func Apply(writeRepository func(repository.Repository, settings.RepositoryDeclaration) error) (ApplyResult, error) {
+func Apply(write Writer) (ApplyResult, error) {
 	desired, err := Validate()
 	if err != nil {
 		return ApplyResult{}, err
@@ -25,8 +21,15 @@ func Apply(writeRepository func(repository.Repository, settings.RepositoryDeclar
 	if err != nil {
 		return ApplyResult{}, err
 	}
-	if err := writeRepository(repo, desired); err != nil {
-		return ApplyResult{}, err
+	if !desired.Repository.Empty() {
+		if err := write.Repository(repo, desired.Repository); err != nil {
+			return ApplyResult{}, err
+		}
+	}
+	if desired.Topics.Names != nil {
+		if err := write.Topics(repo, desired.Topics); err != nil {
+			return ApplyResult{}, err
+		}
 	}
 	return ApplyResult{Applied: true}, nil
 }

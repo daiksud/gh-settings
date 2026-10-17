@@ -7,8 +7,11 @@ import (
 	"html"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 // RunMetadata is explicit nonsecret review context, separate from plan data.
@@ -112,14 +115,14 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 		content.WriteString(quoteHTML(report.Diagnostic))
 	}
 	for _, change := range report.Changes {
-		fmt.Fprintf(&content, "settings.repository.%s: %s → %s\n", quoteHTML(change.Field), quoteHTML(summaryValue(change.Before)), quoteHTML(summaryValue(change.After)))
+		fmt.Fprintf(&content, "settings.%s: %s → %s\n", quoteHTML(change.Field), quoteHTML(summaryValue(change.Before)), quoteHTML(summaryValue(change.After)))
 	}
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String(), nil
 }
 
 func validatePlanReport(report PlanReport, target string) error {
-	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 5 {
+	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 6 {
 		return fmt.Errorf("invalid plan report comparison")
 	}
 	valid := false
@@ -144,16 +147,26 @@ func validatePlanReport(report PlanReport, target string) error {
 	for _, change := range report.Changes {
 		nativePair := false
 		switch change.Field {
-		case "description", "homepage":
+		case "topics.names":
+			before, beforeOK := summaryTopics(change.Before)
+			after, afterOK := summaryTopics(change.After)
+			nativePair = beforeOK && afterOK
+			if nativePair {
+				change.Before, change.After = before, after
+				if reflect.DeepEqual(before, after) {
+					return fmt.Errorf("invalid plan report change")
+				}
+			}
+		case "repository.description", "repository.homepage":
 			_, before := change.Before.(string)
 			_, after := change.After.(string)
 			nativePair = before && after
-		case "has_issues", "has_projects", "has_wiki":
+		case "repository.has_issues", "repository.has_projects", "repository.has_wiki":
 			_, before := change.Before.(bool)
 			_, after := change.After.(bool)
 			nativePair = before && after
 		}
-		if !nativePair || seen[change.Field] || change.Before == change.After {
+		if !nativePair || seen[change.Field] || reflect.DeepEqual(change.Before, change.After) {
 			return fmt.Errorf("invalid plan report change")
 		}
 		seen[change.Field] = true
@@ -186,6 +199,10 @@ func summaryLink(path, label string) string {
 }
 
 func summaryValue(value any) string {
+	if names, ok := summaryTopics(value); ok {
+		data, _ := json.Marshal(names)
+		return string(data)
+	}
 	if text, ok := value.(string); ok {
 		return strconv.Quote(text)
 	}
@@ -229,4 +246,28 @@ func writeSummary(reportPath, summaryPath string) error {
 		return fmt.Errorf("plan failed")
 	}
 	return nil
+}
+
+func summaryTopics(value any) ([]string, bool) {
+	var names []string
+	switch value := value.(type) {
+	case []string:
+		names = value
+	case []any:
+		names = make([]string, 0, len(value))
+		for _, item := range value {
+			name, ok := item.(string)
+			if !ok {
+				return nil, false
+			}
+			names = append(names, name)
+		}
+	default:
+		return nil, false
+	}
+	if names == nil || settings.ValidateTopics(names) != nil {
+		return nil, false
+	}
+	sorted := settings.SortedTopics(names)
+	return sorted, reflect.DeepEqual(sorted, names)
 }

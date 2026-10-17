@@ -18,72 +18,89 @@ type repositoryDocument struct {
 	HasWiki     *bool   `yaml:"has_wiki,omitempty"`
 }
 
-// EncodeConfig writes the supported schemaVersion: 1 settings.repository envelope.
-func EncodeConfig(declaration settings.RepositoryDeclaration) ([]byte, error) {
+type topicsDocument struct {
+	Names *[]string `yaml:"names,omitempty"`
+}
+
+// EncodeConfig writes the supported schemaVersion: 1 settings resource envelope.
+func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	var document struct {
 		SchemaVersion int `yaml:"schemaVersion"`
 		Settings      struct {
 			Repository repositoryDocument `yaml:"repository"`
+			Topics     *topicsDocument    `yaml:"topics,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
 	document.Settings.Repository = repositoryDocument{
-		Description: declaration.Description, Homepage: declaration.Homepage,
-		HasIssues: declaration.HasIssues, HasProjects: declaration.HasProjects, HasWiki: declaration.HasWiki,
+		Description: declaration.Repository.Description, Homepage: declaration.Repository.Homepage,
+		HasIssues: declaration.Repository.HasIssues, HasProjects: declaration.Repository.HasProjects, HasWiki: declaration.Repository.HasWiki,
+	}
+	if declaration.Topics.Names != nil {
+		names := settings.SortedTopics(*declaration.Topics.Names)
+		document.Settings.Topics = &topicsDocument{Names: &names}
 	}
 	return yaml.Marshal(document)
 }
 
-// DecodeConfig validates the YAML envelope and returns only its repository declaration.
-func DecodeConfig(data []byte) (settings.RepositoryDeclaration, error) {
+// DecodeConfig validates the YAML envelope and returns its supported resource declarations.
+func DecodeConfig(data []byte) (settings.Declaration, error) {
 	rootNode, err := loadYAMLRoot(data)
 	if err != nil {
-		return settings.RepositoryDeclaration{}, err
+		return settings.Declaration{}, err
 	}
 	if err := checkMappingKeys(rootNode, make(map[*yaml.Node]bool)); err != nil {
-		return settings.RepositoryDeclaration{}, err
+		return settings.Declaration{}, err
 	}
 	root, err := loadMapping(rootNode, "root")
 	if err != nil {
-		return settings.RepositoryDeclaration{}, err
+		return settings.Declaration{}, err
 	}
-	var declaration settings.RepositoryDeclaration
+	var declaration settings.Declaration
 	for key, value := range root {
 		if key == "schemaVersion" {
 			resolved, err := resolveAlias(&value)
 			if err != nil {
-				return settings.RepositoryDeclaration{}, err
+				return settings.Declaration{}, err
 			}
 			value = *resolved
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!int" {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("schemaVersion must be integer 1")
+				return settings.Declaration{}, fmt.Errorf("schemaVersion must be integer 1")
 			}
 			var version int
 			if err := value.Decode(&version); err != nil || version != 1 {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("unsupported schemaVersion %q: expected 1", value.Value)
+				return settings.Declaration{}, fmt.Errorf("unsupported schemaVersion %q: expected 1", value.Value)
 			}
 			continue
 		}
 		if key != "settings" {
-			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown root key %q", key)
+			return settings.Declaration{}, fmt.Errorf("unknown root key %q", key)
 		}
 		groups, err := loadMapping(&value, "settings")
 		if err != nil {
-			return settings.RepositoryDeclaration{}, err
+			return settings.Declaration{}, err
 		}
 		for group, value := range groups {
+			if group == "topics" {
+				topics, err := parseTopicsFields(&value)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				declaration.Topics = topics
+				continue
+			}
 			if group != "repository" {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("unknown settings group %q", group)
+				return settings.Declaration{}, fmt.Errorf("unknown settings group %q", group)
 			}
 			repository, err := parseRepositoryFields(&value)
 			if err != nil {
-				return settings.RepositoryDeclaration{}, err
+				return settings.Declaration{}, err
 			}
-			declaration = repository
+			declaration.Repository = repository
 		}
 	}
 	if _, ok := root["schemaVersion"]; !ok {
-		return settings.RepositoryDeclaration{}, fmt.Errorf("missing schemaVersion: expected 1")
+		return settings.Declaration{}, fmt.Errorf("missing schemaVersion: expected 1")
 	}
 	return declaration, nil
 }
@@ -235,4 +252,40 @@ func checkMappingKeys(node *yaml.Node, visited map[*yaml.Node]bool) error {
 		}
 	}
 	return nil
+}
+
+func parseTopicsFields(node *yaml.Node) (settings.TopicsDeclaration, error) {
+	fields, err := loadMapping(node, "settings.topics")
+	if err != nil {
+		return settings.TopicsDeclaration{}, err
+	}
+	var result settings.TopicsDeclaration
+	for key, value := range fields {
+		if key != "names" {
+			return settings.TopicsDeclaration{}, fmt.Errorf("unknown topics setting %q", key)
+		}
+		node, err := resolveAlias(&value)
+		if err != nil {
+			return settings.TopicsDeclaration{}, err
+		}
+		if node.Kind != yaml.SequenceNode || node.Tag != "!!seq" {
+			return settings.TopicsDeclaration{}, fmt.Errorf("topics.names must be an array of strings")
+		}
+		names := make([]string, 0, len(node.Content))
+		for _, item := range node.Content {
+			item, err := resolveAlias(item)
+			if err != nil {
+				return settings.TopicsDeclaration{}, err
+			}
+			if item.Kind != yaml.ScalarNode || item.Tag != "!!str" {
+				return settings.TopicsDeclaration{}, fmt.Errorf("topics.names must be an array of strings")
+			}
+			names = append(names, item.Value)
+		}
+		if err := settings.ValidateTopics(names); err != nil {
+			return settings.TopicsDeclaration{}, err
+		}
+		result.Names = &names
+	}
+	return result, nil
 }

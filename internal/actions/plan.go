@@ -24,7 +24,7 @@ type PlanReport struct {
 	Diagnostic string       `json:"diagnostic,omitempty"`
 }
 
-// PlanChange retains the native string/string or bool/bool comparison values.
+// PlanChange retains the native string, boolean or string-list comparison values.
 type PlanChange struct {
 	Field  string `json:"field"`
 	Before any    `json:"before"`

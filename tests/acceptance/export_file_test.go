@@ -44,7 +44,7 @@ func TestExportSavesAtCheckoutRoot(t *testing.T) {
 	if err := yaml.Unmarshal(data, &actual); err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]any{"schemaVersion": 1, "settings": map[string]any{"repository": map[string]any{
+	want := map[string]any{"schemaVersion": 1, "settings": map[string]any{"topics": map[string]any{"names": []any{}}, "repository": map[string]any{
 		"description": "Example repository", "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false,
 	}}}
 	if !reflect.DeepEqual(actual, want) || result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {

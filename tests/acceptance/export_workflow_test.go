@@ -44,7 +44,7 @@ func TestExportExistingFile(t *testing.T) {
 				if result.runErr != nil || result.stderr.Len() != 0 {
 					t.Fatalf("execution=%v stderr=%q", result.runErr, result.stderr.String())
 				}
-				want = "schemaVersion: 1\nsettings:\n    repository:\n        description: old\n        homepage: old-url\n        has_issues: true\n        has_projects: true\n        has_wiki: true\n"
+				want = "schemaVersion: 1\nsettings:\n    repository:\n        description: old\n        homepage: old-url\n        has_issues: true\n        has_projects: true\n        has_wiki: true\n    topics:\n        names: []\n"
 			} else {
 				exit, ok := result.runErr.(*exec.ExitError)
 				if !ok || exit.ExitCode() != 1 || !strings.Contains(result.stderr.String(), test.wantError) {

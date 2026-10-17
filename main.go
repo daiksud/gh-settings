@@ -17,17 +17,17 @@ var version = "dev"
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
-			return app.Plan(readRepository)
+			return app.Plan(app.Reader{Repository: readRepository, Topics: readTopics})
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
-		Export:   func() error { return app.Export(readRepository) },
+		Export:   func() error { return app.Export(app.Reader{Repository: readRepository, Topics: readTopics}) },
 		Validate: app.Validate,
 		Plan: func() (app.PlanResult, error) {
-			return app.Plan(readRepository)
+			return app.Plan(app.Reader{Repository: readRepository, Topics: readTopics})
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(writeRepository)
+			return app.Apply(app.Writer{Repository: writeRepository, Topics: writeTopics})
 		},
 	}))
 }
@@ -46,4 +46,20 @@ func writeRepository(repo repository.Repository, desired settings.RepositoryDecl
 		return err
 	}
 	return client.ApplyRepository(repo, desired)
+}
+
+func readTopics(repo repository.Repository) ([]string, error) {
+	client, err := github.NewReadClient(repo.Host)
+	if err != nil {
+		return nil, err
+	}
+	return client.ReadTopics(repo)
+}
+
+func writeTopics(repo repository.Repository, desired settings.TopicsDeclaration) error {
+	client, err := github.NewWriteClient(repo.Host)
+	if err != nil {
+		return err
+	}
+	return client.ApplyTopics(repo, desired)
 }
