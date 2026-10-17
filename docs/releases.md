@@ -39,7 +39,9 @@ After the owner chooses the intended version, update `action/cli-version` to it 
 gh workflow run release.yml --repo daiksud/gh-settings --ref main -f version=v1.2.3
 ```
 
-The workflow is not scheduled and does not run when code is merged. Its resolve job validates the version and freezes the then-current `main` SHA for every build and check in that run. A later run resolves `main` again; it does not reuse the earlier run's frozen SHA.
+The workflow is not scheduled and does not run merely when code is merged. Its resolve job validates the version and freezes the then-current `main` SHA for every build and check in that run. A later run resolves `main` again; it does not reuse the earlier run's frozen SHA.
+
+For a separately reviewed, one-shot dispatch, the optional `source_sha` input may be set to the exact approved 40-character main commit. The resolve job then requires the current `main` SHA to match that input **before** freezing the build source; an intervening push fails rather than releasing a different commit. Normal manual invocations omit this input. An existing tag or draft is still validated by the release's immutable recovery logic, rather than being bypassed by the dispatcher. The temporary v0.7.1 dispatcher is removed through a reviewed follow-up after publication.
 
 ## Initial release flow
 
