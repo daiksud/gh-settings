@@ -30,8 +30,12 @@ jobs:
             echo "Committed CLI version differs from $RELEASE_VERSION" >&2
             exit 1
           }
-          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_VERSION" >/dev/null 2>&1; then
-            echo "$RELEASE_VERSION is already tagged; nothing to dispatch"
-            exit 0
-          fi
-          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f "version=$RELEASE_VERSION"
+          # Refuse to dispatch if main advanced since this approved push.
+          # The release resolve job independently enforces the same source SHA.
+          current_main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          [[ "$current_main" == "$GITHUB_SHA" ]] || {
+            echo "main moved since the approved dispatch commit" >&2
+            exit 1
+          }
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main \
+            -f "version=$RELEASE_VERSION" -f "source_sha=$GITHUB_SHA"

@@ -164,3 +164,54 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 		})
 	}
 }
+
+func TestReleaseDispatchSourcePin(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workflow struct {
+		On   map[string]yaml.Node `yaml:"on"`
+		Jobs map[string]yaml.Node `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal(data, &workflow); err != nil {
+		t.Fatal(err)
+	}
+	dispatchNode := workflow.On["workflow_dispatch"]
+	var dispatch struct {
+		Inputs map[string]struct {
+			Required bool   `yaml:"required"`
+			Type     string `yaml:"type"`
+		} `yaml:"inputs"`
+	}
+	if err := dispatchNode.Decode(&dispatch); err != nil {
+		t.Fatal(err)
+	}
+	if !dispatch.Inputs["version"].Required || dispatch.Inputs["source_sha"].Required || dispatch.Inputs["source_sha"].Type != "string" {
+		t.Fatal("release must retain mandatory version and optional full source SHA")
+	}
+	resolveNode := workflow.Jobs["resolve"]
+	var resolve struct {
+		Steps []step `yaml:"steps"`
+	}
+	if err := resolveNode.Decode(&resolve); err != nil {
+		t.Fatal(err)
+	}
+	source := findStep(t, job{Steps: resolve.Steps}, "source")
+	guard := `[[ "$sha" == "$EXPECTED_SOURCE_SHA" ]]`
+	if source.Env["EXPECTED_SOURCE_SHA"] != "${{ inputs.source_sha }}" ||
+		!strings.Contains(source.Run, `[[ "$EXPECTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]`) ||
+		!strings.Contains(source.Run, guard) ||
+		strings.Index(source.Run, guard) > strings.Index(source.Run, `printf 'source-sha=%s`) {
+		t.Fatal("release resolve must validate and pin the requested source before output")
+	}
+
+	oneShot, _ := readWorkflow(t, "../../.github/workflows/dispatch-v0.7.1.yml")
+	job := oneShot.Jobs["dispatch"]
+	if !strings.Contains(job.Steps[0].Run, `"$current_main" == "$GITHUB_SHA"`) ||
+		!strings.Contains(job.Steps[0].Run, `-f "source_sha=$GITHUB_SHA"`) ||
+		!strings.Contains(job.Steps[0].Run, `-f "version=$RELEASE_VERSION"`) ||
+		strings.Contains(job.Steps[0].Run, `git/ref/tags/`) {
+		t.Fatal("one-shot dispatcher must pin approved main commit and delegate tag recovery to release")
+	}
+}

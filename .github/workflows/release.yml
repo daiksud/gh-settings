@@ -6,6 +6,10 @@ on:
         description: Release version (vMAJOR.MINOR.PATCH)
         required: true
         type: string
+      source_sha:
+        description: Optional immutable main commit to require (for reviewed dispatch)
+        required: false
+        type: string
 permissions: {}
 defaults:
   run:
@@ -27,10 +31,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+          EXPECTED_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
           [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          if [[ -n "$EXPECTED_SOURCE_SHA" ]]; then
+            [[ "$EXPECTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+              echo 'invalid source_sha (expected full 40-character SHA)' >&2; exit 1
+            }
+            [[ "$sha" == "$EXPECTED_SOURCE_SHA" ]] || {
+              echo 'main moved since approved source_sha; refusing a different release source' >&2; exit 1
+            }
+          fi
           printf 'source-sha=%s\n' "$sha" >> "$GITHUB_OUTPUT"
   commit-stage:
     needs: resolve
