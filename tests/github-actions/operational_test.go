@@ -2,20 +2,15 @@ package githubactions
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 )
 
-const operationalAction = "daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105"
-
 func TestOperationalPRPlan(t *testing.T) {
 	w, text := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
 	j := w.Jobs["plan"]
-	if len(j.Steps) != 2 || j.Steps[1].Uses != operationalAction || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
+	if len(j.Steps) != 2 || j.Steps[1].Uses != exampleAction || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
 		t.Fatal("operational PR must call the released public Action with an explicit read token")
 	}
 	if len(w.On) != 1 || w.On["pull_request"].Kind == 0 || len(w.Jobs) != 1 || j.Environment != "" || j.If != "" || len(j.Env) != 0 || len(j.Outputs) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 5 {
@@ -47,7 +42,7 @@ func TestOperationalPRPlan(t *testing.T) {
 				t.Fatalf("operational PR result: %+v", r)
 			}
 			if scenario.status == 0 {
-				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalAction, "daiksud/gh-settings@")) {
+				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(exampleAction, "daiksud/gh-settings@")) {
 					t.Fatalf("operational PR identity or execution: %+v", r)
 				}
 			} else if r.calls != "plan\n" || len(r.outputs) != 0 {
@@ -57,59 +52,61 @@ func TestOperationalPRPlan(t *testing.T) {
 	}
 }
 
-func TestOperationalActionHandoff(t *testing.T) {
-	cmd := exec.Command("bash", filepath.Join(root(), "tests/github-actions/action-handoff.sh"))
-	cmd.Dir = root()
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + os.Getenv("HOME"), "TMPDIR=" + os.Getenv("TMPDIR"),
-		"VERIFY_COMMAND=bash \"$VERIFY_SCRIPT\"", "VERIFY_SCRIPT=" + filepath.Join(root(), ".github/scripts/verify-settings-handoff.sh"),
-		"REVIEWED_ACTION_SHA=9d01d3258d9f42239b2daeb1ac26bc532cd56105"}
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("operational pre-token handoff failed: %v\n%s", err, output)
-	}
-}
-
 func TestOperationalMainConsumer(t *testing.T) {
-	w, text := readWorkflow(t, "../../.github/workflows/settings-main.yml")
-	prepare, apply := w.Jobs["prepare"], w.Jobs["apply"]
-	if len(prepare.Steps) != 3 || len(apply.Steps) != 5 || findStep(t, prepare, "prepare").Uses != operationalAction || findStep(t, apply, "apply").Uses != operationalAction {
-		t.Fatal("operational prepare/apply must use the same reviewed public Action")
+	w, source := readWorkflow(t, "../../.github/workflows/settings-main.yml")
+	apply := w.Jobs["apply"]
+	if len(w.On) != 1 || w.On["push"].Kind == 0 || len(w.Jobs) != 1 || len(apply.Steps) != 3 {
+		t.Fatal("operational main must use one job with checkout, App token and apply")
 	}
-	guard := "github.event_name == 'push' && github.ref == 'refs/heads/main'"
-	if len(w.On) != 1 || w.On["push"].Kind == 0 || len(w.Jobs) != 2 || prepare.If != guard || apply.If != guard || apply.Needs != "prepare" || apply.Environment != "gh-settings" || prepare.Environment != "" || len(w.Permissions) != 0 || w.Concurrency.Cancel || w.Concurrency.Group != "settings-main-${{ github.repository }}" {
-		t.Fatal("operational approval, event or concurrency boundary changed")
+	if apply.If != "github.event_name == 'push' && github.ref == 'refs/heads/main'" || apply.Environment != "gh-settings" || apply.Needs != "" ||
+		apply.Runner != "ubuntu-24.04" || apply.Timeout != 5 || apply.Continue || len(apply.Env) != 0 || len(apply.Outputs) != 0 ||
+		!reflect.DeepEqual(w.Permissions, map[string]string{"contents": "read"}) || w.Concurrency.Cancel ||
+		w.Concurrency.Group != "settings-main-${{ github.repository }}" {
+		t.Fatal("operational main approval, permissions or execution boundary changed")
 	}
-	for _, j := range []job{prepare, apply} {
-		if !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Env) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 5 {
-			t.Fatal("operational job permissions, runner or failure boundary changed")
-		}
+	if apply.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
+		!reflect.DeepEqual(apply.Steps[0].With, map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}) {
+		t.Fatal("operational main must check out the triggering commit without credentials")
 	}
-	if prepare.Steps[0].With["ref"] != "${{ github.sha }}" || apply.Steps[0].With["ref"] != "${{ needs.prepare.outputs.config-sha }}" || prepare.Steps[0].With["persist-credentials"] != "false" || apply.Steps[0].With["persist-credentials"] != "false" {
-		t.Fatal("prepare/apply configuration checkout changed")
+	appToken := apply.Steps[1]
+	if appToken.ID != "app" || appToken.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" ||
+		!reflect.DeepEqual(appToken.With, map[string]string{
+			"client-id":                 "${{ vars.ANSWER26_CLIENT_ID }}",
+			"private-key":               "${{ secrets.ANSWER26_PRIVATE_KEY }}",
+			"owner":                     "${{ github.repository_owner }}",
+			"repositories":              "${{ github.event.repository.name }}",
+			"permission-administration": "write",
+		}) {
+		t.Fatal("operational App credentials, target scope or revocation changed")
 	}
-	if !reflect.DeepEqual(findStep(t, prepare, "prepare").With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) || !reflect.DeepEqual(findStep(t, apply, "apply").With, map[string]string{"command": "apply", "token": "${{ steps.app.outputs.token }}"}) {
-		t.Fatal("read/write token destination changed")
+	if apply.Steps[2].Uses != exampleAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{
+		"command": "apply", "token": "${{ steps.app.outputs.token }}",
+	}) || strings.Count(source, "steps.app.outputs.token") != 1 || strings.Contains(source, "verify-settings-handoff") ||
+		strings.Contains(source, "run:") || !strings.Contains(source, "branches: [main]") {
+		t.Fatal("operational action identity, binding or simplified workflow changed")
 	}
-	app := findStep(t, apply, "app")
-	if app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(app.With, map[string]string{"client-id": "${{ vars.ANSWER26_CLIENT_ID }}", "private-key": "${{ secrets.ANSWER26_PRIVATE_KEY }}", "owner": "${{ github.repository_owner }}", "repositories": "${{ github.event.repository.name }}", "permission-administration": "write"}) || apply.Steps[1].ID != "handoff" || apply.Steps[2].ID != "app" || apply.Steps[3].ID != "apply" {
-		t.Fatal("pre-mint verification, existing App scope or default revocation changed")
-	}
-	if strings.Contains(text, "examples/github-actions/prepare.sh") || strings.Contains(text, "examples/github-actions/apply.sh") || len(apply.Outputs) != 0 {
-		t.Fatal("legacy execution or credential output retained")
-	}
-	for _, scenario := range []string{"approved", "failed plan", "waiting", "rejected", "config mismatch", "target mismatch", "Action mismatch", "mint failure", "apply failure", "apply installation failure"} {
-		t.Run(scenario, func(t *testing.T) {
-			r := runMainConsumerWorkflow(t, scenario, "../../.github/workflows/settings-main.yml")
-			r.assertNoCredentials(t)
-			if scenario == "approved" || scenario == "apply failure" {
-				if !r.minted || !r.revoked || r.applied.api != "PATCH\n" || r.prepared.sha != r.applied.sha || r.prepared.outputs["cli-version"] != committedCLIVersion(t) || (r.status == 0) != (scenario == "approved") {
-					t.Fatalf("approved operational result: %+v", r)
-				}
-			} else if scenario == "apply installation failure" {
-				if r.status == 0 || !r.minted || !r.revoked || r.applied.api != "" || r.applied.calls != "" || len(r.applied.outputs) != 0 || !strings.Contains(r.summary, "CLI step outcome: failure") || !reflect.DeepEqual(r.trace, []string{"guard", "plan", "approved", "verify", "mint", "summary", "revoke"}) {
-					t.Fatalf("post-mint installation failure boundary: %+v", r)
-				}
-			} else if r.minted || r.revoked || r.applied.sha != "" || r.prepared.api+r.applied.api != "" || (r.status == 0) != (scenario == "waiting" || scenario == "rejected") {
-				t.Fatalf("blocked operational result: %+v", r)
+	for _, test := range []struct {
+		scenario string
+		status   int
+		minted   bool
+		api      string
+	}{
+		{"approved", 0, true, "PATCH\n"},
+		{"apply failure", 37, true, "PATCH\n"},
+		{"invalid configuration", 37, true, ""},
+		{"apply installation failure", 1, true, ""},
+		{"waiting", 0, false, ""},
+		{"rejected", 0, false, ""},
+		{"pull request", 0, false, ""},
+		{"other branch", 0, false, ""},
+		{"tag push", 0, false, ""},
+		{"mint failure", 1, false, ""},
+	} {
+		t.Run(test.scenario, func(t *testing.T) {
+			result := runMainConsumer(t, test.scenario, "../../.github/workflows/settings-main.yml")
+			result.assertNoCredentials(t)
+			if result.status != test.status || result.minted != test.minted || result.revoked != test.minted || result.applied.api != test.api {
+				t.Fatalf("operational apply scenario failed: %+v", result)
 			}
 		})
 	}

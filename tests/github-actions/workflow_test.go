@@ -3,7 +3,6 @@ package githubactions
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -203,25 +202,5 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	}
 	if apply.Steps[2].Uses != exampleAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{"command": "apply", "token": "${{ steps.app.outputs.token }}"}) || strings.Count(mainText, "steps.app.outputs.token") != 1 {
 		t.Fatal("App token escaped the apply step")
-	}
-}
-
-func TestOperationalPrepareCheckoutGuard(t *testing.T) {
-	w, _ := readWorkflow(t, "../../.github/workflows/settings-main.yml")
-	guard := findStep(t, w.Jobs["prepare"], "guard")
-	cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", `source tests/github-actions/fixture.sh
-bash -e -o pipefail -c "$PREPARE_GUARD"
-for context in 'pull_request refs/heads/main' 'push refs/heads/other' 'push refs/tags/main'; do
-  read -r event ref <<< "$context"
-  if GITHUB_EVENT_NAME="$event" GITHUB_REF="$ref" bash -e -o pipefail -c "$PREPARE_GUARD" > "$fixture/log" 2>&1; then exit 1; fi
-done
-if GITHUB_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb bash -e -o pipefail -c "$PREPARE_GUARD" > "$fixture/log" 2>&1; then exit 1; fi
-git remote set-url origin https://github.com/owner/other
-if bash -e -o pipefail -c "$PREPARE_GUARD" > "$fixture/log" 2>&1; then exit 1; fi
-[[ ! -e "$fixture/calls" && ! -e "$fixture/api" && ! -e "$GITHUB_OUTPUT" ]]`)
-	cmd.Dir = root()
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + os.Getenv("HOME"), "TMPDIR=" + os.Getenv("TMPDIR"), "PREPARE_GUARD=" + guard.Run}
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("prepare checkout guard failed: %v\n%s", err, output)
 	}
 }
