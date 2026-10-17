@@ -60,6 +60,16 @@ The active [PR](../.github/workflows/settings-pr.yml) and [main](../.github/work
 
 The active PR workflow watches `examples/github-actions/**` as in the PR example. The active main workflow matches the main example and watches only `.github/settings.yml` and its own workflow path.
 
+### Active repository Environment guard
+
+The [`settings-environment-guard`](../.github/workflows/settings-environment-guard.yml) uses `pull_request_target` so its implementation comes from trusted `main`. It checks out the proposed PR merge revision as **data only** and runs the main-branch YAML-aware [scope test](../tests/github-actions/settings_environment_scope_test.go); no PR code executes in this guard, and its token is read-only. The check also runs on pushes to `main`. It permits `gh-settings` only as a literal in `.github/workflows/settings-main.yml`, job `apply`, and rejects other references, dynamic names, job YAML merges/aliases, and all job-level reusable-workflow calls that could select an Environment outside this repository's policy. Its dedicated status-check name is **`gh-settings`**; the scope test also rejects duplicate job IDs/display names elsewhere in the current workflow YAML.
+
+The ordinary Go suite in [`ci-pr`](../.github/workflows/ci-pr.yml) also runs this test and contributes to the [existing required `pass` check](https://github.com/daiksud/gh-settings/rules/24911852). This catches accidental mistakes, but it is **not an unforgeable merge gate**: PR code can change its own tests and CI. Even requiring `gh-settings` from the GitHub Actions app is not an unforgeable security barrier: a malicious PR can add another workflow job with that same name, and GitHub's required status checks do not bind identity to a specific workflow file. The reserved-name test prevents accidental collisions if the trusted guard executes, but does not itself make the status tamper-proof. <https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules> documents this limitation.
+
+**Do not disable `gh-settings` Required reviewers based only on this workflow or the GitHub Actions `gh-settings` status.** A replacement that PR-authored workflows cannot spoof must first be configured and enforced externally: for example, an organization/enterprise **required-workflow Ruleset**, or a dedicated GitHub App producing its own required check using credentials unavailable to PR code. Required workflows are configured at the organization/enterprise level, so they are not directly available in this user-owned repository. The connector cannot configure either solution or edit GitHub Environment protections. Continue to require the current PR review and `pass` check, and keep `gh-settings` restricted to the **`main` deployment branch** and its existing `ANSWER26_*` credentials. Remove Required reviewers at [Settings → Environments](https://github.com/daiksud/gh-settings/settings/environments) **only after** a non-spoofable required policy has been established and verified.
+
+The trusted guard uses `pull_request_target`. For public repositories, GitHub's [default event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target) is scheduled to block that event starting **2026-11-02**, unless an applicable Actions event policy permits it. Verify policy eligibility and that the guard actually runs before relying on it. The guard cannot protect against other repositories, untrusted branches allowed to deploy, or a deliberately modified source policy without an external enforcement boundary.
+
 ## Ordered owner setup
 
 The caller owns Environment selection/approval, App token minting/revocation and concurrency. The Action's token input becomes `GH_TOKEN` only for the plan/apply command step; installation, validation, Summary and metadata/output steps do not receive that input. Composite steps share the caller job, so all code in a credential-bearing job must be trusted and privileged credentials must stay out of PR code.
@@ -72,17 +82,17 @@ For a new installation, configure the target's supported Environment controls be
 
 The examples perform no App/Environment setup themselves. Actual waiting/rejection, branch/tag enforcement and revocation depend on the configured GitHub controls and are not established by local test fixtures.
 
-This repository's operational callers preserve Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID`, `ANSWER26_PRIVATE_KEY` and their existing declaration. The approved main job now checks out `github.sha` and applies directly without a prepare job or handoff script. The example names do not rename or replace those resources.
+This repository's operational callers preserve Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID`, `ANSWER26_PRIVATE_KEY` and their existing declaration. The main job checks out `github.sha` and applies directly. The [active PR guard](#active-repository-environment-guard) replaces its deployment approval after GitHub's reviewer rule is removed; the sample Environment `settings-apply` retains its own approval policy.
 
 ## Review a pending run
 
 For the simplified example, review the PR plan Summary and the configuration at the main run's exact commit before approving `settings-apply`. The PR revision and resulting main commit may differ. Main does not depend on PR success or rerun plan before approval, so confirm the approved configuration explicitly; its checkout uses `github.sha`, never a moving main branch.
 
-For this repository's active workflow, review the PR plan Summary and the configuration at the exact main commit before approving `gh-settings`. The main job does not run another plan or depend on PR artifacts; check the applicable Action pin and intended repository changes before approval.
+For this repository's active workflow, review the PR plan Summary, Action pin and intended configuration **before merging the PR**. Once the Environment reviewer requirement is removed, no separate `gh-settings` deployment approval is needed; the main job still does not run another plan or depend on PR artifacts.
 
 A plan is informational. No differences and no managed fields are successful outcomes. Direct apply sends declared values without reading current settings or consuming a saved plan; intervening changes to managed fields can be overwritten, while omitted fields remain outside the request. The simplified main job mints its token before the settings Action installs the CLI and validates configuration; installation or validation failure stops apply and the token Action still performs normal post-job cleanup.
 
-PR concurrency cancels superseded runs. Main uses a repository-scoped group with `cancel-in-progress: false`; GitHub can replace a pending run. Ordinary reruns use GitHub's approval behavior. No custom queue, drift/freshness guard, stale-commit check or reapproval controller is added.
+PR concurrency cancels superseded runs. Main uses a repository-scoped group with `cancel-in-progress: false`; GitHub can replace a pending run. Sample workflows retain their documented approval behavior; the active Environment runs without a second approval once its Required reviewers rule is disabled. No custom queue, drift/freshness guard, stale-commit check or reapproval controller is added.
 
 ## Failure and recovery
 
@@ -91,7 +101,7 @@ PR concurrency cancels superseded runs. Main uses a repository-scoped group with
 | Missing/invalid config | Correct the declaration and rerun through normal review; validation fails before API access. |
 | CLI download/checksum/version error | Inspect the fixed release identity and reviewed pin. Do not execute an unchecked binary or switch to source/latest. |
 | Plan read/API permission error | Inspect ordinary read-token access and the target origin. Do not provide administration credentials to PR/prepare. |
-| Rejected approval | The main job cannot start. Initiate a new eligible run when appropriate; no rollback is implied. |
+| Rejected sample Environment approval | The sample's main job cannot start. The active repository instead uses required PR checks after GitHub's reviewer rule is removed. |
 | Missing App key/client ID or token error | Verify the protected Environment and dedicated installation scope. Have the owner use secure entry; no privileged token fallback. |
 | Failed/cancelled apply or output failure | Read target settings before deciding what to do: an update may already have succeeded. The CLI does not promise atomicity or automatic rollback. |
 | Token cleanup failure | Inspect the official Action's post-job logs and dedicated installation. Treat revocation as unverified; do not expose the token while investigating. |
