@@ -2,7 +2,7 @@
 
 These workflows are examples to copy into a configuration repository. The main example has one job and three steps: checkout, create an App token, and `daiksud/gh-settings`. Consumers need no external scripts.
 
-Both examples pin the published [v0.7.0 release](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0) at `e9edb03f65ac943cd0ebf6a9556c18c485719e66`. The Action installs CLI v0.7.0, verifies its release checksum and exact version, then runs the selected command. The Linux amd64 binary's SHA-256 is `c0ab75712dc7648a6ba9416c468ec9e5f43fd864ab85376fac84aeba3c86a9b0`.
+Both examples pin the published [v0.8.0 release](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0) at `fd2aef0efb15d6b4c4b19c45e47f5fa965c66b24`. The Action installs CLI v0.8.0, verifies its release checksum and exact version, then runs the selected command. The Linux amd64 binary's SHA-256 is `182c19a7f2322e002989ba44538df548bc0cf68d7125143b253839f63dffc765`.
 
 ## Copy the workflows
 
@@ -39,7 +39,7 @@ PR concurrency cancels superseded PR runs; main uses a repository-scoped group w
 
 ## Existing active workflows and verification
 
-This repository's active `.github/workflows/settings-*.yml` now also use the published v0.7.0 Action and the same one-job main apply pattern. They keep Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID` and `ANSWER26_PRIVATE_KEY`, rather than the example resource names. The legacy handoff verifier is no longer invoked.
+This repository's active `.github/workflows/settings-*.yml` now also use the published v0.8.0 Action and the same one-job main apply pattern. They keep Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID` and `ANSWER26_PRIVATE_KEY`, rather than the example resource names. The legacy handoff verifier is no longer invoked.
 
 Changes in this example directory can trigger the active read-only PR plan, but not main apply by themselves. Main apply watches only its adopted workflow and `.github/settings.yml`. The active `gh-settings` Environment has an additional [trusted-source PR scope guard](../../docs/github-actions.md#active-repository-environment-guard), but its Required reviewers rule must remain until a non-spoofable required check is independently configured. The `settings-apply` example continues to require approval.
 

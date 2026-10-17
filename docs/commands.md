@@ -10,7 +10,7 @@ sources:
 
 ## Scope and status
 
-This reference describes current source, including topics support not yet published. Existing v0.7.0 consumer pins retain their five-field behavior. The four settings commands are `export`, `validate`, `plan` and `apply`, sharing the repository fields and topics on the [settings page](settings.md). Export reads the current checkout's repository and writes that checkout's root `.github/settings.yml`; it does not require existing configuration. Mutation targets only the repository containing that configuration. Consumers pinned to v0.6.1 retain that release's behavior; see the [published package and consumer profiles](github-actions.md#published-package-and-consumer-pins). The [concept](concept.md) records design reasoning and future scope.
+This reference describes current source and published v0.8.0, including topics support. Older v0.7.0 consumers retain their five-field behavior. The four settings commands are `export`, `validate`, `plan` and `apply`, sharing the repository fields and topics on the [settings page](settings.md). Export reads the current checkout's repository and writes that checkout's root `.github/settings.yml`; it does not require existing configuration. Mutation targets only the repository containing that configuration. Consumers pinned to v0.6.1 retain that release's behavior; see the [published package and consumer profiles](github-actions.md#published-package-and-consumer-pins). The [concept](concept.md) records design reasoning and future scope.
 
 Saved plan artifacts and drift protection are outside the initial scope. [Inert GitHub Actions examples](github-actions.md) compose these commands; security setup and activation remain separate.
 

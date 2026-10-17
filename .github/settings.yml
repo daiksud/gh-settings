@@ -5,3 +5,7 @@ settings:
     # Protected main provides review; the main-only Environment adds no approval.
     description: "Manage GitHub repository settings as code"
     has_issues: true
+  topics:
+    names:
+      - github-cli
+      - settings-as-code
