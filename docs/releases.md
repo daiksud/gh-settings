@@ -9,6 +9,8 @@ sources:
   - id: go-linker
     resource: https://pkg.go.dev/cmd/link#hdr-Command_Line
     title: Go linker command line
+  - id: github-job-prerequisites
+    resource: https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-jobs
   - id: github-rest-releases
     resource: https://docs.github.com/en/rest/releases/releases
     title: REST API endpoints for releases
@@ -17,6 +19,8 @@ sources:
 ## Status and initial targets
 
 The [manual release workflow](../.github/workflows/release.yml) implements the initial pipeline. The existing [main CI](../.github/workflows/ci-push.yml) validates its own build; the release builds and validates separate platform binaries. Merging the workflow does not trigger a release.
+
+The source-refactoring series prepares unreleased source for a separately authorized release; it does not complete publication or deployment. The [developer handoff](development.md#release-and-consumer-handoff) separates built-product, candidate, pre-publication and published-download evidence. Only after successful publication and verification may a separately reviewed adoption coordinate consumer Action pins and both handoff verifiers. Existing Environment/App/bindings and owner approval remain unchanged.
 
 The first releases target only these platforms:
 
