@@ -13,8 +13,10 @@ import (
 )
 
 const (
-	settingsWorkflowPath = ".github/workflows/settings-main.yml"
-	settingsEnvironment  = "gh-settings"
+	settingsWorkflowPath      = ".github/workflows/settings-main.yml"
+	settingsEnvironment       = "gh-settings"
+	settingsGuardWorkflowPath = ".github/workflows/settings-environment-guard.yml"
+	settingsGuardCheckName    = "gh-settings-environment-scope"
 )
 
 // The existing required CI pass check runs this test with the rest of the Go suite.
@@ -46,6 +48,7 @@ func TestSettingsEnvironmentScope(t *testing.T) {
 
 func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	found := 0
+	guardChecks := 0
 	for path, content := range workflows {
 		decoder := yaml.NewDecoder(bytes.NewReader(content))
 		var document yaml.Node
@@ -76,6 +79,23 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if err != nil {
 				return fmt.Errorf("%s: jobs.%s: %w", path, jobName, err)
 			}
+			// Keep the dedicated guard's check name unique among current workflows.
+			// Uniqueness helps avoid ambiguous statuses; it does not prevent spoofing
+			// by PR-controlled GitHub Actions, so do not remove Environment approval
+			// without an independently enforceable required check.
+			checkName := jobName
+			if node, exists := job["name"]; exists {
+				if node.Kind != yaml.ScalarNode || strings.Contains(node.Value, "${{") {
+					return fmt.Errorf("%s: jobs.%s.name: dynamic or non-scalar job names are not permitted", path, jobName)
+				}
+				checkName = node.Value
+			}
+			if jobName == settingsGuardCheckName || checkName == settingsGuardCheckName {
+				if path != settingsGuardWorkflowPath || jobName != settingsGuardCheckName || checkName != settingsGuardCheckName {
+					return fmt.Errorf("%s: jobs.%s: check name %q is reserved for %s", path, jobName, settingsGuardCheckName, settingsGuardWorkflowPath)
+				}
+				guardChecks++
+			}
 			// Called workflows can select this repository's Environment and
 			// inherit its secrets. Reject calls rather than trusting unseen code.
 			if _, reusable := job["uses"]; reusable {
@@ -100,6 +120,9 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	}
 	if found != 1 {
 		return fmt.Errorf("expected exactly one %q Environment, at %s jobs.apply; found %d", settingsEnvironment, settingsWorkflowPath, found)
+	}
+	if guardChecks != 1 {
+		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
 	}
 	return nil
 }
@@ -155,6 +178,7 @@ func settingsEnvironmentName(node *yaml.Node) (string, error) {
 
 func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 	const allowed = "jobs:\n  apply:\n    environment: gh-settings\n"
+	const guard = "jobs:\n  gh-settings-environment-scope:\n    name: gh-settings-environment-scope\n"
 	const other = "jobs:\n  check:\n    environment: preview\n"
 	for _, test := range []struct {
 		name, main, extra string
@@ -169,6 +193,9 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		{"unauthorized name mapping", allowed, "jobs:\n  check:\n    environment: {name: gh-settings}\n", false},
 		{"unauthorized job in allowed workflow", allowed + "  other:\n    environment: gh-settings\n", "", false},
 		{"reusable workflow job", allowed, "jobs:\n  delegate:\n    uses: example/repo/.github/workflows/deploy.yml@main\n", false},
+		{"duplicate guard job id", allowed, "jobs:\n  gh-settings-environment-scope:\n    runs-on: ubuntu-24.04\n", false},
+		{"duplicate guard display name", allowed, "jobs:\n  unrelated:\n    name: gh-settings-environment-scope\n", false},
+		{"dynamic job display name", allowed, "jobs:\n  unrelated:\n    name: ${{ vars.CHECK_NAME }}\n", false},
 		{"dynamic scalar", allowed, "jobs:\n  check:\n    environment: ${{ vars.DEPLOY_ENV }}\n", false},
 		{"dynamic name mapping", allowed, "jobs:\n  check:\n    environment: {name: \"${{ 'gh-settings' }}\"}\n", false},
 		{"missing approved environment", "jobs:\n  apply:\n    runs-on: ubuntu-24.04\n", "", false},
@@ -178,7 +205,7 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		{"malformed YAML", allowed, "jobs: [\n", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			files := map[string][]byte{settingsWorkflowPath: []byte(test.main)}
+			files := map[string][]byte{settingsWorkflowPath: []byte(test.main), settingsGuardWorkflowPath: []byte(guard)}
 			if test.extra != "" {
 				files[".github/workflows/other.yaml"] = []byte(test.extra)
 			}
