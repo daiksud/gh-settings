@@ -1,0 +1,34 @@
+# Documentation
+
+Choose the documentation for your task. Users install and operate gh-settings; contributors change its implementation, tests, documentation, or project automation.
+
+## For users
+
+Start with the [README quick start](../README.md#quick-start).
+
+| Task | Guide |
+| --- | --- |
+| Export, validate, plan, or apply; understand targeting and errors | [Command reference](commands.md) |
+| Declare repository settings and topics in YAML | [Configuration reference](settings.md) |
+| Use the public Action and configure approval and credentials | [GitHub Actions guide](github-actions.md) |
+| Adopt the example PR and main workflows | [Workflow examples](../examples/github-actions/README.md) |
+
+These public guides describe the supported interface and its effects. You do not need the implementation or release procedures to use gh-settings.
+
+## For contributors
+
+Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation placement rules](../CONTRIBUTING.md#where-documentation-belongs).
+
+| Task | Guide |
+| --- | --- |
+| Install development tools, build, and extend the implementation | [Development](contributing/development.md) |
+| Understand the current design and code boundaries | [Architecture](contributing/architecture.md) |
+| Look up declaration, observed-state, and comparison terminology | [Model glossary](contributing/glossary.md) |
+| Select checks and understand local/CI evidence | [Testing](contributing/testing.md) |
+| Change the private metadata, plan-report, or Summary protocol | [Actions internals](contributing/actions-internals.md) |
+| Maintain this repository's CI, review, and settings automation | [Repository automation](contributing/repository-automation.md) |
+| Prepare, publish, or recover a release | [Releases](contributing/releases.md) |
+| Understand the reasons for a design decision | [Architecture decision records](adr/README.md) |
+| Find detailed scenarios and their Go test mappings | [Behavior specifications](features/README.md) |
+
+The user guides stay directly under `docs/`; contributor guides live under `docs/contributing/`. ADRs and behavior specifications keep their established paths as contributor reference material.

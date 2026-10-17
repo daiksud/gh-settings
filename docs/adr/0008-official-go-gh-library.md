@@ -16,7 +16,7 @@ sources:
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented. See the [current architecture](../contributing/architecture.md); the context below records the original decision.
 
 ## Context
 

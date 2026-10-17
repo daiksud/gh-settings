@@ -6,7 +6,7 @@ description: Record the agreed decision against automatic rollback.
 
 ## Status
 
-Accepted — agreed, not implemented.
+Accepted — implemented. See the [current architecture](../contributing/architecture.md); the context below records the original decision.
 
 ## Context
 

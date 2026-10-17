@@ -22,6 +22,6 @@ Publish each initially supported platform as a raw executable asset named `gh-se
 
 ## Consequences
 
-For the initial macOS Apple Silicon and Linux x86_64 targets, the names are `gh-settings-darwin-arm64` and `gh-settings-linux-amd64`. The [release specification](../releases.md) also requires checksums and release notes. Archive formats, more platforms, and use of GoReleaser are not selected by this decision.
+For the initial macOS Apple Silicon and Linux x86_64 targets, the names are `gh-settings-darwin-arm64` and `gh-settings-linux-amd64`. The [release specification](../contributing/releases.md) also requires checksums and release notes. Archive formats, more platforms, and use of GoReleaser are not selected by this decision.
 
 [^github-cli-extensions]: [Creating GitHub CLI extensions](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions), checked on 2026-10-12 for the precompiled extension asset convention.

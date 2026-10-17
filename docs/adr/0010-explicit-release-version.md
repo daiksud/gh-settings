@@ -10,7 +10,7 @@ Accepted — implemented by the manual release workflow.
 
 ## Context
 
-The project needs a release path before automatic version selection has been designed. The [release specification](../releases.md) starts the initial workflow manually.
+The project needs a release path before automatic version selection has been designed. The [release specification](../contributing/releases.md) starts the initial workflow manually.
 
 ## Decision
 

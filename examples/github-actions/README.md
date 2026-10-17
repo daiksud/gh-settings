@@ -1,46 +1,44 @@
 # GitHub Actions consumer examples
 
-These workflows are examples to copy into a configuration repository. The main example has one job and three steps: checkout, create an App token, and `daiksud/gh-settings`. Consumers need no external scripts.
+Copy these workflows into the repository whose settings you want to manage. The main example has one job and three steps: checkout, create an App token and call `daiksud/gh-settings`. Consumers need no external scripts.
 
-Both examples pin the published [v0.8.0 release](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0) at `fd2aef0efb15d6b4c4b19c45e47f5fa965c66b24`. The Action installs CLI v0.8.0, verifies its release checksum and exact version, then runs the selected command. The Linux amd64 binary's SHA-256 is `182c19a7f2322e002989ba44538df548bc0cf68d7125143b253839f63dffc765`.
+Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
 ## Copy the workflows
 
 | Source | Destination |
 | --- | --- |
-| `settings-pr.yml` | `.github/workflows/settings-pr.yml` |
-| `settings-main.yml` | `.github/workflows/settings-main.yml` |
+| [settings-pr.yml](settings-pr.yml) | `.github/workflows/settings-pr.yml` |
+| [settings-main.yml](settings-main.yml) | `.github/workflows/settings-main.yml` |
 
-Commit `.github/settings.yml` with [schemaVersion 1](../../docs/settings.md#configuration-semantics) at the repository root. The two workflow YAML files and this configuration are the complete consumer setup; installation, validation and PR Summary rendering belong to the Action.
+Commit `.github/settings.yml` with [schemaVersion 1](../../docs/settings.md#configuration-semantics) at the repository root. These three files are the complete consumer setup; CLI installation, validation and PR Summary rendering belong to the Action.
 
-Use a fresh GitHub-hosted `ubuntu-24.04` x64 job. Checkout stays at `GITHUB_WORKSPACE`, uses the event's exact `github.sha`, and persists no credentials. The checkout's GitHub.com `origin` selects the target. See the [public Action guide](../../docs/github-actions.md) for inputs, outputs and runner requirements.
-
-## PR review and main apply
-
-`settings-pr.yml` checks out the containing repository's synthetic PR merge revision and calls `command: plan` with `github.token`. The Action validates before reading settings and writes the review Summary. Differences, no differences and no managed fields all succeed; invalid configuration or a failed read fails the call. Fork PRs use this same read-only path without App credentials.
-
-`settings-main.yml` runs only for a push to Branch `main` that changes `.github/settings.yml` or the adopted main workflow. Its single `apply` job waits for the `settings-apply` Environment approval **before any step runs**. After approval it:
-
-1. Checks out the triggering configuration commit.
-2. Creates an App installation token for the containing repository with Administration write.
-3. Calls `command: apply` with that token.
-
-Review the PR plan and the exact main commit's configuration before approving the deployment. Main does not produce another plan before approval, depend on the PR run, or consume its plan. The Action step's outcome and logs report apply success or failure. The official token Action retains default post-job revocation.
-
-The caller owns the Environment, App credentials, token issuance/revocation, event/ref guards and concurrency. The Action owns CLI installation and the settings command. Its token input becomes `GH_TOKEN` only for command execution; composite steps still share the approved job.
+Use a fresh GitHub-hosted `ubuntu-24.04` x64 job. Retain checkout at `GITHUB_WORKSPACE`, the event's exact `github.sha` and `persist-credentials: false`. The checkout's GitHub.com `origin` selects the target.
 
 ## Environment and credentials
 
-Use the example Environment `settings-apply`, variable `SETTINGS_APP_CLIENT_ID` and secret `SETTINGS_APP_PRIVATE_KEY`. The App installation must include the target repository and Administration read/write. The token step explicitly narrows the token to this repository and Administration write.
+Complete the [ordered owner setup](../../docs/github-actions.md#ordered-owner-setup) before enabling main apply. The example uses these names:
 
-Protect the Environment with the owner reviewer, self-approval allowed, administrator bypass disabled and only a Branch `main` deployment rule before storing credentials. See [owner setup](../../docs/github-actions.md#ordered-owner-setup) for platform requirements and adopting the workflows.
+| Resource | Name |
+| --- | --- |
+| Protected Environment | `settings-apply` |
+| Environment variable | `SETTINGS_APP_CLIENT_ID` |
+| Environment secret | `SETTINGS_APP_PRIVATE_KEY` |
 
-PR concurrency cancels superseded PR runs; main uses a repository-scoped group with `cancel-in-progress: false`. Direct apply sends declared values without rereading remote state, so it can overwrite intervening changes to those fields. A failed output can follow a successful update; inspect current settings before retrying an uncertain result.
+The App installation must include the target repository with Administration read/write. The token step narrows its token to the containing repository and Administration write, retaining default post-job revocation. Configure the Environment's reviewer and `main`-only deployment rule before storing credentials; the workflow does not configure those protections itself.
 
-## Existing active workflows and verification
+## PR review and main apply
 
-This repository's active `.github/workflows/settings-*.yml` now also use the published v0.8.0 Action and the same one-job main apply pattern. They keep Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID` and `ANSWER26_PRIVATE_KEY`, rather than the example resource names. The legacy handoff verifier is no longer invoked.
+`settings-pr.yml` checks out the containing repository's synthetic PR merge revision and calls `command: plan` with `github.token`. The Action validates before reading settings and writes a review Summary. Differences, no differences and no managed fields all succeed; invalid configuration or a failed read fails the call. Fork PRs use the same read-only path without App credentials.
 
-Changes in this example directory can trigger the active read-only PR plan, but not main apply by themselves. Main apply watches only its adopted workflow and `.github/settings.yml`. The active `gh-settings` Environment has an additional [trusted-source PR scope guard](../../docs/github-actions.md#active-repository-environment-guard), but its Required reviewers rule must remain until a non-spoofable required check is independently configured. The `settings-apply` example continues to require approval.
+`settings-main.yml` runs for a push to Branch `main` that changes `.github/settings.yml` or the adopted main workflow. Its single `apply` job waits for the `settings-apply` Environment approval before any step runs. After approval it:
 
-CI lints the examples and checks their actual YAML composition, explicit token scope, failure propagation and the absence of caller scripts. Local fixtures simulate approval, downloads and token lifecycle; they do not establish real Environment enforcement, Summary publication or token revocation. The [development guide](../../docs/development.md#settings-example-verification) describes the broader verification boundary.
+1. Checks out the triggering configuration commit.
+2. Creates the target-scoped App installation token.
+3. Calls `command: apply` with that token.
+
+Review the PR plan and the exact main commit's configuration before approval. Main does not produce another plan, depend on the PR run or consume its plan. The Action step's outcome and logs report apply results. The [run review guide](../../docs/github-actions.md#review-a-pending-run) explains overwrite semantics and concurrency.
+
+The caller owns the Environment, credentials, token lifecycle, event/ref guards and concurrency. Composite steps share the caller job, so keep privileged credentials out of PR code. If apply fails or is cancelled, inspect current settings before retrying; the [recovery guide](../../docs/github-actions.md#failure-and-recovery) covers partial success and token cleanup.
+
+Contributors changing these examples should use the [testing guide](../../docs/contributing/testing.md); this project's own workflows and Environment policy are documented under [repository automation](../../docs/contributing/repository-automation.md).
