@@ -117,20 +117,30 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 	for _, change := range report.Changes {
 		fmt.Fprintf(&content, "settings.%s: %s → %s\n", quoteHTML(change.Field), quoteHTML(summaryValue(change.Before)), quoteHTML(summaryValue(change.After)))
 	}
+	for _, change := range report.Labels {
+		fmt.Fprintf(&content, "%s\n", quoteHTML(labelSummaryLine(change)))
+	}
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String(), nil
 }
 
 func validatePlanReport(report PlanReport, target string) error {
-	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 6 {
+	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 7 {
 		return fmt.Errorf("invalid plan report comparison")
 	}
+	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+1 {
+		return fmt.Errorf("invalid label report managed count")
+	}
+	if err := validateLabelReport(report.Labels); err != nil {
+		return err
+	}
+	hasChanges := len(report.Changes) > 0 || len(report.Labels) > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
-		valid = report.Managed > 0 && len(report.Changes) > 0 && report.Diagnostic == "" && report.Target == target
+		valid = report.Managed > 0 && hasChanges && report.Diagnostic == "" && report.Target == target
 	case "no-difference":
-		valid = report.Managed > 0 && len(report.Changes) == 0 && report.Diagnostic == "" && report.Target == target
+		valid = report.Managed > 0 && !hasChanges && report.Diagnostic == "" && report.Target == target
 	case "unmanaged":
 		valid = report.Managed == 0 && report.Target == "" && report.Diagnostic == ""
 	case "invalid-config":

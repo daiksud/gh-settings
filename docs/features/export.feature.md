@@ -217,3 +217,7 @@ Export changes the local configuration but only reads GitHub settings; [apply](.
 - And a failed topics read leaves an existing destination unchanged.
 
 Test mapping: [TestTopicsExportFailureBeforeOverwrite](../../internal/app/topics_test.go) and [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).
+
+### Rule: Read labels completely
+
+The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.

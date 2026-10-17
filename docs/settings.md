@@ -13,7 +13,7 @@ sources:
 
 ## Scope and status
 
-Current source implements export, validation, planning and direct apply. Export saves `.github/settings.yml` silently at the checkout root. That configuration targets only its containing repository. This page defines the five repository fields, topics resource and versioned YAML contract; see [commands](commands.md) for current behavior and [the published package boundary](github-actions.md#published-package-and-consumer-pins) for released consumers. Future settings remain outside this scope.
+Current source implements export, validation, planning and direct apply. Export saves `.github/settings.yml` silently at the checkout root. That configuration targets only its containing repository. This page defines the five repository fields, topics and labels resources, and versioned YAML contract; see [commands](commands.md) for current behavior and [the published package boundary](github-actions.md#published-package-and-consumer-pins) for released consumers. Future settings remain outside this scope.
 
 ## Supported fields
 
@@ -53,9 +53,17 @@ settings:
 
 Names are compared as a set. Export, comparisons and PUT payloads use sorted lists without changing the configuration file. An empty observed list is exported as `names: []`; exporting promotes that observed set to a managed declaration. Topic names are public metadata, even on private repositories.
 
-Export reads `GET /repos/{owner}/{repo}` and then `GET /repos/{owner}/{repo}/topics`; both reads and complete serialization finish before overwriting the file. Missing, null, invalid or unreadable topic names fail export instead of becoming an empty set. Plan reads only declared resources in repository-then-topics order. Topic reads need Metadata read (public resources may be read without authentication); writes need Administration write. Existing PR read-token isolation and target-scoped apply credentials are unchanged. No paid-plan prerequisite is documented for topics.
+Export reads `GET /repos/{owner}/{repo}`, then `GET /repos/{owner}/{repo}/topics`, followed by all labels pages; all reads and complete serialization finish before overwriting the file. Missing, null, invalid or unreadable topic names fail export instead of becoming an empty set. Plan reads only declared resources in repository-then-topics order. Topic reads need Metadata read (public resources may be read without authentication); writes need Administration write. Existing PR read-token isolation and target-scoped apply credentials are unchanged. No paid-plan prerequisite is documented for topics.
 
 Apply sends a repository PATCH only for declared repository fields, followed by `PUT /repos/{owner}/{repo}/topics` with only `{"names":[...]}` when topic names are declared. It does not GET first. An explicit clear sends `{"names":[]}`, never null. Both write clients reject redirects. On failure, later operations stop and earlier successful updates remain applied; there is no transaction, retry or rollback.
+
+## Labels
+
+Current source adds `settings.labels`, an array of mappings with required `name` and optional `color`/`description` strings. Published v0.8.0 does not support Labels. See the [Labels feature contract](features/labels.feature.md) for schema, API mapping and tests.
+
+Omitting `labels` leaves it unmanaged. A provided list is authoritative: remote labels absent from the list are deleted; `labels: []` deletes all labels. Deleting a label removes its issue/PR associations. A changed name is create plus delete, with no rename inference. Review the explicit create/update/delete plan before apply.
+
+Omitted color/description preserves existing values, or uses GitHub defaults for creation. Empty description clears it; null is invalid. Colors are six hexadecimal characters without `#` and normalized lowercase; descriptions permit at most 100 characters. Names use case-insensitive identity without trimming, and ambiguous names fail. Export reads every page before writing and saves the complete sorted label collection. Apply reconciles a fresh label read after repository PATCH and topics PUT; creates/updates precede deletes, and any failure stops later operations without rollback. Labels listing needs Issues or Pull requests read, while mutations need either permission at write level; Administration write alone is insufficient. This change does not alter credentials or released workflow pins.
 
 ## Configuration semantics
 
@@ -87,9 +95,9 @@ Fields at the YAML root, missing or unsupported versions, and unsupported groups
 
 `export` normalizes GET `description` and `homepage` nulls to empty strings, preserving existing empty strings too. It serializes those values as quoted YAML strings (`""`), not empty YAML values or null. This read-side conversion does not make explicit YAML null valid input. The published read schema permits null for these fields, whereas the update body defines optional strings without `nullable`; export follows that writable representation.[^github-repository-openapi] This does not assert that the server rejects every null update, and no live update was performed to verify clearing. Missing response keys and null booleans are errors, not nulls or defaults.
 
-Root keys other than `schemaVersion` and `settings`, and settings groups other than `repository` and `topics`, are rejected.
+Root keys other than `schemaVersion` and `settings`, and settings groups other than `repository`, `topics` and `labels`, are rejected.
 
-Labels, rulesets, Pages, and Actions settings are excluded from the initial design. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are outside repository scope. Confirmed future label semantics and unresolved ruleset collection behavior remain in the [future direction](concept.md#future-direction).
+Rulesets, Pages, and Actions settings remain unsupported. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are outside repository scope. Unresolved ruleset collection behavior remains in the [future direction](concept.md#future-direction).
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five body parameters and their request body placement. This reference does not expand the supported scope.
 

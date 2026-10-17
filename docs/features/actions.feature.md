@@ -238,3 +238,7 @@ Hosted smoke uses the CLI built once with the committed candidate version and th
 - And existing repository fields retain their native types.
 
 Test mapping: [TestTopicsSummaryNativeAndJSONLists](../../internal/actions/summary_test.go), [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).
+
+### Rule: Present typed label operations
+
+The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.

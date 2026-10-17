@@ -84,3 +84,7 @@ Focused application, comparison and CLI tests cover target selection, declaratio
 - Then one settings.topics.names change shows sorted arrays with native string values.
 
 Test mapping: [TestTopicsSetComparison](../../internal/settings/topics_test.go), [TestTopicsOnlyPlanAndApply](../../internal/app/topics_test.go), [TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
+
+### Rule: Show label collection operations
+
+The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.

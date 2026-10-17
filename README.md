@@ -1,6 +1,6 @@
 # gh-settings
 
-A GitHub CLI extension for exporting, validating, planning, and applying the current repository's basic settings and topics. Export saves `.github/settings.yml`; omitted fields remain unmanaged. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; the caller owns approval and credentials.
+A GitHub CLI extension for exporting, validating, planning, and applying the current repository's basic settings, topics and labels. Export saves `.github/settings.yml`; omitted fields remain unmanaged. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; the caller owns approval and credentials.
 
 This checkout selects published [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0); the examples and active settings workflows are pinned to [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0). The active main workflow keeps its `gh-settings` Environment and App credentials, with a [trusted-source PR Environment guard](docs/github-actions.md#active-repository-environment-guard) added as defense in depth. Do not remove the deployment reviewer until a non-spoofable required policy is configured outside PR-controlled GitHub Actions checks.
 
@@ -23,7 +23,7 @@ In the Git checkout whose settings you want to read, run:
 gh settings export
 ```
 
-In current source, export saves root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`, plus `settings.topics.names`, to `.github/settings.yml` at the Git checkout root, including from subdirectories. It creates a missing `.github` directory and succeeds silently. Export reads that checkout's GitHub.com `origin`, ignores `GH_REPO`, and does not change GitHub settings. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
+In current source, export saves root `schemaVersion: 1` and `settings.repository` with `description`, `homepage`, `has_issues`, `has_projects`, and `has_wiki`, plus `settings.topics.names` and `settings.labels`, to `.github/settings.yml` at the Git checkout root, including from subdirectories. It creates a missing `.github` directory and succeeds silently. Export reads that checkout's GitHub.com `origin`, ignores `GH_REPO`, and does not change GitHub settings. See [commands](docs/commands.md) and [supported settings](docs/settings.md) for details.
 
 Export always overwrites an existing regular configuration file after reading the settings and serializing the complete YAML. A write failure reports an error and can leave the destination truncated or partially written; use Git to restore tracked configuration. Symlinks at `.github` or `settings.yml`, including dangling links, and non-regular destinations are rejected.
 
@@ -52,7 +52,7 @@ settings:
     has_issues: false
 ```
 
-The [configuration contract](docs/settings.md#configuration-semantics) explains the supported repository fields and topics, `schemaVersion`, grouping and value types. Validation succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. See the [command behavior](docs/commands.md#validate-behavior) for its failure cases.
+The [configuration contract](docs/settings.md#configuration-semantics) explains the supported repository fields, topics and labels, `schemaVersion`, grouping and value types. Validation succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. See the [command behavior](docs/commands.md#validate-behavior) for its failure cases.
 
 ## Plan a saved configuration
 
@@ -86,13 +86,15 @@ settings:
 
 Topics support is published in v0.8.0. This repository manages `github-cli` and `settings-as-code` through the same declaration and its pinned v0.8.0 PR/main workflows. Omitted repository fields stay unmanaged.
 
+Labels support is available in current source and is not in v0.8.0. Omit `settings.labels` to leave labels unmanaged. A provided list deletes undeclared remote labels; `labels: []` deletes every label and its issue/PR associations. Omitted color/description preserves existing attributes. Read the [Labels contract](docs/features/labels.feature.md) before declaring membership. Existing workflow pins and credentials are unchanged.
+
 Send declared values directly:
 
 ```sh
 gh settings apply
 ```
 
-Apply validates `.github/settings.yml` before contacting GitHub, then sends only declared resources to the checkout's origin repository. Repository fields use PATCH; declared topic names use PUT. False and empty strings are explicit values; omitted fields stay outside the request. A declaration with no managed fields succeeds without origin or authentication. Successful updates print `Applied repository settings.` and exit 0.
+Apply validates `.github/settings.yml` before contacting GitHub, then sends only declared resources to the checkout's origin repository. Repository fields use PATCH; declared topic names use PUT. Labels alone reads fresh state and then creates/updates/deletes label definitions. False and empty strings are explicit values; omitted fields stay outside the request. A declaration with no managed fields succeeds without origin or authentication. Successful updates print `Applied repository settings.` and exit 0.
 
 Apply works independently of plan and does not fetch current settings. Remote changes to declared fields can be overwritten. When both resources are declared, repository settings are sent first, then topics. A failure stops later work; earlier successful updates remain applied. Errors exit 1; an output failure can occur after an update succeeds, and there is no automatic rollback. See [apply behavior](docs/commands.md#apply-behavior).
 

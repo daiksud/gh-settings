@@ -53,5 +53,17 @@ func Plan(read Reader) (PlanResult, error) {
 		comparison.Managed += topics.Managed
 		comparison.Changes = append(comparison.Changes, topics.Changes...)
 	}
+	if desired.Labels != nil {
+		current, err := read.Labels(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		labels, err := settings.CompareLabels(current, desired.Labels)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed += labels.Managed
+		comparison.Labels = labels.Labels
+	}
 	return PlanResult{Target: repo, Comparison: comparison}, nil
 }

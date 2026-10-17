@@ -31,6 +31,16 @@ func Export(read Reader) error {
 	}
 	names = settings.SortedTopics(names)
 	declaration.Topics.Names = &names
+	labels, err := read.Labels(repo)
+	if err != nil {
+		return err
+	}
+	labelDeclarations := make([]settings.LabelDeclaration, 0, len(labels))
+	for _, label := range labels {
+		color, description := label.Color, label.Description
+		labelDeclarations = append(labelDeclarations, settings.LabelDeclaration{Name: label.Name, Color: &color, Description: &description})
+	}
+	declaration.Labels = &labelDeclarations
 	data, err := workspace.EncodeConfig(declaration)
 	if err != nil {
 		return err

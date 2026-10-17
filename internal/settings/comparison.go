@@ -4,6 +4,7 @@ package settings
 type Comparison struct {
 	Managed int
 	Changes []Change
+	Labels  []LabelChange
 }
 
 // Change contains a resource-qualified field path and native string, boolean or string-list values.
