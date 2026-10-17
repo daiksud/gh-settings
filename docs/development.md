@@ -8,7 +8,7 @@ Use Go 1.25 or later and install [mise](https://mise.jdx.dev/getting-started.htm
 
 ## Shared Go implementation
 
-Published v0.7.0 implements the [v0 simplification contract](concept.md#v0-simplification-contract): one Go implementation serves the CLI and thin composite Action. The [glossary](glossary.md) distinguishes an optional-field declaration, complete observed state and native comparison. YAML/JSON conversion, storage, Git and HTTP stay outside that I/O-free settings model. The examples and active workflows use v0.7.0; this repository keeps its existing `gh-settings` Environment, deployment approval and App credentials until a non-spoofable required PR policy is configured.
+Published v0.7.1 retains the [v0 simplification contract](concept.md#v0-simplification-contract): one Go implementation serves the CLI and thin composite Action. The [glossary](glossary.md) distinguishes an optional-field declaration, complete observed state and native comparison. YAML/JSON conversion, storage, Git and HTTP stay outside that I/O-free settings model. The examples and active workflows use v0.7.0; this repository keeps its existing `gh-settings` Environment, deployment approval and App credentials until a non-spoofable required PR policy is configured.
 
 The [root entry point](../main.go) binds the CLI/Actions adapters to shared application operations and supplies deferred concrete GitHub read/write functions. Application operations compose workspace and settings behavior; only a needed read/write constructs its API client. CLI owns terminal presentation; Actions owns metadata and typed report/Summary presentation. Metadata uses the shared workspace resolver without a settings operation; Summary renders an existing report without calling plan again. The composite invokes the verified executable directly and keeps only installation bootstrap and necessary Actions wiring. Help/version require no checkout or authentication. Root builds remain `go build .`, retaining `main.version` for `-ldflags '-X main.version=...'`.
 
@@ -100,7 +100,7 @@ Markdown checks use the rumdl version pinned in [mise.toml](../mise.toml) and th
 
 ## Release and consumer handoff
 
-The [ordered source-refactoring series](https://github.com/daiksud/gh-settings/issues/133) delivered the implementation now published as [v0.7.0](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0). Current `action/cli-version`, the examples and the active workflows all use that release. Publishing a release or updating examples does not itself apply settings.
+The [ordered source-refactoring series](https://github.com/daiksud/gh-settings/issues/133) delivered the implementation first published in [v0.7.0](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0). Current `action/cli-version` selects the published [v0.7.1](https://github.com/daiksud/gh-settings/releases/tag/v0.7.1), while the examples and active workflows retain reviewed v0.7.0 SHA pins. Publishing a release or updating examples does not itself apply settings.
 
 | Evidence | What it establishes | Boundary |
 | --- | --- | --- |
