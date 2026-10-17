@@ -71,10 +71,10 @@ func TestOperationalMainConsumer(t *testing.T) {
 	appToken := apply.Steps[1]
 	if appToken.ID != "app" || appToken.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" ||
 		!reflect.DeepEqual(appToken.With, map[string]string{
-			"client-id": "${{ vars.ANSWER26_CLIENT_ID }}",
-			"private-key": "${{ secrets.ANSWER26_PRIVATE_KEY }}",
-			"owner": "${{ github.repository_owner }}",
-			"repositories": "${{ github.event.repository.name }}",
+			"client-id":                 "${{ vars.ANSWER26_CLIENT_ID }}",
+			"private-key":               "${{ secrets.ANSWER26_PRIVATE_KEY }}",
+			"owner":                     "${{ github.repository_owner }}",
+			"repositories":              "${{ github.event.repository.name }}",
 			"permission-administration": "write",
 		}) {
 		t.Fatal("operational App credentials, target scope or revocation changed")
