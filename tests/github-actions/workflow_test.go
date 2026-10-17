@@ -204,4 +204,3 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		t.Fatal("App token escaped the apply step")
 	}
 }
-
