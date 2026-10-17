@@ -235,4 +235,3 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 	}
 	return f.run(t, fixtureValue(t, call.With["command"], context), fixtureValue(t, call.With["token"], context), overrides)
 }
-
