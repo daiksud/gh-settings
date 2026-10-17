@@ -9,8 +9,8 @@ concurrency:
   group: settings-environment-guard-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 jobs:
-  gh-settings-environment-scope:
-    name: gh-settings-environment-scope
+  gh-settings:
+    name: gh-settings
     runs-on: ubuntu-slim
     timeout-minutes: 5
     permissions:

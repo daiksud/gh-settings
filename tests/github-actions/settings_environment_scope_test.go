@@ -16,7 +16,7 @@ const (
 	settingsWorkflowPath      = ".github/workflows/settings-main.yml"
 	settingsEnvironment       = "gh-settings"
 	settingsGuardWorkflowPath = ".github/workflows/settings-environment-guard.yml"
-	settingsGuardCheckName    = "gh-settings-environment-scope"
+	settingsGuardCheckName    = "gh-settings"
 )
 
 // The existing required CI pass check runs this test with the rest of the Go suite.
@@ -178,7 +178,7 @@ func settingsEnvironmentName(node *yaml.Node) (string, error) {
 
 func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 	const allowed = "jobs:\n  apply:\n    environment: gh-settings\n"
-	const guard = "jobs:\n  gh-settings-environment-scope:\n    name: gh-settings-environment-scope\n"
+	const guard = "jobs:\n  gh-settings:\n    name: gh-settings\n"
 	const other = "jobs:\n  check:\n    environment: preview\n"
 	for _, test := range []struct {
 		name, main, extra string
@@ -193,8 +193,8 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		{"unauthorized name mapping", allowed, "jobs:\n  check:\n    environment: {name: gh-settings}\n", false},
 		{"unauthorized job in allowed workflow", allowed + "  other:\n    environment: gh-settings\n", "", false},
 		{"reusable workflow job", allowed, "jobs:\n  delegate:\n    uses: example/repo/.github/workflows/deploy.yml@main\n", false},
-		{"duplicate guard job id", allowed, "jobs:\n  gh-settings-environment-scope:\n    runs-on: ubuntu-24.04\n", false},
-		{"duplicate guard display name", allowed, "jobs:\n  unrelated:\n    name: gh-settings-environment-scope\n", false},
+		{"duplicate guard job id", allowed, "jobs:\n  gh-settings:\n    runs-on: ubuntu-24.04\n", false},
+		{"duplicate guard display name", allowed, "jobs:\n  unrelated:\n    name: gh-settings\n", false},
 		{"dynamic job display name", allowed, "jobs:\n  unrelated:\n    name: ${{ vars.CHECK_NAME }}\n", false},
 		{"dynamic scalar", allowed, "jobs:\n  check:\n    environment: ${{ vars.DEPLOY_ENV }}\n", false},
 		{"dynamic name mapping", allowed, "jobs:\n  check:\n    environment: {name: \"${{ 'gh-settings' }}\"}\n", false},
