@@ -136,6 +136,10 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 					fmt.Fprint(w, planResponse)
 					return
 				}
+				if r.URL.Path == "/repos/owner/current/labels" {
+					fmt.Fprint(w, `[]`)
+					return
+				}
 				if r.URL.Path != "/repos/owner/current/topics" {
 					t.Errorf("unexpected path: %s", r.URL.Path)
 					w.WriteHeader(400)
@@ -203,7 +207,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "GET /repos/owner/current/topics", "GET /repos/owner/current/topics"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current/topics"}) {
 				t.Fatalf("requests=%v", paths)
 			}
 		})

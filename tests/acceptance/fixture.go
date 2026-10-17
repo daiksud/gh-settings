@@ -22,6 +22,11 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 		status = 200
 	}
 	return startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/repos/owner/current/labels" {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, `[]`)
+			return
+		}
 		if r.Method == http.MethodGet && r.URL.Path == "/repos/owner/current/topics" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, `{"names":[]}`)
@@ -62,7 +67,7 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, err
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
-		if readOnly && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics")) {
+		if readOnly && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
 			fixture.invalid.Store(true)
 			http.Error(w, "unexpected fixture request", 400)
 			return

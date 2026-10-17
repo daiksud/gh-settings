@@ -7,17 +7,17 @@ sources:
     resource: concept.md#implementation-ownership
 ---
 
-These terms describe the repository fields and topics in the [settings model](../internal/settings/repository.go). YAML and GitHub request/response conversions belong at their respective boundaries, outside this I/O-free model.
+These terms describe the repository fields, topics and labels in the [settings model](../internal/settings/repository.go). YAML and GitHub request/response conversions belong at their respective boundaries, outside this I/O-free model.
 
 | Term | Meaning | Go type |
 | --- | --- | --- |
-| Settings declaration | Repository and topics declarations; all omitted resources are unmanaged. | `settings.Declaration` |
+| Settings declaration | Repository, topics and labels declarations; all omitted resources are unmanaged. | `settings.Declaration` |
 | Topics declaration | A nil names pointer is unmanaged; an explicit empty array clears the topic set. | `settings.TopicsDeclaration` |
 | Repository declaration | Only the fields the maintainer chose to manage. A nil field is omitted; explicit false and empty strings remain declared values. `Empty` means all fields are omitted. | `settings.RepositoryDeclaration` |
 | Observed repository state | All five normalized values from a successful repository read. Ordinary string and boolean values represent the complete state; empty strings and false are observed values. | `settings.RepositoryState` |
 | Repository comparison | Managed-field count plus ordered changes between observed state and a declaration. A positive count with no changes differs from no managed fields. | `settings.Comparison` with `settings.Change` entries |
 
-The [GitHub read adapter](../internal/github/repository.go) owns client construction and response normalization. `NewReadClient` retains gh authentication and the 30-second read timeout; `Client.ReadRepository` reads an explicitly resolved target, checks completeness and normalizes permitted null strings to empty strings in the observed state. Export declares every observed field; PATCH includes only declared fields. The [configuration codec](../internal/workspace/config.go) validates and encodes the [existing versioned/grouped YAML contract](settings.md#configuration-semantics), returning `settings.Declaration` with repository and topics declarations to callers.
+The [GitHub read adapter](../internal/github/repository.go) owns client construction and response normalization. `NewReadClient` retains gh authentication and the 30-second read timeout; `Client.ReadRepository` reads an explicitly resolved target, checks completeness and normalizes permitted null strings to empty strings in the observed state. Export declares every observed field; PATCH includes only declared fields. The [configuration codec](../internal/workspace/config.go) validates and encodes the [existing versioned/grouped YAML contract](settings.md#configuration-semantics), returning `settings.Declaration` with repository, topics and labels declarations to callers.
 
 The [GitHub write adapter](../internal/github/apply.go) owns declaration-to-JSON conversion and direct PATCH to an explicitly resolved target, without a preliminary GET. `NewWriteClient` retains the separate 30-second write timeout and rejects redirects; `Client.ApplyRepository` sends only declared values. A network error does not establish whether the remote update happened.
 
@@ -31,7 +31,7 @@ The shared [plan operation](../internal/app/plan.go) returns `app.PlanResult`: a
 
 The shared [apply operation](../internal/app/apply.go) returns `app.ApplyResult`: `Applied` is true only after writer success, while false without an error means local no-op. Validation and the empty-declaration guard precede target/writer access; root wiring supplies the deferred write and the CLI formats the message. False with an error does not prove no remote mutation, and later output failure does not roll back success.
 
-The shared [export operation](../internal/app/export.go) converts complete observed state into a declaration of all five repository fields and sorted topic names, serializes it and only then hands bytes to workspace storage. It does not validate the old file or format stdout. Plan/export share [deferred read wiring](../main.go), with no eager client initialization.
+The shared [export operation](../internal/app/export.go) converts complete observed state into a declaration of all five repository fields, sorted topic names and sorted complete label definitions, serializes it and only then hands bytes to workspace storage. It does not validate the old file or format stdout. Plan/export share [deferred read wiring](../main.go), with no eager client initialization.
 
 The [CLI adapter](../internal/cli/run.go), `cli.Run`, owns argument dispatch, help/version, typed Plan/Apply rendering, diagnostics and exit status. Its `Operations` value binds the four application signatures; export and validate remain silent. The [root entry point](../main.go) retains linker-injected `main.version` and concrete deferred dependencies, without command wrappers or application sequencing.
 

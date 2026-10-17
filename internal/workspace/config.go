@@ -29,6 +29,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 		Settings      struct {
 			Repository repositoryDocument `yaml:"repository"`
 			Topics     *topicsDocument    `yaml:"topics,omitempty"`
+			Labels     *[]labelDocument   `yaml:"labels,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
@@ -39,6 +40,18 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	if declaration.Topics.Names != nil {
 		names := settings.SortedTopics(*declaration.Topics.Names)
 		document.Settings.Topics = &topicsDocument{Names: &names}
+	}
+	if declaration.Labels != nil {
+		labels := make([]labelDocument, 0, len(*declaration.Labels))
+		for _, label := range settings.SortedLabels(*declaration.Labels) {
+			color := label.Color
+			if color != nil {
+				normalized := strings.ToLower(*color)
+				color = &normalized
+			}
+			labels = append(labels, labelDocument{Name: label.Name, Color: color, Description: label.Description})
+		}
+		document.Settings.Labels = &labels
 	}
 	return yaml.Marshal(document)
 }
@@ -81,6 +94,14 @@ func DecodeConfig(data []byte) (settings.Declaration, error) {
 			return settings.Declaration{}, err
 		}
 		for group, value := range groups {
+			if group == "labels" {
+				labels, err := parseLabels(&value)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				declaration.Labels = labels
+				continue
+			}
 			if group == "topics" {
 				topics, err := parseTopicsFields(&value)
 				if err != nil {

@@ -57,3 +57,7 @@ Application tests use real temporary checkouts/files and a writer spy; GitHub ad
 - And omitted names produce no topics request.
 
 Test mapping: [TestTopicsApplyOrderAndPartialFailures](../../internal/app/topics_test.go), [TestApplyTopicsPayloadAndErrors](../../internal/github/topics_test.go), [TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
+
+### Rule: Reconcile labels against fresh state
+
+The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.

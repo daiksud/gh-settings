@@ -35,7 +35,9 @@ This is the path for a future approved setting, not permission to add one. First
 
 Topics is the first additional concrete resource: [`settings.Declaration`](../internal/settings/settings.go) contains repository and topics declarations; [`app.Reader`/`Writer`](../internal/app/resources.go) defer resource operations and application code sequences them. [`github/topics.go`](../internal/github/topics.go) owns its GET/PUT mapping. Comparisons use resource-qualified field paths.
 
-For another future resource group, agree its semantics first, then place its declaration/state/comparison at the settings owner, YAML grouping at the workspace boundary, endpoint mappings at the GitHub boundary and shared sequencing in the application. Adapt CLI/Actions presentation to those results. The current codec rejects groups other than repository and topics; this describes responsibility, without implementing another group, choosing collection semantics or introducing a registry/resource framework.
+Labels adds [typed declaration/state/CRUD comparisons](../internal/settings/labels.go), a strict [YAML boundary](../internal/workspace/labels.go), [paged read/write mapping](../internal/github/labels.go), and conditional [application sequencing](../internal/app/resources.go). It uses a fresh read only for Labels apply. CLI and Actions own their respective escaped operation presentation. [Labels tests and semantics](features/labels.feature.md) describe pagination, attribute presence, authoritative deletes and partial failures. No resource registry or saved-plan executor is introduced.
+
+For another future resource group, agree its semantics first, then place its declaration/state/comparison at the settings owner, YAML grouping at the workspace boundary, endpoint mappings at the GitHub boundary and shared sequencing in the application. Adapt CLI/Actions presentation to those results. The current codec supports repository, topics and labels; this describes responsibility, without implementing another group, choosing collection semantics or introducing a registry/resource framework.
 
 ## Development checks
 
