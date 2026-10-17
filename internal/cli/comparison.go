@@ -1,13 +1,14 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func RenderRepositoryComparison(comparison settings.RepositoryComparison) []byte {
+func RenderComparison(comparison settings.Comparison) []byte {
 	var output strings.Builder
 	if comparison.Managed == 0 {
 		output.WriteString("No managed repository settings.\n")
@@ -15,8 +16,16 @@ func RenderRepositoryComparison(comparison settings.RepositoryComparison) []byte
 		output.WriteString("No differences for managed repository settings.\n")
 	} else {
 		for _, change := range comparison.Changes {
-			fmt.Fprintf(&output, "settings.repository.%s: %#v → %#v\n", change.Field, change.Before, change.After)
+			fmt.Fprintf(&output, "settings.%s: %s → %s\n", change.Field, comparisonValue(change.Before), comparisonValue(change.After))
 		}
 	}
 	return []byte(output.String())
+}
+
+func comparisonValue(value any) string {
+	if names, ok := value.([]string); ok {
+		data, _ := json.Marshal(names)
+		return string(data)
+	}
+	return fmt.Sprintf("%#v", value)
 }

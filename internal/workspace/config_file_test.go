@@ -27,7 +27,7 @@ func TestReadConfigAtRoot(t *testing.T) {
 	}
 	t.Chdir(nested)
 	empty, disabled := "", false
-	want := settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}
+	want := settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}}
 	got, err := ReadConfig(root)
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("declaration=%+v error=%v, want %+v", got, err, want)
@@ -55,7 +55,7 @@ func TestReadConfigErrors(t *testing.T) {
 				}
 			}
 			got, err := ReadConfig(root)
-			if err == nil || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, settings.RepositoryDeclaration{}) {
+			if err == nil || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, settings.Declaration{Repository: settings.RepositoryDeclaration{}}) {
 				t.Fatalf("declaration=%+v error=%v, want zero declaration and %q", got, err, test.want)
 			}
 		})

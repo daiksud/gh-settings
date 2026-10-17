@@ -208,3 +208,12 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 
 Export changes the local configuration but only reads GitHub settings; [apply](../commands.md#apply-behavior) owns GitHub mutation. Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.
+
+### Rule: Export complete topics before writing
+
+- Given repository settings and topic names can be read.
+- When export runs.
+- Then repository fields and sorted topic names are saved with schemaVersion 1.
+- And a failed topics read leaves an existing destination unchanged.
+
+Test mapping: [TestTopicsExportFailureBeforeOverwrite](../../internal/app/topics_test.go) and [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).

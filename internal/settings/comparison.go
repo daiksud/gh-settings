@@ -1,27 +1,27 @@
 package settings
 
-// RepositoryComparison counts all declared fields and records only changed values.
-type RepositoryComparison struct {
+// Comparison counts all declared fields and records only changed values.
+type Comparison struct {
 	Managed int
-	Changes []RepositoryChange
+	Changes []Change
 }
 
-// RepositoryChange contains a field name and a string/string or bool/bool value pair.
-type RepositoryChange struct {
+// Change contains a resource-qualified field path and native string, boolean or string-list values.
+type Change struct {
 	Field         string
 	Before, After any
 }
 
 // CompareRepository compares declared fields in a stable order without rendering them.
-func CompareRepository(current RepositoryState, desired RepositoryDeclaration) RepositoryComparison {
-	var result RepositoryComparison
+func CompareRepository(current RepositoryState, desired RepositoryDeclaration) Comparison {
+	var result Comparison
 	stringField := func(name, current string, desired *string) {
 		if desired == nil {
 			return
 		}
 		result.Managed++
 		if current != *desired {
-			result.Changes = append(result.Changes, RepositoryChange{Field: name, Before: current, After: *desired})
+			result.Changes = append(result.Changes, Change{Field: name, Before: current, After: *desired})
 		}
 	}
 	boolField := func(name string, current bool, desired *bool) {
@@ -30,13 +30,13 @@ func CompareRepository(current RepositoryState, desired RepositoryDeclaration) R
 		}
 		result.Managed++
 		if current != *desired {
-			result.Changes = append(result.Changes, RepositoryChange{Field: name, Before: current, After: *desired})
+			result.Changes = append(result.Changes, Change{Field: name, Before: current, After: *desired})
 		}
 	}
-	stringField("description", current.Description, desired.Description)
-	stringField("homepage", current.Homepage, desired.Homepage)
-	boolField("has_issues", current.HasIssues, desired.HasIssues)
-	boolField("has_projects", current.HasProjects, desired.HasProjects)
-	boolField("has_wiki", current.HasWiki, desired.HasWiki)
+	stringField("repository.description", current.Description, desired.Description)
+	stringField("repository.homepage", current.Homepage, desired.Homepage)
+	boolField("repository.has_issues", current.HasIssues, desired.HasIssues)
+	boolField("repository.has_projects", current.HasProjects, desired.HasProjects)
+	boolField("repository.has_wiki", current.HasWiki, desired.HasWiki)
 	return result
 }

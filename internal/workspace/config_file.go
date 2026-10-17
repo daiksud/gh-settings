@@ -11,14 +11,14 @@ import (
 // SettingsPath is the fixed configuration path relative to a checkout root.
 const SettingsPath = ".github/settings.yml"
 
-func ReadConfig(root string) (settings.RepositoryDeclaration, error) {
+func ReadConfig(root string) (settings.Declaration, error) {
 	data, err := os.ReadFile(filepath.Join(root, SettingsPath))
 	if err != nil {
-		return settings.RepositoryDeclaration{}, fmt.Errorf("read %s: %w", SettingsPath, err)
+		return settings.Declaration{}, fmt.Errorf("read %s: %w", SettingsPath, err)
 	}
 	declaration, err := DecodeConfig(data)
 	if err != nil {
-		return settings.RepositoryDeclaration{}, fmt.Errorf("validate %s: %w", SettingsPath, err)
+		return settings.Declaration{}, fmt.Errorf("validate %s: %w", SettingsPath, err)
 	}
 	return declaration, nil
 }

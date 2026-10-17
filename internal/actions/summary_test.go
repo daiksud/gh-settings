@@ -79,14 +79,14 @@ func TestSummaryRequiresNativeChanges(t *testing.T) {
 		change actions.PlanChange
 	}{
 		{"empty field", actions.PlanChange{Before: "before", After: "after"}},
-		{"numeric pair", actions.PlanChange{Field: "description", Before: float64(1), After: float64(2)}},
-		{"mismatched pair", actions.PlanChange{Field: "description", Before: "before", After: false}},
-		{"null before", actions.PlanChange{Field: "description", After: "after"}},
-		{"description booleans", actions.PlanChange{Field: "description", Before: true, After: false}},
-		{"issues strings", actions.PlanChange{Field: "has_issues", Before: "yes", After: "no"}},
+		{"numeric pair", actions.PlanChange{Field: "repository.description", Before: float64(1), After: float64(2)}},
+		{"mismatched pair", actions.PlanChange{Field: "repository.description", Before: "before", After: false}},
+		{"null before", actions.PlanChange{Field: "repository.description", After: "after"}},
+		{"description booleans", actions.PlanChange{Field: "repository.description", Before: true, After: false}},
+		{"issues strings", actions.PlanChange{Field: "repository.has_issues", Before: "yes", After: "no"}},
 		{"unknown field", actions.PlanChange{Field: "unknown", Before: "before", After: "after"}},
-		{"equal strings", actions.PlanChange{Field: "description", Before: "same", After: "same"}},
-		{"equal booleans", actions.PlanChange{Field: "has_issues", Before: false, After: false}},
+		{"equal strings", actions.PlanChange{Field: "repository.description", Before: "same", After: "same"}},
+		{"equal booleans", actions.PlanChange{Field: "repository.has_issues", Before: false, After: false}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{test.change}}
@@ -100,7 +100,7 @@ func TestSummaryRequiresNativeChanges(t *testing.T) {
 
 func TestSummaryRequiresValidReportState(t *testing.T) {
 	empty := []actions.PlanChange{}
-	change := []actions.PlanChange{{Field: "description", Before: "before", After: "after"}}
+	change := []actions.PlanChange{{Field: "repository.description", Before: "before", After: "after"}}
 	for _, test := range []struct {
 		name   string
 		report actions.PlanReport
@@ -108,7 +108,7 @@ func TestSummaryRequiresValidReportState(t *testing.T) {
 		{"unknown outcome", actions.PlanReport{Outcome: "unknown", Changes: empty}},
 		{"missing changes", actions.PlanReport{Outcome: "unmanaged"}},
 		{"negative count", actions.PlanReport{Outcome: "unmanaged", Managed: -1, Changes: empty}},
-		{"excess count", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 6, Changes: empty}},
+		{"excess count", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 7, Changes: empty}},
 		{"changed without changes", actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: empty}},
 		{"no difference with changes", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 1, Changes: change}},
 		{"unmanaged positive count", actions.PlanReport{Outcome: "unmanaged", Managed: 1, Changes: empty}},
@@ -117,7 +117,7 @@ func TestSummaryRequiresValidReportState(t *testing.T) {
 		{"arbitrary diagnostic", actions.PlanReport{Outcome: "target-failure", Diagnostic: "arbitrary failure text", Changes: empty}},
 		{"read failure without target", actions.PlanReport{Outcome: "read-failure", Diagnostic: "repository read failed", Changes: empty}},
 		{"target mismatch", actions.PlanReport{Outcome: "no-difference", Target: "other/repo", Managed: 1, Changes: empty}},
-		{"duplicate field", actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 2, Changes: []actions.PlanChange{{Field: "description", Before: "before", After: "after"}, {Field: "description", Before: "before", After: "conflicting"}}}},
+		{"duplicate field", actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 2, Changes: []actions.PlanChange{{Field: "repository.description", Before: "before", After: "after"}, {Field: "repository.description", Before: "before", After: "conflicting"}}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			content, err := actions.RenderSummary(test.report, summaryMetadata())
@@ -260,7 +260,7 @@ func TestSummaryQuotesMultilineData(t *testing.T) {
 	attack := "\"quotes\"\r\n\r\n</td><script>bad</script>\n\n## Forged approval\n\n[Approve](https://example.invalid)\n::notice::approved &copy;"
 	metadata.Actor = attack
 	value := "\"quote\"\n</pre>\n```\n## Forged values\n<script>bad</script>\n::notice::approved &copy;"
-	report := actions.PlanReport{Outcome: "changed", Target: metadata.Target, Managed: 1, Changes: []actions.PlanChange{{Field: "description", Before: "before", After: value}}}
+	report := actions.PlanReport{Outcome: "changed", Target: metadata.Target, Managed: 1, Changes: []actions.PlanChange{{Field: "repository.description", Before: "before", After: value}}}
 	content, err := actions.RenderSummary(report, metadata)
 	if err != nil || strings.Contains(content, "\r") || strings.Contains(content, "\n\n## Forged approval") || strings.Contains(content, "<script>bad</script>") || strings.Contains(content, "</pre>\n```") {
 		t.Fatalf("untrusted data escaped its data context: error=%v content=%q", err, content)
@@ -338,5 +338,55 @@ func summaryMetadata() actions.RunMetadata {
 		WorkflowRef: "workflow-owner/workflows/.github/workflows/settings-main.yml@refs/heads/main", WorkflowSHA: strings.Repeat("a", 40),
 		ConfigSHA: strings.Repeat("b", 40), Target: "owner/current", ActionRepository: "action-owner/action-repo", ActionRef: strings.Repeat("d", 40),
 		CLIVersion: "v0.6.1", CLISHA256: strings.Repeat("c", 64),
+	}
+}
+
+func TestTopicsSummaryNativeAndJSONLists(t *testing.T) {
+	for _, change := range []actions.PlanChange{
+		{Field: "topics.names", Before: []string{"old"}, After: []string{}},
+		{Field: "topics.names", Before: []any{"old"}, After: []any{}},
+	} {
+		report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{change}}
+		content, err := actions.RenderSummary(report, summaryMetadata())
+		if err != nil || !strings.Contains(content, `settings.topics.names: [&#34;old&#34;] → []`) {
+			t.Fatalf("content=%s error=%v", content, err)
+		}
+	}
+	for _, change := range []actions.PlanChange{
+		{Field: "topics.names", Before: nil, After: []string{}},
+		{Field: "topics.names", Before: []string{}, After: nil},
+		{Field: "topics.names", Before: []any{false}, After: []any{}},
+		{Field: "topics.names", Before: []string{"z", "a"}, After: []string{}},
+		{Field: "topics.names", Before: []string{"a", "a"}, After: []string{}},
+		{Field: "topics.names", Before: []string{"<script>alert(1)</script>"}, After: []string{}},
+		{Field: "topics.names", Before: []string{"a\nb"}, After: []string{}},
+		{Field: "topics.names", Before: []string{"a"}, After: []any{"a"}},
+		{Field: "topics.names", Before: []string{}, After: []any{}},
+	} {
+		report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{change}}
+		content, err := actions.RenderSummary(report, summaryMetadata())
+		if err == nil || content != "" {
+			t.Fatalf("accepted %+v: %s %v", change, content, err)
+		}
+	}
+}
+
+func TestInvalidTopicsSummaryPreservesExistingFile(t *testing.T) {
+	setSummaryEnvironment(t)
+	root := t.TempDir()
+	reportPath := filepath.Join(root, "plan.json")
+	summaryPath := filepath.Join(root, "summary.md")
+	report := `{"outcome":"changed","target":"owner/current","managed":1,"changes":[{"field":"topics.names","before":[],"after":["<script>"]}]}`
+	if err := os.WriteFile(reportPath, []byte(report), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(summaryPath, []byte("existing summary"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	status := actions.Run([]string{"summary", reportPath, summaryPath}, &stdout, &stderr, "dev", nil)
+	data, err := os.ReadFile(summaryPath)
+	if status != 1 || stdout.Len() != 0 || stderr.Len() == 0 || err != nil || string(data) != "existing summary" {
+		t.Fatalf("status=%d summary=%q error=%v stderr=%s", status, data, err, stderr.String())
 	}
 }

@@ -12,11 +12,11 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// NewWriteClient retains the write timeout and rejects redirects for PATCH.
+// NewWriteClient retains the write timeout and rejects redirects for writes.
 func NewWriteClient(host string) (*Client, error) {
 	rest, err := api.NewRESTClient(api.ClientOptions{
 		Host: host, Timeout: 30 * time.Second,
-		// Redirects can convert PATCH to GET and report success without updating.
+		// Redirects can convert writes to GET and report success without updating.
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	})
 	if err != nil {

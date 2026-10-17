@@ -10,13 +10,13 @@ sources:
 
 ## Scope and status
 
-This reference describes published [v0.7.0](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0). The four settings commands are `export`, `validate`, `plan` and `apply`, sharing the five fields on the [settings page](settings.md). Export reads the current checkout's repository and writes that checkout's root `.github/settings.yml`; it does not require existing configuration. Mutation targets only the repository containing that configuration. Consumers pinned to v0.6.1 retain that release's behavior; see the [published package and consumer profiles](github-actions.md#published-package-and-consumer-pins). The [concept](concept.md) records design reasoning and future scope.
+This reference describes current source, including topics support not yet published. Existing v0.7.0 consumer pins retain their five-field behavior. The four settings commands are `export`, `validate`, `plan` and `apply`, sharing the repository fields and topics on the [settings page](settings.md). Export reads the current checkout's repository and writes that checkout's root `.github/settings.yml`; it does not require existing configuration. Mutation targets only the repository containing that configuration. Consumers pinned to v0.6.1 retain that release's behavior; see the [published package and consumer profiles](github-actions.md#published-package-and-consumer-pins). The [concept](concept.md) records design reasoning and future scope.
 
 Saved plan artifacts and drift protection are outside the initial scope. [Inert GitHub Actions examples](github-actions.md) compose these commands; security setup and activation remain separate.
 
 ## Interface and implementation status
 
-All four commands below are implemented. There are no target override or output-format flags. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` mapping for the five-field scope.
+All four commands below are implemented. There are no target override or output-format flags. The [settings page](settings.md#configuration-semantics) defines root `schemaVersion: 1` and the `settings.repository` and `settings.topics` mappings.
 
 ```text
 gh settings export
@@ -30,13 +30,19 @@ gh settings apply
 | `export` | Read current supported settings and silently save YAML to checkout-root `.github/settings.yml`. Exclude unsupported fields and read-only metadata. |
 | `validate` | Check `.github/settings.yml` locally against the supported schema. Unknown or duplicate keys and invalid values fail validation. |
 | `plan` | Validate, then read current settings and show differences for declared fields only. An empty declaration succeeds locally without origin or credentials. |
-| `apply` | Validate, then send declared fields directly to the repository update API without GET. An empty declaration succeeds locally without origin or credentials. |
+| `apply` | Validate, then send declared fields directly to the resource update endpoints without GET. An empty declaration succeeds locally without origin or credentials. |
 
-The update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository] The owner and repository identify the repository containing the configuration; this does not introduce a configurable list of targets.
+The repository update endpoint is `PATCH /repos/{owner}/{repo}`.[^github-update-repository] The owner and repository identify the repository containing the configuration; this does not introduce a configurable list of targets.
 
 `apply` does not fetch current settings, compute differences, compare against a saved plan, or preserve external changes to managed values. If a managed value changes remotely after `plan`, `apply` still sends the YAML value. The observed plan diff can therefore differ from changes at apply time. Omitting a field leaves it outside the request.
 
 For example, declaring only `settings.repository.has_issues: false` means that apply sends that supported field with the declared value and sends none of the other four fields. The [configuration example](settings.md#configuration-semantics) shows the YAML mapping; the update request body contains only `has_issues`.
+
+## Topics command behavior
+
+The [topics contract](settings.md#topics) defines validation and omission. Export reads repository settings and topics before overwriting the file. Plan reads only managed resources and prints stable arrays, for example `settings.topics.names: ["old"] → []`. An empty topics mapping is a local no-op when no other fields are managed.
+
+Apply uses repository PATCH then topics PUT, skips undeclared resources, and sends `names: []` only for explicit clearing. The first failure stops execution; earlier successful writes remain applied. There is no preliminary GET, automatic rollback or retry. Existing success/no-op messages are retained. See [topics process acceptance](../tests/acceptance/topics_test.go).
 
 ## Source Actions metadata
 
@@ -57,7 +63,7 @@ The [Actions-owned report](../internal/actions/plan.go) has these fields:
 | `outcome` | `changed`, `no-difference`, `unmanaged`, `invalid-config`, `target-failure` or `read-failure`. |
 | `target` | Available origin owner/repository; omitted for unmanaged, validation or target-resolution failure. |
 | `managed` | Number of managed fields in a successful comparison; zero on failure does not mean unmanaged. |
-| `changes` | Ordered field/before/after entries; values remain native strings or booleans. Empty comparisons/failures have an empty array. |
+| `changes` | Ordered field/before/after entries; values remain native strings, booleans or topic string arrays. Field paths are `repository.FIELD` or `topics.names` in current source. Empty comparisons/failures have an empty array. |
 | `diagnostic` | Static categorical failure text; omitted on success. No raw error, token, environment dump or request header is serialized. |
 
 Validation precedes target resolution and API access. Valid unmanaged declarations succeed locally without origin or credentials. Read failures include the already-resolved target; ordinary stderr diagnostics retain their existing text. The report is ephemeral presentation data, never apply input. The published v0.7.0 composite calls this entry with its explicit read token, then passes the report to a separate credential-free Summary step. Shared planning owns validation; no separate CLI validation call, multi-version format or saved-plan execution is introduced. See the [report behavior](features/actions.feature.md#rule-source-planning-writes-ephemeral-typed-presentation-data).
@@ -68,7 +74,7 @@ The v0.7.0 CLI provides `gh settings action summary REPORT_PATH SUMMARY_PATH`. I
 
 The metadata allowlist is `SETTINGS_ACTOR`, `SETTINGS_TRIGGERING_ACTOR`, `SETTINGS_EVENT`, `SETTINGS_RUN_ID`, `SETTINGS_RUN_ATTEMPT`, `SETTINGS_WORKFLOW_REF`, `SETTINGS_WORKFLOW_SHA`, `SETTINGS_CONFIG_SHA`, `SETTINGS_TARGET`, `SETTINGS_CLI_VERSION` and `SETTINGS_CLI_SHA256`. All are required. `SETTINGS_ACTION_REPOSITORY` and `SETTINGS_ACTION_REF` must either both be present or both absent; absence displays an honest local-checkout identity. Other environment values are not inspected or included.
 
-Run ID and attempt must be positive integers, workflow/configuration revisions 40 hex characters and the CLI digest 64 hex characters. Workflow references contain an owner/repository/path and `@refs/` reference; target and optional Action repository contain owner/repository. The file entry requires an explicit non-null `managed` count from zero through five. The renderer rejects inconsistent report states, counts or targets, mismatched categorical failure diagnostics, unknown or duplicate fields, no-op changes and field/value-type mismatches for the five supported settings. Empty strings and false remain valid change values. Workflow links use the workflow repository/revision; configuration links use the explicit target/configuration revision. Original and rerun actors, Action identity and CLI identity remain distinct.
+Run ID and attempt must be positive integers, workflow/configuration revisions 40 hex characters and the CLI digest 64 hex characters. Workflow references contain an owner/repository/path and `@refs/` reference; target and optional Action repository contain owner/repository. The file entry requires an explicit non-null `managed` count from zero through six. The renderer rejects inconsistent report states, counts or targets, mismatched categorical failure diagnostics, unknown or duplicate fields, no-op changes and field/value-type mismatches for the supported fields. Topic arrays must be sorted, unique and valid, and equality is checked without comparing slices as interface values. Empty strings and false remain valid change values. Workflow links use the workflow repository/revision; configuration links use the explicit target/configuration revision. Original and rerun actors, Action identity and CLI identity remain distinct.
 
 The [pure renderer](../internal/actions/summary.go) classifies typed outcomes rather than terminal sentences. It quotes HTML and multiline data, retaining native observed/desired values and the direct-apply overwrite warning. Missing/malformed input or required metadata fails before opening the destination, preserving existing content. A blank-line separator starts the appended section even when prior text has no trailing newline. New files use mode 0600; append, write and close failures return nonzero, without atomicity or rollback guarantees. Success is silent. A valid failed-plan report is rendered and appended but still exits nonzero. Rendering/writing does not prove that GitHub published the Summary; review it before separately authorizing apply. See the [Summary behavior](features/actions.feature.md#rule-source-summary-renders-typed-review-data-without-credentials).
 
@@ -78,7 +84,7 @@ Export resolves the current Git checkout's configured checkout-scoped `origin` r
 
 ## Validate behavior
 
-Validate reads `.github/settings.yml` at the current Git checkout's root, including when run from a subdirectory. It checks one YAML root mapping with required integer `schemaVersion: 1`, optional `settings.repository`, and the five supported fields. `description` and `homepage` must be strings; `has_issues`, `has_projects`, and `has_wiki` must be booleans. It rejects missing or unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple YAML documents, and values with the wrong shape or type. Empty settings mappings and partial declarations are valid. Omitted fields remain omitted; explicit false and empty strings are valid. Explicit null fails the string/boolean type check under [ADR 0019](adr/0019-reject-explicit-null.md). Alias and merge values are checked after YAML resolves them. Root-level fields outside the versioned `settings.repository` contract fail validation. This check does not verify GitHub's server-side behavior for null updates.
+Validate reads `.github/settings.yml` at the current Git checkout's root, including when run from a subdirectory. It checks one YAML root mapping with required integer `schemaVersion: 1`, optional `settings.repository` and `settings.topics`, and their supported fields. `description` and `homepage` must be strings; `has_issues`, `has_projects`, and `has_wiki` must be booleans. It rejects missing or unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple YAML documents, and values with the wrong shape or type. Empty settings mappings and partial declarations are valid. Omitted fields remain omitted; explicit false and empty strings are valid. Explicit null fails the string/boolean type check under [ADR 0019](adr/0019-reject-explicit-null.md). Alias and merge values are checked after YAML resolves them. Root-level fields outside the versioned settings contract fail validation. This check does not verify GitHub's server-side behavior for null updates.
 
 Success is silent with exit status zero. Failure reports a diagnostic on standard error and exits nonzero with no standard output. Validate reads no GitHub settings, requires no GitHub origin or authentication, and does not change the file or repository settings. See the [behavior specification and test mapping](features/validate.feature.md).
 
@@ -108,13 +114,13 @@ There is no automatic rollback and no transactional guarantee. A failure does no
 
 ## Acceptance boundaries
 
-- Export includes only the five supported settings as configuration.
+- Export includes only supported repository fields and topic names as configuration.
 - Validation rejects unsupported keys and values of the wrong type before mutation.
 - Plan compares only declared fields with current settings and describes an observation, not a binding execution plan.
 - Apply sends declared supported values without reading current settings, including when a remote managed value has changed since plan.
 - Omitted fields are absent from the update request.
 - Permission or API failure produces a nonzero exit status without automatic rollback.
 
-All four commands have implemented behavior specifications and Go tests ([export](features/export.feature.md), [validate](features/validate.feature.md), [plan](features/plan.feature.md), [apply](features/apply.feature.md)). The [settings page](settings.md#configuration-semantics) records the agreed structure and null handling for these five fields. Future composition across multiple update endpoints remains undecided.
+All four commands have implemented behavior specifications and Go tests ([export](features/export.feature.md), [validate](features/validate.feature.md), [plan](features/plan.feature.md), [apply](features/apply.feature.md)). The [settings page](settings.md#configuration-semantics) records the agreed structure and null handling for repository fields and topic names. Mixed-resource apply ordering and partial-failure behavior are defined in the [topics contract](settings.md#topics).
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the update endpoint and failure responses. This reference does not expand the supported scope.

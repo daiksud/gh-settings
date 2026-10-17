@@ -13,7 +13,7 @@ sources:
 
 ## Scope and status
 
-Current source implements export, validation, planning and direct apply. Export saves `.github/settings.yml` silently at the checkout root. That configuration targets only its containing repository. This page defines the five fields and unchanged versioned YAML contract; see [commands](commands.md) for current behavior and [the published package boundary](github-actions.md#published-package-and-consumer-pins) for released consumers. Future settings remain outside this scope.
+Current source implements export, validation, planning and direct apply. Export saves `.github/settings.yml` silently at the checkout root. That configuration targets only its containing repository. This page defines the five repository fields, topics resource and versioned YAML contract; see [commands](commands.md) for current behavior and [the published package boundary](github-actions.md#published-package-and-consumer-pins) for released consumers. Future settings remain outside this scope.
 
 ## Supported fields
 
@@ -27,7 +27,35 @@ The initial design supports exactly five basic fields under `settings.repository
 | `has_projects` | boolean | Whether repository projects are enabled |
 | `has_wiki` | boolean | Whether the wiki is enabled |
 
-The three booleans take `true` or `false`. There are no enum-valued fields in the initial design. `validate` rejects values outside these string and boolean types, including explicit null, as decided in [ADR 0019](adr/0019-reject-explicit-null.md). Read-only response metadata and all other settings are excluded, even when GitHub exposes them as writable parameters. API defaults do not authorize sending omitted fields.
+The three booleans take `true` or `false`. There are no enum-valued fields in the initial design. `validate` rejects values outside these string and boolean types, including explicit null, as decided in [ADR 0019](adr/0019-reject-explicit-null.md). Read-only response metadata and all other repository fields are excluded, even when GitHub exposes them as writable parameters. API defaults do not authorize sending omitted fields.
+
+## Topics
+
+Current source adds `settings.topics.names` without changing `schemaVersion: 1`. Published v0.7.1 and existing v0.7.0 consumer pins do not support this group; release and adoption require separate work.
+
+```yaml
+schemaVersion: 1
+settings:
+  topics:
+    names:
+      - github-cli
+      - settings-as-code
+```
+
+`names` follows the [replace-topics request body](https://docs.github.com/en/rest/repos/repos#replace-all-repository-topics). It is an array of unique lowercase strings using letters, numbers and hyphens, each 1–50 characters long, with at most 20 entries. Uppercase names are rejected locally rather than relying on server lowercasing. Null, scalars, non-string elements and duplicate names are invalid. Aliases and merge keys retain the existing YAML semantics. [GitHub's naming rules](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics) apply to public and private repositories.
+
+| Declaration | Meaning |
+| --- | --- |
+| Omitted `topics`, or `topics: {}` | Topics unmanaged; no topics read during plan or topics write during apply. |
+| `names: [github-cli]` | Manage the complete topic set; replace any other remote topics. |
+| `names: []` | Explicitly clear all topics. |
+| `names: null` | Invalid; never interpreted as omission or clearing. |
+
+Names are compared as a set. Export, comparisons and PUT payloads use sorted lists without changing the configuration file. An empty observed list is exported as `names: []`; exporting promotes that observed set to a managed declaration. Topic names are public metadata, even on private repositories.
+
+Export reads `GET /repos/{owner}/{repo}` and then `GET /repos/{owner}/{repo}/topics`; both reads and complete serialization finish before overwriting the file. Missing, null, invalid or unreadable topic names fail export instead of becoming an empty set. Plan reads only declared resources in repository-then-topics order. Topic reads need Metadata read (public resources may be read without authentication); writes need Administration write. Existing PR read-token isolation and target-scoped apply credentials are unchanged. No paid-plan prerequisite is documented for topics.
+
+Apply sends a repository PATCH only for declared repository fields, followed by `PUT /repos/{owner}/{repo}/topics` with only `{"names":[...]}` when topic names are declared. It does not GET first. An explicit clear sends `{"names":[]}`, never null. Both write clients reject redirects. On failure, later operations stop and earlier successful updates remain applied; there is no transaction, retry or rollback.
 
 ## Configuration semantics
 
@@ -59,7 +87,7 @@ Fields at the YAML root, missing or unsupported versions, and unsupported groups
 
 `export` normalizes GET `description` and `homepage` nulls to empty strings, preserving existing empty strings too. It serializes those values as quoted YAML strings (`""`), not empty YAML values or null. This read-side conversion does not make explicit YAML null valid input. The published read schema permits null for these fields, whereas the update body defines optional strings without `nullable`; export follows that writable representation.[^github-repository-openapi] This does not assert that the server rejects every null update, and no live update was performed to verify clearing. Missing response keys and null booleans are errors, not nulls or defaults.
 
-Root keys other than `schemaVersion` and `settings`, and other groups within `settings`, are not supported yet. How future settings from multiple update endpoints would compose remains unresolved; the grouping does not broaden the current five-field schema.
+Root keys other than `schemaVersion` and `settings`, and settings groups other than `repository` and `topics`, are rejected.
 
 Labels, rulesets, Pages, and Actions settings are excluded from the initial design. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are outside repository scope. Confirmed future label semantics and unresolved ruleset collection behavior remain in the [future direction](concept.md#future-direction).
 

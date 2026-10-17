@@ -43,7 +43,7 @@ func TestValidateReadsOnlySettingsFile(t *testing.T) {
 			}
 			t.Chdir(work) // No origin is configured; validation stays local.
 			empty, disabled := "", false
-			want := settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}
+			want := settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}}
 			got, err := Validate()
 			if err != nil || !reflect.DeepEqual(got, want) {
 				t.Fatalf("declaration=%+v error=%v, want %+v", got, err, want)
@@ -82,7 +82,7 @@ func TestValidateErrors(t *testing.T) {
 			}
 			t.Chdir(root)
 			got, err := Validate()
-			if err == nil || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, settings.RepositoryDeclaration{}) {
+			if err == nil || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, settings.Declaration{Repository: settings.RepositoryDeclaration{}}) {
 				t.Fatalf("declaration=%+v error=%v, want zero declaration and %q", got, err, test.want)
 			}
 		})

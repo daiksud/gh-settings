@@ -54,10 +54,10 @@ func TestActionPlanChangedReport(t *testing.T) {
 	if report.Outcome != "changed" || report.Target != "owner/current" || report.Managed != 2 || len(report.Changes) != 2 {
 		t.Fatalf("report=%+v", report)
 	}
-	if got := report.Changes[0]; got.Field != "description" || got.Before != "old" || got.After != "after" {
+	if got := report.Changes[0]; got.Field != "repository.description" || got.Before != "old" || got.After != "after" {
 		t.Fatalf("string change=%+v", got)
 	}
-	if got := report.Changes[1]; got.Field != "has_issues" || got.Before != true || got.After != false {
+	if got := report.Changes[1]; got.Field != "repository.has_issues" || got.Before != true || got.After != false {
 		t.Fatalf("boolean change=%+v", got)
 	}
 	if err := fixture.checkRequests(false); err != nil || fixture.reads.Load() != 1 {

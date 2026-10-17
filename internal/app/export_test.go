@@ -37,7 +37,7 @@ func TestExportStoredSettings(t *testing.T) {
 			t.Setenv("GH_REPO", "other/repository")
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			calls := 0
-			err := Export(func(repo repository.Repository) (settings.RepositoryState, error) {
+			err := Export(Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				if repo != target {
 					t.Fatalf("read target=%+v, want %+v", repo, target)
@@ -51,12 +51,12 @@ func TestExportStoredSettings(t *testing.T) {
 					t.Fatalf("destination directory created before read: %v", err)
 				}
 				return test.state, nil
-			})
+			}, Topics: func(repository.Repository) ([]string, error) { return []string{}, nil }})
 			if err != nil || calls != 1 {
 				t.Fatalf("error=%v reads=%d, want one read", err, calls)
 			}
 			got, err := os.ReadFile(path)
-			if err != nil || string(got) != test.want {
+			if err != nil || string(got) != test.want+"    topics:\n        names: []\n" {
 				t.Fatalf("stored=%q error=%v, want %q", got, err, test.want)
 			}
 		})
@@ -93,11 +93,11 @@ func TestExportReadFailure(t *testing.T) {
 			}
 			readError := errors.New("read unavailable")
 			calls := 0
-			err := Export(func(repository.Repository) (settings.RepositoryState, error) {
+			err := Export(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				checkUnchanged()
 				return settings.RepositoryState{}, readError
-			})
+			}, Topics: func(repository.Repository) ([]string, error) { return []string{}, nil }})
 			if !errors.Is(err, readError) || calls != 1 {
 				t.Fatalf("error=%v reads=%d, want read error", err, calls)
 			}
@@ -119,10 +119,10 @@ func TestExportTargetFailureBeforeRead(t *testing.T) {
 				t.Chdir(t.TempDir())
 			}
 			calls := 0
-			err := Export(func(repository.Repository) (settings.RepositoryState, error) {
+			err := Export(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				return settings.RepositoryState{}, nil
-			})
+			}, Topics: func(repository.Repository) ([]string, error) { return []string{}, nil }})
 			if err == nil || !strings.Contains(err.Error(), "resolve current repository") || calls != 0 {
 				t.Fatalf("error=%v reads=%d, want target failure before read", err, calls)
 			}
@@ -139,10 +139,10 @@ func TestExportStorageFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	err := Export(func(repository.Repository) (settings.RepositoryState, error) {
+	err := Export(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 		calls++
 		return settings.RepositoryState{}, nil
-	})
+	}, Topics: func(repository.Repository) ([]string, error) { return []string{}, nil }})
 	if err == nil || !strings.Contains(err.Error(), "must be a regular file") || calls != 1 {
 		t.Fatalf("error=%v reads=%d, want storage error after read", err, calls)
 	}

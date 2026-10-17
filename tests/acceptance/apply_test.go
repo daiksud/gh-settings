@@ -168,6 +168,10 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		methods = append(methods, r.Method)
+		if r.Method == "GET" && r.URL.Path == "/repos/owner/current/topics" {
+			fmt.Fprint(w, `{"names":[]}`)
+			return
+		}
 		if r.URL.Path != "/repos/owner/current" {
 			t.Errorf("path=%s", r.URL.Path)
 		}
@@ -234,7 +238,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

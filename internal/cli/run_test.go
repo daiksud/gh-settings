@@ -38,9 +38,9 @@ func TestHelpAndVersionOutputFailure(t *testing.T) {
 					t.Fatal("help/version output failure invoked export")
 					return nil
 				},
-				Validate: func() (settings.RepositoryDeclaration, error) {
+				Validate: func() (settings.Declaration, error) {
 					t.Fatal("help/version output failure invoked validate")
-					return settings.RepositoryDeclaration{}, nil
+					return settings.Declaration{}, nil
 				},
 			})
 			if status != 1 || stderr.String() != test.wantStderr {
@@ -90,15 +90,15 @@ func TestRunSelectsOperation(t *testing.T) {
 				},
 				Plan: func() (app.PlanResult, error) {
 					planCalls++
-					return app.PlanResult{Comparison: settings.RepositoryComparison{Managed: 1}}, test.operationError
+					return app.PlanResult{Comparison: settings.Comparison{Managed: 1}}, test.operationError
 				},
 				Apply: func() (app.ApplyResult, error) {
 					applyCalls++
 					return app.ApplyResult{Applied: true}, test.operationError
 				},
-				Validate: func() (settings.RepositoryDeclaration, error) {
+				Validate: func() (settings.Declaration, error) {
 					validateCalls++
-					return settings.RepositoryDeclaration{}, test.operationError
+					return settings.Declaration{}, test.operationError
 				},
 			})
 			if exportCalls != test.wantExportCalls || validateCalls != test.wantValidateCalls || planCalls != test.wantPlanCalls || applyCalls != test.wantApplyCalls {

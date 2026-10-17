@@ -13,13 +13,13 @@ sources:
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-The CLI implements export, validation, planning, and direct apply, with export saving `.github/settings.yml`. The [public composite Action](adr/0023-public-composite-action.md) composes those operations; this repository's operational callers use the released v0.7.0 package with single-job main apply and required PR checks. Source changes, release publication, and consumer adoption are separate operations. The [commands page](commands.md) describes command behavior, and the [Actions guide](github-actions.md) identifies released consumer pins.
+Current source supports basic repository fields and topics. The CLI implements export, validation, planning, and direct apply, with export saving `.github/settings.yml`. The [public composite Action](adr/0023-public-composite-action.md) composes those operations; this repository's operational callers use the released v0.7.0 package with single-job main apply and required PR checks. Source changes, release publication, and consumer adoption are separate operations. The [commands page](commands.md) describes command behavior, and the [Actions guide](github-actions.md) identifies released consumer pins.
 
 ## Design philosophy
 
 Written fields are managed, and YAML is authoritative for their values. Omitted fields are unmanaged, allowing gradual adoption. The [settings page](settings.md#configuration-semantics) defines the supported fields and the distinction among omission, explicit values, YAML null, and read-side null normalization.
 
-Field keys and types follow the corresponding GitHub update request schema, as recorded in [ADR 0006](adr/0006-update-api-schema.md). Configuration grouping and versioning follow [ADR 0020](adr/0020-group-settings-by-resource.md) and [ADR 0021](adr/0021-require-schema-version.md). Repository response metadata does not become configuration. The [settings page](settings.md) gives the current five-field contract; the [commands page](commands.md) records command behavior and release status.
+Field keys and types follow the corresponding GitHub update request schema, as recorded in [ADR 0006](adr/0006-update-api-schema.md). Configuration grouping and versioning follow [ADR 0020](adr/0020-group-settings-by-resource.md) and [ADR 0021](adr/0021-require-schema-version.md). Repository response metadata does not become configuration. The [settings page](settings.md) gives the repository and topics contract; the [commands page](commands.md) records command behavior and release status.
 
 The mutation workflow separates observation from mutation: `plan` informs the maintainer about observed differences, while `apply` sends declared settings directly. A plan is not an execution artifact or a guarantee about later changes. Failures must be visible, without promises of transactional behavior or automatic recovery.
 
@@ -81,6 +81,10 @@ Each ADR records one independently reversible decision:
 
 Go is the agreed implementation language, and `github.com/cli/go-gh/v2` is selected for API access and GitHub CLI authentication integration. Prefer the Go standard library where sufficient; no command framework is mandated. The YAML organization's `go.yaml.in/yaml/v4` is selected for configuration reading and writing in [ADR 0009](adr/0009-yaml-v4-library.md), accepting release-candidate risk; it is not a Go team-maintained library. The [release design](releases.md) records separate distribution decisions and their ADRs.
 
+## Topics extension
+
+Current source adds one concrete topics resource with `names`, alongside repository fields. Declaration presence distinguishes omission from an explicitly empty set. Set comparisons and output are sorted; application sequencing reads or writes only the resources it needs. Mixed apply executes repository PATCH before topics PUT and stops on the first failure without rolling back earlier writes. This does not introduce a generic resource registry, saved-plan execution or multi-repository support. The earlier v0 simplification contract above describes the completed refactoring scope, not a prohibition on this separately requested capability.
+
 ## Future direction
 
 The [public Action](adr/0023-public-composite-action.md) and owner-approved workflows already exist. The simplification contract above guides their source refactoring without extending supported settings. Labels, rulesets, Pages, and Actions settings remain outside current scope; this section does not commit to implementing all of them.
@@ -99,6 +103,6 @@ Names also identify outer rulesets, ambiguous matches are errors, and there is n
 
 ## Unresolved decisions
 
-Null handling for future fields, new output options, composition across multiple update endpoints, new-object required fields and inner rules identity remain unresolved. The [current configuration contract](settings.md#configuration-semantics) does not settle those future choices or extend supported fields. Current authentication belongs to the [command](commands.md) and [caller](github-actions.md) contracts; development tools are pinned in the [development guide](development.md). The [release page](releases.md) records publication procedures and limits.
+Null handling for future fields, new output options, new-object required fields and inner rules identity remain unresolved. The [current configuration contract](settings.md#configuration-semantics) does not settle those future choices or extend supported fields. Current authentication belongs to the [command](commands.md) and [caller](github-actions.md) contracts; development tools are pinned in the [development guide](development.md). The [release page](releases.md) records publication procedures and limits.
 
 [^aggressive-v0-plan]: Issue #133 records the retained simplification contract and the ordered source-refactoring scope. Publication and operational adoption are excluded from that series.

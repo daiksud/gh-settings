@@ -514,7 +514,7 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	} else if value := base["MOCK_REMOTE_STATUS"]; value != "" && value != "0" {
 		outcome = "read-failure"
 	}
-	report := actions.PlanReport{Outcome: "changed", Target: "owner/config", Managed: 2, Changes: []actions.PlanChange{{Field: "description", Before: "before", After: "desired"}, {Field: "has_issues", Before: true, After: false}}}
+	report := actions.PlanReport{Outcome: "changed", Target: "owner/config", Managed: 2, Changes: []actions.PlanChange{{Field: "repository.description", Before: "before", After: "desired"}, {Field: "repository.has_issues", Before: true, After: false}}}
 	if before, supplied := base["MOCK_DESCRIPTION_BEFORE"]; supplied {
 		report.Changes[0].Before = before
 	}

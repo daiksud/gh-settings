@@ -21,7 +21,7 @@ func TestPlanNoDifferenceReport(t *testing.T) {
 	calls := 0
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
 		calls++
-		return app.PlanResult{Target: repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, Comparison: settings.RepositoryComparison{Managed: 1}}, nil
+		return app.PlanResult{Target: repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1}}, nil
 	})
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -79,10 +79,10 @@ func TestPlanTargetFailureReport(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	calls := 0
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.Plan(func(repository.Repository) (settings.RepositoryState, error) {
+		return app.Plan(app.Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 			calls++
 			return settings.RepositoryState{}, nil
-		})
+		}})
 	})
 	data, err := os.ReadFile(path)
 	if err != nil {

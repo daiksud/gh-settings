@@ -121,3 +121,14 @@ The scenarios map to ordinary Go tests and [process acceptance cases](../../test
 | The configuration file is missing | `TestValidateErrors/missing_file` | `validate-missing-file` |
 
 The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for these five update-request fields. It does not establish how GitHub handles live null updates.
+
+### Rule: Distinguish omitted topics from explicit empty names
+
+- Given topics is omitted or an empty mapping.
+- Then topics remains unmanaged.
+- Given names is an explicit empty string array.
+- Then validation accepts an authoritative empty set.
+- Given names is null, not a string array, duplicated or outside the documented naming limits.
+- Then validation fails before API access.
+
+Test mapping: [TestTopicsConfigPresenceAndRoundTrip and TestTopicsConfigRejectsInvalidLists](../../internal/workspace/topics_test.go), [TestTopicNames](../../internal/settings/topics_test.go).

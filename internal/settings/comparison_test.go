@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-func TestCompareRepositoryChanges(t *testing.T) {
-	want := []RepositoryChange{
-		{Field: "description", Before: "old", After: ""},
-		{Field: "homepage", Before: "old-url", After: ""},
-		{Field: "has_issues", Before: true, After: false},
-		{Field: "has_projects", Before: true, After: false},
-		{Field: "has_wiki", Before: true, After: false},
+func TestCompareChanges(t *testing.T) {
+	want := []Change{
+		{Field: "repository.description", Before: "old", After: ""},
+		{Field: "repository.homepage", Before: "old-url", After: ""},
+		{Field: "repository.has_issues", Before: true, After: false},
+		{Field: "repository.has_projects", Before: true, After: false},
+		{Field: "repository.has_wiki", Before: true, After: false},
 	}
 	current := RepositoryState{
 		Description: "old", Homepage: "old-url", HasIssues: true, HasProjects: true, HasWiki: true,
@@ -36,7 +36,7 @@ func TestCompareRepositoryDeclaredFields(t *testing.T) {
 		current RepositoryState
 		desired RepositoryDeclaration
 		managed int
-		changes []RepositoryChange
+		changes []Change
 	}{
 		{name: "unmanaged", current: current},
 		{
@@ -50,7 +50,7 @@ func TestCompareRepositoryDeclaredFields(t *testing.T) {
 		{
 			name: "changed partial", current: current,
 			desired: RepositoryDeclaration{Description: &old, HasIssues: &disabled}, managed: 2,
-			changes: []RepositoryChange{{Field: "has_issues", Before: true, After: false}},
+			changes: []Change{{Field: "repository.has_issues", Before: true, After: false}},
 		},
 	}
 	for _, test := range tests {

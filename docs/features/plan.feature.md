@@ -73,3 +73,14 @@ Focused application, comparison and CLI tests cover target selection, declaratio
 | Validation before target/read, target failure before read, read failures | [TestPlanValidatesBeforeRead, TestPlanTargetFailureBeforeRead and TestPlanReadFailure](../../internal/app/plan_test.go) |
 | File/subdirectory, managed false/empty values, GET nulls, API/output failures, no PATCH; three empty forms without origin/auth/GET | [TestPlanAcceptance](../../tests/acceptance/plan_test.go) |
 | Export → edit → validate → plan | `TestExportEditValidatePlan` |
+
+### Rule: Compare topics as a stable set
+
+- Given declared topics and observed topics contain the same names in different orders.
+- When plan runs.
+- Then no topic difference is reported.
+- And omitted resources are not read.
+- Given the topic sets differ.
+- Then one settings.topics.names change shows sorted arrays with native string values.
+
+Test mapping: [TestTopicsSetComparison](../../internal/settings/topics_test.go), [TestTopicsOnlyPlanAndApply](../../internal/app/topics_test.go), [TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
