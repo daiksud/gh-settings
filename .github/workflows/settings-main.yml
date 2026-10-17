@@ -5,91 +5,31 @@ on:
     paths:
       - .github/settings.yml
       - .github/workflows/settings-main.yml
-      - examples/github-actions/**
-      - .github/scripts/verify-settings-handoff.sh
-permissions: {}
-defaults:
-  run:
-    shell: bash
+permissions:
+  contents: read
 concurrency:
   group: settings-main-${{ github.repository }}
   cancel-in-progress: false
 jobs:
-  prepare:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    outputs:
-      config-sha: ${{ steps.prepare.outputs.config-sha }}
-      cli-version: ${{ steps.prepare.outputs.cli-version }}
-      cli-sha256: ${{ steps.prepare.outputs.cli-sha256 }}
-      target: ${{ steps.prepare.outputs.target }}
-      # Caller metadata; the Action exposes only the four outputs above.
-      action-sha: 9d01d3258d9f42239b2daeb1ac26bc532cd56105
-    steps:
-      - name: Checkout triggering configuration commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Verify the triggering configuration checkout
-        id: guard
-        run: |
-          [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF" == refs/heads/main ]] || { echo 'prepare requires a main branch push' >&2; exit 1; }
-          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]] || { echo 'configuration commit mismatch' >&2; exit 1; }
-          [[ "$(git remote get-url origin)" == "https://github.com/$GITHUB_REPOSITORY" || "$(git remote get-url origin)" == "https://github.com/$GITHUB_REPOSITORY.git" ]] || { echo 'checkout target mismatch' >&2; exit 1; }
-      - name: Validate and plan with the Action Summary
-        id: prepare
-        uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # v0.6.1
-        with:
-          command: plan
-          token: ${{ github.token }}
   apply:
-    needs: prepare
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment: gh-settings
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions:
-      contents: read
     steps:
-      - name: Checkout prepared configuration commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: ${{ github.repository }}
-          ref: ${{ needs.prepare.outputs.config-sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Verify prepared configuration and reviewed Action identity
-        id: handoff
-        env:
-          CONFIG_SHA: ${{ needs.prepare.outputs.config-sha }}
-          EXPECTED_TARGET: ${{ needs.prepare.outputs.target }}
-          EXPECTED_CLI_VERSION: ${{ needs.prepare.outputs.cli-version }}
-          EXPECTED_CLI_SHA256: ${{ needs.prepare.outputs.cli-sha256 }}
-          EXPECTED_ACTION_SHA: ${{ needs.prepare.outputs.action-sha }}
-          REVIEWED_ACTION_SHA: 9d01d3258d9f42239b2daeb1ac26bc532cd56105
-        run: bash .github/scripts/verify-settings-handoff.sh
-      - name: Mint token for this target only
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ vars.ANSWER26_CLIENT_ID }}
           private-key: ${{ secrets.ANSWER26_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-administration: write
-      - name: Apply declared settings directly
-        id: apply
-        uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # v0.6.1
+      - uses: daiksud/gh-settings@e9edb03f65ac943cd0ebf6a9556c18c485719e66 # v0.7.0
         with:
           command: apply
           token: ${{ steps.app.outputs.token }}
-      - name: Record apply outcome
-        if: always()
-        env:
-          APPLY_OUTCOME: ${{ steps.apply.outcome }}
-        run: |
-          printf '## Apply result\n\nCLI step outcome: %s. See the step log for errors.\n' "$APPLY_OUTCOME" >> "$GITHUB_STEP_SUMMARY"

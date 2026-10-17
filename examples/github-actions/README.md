@@ -39,8 +39,8 @@ PR concurrency cancels superseded PR runs; main uses a repository-scoped group w
 
 ## Existing active workflows and verification
 
-This repository's active `.github/workflows/settings-*.yml` remain on v0.6.1 with Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID` and `ANSWER26_PRIVATE_KEY`. They retain their two-job prepare/apply flow and `.github/scripts/verify-settings-handoff.sh`; the simplified examples do not replace those operational files or resources.
+This repository's active `.github/workflows/settings-*.yml` now also use the published v0.7.0 Action and the same one-job main apply pattern. They keep Environment `gh-settings`, App `answer26`, `ANSWER26_CLIENT_ID` and `ANSWER26_PRIVATE_KEY`, rather than the example resource names. The legacy handoff verifier is no longer invoked.
 
-Changing files in this example directory can still trigger those active workflows' read-only plan/prepare and queue an owner-approved apply because their path filters include this directory. Copying or editing an example does not itself approve that deployment.
+Changes in this example directory can trigger the active read-only PR plan, but not main apply by themselves. Main apply watches only its adopted workflow and `.github/settings.yml` and still requires Environment approval.
 
 CI lints the examples and checks their actual YAML composition, explicit token scope, failure propagation and the absence of caller scripts. Local fixtures simulate approval, downloads and token lifecycle; they do not establish real Environment enforcement, Summary publication or token revocation. The [development guide](../../docs/development.md#settings-example-verification) describes the broader verification boundary.
