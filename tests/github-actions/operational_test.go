@@ -87,9 +87,9 @@ func TestOperationalMainConsumer(t *testing.T) {
 	}
 	for _, test := range []struct {
 		scenario string
-		status int
-		minted bool
-		api string
+		status   int
+		minted   bool
+		api      string
 	}{
 		{"approved", 0, true, "PATCH\n"},
 		{"apply failure", 37, true, "PATCH\n"},
