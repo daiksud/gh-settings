@@ -411,8 +411,11 @@ case "$1" in
   validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
   apply)
     [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == app-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
-    printf 'PATCH\n' >> "$MOCK_API"
-    status=${MOCK_REMOTE_STATUS:-0} ;;
+    status=${MOCK_VALIDATE_STATUS:-0}
+    if [[ $status == 0 ]]; then
+      printf 'PATCH\n' >> "$MOCK_API"
+      status=${MOCK_REMOTE_STATUS:-0}
+    fi ;;
   *) exit 99 ;;
 esac
 echo "$1" >> "$MOCK_CALLS"

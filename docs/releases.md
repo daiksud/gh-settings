@@ -20,7 +20,7 @@ sources:
 
 The [manual release workflow](../.github/workflows/release.yml) implements the initial pipeline. The existing [main CI](../.github/workflows/ci-push.yml) validates its own build; the release builds and validates separate platform binaries. Merging the workflow does not trigger a release.
 
-The source-refactoring series prepares unreleased source for a separately authorized release; it does not complete publication or deployment. The [developer handoff](development.md#release-and-consumer-handoff) separates built-product, candidate, pre-publication and published-download evidence. Only after successful publication and verification may a separately reviewed adoption coordinate consumer Action pins and both handoff verifiers. Existing Environment/App/bindings and owner approval remain unchanged.
+The source-refactoring series prepared the implementation now published as v0.7.0. The [developer handoff](development.md#release-and-consumer-handoff) separates built-product, candidate, pre-publication and published-download evidence. The simplified examples use that release without a caller verifier; adopting it in the active two-job workflows still requires coordinating their Action pins and retained operational handoff verifier. Existing Environment/App/bindings and owner approval remain unchanged.
 
 The first releases target only these platforms:
 
@@ -63,7 +63,7 @@ Pre-release PR/main CI builds one current-source candidate with the committed CL
 
 ## Historical release limitations
 
-The current published Action/CLI pair is [v0.6.1](https://github.com/daiksud/gh-settings/releases/tag/v0.6.1) at `9d01d3258d9f42239b2daeb1ac26bc532cd56105`; the [Actions guide](github-actions.md#published-package-and-consumer-pins) records its runtime and consumer profile. Current source selects unreleased v0.7.0. Source validation does not publish those assets or update consumers.
+The current published Action/CLI pair is [v0.7.0](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0) at `e9edb03f65ac943cd0ebf6a9556c18c485719e66`; the [Actions guide](github-actions.md#published-package-and-consumer-pins) records its runtime and the active workflows' retained v0.6.1 profile. Publication does not update operational consumers automatically.
 
 Older releases remain immutable: v0.6.0's Action installs CLI v0.5.0, and v0.5.0 has no root Action. The CLI's earlier export formats also remain historical: v0.4.0 and earlier wrote stdout; releases before v0.2.0 used flat YAML. Current source saves the versioned/grouped checkout-root file. Preserve original tags/assets rather than repairing old releases in place; [ADR 0023](adr/0023-public-composite-action.md) retains the initial Action decision and its release-alignment correction.
 

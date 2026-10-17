@@ -2,7 +2,7 @@
 
 A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. Export saves `.github/settings.yml`; omitted fields remain unmanaged. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; the caller owns approval and credentials.
 
-This checkout documents current **unreleased v0.7.0** source. The latest published package is [v0.6.1](https://github.com/daiksud/gh-settings/releases/tag/v0.6.1); installation and pinned consumer examples use that release. Source-only plan no-op/origin and Go Action changes below do not publish it or change active consumer pins. See the [released package boundary](docs/github-actions.md#published-package-and-consumer-pins) before adopting an Action revision.
+This checkout and its examples use published [v0.7.0](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0). This repository's active settings workflows retain their v0.6.1 pins and existing approval flow; see the [published package and consumer profiles](docs/github-actions.md#published-package-and-consumer-pins).
 
 ## Install
 
@@ -101,15 +101,15 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@9d01d3258d9f42239b2daeb1ac26bc532cd56105 # Action revision; CLI v0.6.1
+      - uses: daiksud/gh-settings@e9edb03f65ac943cd0ebf6a9556c18c485719e66 # v0.7.0
         id: settings
         with:
           command: validate
 ```
 
-`command` is exactly `validate`, `plan`, or `apply`. Validate needs no token; plan requires an explicit read token; apply requires a target-scoped App installation token with Administration write. The caller owns its Environment/approval, token mint/revoke and concurrency. Use the [inert PR/main examples](examples/github-actions/README.md) for read-only review followed by separately approved apply; do not give privileged credentials to PR code.
+`command` is exactly `validate`, `plan`, or `apply`. Validate needs no token; plan requires an explicit read token; apply requires a target-scoped App installation token with Administration write. The caller owns its Environment/approval, token mint/revoke and concurrency. The [PR/main examples](examples/github-actions/README.md) provide read-only PR review and a single approved main job with three steps: checkout, token creation and apply, with no external caller scripts.
 
-Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet pins the published v0.6.1 Action and CLI, including that package's Python 3 requirement. Current source selects **unreleased v0.7.0** in `action/cli-version` and uses the verified executable's Go metadata and typed plan/Summary entries, without Python. It requires a directly configured GitHub.com HTTPS, git@ SCP or full SSH origin; rewrite-only aliases and username-less SCP are unsupported. Candidate CI proves source integration without published v0.7.0 assets. The released snippet and active consumer pins retain their original implementation. See the [complete contract, released profile and adoption boundary](docs/github-actions.md).
+Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet pins published v0.7.0, which uses the verified executable's Go metadata and typed plan/Summary entries without Python. It requires a directly configured GitHub.com HTTPS, git@ SCP or full SSH origin; rewrite-only aliases and username-less SCP are unsupported. See the [complete contract and setup guide](docs/github-actions.md).
 
 ## Build and run from source
 

@@ -86,13 +86,13 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 #### Scenario: Require a directly configured GitHub origin in current source
 
 - Given the current checkout's origin directly identifies "owner/current" through HTTPS, `git@github.com:owner/current.git` or a full SSH URL
-- When the maintainer runs the current unreleased CLI's `gh settings export`
+- When the maintainer runs the v0.7.0 CLI's `gh settings export`
 - Then the settings are read from "owner/current" on GitHub
 
 #### Scenario: Reject an SCP origin without a username in current source
 
 - Given the current checkout's origin is "github.com:owner/current.git"
-- When the maintainer runs the current unreleased CLI's `gh settings export`
+- When the maintainer runs the v0.7.0 CLI's `gh settings export`
 - Then the command fails with a repository-resolution diagnostic
 - And no GitHub API request is made
 
@@ -108,11 +108,11 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 
 - Given the current checkout's origin is a Git alias for "owner/current"
 - And Git `insteadOf` rewrites the alias to a GitHub URL
-- When the maintainer runs the current unreleased CLI's `gh settings export`
+- When the maintainer runs the v0.7.0 CLI's `gh settings export`
 - Then the command fails with a repository-resolution diagnostic
 - And no GitHub API request is made
 
-Published v0.6.1 retains its original username-less SCP and rewrite-alias compatibility. The current source support reduction does not change settings YAML syntax or publish a release.
+These origin-support changes are published in v0.7.0 and do not change settings YAML syntax. Consumers pinned to v0.6.1 retain that release's username-less SCP and rewrite-alias compatibility.
 
 #### Scenario: Read an origin from repository-specific Git configuration
 

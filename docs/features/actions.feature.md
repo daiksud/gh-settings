@@ -8,10 +8,10 @@ description: Specify inert workflow examples and the public composite Action aro
 
 ### Rule: Examples are inert until separately adopted
 
-- Workflow examples and support files live under `examples/github-actions/`.
+- The two workflow examples live under `examples/github-actions/`; consumers copy no support scripts.
 - Merging examples does not enable settings workflows, install an App, enter secrets, or apply settings.
 - Every job uses a fresh GitHub-hosted Linux runner and reviewed full-SHA Action pins.
-- The example Action verifies the fixed released CLI against its same-release SHA256SUMS before execution. The caller verifies the committed expected CLI version and digest before App token issuance; prepare and apply use the same Action pin from the same configuration commit.
+- Both examples pin published v0.7.0. The Action verifies its fixed CLI against the same-release SHA256SUMS and exact version before settings execution; no caller verifier is required.
 
 ### Rule: PRs have only read access
 
@@ -22,15 +22,14 @@ description: Specify inert workflow examples and the public composite Action aro
 - Fork changes have no App credential, Environment, apply, or privileged fallback path.
 - Per-PR concurrency cancels superseded executions.
 
-### Rule: Main prepare establishes review context
+### Rule: Main apply uses one approved job
 
-- Only `push` on Branch `main` is eligible; PR, other branch, tag, manual, PR-target, and workflow-run contexts cannot unlock apply.
-- Check out the triggering configuration SHA rather than a moving main branch.
-- Validate, plan with the read token, then render/write the Summary before prepare succeeds.
-- Invalid input, API failure, or detectable Summary render/write failure blocks apply.
-- Expose only required non-secret handoff values, including the configuration SHA and CLI identity; do not save a plan artifact.
-- A newer main commit cannot alter this run's configuration input.
-- Repository-scoped concurrency does not cancel the running pipeline; GitHub may replace a pending run.
+- Only `push` on Branch `main` changing the configuration or adopted main workflow is eligible; retain explicit event/ref guards.
+- The workflow has exactly one job and three `uses` steps: checkout, the official App token Action, and `daiksud/gh-settings` with `command: apply`.
+- No caller `run` step, external script, prepare job, handoff output or separate apply Summary step is needed.
+- Check out the triggering `github.sha` without persisted credentials; a newer main commit cannot change this run's configuration input.
+- Review the PR plan and exact main configuration before approving the job. Main does not depend on the PR result, create a pre-approval plan or consume a saved plan.
+- Repository-scoped concurrency does not cancel the running job; GitHub may replace a pending run.
 
 ### Rule: The Summary separates identities from settings data
 
@@ -41,17 +40,17 @@ description: Specify inert workflow examples and the public composite Action aro
 - Distinguish changed settings, no differences, no managed fields, and errors.
 - Render quotes, newlines, Markdown fences, HTML, and workflow-command-like values as data that cannot forge review context.
 - State that direct apply can overwrite intervening changes to declared remote fields.
-- The owner must not approve missing/incomplete review content. Successful prepare alone does not prove Summary publication; no publication polling is required.
+- The owner reviews complete PR plan content and the exact main configuration before approval. Successful planning alone does not prove Summary publication; no publication polling is required.
 
 ### Rule: Owner approval gates credentials and apply
 
-- Apply needs successful prepare and the same main guard, then waits at `settings-apply`.
+- The single main job waits at `settings-apply` before checkout, token creation or apply. It has no prepare dependency.
 - Required reviewer is the owner; self-approval is allowed, administrator bypass is disabled, and only Branch `main` is eligible with no Tag rule.
 - While waiting, or after rejected approval, no App token is minted and no apply runs.
 - The Environment key is available only inside the approved job; the official token Action narrows Administration write to the one target repository and retains normal revocation.
 - The token is supplied only to the apply step, never checkout, bootstrap, Summary, global environment, artifact, or job/workflow output.
-- Apply uses prepare's exact configuration commit and verified CLI identity.
-- A successful apply reports success; missing credentials or CLI failure fails visibly. Output failure may follow a successful update; no rollback is promised.
+- Apply uses the triggering configuration commit. The settings Action installs and verifies its CLI after token minting, then validates configuration before a settings API request.
+- The Action step outcome and logs report apply success or failure. Missing credentials, installation or CLI failure fails visibly, and default token cleanup still runs after minting. Output failure may follow a successful update; no rollback is promised.
 - Ordinary reruns use GitHub's approval behavior without custom freshness, drift, or reapproval checks.
 
 ### Verification boundary
@@ -65,12 +64,12 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 ### Rule: A release selects the same Action and CLI version
 
 - Invoke the root Action as `uses: daiksud/gh-settings@<approved full commit SHA>`; use a reviewed revision containing the implemented package.
-- The Action revision selects packaged support code. Current source selects unreleased v0.7.0; published consumers retain the [v0.6.1 profile](../github-actions.md#published-package-and-consumer-pins). [Older release limitations](../releases.md#historical-release-limitations) remain historical; source changes never rewrite immutable tags or assets.
+- The Action revision selects packaged support code. Current source and the examples select published v0.7.0; active workflows retain the [v0.6.1 profile](../github-actions.md#published-package-and-consumer-pins). [Older release limitations](../releases.md#historical-release-limitations) remain historical; source changes never rewrite immutable tags or assets.
 - The committed `action/cli-version` selects an explicit CLI release. Download only its `gh-settings-linux-amd64` asset and `SHA256SUMS` through fixed upstream HTTPS paths; require one well-formed checksum for that asset, verify it before execution, and check the exact reported version. A SHA pin fixes the version; the checksum is trusted from that GitHub release. Never fall back to latest or accept an arbitrary URL.
 - A strict version-tag invocation must agree with the committed CLI version or fail before download. SHA-pinned and local invocations read the committed version. Future release publication requires that same version; it cannot silently retain an older CLI.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.
-- Read only checkout-root `.github/settings.yml`; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target. Current unreleased source requires that selected origin to directly identify GitHub.com through HTTPS, `git@github.com:owner/repo.git` or full SSH. Transport mirror rewrites cannot change the direct identity; rewrite-only aliases and username-less SCP fail metadata before settings execution or successful outputs. Local/include/worktree selection and ignoring `GH_REPO` and system/global/command substitute origins remain shared CLI rules. Released v0.6.1 retains its original compatibility.
-- Action-owned installation bootstrap comes from the Action package, independently of caller helper files. Current unreleased v0.7.0 directly invokes validate/apply and Go metadata/plan/Summary entries through the verified absolute CLI path in a per-invocation runner-temp location. Shell retains necessary Actions wiring; released v0.6.1 retains its original helpers.
+- Read only checkout-root `.github/settings.yml`; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target. Current source requires that selected origin to directly identify GitHub.com through HTTPS, `git@github.com:owner/repo.git` or full SSH. Transport mirror rewrites cannot change the direct identity; rewrite-only aliases and username-less SCP fail metadata before settings execution or successful outputs. Local/include/worktree selection and ignoring `GH_REPO` and system/global/command substitute origins remain shared CLI rules. Released v0.6.1 retains its original compatibility.
+- Action-owned installation bootstrap comes from the Action package, independently of caller helper files. Published v0.7.0 directly invokes validate/apply and Go metadata/plan/Summary entries through the verified absolute CLI path in a per-invocation runner-temp location. Shell retains necessary Actions wiring; released v0.6.1 retains its original helpers.
 
 ### Rule: Two inputs select one bounded command
 
@@ -116,10 +115,10 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 ### Rule: Plan Summary separates execution identities and untrusted data
 
-- The Action owns plan Summary rendering/writing and distinguishes successful and failed planning. Current unreleased v0.7.0 uses typed reports and safe categorical Summary diagnostics; original CLI stderr remains in command logs. Released v0.6.1 retains its original quoted CLI-text presentation.
+- The Action owns plan Summary rendering/writing and distinguishes successful and failed planning. Published v0.7.0 uses typed reports and safe categorical Summary diagnostics; original CLI stderr remains in command logs. Released v0.6.1 retains its original quoted CLI-text presentation.
 - Include original and rerun actors, event, run URL/attempt, workflow path/ref and exact workflow revision, target, configuration commit and exact file link, distinct Action identity/ref, and CLI version/SHA-256.
 - Obtain Action identity/ref from supported composite context; never relabel workflow SHA as Action SHA. Identify local CI invocation honestly when there is no remote pin.
-- Current unreleased source distinguishes differences, no differences, no managed settings and failures from the same-version typed report, without classifying terminal sentences.
+- Current source distinguishes differences, no differences, no managed settings and failures from the same-version typed report, without classifying terminal sentences.
 - Escape untrusted values, including quotes, multiline text, Markdown, HTML, and workflow-command-like content, so they cannot forge Summary markup, links, or execution context.
 - State that the observed diff is informational and direct apply may overwrite intervening remote changes. A later apply is not bound to a saved plan.
 - Detectable render/write failure fails plan before success outputs. Successful writing does not prove GitHub published the Summary; the owner must not approve missing/incomplete content. No publication polling is required.
@@ -134,7 +133,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 ### Rule: Source metadata identifies the consumer and executing binary
 
-The source-only `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback. The current source migration selects explicitly unreleased CLI v0.7.0 and binds composite setup directly to this verified executable entry from the consumer working directory. The released v0.6.1 Action/CLI pins remain unchanged. Setup receives no caller token; metadata failure must stop settings execution and successful result publication. Current source also adopts typed Go plan/Summary presentation; released v0.6.1 keeps its original helpers.
+The same-version `gh settings action metadata` interface emits the existing `config-sha`, `target`, `cli-version` and `cli-sha256` keys as single-line `key=value` records. It resolves the current consumer checkout, including subdirectories, through the shared Go checkout/target rules. The executable or Action source directory is not the target. No settings file, token or API access is needed. The CLI version is the injected version; the digest identifies the actual executing binary. Missing checkout/commit/target/version, CR/LF in values and output errors fail visibly. This same-version interface adds no old-CLI fallback. The current source selects published CLI v0.7.0 and binds composite setup directly to this verified executable entry from the consumer working directory. The active workflows' v0.6.1 Action/CLI pins remain unchanged. Setup receives no caller token; metadata failure must stop settings execution and successful result publication. Current source also adopts typed Go plan/Summary presentation; released v0.6.1 keeps its original helpers.
 
 The [public adapter tests](../../internal/actions/run_test.go) cover identity/output failures, including CR/LF, empty target and writer protection; `TestActionMetadata` in the [actual candidate acceptance suite](../../tests/acceptance/metadata_test.go) covers the normal consumer and executing-binary identities without API access. `TestActionMetadataRejectsIndirectOrigin` covers both removed indirect forms in committed consumer checkouts, without credentials, identity output or API access. The [source interface](../commands.md#source-actions-metadata) describes output and failure semantics. `TestRootCompositeRejectsGlobalOnlyOrigin` in the [composed tests](../../tests/github-actions/composite_test.go) invokes the real Go metadata adapter through an owned test-executable child: a committed consumer with only an unrelated global origin fails before settings/API/success outputs even when the separate Action checkout has a valid direct origin and commit. The failure precedes binary hashing; normal mocked identity records are separate from actual candidate digest evidence. Detailed format/scope rules remain at the workspace owner, without a composite URL matrix.
 
@@ -151,13 +150,13 @@ On the supported Linux runner, the digest remains bound to the running image aft
 #### Scenario: Source metadata rejects an indirect origin
 
 - Given a committed consumer checkout whose origin is a rewrite-only alias or username-less SCP form
-- When the current unreleased candidate is asked for Action metadata without credentials
+- When the current candidate is asked for Action metadata without credentials
 - Then it exits 1 with an origin diagnostic and no identity output
 - And no API request occurs
 
-#### Scenario: The unreleased composite uses verified Go metadata
+#### Scenario: The composite uses verified Go metadata
 
-- Given the source composite installs and verifies its committed unreleased CLI version
+- Given the source composite installs and verifies its committed CLI version
 - And the consumer checkout is separate from the Action package
 - When validate runs without caller credentials
 - Then setup invokes that verified executable's `action metadata` entry from the consumer directory
@@ -166,9 +165,9 @@ On the supported Linux runner, the digest remains bound to the running image aft
 
 ### Rule: Source planning writes ephemeral typed presentation data
 
-The source-only `gh settings action plan REPORT_PATH` entry invokes shared application planning and writes one JSON report to a caller-owned runner-temporary file whose parent already exists. New report files use mode 0600. The same CLI/Action version owns the format: explicit outcome, available target, managed count and ordered changes with native string/bool before/after values. Changed, no-difference and unmanaged results are distinct without parsing terminal sentences. Invalid configuration and repository-read failure remain distinguishable failures with minimum safe categorical diagnostics; raw authentication errors, tokens, environment dumps and request headers are not serialized.
+The same-version `gh settings action plan REPORT_PATH` entry invokes shared application planning and writes one JSON report to a caller-owned runner-temporary file whose parent already exists. New report files use mode 0600. The same CLI/Action version owns the format: explicit outcome, available target, managed count and ordered changes with native string/bool before/after values. Changed, no-difference and unmanaged results are distinct without parsing terminal sentences. Invalid configuration and repository-read failure remain distinguishable failures with minimum safe categorical diagnostics; raw authentication errors, tokens, environment dumps and request headers are not serialized.
 
-Success is silent on stdout and exits zero. Planning or report-storage failure exits nonzero, including when a failure report was written; writing a report never turns a failed plan into success. Validation precedes API access, and unmanaged planning retains its local no-op. Target resolution has an explicit `target-failure` outcome without an unresolved target; read failures retain the available target. Failure reports have no comparison, so their zero managed count does not mean unmanaged. Apply never reads this report: it is ephemeral presentation data, not saved-plan execution. The current unreleased composite invokes this entry directly with its explicit read token; shared application planning owns validation before API access. No separate CLI validation call or multi-version protocol is needed.
+Success is silent on stdout and exits zero. Planning or report-storage failure exits nonzero, including when a failure report was written; writing a report never turns a failed plan into success. Validation precedes API access, and unmanaged planning retains its local no-op. Target resolution has an explicit `target-failure` outcome without an unresolved target; read failures retain the available target. Failure reports have no comparison, so their zero managed count does not mean unmanaged. Apply never reads this report: it is ephemeral presentation data, not saved-plan execution. The current composite invokes this entry directly with its explicit read token; shared application planning owns validation before API access. No separate CLI validation call or multi-version protocol is needed.
 
 #### Scenario: A changed report retains native values
 
@@ -180,9 +179,9 @@ Success is silent on stdout and exits zero. Planning or report-storage failure e
 
 ### Rule: Source Summary renders typed review data without credentials
 
-The source-only `gh settings action summary REPORT_PATH SUMMARY_PATH` entry reads the same-version typed plan report and explicit nonsecret `SETTINGS_*` run metadata, then appends review content to the supplied Summary path. It does not read terminal plan sentences, configure authentication, call an API or dump the environment. Required context includes original and initiating/rerun actors, event, run/attempt, workflow path/ref and exact revision, configuration revision, target, distinct Action identity/ref and CLI version/checksum. Workflow and configuration links use their own repository and revision; local Action use has no invented remote pin.
+The same-version `gh settings action summary REPORT_PATH SUMMARY_PATH` entry reads the same-version typed plan report and explicit nonsecret `SETTINGS_*` run metadata, then appends review content to the supplied Summary path. It does not read terminal plan sentences, configure authentication, call an API or dump the environment. Required context includes original and initiating/rerun actors, event, run/attempt, workflow path/ref and exact revision, configuration revision, target, distinct Action identity/ref and CLI version/checksum. Workflow and configuration links use their own repository and revision; local Action use has no invented remote pin.
 
-Changed values retain native string/bool meaning. No-difference, unmanaged and planning failures are distinct from the typed outcome, and a failed plan remains nonzero after successful Summary writing. Missing/malformed report or required metadata and detectable writing failures return nonzero. Input loading, validation and rendering precede opening the append destination. Untrusted multiline metadata and values remain quoted data, including blank lines, Markdown, HTML and workflow-command-like text. The Summary states that direct apply may overwrite intervening changes and that rendering/writing does not prove GitHub publication. The current unreleased composite invokes this entry in a separate credential-free step after authenticated planning, using the same ephemeral report and verified executable. Original nonzero plan status wins over rendering status; otherwise a Summary failure determines failure. The four public outputs follow all required work. Python rendering and terminal-text classification are removed, without publication polling or saved-plan apply.
+Changed values retain native string/bool meaning. No-difference, unmanaged and planning failures are distinct from the typed outcome, and a failed plan remains nonzero after successful Summary writing. Missing/malformed report or required metadata and detectable writing failures return nonzero. Input loading, validation and rendering precede opening the append destination. Untrusted multiline metadata and values remain quoted data, including blank lines, Markdown, HTML and workflow-command-like text. The Summary states that direct apply may overwrite intervening changes and that rendering/writing does not prove GitHub publication. The current composite invokes this entry in a separate credential-free step after authenticated planning, using the same ephemeral report and verified executable. Original nonzero plan status wins over rendering status; otherwise a Summary failure determines failure. The four public outputs follow all required work. Python rendering and terminal-text classification are removed, without publication polling or saved-plan apply.
 
 #### Scenario: A changed Summary preserves review identities
 
@@ -195,7 +194,7 @@ Changed values retain native string/bool meaning. No-difference, unmanaged and p
 
 #### Scenario: Composite plan separates authenticated execution from presentation
 
-- Given the unreleased composite has verified its same-version CLI and consumer metadata
+- Given the composite has verified its same-version CLI and consumer metadata
 - And the caller supplies an explicit read token
 - When the authenticated step writes a typed plan report
 - Then a separate credential-free step renders that report with explicit nonsecret run metadata
@@ -205,7 +204,7 @@ Changed values retain native string/bool meaning. No-difference, unmanaged and p
 
 ### Public contract verification boundary
 
-Required CI includes installer fixtures, Go report/Summary owner tests, root composite and consumer YAML composition checks, same-run candidate composite validate and local plan, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; offline consumer fixtures copy the current candidate package with a mocked candidate-version CLI and published caller Action identity, replacing only the copied verifier expected version and dummy checksum. Their mock plan producer emits explicit typed fixture data, and presentation calls the actual Go Summary adapter through an owned test-executable child. They do not load the pinned tag bytes or rebuild the product.
+Required CI includes installer fixtures, Go report/Summary owner tests, root composite and consumer YAML composition checks, same-run candidate composite validate and local plan, and real CLI built-product acceptance. Offline consumer approval/token lifecycle and CLI/download responses are simulated; consumer fixtures copy the current candidate package with a mocked candidate-version CLI and each caller's declared Action identity. Only the retained operational handoff fixture adjusts its copied verifier's expected version and dummy checksum. Their mock plan producer emits explicit typed fixture data, and presentation calls the actual Go Summary adapter through an owned test-executable child. They do not load the pinned tag bytes or rebuild the product.
 
 The real composite plan cases use the required [Unix-socket API fixture](../../tests/github-actions/plan-fixture/main.go), isolated GitHub CLI configuration and literal dummy read token. The [runner checks](../../tests/github-actions/candidate-plan.sh) observe actual outcomes and outputs, unchanged committed configuration, and a finite capture of the actual embedded-step Summary bytes:
 

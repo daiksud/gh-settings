@@ -25,7 +25,7 @@ The mutation workflow separates observation from mutation: `plan` informs the ma
 
 ## v0 simplification contract
 
-The [ordered refactoring series](https://github.com/daiksud/gh-settings/issues/133) establishes the requirements below. The shared Go implementation, thin adapters and deliberate behavior simplifications are delivered in current unreleased source; source integration is separate from release and consumer adoption.[^aggressive-v0-plan]
+The [ordered refactoring series](https://github.com/daiksud/gh-settings/issues/133) establishes the requirements below. The shared Go implementation, thin adapters and deliberate behavior simplifications are published in [v0.7.0](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0); source integration, release publication and consumer adoption remain separate operations.[^aggressive-v0-plan]
 
 ### Retained product requirements
 
