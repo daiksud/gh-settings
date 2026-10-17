@@ -20,7 +20,10 @@ const (
 // The existing required CI pass check runs this test with the rest of the Go suite.
 // The dedicated PR workflow runs it separately to give reviewers a focused result.
 func TestSettingsEnvironmentScope(t *testing.T) {
-	dir := filepath.Join(root(), ".github", "workflows")
+	dir := os.Getenv("GH_SETTINGS_WORKFLOWS_DIR")
+	if dir == "" {
+		dir = filepath.Join(root(), ".github", "workflows")
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +76,11 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if err != nil {
 				return fmt.Errorf("%s: jobs.%s: %w", path, jobName, err)
 			}
+			// Called workflows can select this repository's Environment and
+			// inherit its secrets. Reject calls rather than trusting unseen code.
+			if _, reusable := job["uses"]; reusable {
+				return fmt.Errorf("%s: jobs.%s: reusable workflow jobs are not permitted", path, jobName)
+			}
 			environment, present := job["environment"]
 			if !present {
 				continue
@@ -81,7 +89,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if err != nil {
 				return fmt.Errorf("%s: jobs.%s.environment: %w", path, jobName, err)
 			}
-			if !strings.EqualFold(name, settingsEnvironment) {
+			if !strings.EqualFold(strings.TrimSpace(name), settingsEnvironment) {
 				continue
 			}
 			if path != settingsWorkflowPath || jobName != "apply" || environment.Kind != yaml.ScalarNode || name != settingsEnvironment {
@@ -157,8 +165,10 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		{"unauthorized scalar", allowed, "jobs:\n  check:\n    environment: gh-settings\n", false},
 		{"unauthorized quoted scalar", allowed, "jobs:\n  check:\n    environment: 'gh-settings'\n", false},
 		{"unauthorized case variant", allowed, "jobs:\n  check:\n    environment: GH-SETTINGS\n", false},
+		{"unauthorized padded name", allowed, "jobs:\n  check:\n    environment: \" gh-settings \"\n", false},
 		{"unauthorized name mapping", allowed, "jobs:\n  check:\n    environment: {name: gh-settings}\n", false},
 		{"unauthorized job in allowed workflow", allowed + "  other:\n    environment: gh-settings\n", "", false},
+		{"reusable workflow job", allowed, "jobs:\n  delegate:\n    uses: example/repo/.github/workflows/deploy.yml@main\n", false},
 		{"dynamic scalar", allowed, "jobs:\n  check:\n    environment: ${{ vars.DEPLOY_ENV }}\n", false},
 		{"dynamic name mapping", allowed, "jobs:\n  check:\n    environment: {name: \"${{ 'gh-settings' }}\"}\n", false},
 		{"missing approved environment", "jobs:\n  apply:\n    runs-on: ubuntu-24.04\n", "", false},
