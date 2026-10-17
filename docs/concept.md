@@ -13,7 +13,7 @@ sources:
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-Current source supports basic repository fields and topics. The CLI implements export, validation, planning, and direct apply, with export saving `.github/settings.yml`. The [public composite Action](adr/0023-public-composite-action.md) composes those operations; this repository's operational callers use the released v0.7.0 package with single-job main apply and required PR checks. Source changes, release publication, and consumer adoption are separate operations. The [commands page](commands.md) describes command behavior, and the [Actions guide](github-actions.md) identifies released consumer pins.
+Current source supports basic repository fields and topics. The CLI implements export, validation, planning, and direct apply, with export saving `.github/settings.yml`. The [public composite Action](adr/0023-public-composite-action.md) composes those operations; this repository's operational callers use the released v0.8.0 package with single-job main apply and required PR checks. Source changes, release publication, and consumer adoption are separate operations. The [commands page](commands.md) describes command behavior, and the [Actions guide](github-actions.md) identifies released consumer pins.
 
 ## Design philosophy
 

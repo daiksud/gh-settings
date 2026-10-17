@@ -2,7 +2,7 @@
 
 A GitHub CLI extension for exporting, validating, planning, and applying the current repository's basic settings and topics. Export saves `.github/settings.yml`; omitted fields remain unmanaged. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; the caller owns approval and credentials.
 
-This checkout selects published [v0.7.1](https://github.com/daiksud/gh-settings/releases/tag/v0.7.1); the examples and active settings workflows remain pinned to [v0.7.0](https://github.com/daiksud/gh-settings/releases/tag/v0.7.0). The active main workflow keeps its `gh-settings` Environment and App credentials, with a [trusted-source PR Environment guard](docs/github-actions.md#active-repository-environment-guard) added as defense in depth. Do not remove the deployment reviewer until a non-spoofable required policy is configured outside PR-controlled GitHub Actions checks.
+This checkout selects published [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0); the examples and active settings workflows are pinned to [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0). The active main workflow keeps its `gh-settings` Environment and App credentials, with a [trusted-source PR Environment guard](docs/github-actions.md#active-repository-environment-guard) added as defense in depth. Do not remove the deployment reviewer until a non-spoofable required policy is configured outside PR-controlled GitHub Actions checks.
 
 ## Install
 
@@ -84,7 +84,7 @@ settings:
       - settings-as-code
 ```
 
-Topics support is in current source and is not included in the published v0.7.1 CLI or pinned v0.7.0 consumers. Release and consumer adoption are separate steps.
+Topics support is published in v0.8.0. This repository manages `github-cli` and `settings-as-code` through the same declaration and its pinned v0.8.0 PR/main workflows. Omitted repository fields stay unmanaged.
 
 Send declared values directly:
 
@@ -114,7 +114,7 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@e9edb03f65ac943cd0ebf6a9556c18c485719e66 # v0.7.0
+      - uses: daiksud/gh-settings@fd2aef0efb15d6b4c4b19c45e47f5fa965c66b24 # v0.8.0
         id: settings
         with:
           command: validate
@@ -122,7 +122,7 @@ jobs:
 
 `command` is exactly `validate`, `plan`, or `apply`. Validate needs no token; plan requires an explicit read token; apply requires a target-scoped App installation token with Administration write. The caller owns its Environment/approval, token mint/revoke and concurrency. The [PR/main examples](examples/github-actions/README.md) provide read-only PR review and a single approved main job with three steps: checkout, token creation and apply, with no external caller scripts.
 
-Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet pins published v0.7.0, which uses the verified executable's Go metadata and typed plan/Summary entries without Python. It requires a directly configured GitHub.com HTTPS, git@ SCP or full SSH origin; rewrite-only aliases and username-less SCP are unsupported. See the [complete contract and setup guide](docs/github-actions.md).
+Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet pins published v0.8.0, which uses the verified executable's Go metadata and typed plan/Summary entries without Python. It requires a directly configured GitHub.com HTTPS, git@ SCP or full SSH origin; rewrite-only aliases and username-less SCP are unsupported. See the [complete contract and setup guide](docs/github-actions.md).
 
 ## Build and run from source
 

@@ -31,7 +31,7 @@ The three booleans take `true` or `false`. There are no enum-valued fields in th
 
 ## Topics
 
-Current source adds `settings.topics.names` without changing `schemaVersion: 1`. Published v0.7.1 and existing v0.7.0 consumer pins do not support this group; release and adoption require separate work.
+Current source adds `settings.topics.names` without changing `schemaVersion: 1`. Topics support is published in [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0), which this repository now adopts in its PR/main workflows. Older releases do not support this group.
 
 ```yaml
 schemaVersion: 1
