@@ -13,7 +13,7 @@ sources:
 
 Repository maintainers should be able to record intended settings in version control, review changes, and apply declared values. Configuration lives in `.github/settings.yml` and targets only the repository containing that file. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are also outside repository scope.
 
-The CLI implements export, validation, planning, and direct apply, with export saving `.github/settings.yml`. The [public composite Action](adr/0023-public-composite-action.md) composes those operations; this repository's operational callers use the released v0.7.0 package with owner-approved, single-job main apply. Source changes, release publication, and consumer adoption are separate operations. The [commands page](commands.md) describes command behavior, and the [Actions guide](github-actions.md) identifies released consumer pins.
+The CLI implements export, validation, planning, and direct apply, with export saving `.github/settings.yml`. The [public composite Action](adr/0023-public-composite-action.md) composes those operations; this repository's operational callers use the released v0.7.0 package with single-job main apply and required PR checks. Source changes, release publication, and consumer adoption are separate operations. The [commands page](commands.md) describes command behavior, and the [Actions guide](github-actions.md) identifies released consumer pins.
 
 ## Design philosophy
 
@@ -31,7 +31,7 @@ The [ordered refactoring series](https://github.com/daiksud/gh-settings/issues/1
 
 Keep `schemaVersion: 1` → `settings` → `repository`, the existing field names, partial declarations, omission, explicit false and empty strings. Preserve currently accepted YAML syntax, including aliases and merge keys. Do not flatten the document, remove the version, add settings, or introduce a speculative resource framework.
 
-Keep checkout-root configuration and target isolation: only the containing checkout's repository is managed, and undeclared fields stay absent from updates. Invalid input fails before remote work. Apply sends declared values directly without GET, saved-plan execution or reconciliation; write redirects remain rejected. Preserve credential boundaries, owner approval, target-scoped token issuance/revocation and verification of immutable release artifacts. No rollback, retry, drift or additional approval framework is introduced.
+Keep checkout-root configuration and target isolation: only the containing checkout's repository is managed, and undeclared fields stay absent from updates. Invalid input fails before remote work. Apply sends declared values directly without GET, saved-plan execution or reconciliation; write redirects remain rejected. Preserve credential boundaries, required PR review/CI, target-scoped token issuance/revocation and verification of immutable release artifacts. No rollback, retry, drift or additional approval framework is introduced.
 
 ### Implementation ownership
 
@@ -58,7 +58,7 @@ Current source implements both deliberate simplifications; the [command referenc
 
 Published tags and assets remain immutable; removing source support does not rewrite those releases. Current source need not emulate historical Action/CLI combinations. Candidate-source tests and published consumer tests have different subjects and must say which they verify.
 
-Refactoring does not publish a release or adopt an unreleased candidate. Existing active released Action pins, Environment `gh-settings`, App `answer26`, credential bindings and approval policy remain unchanged. Monitored source or documentation changes can trigger read-only plan/prepare and queue an approval-gated apply; they do not authorize approving it. Publication, coordinated consumer pin/verifier changes and live apply require their separate authorization.
+The original refactoring did not publish a release or change operational settings. Subsequent changes adopted v0.7.0 and a single-job apply. The active `gh-settings` Environment, `answer26` App and credentials remain, while a [required PR guard](github-actions.md#active-repository-environment-guard) replaces deployment approval after the GitHub reviewer rule is disabled. Publication and live deployment remain separate operations.
 
 ## Current decisions
 

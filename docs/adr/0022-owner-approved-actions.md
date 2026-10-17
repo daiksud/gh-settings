@@ -6,7 +6,7 @@ description: Keep PR plans read-only and gate direct main apply with owner appro
 
 ## Status
 
-Accepted for owner approval, direct apply, concurrency and credential ownership. [ADR 0023](0023-public-composite-action.md) supersedes the original example-only delivery boundary with a public composite Action; operational callers now use that released package. The decision below records the original example delivery. Its shell wrappers and historical fixture combinations are not permanent compatibility obligations under the [v0 simplification contract](../concept.md#v0-simplification-contract). Operational setup, publication, adoption and deployment approval remain separate operations.
+Accepted for owner approval, direct apply, concurrency and credential ownership. [ADR 0023](0023-public-composite-action.md) supersedes the original example-only delivery boundary with a public composite Action; operational callers now use that released package. The decision below records the original example delivery. Its shell wrappers and historical fixture combinations are not permanent compatibility obligations under the [v0 simplification contract](../concept.md#v0-simplification-contract). Operational setup, publication, adoption and deployment approval were separate operations for this original design. Active workflows later adopted a [required PR Environment guard](../github-actions.md#active-repository-environment-guard) in place of the deployment reviewer gate described below.
 
 ## Context
 
