@@ -1,10 +1,12 @@
 name: settings-environment-guard
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, edited]
+  push:
+    branches: [main]
 permissions: {}
 concurrency:
-  group: settings-environment-guard-${{ github.event.pull_request.number }}
+  group: settings-environment-guard-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 jobs:
   check:
@@ -15,15 +17,27 @@ jobs:
     env:
       GOTOOLCHAIN: local
     steps:
-      - name: Checkout PR merge revision
+      - name: Checkout trusted main-branch policy
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
+          path: .policy
           persist-credentials: false
-      - name: Install pinned Go
+      - name: Checkout untrusted PR merge as data only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request_target' && format('refs/pull/{0}/merge', github.event.pull_request.number) || github.sha }}
+          path: .candidate
+          persist-credentials: false
+      - name: Install pinned Go for the trusted policy
         uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: 2026.10.8
+          working_directory: .policy
           install_args: go
           cache: false
-      - name: Reject unauthorized gh-settings Environment references
+      - name: Validate candidate workflows using trusted policy
+        working-directory: .policy
+        env:
+          GH_SETTINGS_WORKFLOWS_DIR: ${{ github.workspace }}/.candidate/.github/workflows
         run: go test -count=1 -run '^TestSettingsEnvironmentScope' ./tests/github-actions
