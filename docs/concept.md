@@ -25,7 +25,7 @@ The mutation workflow separates observation from mutation: `plan` informs the ma
 
 ## v0 simplification contract
 
-The [ordered refactoring series](https://github.com/daiksud/gh-settings/issues/133) simplifies current source under the requirements below. This contract authorizes removing obsolete implementation obligations; it does not claim that the later refactorings are already implemented.[^aggressive-v0-plan]
+The [ordered refactoring series](https://github.com/daiksud/gh-settings/issues/133) establishes the requirements below. The shared Go implementation, thin adapters and deliberate behavior simplifications are delivered in current unreleased source; source integration is separate from release and consumer adoption.[^aggressive-v0-plan]
 
 ### Retained product requirements
 
@@ -49,10 +49,10 @@ Extend useful existing structure when a real setting is requested; no new settin
 
 ### Deliberate behavior simplifications
 
-Two later changes are planned explicitly; until their own implementation PRs merge, the [current command reference](commands.md) remains the description of delivered behavior:
+Current source implements both deliberate simplifications; the [command reference](commands.md) describes their exact behavior:
 
-- [Empty declarations](https://github.com/daiksud/gh-settings/issues/149): after validating an empty declaration, both CLI plan and apply become successful local no-ops before target resolution, authentication or API construction. False and empty strings remain managed values. The Action's checkout metadata and explicit-token audit requirements remain separate.
-- [Origin support](https://github.com/daiksud/gh-settings/issues/158): require a checkout-scoped origin that directly identifies GitHub.com, retaining ordinary HTTPS, SCP-style `git@github.com:owner/repo.git` and full SSH URLs through the existing library. Remove rewrite-only shorthand and custom transport-rewrite fallback logic without weakening target isolation or adding a fallback mode.
+- [Empty declarations](https://github.com/daiksud/gh-settings/issues/149): after validating an empty declaration, both CLI plan and apply succeed locally before target resolution, authentication or API construction. False and empty strings remain managed values. The Action's checkout metadata and explicit-token audit requirements remain separate.
+- [Origin support](https://github.com/daiksud/gh-settings/issues/158): a checkout-scoped origin must directly identify GitHub.com through HTTPS, SCP-style `git@github.com:owner/repo.git` or full SSH. Rewrite-only aliases and username-less SCP are rejected; transport rewrites cannot change a directly configured repository identity. No fallback mode is provided.
 
 ### Publication and operations
 
@@ -99,6 +99,6 @@ Names also identify outer rulesets, ambiguous matches are errors, and there is n
 
 ## Unresolved decisions
 
-Null handling for future fields, remaining authentication details, toolchain and dependency versions, and output options have not been decided. Future composition across multiple update endpoints, new-object required fields, and inner rules identity are also unresolved. The [current configuration contract](settings.md#configuration-semantics) does not settle those future choices or extend supported fields. Release decisions and open implementation mechanics are tracked on the [release page](releases.md).
+Null handling for future fields, new output options, composition across multiple update endpoints, new-object required fields and inner rules identity remain unresolved. The [current configuration contract](settings.md#configuration-semantics) does not settle those future choices or extend supported fields. Current authentication belongs to the [command](commands.md) and [caller](github-actions.md) contracts; development tools are pinned in the [development guide](development.md). The [release page](releases.md) records publication procedures and limits.
 
 [^aggressive-v0-plan]: Issue #133 records the retained simplification contract and the ordered source-refactoring scope. Publication and operational adoption are excluded from that series.

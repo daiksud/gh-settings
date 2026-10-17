@@ -1,6 +1,8 @@
 # gh-settings
 
-A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. The published v0.6.0 release implements all four commands, with export saving `.github/settings.yml`. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; its inert consumer examples keep setup and activation separate.
+A GitHub CLI extension for exporting, validating, planning, and applying the current repository's five basic settings. Export saves `.github/settings.yml`; omitted fields remain unmanaged. A [public composite GitHub Action](docs/github-actions.md) exposes validate, plan and direct apply; the caller owns approval and credentials.
+
+This checkout documents current **unreleased v0.7.0** source. The latest published package is [v0.6.1](https://github.com/daiksud/gh-settings/releases/tag/v0.6.1); installation and pinned consumer examples use that release. Source-only plan no-op/origin and Go Action changes below do not publish it or change active consumer pins. See the [released package boundary](docs/github-actions.md#published-package-and-consumer-pins) before adopting an Action revision.
 
 ## Install
 
@@ -25,15 +27,13 @@ In current source, export saves root `schemaVersion: 1` and `settings.repository
 
 Export always overwrites an existing regular configuration file after reading the settings and serializing the complete YAML. A write failure reports an error and can leave the destination truncated or partially written; use Git to restore tracked configuration. Symlinks at `.github` or `settings.yml`, including dangling links, and non-regular destinations are rejected.
 
-### Migrating from stdout export
-
-Published v0.4.0 and earlier export YAML to stdout; v0.5.0 and current source write the file and produce no stdout. Remove shell redirection when moving to the new behavior: the shell can truncate a destination before export runs. To inspect the saved configuration, run:
+Export produces no stdout. Read the saved file after success rather than redirecting the command; shell redirection can truncate a destination before export runs:
 
 ```sh
 cat .github/settings.yml
 ```
 
-Scripts that consumed export stdout should read the saved checkout-root file after successful export. No output flags are supported. Releases before v0.2.0 used a flat YAML format.
+No output flags are supported.
 
 ## Validate a saved configuration
 
@@ -52,7 +52,7 @@ settings:
     has_issues: false
 ```
 
-The [configuration contract](docs/settings.md#configuration-semantics) explains the five supported fields, `schemaVersion`, grouping, value types, and migration from earlier flat files. Validation succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. See the [command behavior](docs/commands.md#validate-behavior) for its failure cases.
+The [configuration contract](docs/settings.md#configuration-semantics) explains the five supported fields, `schemaVersion`, grouping and value types. Validation succeeds silently and reports errors on standard error. It does not read or change GitHub settings or edit the configuration file. See the [command behavior](docs/commands.md#validate-behavior) for its failure cases.
 
 ## Plan a saved configuration
 
@@ -69,7 +69,7 @@ Plan validates before reading GitHub and compares only declared fields. For the 
 settings.repository.has_issues: true → false
 ```
 
-Successful comparison exits 0 with or without differences. Strings are quoted and escaped; omitted fields are unmanaged. The command reports no differences or no managed fields with a short message. It does not change the file or repository settings. See [plan behavior](docs/commands.md#plan-behavior). Plan is available in v0.3.0.
+Successful comparison exits 0 with or without differences. Strings are quoted and escaped; omitted fields are unmanaged. The command reports no differences or no managed fields with a short message. An empty declaration succeeds locally without origin or authentication in current source. It does not change the file or repository settings. See [plan behavior](docs/commands.md#plan-behavior).
 
 ## Apply a saved configuration
 
@@ -81,7 +81,7 @@ gh settings apply
 
 Apply validates `.github/settings.yml` before contacting GitHub, then sends only declared fields to the checkout's origin repository. False and empty strings are explicit values; omitted fields stay outside the request. A declaration with no managed fields succeeds without origin or authentication. Successful updates print `Applied repository settings.` and exit 0.
 
-Apply works independently of plan and does not fetch current settings. Remote changes to declared fields can be overwritten. Errors exit 1; an output failure can occur after an update succeeds, and there is no automatic rollback. See [apply behavior](docs/commands.md#apply-behavior). Apply is available since v0.4.0.
+Apply works independently of plan and does not fetch current settings. Remote changes to declared fields can be overwritten. Errors exit 1; an output failure can occur after an update succeeds, and there is no automatic rollback. See [apply behavior](docs/commands.md#apply-behavior).
 
 ## Use as a GitHub Action
 
@@ -109,7 +109,7 @@ jobs:
 
 `command` is exactly `validate`, `plan`, or `apply`. Validate needs no token; plan requires an explicit read token; apply requires a target-scoped App installation token with Administration write. The caller owns its Environment/approval, token mint/revoke and concurrency. Use the [inert PR/main examples](examples/github-actions/README.md) for read-only review followed by separately approved apply; do not give privileged credentials to PR code.
 
-Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet pins the released v0.6.1 Action and its v0.6.1 CLI. Current source selects **unreleased v0.7.0** in `action/cli-version` and uses that verified executable’s Go metadata and typed plan/Summary entries. It requires a directly configured GitHub.com HTTPS, git@ SCP or full SSH origin; rewrite-only aliases and username-less SCP are unsupported. Candidate CI proves source integration without published v0.7.0 assets; this does not change the released snippet or active consumer pins. Future release tags must match the committed CLI version, and reviewed SHA pins select that version. The immutable v0.5.0 tag has no root Action. Published v0.6.0 contains the older installer and still uses CLI v0.5.0; changing main cannot repair that immutable tag. The corrected v0.6.1 release is published; existing tags/assets stay immutable and further publication requires separate authorization. See the [complete contract, runner limits and adoption boundary](docs/github-actions.md).
+Successful calls expose `config-sha`, `target`, `cli-version` and `cli-sha256` through `steps.settings.outputs`. This snippet pins the published v0.6.1 Action and CLI, including that package's Python 3 requirement. Current source selects **unreleased v0.7.0** in `action/cli-version` and uses the verified executable's Go metadata and typed plan/Summary entries, without Python. It requires a directly configured GitHub.com HTTPS, git@ SCP or full SSH origin; rewrite-only aliases and username-less SCP are unsupported. Candidate CI proves source integration without published v0.7.0 assets. The released snippet and active consumer pins retain their original implementation. See the [complete contract, released profile and adoption boundary](docs/github-actions.md).
 
 ## Build and run from source
 
