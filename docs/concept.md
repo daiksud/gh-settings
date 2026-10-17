@@ -58,7 +58,7 @@ Current source implements both deliberate simplifications; the [command referenc
 
 Published tags and assets remain immutable; removing source support does not rewrite those releases. Current source need not emulate historical Action/CLI combinations. Candidate-source tests and published consumer tests have different subjects and must say which they verify.
 
-The original refactoring did not publish a release or change operational settings. Subsequent changes adopted v0.7.0 and a single-job apply. The active `gh-settings` Environment, `answer26` App and credentials remain, while a [required PR guard](github-actions.md#active-repository-environment-guard) replaces deployment approval after the GitHub reviewer rule is disabled. Publication and live deployment remain separate operations.
+The original refactoring did not publish a release or change operational settings. Subsequent changes adopted v0.7.0 and a single-job apply. The active `gh-settings` Environment, `answer26` App and credentials remain, while a [trusted PR guard](github-actions.md#active-repository-environment-guard) replaces deployment approval after the Ruleset requires its `check` and the GitHub reviewer rule is disabled. Publication and live deployment remain separate operations.
 
 ## Current decisions
 
