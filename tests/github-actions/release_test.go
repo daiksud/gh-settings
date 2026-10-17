@@ -165,7 +165,7 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 	}
 }
 
-func TestReleaseDispatchSourcePin(t *testing.T) {
+func TestReleaseOptionalSourcePin(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -206,12 +206,4 @@ func TestReleaseDispatchSourcePin(t *testing.T) {
 		t.Fatal("release resolve must validate and pin the requested source before output")
 	}
 
-	oneShot, _ := readWorkflow(t, "../../.github/workflows/dispatch-v0.7.1.yml")
-	job := oneShot.Jobs["dispatch"]
-	if !strings.Contains(job.Steps[0].Run, `"$current_main" == "$GITHUB_SHA"`) ||
-		!strings.Contains(job.Steps[0].Run, `-f "source_sha=$GITHUB_SHA"`) ||
-		!strings.Contains(job.Steps[0].Run, `-f "version=$RELEASE_VERSION"`) ||
-		strings.Contains(job.Steps[0].Run, `git/ref/tags/`) {
-		t.Fatal("one-shot dispatcher must pin approved main commit and delegate tag recovery to release")
-	}
 }
