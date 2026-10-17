@@ -66,6 +66,11 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", path, err)
 		}
+		if path == settingsWorkflowPath {
+			if err := checkSettingsMainTrigger(workflow["on"]); err != nil {
+				return fmt.Errorf("%s: on: %w", path, err)
+			}
+		}
 		jobsNode, ok := workflow["jobs"]
 		if !ok {
 			return fmt.Errorf("%s: missing jobs", path)
@@ -112,7 +117,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if !strings.EqualFold(strings.TrimSpace(name), settingsEnvironment) {
 				continue
 			}
-			if path != settingsWorkflowPath || jobName != "apply" || environment.Kind != yaml.ScalarNode || name != settingsEnvironment {
+			if path != settingsWorkflowPath || jobName != "apply" || name != settingsEnvironment {
 				return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only as a literal in %s jobs.apply", path, jobName, name, settingsWorkflowPath)
 			}
 			found++
@@ -123,6 +128,39 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	}
 	if guardChecks != 1 {
 		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
+	}
+	return nil
+}
+
+// Keep this guard about the Environment boundary. Privileged steps and Action
+// choices remain the responsibility of owner review.
+func checkSettingsMainTrigger(node *yaml.Node) error {
+	if node == nil {
+		return fmt.Errorf("expected only push to main")
+	}
+	events, err := settingsYAMLMap(node)
+	if err != nil {
+		return err
+	}
+	push, ok := events["push"]
+	if !ok || len(events) != 1 {
+		return fmt.Errorf("expected only the push event")
+	}
+	filters, err := settingsYAMLMap(push)
+	if err != nil {
+		return err
+	}
+	for key := range filters {
+		switch key {
+		case "branches", "paths", "paths-ignore":
+		default:
+			return fmt.Errorf("push filter %q is not permitted", key)
+		}
+	}
+	branches := filters["branches"]
+	if branches == nil || branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 ||
+		branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
+		return fmt.Errorf("push.branches must be exactly [main]")
 	}
 	return nil
 }
@@ -185,6 +223,8 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		valid             bool
 	}{
 		{"only approved job", allowed, "", true},
+		{"approved name mapping", "jobs:\n  apply:\n    environment: {name: gh-settings, url: \"${{ steps.deploy.outputs.url }}\"}\n", "", true},
+		{"approved job dynamic name mapping", "jobs:\n  apply:\n    environment: {name: \"${{ vars.DEPLOY_ENV }}\"}\n", "", false},
 		{"different static environment", allowed, other, true},
 		{"unauthorized scalar", allowed, "jobs:\n  check:\n    environment: gh-settings\n", false},
 		{"unauthorized quoted scalar", allowed, "jobs:\n  check:\n    environment: 'gh-settings'\n", false},
@@ -205,9 +245,47 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		{"malformed YAML", allowed, "jobs: [\n", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			files := map[string][]byte{settingsWorkflowPath: []byte(test.main), settingsGuardWorkflowPath: []byte(guard)}
+			files := map[string][]byte{settingsWorkflowPath: []byte("on: {push: {branches: [main]}}\n" + test.main), settingsGuardWorkflowPath: []byte(guard)}
 			if test.extra != "" {
 				files[".github/workflows/other.yaml"] = []byte(test.extra)
+			}
+			err := checkSettingsEnvironmentScope(files)
+			if (err == nil) != test.valid {
+				t.Fatalf("valid=%t, got error: %v", test.valid, err)
+			}
+		})
+	}
+}
+
+func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
+	for _, test := range []struct {
+		name, trigger string
+		valid         bool
+	}{
+		{"main push", "on: {push: {branches: [main]}}", true},
+		{"main push with paths", "on:\n  push:\n    branches:\n      - main\n    paths: ['.github/settings.yml']", true},
+		{"main push with paths-ignore", "on: {push: {branches: [main], paths-ignore: ['docs/**']}}", true},
+		{"missing trigger", "", false},
+		{"scalar push", "on: push", false},
+		{"sequence push", "on: [push]", false},
+		{"unfiltered push", "on: {push: null}", false},
+		{"extra event", "on: {push: {branches: [main]}, workflow_dispatch: null}", false},
+		{"pull request event", "on: {pull_request: {branches: [main]}}", false},
+		{"missing branches", "on: {push: {paths: ['.github/settings.yml']}}", false},
+		{"other branch", "on: {push: {branches: [develop]}}", false},
+		{"extra branch", "on: {push: {branches: [main, develop]}}", false},
+		{"wildcard branch", "on: {push: {branches: ['*']}}", false},
+		{"scalar branch", "on: {push: {branches: main}}", false},
+		{"dynamic branch", "on: {push: {branches: ['${{ vars.BRANCH }}']}}", false},
+		{"tag trigger", "on: {push: {branches: [main], tags: ['v*']}}", false},
+		{"tag exclusion", "on: {push: {branches: [main], tags-ignore: ['*']}}", false},
+		{"branch exclusion", "on: {push: {branches: [main], branches-ignore: [develop]}}", false},
+		{"duplicate push", "on: {push: {branches: [main]}, push: {tags: ['*']}}", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			files := map[string][]byte{
+				settingsWorkflowPath:      []byte(test.trigger + "\njobs:\n  apply:\n    environment: gh-settings\n"),
+				settingsGuardWorkflowPath: []byte("jobs:\n  gh-settings:\n    name: gh-settings\n"),
 			}
 			err := checkSettingsEnvironmentScope(files)
 			if (err == nil) != test.valid {
