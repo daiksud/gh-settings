@@ -68,7 +68,6 @@ This test also runs inside the normal Go suite in [`ci-pr`](../.github/workflows
 
 **To finish the approval-free migration after this guard is merged:** in [Settings → Environments](https://github.com/daiksud/gh-settings/settings/environments), select `gh-settings` and turn off **Required reviewers**, retaining the **`main`-only deployment branch restriction**, `ANSWER26_*` credentials and branch Ruleset. GitHub manages that Environment setting; YAML cannot disable it. Until a repository administrator changes it, deployment approval will still be required. The PR guard does not control workflows in other repositories or permit bypassing Environment branch restrictions.
 
-
 ## Ordered owner setup
 
 The caller owns Environment selection/approval, App token minting/revocation and concurrency. The Action's token input becomes `GH_TOKEN` only for the plan/apply command step; installation, validation, Summary and metadata/output steps do not receive that input. Composite steps share the caller job, so all code in a credential-bearing job must be trusted and privileged credentials must stay out of PR code.
