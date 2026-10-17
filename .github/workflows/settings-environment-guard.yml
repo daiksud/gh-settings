@@ -1,0 +1,29 @@
+name: settings-environment-guard
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+permissions: {}
+concurrency:
+  group: settings-environment-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - name: Checkout PR merge revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Go
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          install_args: go
+          cache: false
+      - name: Reject unauthorized gh-settings Environment references
+        run: go test -count=1 -run '^TestSettingsEnvironmentScope' ./tests/github-actions
