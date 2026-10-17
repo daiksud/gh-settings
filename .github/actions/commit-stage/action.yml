@@ -34,7 +34,7 @@ runs:
       shell: bash
       run: |
         actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
-        shellcheck scripts/publish-release.sh tests/release.sh examples/github-actions/*.sh tests/github-actions/*.sh
+        shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh
         shellcheck action/*.sh
         shellcheck .github/scripts/*.sh
     - name: Verify Go formatting

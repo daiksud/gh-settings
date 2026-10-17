@@ -51,7 +51,7 @@ func TestPRConsumerPlan(t *testing.T) {
 			if result.status != test.status || result.calls != calls || result.api != "" || !reflect.DeepEqual(result.outputs, want) {
 				t.Fatalf("PR plan boundary failed: %+v", result)
 			}
-			for _, value := range []string{test.review, f.sha, "pull_request", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", "9d01d3258d9f42239b2daeb1ac26bc532cd56105"} {
+			for _, value := range []string{test.review, f.sha, "pull_request", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", strings.TrimPrefix(exampleAction, "daiksud/gh-settings@")} {
 				if !strings.Contains(result.summary, value) {
 					t.Fatalf("PR Summary missing %q: %s", value, result.summary)
 				}
@@ -63,7 +63,7 @@ func TestPRConsumerPlan(t *testing.T) {
 	}
 }
 
-func TestMainConsumerApply(t *testing.T) {
+func TestOperationalMainConsumerApplyDetails(t *testing.T) {
 	for _, test := range []struct {
 		scenario, outcome string
 		status            int
@@ -72,7 +72,7 @@ func TestMainConsumerApply(t *testing.T) {
 		{"apply failure", "failure", 37},
 	} {
 		t.Run(test.scenario, func(t *testing.T) {
-			result := runMainConsumer(t, test.scenario)
+			result := runMainConsumerWorkflow(t, test.scenario, "../../.github/workflows/settings-main.yml")
 			if result.status != test.status || !result.minted || !result.revoked || result.applied.api != "PATCH\n" {
 				t.Fatalf("status=%d minted=%t revoked=%t API=%q\n%s", result.status, result.minted, result.revoked, result.applied.api, result.log)
 			}
@@ -100,7 +100,7 @@ func TestMainConsumerApply(t *testing.T) {
 	}
 }
 
-func TestMainConsumerPrepareFailure(t *testing.T) {
+func TestOperationalMainConsumerPrepareFailure(t *testing.T) {
 	for _, test := range []struct {
 		scenario, calls, diagnostic string
 		status                      int
@@ -111,7 +111,7 @@ func TestMainConsumerPrepareFailure(t *testing.T) {
 		{"Summary write failure", "plan\n", "open Summary:", 1},
 	} {
 		t.Run(test.scenario, func(t *testing.T) {
-			result := runMainConsumer(t, test.scenario)
+			result := runMainConsumerWorkflow(t, test.scenario, "../../.github/workflows/settings-main.yml")
 			result.assertNoCredentials(t)
 			wantTrace := append([]string{"guard"}, strings.Fields(test.calls)...)
 			if result.status != test.status || result.prepared.calls != test.calls || len(result.prepared.outputs) != 0 || !reflect.DeepEqual(result.trace, wantTrace) {
@@ -124,7 +124,7 @@ func TestMainConsumerPrepareFailure(t *testing.T) {
 	}
 }
 
-func TestMainConsumerBlocked(t *testing.T) {
+func TestOperationalMainConsumerBlockedDetails(t *testing.T) {
 	for _, test := range []struct {
 		scenario, diagnostic string
 		status               int
@@ -137,7 +137,7 @@ func TestMainConsumerBlocked(t *testing.T) {
 		{"mint failure", "dummy token provider rejected credentials", 1},
 	} {
 		t.Run(test.scenario, func(t *testing.T) {
-			result := runMainConsumer(t, test.scenario)
+			result := runMainConsumerWorkflow(t, test.scenario, "../../.github/workflows/settings-main.yml")
 			result.assertNoCredentials(t)
 			wantTrace := []string{"guard", "plan", test.scenario}
 			if test.status != 0 {
@@ -178,8 +178,134 @@ func (result consumerResult) assertNoCredentials(t *testing.T) {
 	}
 }
 
+func TestMainConsumerApply(t *testing.T) {
+	for _, test := range []struct {
+		scenario, calls, api string
+		status, outputs      int
+	}{
+		{"approved", "apply\n", "PATCH\n", 0, 4},
+		{"apply failure", "apply\n", "PATCH\n", 37, 0},
+		{"invalid configuration", "apply\n", "", 37, 0},
+		{"apply installation failure", "", "", 1, 0},
+	} {
+		t.Run(test.scenario, func(t *testing.T) {
+			result := runMainConsumer(t, test.scenario)
+			result.assertNoCredentials(t)
+			if result.status != test.status || !result.minted || !result.revoked || result.applied.calls != test.calls || result.applied.api != test.api || len(result.applied.outputs) != test.outputs {
+				t.Fatalf("single-job apply result: %+v", result)
+			}
+			wantTrace := append([]string{"checkout", "mint"}, strings.Fields(test.calls)...)
+			wantTrace = append(wantTrace, "revoke")
+			if !reflect.DeepEqual(result.trace, wantTrace) || result.prepared.sha != "" || result.summary != "" {
+				t.Fatalf("single-job execution order or unexpected prepare/Summary: %+v", result)
+			}
+			if test.status == 0 {
+				want := map[string]string{"config-sha": result.applied.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": result.applied.digest}
+				if !reflect.DeepEqual(result.applied.outputs, want) {
+					t.Fatalf("apply checkout/release identity=%v, want %v", result.applied.outputs, want)
+				}
+			}
+		})
+	}
+}
+
+func TestMainConsumerBlocked(t *testing.T) {
+	for _, scenario := range []string{"waiting", "rejected", "pull request", "other branch", "tag push", "mint failure"} {
+		t.Run(scenario, func(t *testing.T) {
+			result := runMainConsumer(t, scenario)
+			result.assertNoCredentials(t)
+			wantStatus := 0
+			wantTrace := []string{scenario}
+			if scenario == "mint failure" {
+				wantStatus, wantTrace = 1, []string{"checkout"}
+				if !strings.Contains(result.log, "dummy token provider rejected credentials") {
+					t.Fatalf("missing mint failure diagnostic: %+v", result)
+				}
+			}
+			if result.status != wantStatus || !reflect.DeepEqual(result.trace, wantTrace) || result.minted || result.revoked || result.applied.sha != "" || result.applied.api != "" {
+				t.Fatalf("blocked single-job consumer reached privileged work: %+v", result)
+			}
+		})
+	}
+}
+
 func runMainConsumer(t *testing.T, scenario string) (result consumerResult) {
-	return runMainConsumerWorkflow(t, scenario, "settings-main.yml")
+	t.Helper()
+	w, _ := readWorkflow(t, "settings-main.yml")
+	applyJob := w.Jobs["apply"]
+	event, ref := "push", "refs/heads/main"
+	switch scenario {
+	case "pull request":
+		event = "pull_request"
+	case "other branch":
+		ref = "refs/heads/other"
+	case "tag push":
+		ref = "refs/tags/main"
+	}
+	// Model the exact job condition and Environment gate before any caller step.
+	if applyJob.If != "github.event_name == 'push' && github.ref == 'refs/heads/main'" || applyJob.Environment != "settings-apply" {
+		t.Fatal("unmodeled caller approval boundary")
+	}
+	if event != "push" || ref != "refs/heads/main" || scenario == "waiting" || scenario == "rejected" {
+		result.trace = append(result.trace, scenario)
+		return
+	}
+	apply := newCompositeFixture(t)
+	if err := os.RemoveAll(filepath.Join(apply.caller, "action")); err != nil {
+		t.Fatal(err)
+	}
+	apply.base["GITHUB_EVENT_NAME"], apply.base["GITHUB_REF"] = event, ref
+	apply.base["GITHUB_SHA"], apply.base["GITHUB_REPOSITORY"] = apply.sha, "owner/config"
+	apply.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/settings-main.yml@refs/heads/main"
+	apply.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
+	context := map[string]string{
+		"github.repository": "owner/config", "github.repository_owner": "owner", "github.event.repository.name": "config", "github.sha": apply.sha,
+		"vars.SETTINGS_APP_CLIENT_ID": "fixture-client", "secrets.SETTINGS_APP_PRIVATE_KEY": "fixture-key",
+	}
+	checkout := applyJob.Steps[0]
+	repository := fixtureValue(t, checkout.With["repository"], context)
+	if repository == "" {
+		repository = context["github.repository"] // actions/checkout's containing-repository default.
+	}
+	if repository != "owner/config" || fixtureValue(t, checkout.With["ref"], context) != apply.git("rev-parse", "HEAD") || checkout.With["persist-credentials"] != "false" {
+		t.Fatal("main checkout did not select the triggering configuration without persisted credentials")
+	}
+	result.trace = append(result.trace, "checkout")
+	// Token minting and post-job revocation are local stubs, not GitHub operations.
+	app := applyJob.Steps[1]
+	if app.With["skip-token-revoke"] != "" && app.With["skip-token-revoke"] != "false" {
+		t.Fatal("default post-job token revocation disabled")
+	}
+	if scenario == "mint failure" {
+		context["secrets.SETTINGS_APP_PRIVATE_KEY"] = ""
+	}
+	for key, want := range map[string]string{"owner": "owner", "repositories": "config", "permission-administration": "write", "client-id": "fixture-client", "private-key": "fixture-key"} {
+		if fixtureValue(t, app.With[key], context) != want {
+			result.log, result.status = "dummy token provider rejected credentials\n", 1
+			return
+		}
+	}
+	result.minted = true
+	result.trace = append(result.trace, "mint")
+	defer func() {
+		result.revoked = true
+		result.trace = append(result.trace, "revoke")
+	}()
+	context["steps.app.outputs.token"] = "app-fixture"
+	extra := map[string]string{}
+	switch scenario {
+	case "apply failure":
+		extra["MOCK_REMOTE_STATUS"] = "37"
+	case "invalid configuration":
+		extra["MOCK_VALIDATE_STATUS"] = "37"
+	case "apply installation failure":
+		extra["RUNNER_OS"] = "Windows"
+	}
+	result.applied = apply.call(t, applyJob.Steps[2], context, extra)
+	result.status, result.summary = result.applied.status, result.applied.summary
+	result.log += result.applied.log
+	result.trace = append(result.trace, strings.Fields(result.applied.calls)...)
+	return
 }
 
 func runMainConsumerWorkflow(t *testing.T, scenario, workflowFile string) (result consumerResult) {
@@ -344,7 +470,7 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
 	// Model pinned caller wiring with candidate package bytes, not released tag bytes.
-	if ref != "9d01d3258d9f42239b2daeb1ac26bc532cd56105" {
+	if ref != strings.TrimPrefix(operationalAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") {
 		t.Fatalf("unmodeled public Action revision %s", ref)
 	}
 	overrides := map[string]string{
