@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Current source adds two squash commit defaults (unreleased; planned v0.12.0). Published v0.11.0 supports nine repository fields, topics and labels, using the same file-format version. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.12.0 supports eleven repository fields, topics and labels, using the same file-format version. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -32,9 +32,9 @@ v0.11.0 export includes the value after a complete read. Plan uses the same fixe
 
 Published v0.10.0 does not accept this key. The pinned v0.11.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
 
-## Squash commit defaults (unreleased; planned v0.12.0)
+## Squash commit defaults (v0.12.0)
 
-Current source adds two optional string enums to `settings.repository`, using `schemaVersion: 1`:
+v0.12.0 adds two optional string enums to `settings.repository`, using `schemaVersion: 1`:
 
 | Field | Exact accepted values |
 | --- | --- |
@@ -55,7 +55,7 @@ Omission leaves each field unmanaged. Title-only declarations are valid; message
 
 Export includes both values only after a complete read. Plan uses the fixed merge-related GraphQL query, compares declared fields in title-then-message order after branch deletion, and presents string values. Apply includes only declared fields in the existing Administration-write repository PATCH, without a preliminary read or inferred companion values. Existing token permissions are sufficient for that PATCH; no additional resource family is introduced. The [feature contract](features/squash-commit-defaults.feature.md) records read validation, hosted evidence and test mappings.
 
-Published v0.11.0 and the currently pinned Action reject these keys. Use a source build until the intended v0.12.0 package is published and verified; update consumer pins before adopting them.
+Published v0.11.0 and the currently pinned Action reject these keys. Verify the v0.12.0 package and update consumer pins before adopting them.
 
 ## Topics
 
