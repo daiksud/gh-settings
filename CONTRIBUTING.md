@@ -8,7 +8,7 @@ This guide is for people changing gh-settings itself: its code, tests, documenta
 2. Follow the [development guide](docs/contributing/development.md) to install the pinned tools, build, and run from source.
 3. Use the [architecture guide](docs/contributing/architecture.md) and [model glossary](docs/contributing/glossary.md) to find the code that owns the change.
 4. Validate the affected behavior using the [testing guide](docs/contributing/testing.md). It explains local checks, acceptance tests, CI, and the limits of each kind of evidence.
-5. Open a PR explaining the problem, the resulting behavior, and how you verified it. Address review feedback and let the required checks finish before merging.
+5. Open a PR explaining the problem, the resulting behavior, and how you verified it. Apply the [code-review policy](.agents/skills/code-review/SKILL.md), address review feedback, and let the required checks finish before merging.
 
 The repository's CI moves PRs through Draft and Ready states. Its review automation and settings workflows are described in [repository automation](docs/contributing/repository-automation.md); a successful bot workflow alone does not establish a current approval.
 
@@ -51,6 +51,7 @@ Choose the reader and the question first. Use one authoritative page for a detai
 | Tool setup, building, and making a code change | [Development guide](docs/contributing/development.md) |
 | Current design, code ownership, terminology, and future design boundaries | [Architecture](docs/contributing/architecture.md) and [glossary](docs/contributing/glossary.md) |
 | Test ownership, local/CI checks, and verification boundaries | [Testing guide](docs/contributing/testing.md) |
+| PR scope, squash-message requirements, compatibility review, and actionable findings | [Code-review policy](.agents/skills/code-review/SKILL.md) |
 | Internal metadata, plan-report, and Summary interfaces | [Actions internals](docs/contributing/actions-internals.md) |
 | This repository's PR controls, settings workflows, Environment, and App bindings | [Repository automation](docs/contributing/repository-automation.md) |
 | Maintainer release preparation, publication, and recovery | [Release guide](docs/contributing/releases.md) |
@@ -79,7 +80,7 @@ ADRs and behavior specifications remain at their existing paths so decision numb
 After installing the pinned tools, run from the repository root:
 
 ```sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions
+mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md AGENTS.md .agents .github/pull_request_template.md docs examples/github-actions
 git diff --check
 ```
 

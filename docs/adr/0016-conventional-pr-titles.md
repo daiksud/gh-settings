@@ -10,7 +10,7 @@ sources:
 
 ## Status
 
-Accepted — enforced in PR CI; automatic version calculation remains future work.
+Accepted — enforced in PR CI; automatic version calculation remains future work. [ADR 0024](0024-code-review-policy.md) supersedes the breaking-change notation below for review, requiring both markers; the syntax validator still permits either alone.
 
 ## Context
 

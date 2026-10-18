@@ -35,7 +35,9 @@ Commitlint uses the conventional preset with only these additional style rules:
 
 The preset already enforces all of these style rules except lowercase scopes. The local configuration only enables `scope-case` and disables the preset's three line-length checks; all other preset rules are inherited unchanged.
 
-The configuration intentionally has no header, body, or footer line-length limit. The body may be empty. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Both `!` and `BREAKING CHANGE:` are supported. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
+The configuration intentionally has no header, body, or footer line-length limit. Commitlint permits an empty body and either breaking-change marker alone. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
+
+Apply the [code-review policy](../../.agents/skills/code-review/SKILL.md) in addition to these syntax checks. It requires one coherent type/scope, a durable explanation in the body, and both `!` in the title and a `BREAKING CHANGE:` footer with impact and migration for every incompatible change. [ADR 0024](../adr/0024-code-review-policy.md) records this stricter review requirement.
 
 To check a proposed squash message locally after `mise install`:
 
@@ -76,7 +78,7 @@ mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml examples/
 mise exec -- shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh action/*.sh .github/scripts/*.sh
 mise exec -- bash tests/release.sh
 mise exec -- bash tests/github-actions/action-install.sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions
+mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md AGENTS.md .agents .github/pull_request_template.md docs examples/github-actions
 ```
 
 [Process acceptance](testing.md#local-process-acceptance) runs separately against an explicitly supplied executable. For documentation changes, the Markdown check validates local file links and heading fragments as well as formatting.

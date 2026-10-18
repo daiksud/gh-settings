@@ -89,7 +89,7 @@ These are historical compatibility facts, not changes to apply retroactively. [A
 
 Version selection remains manual. [ADR 0016](../adr/0016-conventional-pr-titles.md) records the enforced Conventional Commits PR-title and body validation. [ADR 0017](../adr/0017-pr-based-semver.md) describes future automatic version calculation from all PRs merged since the previous release.
 
-The agreed future precedence is: any breaking change implies major; otherwise a new feature implies minor; otherwise patch. No special pre-1.0 exception has been decided. The exact title signal for every breaking change remains unresolved; requiring `!` was suggested but is not a current title rule. These decisions do not implement automatic version calculation or dispatch.
+The agreed future precedence is: any breaking change implies major; otherwise a new feature implies minor; otherwise patch. No special pre-1.0 exception has been decided. [ADR 0024](../adr/0024-code-review-policy.md) resolves the notation question: review requires both `!` in the title and a `BREAKING CHANGE:` footer with impact and migration for every incompatible change. These decisions do not implement automatic version calculation or dispatch.
 
 ## Release decisions
 
