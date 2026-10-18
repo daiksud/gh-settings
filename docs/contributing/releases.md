@@ -87,7 +87,7 @@ These are historical compatibility facts, not changes to apply retroactively. [A
 
 ## Future automatic versioning
 
-Version selection remains manual. [ADR 0016](../adr/0016-conventional-pr-titles.md) and [ADR 0017](../adr/0017-pr-based-semver.md) record future Conventional Commits PR-title validation and version calculation from all PRs merged since the previous release.
+Version selection remains manual. [ADR 0016](../adr/0016-conventional-pr-titles.md) records the enforced Conventional Commits PR-title and body validation. [ADR 0017](../adr/0017-pr-based-semver.md) describes future automatic version calculation from all PRs merged since the previous release.
 
 The agreed future precedence is: any breaking change implies major; otherwise a new feature implies minor; otherwise patch. No special pre-1.0 exception has been decided. The exact title signal for every breaking change remains unresolved; requiring `!` was suggested but is not a current title rule. These decisions do not implement automatic version calculation or dispatch.
 
@@ -99,7 +99,8 @@ The agreed future precedence is: any breaking change implies major; otherwise a 
 | Exact tested binaries | [ADR 0012](../adr/0012-publish-tested-binaries.md) |
 | Immutable tags and complete drafts | [ADR 0013](../adr/0013-immutable-release-identity.md), [ADR 0014](../adr/0014-draft-release-publication.md) |
 | Raw executable distribution | [ADR 0015](../adr/0015-raw-extension-binaries.md) |
-| Future title and version rules | [ADR 0016](../adr/0016-conventional-pr-titles.md), [ADR 0017](../adr/0017-pr-based-semver.md) |
+| Enforced PR message validation | [ADR 0016](../adr/0016-conventional-pr-titles.md) |
+| Future automatic version calculation | [ADR 0017](../adr/0017-pr-based-semver.md) |
 | Immutable published assets | [ADR 0018](../adr/0018-preserve-published-assets.md) |
 
 The [release feature specification](../features/release.feature.md) maps the behavior to tests. [`tests/release.sh`](../../tests/release.sh) uses a local `gh` stand-in for first publication, completed retries, incomplete drafts, conflicts, altered bytes, and tag rechecks. Those tests create no real tags/releases; an authorized workflow run establishes operational publication evidence.
