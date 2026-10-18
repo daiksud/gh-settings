@@ -1,6 +1,6 @@
 # Repository automation
 
-This guide is for maintainers of **daiksud/gh-settings**. For installing gh-settings workflows in another repository, use the [GitHub Actions guide](../github-actions.md) and [examples](../../examples/github-actions/README.md).
+This guide is for maintainers of **daiksud/gh-settings**. For installing gh-settings workflows in another repository, use the [GitHub Actions guide](../github-actions.md) and [examples](../../examples/github-actions/README.md). The public guide explains [how to protect the apply path](../github-actions.md#protect-the-apply-path); this page maps those responsibilities to this repository's workflows and controls.
 
 The workflow files describe source-controlled behavior. Required reviews/checks, Environment protection rules, App installations, secrets, and event-policy eligibility are configured separately on GitHub; inspect those settings when assessing the current operational state.
 
@@ -22,7 +22,20 @@ The PR CI workflow sets Draft, runs commit-stage, then marks the PR Ready before
 
 Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready jobs have write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state changes; the workflow does not bypass them.
 
-This validation pipeline does not merge, publish, or deploy. Use [testing](testing.md#ci-validation) to interpret its results and inspect the applicable [repository rules](https://github.com/daiksud/gh-settings/rules) for the current merge requirements. A passing source test does not show which checks GitHub requires externally.
+This validation pipeline does not merge, publish, or deploy. Use [testing](testing.md#ci-validation) to interpret its results. GitHub's protected-main and Environment configuration determine whether a reviewed change can reach apply; a passing source test does not configure those controls.
+
+## Protected main and required checks
+
+The active [default-branch ruleset](https://github.com/daiksud/gh-settings/rules/24911852) requires one approving review, dismisses stale approvals when new commits are pushed, requires CODEOWNER review and resolved review threads, and requires strict `pass` and `gh-settings` checks from the GitHub Actions App. No bypass actors are configured. Recheck the live ruleset when assessing enforcement: these are GitHub settings, not properties created by the workflow files.
+
+| Required check | Source and purpose | Limit |
+| --- | --- | --- |
+| `pass` | [PR CI](../../.github/workflows/ci-pr.yml) aggregates acceptance and composite smoke; the ordinary suite also includes the Environment scope assertion | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's App/name does not identify a unique workflow |
+
+See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring both names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
+
+After a permitted merge, a matching main push starts the settings workflow. Whether the selected Environment adds a separate deployment approval depends on its live reviewer configuration. If PR review is intended to be the only manual approval, apply the [documented conditions for that mode](../github-actions.md#when-pr-review-is-the-only-manual-approval) and [verify the protection](../github-actions.md#verify-the-protection-before-use), including check-source identity. Neither a source comment nor `environment: gh-settings` establishes whether a reviewer gate is currently enabled.
 
 ## Active settings workflows
 
@@ -34,7 +47,9 @@ The main caller runs only on a push to `main` changing `.github/settings.yml` or
 
 The token-creation step references `vars.ANSWER26_CLIENT_ID` and `secrets.ANSWER26_PRIVATE_KEY`, limits installation scope to the triggering owner/repository, and requests Administration write. The resulting token is passed only to the Action's apply input; the token Action owns its normal post-job revocation. Source checks verify those bindings, not the remote App installation or actual token revocation.
 
-Labels support in the current-source CLI is not available in these pinned callers or the released CLI selected by the current Action package. Future adoption requires a matching release and reviewed caller pins. It also requires reviewing the [label API permissions](../features/labels.feature.md#api-and-permissions): Issues or Pull requests read for authenticated listing, and either permission at write level for mutations. Public listing is available without those permissions, but Administration write alone does not grant label writes. The source feature does not expand the existing App token, workflow permissions, or managed configuration.
+The adopted package supports labels, and [this repository's configuration](../../.github/settings.yml) declares their definitions alongside repository fields and topics. The caller still requests only Administration write, without Issues or Pull requests write. Public label listing can work without those grants; label mutations require one of them at write level. A release pin, public listing, or successful read does not establish mutation permission. See the [label permission contract](../github-actions.md#labels-and-permissions) before changing those definitions or token requests.
+
+When the fresh labels comparison performed by apply has no operations, that invocation sends no label mutations. An earlier zero-difference PR plan does not guarantee that result: labels can change before apply reads them. It also does not make the whole apply write-free, because declared repository fields and topics retain their direct PATCH/PUT behavior. A labels read or mutation failure occurs after those earlier writes and does not roll them back. Any claim that an adoption or run performed no label writes needs evidence for that exact execution, not just a prior plan or the generic success message.
 
 There is no prepare/handoff job or main-side pre-approval plan. The PR Summary and exact committed configuration provide review context; direct apply does not consume a saved plan and may overwrite intervening changes to managed values. The presence of `environment: gh-settings` identifies the selected Environment but does not establish whether reviewers are currently configured.
 
@@ -44,9 +59,11 @@ The [guard workflow](../../.github/workflows/settings-environment-guard.yml) che
 
 The policy requires exactly one literal `gh-settings` Environment reference, in `.github/workflows/settings-main.yml` under job `apply`. It also verifies that this workflow's only event is a push to the exact `main` branch. It rejects additional `gh-settings` references, dynamic Environment names, workflow/job aliases or merges, duplicate mapping keys, dynamic job names, and job-level reusable-workflow calls that could select an unseen Environment. Unrelated literal Environment names are allowed.
 
+The guard does not inspect the allowed apply job's step bodies, approve Action revisions, restrict its API operations, validate actual token grants, or configure remote Environment/ruleset settings. The allowed job could still be changed to execute code with privileged credentials. Review that job, its referenced code, and changes to the guard/policy itself under the [apply-path protection guidance](../github-actions.md#protect-the-apply-path); later runs use whatever policy has been merged into `main`.
+
 The dedicated check name is **`gh-settings`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `pass`.
 
-These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). A same-named GitHub Actions job can therefore be ambiguous; the name-reservation test only applies when the trusted policy actually executes.
+These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). Selecting GitHub Actions as the required check provider identifies the App, not this guard's workflow file. Another Actions job can report the same name, so a green `gh-settings` result alone is not proof that the trusted guard ran. The name-reservation test prevents collisions only when the trusted policy actually executes.
 
 When evaluating enforcement, inspect the applicable required checks and allowed check providers, actual guard run, Environment deployment branches/reviewers, and [`pull_request_target` event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target). The repository YAML does not establish those external settings or enforce policy across other repositories. This guide records the guard's behavior and limits without prescribing a change to external approval configuration.
 
@@ -60,6 +77,6 @@ The mechanism does not verify the reviewed HEAD or the latest Ready-triggered re
 
 ## Inspect external configuration
 
-Use [repository rules](https://github.com/daiksud/gh-settings/rules), [Environments](https://github.com/daiksud/gh-settings/settings/environments), and [Actions settings](https://github.com/daiksud/gh-settings/settings/actions) when diagnosing blocked or unexpected execution. Confirm the required check results for the intended commit, the selected Environment's restrictions, the App installation/credential bindings, and whether GitHub permits the workflow event.
+Use [repository rules](https://github.com/daiksud/gh-settings/rules), [Environments](https://github.com/daiksud/gh-settings/settings/environments), and [Actions settings](https://github.com/daiksud/gh-settings/settings/actions) when diagnosing blocked or unexpected execution. Follow [verification before use](../github-actions.md#verify-the-protection-before-use): confirm the required check results and their actual workflow/source for the intended commit, the selected Environment's branch/tag and reviewer restrictions, bypass settings, App installation/credential bindings, and whether GitHub permits the workflow event.
 
 [Operational fixtures](../../tests/github-actions/operational_test.go) and the [test evidence boundaries](testing.md#release-and-publication-evidence) help distinguish source correctness from those external settings. Release dispatch and recovery have their own [maintainer runbook](releases.md).
