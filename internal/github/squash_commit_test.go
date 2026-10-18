@@ -13,7 +13,7 @@ import (
 )
 
 func TestSquashCommitReadRejectsIncompleteEnums(t *testing.T) {
-	base := map[string]any{"mergeCommitAllowed": false, "squashMergeAllowed": true, "rebaseMergeAllowed": false, "deleteBranchOnMerge": true, "squashMergeCommitTitle": "PR_TITLE", "squashMergeCommitMessage": "BLANK"}
+	base := map[string]any{"mergeCommitAllowed": false, "squashMergeAllowed": true, "rebaseMergeAllowed": false, "deleteBranchOnMerge": true, "autoMergeAllowed": false, "allowUpdateBranch": false, "squashMergeCommitTitle": "PR_TITLE", "squashMergeCommitMessage": "BLANK"}
 	for _, field := range []string{"squashMergeCommitTitle", "squashMergeCommitMessage"} {
 		for _, value := range []any{nil, "", true, float64(0), "unknown", "COMMIT_MESSAGES", "PR_TITLE", "missing"} {
 			if field == "squashMergeCommitTitle" && value == "PR_TITLE" || field == "squashMergeCommitMessage" && value == "COMMIT_MESSAGES" {

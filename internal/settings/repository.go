@@ -20,6 +20,8 @@ type RepositoryDeclaration struct {
 	AllowSquashMerge         *bool
 	AllowRebaseMerge         *bool
 	DeleteBranchOnMerge      *bool
+	AllowAutoMerge           *bool
+	AllowUpdateBranch        *bool
 	SquashMergeCommitTitle   *string
 	SquashMergeCommitMessage *string
 }
@@ -36,13 +38,13 @@ func (d RepositoryDeclaration) BaseEmpty() bool {
 
 // MergeMethodsEmpty keeps the GraphQL read optional for existing declarations.
 func (d RepositoryDeclaration) MergeMethodsEmpty() bool {
-	return d.AllowMergeCommit == nil && d.AllowSquashMerge == nil && d.AllowRebaseMerge == nil && d.DeleteBranchOnMerge == nil && d.SquashMergeCommitTitle == nil && d.SquashMergeCommitMessage == nil
+	return d.AllowMergeCommit == nil && d.AllowSquashMerge == nil && d.AllowRebaseMerge == nil && d.DeleteBranchOnMerge == nil && d.AllowAutoMerge == nil && d.AllowUpdateBranch == nil && d.SquashMergeCommitTitle == nil && d.SquashMergeCommitMessage == nil
 }
 
 // MergeMethodsState is complete only after all merge-related GraphQL values are validated.
 type MergeMethodsState struct {
-	AllowMergeCommit, AllowSquashMerge, AllowRebaseMerge, DeleteBranchOnMerge bool
-	SquashMergeCommitTitle, SquashMergeCommitMessage                          string
+	AllowMergeCommit, AllowSquashMerge, AllowRebaseMerge, DeleteBranchOnMerge, AllowAutoMerge, AllowUpdateBranch bool
+	SquashMergeCommitTitle, SquashMergeCommitMessage                                                             string
 }
 
 // CompareMergeMethods uses only declared fields, in the repository's stable order.
@@ -57,6 +59,8 @@ func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaratio
 		{"repository.allow_squash_merge", current.AllowSquashMerge, desired.AllowSquashMerge},
 		{"repository.allow_rebase_merge", current.AllowRebaseMerge, desired.AllowRebaseMerge},
 		{"repository.delete_branch_on_merge", current.DeleteBranchOnMerge, desired.DeleteBranchOnMerge},
+		{"repository.allow_auto_merge", current.AllowAutoMerge, desired.AllowAutoMerge},
+		{"repository.allow_update_branch", current.AllowUpdateBranch, desired.AllowUpdateBranch},
 	} {
 		if field.after == nil {
 			continue

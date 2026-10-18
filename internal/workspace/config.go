@@ -20,6 +20,8 @@ type repositoryDocument struct {
 	AllowSquashMerge         *bool   `yaml:"allow_squash_merge,omitempty"`
 	AllowRebaseMerge         *bool   `yaml:"allow_rebase_merge,omitempty"`
 	DeleteBranchOnMerge      *bool   `yaml:"delete_branch_on_merge,omitempty"`
+	AllowAutoMerge           *bool   `yaml:"allow_auto_merge,omitempty"`
+	AllowUpdateBranch        *bool   `yaml:"allow_update_branch,omitempty"`
 	SquashMergeCommitTitle   *string `yaml:"squash_merge_commit_title,omitempty"`
 	SquashMergeCommitMessage *string `yaml:"squash_merge_commit_message,omitempty"`
 }
@@ -42,7 +44,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	document.Settings.Repository = repositoryDocument{
 		Description: declaration.Repository.Description, Homepage: declaration.Repository.Homepage,
 		HasIssues: declaration.Repository.HasIssues, HasProjects: declaration.Repository.HasProjects, HasWiki: declaration.Repository.HasWiki,
-		AllowMergeCommit: declaration.Repository.AllowMergeCommit, AllowSquashMerge: declaration.Repository.AllowSquashMerge, AllowRebaseMerge: declaration.Repository.AllowRebaseMerge, DeleteBranchOnMerge: declaration.Repository.DeleteBranchOnMerge,
+		AllowMergeCommit: declaration.Repository.AllowMergeCommit, AllowSquashMerge: declaration.Repository.AllowSquashMerge, AllowRebaseMerge: declaration.Repository.AllowRebaseMerge, DeleteBranchOnMerge: declaration.Repository.DeleteBranchOnMerge, AllowAutoMerge: declaration.Repository.AllowAutoMerge, AllowUpdateBranch: declaration.Repository.AllowUpdateBranch,
 		SquashMergeCommitTitle: declaration.Repository.SquashMergeCommitTitle, SquashMergeCommitMessage: declaration.Repository.SquashMergeCommitMessage,
 	}
 	if declaration.Topics.Names != nil {
@@ -172,7 +174,7 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 			} else {
 				repository.Homepage = &text
 			}
-		case "has_issues", "has_projects", "has_wiki", "allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge":
+		case "has_issues", "has_projects", "has_wiki", "allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge", "allow_auto_merge", "allow_update_branch":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
 				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean", field)
 			}
@@ -198,6 +200,10 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 				repository.AllowRebaseMerge = &parsed
 			case "delete_branch_on_merge":
 				repository.DeleteBranchOnMerge = &parsed
+			case "allow_auto_merge":
+				repository.AllowAutoMerge = &parsed
+			case "allow_update_branch":
+				repository.AllowUpdateBranch = &parsed
 			}
 		default:
 			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)

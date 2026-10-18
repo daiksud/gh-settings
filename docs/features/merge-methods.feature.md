@@ -21,7 +21,7 @@ settings:
 
 - Omitted fields remain unmanaged. Explicit false is a declared value and is included in PATCH; GitHub defaults never fill omitted fields.
 - Values must be YAML booleans spelled true or false under the existing parser rules. Null, strings, numbers, collections, duplicate keys and unsupported settings fail validation before API access. Aliases and merge keys retain their existing behavior.
-- Base fields compare first, followed by `allow_merge_commit`, `allow_squash_merge`, `allow_rebase_merge`, then the `delete_branch_on_merge` field added in v0.11.0, then the current-source squash commit title/message enums, then topics and labels. Each declared boolean counts as one managed field.
+- Base fields compare first, followed by `allow_merge_commit`, `allow_squash_merge`, `allow_rebase_merge`, then the `delete_branch_on_merge` field added in v0.11.0, then current-source auto-merge and branch-update booleans, then the squash commit title/message enums, then topics and labels. Each declared boolean counts as one managed field.
 
 ### Rule: Read merge methods without write permissions
 
@@ -40,7 +40,7 @@ An [isolated Actions experiment](https://github.com/daiksud/gh-settings/actions/
 
 - Plan calls this deferred read only when a merge-related field is declared. Existing declarations that omit all four source fields retain their existing API reads and credentials.
 - A merge-method-only plan needs only GraphQL; the base repository REST read is skipped. Metadata, Summary and unmanaged local no-ops do not initialize a GraphQL client.
-- Export reads base repository settings, merge methods, topics and labels, then serializes all eleven repository values in current source (nine in published v0.11.0 and eight in v0.10.0) and complete collections. All reads and serialization finish before opening the destination. Published v0.9.0 export retains its original five-field repository shape.
+- Export reads base repository settings, merge methods, topics and labels, then serializes all thirteen repository values in current source (eleven in v0.12.0, nine in published v0.11.0 and eight in v0.10.0) and complete collections. All reads and serialization finish before opening the destination. Published v0.9.0 export retains its original five-field repository shape.
 - The adapter retains the existing gh host/authentication, Unix-socket fixture support and 30-second read timeout through the already-used go-gh dependency. There is no caller-supplied query, target or mutation path.
 - Missing/null repository or fields, wrong scalar types, HTTP/transport/JSON failure, or any GraphQL errors fail the whole read. Partial data with errors is discarded. Neither plan nor export synthesizes false or falls back to a privileged REST read.
 
@@ -50,7 +50,7 @@ Apply uses the existing `PATCH /repos/{owner}/{repo}` and [Administration write 
 
 Existing target resolution, write timeout, redirect rejection, failure propagation and partial-failure behavior remain unchanged. This feature does not change root managed configuration, live merge policy, App grants, PR token permissions, consumer pins, or release selection. GitHub may reject combinations that pass local boolean validation; no additional merge policy is inferred locally.
 
-CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. The maximum current-source managed count is thirteen: eleven repository fields, topics and labels. Published v0.10.0 retains its ten-item limit. Reports remain presentation data, never apply input.
+CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. The maximum current-source managed count is fifteen: thirteen repository fields, topics and labels. Published v0.10.0 retains its ten-item limit. Reports remain presentation data, never apply input.
 
 ### Test mapping
 
