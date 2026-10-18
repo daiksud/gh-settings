@@ -30,7 +30,7 @@ v0.11.0 adds optional `settings.repository.delete_branch_on_merge`, a boolean co
 
 v0.11.0 export includes the value after a complete read. Plan uses the same fixed GraphQL read as merge methods; apply sends only declared fields through the existing Administration-write REST PATCH, with no preliminary read. Missing/null/invalid data or any GraphQL error fails the read instead of becoming false. See the [feature contract and read-only Actions evidence](features/delete-branch-on-merge.feature.md).
 
-Published v0.10.0 does not accept this key. The pinned v0.13.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
+Published v0.10.0 does not accept this key. The pinned v0.14.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
 
 ## Squash commit defaults (v0.12.0)
 
@@ -55,7 +55,7 @@ Omission leaves each field unmanaged. Title-only declarations are valid; message
 
 Export includes both values only after a complete read. Plan uses the fixed merge-related GraphQL query, compares declared fields in title-then-message order after branch deletion, and presents string values. Apply includes only declared fields in the existing Administration-write repository PATCH, without a preliminary read or inferred companion values. Existing token permissions are sufficient for that PATCH; no additional resource family is introduced. The [feature contract](features/squash-commit-defaults.feature.md) records read validation, hosted evidence and test mappings.
 
-Published v0.11.0 rejects these keys. The pinned v0.13.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
+Published v0.11.0 rejects these keys. The pinned v0.14.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
 
 ## Auto-merge and branch updates (v0.13.0)
 
@@ -75,7 +75,7 @@ settings:
 
 Each field is independent: omission remains unmanaged, explicit `false` is retained, and null/wrong types fail local validation. Neither value is synthesized. Export includes both after a complete fixed GraphQL read; plan reads only when a merge-related field is declared and compares declared fields only. Missing/null/wrong-typed observations or partial GraphQL errors fail the complete read. Apply sends declared fields only through the existing Administration-write REST PATCH, with no preliminary read or additional permissions.
 
-Published v0.12.0 rejects these keys. The pinned v0.13.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
+Published v0.12.0 rejects these keys. The pinned v0.14.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
 
 ## Merge commit defaults (v0.14.0)
 
@@ -100,7 +100,7 @@ Omission remains unmanaged; title-only is valid. Message requires an explicit `m
 
 Export reads both values in the fixed complete GraphQL observation. Plan compares declared fields only; missing/null/invalid data or partial GraphQL errors fail the whole read. Apply sends declared values only through the existing Administration-write repository PATCH, with no preliminary read or implicit companion values. See the [feature contract](features/merge-commit-defaults.feature.md) for exact API mapping, hosted evidence and tests.
 
-Published v0.13.0 and currently pinned examples reject these keys. Verify the v0.14.0 package and update consumer pins before adopting them.
+Published v0.13.0 rejects these keys. The pinned v0.14.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
 
 ## Topics
 
@@ -130,7 +130,7 @@ Topic reads require Metadata read; public resources may be read without authenti
 
 ## Labels
 
-`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.13.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
+`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.14.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
 
 ```yaml
 schemaVersion: 1
