@@ -4,7 +4,7 @@ Copy these workflows into the repository whose settings you want to manage. The 
 
 Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
-The selected v0.10.0 package supports all eight repository fields including merge methods, topics and labels. Label collections are authoritative; review their [deletion consequences and permission requirements](../../docs/github-actions.md#labels-and-permissions) before adoption.
+The selected v0.11.0 package supports all nine repository fields including merge methods and automatic branch deletion, topics and labels. Label collections are authoritative; review their [deletion consequences and permission requirements](../../docs/github-actions.md#labels-and-permissions) before adoption.
 
 ## Copy the workflows
 
