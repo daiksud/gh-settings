@@ -21,7 +21,7 @@ Keep decision numbers and paths stable. Record a superseding decision and update
 | 0013 | [Never overwrite an existing release tag](0013-immutable-release-identity.md) |
 | 0014 | [Publish only a complete draft release](0014-draft-release-publication.md) |
 | 0015 | [Distribute GitHub CLI compatible raw executables](0015-raw-extension-binaries.md) |
-| 0016 | [Use strict Conventional Commits PR titles](0016-conventional-pr-titles.md) |
+| 0016 | [Validate PR squash messages as Conventional Commits](0016-conventional-pr-titles.md) |
 | 0017 | [Derive future SemVer bumps from merged PRs](0017-pr-based-semver.md) |
 | 0018 | [Never overwrite published release assets](0018-preserve-published-assets.md) |
 | 0019 | [Reject explicit null for the first five settings](0019-reject-explicit-null.md) |
