@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Published v0.9.0 supports five repository fields, topics and labels, using the same file-format version. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.10.0 supports eight repository fields, topics and labels, using the same file-format version. The pinned v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -18,11 +18,11 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
-## Merge methods (unreleased)
+## Merge methods (v0.10.0)
 
-Current source adds optional `allow_merge_commit`, `allow_squash_merge` and `allow_rebase_merge` booleans under `settings.repository`. Omission remains unmanaged, explicit false is retained, and null/wrong types fail validation. These fields extend the repository group; they are not a new resource family. Published v0.9.0 does not accept them.
+v0.10.0 adds optional `allow_merge_commit`, `allow_squash_merge` and `allow_rebase_merge` booleans under `settings.repository`. Omission remains unmanaged, explicit false is retained, and null/wrong types fail validation. These fields extend the repository group; they are not a new resource family. Published v0.9.0 does not accept them.
 
-The [merge-method contract](features/merge-methods.feature.md) defines their narrow GraphQL read path, strict complete-read handling, unchanged REST PATCH semantics and read-only Actions evidence. Plan reads them only when declared; source export includes all three after a complete read. Review source-exported configuration before using an older pinned CLI/Action.
+The [merge-method contract](features/merge-methods.feature.md) defines their narrow GraphQL read path, strict complete-read handling, unchanged REST PATCH semantics and read-only Actions evidence. Plan reads them only when declared; v0.10.0 export includes all three after a complete read. Review exported configuration before using an older pinned CLI/Action.
 
 ## Topics
 
