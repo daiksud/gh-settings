@@ -22,4 +22,4 @@ The v0.11.0 [automatic branch-deletion setting](delete-branch-on-merge.feature.m
 
 The v0.12.0 [squash commit defaults](squash-commit-defaults.feature.md) add two optional repository enums with explicit message/title dependency and the same read/write paths.
 
-The unreleased [auto-merge and branch-update options](pull-request-options.feature.md) add two independent repository booleans through the existing fixed GraphQL read and direct REST PATCH.
+The v0.13.0 [auto-merge and branch-update options](pull-request-options.feature.md) add two independent repository booleans through the existing fixed GraphQL read and direct REST PATCH.

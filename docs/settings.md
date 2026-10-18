@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Current source adds two pull request option booleans (unreleased; planned v0.13.0). Published v0.12.0 supports eleven repository fields, topics and labels, using the same file-format version. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.13.0 supports thirteen repository fields, topics and labels, using the same file-format version. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -57,9 +57,9 @@ Export includes both values only after a complete read. Plan uses the fixed merg
 
 Published v0.11.0 rejects these keys. The pinned v0.12.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
 
-## Auto-merge and branch updates (unreleased; planned v0.13.0)
+## Auto-merge and branch updates (v0.13.0)
 
-Current source adds optional `allow_auto_merge` and `allow_update_branch` booleans to `settings.repository`, using the existing `schemaVersion: 1` format:
+v0.13.0 adds optional `allow_auto_merge` and `allow_update_branch` booleans to `settings.repository`, using the existing `schemaVersion: 1` format:
 
 ```yaml
 schemaVersion: 1
@@ -75,7 +75,7 @@ settings:
 
 Each field is independent: omission remains unmanaged, explicit `false` is retained, and null/wrong types fail local validation. Neither value is synthesized. Export includes both after a complete fixed GraphQL read; plan reads only when a merge-related field is declared and compares declared fields only. Missing/null/wrong-typed observations or partial GraphQL errors fail the complete read. Apply sends declared fields only through the existing Administration-write REST PATCH, with no preliminary read or additional permissions.
 
-Published v0.12.0 and currently pinned examples reject these keys. Verify the intended v0.13.0 package and update consumer pins before adopting them. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
+Published v0.12.0 and currently pinned examples reject these keys. Verify the v0.13.0 package and update consumer pins before adopting them. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
 
 ## Topics
 
