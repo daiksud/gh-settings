@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-Current source supports `settings.repository.squash_merge_commit_title` and `squash_merge_commit_message` under `schemaVersion: 1` (unreleased; planned v0.12.0). Published v0.11.0 and currently pinned examples reject these keys. This extends the existing repository fields; it does not introduce a resource family, change merge methods, edit PR contents or perform a merge.
+CLI and Action v0.12.0 support `settings.repository.squash_merge_commit_title` and `squash_merge_commit_message` under `schemaVersion: 1`. Published v0.11.0 and currently pinned examples reject these keys. This extends the existing repository fields; it does not introduce a resource family, change merge methods, edit PR contents or perform a merge.
 
-The [configuration reference](../settings.md#squash-commit-defaults-unreleased-planned-v0120) owns the public declaration and value semantics.
+The [configuration reference](../settings.md#squash-commit-defaults-v0120) owns the public declaration and value semantics.
 
 ## API contract
 
@@ -27,7 +27,7 @@ Apply uses the existing repository REST PATCH with Administration write. It send
 
 Complete export saves eleven repository fields, complete topics and all label pages only after all reads and serialization succeed. Older v0.11.0 retains its nine-field shape.
 
-Stable comparison order is the five base fields, three merge-method booleans, branch deletion, squash title, squash message, topics and labels. Each declared repository field counts once. Current-source report/Summary accepts at most thirteen managed units; v0.11.0 retains eleven. Enum changes retain native JSON strings and quoted CLI/Summary values. Unknown, empty or wrong-typed enum report values are rejected. Reports remain presentation data, never apply input.
+Stable comparison order is the five base fields, three merge-method booleans, branch deletion, squash title, squash message, topics and labels. Each declared repository field counts once. v0.12.0 report/Summary accepts at most thirteen managed units; v0.11.0 retains eleven. Enum changes retain native JSON strings and quoted CLI/Summary values. Unknown, empty or wrong-typed enum report values are rejected. Reports remain presentation data, never apply input.
 
 ## Read-only hosted evidence
 
