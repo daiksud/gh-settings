@@ -25,7 +25,7 @@ Export saves thirteen repository fields plus complete topics and all label pages
 
 ## Hosted read evidence
 
-An isolated temporary Actions proof uses only Contents read and implicit Metadata read, without checkout, App credentials, Environment or write permissions. Its run link and observed values will be recorded after execution, then the probe removed from the final implementation diff. Local authenticated API reads alone do not prove ordinary Actions-token access.
+An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/runs/39112485520) returned `autoMergeAllowed: true` and `allowUpdateBranch: true` alongside all prior merge-related fields. Its effective permissions were Contents read and Metadata read only, without checkout, App credentials, Environment or writes. The temporary workflow is removed from the final implementation diff. This proves access for that token/repository, not every credential.
 
 ## Test mapping
 
