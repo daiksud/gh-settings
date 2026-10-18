@@ -19,6 +19,8 @@ Update with `gh extension upgrade gh-settings`, or uninstall with `gh extension 
 
 The published [v0.9.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.9.0) support basic repository settings, topics and labels. The Action examples below select this release. See the [label configuration contract](docs/settings.md#labels) before managing that collection.
 
+Current source additionally supports three [repository merge-method booleans](docs/features/merge-methods.feature.md). These are unreleased and are not available in the pinned v0.9.0 package.
+
 ## Quick start
 
 Run these commands inside the Git checkout whose settings you want to manage, including from a subdirectory.

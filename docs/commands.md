@@ -6,6 +6,8 @@ The four settings commands manage the GitHub.com repository containing the curre
 
 This reference describes published v0.9.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.9.0; older v0.8.0 packages do not support labels.
 
+Current source also supports unreleased [merge-method booleans](features/merge-methods.feature.md); published v0.9.0 does not accept those keys. Their GraphQL query runs only for declared fields during plan and always during source export. Existing repository PATCH behavior is retained.
+
 ## Interface and implementation status
 
 ```text
@@ -36,8 +38,9 @@ API operations use GitHub CLI authentication. Check access with `gh auth status`
 | --- | --- | --- |
 | Repository fields and topics | Metadata read | Administration write |
 | Labels | Issues or Pull requests read | Issues or Pull requests write |
+| Merge methods (unreleased) | GraphQL query; ordinary Actions Contents read verified | Administration write through REST PATCH |
 
-Administration write alone does not grant label write permission.[^github-labels] Source export always reads labels as well as repository fields/topics; source apply uses its apply credential for the fresh label read and any required mutations. Public reads may be unauthenticated. Local validation and valid declarations with no managed resources do not require an origin or authentication.
+Administration write alone does not grant label write permission.[^github-labels] Source export always reads labels as well as repository fields/topics; source apply uses its apply credential for the fresh label read and any required mutations. Public REST reads may be unauthenticated; GraphQL reads use an authenticated read token. Local validation and valid declarations with no managed resources do not require an origin or authentication.
 
 ## Topics command behavior
 

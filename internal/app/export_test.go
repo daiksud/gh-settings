@@ -37,7 +37,9 @@ func TestExportStoredSettings(t *testing.T) {
 			t.Setenv("GH_REPO", "other/repository")
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			calls := 0
-			err := Export(Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
+			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+				return settings.MergeMethodsState{}, nil
+			}, Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				if repo != target {
 					t.Fatalf("read target=%+v, want %+v", repo, target)
@@ -56,7 +58,7 @@ func TestExportStoredSettings(t *testing.T) {
 				t.Fatalf("error=%v reads=%d, want one read", err, calls)
 			}
 			got, err := os.ReadFile(path)
-			if err != nil || string(got) != test.want+"    topics:\n        names: []\n    labels: []\n" {
+			if err != nil || string(got) != test.want+"        allow_merge_commit: false\n        allow_squash_merge: false\n        allow_rebase_merge: false\n    topics:\n        names: []\n    labels: []\n" {
 				t.Fatalf("stored=%q error=%v, want %q", got, err, test.want)
 			}
 		})
@@ -93,7 +95,9 @@ func TestExportReadFailure(t *testing.T) {
 			}
 			readError := errors.New("read unavailable")
 			calls := 0
-			err := Export(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+				return settings.MergeMethodsState{}, nil
+			}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				checkUnchanged()
 				return settings.RepositoryState{}, readError
@@ -119,7 +123,9 @@ func TestExportTargetFailureBeforeRead(t *testing.T) {
 				t.Chdir(t.TempDir())
 			}
 			calls := 0
-			err := Export(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+				return settings.MergeMethodsState{}, nil
+			}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				return settings.RepositoryState{}, nil
 			}, Topics: func(repository.Repository) ([]string, error) { return []string{}, nil }, Labels: func(repository.Repository) ([]settings.LabelState, error) { return []settings.LabelState{}, nil }})
@@ -139,7 +145,9 @@ func TestExportStorageFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	err := Export(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+	err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+		return settings.MergeMethodsState{}, nil
+	}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
 		calls++
 		return settings.RepositoryState{}, nil
 	}, Topics: func(repository.Repository) ([]string, error) { return []string{}, nil }, Labels: func(repository.Repository) ([]settings.LabelState, error) { return []settings.LabelState{}, nil }})

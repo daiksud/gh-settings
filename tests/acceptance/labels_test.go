@@ -110,6 +110,10 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 				defer mu.Unlock()
 				paths = append(paths, r.Method+" "+r.URL.RequestURI())
 				w.Header().Set("Content-Type", "application/json")
+				if isMergeMethodsFixtureRead(r) {
+					fmt.Fprint(w, mergeMethodsFixtureResponse)
+					return
+				}
 				if r.Method != "GET" {
 					t.Error("export wrote")
 					w.WriteHeader(400)
@@ -188,7 +192,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			want := []string{"GET /repos/owner/current", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2"}
+			want := []string{"GET /repos/owner/current", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2"}
 			if !reflect.DeepEqual(paths, want) {
 				t.Fatalf("paths=%v", paths)
 			}

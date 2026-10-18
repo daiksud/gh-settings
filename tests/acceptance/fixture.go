@@ -1,11 +1,15 @@
 package acceptance
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -22,6 +26,11 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 		status = 200
 	}
 	return startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		if isMergeMethodsFixtureRead(r) {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprint(w, mergeMethodsFixtureResponse)
+			return
+		}
 		if r.Method == http.MethodGet && r.URL.Path == "/repos/owner/current/labels" {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, `[]`)
@@ -67,7 +76,7 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, err
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
-		if readOnly && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
+		if readOnly && !isMergeMethodsFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
 			fixture.invalid.Store(true)
 			http.Error(w, "unexpected fixture request", 400)
 			return
@@ -101,4 +110,27 @@ func (fixture *apiFixture) checkRequests(noRead bool) error {
 		return fmt.Errorf("CLI did not use the local API fixture")
 	}
 	return nil
+}
+
+const mergeMethodsFixtureResponse = `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":false,"rebaseMergeAllowed":false}}}`
+
+// Only this fixed query to the fixture repository is read-only, never arbitrary POSTs.
+func isMergeMethodsFixtureRead(r *http.Request) bool {
+	if r.Method != http.MethodPost || r.URL.Path != "/graphql" {
+		return false
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return false
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	var query struct {
+		Query     string            `json:"query"`
+		Variables map[string]string `json:"variables"`
+	}
+	if err := json.Unmarshal(body, &query); err != nil {
+		return false
+	}
+	expected := `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed } }`
+	return strings.Join(strings.Fields(query.Query), " ") == expected && len(query.Variables) == 2 && query.Variables["owner"] == "owner" && query.Variables["name"] == "current"
 }

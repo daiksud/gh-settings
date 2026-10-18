@@ -25,6 +25,13 @@ func Export(read Reader) error {
 		Description: &current.Description, Homepage: &current.Homepage,
 		HasIssues: &current.HasIssues, HasProjects: &current.HasProjects, HasWiki: &current.HasWiki,
 	}}
+	methods, err := read.MergeMethods(repo)
+	if err != nil {
+		return err
+	}
+	declaration.Repository.AllowMergeCommit = &methods.AllowMergeCommit
+	declaration.Repository.AllowSquashMerge = &methods.AllowSquashMerge
+	declaration.Repository.AllowRebaseMerge = &methods.AllowRebaseMerge
 	names, err := read.Topics(repo)
 	if err != nil {
 		return err

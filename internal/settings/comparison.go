@@ -13,7 +13,7 @@ type Change struct {
 	Before, After any
 }
 
-// CompareRepository compares declared fields in a stable order without rendering them.
+// CompareRepository compares the REST-observed base fields without rendering them.
 func CompareRepository(current RepositoryState, desired RepositoryDeclaration) Comparison {
 	var result Comparison
 	stringField := func(name, current string, desired *string) {
