@@ -1,0 +1,32 @@
+name: Feature or improvement
+description: Propose a new capability or an improvement to existing behavior.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search [existing issues](https://github.com/daiksud/gh-settings/issues) for related requests.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the use case, who is affected, and what is difficult today.
+    validations:
+      required: true
+  - type: textarea
+    id: desired-outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the behavior you want and an example that would show the problem is solved.
+    validations:
+      required: true
+  - type: textarea
+    id: possible-approach
+    attributes:
+      label: Possible approach and alternatives
+      description: If you have ideas, share them along with alternatives or current workarounds. An implementation design is optional.
+  - type: textarea
+    id: related-context
+    attributes:
+      label: Related context
+      description: Link related issues, documentation, or GitHub API references that help explain the request.

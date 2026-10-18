@@ -12,6 +12,18 @@ This guide is for people changing gh-settings itself: its code, tests, documenta
 
 The repository's CI moves PRs through Draft and Ready states. Its review automation and settings workflows are described in [repository automation](docs/contributing/repository-automation.md); a successful bot workflow alone does not establish a current approval.
 
+## Issues and pull requests
+
+When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose), choose the template that fits the work:
+
+- **Bug report**: describe actual and expected behavior, reproduction steps, and the CLI version or Action ref and environment.
+- **Feature or improvement**: explain the problem and desired outcome; implementation ideas and alternatives are optional.
+- **Task**: define the purpose, scope, and completion criteria for refactoring, documentation, tests, or maintenance. Link prerequisites or follow-up work when relevant.
+
+Blank issues remain available for questions or work that does not fit these forms.
+
+The [PR template](.github/pull_request_template.md) asks why the change is needed, what behavior results, and which checks were actually run. Link related issues; use `Closes #123` only when the PR completes the issue. The [testing guide](docs/contributing/testing.md) helps select checks, and the documentation guidance below identifies the references to update when behavior changes.
+
 ## Where documentation belongs
 
 Choose the reader and the question first. Use one authoritative page for a detailed explanation, and link to it from other documents.
@@ -55,7 +67,7 @@ ADRs and behavior specifications remain at their existing paths so decision numb
 After installing the pinned tools, run from the repository root:
 
 ```sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md docs examples/github-actions
+mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions
 git diff --check
 ```
 

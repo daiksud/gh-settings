@@ -42,7 +42,7 @@ mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml examples/
 mise exec -- shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh action/*.sh .github/scripts/*.sh
 mise exec -- bash tests/release.sh
 mise exec -- bash tests/github-actions/action-install.sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md docs examples/github-actions
+mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions
 ```
 
 [Process acceptance](testing.md#local-process-acceptance) runs separately against an explicitly supplied executable. For documentation changes, the Markdown check validates local file links and heading fragments as well as formatting.
