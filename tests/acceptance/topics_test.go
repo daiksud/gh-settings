@@ -127,6 +127,10 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 				defer mu.Unlock()
 				paths = append(paths, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
+				if isMergeMethodsFixtureRead(r) {
+					fmt.Fprint(w, mergeMethodsFixtureResponse)
+					return
+				}
 				if r.Method != "GET" {
 					t.Errorf("unexpected write: %s", r.Method)
 					w.WriteHeader(400)
@@ -207,7 +211,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current/topics"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current/topics"}) {
 				t.Fatalf("requests=%v", paths)
 			}
 		})

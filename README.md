@@ -19,6 +19,8 @@ Update with `gh extension upgrade gh-settings`, or uninstall with `gh extension 
 
 The published [v0.9.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.9.0) support basic repository settings, topics and labels. The Action examples below select this release. See the [label configuration contract](docs/settings.md#labels) before managing that collection.
 
+Current source additionally supports three [repository merge-method booleans](docs/features/merge-methods.feature.md). These are unreleased and are not available in the pinned v0.9.0 package.
+
 ## Quick start
 
 Run these commands inside the Git checkout whose settings you want to manage, including from a subdirectory.
@@ -95,7 +97,7 @@ jobs:
 
 The pinned v0.9.0 Action supports `validate`, `plan`, and `apply` for repository settings, topics and labels. Validate needs no token; plan takes an explicit read token; repository/topic apply takes a target-scoped App installation token with Administration write; label mutations additionally require Issues or Pull requests write. The caller owns approval, credential issuance and revocation, and concurrency.
 
-Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
+Before enabling apply, follow the [approval and required-check guidance](docs/github-actions.md#protect-the-apply-path) to protect both `main` and the job that receives the write credential. Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 
 ## Documentation
 

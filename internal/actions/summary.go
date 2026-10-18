@@ -125,7 +125,7 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 }
 
 func validatePlanReport(report PlanReport, target string) error {
-	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 7 {
+	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 10 {
 		return fmt.Errorf("invalid plan report comparison")
 	}
 	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+1 {
@@ -171,7 +171,7 @@ func validatePlanReport(report PlanReport, target string) error {
 			_, before := change.Before.(string)
 			_, after := change.After.(string)
 			nativePair = before && after
-		case "repository.has_issues", "repository.has_projects", "repository.has_wiki":
+		case "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge":
 			_, before := change.Before.(bool)
 			_, after := change.After.(bool)
 			nativePair = before && after

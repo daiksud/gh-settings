@@ -27,14 +27,18 @@ func NewWriteClient(host string) (*Client, error) {
 
 func (client *Client) ApplyRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
 	payload := struct {
-		Description *string `json:"description,omitempty"`
-		Homepage    *string `json:"homepage,omitempty"`
-		HasIssues   *bool   `json:"has_issues,omitempty"`
-		HasProjects *bool   `json:"has_projects,omitempty"`
-		HasWiki     *bool   `json:"has_wiki,omitempty"`
+		Description      *string `json:"description,omitempty"`
+		Homepage         *string `json:"homepage,omitempty"`
+		HasIssues        *bool   `json:"has_issues,omitempty"`
+		HasProjects      *bool   `json:"has_projects,omitempty"`
+		HasWiki          *bool   `json:"has_wiki,omitempty"`
+		AllowMergeCommit *bool   `json:"allow_merge_commit,omitempty"`
+		AllowSquashMerge *bool   `json:"allow_squash_merge,omitempty"`
+		AllowRebaseMerge *bool   `json:"allow_rebase_merge,omitempty"`
 	}{
 		Description: desired.Description, Homepage: desired.Homepage,
 		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki,
+		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

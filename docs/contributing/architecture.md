@@ -46,6 +46,12 @@ The GitHub read adapter requires complete repository values, normalizes permitte
 
 `app.PlanError` preserves the original error and identifies validation, target, or read/comparison failure; read failures carry the resolved target. A failed later resource does not expose an earlier partial comparison. `app.ApplyResult.Applied` is true when a managed apply completes successfully, including a labels-only declaration that already matches and needs no mutations. False without error means no resources were managed; false with an error does not prove that no earlier write succeeded, and later output failure does not undo an update.
 
+### Repository merge-method read path
+
+The unreleased [merge-method extension](../features/merge-methods.feature.md) remains part of `settings.repository`. Its three optional declaration booleans use the existing repository PATCH. A separate complete `settings.MergeMethodsState` and deferred `app.Reader.MergeMethods` callback isolate the GraphQL observation from the five-value REST state. Plan composes their ordered comparisons only for declared fields; a merge-method-only declaration skips the base REST read. Export performs both reads before serialization. No new YAML resource family or generic backend registry is introduced.
+
+The narrow [GraphQL adapter](../../internal/github/merge_methods.go) uses the existing go-gh dependency and a fixed three-field query with origin-derived owner/name variables. Missing/null fields and GraphQL partial data/errors fail rather than becoming false. [Read-only hosted evidence](https://github.com/daiksud/gh-settings/actions/runs/39086857913) establishes ordinary Contents-read token access without expanding PR permissions. The temporary diagnostic workflow is excluded from the final implementation; local fixtures own product/error coverage. Apply never uses this read path.
+
 ### Labels reconciliation
 
 [`settings.CompareLabels`](../../internal/settings/labels.go) owns authoritative membership and attribute-presence comparison. A nil labels pointer is unmanaged; a present list, including an empty list, manages the entire collection. Label identity uses Unicode simple case folding without trimming or rename inference. Ambiguous names fail, and a case-only declaration change retains the remote spelling.

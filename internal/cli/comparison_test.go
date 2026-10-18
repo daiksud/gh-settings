@@ -65,3 +65,15 @@ func TestRenderLabelsComparison(t *testing.T) {
 		t.Fatalf("got=%q want=%q", got, want)
 	}
 }
+
+func TestRenderMergeMethodComparison(t *testing.T) {
+	got := string(RenderComparison(settings.Comparison{Managed: 3, Changes: []settings.Change{
+		{Field: "repository.allow_merge_commit", Before: true, After: false},
+		{Field: "repository.allow_squash_merge", Before: false, After: true},
+		{Field: "repository.allow_rebase_merge", Before: true, After: false},
+	}}))
+	want := "settings.repository.allow_merge_commit: true → false\nsettings.repository.allow_squash_merge: false → true\nsettings.repository.allow_rebase_merge: true → false\n"
+	if got != want {
+		t.Fatalf("got=%q", got)
+	}
+}

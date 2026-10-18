@@ -13,13 +13,13 @@ The selected v0.9.0 package supports repository fields, topics and labels. Label
 | [settings-pr.yml](settings-pr.yml) | `.github/workflows/settings-pr.yml` |
 | [settings-main.yml](settings-main.yml) | `.github/workflows/settings-main.yml` |
 
-Commit `.github/settings.yml` with [schemaVersion 1](../../docs/settings.md#configuration-semantics) at the repository root. These three files are the complete consumer setup; CLI installation, validation and PR Summary rendering belong to the Action.
+Commit `.github/settings.yml` with [schemaVersion 1](../../docs/settings.md#configuration-semantics) at the repository root. These three files are the consumer workflow/configuration files; CLI installation, validation and PR Summary rendering belong to the Action. Copying them does not configure GitHub branch or Environment protections and does not install a workflow-scope guard.
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job. Retain checkout at `GITHUB_WORKSPACE`, the event's exact `github.sha` and `persist-credentials: false`. The checkout's GitHub.com `origin` selects the target.
 
 ## Environment and credentials
 
-Complete the [ordered owner setup](../../docs/github-actions.md#ordered-owner-setup) before enabling main apply. The example uses these names:
+Complete the [ordered owner setup](../../docs/github-actions.md#ordered-owner-setup) before enabling main apply, including [required reviews/checks on main](../../docs/github-actions.md#protect-main-with-required-checks), the Environment gate, and [protection verification](../../docs/github-actions.md#verify-the-protection-before-use). The example uses these names:
 
 | Resource | Name |
 | --- | --- |
@@ -39,7 +39,9 @@ For repository fields/topics, the App installation must include the target repos
 2. Creates the target-scoped App installation token.
 3. Calls `command: apply` with that token.
 
-Review the PR plan and the exact main commit's configuration before approval. Main does not produce another plan, depend on the PR run or consume its plan. The Action step's outcome and logs report apply results. The [run review guide](../../docs/github-actions.md#review-a-pending-run) explains overwrite semantics and concurrency.
+Review the workflow path, event, actors, pinned steps and credential scope as well as the PR plan and exact main configuration before approval; use the [approval checklist](../../docs/github-actions.md#review-a-pending-run). Main does not produce another plan, depend on the PR run or consume its plan. The Action step's outcome and logs report apply results. The [run review guide](../../docs/github-actions.md#review-a-pending-run) explains overwrite semantics and concurrency.
+
+A required check name alone does not identify the workflow that produced it. If PR review is to be the only manual approval, first meet the [independent enforcement conditions](../../docs/github-actions.md#when-pr-review-is-the-only-manual-approval).
 
 The caller owns the Environment, credentials, token lifecycle, event/ref guards and concurrency. Composite steps share the caller job, so keep privileged credentials out of PR code. If apply fails or is cancelled, inspect current settings before retrying; the [recovery guide](../../docs/github-actions.md#failure-and-recovery) covers partial success and token cleanup.
 
