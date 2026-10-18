@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Published v0.8.0 supports five repository fields and the repository's topics. Current source additionally supports **unreleased labels**, using the same file-format version. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting source-only configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Published v0.9.0 supports five repository fields, topics and labels, using the same file-format version. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -46,7 +46,7 @@ Topic reads require Metadata read; public resources may be read without authenti
 
 ## Labels
 
-`settings.labels` manages repository label definitions in **current source only**. Published v0.8.0, the current composite Action and the pinned example workflows do not support this resource. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
+`settings.labels` manages repository label definitions in published v0.9.0 and current source. The pinned Action examples select this package; older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
 
 ```yaml
 schemaVersion: 1
@@ -79,13 +79,13 @@ Names use Unicode simple case folding for identity, without trimming. Duplicate 
 
 Omitting `color` or `description` preserves an existing label's value. For a new label, omitted attributes are left for GitHub to choose; the tool synthesizes no defaults. Null, wrong types, unsupported attributes and duplicate keys fail validation. Labels follow the existing YAML alias and merge rules. Archive settings and read-only label metadata are not managed.
 
-Listing labels needs Issues or Pull requests read, and mutations need either permission at write level for fine-grained or GitHub App tokens; public lists may be read unauthenticated.[^github-labels] Administration write alone is insufficient for label mutations. Source export reads labels too. The existing example tokens and workflow permissions have not been expanded for labels.
+Listing labels needs Issues or Pull requests read, and mutations need either permission at write level for fine-grained or GitHub App tokens; public lists may be read unauthenticated.[^github-labels] Administration write alone is insufficient for label mutations. v0.9.0 export reads labels too. The existing example tokens and workflow permissions have not been expanded for label mutations. Public zero-difference adoption needs no label writes; later mutations require separately approved App/installation and token permissions.
 
 The [command reference](commands.md#apply-behavior) explains fresh reads, create/update/delete ordering and partial failures. Contributors can find API mapping and test evidence in the [labels feature specification](features/labels.feature.md).
 
 ## Configuration semantics
 
-The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus, in current source, an optional `labels` sequence. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic migration or compatibility parsing.
+The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus an optional `labels` sequence. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic migration or compatibility parsing.
 
 Declared values are managed, and YAML is authoritative for them. Omitting a resource leaves it unmanaged; declared topics and labels collections own their complete membership. Omitted repository fields and omitted label attributes remain unmanaged. No defaults are injected by the tool. For example:
 
@@ -119,13 +119,13 @@ A version-only document manages nothing:
 schemaVersion: 1
 ```
 
-Empty `settings`, `repository` or `topics` mappings are also valid. When no resources are managed, plan and apply succeed locally without an origin, authentication or API requests. An explicit `names: []` still manages topics; in source, `labels: []` still manages all label membership. These declarations require a comparison or update rather than a local no-op.
+Empty `settings`, `repository` or `topics` mappings are also valid. When no resources are managed, plan and apply succeed locally without an origin, authentication or API requests. An explicit `names: []` still manages topics; `labels: []` still manages all label membership. These declarations require a comparison or update rather than a local no-op.
 
 Validation rejects unknown or duplicate keys, non-string keys, wrong types, malformed YAML and multiple documents. YAML aliases and merge keys are resolved before supported values are checked. Partial declarations are accepted; unsupported root-level field names are rejected. See [validate behavior](commands.md#validate-behavior) for output and failure handling.
 
 ## Exported values
 
-Export declares every supported observed repository field and the complete topic set. Source export additionally reads all label pages and saves the complete label collection sorted by identity, with names, lowercase colors and descriptions, including `labels: []` when none exist. This makes the observed membership authoritative. Review the saved file and remove resources or attributes you want to leave unmanaged before applying it.
+Export declares every supported observed repository field and the complete topic set. Export additionally reads all label pages and saves the complete label collection sorted by identity, with names, lowercase colors and descriptions, including `labels: []` when none exist. This makes the observed membership authoritative. Review the saved file and remove resources or attributes you want to leave unmanaged before applying it.
 
 GitHub can return null for an unset description or homepage. Export normalizes those response values to empty strings and writes quoted YAML strings (`""`); it preserves existing empty strings and false booleans. Missing response fields and null booleans are errors. Topic names must be present as a valid array; missing, null, invalid or unreadable names fail export instead of becoming an empty set.
 

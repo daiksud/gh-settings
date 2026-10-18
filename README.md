@@ -17,7 +17,7 @@ Published binaries support macOS on Apple Silicon (`arm64`) and Linux on x86-64 
 
 Update with `gh extension upgrade gh-settings`, or uninstall with `gh extension remove gh-settings`.
 
-The published [v0.8.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0) support basic repository settings and topics. Current source also supports labels; labels are not included in v0.8.0 or the pinned Action examples below. See the [label configuration contract](docs/settings.md#labels) before managing that collection.
+The published [v0.9.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.9.0) support basic repository settings, topics and labels. The Action examples below select this release. See the [label configuration contract](docs/settings.md#labels) before managing that collection.
 
 ## Quick start
 
@@ -88,12 +88,12 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@fd2aef0efb15d6b4c4b19c45e47f5fa965c66b24 # v0.8.0
+      - uses: daiksud/gh-settings@07bfc905e0b52c433ce666b8c0c16978909e02c5 # v0.9.0
         with:
           command: validate
 ```
 
-The pinned v0.8.0 Action supports `validate`, `plan`, and `apply` for repository settings and topics. Validate needs no token; plan takes an explicit read token; apply takes a target-scoped App installation token with Administration write. The caller owns approval, credential issuance and revocation, and concurrency.
+The pinned v0.9.0 Action supports `validate`, `plan`, and `apply` for repository settings, topics and labels. Validate needs no token; plan takes an explicit read token; repository/topic apply takes a target-scoped App installation token with Administration write; label mutations additionally require Issues or Pull requests write. The caller owns approval, credential issuance and revocation, and concurrency.
 
 Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 

@@ -4,7 +4,7 @@ Copy these workflows into the repository whose settings you want to manage. The 
 
 Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
-The selected v0.8.0 package supports repository fields and topics. Labels are unreleased and cannot be used with these pins; a configuration exported by current source includes labels and is not compatible unchanged. See the [release boundary and future permission requirements](../../docs/github-actions.md#unreleased-labels).
+The selected v0.9.0 package supports repository fields, topics and labels. Label collections are authoritative; review their [deletion consequences and permission requirements](../../docs/github-actions.md#labels-and-permissions) before adoption.
 
 ## Copy the workflows
 
@@ -27,7 +27,7 @@ Complete the [ordered owner setup](../../docs/github-actions.md#ordered-owner-se
 | Environment variable | `SETTINGS_APP_CLIENT_ID` |
 | Environment secret | `SETTINGS_APP_PRIVATE_KEY` |
 
-The App installation must include the target repository with Administration read/write. The token step narrows its token to the containing repository and Administration write, retaining default post-job revocation. Configure the Environment's reviewer and `main`-only deployment rule before storing credentials; the workflow does not configure those protections itself.
+For repository fields/topics, the App installation must include the target repository with Administration read/write. The token step narrows its token to the containing repository and Administration write, retaining default post-job revocation. Label mutations additionally require separately approved Issues or Pull requests write on the App/installation and matching token input; these examples do not request it automatically. Public zero-difference label reads do not establish mutation access. Configure the Environment's reviewer and `main`-only deployment rule before storing credentials; the workflow does not configure those protections itself.
 
 ## PR review and main apply
 
