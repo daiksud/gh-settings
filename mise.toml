@@ -10,6 +10,3 @@ actionlint = "1.7.12"
 shellcheck = "0.11.0"
 jq = "1.8.1"
 
-[tasks.setup]
-description = "Enable this checkout's Git hooks"
-run = "git config --local core.hooksPath .githooks"

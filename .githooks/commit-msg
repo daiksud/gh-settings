@@ -1,3 +1,0 @@
-#!/bin/sh
-commitlint=$(mise which commitlint) || exit
-exec mise exec -- bun run --bun --no-install "$commitlint" --strict --edit "$1"

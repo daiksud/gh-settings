@@ -20,6 +20,30 @@ jobs:
     steps:
       - name: Set draft state
         run: gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --undo
+  commitlint:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions: {contents: read}
+    steps:
+      - name: Checkout validation source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install message validation tools
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          install_args: bun npm:@commitlint/cli
+          cache: false
+      - name: Test PR message policy
+        run: bash tests/github-actions/commitlint.sh
+      - name: Validate PR title and body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" |
+            mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
   commit-stage:
     needs: draft
     runs-on: ubuntu-slim
@@ -302,12 +326,12 @@ jobs:
         if: always()
         run: bash .action/tests/github-actions/candidate-plan.sh stop
   pass:
-    needs: [acceptance-stage, composite-smoke]
+    needs: [commitlint, acceptance-stage, composite-smoke]
     if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {}
     steps:
       - name: Reject failed or cancelled validation
-        if: cancelled() || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'
+        if: cancelled() || needs.commitlint.result != 'success' || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'
         run: exit 1

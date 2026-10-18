@@ -4,24 +4,17 @@ Use this guide when changing gh-settings. The [architecture](architecture.md) ex
 
 ## Set up the tools
 
-Install [mise](https://mise.jdx.dev/getting-started.html), then run the following from the repository root:
+Install [mise](https://mise.jdx.dev/getting-started.html), then run from the repository root:
 
 ```sh
 mise install
-mise run setup
 ```
 
-[mise.toml](../../mise.toml) pins the development toolchains used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies. Bun, commitlint, and its conventional preset are managed by mise: the npm backend uses Bun to install the CLI and preset together. Their versions are pinned in mise.toml; transitive npm dependencies are resolved during installation. Run development commands through mise so a different system toolchain does not change the result.
+[mise.toml](../../mise.toml) pins the development tools used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies. Mise's npm backend installs commitlint and its conventional preset with Bun; Node.js, npm, a package manifest, and local Git hooks are not required. Transitive npm dependencies are resolved during installation. Run development commands through mise to use the pinned tool versions.
 
-`mise run setup` configures this checkout's `core.hooksPath` to use the tracked [.githooks](../../.githooks/commit-msg) directory. Run it after cloning. Run `mise install` again when tool versions change; the installed tools are shared across worktrees. The setup selects these hooks in place of any existing hook directory configured for this repository.
+## Pull request messages
 
-The enabled hook and `commitlint.config.mjs` are executable code from the current checkout. Switching branches can replace either file; the next commit or amend runs that branch's code with your user permissions and inherited environment. Review these files before committing on an untrusted branch. Pinned tools and `--no-install` do not restrict what the tracked hook or configuration can execute.
-
-## Commit messages
-
-The [`commit-msg` hook](../../.githooks/commit-msg) runs [commitlint](https://commitlint.js.org/) before Git creates a commit. Errors and warnings both stop the commit so you can correct the message and retry, including a missing blank line before the body or footers. The hook uses mise's installed commitlint with `bun run --bun --no-install`, forcing the Bun runtime and disabling Bun's automatic package installation. Keep `mise` on the PATH available to your terminal or Git client.
-
-Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+PR titles and bodies are validated by the [PR CI workflow](../../.github/workflows/ci-pr.yml) as one squash commit message: the title is the subject, followed by a blank line and the optional PR body. The message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
 
 ```text
 <type>[optional scope][!]: <description>
@@ -31,24 +24,24 @@ Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
 [optional footers]
 ```
 
-For example:
+Commitlint uses the conventional preset with only these additional style rules:
 
-```text
-feat(settings): manage repository topics
-fix: reject an empty configuration
-docs: clarify local setup
-feat!: require the grouped settings schema
-```
+- Types are restricted to `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`.
+- Types must be lowercase.
+- Subjects must not be sentence-case, start-case, PascalCase, or uppercase.
+- Subjects must not end in a period (`.`).
+- Titles must not start or end with whitespace.
 
-[commitlint.config.mjs](../../commitlint.config.mjs) extends `@commitlint/config-conventional` without overriding its rules. Its allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`. The preset limits headers and body/footer lines to 100 characters; body lines containing a URL are exempt. Wrap long explanations across lines while retaining the complete content described in [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). Breaking changes can use `!` or a `BREAKING CHANGE:` footer. Commitlint's default ignores remain enabled for generated messages such as merge, revert, and autosquash `fixup!`/`squash!` commits.
+The configuration intentionally has no header, body, or footer line-length limit and no scope-case restriction. The body may be empty. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Both `!` and `BREAKING CHANGE:` are supported. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
 
-To check a message without creating a commit:
+To check a proposed squash message locally after `mise install`:
 
 ```sh
-printf '%s\n' 'feat(settings): manage repository topics' | mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
+printf '%s\n\n%s\n' 'feat(settings): manage repository topics' 'Describe why this changed.' |
+  mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
 ```
 
-This is a local Git check. GitHub-created squash commits do not run it; PR-title validation remains the separate future work described in [ADR 0016](../adr/0016-conventional-pr-titles.md).
+Keep the PR body consistent with [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). The repository's PR CI rechecks when the title or body changes. Local `git commit` messages are not validated; the final squash message must still be confirmed at merge time.
 
 ## Build and run from source
 
@@ -77,7 +70,7 @@ mise exec -- go vet ./...
 mise exec -- go test -race -count=1 -vet=off ./...
 mise exec -- go build ./...
 mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
-mise exec -- shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh action/*.sh .github/scripts/*.sh .githooks/commit-msg
+mise exec -- shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh action/*.sh .github/scripts/*.sh
 mise exec -- bash tests/release.sh
 mise exec -- bash tests/github-actions/action-install.sh
 mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions
