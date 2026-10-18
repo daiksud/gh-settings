@@ -2,7 +2,7 @@
 
 ## Public Action and supported checkout
 
-`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals.
+`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.8.0 package for repository fields and topics; [labels remain unreleased](#unreleased-labels).
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and commit `.github/settings.yml` at its root.
 
@@ -17,7 +17,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 
-Validate checks local configuration without credentials. Plan validates first, then reads settings with an explicit read-only token, such as `token: ${{ github.token }}` in the example PR job. Apply uses a caller-created, target-scoped App installation token with Administration write. The Action neither creates the token nor verifies its actual grants.
+Validate checks local configuration without credentials. Plan validates first, then reads settings with an explicit read-only token, such as `token: ${{ github.token }}` in the example PR job. For the supported repository fields and topics, apply uses a caller-created, target-scoped App installation token with Administration write. The Action neither creates the token nor verifies its actual grants.
 
 There are no inputs for export, arbitrary arguments, configuration path, target, CLI version or download URL. The Action's checkout metadata and explicit plan/apply token requirements also apply to configurations with no managed fields.
 
@@ -39,6 +39,12 @@ The examples use the published [v0.8.0 Action/CLI package](https://github.com/da
 Installation downloads the selected `gh-settings-linux-amd64` asset and `SHA256SUMS` from fixed upstream HTTPS release paths. It requires one valid checksum for the exact asset, verifies before execution and checks exact `gh-settings <version>` output. There is no latest fallback or caller version/URL override. The binary and checksum come from the same GitHub release; the Action SHA fixes the selected version, not an independent binary digest.
 
 Older pins retain their released behavior. Maintainers document immutable package history and known limitations in the [release guide](contributing/releases.md#historical-release-limitations).
+
+### Unreleased labels
+
+[Labels support](settings.md#labels) exists in current Go source but is absent from published v0.8.0. The pinned workflows and the current composite Action still select CLI v0.8.0; checking out newer Action source does not build that source or enable labels. A configuration containing `settings.labels` fails validation under that package.
+
+Future label adoption needs a release containing the feature and separately reviewed credentials: listing requires Issues or Pull requests read, and mutations require either permission at write level. Administration write alone is insufficient for label mutations. The existing App token and workflow permissions have not been expanded. Source labels apply reads fresh membership and performs CRUD, with authoritative deletion of undeclared labels and their issue/PR associations; see the [labels contract](settings.md#labels) before adoption.
 
 ## Consumer files and compatibility
 
@@ -62,7 +68,7 @@ The examples do not create the App or configure the Environment. Confirm actual 
 
 Review the PR plan Summary and the configuration at the main run's exact commit before approving `settings-apply`. The PR revision and resulting main commit can differ. Main does not depend on PR success or rerun plan before approval; its checkout uses `github.sha`, never a moving main branch.
 
-A plan is informational. Direct apply sends declared values without reading current settings or consuming a saved plan. Intervening changes to managed fields can be overwritten; omitted fields stay outside the request. Review the [apply and partial-failure behavior](commands.md#apply-behavior) before approving changes.
+A plan is informational. The pinned package sends declared repository fields and topics without reading current settings or consuming a saved plan. Intervening changes to managed fields can be overwritten; omitted fields stay outside the request. Review the [apply and partial-failure behavior](commands.md#apply-behavior) before approving changes.
 
 The main job mints its token before the settings Action installs the CLI and validates the configuration. Installation or validation failure stops apply; the token Action still performs its normal post-job cleanup.
 

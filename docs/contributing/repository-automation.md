@@ -34,6 +34,8 @@ The main caller runs only on a push to `main` changing `.github/settings.yml` or
 
 The token-creation step references `vars.ANSWER26_CLIENT_ID` and `secrets.ANSWER26_PRIVATE_KEY`, limits installation scope to the triggering owner/repository, and requests Administration write. The resulting token is passed only to the Action's apply input; the token Action owns its normal post-job revocation. Source checks verify those bindings, not the remote App installation or actual token revocation.
 
+Labels support in the current-source CLI is not available in these pinned callers or the released CLI selected by the current Action package. Future adoption requires a matching release and reviewed caller pins. It also requires reviewing the [label API permissions](../features/labels.feature.md#api-and-permissions): Issues or Pull requests read for authenticated listing, and either permission at write level for mutations. Public listing is available without those permissions, but Administration write alone does not grant label writes. The source feature does not expand the existing App token, workflow permissions, or managed configuration.
+
 There is no prepare/handoff job or main-side pre-approval plan. The PR Summary and exact committed configuration provide review context; direct apply does not consume a saved plan and may overwrite intervening changes to managed values. The presence of `environment: gh-settings` identifies the selected Environment but does not establish whether reviewers are currently configured.
 
 ## Active repository Environment guard

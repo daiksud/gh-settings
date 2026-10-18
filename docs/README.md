@@ -9,11 +9,11 @@ Start with the [README quick start](../README.md#quick-start).
 | Task | Guide |
 | --- | --- |
 | Export, validate, plan, or apply; understand targeting and errors | [Command reference](commands.md) |
-| Declare repository settings and topics in YAML | [Configuration reference](settings.md) |
+| Declare repository settings, topics, and source-supported labels in YAML | [Configuration reference](settings.md) |
 | Use the public Action and configure approval and credentials | [GitHub Actions guide](github-actions.md) |
 | Adopt the example PR and main workflows | [Workflow examples](../examples/github-actions/README.md) |
 
-These public guides describe the supported interface and its effects. You do not need the implementation or release procedures to use gh-settings.
+These public guides describe the supported interface and its effects, marking source-only capabilities separately from published releases. You do not need the implementation or release procedures to use gh-settings.
 
 ## For contributors
 

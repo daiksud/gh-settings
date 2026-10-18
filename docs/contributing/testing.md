@@ -6,12 +6,12 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 
 | Concern | Owning checks | Scope |
 | --- | --- | --- |
-| Declaration presence and comparison | [Repository model](../../internal/settings/repository_test.go), [comparison](../../internal/settings/comparison_test.go), [topics](../../internal/settings/topics_test.go) | Omitted vs explicit values, managed counts, native values, stable order and topic-set semantics |
-| YAML contract | [Codec](../../internal/workspace/config_test.go), [topics codec](../../internal/workspace/topics_test.go) | Types, strict rejection, aliases/merges, omission, and round trips |
+| Declaration presence and comparison | [Repository model](../../internal/settings/repository_test.go), [comparison](../../internal/settings/comparison_test.go), [topics](../../internal/settings/topics_test.go), [labels](../../internal/settings/labels_test.go) | Omitted vs explicit values, managed counts, native values, topic sets, label identity/attribute presence, and stable operation ordering |
+| YAML contract | [Codec](../../internal/workspace/config_test.go), [topics codec](../../internal/workspace/topics_test.go), [labels codec](../../internal/workspace/labels_test.go) | Types, strict rejection, aliases/merges, omission, and round trips |
 | Files and target resolution | [Configuration files](../../internal/workspace/config_file_test.go), [repository resolution](../../internal/workspace/repository_test.go) | Fixed paths, file behavior, direct-origin formats, scope and isolation |
-| GitHub transport | [Repository reads](../../internal/github/repository_test.go), [writes](../../internal/github/apply_test.go), [topics](../../internal/github/topics_test.go) | Complete reads, null/type normalization, exact declared-only requests, failures and redirects |
-| Application sequencing | [Application tests](../../internal/app/) | Validation/failure order, empty local no-ops, selective resource access, export composition and partial writes |
-| CLI and Actions presentation | [CLI tests](../../internal/cli/), [Actions tests](../../internal/actions/) | Dispatch, diagnostics/status, typed reports, metadata, native rendering and Summary storage |
+| GitHub transport | [Repository reads](../../internal/github/repository_test.go), [writes](../../internal/github/apply_test.go), [topics](../../internal/github/topics_test.go), [labels](../../internal/github/labels_test.go) | Complete/paginated reads, null/type normalization, exact declared-only requests, escaped label paths, failures and redirects |
+| Application sequencing | [Application tests](../../internal/app/), [labels cases](../../internal/app/labels_test.go) | Validation/failure order, empty local no-ops, selective resource access, export composition, fresh labels reads, and partial writes |
+| CLI and Actions presentation | [CLI tests](../../internal/cli/), [Actions tests](../../internal/actions/), [label reports](../../internal/actions/labels_test.go) | Dispatch, diagnostics/status, typed field/label reports, metadata, escaped rendering, and Summary storage |
 | Composite and caller wiring | [Composite](../../tests/github-actions/composite_test.go), [consumer](../../tests/github-actions/consumer_test.go), [operational caller](../../tests/github-actions/operational_test.go) | Actual YAML composition, token exposure, output/status ordering, and caller-owned boundaries |
 | Installed process behavior | [Acceptance tests](../../tests/acceptance/) | The actual supplied binary, isolated Git/files, local API requests, stdout/stderr and exit codes |
 | Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go) | Mock publication/recovery and declared source/version/artifact/gate relationships |
@@ -31,7 +31,15 @@ mise exec -- go test -tags=acceptance -count=1 ./tests/acceptance -args -binary 
 
 The harness requires an explicit binary path and Unix-socket support. It uses go-gh's `http_unix_socket` configuration in an isolated temporary `GH_CONFIG_DIR`, temporary Git repositories, and a local HTTP fixture. Dummy tokens never authenticate with GitHub. Fixtures are cleaned up without adding product hooks or test-only transport options.
 
-Process cases cover export → edit → validate → plan → apply, native false/empty values, read-side null normalization, checkout selection, declared-field comparison, exact requests, file preservation, diagnostics, and failure paths. Plan is read-only; apply has no preliminary GET. Invalid input and empty CLI plan/apply make no API requests. [Topics acceptance](../../tests/acceptance/topics_test.go) covers the added resource through the built product.
+Process cases cover export → edit → validate → plan → apply, native false/empty values, read-side null normalization, checkout selection, declared-field comparison, exact requests, file preservation, diagnostics, and failure paths. Plan is read-only. Repository/topics apply has no preliminary GET; labels apply reads fresh collection state after those direct writes. Invalid input and empty CLI plan/apply make no API requests. Explicitly empty topics or labels collections are managed, so they are not the empty-declaration case. [Topics acceptance](../../tests/acceptance/topics_test.go) covers the topics resource through the built product.
+
+### Labels resource acceptance
+
+[Labels acceptance](../../tests/acceptance/labels_test.go) runs the current-source binary through omission, clearing, case-insensitive identity, omitted attributes, create/update/delete ordering, no-change reads, invalid input, and failures that stop later operations. It checks rejected GET/POST/PATCH/DELETE redirects during apply, complete pagination during export, and preservation of the existing file when a later page fails. Typed label reports and a separate credential-free Summary retain attribute presence, escaped names, and the warning that deletes remove issue/PR associations.
+
+[Application labels tests](../../internal/app/labels_test.go) separately own repository → topics → labels-read → labels-write sequencing, fresh comparison, already matching collections with no mutation, earlier-write preservation, and rejection of an earlier partial plan when a later labels read/comparison fails. [Adapter tests](../../internal/github/labels_test.go) own exact request payloads and escaped name segments; full validation/identity matrices stay in the model and codec tests.
+
+These checks use local API responses and dummy credentials. They verify current-source behavior without establishing live label permissions or support in the published Action/CLI pair.
 
 ### Metadata, reports, and Summary
 
@@ -39,7 +47,7 @@ Process cases cover export → edit → validate → plan → apply, native fals
 
 The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_linux_test.go) launches an owned copy of the test executable and replaces only that child's pathname before requesting metadata. The digest must identify the original running image; the parent test runner is not replaced. Native checks on other platforms cover an unchanged executable path, and cross-compilation alone does not run this Linux regression.
 
-[Plan-report acceptance](../../tests/acceptance/plan_report_test.go) inspects native typed JSON and categorical failures through the real interface. [Summary acceptance](../../tests/acceptance/summary_test.go) runs credential-free outside a checkout, checking escaped values, separate identity links, append behavior, and zero API requests. Detailed report/state/storage cases remain in Actions owner tests. Report/Summary output preserves a failed plan's nonzero status and never becomes apply input.
+[Plan-report acceptance](../../tests/acceptance/plan_report_test.go) inspects native typed JSON and categorical failures through the real interface. Label operations occupy their own typed report entries and count as one managed collection, independently of the number of operations. [Summary acceptance](../../tests/acceptance/summary_test.go) runs credential-free outside a checkout, checking escaped values, separate identity links, append behavior, and zero API requests. Detailed report/state/storage cases, including label reports and the maximum managed count, remain in Actions owner tests. Report/Summary output preserves a failed plan's nonzero status and never becomes apply input.
 
 ## CI validation
 
@@ -63,6 +71,8 @@ CI installs tools from the same pinned mise configuration. Acceptance installs o
 The `composite-smoke` job runs on the public Action's supported Ubuntu 24.04 x64 runner; commit/acceptance jobs use `ubuntu-slim`. It checks out exact producer source into `.action` and creates a separate consumer that tracks only `.github/settings.yml`. The consumer has no root `action.yml` or `action/` helper directory.
 
 [Fixture preparation](../../tests/github-actions/prepare-candidate-download.sh) verifies the transferred candidate's checksum and the Action checkout's source/version. A bounded [curl stand-in](../../tests/github-actions/candidate-curl.sh) serves only the unchanged installer's two fixed versioned asset/checksum URLs from those verified bytes, with no network forwarding. Actual `uses: ./.action` expansion exercises installation, checksum/version validation, metadata, and settings operations. No product rebuild, caller version/download override, committed version rewrite, or old-release fallback is used.
+
+The fixture supplies current-source bytes even while the committed CLI version still identifies an older published package. Candidate results therefore do not prove that newly implemented labels support is available through the public installer or existing caller pins. Label-specific current-source behavior is covered by the owner/process tests above; the hosted API cases below remain representative repository-field cases.
 
 Credential-free validate must report all four outputs matching the independent consumer commit/origin and candidate version/checksum. Hosted logs record the distinct Action and consumer roots/SHAs. Missing or tampered artifacts, mismatched identities, and fixture/assertion failures fail the aggregate gate.
 

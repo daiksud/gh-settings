@@ -17,17 +17,19 @@ var version = "dev"
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
-			return app.Plan(app.Reader{Repository: readRepository, Topics: readTopics})
+			return app.Plan(app.Reader{Repository: readRepository, Topics: readTopics, Labels: readLabels})
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
-		Export:   func() error { return app.Export(app.Reader{Repository: readRepository, Topics: readTopics}) },
+		Export: func() error {
+			return app.Export(app.Reader{Repository: readRepository, Topics: readTopics, Labels: readLabels})
+		},
 		Validate: app.Validate,
 		Plan: func() (app.PlanResult, error) {
-			return app.Plan(app.Reader{Repository: readRepository, Topics: readTopics})
+			return app.Plan(app.Reader{Repository: readRepository, Topics: readTopics, Labels: readLabels})
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(app.Writer{Repository: writeRepository, Topics: writeTopics})
+			return app.Apply(app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, Labels: writeLabels})
 		},
 	}))
 }
@@ -62,4 +64,26 @@ func writeTopics(repo repository.Repository, desired settings.TopicsDeclaration)
 		return err
 	}
 	return client.ApplyTopics(repo, desired)
+}
+
+func readLabels(repo repository.Repository) ([]settings.LabelState, error) {
+	client, err := github.NewReadClient(repo.Host)
+	if err != nil {
+		return nil, err
+	}
+	return client.ReadLabels(repo)
+}
+func readLabelsForApply(repo repository.Repository) ([]settings.LabelState, error) {
+	client, err := github.NewWriteClient(repo.Host)
+	if err != nil {
+		return nil, err
+	}
+	return client.ReadLabels(repo)
+}
+func writeLabels(repo repository.Repository, changes []settings.LabelChange) error {
+	client, err := github.NewWriteClient(repo.Host)
+	if err != nil {
+		return err
+	}
+	return client.ApplyLabels(repo, changes)
 }

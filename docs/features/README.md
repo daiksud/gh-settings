@@ -10,6 +10,7 @@ For usage, start with the [command reference](../commands.md), [configuration re
 | [Validate](validate.feature.md) | Accept valid declarations and reject invalid configuration locally. |
 | [Plan](plan.feature.md) | Compare declared resources and report differences without mutation. |
 | [Apply](apply.feature.md) | Write declared values and report partial or failed updates. |
+| [Labels](labels.feature.md) | Authoritative membership, retained attributes, fresh-state reconciliation, and label-specific test mappings. |
 | [GitHub Actions](actions.feature.md) | Public Action behavior, consumer scenarios, and internal adapter test mappings. |
 | [Release](release.feature.md) | Manual publication, tested binary identity, and recovery. |
 

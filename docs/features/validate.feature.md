@@ -132,3 +132,7 @@ The Go table also checks a versioned document with no settings, empty `settings`
 - Then validation fails before API access.
 
 Test mapping: [TestTopicsConfigPresenceAndRoundTrip and TestTopicsConfigRejectsInvalidLists](../../internal/workspace/topics_test.go), [TestTopicNames](../../internal/settings/topics_test.go).
+
+### Rule: Validate label declarations
+
+Current source accepts a label list as an authoritative collection, distinguishes omission from an empty list, and validates names, identity, and optional attributes before API access. The [Labels specification](labels.feature.md#rule-declare-authoritative-membership-explicitly) owns these scenarios and test mappings. Published v0.8.0 does not include labels.

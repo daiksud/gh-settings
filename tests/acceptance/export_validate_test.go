@@ -20,7 +20,7 @@ func TestExportThenValidate(t *testing.T) {
 		{
 			name:     "ordinary-values",
 			response: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"id":123}`,
-			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"topics": map[string]any{"names": []any{}}, "repository": map[string]any{
+			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
 				"description": "Example repository", "homepage": "https://example.com",
 				"has_issues": true, "has_projects": false, "has_wiki": true,
 			}}},
@@ -28,7 +28,7 @@ func TestExportThenValidate(t *testing.T) {
 		{
 			name:     "zero-and-null-strings",
 			response: `{"description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`,
-			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"topics": map[string]any{"names": []any{}}, "repository": map[string]any{
+			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
 				"description": "", "homepage": "",
 				"has_issues": false, "has_projects": false, "has_wiki": false,
 			}}},
@@ -55,8 +55,8 @@ func TestExportThenValidate(t *testing.T) {
 			if err := fixture.checkRequests(false); err != nil {
 				t.Fatal(err)
 			}
-			if reads := fixture.reads.Load(); reads != 2 {
-				t.Fatalf("export made %d API requests, want 2", reads)
+			if reads := fixture.reads.Load(); reads != 3 {
+				t.Fatalf("export made %d API requests, want 3", reads)
 			}
 
 			var actual map[string]any
@@ -82,8 +82,8 @@ func TestExportThenValidate(t *testing.T) {
 			if err := fixture.checkRequests(false); err != nil {
 				t.Fatal(err)
 			}
-			if reads := fixture.reads.Load(); reads != 2 {
-				t.Fatalf("validate made %d additional API requests, want 0", reads-2)
+			if reads := fixture.reads.Load(); reads != 3 {
+				t.Fatalf("validate made %d additional API requests, want 0", reads-3)
 			}
 			if err := checkSettingsUnchanged(fixture.work, original); err != nil {
 				t.Fatal(err)
