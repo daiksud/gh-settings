@@ -135,4 +135,4 @@ Test mapping: [TestTopicsConfigPresenceAndRoundTrip and TestTopicsConfigRejectsI
 
 ### Rule: Validate label declarations
 
-The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.
+Current source accepts a label list as an authoritative collection, distinguishes omission from an empty list, and validates names, identity, and optional attributes before API access. The [Labels specification](labels.feature.md#rule-declare-authoritative-membership-explicitly) owns these scenarios and test mappings. Published v0.8.0 does not include labels.

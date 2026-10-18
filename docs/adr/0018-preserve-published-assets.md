@@ -18,4 +18,4 @@ Do not overwrite an existing published release asset; stop on a conflicting asse
 
 ## Consequences
 
-An interrupted run may resume uploading only after verifying that already present assets have the same tested bytes and checksums. Matching source commit and version is insufficient proof of identical bytes. The recovery mechanism remains to be designed in the [release specification](../releases.md). Tag immutability and draft publication are separate decisions in [ADR 0013](0013-immutable-release-identity.md) and [ADR 0014](0014-draft-release-publication.md).
+An interrupted run may resume uploading only after verifying that already present assets have the same tested bytes and checksums. Matching source commit and version is insufficient proof of identical bytes. The recovery mechanism remains to be designed in the [release specification](../contributing/releases.md). Tag immutability and draft publication are separate decisions in [ADR 0013](0013-immutable-release-identity.md) and [ADR 0014](0014-draft-release-publication.md).

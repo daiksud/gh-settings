@@ -23,7 +23,7 @@ settings:
 - Omitted `labels` leaves the collection unmanaged; plan/apply make no label request.
 - A provided list manages the entire membership: undeclared remote labels are deleted. `labels: []` deletes every remote label.
 - Deletion removes the label from issues and pull requests. Recreating the same name does not restore those associations. Review plan before applying.
-- `name` is required and identifies a label. Names must be nonempty strings without control characters. Spaces, punctuation and emoji are allowed.
+- `name` is required and identifies a label. Names must be strings that are neither empty nor whitespace-only, without control characters. Spaces, punctuation and emoji are allowed.
 - Identity uses Unicode simple case folding, without trimming or renaming. Duplicate/ambiguous identities in declarations or observations fail; case-only spelling changes retain the remote spelling.
 - `color` and `description` are optional strings. Omitted attributes preserve existing values; when creating a label, omission delegates those values to GitHub. No defaults are synthesized.
 - `color` is six hexadecimal characters without `#`, normalized to lowercase. `description` permits up to 100 Unicode characters; `description: ""` explicitly clears it.

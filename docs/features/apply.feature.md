@@ -14,13 +14,13 @@ description: Send declared repository fields directly after local validation.
 - Otherwise resolve the same GitHub.com origin as export and ignore `GH_REPO`.
 - Accept origin values only from checkout-local/worktree scopes, including their included files; system/global/command origin values cannot select the mutation target.
 
-### Rule: Send the declaration directly
+### Rule: Send repository and topics declarations directly
 
 - When repository fields are declared, send exactly one PATCH to the current repository with only those fields. Topics uses a separate PUT as specified below.
 - Reject redirects, including those that would convert PATCH into GET.
 - Omit schemaVersion, outer YAML mappings, and every undeclared field.
 - Preserve false and empty strings as explicit values.
-- Do not fetch current settings, reconcile differences, or require a saved plan.
+- For repository fields and topics, do not fetch current values or reconcile differences; apply never requires a saved plan.
 - Send declared values even if they already match or remote values changed after plan.
 - Preserve the configuration file and leave omitted remote fields unmanaged.
 
@@ -60,4 +60,4 @@ Test mapping: [TestTopicsApplyOrderAndPartialFailures](../../internal/app/topics
 
 ### Rule: Reconcile labels against fresh state
 
-The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.
+Current source applies declared labels after repository/topics writes: it reads fresh state, performs needed creates/updates in identity order, then deletes undeclared labels in identity order. A read or write failure leaves earlier updates applied. The [Labels specification](labels.feature.md#rule-reconcile-fresh-state-during-apply) owns these scenarios and test mappings, including association loss on deletion. Published v0.8.0 does not include labels.
