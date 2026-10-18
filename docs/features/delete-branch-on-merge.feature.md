@@ -6,7 +6,7 @@ description: Manage one optional repository boolean through the existing merge-r
 
 ## Feature: Manage automatic branch deletion
 
-CLI and Action v0.11.0 support `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Consumers using v0.10.0 reject the key; the pinned v0.12.0 examples support it. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
+CLI and Action v0.11.0 support `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Consumers using v0.10.0 reject the key; the pinned v0.13.0 examples support it. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
 
 ```yaml
 schemaVersion: 1
