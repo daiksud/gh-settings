@@ -11,14 +11,15 @@ type RepositoryState struct {
 
 // RepositoryDeclaration leaves nil fields unmanaged; false and empty strings are declared values.
 type RepositoryDeclaration struct {
-	Description      *string
-	Homepage         *string
-	HasIssues        *bool
-	HasProjects      *bool
-	HasWiki          *bool
-	AllowMergeCommit *bool
-	AllowSquashMerge *bool
-	AllowRebaseMerge *bool
+	Description         *string
+	Homepage            *string
+	HasIssues           *bool
+	HasProjects         *bool
+	HasWiki             *bool
+	AllowMergeCommit    *bool
+	AllowSquashMerge    *bool
+	AllowRebaseMerge    *bool
+	DeleteBranchOnMerge *bool
 }
 
 // Empty reports whether every field is unmanaged, regardless of declared values.
@@ -33,11 +34,11 @@ func (d RepositoryDeclaration) BaseEmpty() bool {
 
 // MergeMethodsEmpty keeps the GraphQL read optional for existing declarations.
 func (d RepositoryDeclaration) MergeMethodsEmpty() bool {
-	return d.AllowMergeCommit == nil && d.AllowSquashMerge == nil && d.AllowRebaseMerge == nil
+	return d.AllowMergeCommit == nil && d.AllowSquashMerge == nil && d.AllowRebaseMerge == nil && d.DeleteBranchOnMerge == nil
 }
 
-// MergeMethodsState is complete only after all three GraphQL values are validated.
-type MergeMethodsState struct{ AllowMergeCommit, AllowSquashMerge, AllowRebaseMerge bool }
+// MergeMethodsState is complete only after all four merge-related GraphQL values are validated.
+type MergeMethodsState struct{ AllowMergeCommit, AllowSquashMerge, AllowRebaseMerge, DeleteBranchOnMerge bool }
 
 // CompareMergeMethods uses only declared fields, in the repository's stable order.
 func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaration) Comparison {
@@ -50,6 +51,7 @@ func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaratio
 		{"repository.allow_merge_commit", current.AllowMergeCommit, desired.AllowMergeCommit},
 		{"repository.allow_squash_merge", current.AllowSquashMerge, desired.AllowSquashMerge},
 		{"repository.allow_rebase_merge", current.AllowRebaseMerge, desired.AllowRebaseMerge},
+		{"repository.delete_branch_on_merge", current.DeleteBranchOnMerge, desired.DeleteBranchOnMerge},
 	} {
 		if field.after == nil {
 			continue

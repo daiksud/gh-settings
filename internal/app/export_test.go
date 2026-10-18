@@ -58,7 +58,7 @@ func TestExportStoredSettings(t *testing.T) {
 				t.Fatalf("error=%v reads=%d, want one read", err, calls)
 			}
 			got, err := os.ReadFile(path)
-			if err != nil || string(got) != test.want+"        allow_merge_commit: false\n        allow_squash_merge: false\n        allow_rebase_merge: false\n    topics:\n        names: []\n    labels: []\n" {
+			if err != nil || string(got) != test.want+"        allow_merge_commit: false\n        allow_squash_merge: false\n        allow_rebase_merge: false\n        delete_branch_on_merge: false\n    topics:\n        names: []\n    labels: []\n" {
 				t.Fatalf("stored=%q error=%v, want %q", got, err, test.want)
 			}
 		})

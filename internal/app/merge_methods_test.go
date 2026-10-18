@@ -83,3 +83,25 @@ func TestMergeMethodsExportReadFailurePreservesFile(t *testing.T) {
 		t.Fatalf("error=%v file=%q read=%v", err, data, readErr)
 	}
 }
+
+func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
+	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {delete_branch_on_merge: false}}\n", true)
+	calls := 0
+	result, err := Plan(Reader{MergeMethods: func(repo repository.Repository) (settings.MergeMethodsState, error) {
+		calls++
+		return settings.MergeMethodsState{DeleteBranchOnMerge: true}, nil
+	}})
+	if err != nil || calls != 1 || result.Comparison.Managed != 1 || len(result.Comparison.Changes) != 1 || result.Comparison.Changes[0].After != false {
+		t.Fatalf("plan=%+v err=%v calls=%d", result, err, calls)
+	}
+	applied, err := Apply(Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
+		calls++
+		if d.DeleteBranchOnMerge == nil || *d.DeleteBranchOnMerge || !d.BaseEmpty() {
+			t.Fatalf("desired=%+v", d)
+		}
+		return nil
+	}})
+	if err != nil || !applied.Applied || calls != 2 {
+		t.Fatalf("apply=%+v err=%v calls=%d", applied, err, calls)
+	}
+}

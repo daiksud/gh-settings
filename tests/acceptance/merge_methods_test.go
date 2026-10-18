@@ -17,7 +17,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const observedMergeMethods = `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":false,"rebaseMergeAllowed":true}}}`
+const observedMergeMethods = `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":false,"rebaseMergeAllowed":true,"deleteBranchOnMerge":true}}}`
 
 func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 	binary := acceptanceBinary(t)
@@ -28,12 +28,21 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		{name: "merge-only plan", command: "plan", input: "allow_rebase_merge: false\nallow_squash_merge: true\nallow_merge_commit: false\n", body: observedMergeMethods, want: "settings.repository.allow_merge_commit: true → false\nsettings.repository.allow_squash_merge: false → true\nsettings.repository.allow_rebase_merge: true → false\n", requests: []string{"POST /graphql"}},
 		{name: "false stays false", command: "plan", input: "allow_squash_merge: false\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "mixed read order", command: "plan", input: "has_issues: false\nallow_merge_commit: false\n", body: observedMergeMethods, want: "settings.repository.has_issues: true → false\nsettings.repository.allow_merge_commit: true → false\n", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
-		{name: "missing not false", command: "plan", input: "allow_merge_commit: false\n", body: `{"data":{"repository":{"squashMergeAllowed":false,"rebaseMergeAllowed":false}}}`, errorText: "missing mergeCommitAllowed", requests: []string{"POST /graphql"}},
-		{name: "null not false", command: "plan", input: "allow_merge_commit: false\n", body: `{"data":{"repository":{"mergeCommitAllowed":null,"squashMergeAllowed":false,"rebaseMergeAllowed":false}}}`, errorText: "must be a boolean", requests: []string{"POST /graphql"}},
-		{name: "partial errors discard earlier REST comparison", command: "plan", input: "has_issues: false\nallow_merge_commit: false\n", body: `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":true,"rebaseMergeAllowed":true}},"errors":[{"message":"fixture permission denied"}]}`, errorText: "fixture permission denied", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
+		{name: "missing not false", command: "plan", input: "allow_merge_commit: false\n", body: `{"data":{"repository":{"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false}}}`, errorText: "missing mergeCommitAllowed", requests: []string{"POST /graphql"}},
+		{name: "null not false", command: "plan", input: "allow_merge_commit: false\n", body: `{"data":{"repository":{"mergeCommitAllowed":null,"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false}}}`, errorText: "must be a boolean", requests: []string{"POST /graphql"}},
+		{name: "partial errors discard earlier REST comparison", command: "plan", input: "has_issues: false\nallow_merge_commit: false\n", body: `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":true,"rebaseMergeAllowed":true,"deleteBranchOnMerge":false}},"errors":[{"message":"fixture permission denied"}]}`, errorText: "fixture permission denied", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
 		{name: "permission failure", command: "plan", input: "allow_merge_commit: false\n", body: `{"data":{"repository":null},"errors":[{"message":"Resource not accessible by integration"}]}`, errorText: "Resource not accessible", requests: []string{"POST /graphql"}},
 		{name: "direct false PATCH", command: "apply", input: "allow_merge_commit: false\nallow_squash_merge: true\nallow_rebase_merge: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}},
 		{name: "partial PATCH", command: "apply", input: "allow_rebase_merge: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}},
+		{name: "deletion-only plan", command: "plan", input: "delete_branch_on_merge: false\n", body: observedMergeMethods, want: "settings.repository.delete_branch_on_merge: true → false\n", requests: []string{"POST /graphql"}},
+		{name: "deletion true equality", command: "plan", input: "delete_branch_on_merge: true\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "deletion false equality", command: "plan", input: "delete_branch_on_merge: false\n", body: strings.Replace(observedMergeMethods, `"deleteBranchOnMerge":true`, `"deleteBranchOnMerge":false`, 1), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "deletion missing fails", command: "plan", input: "delete_branch_on_merge: false\n", body: strings.Replace(observedMergeMethods, `,"deleteBranchOnMerge":true`, "", 1), errorText: "missing deleteBranchOnMerge", requests: []string{"POST /graphql"}},
+		{name: "deletion null fails", command: "plan", input: "delete_branch_on_merge: false\n", body: strings.Replace(observedMergeMethods, `"deleteBranchOnMerge":true`, `"deleteBranchOnMerge":null`, 1), errorText: "must be a boolean", requests: []string{"POST /graphql"}},
+		{name: "deletion partial errors", command: "plan", input: "has_issues: false\ndelete_branch_on_merge: false\n", body: strings.TrimSuffix(observedMergeMethods, "}") + `,"errors":[{"message":"deletion fixture denied"}]}`, errorText: "deletion fixture denied", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
+		{name: "deletion direct false", command: "apply", input: "delete_branch_on_merge: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}},
+		{name: "deletion direct true", command: "apply", input: "delete_branch_on_merge: true\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}},
+		{name: "deletion invalid local", command: "apply", input: "delete_branch_on_merge: null\n", errorText: "must be a boolean"},
 		{name: "invalid local", command: "plan", input: "allow_merge_commit: null\n", errorText: "must be a boolean"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -57,6 +66,9 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 					want := map[string]any{"allow_rebase_merge": false}
 					if test.name == "direct false PATCH" {
 						want = map[string]any{"allow_merge_commit": false, "allow_squash_merge": true, "allow_rebase_merge": false}
+					}
+					if strings.HasPrefix(test.name, "deletion direct") {
+						want = map[string]any{"delete_branch_on_merge": test.name == "deletion direct true"}
 					}
 					if !reflect.DeepEqual(payload, want) {
 						t.Errorf("payload=%v want=%v", payload, want)
@@ -173,10 +185,10 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				t.Fatal(err)
 			}
 			fields := document["settings"].(map[string]any)["repository"].(map[string]any)
-			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || len(fields) != 8 {
+			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || len(fields) != 9 {
 				t.Fatalf("fields=%v", fields)
 			}
-			input := repositoryInput("allow_merge_commit: false\nallow_squash_merge: true\nallow_rebase_merge: false\n")
+			input := repositoryInput("allow_merge_commit: false\nallow_squash_merge: true\nallow_rebase_merge: false\ndelete_branch_on_merge: false\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -194,7 +206,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				t.Fatal(err)
 			}
 			changes := typed["changes"].([]any)
-			if typed["managed"] != float64(3) || typed["outcome"] != "changed" || len(changes) != 3 {
+			if typed["managed"] != float64(4) || typed["outcome"] != "changed" || len(changes) != 4 {
 				t.Fatalf("report=%s", data)
 			}
 			for _, change := range changes {
@@ -216,7 +228,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(html.UnescapeString(string(data)), "settings.repository.allow_merge_commit: true → false") {
+			if !strings.Contains(html.UnescapeString(string(data)), "settings.repository.allow_merge_commit: true → false") || !strings.Contains(html.UnescapeString(string(data)), "settings.repository.delete_branch_on_merge: true → false") {
 				t.Fatalf("summary=%s", data)
 			}
 			mu.Lock()

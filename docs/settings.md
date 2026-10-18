@@ -24,6 +24,14 @@ v0.10.0 adds optional `allow_merge_commit`, `allow_squash_merge` and `allow_reba
 
 The [merge-method contract](features/merge-methods.feature.md) defines their narrow GraphQL read path, strict complete-read handling, unchanged REST PATCH semantics and read-only Actions evidence. Plan reads them only when declared; v0.10.0 export includes all three after a complete read. Review exported configuration before using an older pinned CLI/Action.
 
+## Automatic branch deletion (unreleased)
+
+Current source adds optional `settings.repository.delete_branch_on_merge`, a boolean controlling GitHub's automatic deletion of head branches after pull requests merge. Omission leaves it unmanaged, explicit false is preserved, and null/non-boolean input is invalid. It extends the existing repository group; it does not manage or delete individual branches.
+
+Source export includes the value after a complete read. Plan uses the same fixed GraphQL read as merge methods; apply sends only declared fields through the existing Administration-write REST PATCH, with no preliminary read. Missing/null/invalid data or any GraphQL error fails the read instead of becoming false. See the [feature contract and read-only Actions evidence](features/delete-branch-on-merge.feature.md).
+
+Published v0.10.0 does not accept this key. Review source-exported configuration before using the pinned older CLI/Action; a future separately approved release and consumer update are needed to adopt it.
+
 ## Topics
 
 `settings.topics.names` manages the complete repository topic set. Topics have been supported since [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0), using the same `schemaVersion: 1` format.

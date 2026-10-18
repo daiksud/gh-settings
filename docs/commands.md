@@ -8,6 +8,8 @@ This reference describes v0.10.0 and current source, supporting repository field
 
 v0.10.0 adds [merge-method booleans](features/merge-methods.feature.md); published v0.9.0 does not accept those keys. Their GraphQL query runs only for declared fields during plan and always during export. Existing repository PATCH behavior is retained.
 
+Current source also supports unreleased [`delete_branch_on_merge`](features/delete-branch-on-merge.feature.md). It joins the fixed merge-related GraphQL query, and source export now saves nine repository fields. Published v0.10.0 retains its eight-field export and rejects this new key.
+
 ## Interface and implementation status
 
 ```text
@@ -38,7 +40,7 @@ API operations use GitHub CLI authentication. Check access with `gh auth status`
 | --- | --- | --- |
 | Repository fields and topics | Metadata read | Administration write |
 | Labels | Issues or Pull requests read | Issues or Pull requests write |
-| Merge methods (v0.10.0) | GraphQL query; ordinary Actions Contents read verified | Administration write through REST PATCH |
+| Merge methods (v0.10.0); automatic branch deletion (unreleased source) | GraphQL query; ordinary Actions Contents read verified | Administration write through REST PATCH |
 
 Administration write alone does not grant label write permission.[^github-labels] Source export always reads labels as well as repository fields/topics; source apply uses its apply credential for the fresh label read and any required mutations. Public REST reads may be unauthenticated; GraphQL reads use an authenticated read token. Local validation and valid declarations with no managed resources do not require an origin or authentication.
 
