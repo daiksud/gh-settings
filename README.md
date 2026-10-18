@@ -25,6 +25,8 @@ The published [v0.12.0 CLI and Action](https://github.com/daiksud/gh-settings/re
 
 [v0.12.0](https://github.com/daiksud/gh-settings/releases/tag/v0.12.0) adds [squash commit title/body defaults](docs/features/squash-commit-defaults.feature.md). The pinned v0.12.0 package includes these keys; publication does not change live policy.
 
+Current source adds [`allow_auto_merge` and `allow_update_branch`](docs/features/pull-request-options.feature.md) (unreleased; planned v0.13.0). The pinned v0.12.0 package rejects these keys.
+
 ## Quick start
 
 Run these commands inside the Git checkout whose settings you want to manage, including from a subdirectory.

@@ -36,12 +36,14 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		AllowSquashMerge         *bool   `json:"allow_squash_merge,omitempty"`
 		AllowRebaseMerge         *bool   `json:"allow_rebase_merge,omitempty"`
 		DeleteBranchOnMerge      *bool   `json:"delete_branch_on_merge,omitempty"`
+		AllowAutoMerge           *bool   `json:"allow_auto_merge,omitempty"`
+		AllowUpdateBranch        *bool   `json:"allow_update_branch,omitempty"`
 		SquashMergeCommitTitle   *string `json:"squash_merge_commit_title,omitempty"`
 		SquashMergeCommitMessage *string `json:"squash_merge_commit_message,omitempty"`
 	}{
 		Description: desired.Description, Homepage: desired.Homepage,
 		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki,
-		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge, DeleteBranchOnMerge: desired.DeleteBranchOnMerge,
+		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge, DeleteBranchOnMerge: desired.DeleteBranchOnMerge, AllowAutoMerge: desired.AllowAutoMerge, AllowUpdateBranch: desired.AllowUpdateBranch,
 		SquashMergeCommitTitle: desired.SquashMergeCommitTitle, SquashMergeCommitMessage: desired.SquashMergeCommitMessage,
 	}
 	body, err := json.Marshal(payload)

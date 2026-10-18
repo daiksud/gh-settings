@@ -7,7 +7,7 @@ import (
 
 func TestMergeMethodsPresenceAndComparison(t *testing.T) {
 	yes, no := true, false
-	for _, d := range []RepositoryDeclaration{{AllowMergeCommit: &no}, {AllowSquashMerge: &no}, {AllowRebaseMerge: &no}, {DeleteBranchOnMerge: &no}} {
+	for _, d := range []RepositoryDeclaration{{AllowMergeCommit: &no}, {AllowSquashMerge: &no}, {AllowRebaseMerge: &no}, {DeleteBranchOnMerge: &no}, {AllowAutoMerge: &no}, {AllowUpdateBranch: &no}} {
 		if d.Empty() || !d.BaseEmpty() || d.MergeMethodsEmpty() {
 			t.Fatalf("lost false presence: %+v", d)
 		}
@@ -43,5 +43,24 @@ func TestDeleteBranchOnMergePresenceAndComparison(t *testing.T) {
 	}
 	if got := CompareMergeMethods(MergeMethodsState{}, RepositoryDeclaration{DeleteBranchOnMerge: &no}); got.Managed != 1 || len(got.Changes) != 0 {
 		t.Fatalf("false=%+v", got)
+	}
+}
+
+func TestPROptionsComparison(t *testing.T) {
+	no, yes := false, true
+	current := MergeMethodsState{AllowAutoMerge: true, AllowUpdateBranch: true}
+	got := CompareMergeMethods(current, RepositoryDeclaration{AllowAutoMerge: &no, AllowUpdateBranch: &no})
+	want := []Change{{Field: "repository.allow_auto_merge", Before: true, After: false}, {Field: "repository.allow_update_branch", Before: true, After: false}}
+	if got.Managed != 2 || !reflect.DeepEqual(got.Changes, want) {
+		t.Fatalf("comparison=%+v", got)
+	}
+	for _, d := range []RepositoryDeclaration{{AllowAutoMerge: &yes, AllowUpdateBranch: &yes}, {AllowAutoMerge: &yes}, {AllowUpdateBranch: &yes}} {
+		got := CompareMergeMethods(current, d)
+		if got.Managed < 1 || len(got.Changes) != 0 {
+			t.Fatalf("equal=%+v", got)
+		}
+	}
+	if got := CompareMergeMethods(current, RepositoryDeclaration{}); got.Managed != 0 || len(got.Changes) != 0 {
+		t.Fatalf("omitted=%+v", got)
 	}
 }

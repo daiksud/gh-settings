@@ -18,6 +18,8 @@ const mergeMethodsQuery = `query($owner: String!, $name: String!) {
   squashMergeAllowed
   rebaseMergeAllowed
   deleteBranchOnMerge
+  autoMergeAllowed
+  allowUpdateBranch
   squashMergeCommitTitle
   squashMergeCommitMessage
  }
@@ -55,6 +57,8 @@ func (client *MergeMethodsClient) ReadMergeMethods(repo repository.Repository) (
 		{"squashMergeAllowed", &result.AllowSquashMerge},
 		{"rebaseMergeAllowed", &result.AllowRebaseMerge},
 		{"deleteBranchOnMerge", &result.DeleteBranchOnMerge},
+		{"autoMergeAllowed", &result.AllowAutoMerge},
+		{"allowUpdateBranch", &result.AllowUpdateBranch},
 	} {
 		value, present := (*response.Repository)[field.name]
 		if !present {

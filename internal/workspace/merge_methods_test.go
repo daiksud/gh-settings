@@ -6,7 +6,7 @@ import (
 )
 
 func TestMergeMethodBooleanCodec(t *testing.T) {
-	for _, field := range []string{"allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge"} {
+	for _, field := range []string{"allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge", "allow_auto_merge", "allow_update_branch"} {
 		for _, value := range []string{"true", "false", "TRUE", "!!bool false", "&value false"} {
 			t.Run(field+value, func(t *testing.T) {
 				d, err := DecodeConfig([]byte("schemaVersion: 1\nsettings:\n  repository:\n    " + field + ": " + value + "\n"))
@@ -21,7 +21,7 @@ func TestMergeMethodBooleanCodec(t *testing.T) {
 				if err != nil || round.Repository.MergeMethodsEmpty() {
 					t.Fatalf("round=%+v err=%v", round, err)
 				}
-				for _, other := range []string{"allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge"} {
+				for _, other := range []string{"allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge", "allow_auto_merge", "allow_update_branch"} {
 					if other != field && strings.Contains(string(data), other+":") {
 						t.Fatalf("injected default: %s", data)
 					}
@@ -37,7 +37,7 @@ func TestMergeMethodBooleanCodec(t *testing.T) {
 			})
 		}
 	}
-	for _, field := range []string{"allow_auto_merge", "allow_update_branch", "squash_merge_commit_title", "merge_commit_message"} {
+	for _, field := range []string{"allow_forking", "allow_merge_queue", "squash_merge_commit_title", "merge_commit_message"} {
 		if _, err := DecodeConfig([]byte("schemaVersion: 1\nsettings: {repository: {" + field + ": true}}")); err == nil {
 			t.Fatalf("expanded scope: %s", field)
 		}

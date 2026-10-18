@@ -1,0 +1,34 @@
+name: PR options read-only proof
+on:
+  pull_request:
+    paths: [.github/workflows/pr-options-read-proof.yml]
+permissions:
+  contents: read
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read fixed merge-related fields with the ordinary Actions token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api graphql -f query='query { repository(owner:"daiksud", name:"gh-settings") { mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed deleteBranchOnMerge autoMergeAllowed allowUpdateBranch squashMergeCommitTitle squashMergeCommitMessage } }' > observation.json
+          python3 - <<'PY'
+          import json
+          response = json.load(open('observation.json'))
+          assert not response.get('errors'), response
+          fields = response['data']['repository']
+          assert fields == {
+              'mergeCommitAllowed': False,
+              'squashMergeAllowed': True,
+              'rebaseMergeAllowed': False,
+              'deleteBranchOnMerge': True,
+              'autoMergeAllowed': True,
+              'allowUpdateBranch': True,
+              'squashMergeCommitTitle': 'COMMIT_OR_PR_TITLE',
+              'squashMergeCommitMessage': 'COMMIT_MESSAGES',
+          }, fields
+          assert all(type(fields[key]) is bool for key in ['mergeCommitAllowed', 'squashMergeAllowed', 'rebaseMergeAllowed', 'deleteBranchOnMerge', 'autoMergeAllowed', 'allowUpdateBranch'])
+          print(json.dumps(fields, sort_keys=True))
+          PY
