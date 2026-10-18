@@ -1,20 +1,23 @@
 <!--
-Contributor guide: https://github.com/daiksud/gh-settings/blob/main/CONTRIBUTING.md
-Testing guide: https://github.com/daiksud/gh-settings/blob/main/docs/contributing/testing.md
+Write this body as the final squash commit message. Remove template comments and temporary notes before merging.
 -->
 
 ## Why
 
-<!-- Explain the problem and why it matters. -->
+<!-- Describe the concrete problem and its impact. Include enough context to understand the change from git log alone. -->
 
 ## What changed
 
-<!-- Describe the changes and resulting behavior. Mention compatibility or migration steps when relevant. -->
+<!--
+Describe the resulting behavior and how it solves the problem.
+Explain non-obvious design decisions. Include compatibility, migration, or operational effects when they matter to using or maintaining the change.
+-->
 
 ## Verification
 
-<!-- List the checks actually run and their results. Explain any relevant checks that were not run. -->
+<!--
+State the behavior or case verified, the method, and the observed result.
+Include any verification gap that limits the claimed outcome. Keep the evidence summary here even when linking tests or CI.
+-->
 
-## Related issues
-
-<!-- Optional: use Closes #123 only when this PR completes that issue; otherwise use Refs #123. Remove this section if it does not apply. -->
+<!-- Add issue references only when relevant. Use Closes #<number> only when this PR completes the issue; otherwise use Refs #<number>. Links supplement the explanation above. -->

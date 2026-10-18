@@ -10,23 +10,13 @@ body:
     id: problem
     attributes:
       label: Problem to solve
-      description: Describe the use case, who is affected, and what is difficult today.
+      description: What are you trying to achieve, and what makes it difficult with the current behavior?
     validations:
       required: true
   - type: textarea
-    id: desired-outcome
+    id: success-criteria
     attributes:
-      label: Desired outcome
-      description: Describe the behavior you want and an example that would show the problem is solved.
+      label: Success criteria
+      description: What observable result would solve the problem? Give a concrete usage example that shows when this issue is complete.
     validations:
       required: true
-  - type: textarea
-    id: possible-approach
-    attributes:
-      label: Possible approach and alternatives
-      description: If you have ideas, share them along with alternatives or current workarounds. An implementation design is optional.
-  - type: textarea
-    id: related-context
-    attributes:
-      label: Related context
-      description: Link related issues, documentation, or GitHub API references that help explain the request.

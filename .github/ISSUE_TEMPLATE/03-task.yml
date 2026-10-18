@@ -2,31 +2,16 @@ name: Task
 description: Plan refactoring, documentation, tests, or repository maintenance.
 body:
   - type: textarea
-    id: purpose
+    id: problem
     attributes:
-      label: Purpose
-      description: Explain the problem this work addresses and why it is needed.
-    validations:
-      required: true
-  - type: textarea
-    id: scope
-    attributes:
-      label: Scope
-      description: Describe the work included. Keep it small enough for one PR where practical.
+      label: Problem to address
+      description: What maintenance problem, cost, or risk does this work address?
     validations:
       required: true
   - type: textarea
     id: completion-criteria
     attributes:
       label: Completion criteria
-      description: List the observable outcomes or checks that will show this task is complete.
-      placeholder: |
-        - [ ] An observable outcome
-        - [ ] A relevant verification result
+      description: What concrete result will complete this task? Identify the affected area and how the result will be checked. Keep the task small enough for one PR where practical.
     validations:
       required: true
-  - type: textarea
-    id: related-work
-    attributes:
-      label: Related work
-      description: Link related issues, prerequisites, or follow-up work, if any.

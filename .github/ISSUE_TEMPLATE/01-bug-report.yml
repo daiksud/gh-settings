@@ -11,14 +11,14 @@ body:
     id: actual-behavior
     attributes:
       label: Actual behavior
-      description: Describe what happened and how it affected your work.
+      description: Describe what happened and the problem it caused. Include a short error or output excerpt if it helps demonstrate the failure.
     validations:
       required: true
   - type: textarea
     id: expected-behavior
     attributes:
       label: Expected behavior
-      description: Describe what you expected to happen.
+      description: What should have happened with the same input and starting state?
     validations:
       required: true
   - type: textarea
@@ -26,27 +26,16 @@ body:
     attributes:
       label: Steps to reproduce
       description: |
-        Include the exact command or workflow steps and a minimal `.github/settings.yml` when relevant.
-        If the problem is intermittent, describe the conditions you have observed.
+        Provide the smallest command or workflow, configuration, and starting state needed to reproduce the problem.
+        Include environment details only when they affect reproduction. If the exact steps are unknown, describe the conditions you observed.
     validations:
       required: true
-  - type: textarea
-    id: environment
+  - type: input
+    id: version
     attributes:
-      label: Version and environment
+      label: Version or ref
       description: |
-        Include `gh settings --version` and `gh --version` for the CLI, or the `uses` ref for the Action.
-        Add the OS/runner and, for a source build, the source commit. If a value is unavailable, say so.
-      placeholder: |
-        Usage: CLI / GitHub Action / source build
-        Version or Action ref:
-        GitHub CLI version:
-        OS or runner:
-        Source commit, if applicable:
+        Provide `gh settings --version` for the CLI, the exact `uses` ref for the Action, or the commit SHA for a source build.
+        Write "unknown" if unavailable.
     validations:
       required: true
-  - type: textarea
-    id: additional-context
-    attributes:
-      label: Logs and additional context
-      description: Include relevant output, exit codes, workflow run links, or screenshots.
