@@ -37,6 +37,7 @@ runs:
         shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh
         shellcheck action/*.sh
         shellcheck .github/scripts/*.sh
+        shellcheck .githooks/commit-msg
     - name: Verify Go formatting
       shell: bash
       run: |

@@ -8,9 +8,45 @@ Install [mise](https://mise.jdx.dev/getting-started.html), then run the followin
 
 ```sh
 mise install
+mise run setup
 ```
 
-[mise.toml](../../mise.toml) is the source of truth for the exact development tool versions used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies. Run development commands through mise so a different system toolchain does not change the result.
+[mise.toml](../../mise.toml) pins the development toolchains used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies; [package.json](../../package.json) and [package-lock.json](../../package-lock.json) pin commitlint and its npm dependency tree. Node.js is used only for development tooling. Run development commands through mise so a different system toolchain does not change the result.
+
+`mise run setup` installs the locked npm dependencies and configures this checkout's `core.hooksPath` to use the tracked [.githooks](../../.githooks/commit-msg) directory. Run it after cloning and again when the npm dependencies change. Each worktree needs its own installed dependencies. The setup selects these hooks in place of any existing hook directory configured for this repository.
+
+## Commit messages
+
+The [`commit-msg` hook](../../.githooks/commit-msg) runs [commitlint](https://commitlint.js.org/) before Git creates a commit. Errors and warnings both stop the commit so you can correct the message and retry, including a missing blank line before the body or footers. The hook uses the Node.js version selected by mise and the locally installed commitlint; keep `mise` on the PATH available to your terminal or Git client.
+
+Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+
+```text
+<type>[optional scope][!]: <description>
+
+[optional body]
+
+[optional footers]
+```
+
+For example:
+
+```text
+feat(settings): manage repository topics
+fix: reject an empty configuration
+docs: clarify local setup
+feat!: require the grouped settings schema
+```
+
+[commitlint.config.mjs](../../commitlint.config.mjs) extends `@commitlint/config-conventional`. Its allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`. Headers are limited to 100 characters. Body and footer line lengths are unrestricted so the full explanation described in [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history) can be retained. Breaking changes can use `!` or a `BREAKING CHANGE:` footer. Commitlint's default ignores remain enabled for generated messages such as merge, revert, and autosquash `fixup!`/`squash!` commits.
+
+To check a message without creating a commit:
+
+```sh
+printf '%s\n' 'feat(settings): manage repository topics' | mise exec -- ./node_modules/.bin/commitlint --strict
+```
+
+This is a local Git check. GitHub-created squash commits do not run it; PR-title validation remains the separate future work described in [ADR 0016](../adr/0016-conventional-pr-titles.md).
 
 ## Build and run from source
 
@@ -39,7 +75,7 @@ mise exec -- go vet ./...
 mise exec -- go test -race -count=1 -vet=off ./...
 mise exec -- go build ./...
 mise exec -- actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
-mise exec -- shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh action/*.sh .github/scripts/*.sh
+mise exec -- shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh action/*.sh .github/scripts/*.sh .githooks/commit-msg
 mise exec -- bash tests/release.sh
 mise exec -- bash tests/github-actions/action-install.sh
 mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions
