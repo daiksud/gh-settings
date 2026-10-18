@@ -22,7 +22,7 @@ mise exec -- go build -o gh-settings .
 
 A source build reports version `dev` unless a value is supplied through the existing linker symbol `main.version`. The root [entry point](../../main.go) remains buildable with `go build .`; release builds use `-ldflags '-X main.version=...'`.
 
-The source-built CLI and the [published v0.11.0 Action/CLI pair](../github-actions.md#published-package-and-consumer-pins) include labels, merge-method and automatic branch-deletion support. Source test evidence remains distinct from verifying the published binary selected by the Action.
+The source-built CLI and the [published v0.12.0 Action/CLI pair](../github-actions.md#published-package-and-consumer-pins) include labels, merge methods, automatic branch deletion and squash commit defaults. Source test evidence remains distinct from verifying the published binary selected by the Action.
 
 To use the built checkout as a GitHub CLI extension, run `gh extension install .`. Commands that read or change settings use the current checkout; see the [command reference](../commands.md) before running them against a repository.
 

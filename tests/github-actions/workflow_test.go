@@ -81,7 +81,7 @@ func findStep(t *testing.T, j job, id string) step {
 	return step{}
 }
 
-const exampleAction = "daiksud/gh-settings@266b96ed81c713e32bb4f554718981aa4ad0bfc3"
+const exampleAction = "daiksud/gh-settings@7d6b7d873ec3a06e4298eb27e852138aca24e130"
 
 func TestWorkflowCredentialBoundaries(t *testing.T) {
 	pr, prText := readWorkflow(t, "settings-pr.yml")
