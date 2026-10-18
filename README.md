@@ -17,17 +17,17 @@ Published binaries support macOS on Apple Silicon (`arm64`) and Linux on x86-64 
 
 Update with `gh extension upgrade gh-settings`, or uninstall with `gh extension remove gh-settings`.
 
-The published [v0.13.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.13.0) support repository settings including merge methods, automatic branch deletion, squash commit defaults, auto-merge and branch-update options, topics and labels. The Action examples below select this release. See the [label configuration contract](docs/settings.md#labels) before managing that collection.
+The published [v0.14.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) support repository settings including merge methods, automatic branch deletion, squash/normal merge commit defaults, auto-merge and branch-update options, topics and labels. The Action examples below select this release. See the [label configuration contract](docs/settings.md#labels) before managing that collection.
 
 [v0.10.0](https://github.com/daiksud/gh-settings/releases/tag/v0.10.0) adds three [repository merge-method booleans](docs/features/merge-methods.feature.md). The pinned examples include them; v0.9.0 and older packages do not accept these keys.
 
-[v0.11.0](https://github.com/daiksud/gh-settings/releases/tag/v0.11.0) adds the [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The pinned v0.13.0 package includes this key; publication does not change the repository's live policy.
+[v0.11.0](https://github.com/daiksud/gh-settings/releases/tag/v0.11.0) adds the [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The pinned v0.14.0 package includes this key; publication does not change the repository's live policy.
 
-[v0.12.0](https://github.com/daiksud/gh-settings/releases/tag/v0.12.0) adds [squash commit title/body defaults](docs/features/squash-commit-defaults.feature.md). The pinned v0.13.0 package includes these keys; publication does not change live policy.
+[v0.12.0](https://github.com/daiksud/gh-settings/releases/tag/v0.12.0) adds [squash commit title/body defaults](docs/features/squash-commit-defaults.feature.md). The pinned v0.14.0 package includes these keys; publication does not change live policy.
 
-[v0.13.0](https://github.com/daiksud/gh-settings/releases/tag/v0.13.0) adds [`allow_auto_merge` and `allow_update_branch`](docs/features/pull-request-options.feature.md). The pinned v0.13.0 package includes these keys; publication does not change live policy.
+[v0.13.0](https://github.com/daiksud/gh-settings/releases/tag/v0.13.0) adds [`allow_auto_merge` and `allow_update_branch`](docs/features/pull-request-options.feature.md). The pinned v0.14.0 package includes these keys; publication does not change live policy.
 
-[v0.14.0](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md). The pinned v0.13.0 package rejects these keys.
+[v0.14.0](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md). The pinned v0.14.0 package includes these keys; publication does not change live policy.
 
 ## Quick start
 
@@ -98,12 +98,12 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@922707bc6896404ee9f87588ab650dd3ea38d28d # v0.13.0
+      - uses: daiksud/gh-settings@6e736c8cfa0c770306f8b4cd72193823f8ecac2b # v0.14.0
         with:
           command: validate
 ```
 
-The pinned v0.13.0 Action supports `validate`, `plan`, and `apply` for repository settings, topics and labels. Validate needs no token; plan takes an explicit read token; repository/topic apply takes a target-scoped App installation token with Administration write; label mutations additionally require Issues or Pull requests write. The caller owns approval, credential issuance and revocation, and concurrency.
+The pinned v0.14.0 Action supports `validate`, `plan`, and `apply` for repository settings, topics and labels. Validate needs no token; plan takes an explicit read token; repository/topic apply takes a target-scoped App installation token with Administration write; label mutations additionally require Issues or Pull requests write. The caller owns approval, credential issuance and revocation, and concurrency.
 
 Before enabling apply, follow the [approval and required-check guidance](docs/github-actions.md#protect-the-apply-path) to protect both `main` and the job that receives the write credential. Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 

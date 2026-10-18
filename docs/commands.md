@@ -4,7 +4,7 @@
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
-This reference describes v0.14.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.13.0; older v0.8.0 packages do not support labels.
+This reference describes v0.14.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.14.0; older v0.8.0 packages do not support labels.
 
 v0.10.0 adds [merge-method booleans](features/merge-methods.feature.md); published v0.9.0 does not accept those keys. Their GraphQL query runs only for declared fields during plan and always during export. Existing repository PATCH behavior is retained.
 

@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-CLI and Action v0.14.0 support optional `settings.repository.merge_commit_title` and `merge_commit_message` under `schemaVersion: 1`. Published v0.13.0 and currently pinned examples reject these keys. They extend the existing repository group without enabling normal merge commits, changing squash defaults, or performing a merge.
+CLI and Action v0.14.0 support optional `settings.repository.merge_commit_title` and `merge_commit_message` under `schemaVersion: 1`. Published v0.13.0 rejects these keys; the pinned v0.14.0 examples support them. They extend the existing repository group without enabling normal merge commits, changing squash defaults, or performing a merge.
 
 The [configuration reference](../settings.md#merge-commit-defaults-v0140) owns declaration/value semantics. These defaults can be managed while `allow_merge_commit` is false; no merge-method declaration is required or synthesized.
 
