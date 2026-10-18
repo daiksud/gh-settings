@@ -4,7 +4,7 @@
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
-This reference describes v0.13.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.13.0; older v0.8.0 packages do not support labels.
+This reference describes v0.14.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.13.0; older v0.8.0 packages do not support labels.
 
 v0.10.0 adds [merge-method booleans](features/merge-methods.feature.md); published v0.9.0 does not accept those keys. Their GraphQL query runs only for declared fields during plan and always during export. Existing repository PATCH behavior is retained.
 
@@ -14,7 +14,7 @@ v0.12.0 also supports the [squash commit title/body defaults](features/squash-co
 
 v0.13.0 adds [auto-merge and branch-update booleans](features/pull-request-options.feature.md). v0.13.0 export includes thirteen repository fields; published v0.12.0 retains eleven and rejects these keys.
 
-Current source adds [merge commit title/body defaults](features/merge-commit-defaults.feature.md) (unreleased; planned v0.14.0). Source export includes fifteen repository fields; published v0.13.0 retains thirteen and rejects these keys.
+v0.14.0 adds [merge commit title/body defaults](features/merge-commit-defaults.feature.md). v0.14.0 export includes fifteen repository fields; published v0.13.0 retains thirteen and rejects these keys.
 
 ## Interface and implementation status
 
@@ -46,7 +46,7 @@ API operations use GitHub CLI authentication. Check access with `gh auth status`
 | --- | --- | --- |
 | Repository fields and topics | Metadata read | Administration write |
 | Labels | Issues or Pull requests read | Issues or Pull requests write |
-| Merge methods (v0.10.0); automatic branch deletion (v0.11.0); squash commit defaults (v0.12.0); auto-merge and branch updates (v0.13.0) | GraphQL query; ordinary Actions Contents read verified | Administration write through REST PATCH |
+| Merge methods (v0.10.0); automatic branch deletion (v0.11.0); squash commit defaults (v0.12.0); auto-merge and branch updates (v0.13.0); normal merge commit defaults (v0.14.0) | GraphQL query; ordinary Actions Contents read verified | Administration write through REST PATCH |
 
 Administration write alone does not grant label write permission.[^github-labels] Source export always reads labels as well as repository fields/topics; source apply uses its apply credential for the fresh label read and any required mutations. Public REST reads may be unauthenticated; GraphQL reads use an authenticated read token. Local validation and valid declarations with no managed resources do not require an origin or authentication.
 
