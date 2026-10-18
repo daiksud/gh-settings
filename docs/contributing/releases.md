@@ -2,7 +2,7 @@
 
 The [manual release workflow](../../.github/workflows/release.yml) builds and validates the release's own platform binaries. Merging code does not dispatch it, and ordinary main CI artifacts are not substituted for release artifacts. Installation belongs in the [README](../../README.md); current published consumer pins belong in the [Actions guide](../github-actions.md#published-package-and-consumer-pins).
 
-Current-source labels support has not been published in that Action/CLI pair. Building the source CLI exposes the new feature, while the public Action still installs the release selected by [`action/cli-version`](../../action/cli-version). A matching future release is required before adopting labels through public Action pins; caller permission changes are a separate [repository automation concern](repository-automation.md#active-settings-workflows).
+Building the source CLI exposes current-source features, while the public Action installs the release selected by [`action/cli-version`](../../action/cli-version). Version preparation does not publish those assets. Verify the matching release before adopting new features through public Action pins; caller permission changes are a separate [repository automation concern](repository-automation.md#active-settings-workflows).
 
 ## Release assets
 
@@ -56,7 +56,7 @@ The checksum is obtained from the same GitHub release over fixed HTTPS paths. It
 
 PR/main CI builds a candidate once and verifies it through real process acceptance plus the exact-source composite with bounded download/API fixtures. This works before release assets exist. [Testing](testing.md#ci-validation) owns the detailed candidate cases and distinguishes local rendering, hosted integration, and published-download evidence.
 
-The candidate's embedded version alone does not establish published feature availability: current-source bytes can include labels while the committed version still names a release without them. Prepare an owner-selected release version through the normal process, verify the resulting published package, and update consumer pins separately; do not replace the existing version's immutable assets with the new source build.
+The candidate's embedded version alone does not establish published feature availability: current-source bytes can include new fields while the committed version still names a release without them. Prepare an owner-selected release version through the normal process, verify the resulting published package, and update consumer pins separately; do not replace the existing version's immutable assets with the new source build.
 
 ## Retry and recovery
 
