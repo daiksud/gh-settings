@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-Current source supports optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1` (unreleased; planned v0.13.0). Published v0.12.0 and currently pinned examples reject these keys. This extends the existing repository group, with no new resource family or credential permissions.
+CLI and Action v0.13.0 support optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. Published v0.12.0 and currently pinned examples reject these keys. This extends the existing repository group, with no new resource family or credential permissions.
 
-The [configuration reference](../settings.md#auto-merge-and-branch-updates-unreleased-planned-v0130) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
+The [configuration reference](../settings.md#auto-merge-and-branch-updates-v0130) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
 
 ## API and execution contract
 
@@ -21,7 +21,7 @@ The shared `MergeMethodsState`, fixed query and deferred read retain their names
 
 Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 
-Export saves thirteen repository fields plus complete topics and all label pages after every read/serialization succeeds. v0.12.0 retains eleven fields. Stable comparison order is five base fields, three merge-method booleans, branch deletion, auto-merge, branch updates, squash title/message, topics and labels. Each declared repository field counts once; current-source report/Summary supports fifteen managed units, while v0.12.0 retains thirteen. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
+Export saves thirteen repository fields plus complete topics and all label pages after every read/serialization succeeds. v0.12.0 retains eleven fields. Stable comparison order is five base fields, three merge-method booleans, branch deletion, auto-merge, branch updates, squash title/message, topics and labels. Each declared repository field counts once; v0.13.0 and current-source report/Summary support fifteen managed units, while v0.12.0 retains thirteen. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
 
 ## Hosted read evidence
 
