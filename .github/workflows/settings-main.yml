@@ -29,6 +29,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-administration: write
+          permission-issues: write
       - uses: daiksud/gh-settings@07bfc905e0b52c433ce666b8c0c16978909e02c5 # v0.9.0
         with:
           command: apply
