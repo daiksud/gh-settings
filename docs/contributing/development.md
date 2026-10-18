@@ -38,7 +38,7 @@ docs: clarify local setup
 feat!: require the grouped settings schema
 ```
 
-[commitlint.config.mjs](../../commitlint.config.mjs) extends `@commitlint/config-conventional`. Its allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`. Headers are limited to 100 characters. Body and footer line lengths are unrestricted so the full explanation described in [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history) can be retained. Breaking changes can use `!` or a `BREAKING CHANGE:` footer. Commitlint's default ignores remain enabled for generated messages such as merge, revert, and autosquash `fixup!`/`squash!` commits.
+[commitlint.config.mjs](../../commitlint.config.mjs) extends `@commitlint/config-conventional` without overriding its rules. Its allowed types are `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`. The preset limits headers and body/footer lines to 100 characters; body lines containing a URL are exempt. Wrap long explanations across lines while retaining the complete content described in [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). Breaking changes can use `!` or a `BREAKING CHANGE:` footer. Commitlint's default ignores remain enabled for generated messages such as merge, revert, and autosquash `fixup!`/`squash!` commits.
 
 To check a message without creating a commit:
 
