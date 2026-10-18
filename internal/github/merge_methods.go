@@ -11,13 +11,15 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// mergeMethodsQuery reads only the four merge-related settings through the same read-only GraphQL path.
+// mergeMethodsQuery reads only the merge-related settings through the same read-only GraphQL path.
 const mergeMethodsQuery = `query($owner: String!, $name: String!) {
  repository(owner: $owner, name: $name) {
   mergeCommitAllowed
   squashMergeAllowed
   rebaseMergeAllowed
   deleteBranchOnMerge
+  squashMergeCommitTitle
+  squashMergeCommitMessage
  }
 }`
 
@@ -63,6 +65,22 @@ func (client *MergeMethodsClient) ReadMergeMethods(repo repository.Repository) (
 		}
 		if err := json.Unmarshal(value, field.target); err != nil {
 			return settings.MergeMethodsState{}, fmt.Errorf("decode merge method %s: %w", field.name, err)
+		}
+	}
+	for _, field := range []struct {
+		name   string
+		target *string
+		valid  func(string) bool
+	}{
+		{"squashMergeCommitTitle", &result.SquashMergeCommitTitle, settings.ValidSquashMergeCommitTitle},
+		{"squashMergeCommitMessage", &result.SquashMergeCommitMessage, settings.ValidSquashMergeCommitMessage},
+	} {
+		value, present := (*response.Repository)[field.name]
+		if !present {
+			return settings.MergeMethodsState{}, fmt.Errorf("GitHub merge methods response is missing %s", field.name)
+		}
+		if err := json.Unmarshal(value, field.target); err != nil || !field.valid(*field.target) {
+			return settings.MergeMethodsState{}, fmt.Errorf("GitHub merge method %s must be a supported string enum, not null or another value", field.name)
 		}
 	}
 	return result, nil

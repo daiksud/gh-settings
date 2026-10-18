@@ -27,19 +27,22 @@ func NewWriteClient(host string) (*Client, error) {
 
 func (client *Client) ApplyRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
 	payload := struct {
-		Description         *string `json:"description,omitempty"`
-		Homepage            *string `json:"homepage,omitempty"`
-		HasIssues           *bool   `json:"has_issues,omitempty"`
-		HasProjects         *bool   `json:"has_projects,omitempty"`
-		HasWiki             *bool   `json:"has_wiki,omitempty"`
-		AllowMergeCommit    *bool   `json:"allow_merge_commit,omitempty"`
-		AllowSquashMerge    *bool   `json:"allow_squash_merge,omitempty"`
-		AllowRebaseMerge    *bool   `json:"allow_rebase_merge,omitempty"`
-		DeleteBranchOnMerge *bool   `json:"delete_branch_on_merge,omitempty"`
+		Description              *string `json:"description,omitempty"`
+		Homepage                 *string `json:"homepage,omitempty"`
+		HasIssues                *bool   `json:"has_issues,omitempty"`
+		HasProjects              *bool   `json:"has_projects,omitempty"`
+		HasWiki                  *bool   `json:"has_wiki,omitempty"`
+		AllowMergeCommit         *bool   `json:"allow_merge_commit,omitempty"`
+		AllowSquashMerge         *bool   `json:"allow_squash_merge,omitempty"`
+		AllowRebaseMerge         *bool   `json:"allow_rebase_merge,omitempty"`
+		DeleteBranchOnMerge      *bool   `json:"delete_branch_on_merge,omitempty"`
+		SquashMergeCommitTitle   *string `json:"squash_merge_commit_title,omitempty"`
+		SquashMergeCommitMessage *string `json:"squash_merge_commit_message,omitempty"`
 	}{
 		Description: desired.Description, Homepage: desired.Homepage,
 		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki,
 		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge, DeleteBranchOnMerge: desired.DeleteBranchOnMerge,
+		SquashMergeCommitTitle: desired.SquashMergeCommitTitle, SquashMergeCommitMessage: desired.SquashMergeCommitMessage,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

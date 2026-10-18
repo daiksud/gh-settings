@@ -112,7 +112,7 @@ func (fixture *apiFixture) checkRequests(noRead bool) error {
 	return nil
 }
 
-const mergeMethodsFixtureResponse = `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false}}}`
+const mergeMethodsFixtureResponse = `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`
 
 // Only this fixed query to the fixture repository is read-only, never arbitrary POSTs.
 func isMergeMethodsFixtureRead(r *http.Request) bool {
@@ -131,6 +131,6 @@ func isMergeMethodsFixtureRead(r *http.Request) bool {
 	if err := json.Unmarshal(body, &query); err != nil {
 		return false
 	}
-	expected := `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed deleteBranchOnMerge } }`
+	expected := `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed deleteBranchOnMerge squashMergeCommitTitle squashMergeCommitMessage } }`
 	return strings.Join(strings.Fields(query.Query), " ") == expected && len(query.Variables) == 2 && query.Variables["owner"] == "owner" && query.Variables["name"] == "current"
 }

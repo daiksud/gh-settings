@@ -23,6 +23,8 @@ The published [v0.11.0 CLI and Action](https://github.com/daiksud/gh-settings/re
 
 [v0.11.0](https://github.com/daiksud/gh-settings/releases/tag/v0.11.0) adds the [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The pinned v0.11.0 package includes this key; publication does not change the repository's live policy.
 
+Current source adds [squash commit title/body defaults](docs/features/squash-commit-defaults.feature.md) (unreleased; planned v0.12.0). The pinned v0.11.0 package rejects those new keys.
+
 ## Quick start
 
 Run these commands inside the Git checkout whose settings you want to manage, including from a subdirectory.
