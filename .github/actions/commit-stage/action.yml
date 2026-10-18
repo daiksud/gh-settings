@@ -81,4 +81,4 @@ runs:
         printf 'source-sha=%s\ncli-version=%s\n' "$source_sha" "$version" >> "$GITHUB_OUTPUT"
     - name: Check Markdown and local links
       shell: bash
-      run: rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md docs examples/github-actions
+      run: rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions

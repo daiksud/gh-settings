@@ -12,6 +12,30 @@ This guide is for people changing gh-settings itself: its code, tests, documenta
 
 The repository's CI moves PRs through Draft and Ready states. Its review automation and settings workflows are described in [repository automation](docs/contributing/repository-automation.md); a successful bot workflow alone does not establish a current approval.
 
+## Issues and pull requests
+
+When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose), choose the template that fits the work:
+
+- **Bug report**: describe actual and expected behavior, a minimal reproduction with the relevant starting state, and the exact CLI version or Action ref. Add environment details when they affect reproduction.
+- **Feature or improvement**: explain the current obstacle and an observable result that would solve it, with a concrete usage example.
+- **Task**: identify the maintenance problem and the concrete result that completes it, including the affected area and how to check the result.
+
+Blank issues remain available for questions or work that does not fit these forms. Use the same information structure when submitting through the web, CLI, or API. Add constraints or references to the relevant answer only when they affect the work.
+
+### Write PR bodies for the Git history
+
+The PR body is intended to become the squash commit message. Use the [PR template](.github/pull_request_template.md) to leave a durable explanation that is understandable from `git log` alone:
+
+- **Why**: state the concrete problem and its impact, including the essential background even when an Issue already describes it.
+- **What changed**: explain the resulting behavior and how it solves the problem. Include non-obvious design reasons and any compatibility, migration, or operational effects needed to use or maintain the change.
+- **Verification**: summarize the behavior or cases checked, the method, and observed results. State any gap that limits the claimed outcome. The [testing guide](docs/contributing/testing.md) helps select appropriate checks.
+
+Issue, test, and CI links supplement this explanation; the problem, decisions, and verification results must remain understandable if those links are unavailable. Use `Closes #123` only when the PR completes the issue.
+
+Keep routine CI command lists, full logs, file-by-file diff narration, unrelated unchanged areas, and agent work history out of the body. Use PR comments or GitHub's review/check records for temporary progress, review requests, and approval status. Include the specific evidence and consequences that explain this change.
+
+Before merging, update the body to match the final diff and results, remove template comments and temporary notes, and confirm the final squash message contains that body. The repository declaration selects `squash_merge_commit_message: PR_BODY`; this default takes effect after the settings workflow applies it.
+
 ## Where documentation belongs
 
 Choose the reader and the question first. Use one authoritative page for a detailed explanation, and link to it from other documents.
@@ -55,7 +79,7 @@ ADRs and behavior specifications remain at their existing paths so decision numb
 After installing the pinned tools, run from the repository root:
 
 ```sh
-mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md docs examples/github-actions
+mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md .github/pull_request_template.md docs examples/github-actions
 git diff --check
 ```
 
