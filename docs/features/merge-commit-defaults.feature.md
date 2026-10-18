@@ -23,7 +23,7 @@ Complete export saves fifteen repository fields plus complete topics/all label p
 
 ## Read-only hosted evidence
 
-A temporary isolated Actions proof will read both new fields with effective Contents read/Metadata read only, without checkout, App credentials, Environment or writes. Its successful run/values will be recorded here and its workflow removed from the final diff. Local authenticated reads alone do not prove ordinary Actions-token access.
+An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/runs/39120474618) returned `mergeCommitTitle: MERGE_MESSAGE` and `mergeCommitMessage: PR_TITLE` with all prior fields and the existing squash-only booleans. Effective permissions were Contents read and Metadata read only, with no checkout, App credentials, Environment or writes. Its temporary workflow is removed from the final diff. This proves access for that token/repository, not every credential.
 
 ## Test mapping
 
