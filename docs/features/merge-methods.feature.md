@@ -21,20 +21,20 @@ settings:
 
 - Omitted fields remain unmanaged. Explicit false is a declared value and is included in PATCH; GitHub defaults never fill omitted fields.
 - Values must be YAML booleans spelled true or false under the existing parser rules. Null, strings, numbers, collections, duplicate keys and unsupported settings fail validation before API access. Aliases and merge keys retain their existing behavior.
-- Base fields compare first, followed by `allow_merge_commit`, `allow_squash_merge`, `allow_rebase_merge`, then the unreleased `delete_branch_on_merge` field in current source, then topics and labels. Each declared boolean counts as one managed field.
+- Base fields compare first, followed by `allow_merge_commit`, `allow_squash_merge`, `allow_rebase_merge`, then the `delete_branch_on_merge` field added in v0.11.0, then topics and labels. Each declared boolean counts as one managed field.
 
 ### Rule: Read merge methods without write permissions
 
 [REST repository GET](https://docs.github.com/en/rest/repos/repos#get-a-repository) requires Contents write as well as read to expose merge-related settings. Those response fields are optional and are absent in a public unauthenticated GET; missing values cannot safely mean false.
 
-The source read adapter instead sends a fixed GraphQL **query** to `POST /graphql`, using the same origin-selected owner/name and existing gh credentials. Published v0.10.0 requests the three method fields below; current source also requests the unreleased branch-deletion field using the same query. These [public-schema](https://docs.github.com/en/graphql/overview/public-schema) fields are required booleans:
+The source read adapter instead sends a fixed GraphQL **query** to `POST /graphql`, using the same origin-selected owner/name and existing gh credentials. Published v0.10.0 requests the three method fields below; v0.11.0 and current source also request the branch-deletion field using the same query. These [public-schema](https://docs.github.com/en/graphql/overview/public-schema) fields are required booleans:
 
 | Declaration | GraphQL read field |
 | --- | --- |
 | `allow_merge_commit` | `mergeCommitAllowed: Boolean!` |
 | `allow_squash_merge` | `squashMergeAllowed: Boolean!` |
 | `allow_rebase_merge` | `rebaseMergeAllowed: Boolean!` |
-| `delete_branch_on_merge` (unreleased) | `deleteBranchOnMerge: Boolean!` |
+| `delete_branch_on_merge` (v0.11.0) | `deleteBranchOnMerge: Boolean!` |
 
 An [isolated Actions experiment](https://github.com/daiksud/gh-settings/actions/runs/39086857913) on this public repository verified all three values with the ordinary token's effective Contents read and Metadata read permissions. The job used no App secrets, Environment, write scopes, checkout, or exported credentials. Its temporary workflow is excluded from the implementation. This is hosted read-access evidence for that token/repository; fixtures alone do not establish another credential's access.
 
