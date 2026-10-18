@@ -21,7 +21,7 @@ The published [v0.10.0 CLI and Action](https://github.com/daiksud/gh-settings/re
 
 [v0.10.0](https://github.com/daiksud/gh-settings/releases/tag/v0.10.0) adds three [repository merge-method booleans](docs/features/merge-methods.feature.md). The pinned examples include them; v0.9.0 and older packages do not accept these keys.
 
-Current source additionally supports the unreleased [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The pinned v0.10.0 package does not accept this key; implementation does not change the repository's live policy.
+[v0.11.0](https://github.com/daiksud/gh-settings/releases/tag/v0.11.0) adds the [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The pinned v0.10.0 package does not accept this key; publication does not change the repository's live policy.
 
 ## Quick start
 

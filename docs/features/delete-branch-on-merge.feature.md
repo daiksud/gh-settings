@@ -6,7 +6,7 @@ description: Manage one optional repository boolean through the existing merge-r
 
 ## Feature: Manage automatic branch deletion
 
-Current source supports `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. This is unreleased: published v0.10.0 and its pinned consumers reject the key. No root config adoption, live policy change, release, branch operation or permission change is part of implementation.
+CLI and Action v0.11.0 support `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Published v0.10.0 and its pinned consumers reject the key. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
 
 ```yaml
 schemaVersion: 1
@@ -19,7 +19,7 @@ settings:
 
 Omitting the field leaves it unmanaged. Explicit false remains a declared value in encode, comparison, report and PATCH. Null, quoted booleans, numbers and collections fail local validation before API access; the existing strict boolean, duplicate-key, alias and merge rules apply.
 
-The stable repository comparison order is the five base fields, the three merge-method booleans, then `delete_branch_on_merge`, topics and labels. Each declared repository field counts once. Current-source Summary accepts up to eleven managed units: nine repository fields plus topics and labels; published v0.10.0 retains ten.
+The stable repository comparison order is the five base fields, the three merge-method booleans, then `delete_branch_on_merge`, topics and labels. Each declared repository field counts once. v0.11.0 and current-source Summary accept up to eleven managed units: nine repository fields plus topics and labels; published v0.10.0 retains ten.
 
 ### Rule: Use the existing complete GraphQL read
 
