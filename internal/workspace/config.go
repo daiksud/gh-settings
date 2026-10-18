@@ -24,6 +24,8 @@ type repositoryDocument struct {
 	AllowUpdateBranch        *bool   `yaml:"allow_update_branch,omitempty"`
 	SquashMergeCommitTitle   *string `yaml:"squash_merge_commit_title,omitempty"`
 	SquashMergeCommitMessage *string `yaml:"squash_merge_commit_message,omitempty"`
+	MergeCommitTitle         *string `yaml:"merge_commit_title,omitempty"`
+	MergeCommitMessage       *string `yaml:"merge_commit_message,omitempty"`
 }
 
 type topicsDocument struct {
@@ -46,6 +48,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 		HasIssues: declaration.Repository.HasIssues, HasProjects: declaration.Repository.HasProjects, HasWiki: declaration.Repository.HasWiki,
 		AllowMergeCommit: declaration.Repository.AllowMergeCommit, AllowSquashMerge: declaration.Repository.AllowSquashMerge, AllowRebaseMerge: declaration.Repository.AllowRebaseMerge, DeleteBranchOnMerge: declaration.Repository.DeleteBranchOnMerge, AllowAutoMerge: declaration.Repository.AllowAutoMerge, AllowUpdateBranch: declaration.Repository.AllowUpdateBranch,
 		SquashMergeCommitTitle: declaration.Repository.SquashMergeCommitTitle, SquashMergeCommitMessage: declaration.Repository.SquashMergeCommitMessage,
+		MergeCommitTitle: declaration.Repository.MergeCommitTitle, MergeCommitMessage: declaration.Repository.MergeCommitMessage,
 	}
 	if declaration.Topics.Names != nil {
 		names := settings.SortedTopics(*declaration.Topics.Names)
@@ -164,6 +167,22 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 				}
 				repository.SquashMergeCommitMessage = &text
 			}
+		case "merge_commit_title", "merge_commit_message":
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a supported string enum", field)
+			}
+			text := value.Value
+			if field == "merge_commit_title" {
+				if !settings.ValidMergeCommitTitle(text) {
+					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_TITLE or MERGE_MESSAGE", field)
+				}
+				repository.MergeCommitTitle = &text
+			} else {
+				if !settings.ValidMergeCommitMessage(text) {
+					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_BODY, PR_TITLE or BLANK", field)
+				}
+				repository.MergeCommitMessage = &text
+			}
 		case "description", "homepage":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
 				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a string", field)
@@ -211,6 +230,9 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 	}
 	if repository.SquashMergeCommitMessage != nil && repository.SquashMergeCommitTitle == nil {
 		return settings.RepositoryDeclaration{}, fmt.Errorf("squash_merge_commit_message requires squash_merge_commit_title")
+	}
+	if repository.MergeCommitMessage != nil && repository.MergeCommitTitle == nil {
+		return settings.RepositoryDeclaration{}, fmt.Errorf("merge_commit_message requires merge_commit_title")
 	}
 	return repository, nil
 }

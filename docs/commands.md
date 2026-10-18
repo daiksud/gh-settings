@@ -14,6 +14,8 @@ v0.12.0 also supports the [squash commit title/body defaults](features/squash-co
 
 v0.13.0 adds [auto-merge and branch-update booleans](features/pull-request-options.feature.md). v0.13.0 export includes thirteen repository fields; published v0.12.0 retains eleven and rejects these keys.
 
+Current source adds [merge commit title/body defaults](features/merge-commit-defaults.feature.md) (unreleased; planned v0.14.0). Source export includes fifteen repository fields; published v0.13.0 retains thirteen and rejects these keys.
+
 ## Interface and implementation status
 
 ```text

@@ -12,7 +12,7 @@ func TestSquashCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 		calls := 0
 		got, err := Plan(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
-			return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}, nil
+			return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 		}})
 		if err != nil || calls != 1 || got.Comparison.Managed < 1 {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)

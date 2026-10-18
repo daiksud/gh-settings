@@ -24,6 +24,8 @@ type RepositoryDeclaration struct {
 	AllowUpdateBranch        *bool
 	SquashMergeCommitTitle   *string
 	SquashMergeCommitMessage *string
+	MergeCommitTitle         *string
+	MergeCommitMessage       *string
 }
 
 // Empty reports whether every field is unmanaged, regardless of declared values.
@@ -38,13 +40,13 @@ func (d RepositoryDeclaration) BaseEmpty() bool {
 
 // MergeMethodsEmpty keeps the GraphQL read optional for existing declarations.
 func (d RepositoryDeclaration) MergeMethodsEmpty() bool {
-	return d.AllowMergeCommit == nil && d.AllowSquashMerge == nil && d.AllowRebaseMerge == nil && d.DeleteBranchOnMerge == nil && d.AllowAutoMerge == nil && d.AllowUpdateBranch == nil && d.SquashMergeCommitTitle == nil && d.SquashMergeCommitMessage == nil
+	return d.AllowMergeCommit == nil && d.AllowSquashMerge == nil && d.AllowRebaseMerge == nil && d.DeleteBranchOnMerge == nil && d.AllowAutoMerge == nil && d.AllowUpdateBranch == nil && d.SquashMergeCommitTitle == nil && d.SquashMergeCommitMessage == nil && d.MergeCommitTitle == nil && d.MergeCommitMessage == nil
 }
 
 // MergeMethodsState is complete only after all merge-related GraphQL values are validated.
 type MergeMethodsState struct {
 	AllowMergeCommit, AllowSquashMerge, AllowRebaseMerge, DeleteBranchOnMerge, AllowAutoMerge, AllowUpdateBranch bool
-	SquashMergeCommitTitle, SquashMergeCommitMessage                                                             string
+	SquashMergeCommitTitle, SquashMergeCommitMessage, MergeCommitTitle, MergeCommitMessage                       string
 }
 
 // CompareMergeMethods uses only declared fields, in the repository's stable order.
@@ -76,6 +78,8 @@ func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaratio
 	}{
 		{"repository.squash_merge_commit_title", current.SquashMergeCommitTitle, desired.SquashMergeCommitTitle},
 		{"repository.squash_merge_commit_message", current.SquashMergeCommitMessage, desired.SquashMergeCommitMessage},
+		{"repository.merge_commit_title", current.MergeCommitTitle, desired.MergeCommitTitle},
+		{"repository.merge_commit_message", current.MergeCommitMessage, desired.MergeCommitMessage},
 	} {
 		if field.after == nil {
 			continue
@@ -96,4 +100,12 @@ func ValidSquashMergeCommitTitle(value string) bool {
 // ValidSquashMergeCommitMessage recognizes the GitHub API's exact message enum.
 func ValidSquashMergeCommitMessage(value string) bool {
 	return value == "PR_BODY" || value == "COMMIT_MESSAGES" || value == "BLANK"
+}
+
+// ValidMergeCommitTitle recognizes the GitHub API's exact merge title enum.
+func ValidMergeCommitTitle(value string) bool { return value == "PR_TITLE" || value == "MERGE_MESSAGE" }
+
+// ValidMergeCommitMessage recognizes the GitHub API's exact merge body enum.
+func ValidMergeCommitMessage(value string) bool {
+	return value == "PR_TITLE" || value == "PR_BODY" || value == "BLANK"
 }

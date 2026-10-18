@@ -45,7 +45,7 @@ func TestExportSavesAtCheckoutRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
-		"description": "Example repository", "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false, "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES",
+		"description": "Example repository", "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false, "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE",
 	}}}
 	if !reflect.DeepEqual(actual, want) || result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
 		t.Fatalf("YAML=%#v execution=%v stdout=%q stderr=%q", actual, result.runErr, result.stdout.String(), result.stderr.String())
