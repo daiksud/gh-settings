@@ -51,14 +51,15 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_
 
 ## CI validation
 
-The [PR](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows use the following validation stages. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle).
+The [PR](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows use the following validation stages. Only the PR workflow validates PR message metadata. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle).
 
 | Stage | Work and handoff |
 | --- | --- |
+| Commitlint (PR only) | Validate the PR title and optional body together as the squash message; run [policy regression cases](../../tests/github-actions/commitlint.sh) and reject invalid Conventional Commits |
 | Commit stage | Formatting, modules, vet, race tests, workflow/shell checks, release/installer fixtures, Markdown/local links, and one product build |
 | Acceptance stage | Download that run's product artifact, verify digest and embedded version, then execute the tagged process suite |
 | Composite smoke | Use the same artifact with the producer's exact Action source and a separate configuration-only consumer |
-| `pass` | Succeed only when acceptance and composite smoke both succeed; failures, cancellation, or skipped validation do not become success |
+| `pass` | Require commitlint, acceptance, and composite smoke for PRs; require acceptance and composite smoke for main. Failures, cancellation, or skipped validation do not become success |
 
 [Commit stage](../../.github/actions/commit-stage/action.yml) exposes its actual checkout SHA, committed CLI version, and binary SHA-256. PR validation builds the merge source, and downstream jobs check out that exact producer SHA. Ordinary CI uses [`action/cli-version`](../../action/cli-version); a release supplies its explicit version and checks equality separately.
 
