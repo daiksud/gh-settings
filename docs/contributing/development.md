@@ -15,6 +15,8 @@ mise run setup
 
 `mise run setup` configures this checkout's `core.hooksPath` to use the tracked [.githooks](../../.githooks/commit-msg) directory. Run it after cloning. Run `mise install` again when tool versions change; the installed tools are shared across worktrees. The setup selects these hooks in place of any existing hook directory configured for this repository.
 
+The enabled hook and `commitlint.config.mjs` are executable code from the current checkout. Switching branches can replace either file; the next commit or amend runs that branch's code with your user permissions and inherited environment. Review these files before committing on an untrusted branch. Pinned tools and `--no-install` do not restrict what the tracked hook or configuration can execute.
+
 ## Commit messages
 
 The [`commit-msg` hook](../../.githooks/commit-msg) runs [commitlint](https://commitlint.js.org/) before Git creates a commit. Errors and warnings both stop the commit so you can correct the message and retry, including a missing blank line before the body or footers. The hook uses mise's installed commitlint with `bun run --bun --no-install`, forcing the Bun runtime and disabling Bun's automatic package installation. Keep `mise` on the PATH available to your terminal or Git client.
