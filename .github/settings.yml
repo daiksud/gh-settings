@@ -4,7 +4,13 @@ settings:
     # Omitted fields remain unmanaged.
     # Protected main provides review; the main-only Environment adds no approval.
     description: "Manage GitHub repository settings as code"
+    homepage: ""
     has_issues: true
+    has_projects: true
+    has_wiki: true
+    allow_merge_commit: false
+    allow_squash_merge: true
+    allow_rebase_merge: false
   topics:
     names:
       - github-cli
