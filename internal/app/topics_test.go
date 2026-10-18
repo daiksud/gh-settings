@@ -107,7 +107,7 @@ func TestTopicsExportFailureBeforeOverwrite(t *testing.T) {
 			failure := errors.New("topics forbidden")
 			var calls []string
 			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-				return settings.MergeMethodsState{}, nil
+				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}, nil
 			}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls = append(calls, "repository")
 				return settings.RepositoryState{}, nil

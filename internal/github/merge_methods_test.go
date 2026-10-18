@@ -19,19 +19,19 @@ func TestReadMergeMethodsGraphQLBoundary(t *testing.T) {
 		status     int
 		valid      bool
 	}{
-		{"values", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":true}}}`, 200, true},
-		{"all false", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false}}}`, 200, true},
+		{"values", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":true,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`, 200, true},
+		{"all false", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`, 200, true},
 		{"permission", `{"data":{"repository":null},"errors":[{"message":"Resource not accessible by integration"}]}`, 200, false},
-		{"partial data with errors", `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":true,"rebaseMergeAllowed":true,"deleteBranchOnMerge":false}},"errors":[{"message":"denied"}]}`, 200, false},
+		{"partial data with errors", `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":true,"rebaseMergeAllowed":true,"deleteBranchOnMerge":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}},"errors":[{"message":"denied"}]}`, 200, false},
 		{"missing repository", `{"data":{}}`, 200, false},
 		{"null repository", `{"data":{"repository":null}}`, 200, false},
 		{"missing field", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true}}}`, 200, false},
-		{"null field", `{"data":{"repository":{"mergeCommitAllowed":null,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false}}}`, 200, false},
-		{"string field", `{"data":{"repository":{"mergeCommitAllowed":"false","squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false}}}`, 200, false},
-		{"number field", `{"data":{"repository":{"mergeCommitAllowed":0,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false}}}`, 200, false},
+		{"null field", `{"data":{"repository":{"mergeCommitAllowed":null,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`, 200, false},
+		{"string field", `{"data":{"repository":{"mergeCommitAllowed":"false","squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`, 200, false},
+		{"number field", `{"data":{"repository":{"mergeCommitAllowed":0,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`, 200, false},
 		{"missing deletion field", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false}}}`, 200, false},
-		{"null deletion field", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":null}}}`, 200, false},
-		{"wrong deletion type", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":"false"}}}`, 200, false},
+		{"null deletion field", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":null,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`, 200, false},
+		{"wrong deletion type", `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":true,"rebaseMergeAllowed":false,"deleteBranchOnMerge":"false","squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES"}}}`, 200, false},
 		{"bad JSON", `not json`, 200, false},
 		{"empty response", ``, 204, false},
 		{"forbidden", `{"message":"denied"}`, 403, false},
@@ -60,7 +60,7 @@ func TestReadMergeMethodsGraphQLBoundary(t *testing.T) {
 			if calls != 1 || test.valid != (err == nil) || (!test.valid && got != (settings.MergeMethodsState{})) {
 				t.Fatalf("state=%+v error=%v calls=%d", got, err, calls)
 			}
-			if test.name == "values" && got != (settings.MergeMethodsState{AllowSquashMerge: true, DeleteBranchOnMerge: true}) {
+			if test.name == "values" && got != (settings.MergeMethodsState{AllowSquashMerge: true, DeleteBranchOnMerge: true, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}) {
 				t.Fatalf("state=%+v", got)
 			}
 		})

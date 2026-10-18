@@ -11,15 +11,17 @@ import (
 )
 
 type repositoryDocument struct {
-	Description         *string `yaml:"description,omitempty"`
-	Homepage            *string `yaml:"homepage,omitempty"`
-	HasIssues           *bool   `yaml:"has_issues,omitempty"`
-	HasProjects         *bool   `yaml:"has_projects,omitempty"`
-	HasWiki             *bool   `yaml:"has_wiki,omitempty"`
-	AllowMergeCommit    *bool   `yaml:"allow_merge_commit,omitempty"`
-	AllowSquashMerge    *bool   `yaml:"allow_squash_merge,omitempty"`
-	AllowRebaseMerge    *bool   `yaml:"allow_rebase_merge,omitempty"`
-	DeleteBranchOnMerge *bool   `yaml:"delete_branch_on_merge,omitempty"`
+	Description              *string `yaml:"description,omitempty"`
+	Homepage                 *string `yaml:"homepage,omitempty"`
+	HasIssues                *bool   `yaml:"has_issues,omitempty"`
+	HasProjects              *bool   `yaml:"has_projects,omitempty"`
+	HasWiki                  *bool   `yaml:"has_wiki,omitempty"`
+	AllowMergeCommit         *bool   `yaml:"allow_merge_commit,omitempty"`
+	AllowSquashMerge         *bool   `yaml:"allow_squash_merge,omitempty"`
+	AllowRebaseMerge         *bool   `yaml:"allow_rebase_merge,omitempty"`
+	DeleteBranchOnMerge      *bool   `yaml:"delete_branch_on_merge,omitempty"`
+	SquashMergeCommitTitle   *string `yaml:"squash_merge_commit_title,omitempty"`
+	SquashMergeCommitMessage *string `yaml:"squash_merge_commit_message,omitempty"`
 }
 
 type topicsDocument struct {
@@ -41,6 +43,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 		Description: declaration.Repository.Description, Homepage: declaration.Repository.Homepage,
 		HasIssues: declaration.Repository.HasIssues, HasProjects: declaration.Repository.HasProjects, HasWiki: declaration.Repository.HasWiki,
 		AllowMergeCommit: declaration.Repository.AllowMergeCommit, AllowSquashMerge: declaration.Repository.AllowSquashMerge, AllowRebaseMerge: declaration.Repository.AllowRebaseMerge, DeleteBranchOnMerge: declaration.Repository.DeleteBranchOnMerge,
+		SquashMergeCommitTitle: declaration.Repository.SquashMergeCommitTitle, SquashMergeCommitMessage: declaration.Repository.SquashMergeCommitMessage,
 	}
 	if declaration.Topics.Names != nil {
 		names := settings.SortedTopics(*declaration.Topics.Names)
@@ -143,6 +146,22 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 			return settings.RepositoryDeclaration{}, err
 		}
 		switch field {
+		case "squash_merge_commit_title", "squash_merge_commit_message":
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a supported string enum", field)
+			}
+			text := value.Value
+			if field == "squash_merge_commit_title" {
+				if !settings.ValidSquashMergeCommitTitle(text) {
+					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_TITLE or COMMIT_OR_PR_TITLE", field)
+				}
+				repository.SquashMergeCommitTitle = &text
+			} else {
+				if !settings.ValidSquashMergeCommitMessage(text) {
+					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_BODY, COMMIT_MESSAGES or BLANK", field)
+				}
+				repository.SquashMergeCommitMessage = &text
+			}
 		case "description", "homepage":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
 				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a string", field)
@@ -183,6 +202,9 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 		default:
 			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)
 		}
+	}
+	if repository.SquashMergeCommitMessage != nil && repository.SquashMergeCommitTitle == nil {
+		return settings.RepositoryDeclaration{}, fmt.Errorf("squash_merge_commit_message requires squash_merge_commit_title")
 	}
 	return repository, nil
 }

@@ -33,6 +33,8 @@ func Export(read Reader) error {
 	declaration.Repository.AllowSquashMerge = &methods.AllowSquashMerge
 	declaration.Repository.AllowRebaseMerge = &methods.AllowRebaseMerge
 	declaration.Repository.DeleteBranchOnMerge = &methods.DeleteBranchOnMerge
+	declaration.Repository.SquashMergeCommitTitle = &methods.SquashMergeCommitTitle
+	declaration.Repository.SquashMergeCommitMessage = &methods.SquashMergeCommitMessage
 	names, err := read.Topics(repo)
 	if err != nil {
 		return err

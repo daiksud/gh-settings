@@ -10,6 +10,8 @@ v0.10.0 adds [merge-method booleans](features/merge-methods.feature.md); publish
 
 v0.11.0 also supports [`delete_branch_on_merge`](features/delete-branch-on-merge.feature.md). It joins the fixed merge-related GraphQL query, and v0.11.0 export saves nine repository fields. Published v0.10.0 retains its eight-field export and rejects this new key.
 
+Current source also supports the [squash commit title/body defaults](features/squash-commit-defaults.feature.md) (unreleased; planned v0.12.0). Export saves eleven repository fields; published v0.11.0 retains nine and rejects those two keys.
+
 ## Interface and implementation status
 
 ```text
