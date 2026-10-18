@@ -11,8 +11,8 @@ description: Observe differences for declared repository fields without mutation
 - Read `.github/settings.yml` from the Git root, including from a subdirectory.
 - Reject missing files and invalid configuration before API access.
 - For declared fields, resolve the same GitHub.com origin as export and ignore `GH_REPO`.
-- For declared fields, read the current five fields using the existing GET normalization and validation.
-- Never send PATCH or change the configuration file.
+- For declared repository fields, read the current five fields using the existing GET normalization and validation; topics and labels use their own selective reads below.
+- Never send a mutation request or change the configuration file.
 
 ### Rule: Empty declarations are local no-ops
 
@@ -87,4 +87,4 @@ Test mapping: [TestTopicsSetComparison](../../internal/settings/topics_test.go),
 
 ### Rule: Show label collection operations
 
-The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.
+Current source reads a declared label collection and reports typed create/update/delete operations. An explicit empty list counts as one managed resource, and omitted label attributes remain unmanaged. The [Labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation) owns label comparison scenarios and test mappings. Published v0.8.0 does not include labels.

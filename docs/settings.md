@@ -1,23 +1,12 @@
----
-type: Specification
-title: Repository settings
-description: Define supported settings and configuration ownership semantics.
-sources:
-  - id: github-update-repository
-    resource: https://docs.github.com/en/rest/repos/repos#update-a-repository
-    title: GitHub REST API — Update a repository
-  - id: github-repository-openapi
-    resource: https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json
-    title: GitHub repository read and update schemas
----
+# Repository settings
 
 ## Scope and status
 
-Current source implements export, validation, planning and direct apply. Export saves `.github/settings.yml` silently at the checkout root. That configuration targets only its containing repository. This page defines the five repository fields, topics and labels resources, and versioned YAML contract; see [commands](commands.md) for current behavior and [the published package boundary](github-actions.md#published-package-and-consumer-pins) for released consumers. Future settings remain outside this scope.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Published v0.8.0 supports five repository fields and the repository's topics. Current source additionally supports **unreleased labels**, using the same file-format version. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting source-only configuration.
 
 ## Supported fields
 
-The initial design supports exactly five basic fields under `settings.repository`. Their keys and types follow the corresponding GitHub repository update request body schema; the YAML grouping is a separate configuration decision.[^github-update-repository]
+The keys inside `settings.repository` follow GitHub's repository update request body schema.[^github-update-repository]
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -27,11 +16,11 @@ The initial design supports exactly five basic fields under `settings.repository
 | `has_projects` | boolean | Whether repository projects are enabled |
 | `has_wiki` | boolean | Whether the wiki is enabled |
 
-The three booleans take `true` or `false`. There are no enum-valued fields in the initial design. `validate` rejects values outside these string and boolean types, including explicit null, as decided in [ADR 0019](adr/0019-reject-explicit-null.md). Read-only response metadata and all other repository fields are excluded, even when GitHub exposes them as writable parameters. API defaults do not authorize sending omitted fields.
+The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
 ## Topics
 
-Current source adds `settings.topics.names` without changing `schemaVersion: 1`. Topics support is published in [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0), which this repository now adopts in its PR/main workflows. Older releases do not support this group.
+`settings.topics.names` manages the complete repository topic set. Topics have been supported since [v0.8.0](https://github.com/daiksud/gh-settings/releases/tag/v0.8.0), using the same `schemaVersion: 1` format.
 
 ```yaml
 schemaVersion: 1
@@ -42,63 +31,116 @@ settings:
       - settings-as-code
 ```
 
-`names` follows the [replace-topics request body](https://docs.github.com/en/rest/repos/repos#replace-all-repository-topics). It is an array of unique lowercase strings using letters, numbers and hyphens, each 1–50 characters long, with at most 20 entries. Uppercase names are rejected locally rather than relying on server lowercasing. Null, scalars, non-string elements and duplicate names are invalid. Aliases and merge keys retain the existing YAML semantics. [GitHub's naming rules](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics) apply to public and private repositories.
+`names` follows the [replace-topics request body](https://docs.github.com/en/rest/repos/repos#replace-all-repository-topics): an array of unique lowercase strings using letters, numbers and hyphens, each 1–50 characters long, with at most 20 entries. Uppercase names, null, scalars, non-string elements and duplicates fail local validation. GitHub's [topic naming rules](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/classifying-your-repository-with-topics) apply to public and private repositories; topic names are public metadata even on private repositories.
 
 | Declaration | Meaning |
 | --- | --- |
-| Omitted `topics`, or `topics: {}` | Topics unmanaged; no topics read during plan or topics write during apply. |
-| `names: [github-cli]` | Manage the complete topic set; replace any other remote topics. |
+| Omitted `topics`, or `topics: {}` | Topics unmanaged; plan and apply skip that resource. |
+| `names: [github-cli]` | Manage the complete topic set, replacing any other remote topics. |
 | `names: []` | Explicitly clear all topics. |
 | `names: null` | Invalid; never interpreted as omission or clearing. |
 
-Names are compared as a set. Export, comparisons and PUT payloads use sorted lists without changing the configuration file. An empty observed list is exported as `names: []`; exporting promotes that observed set to a managed declaration. Topic names are public metadata, even on private repositories.
+Names are compared as a set. Export, plan and update requests use sorted lists without rewriting an existing input configuration. An empty observed set is exported as `names: []`, which becomes an explicit managed declaration.
 
-Export reads `GET /repos/{owner}/{repo}`, then `GET /repos/{owner}/{repo}/topics`, followed by all labels pages; all reads and complete serialization finish before overwriting the file. Missing, null, invalid or unreadable topic names fail export instead of becoming an empty set. Plan reads only declared resources in repository-then-topics order. Topic reads need Metadata read (public resources may be read without authentication); writes need Administration write. Existing PR read-token isolation and target-scoped apply credentials are unchanged. No paid-plan prerequisite is documented for topics.
-
-Apply sends a repository PATCH only for declared repository fields, followed by `PUT /repos/{owner}/{repo}/topics` with only `{"names":[...]}` when topic names are declared. It does not GET first. An explicit clear sends `{"names":[]}`, never null. Both write clients reject redirects. On failure, later operations stop and earlier successful updates remain applied; there is no transaction, retry or rollback.
+Topic reads require Metadata read; public resources may be read without authentication. Writes require Administration write. The [command reference](commands.md#apply-behavior) explains request ordering and partial failures when repository settings and topics are declared together.
 
 ## Labels
 
-Current source adds `settings.labels`, an array of mappings with required `name` and optional `color`/`description` strings. Published v0.8.0 does not support Labels. See the [Labels feature contract](features/labels.feature.md) for schema, API mapping and tests.
+`settings.labels` manages repository label definitions in **current source only**. Published v0.8.0, the current composite Action and the pinned example workflows do not support this resource. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
 
-Omitting `labels` leaves it unmanaged. A provided list is authoritative: remote labels absent from the list are deleted; `labels: []` deletes all labels. Deleting a label removes its issue/PR associations. A changed name is create plus delete, with no rename inference. Review the explicit create/update/delete plan before apply.
+```yaml
+schemaVersion: 1
+settings:
+  labels:
+    - name: bug
+      color: "d73a4a"
+      description: Something is not working
+    - name: help wanted
+```
 
-Omitted color/description preserves existing values, or uses GitHub defaults for creation. Empty description clears it; null is invalid. Colors are six hexadecimal characters without `#` and normalized lowercase; descriptions permit at most 100 characters. Names use case-insensitive identity without trimming, and ambiguous names fail. Export reads every page before writing and saves the complete sorted label collection. Apply reconciles a fresh label read after repository PATCH and topics PUT; creates/updates precede deletes, and any failure stops later operations without rollback. Labels listing needs Issues or Pull requests read, while mutations need either permission at write level; Administration write alone is insufficient. This change does not alter credentials or released workflow pins.
+A declared list owns the complete label membership:
+
+| Declaration | Meaning |
+| --- | --- |
+| Omitted `labels` | Labels unmanaged; plan/apply make no label request. |
+| A list of label mappings | Keep the declared identities, creating or updating as needed; delete every undeclared remote label. |
+| `labels: []` | Delete all labels and their issue/PR associations. |
+| `labels: null` or `labels: {}` | Invalid; neither represents omission or an empty collection. |
+
+Deleting a label removes it from issues and pull requests. Recreating the same name does not restore those associations.[^github-delete-labels] Review the create/update/delete plan before applying authoritative membership.
+
+| Attribute | Contract |
+| --- | --- |
+| `name` | Required string that is neither empty nor whitespace-only, with no control characters. Spaces, punctuation and emoji are allowed. |
+| `color` | Optional string of six hexadecimal characters without `#`; normalized to lowercase. |
+| `description` | Optional string of at most 100 Unicode characters; `description: ""` clears an existing description. |
+
+Names use Unicode simple case folding for identity, without trimming. Duplicate or ambiguous identities in either configuration or remote observations fail. Case-only spelling changes preserve the remote spelling. A name changed to a different identity creates a new label and deletes the old label; there is no rename inference or `new_name` field, so old associations are lost.
+
+Omitting `color` or `description` preserves an existing label's value. For a new label, omitted attributes are left for GitHub to choose; the tool synthesizes no defaults. Null, wrong types, unsupported attributes and duplicate keys fail validation. Labels follow the existing YAML alias and merge rules. Archive settings and read-only label metadata are not managed.
+
+Listing labels needs Issues or Pull requests read, and mutations need either permission at write level for fine-grained or GitHub App tokens; public lists may be read unauthenticated.[^github-labels] Administration write alone is insufficient for label mutations. Source export reads labels too. The existing example tokens and workflow permissions have not been expanded for labels.
+
+The [command reference](commands.md#apply-behavior) explains fresh reads, create/update/delete ordering and partial failures. Contributors can find API mapping and test evidence in the [labels feature specification](features/labels.feature.md).
 
 ## Configuration semantics
 
-Written fields are managed, and YAML is authoritative for their values. Omitted fields at any nesting depth are unmanaged. The source `apply` command sends only declared supported fields. Null is not omission; it fails local validation for these five fields under [ADR 0019](adr/0019-reject-explicit-null.md).
+The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus, in current source, an optional `labels` sequence. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic migration or compatibility parsing.
 
-Following [ADR 0020](adr/0020-group-settings-by-resource.md), the YAML document contains a `settings` mapping and a `repository` mapping within it. [ADR 0021](adr/0021-require-schema-version.md) requires root `schemaVersion: 1`, an integer file-format version independent of the CLI release. The five keys inside `repository` match the `Update a repository` request body fields.[^github-update-repository] The following configuration declares one managed field:
+Declared values are managed, and YAML is authoritative for them. Omitting a resource leaves it unmanaged; declared topics and labels collections own their complete membership. Omitted repository fields and omitted label attributes remain unmanaged. No defaults are injected by the tool. For example:
 
 ```yaml
 schemaVersion: 1
 settings:
   repository:
     has_issues: false
+  topics:
+    names:
+      - github-cli
+      - settings-as-code
 ```
 
-Its update request body contains only `{"has_issues": false}`. The version and outer YAML mappings are not sent as API fields. The other four supported fields stay absent and unmanaged; no defaults are injected. A document containing only `schemaVersion: 1`, or also empty `settings` and `repository` mappings, manages no fields. Apply succeeds without an API request when no fields are managed.
+This declaration manages `has_issues` and the complete topic set. Description, homepage, projects, wiki and labels remain unmanaged. The version and outer YAML mappings are not sent as API fields; the repository update body contains only `{"has_issues": false}` and the topics request contains the declared `names` array.
 
-The `validate` command distinguishes these declarations:
+The supported repository fields distinguish omission from explicit values:
 
 | YAML under `settings.repository` | Meaning |
 | --- | --- |
-| Field omitted | Unmanaged; `apply` leaves it out of the request. |
-| `has_issues: false` | A declared boolean value, not omission. |
-| `description: ""` | A declared empty string, not omission. `description: ''` is equivalent. |
+| Field omitted | Unmanaged; apply leaves it out of the request. |
+| `has_issues: false` | A declared boolean value. |
+| `description: ""` | A declared empty string; single-quoted empty strings are equivalent. |
 | `description: null` or `has_issues: null` | Invalid for these string and boolean fields. A bare `description:` is also YAML null and invalid. |
 
-The same type rules apply to `homepage`, `has_projects`, and `has_wiki`. Quoted `'null'` is a string value, not YAML null. Validation rejects unknown or duplicate keys and wrong types; it accepts partial declarations and empty mappings. These rules apply to the current five fields only, without defining null behavior for future settings.
+The same type rules apply to `homepage`, `has_projects` and `has_wiki`. Quoted `'null'` is a string value, not YAML null. Null is invalid for the version, mappings, topic list and label declarations too.
 
-Fields at the YAML root, missing or unsupported versions, and unsupported groups fail validation. The required version and grouping are defined by [ADR 0020](adr/0020-group-settings-by-resource.md) and [ADR 0021](adr/0021-require-schema-version.md); no automatic migration or compatibility parsing is provided.
+A version-only document manages nothing:
 
-`export` normalizes GET `description` and `homepage` nulls to empty strings, preserving existing empty strings too. It serializes those values as quoted YAML strings (`""`), not empty YAML values or null. This read-side conversion does not make explicit YAML null valid input. The published read schema permits null for these fields, whereas the update body defines optional strings without `nullable`; export follows that writable representation.[^github-repository-openapi] This does not assert that the server rejects every null update, and no live update was performed to verify clearing. Missing response keys and null booleans are errors, not nulls or defaults.
+```yaml
+schemaVersion: 1
+```
 
-Root keys other than `schemaVersion` and `settings`, and settings groups other than `repository`, `topics` and `labels`, are rejected.
+Empty `settings`, `repository` or `topics` mappings are also valid. When no resources are managed, plan and apply succeed locally without an origin, authentication or API requests. An explicit `names: []` still manages topics; in source, `labels: []` still manages all label membership. These declarations require a comparison or update rather than a local no-op.
 
-Rulesets, Pages, and Actions settings remain unsupported. Organization settings and multi-repository management are outside the tool's scope. Inherited Organization rulesets are outside repository scope. Unresolved ruleset collection behavior remains in the [future direction](concept.md#future-direction).
+Validation rejects unknown or duplicate keys, non-string keys, wrong types, malformed YAML and multiple documents. YAML aliases and merge keys are resolved before supported values are checked. Partial declarations are accepted; unsupported root-level field names are rejected. See [validate behavior](commands.md#validate-behavior) for output and failure handling.
+
+## Exported values
+
+Export declares every supported observed repository field and the complete topic set. Source export additionally reads all label pages and saves the complete label collection sorted by identity, with names, lowercase colors and descriptions, including `labels: []` when none exist. This makes the observed membership authoritative. Review the saved file and remove resources or attributes you want to leave unmanaged before applying it.
+
+GitHub can return null for an unset description or homepage. Export normalizes those response values to empty strings and writes quoted YAML strings (`""`); it preserves existing empty strings and false booleans. Missing response fields and null booleans are errors. Topic names must be present as a valid array; missing, null, invalid or unreadable names fail export instead of becoming an empty set.
+
+For labels, response descriptions may be null and are normalized to empty strings. Missing required label fields, invalid names/colors/descriptions, ambiguous identities or a failed later page fail the whole read. All reads and serialization complete before export opens the destination.
+
+This response normalization does not make explicit YAML null valid input. The published read schema permits null for description/homepage, while the update schema defines optional strings without `nullable`.[^github-repository-openapi] The [export command](commands.md#export-behavior) documents file replacement and write-failure behavior.
+
+## Unsupported settings
+
+Rulesets, Pages and Actions settings are not supported. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five body parameters and their request body placement. This reference does not expand the supported scope.
+
+[^github-delete-labels]: [GitHub — Deleting a label](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/managing-labels#deleting-a-label), including removal from associated issues and pull requests.
+
+[^github-labels]: [GitHub Labels REST API](https://docs.github.com/en/rest/issues/labels), including listing and mutation permissions.
 
 [^github-repository-openapi]: [GitHub official OpenAPI schema](https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json), checked on 2026-10-12 for nullable full-repository description/homepage values and optional string parameters in `PATCH /repos/{owner}/{repo}`.

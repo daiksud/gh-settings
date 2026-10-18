@@ -128,9 +128,9 @@ These origin-support changes are published in v0.7.0 and do not change settings 
 - Given the current checkout has ordinary settings or zero values with an unset string
 - When the maintainer runs `gh settings export`
 - And runs `gh settings validate` with the same executable
-- Then the exported document contains `schemaVersion: 1`, `settings.repository`, and exactly the five supported values
+- Then the exported document contains `schemaVersion: 1`, the five supported `settings.repository` values, `settings.topics.names`, and the complete `settings.labels` list
 - And validation succeeds without output or changing the saved file bytes
-- And export makes one settings read while validation makes no API request
+- And export reads repository settings, topics, and all label pages while validation makes no additional API request
 
 ### Rule: Report export failures
 
@@ -207,7 +207,7 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | Standard output is unavailable | [TestExportDoesNotWriteStdout](../../internal/cli/run_test.go) | `TestExportExistingFile/replace` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 
-Export changes the local configuration but only reads GitHub settings; [apply](../commands.md#apply-behavior) owns GitHub mutation. Only description/homepage nulls returned by the read API are normalized to empty strings. A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.
+Export changes the local configuration but only reads GitHub settings; [apply](../commands.md#apply-behavior) owns GitHub mutation. For the repository response, only description/homepage nulls are normalized to empty strings; nullable label descriptions are covered by the [labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation). A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.
 
 ### Rule: Export complete topics before writing
 
@@ -220,4 +220,4 @@ Test mapping: [TestTopicsExportFailureBeforeOverwrite](../../internal/app/topics
 
 ### Rule: Read labels completely
 
-The unreleased [Labels contract](labels.feature.md) extends this command with authoritative membership, omitted attribute preservation, typed create/update/delete operations and its own process/owner tests. Repository/topics behavior above is retained; Labels apply alone reads current state before reconciling. Deleted labels lose issue/PR associations. Published v0.8.0 does not include this extension.
+Current source reads every label page after repository settings and topics, before opening the output file. Export includes the complete authoritative label list; a failed read preserves the previous file. The [Labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation) owns these scenarios and test mappings. Published v0.8.0 does not include labels.
