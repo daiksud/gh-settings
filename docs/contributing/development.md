@@ -28,11 +28,12 @@ Commitlint uses the conventional preset with only these additional style rules:
 
 - Types are restricted to `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`.
 - Types must be lowercase.
+- Scopes must be lowercase.
 - Subjects must not be sentence-case, start-case, PascalCase, or uppercase.
 - Subjects must not end in a period (`.`).
 - Titles must not start or end with whitespace.
 
-The configuration intentionally has no header, body, or footer line-length limit and no scope-case restriction. The body may be empty. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Both `!` and `BREAKING CHANGE:` are supported. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
+The configuration intentionally has no header, body, or footer line-length limit. The body may be empty. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Both `!` and `BREAKING CHANGE:` are supported. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
 
 To check a proposed squash message locally after `mise install`:
 

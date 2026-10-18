@@ -20,7 +20,8 @@ reject() {
 }
 
 accept 'feat: add topic management'
-accept 'feat(API): add topic management'
+accept 'feat(api): add topic management'
+reject 'feat(API): add topic management'
 accept 'feat!: change settings schema'
 accept $'feat: change settings schema\n\nBREAKING CHANGE: previous schema is no longer accepted'
 accept "feat: $(printf 'x%.0s' {1..120})"
