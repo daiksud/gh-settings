@@ -27,7 +27,7 @@ The [GraphQL Repository field](https://docs.github.com/en/graphql/reference/obje
 
 The shared `MergeMethodsState`, adapter and deferred callback retain their internal names but hold four merge-related booleans; current source also includes two squash commit enums. A declaration containing only the new field calls GraphQL without the base REST read. Omitting all merge-related fields skips GraphQL. A configuration declaring existing merge-method fields reads the complete source observation (four fields in v0.11.0; six in current source) but still compares and writes only declared values.
 
-v0.11.0 export reads all nine repository fields; current source reads eleven, complete topics and all label pages before saving. Missing/null repository or field values, invalid types, transport/HTTP/JSON failures, and GraphQL errors including partial data fail the whole read. They never silently become false or fall back to a write-privileged REST read. A read failure preserves an existing export file and discards any partial plan comparison.
+Export reads all repository fields (nine in v0.11.0, eleven in current source), complete topics and all label pages before saving. Missing/null repository or field values, invalid types, transport/HTTP/JSON failures, and GraphQL errors including partial data fail the whole read. They never silently become false or fall back to a write-privileged REST read. A read failure preserves an existing export file and discards any partial plan comparison.
 
 An [isolated PR Actions run](https://github.com/daiksud/gh-settings/actions/runs/39098804967) returned `deleteBranchOnMerge: true` with effective Contents read and Metadata read only. It used no checkout, App credentials, Environment or write permission. Its temporary workflow is excluded from the final implementation diff. This proves access for that token/repository, not all possible credentials.
 
@@ -48,4 +48,4 @@ This configures GitHub's after-merge behavior. It adds no branch-listing or bran
 | Native booleans, Summary validation and eleven-unit limit | [Actions tests](../../internal/actions/merge_methods_test.go) |
 | Built executable plan/apply, missing/null/partial errors, export and credential-free Summary | [Process acceptance](../../tests/acceptance/merge_methods_test.go) |
 
-All mutation tests use local API fixtures with dummy credentials; no test deletes a real branch or changes live repository policy. The read-only fixture admits only the exact four-field query and fixture owner/name, never arbitrary GraphQL POSTs.
+All mutation tests use local API fixtures with dummy credentials; no test deletes a real branch or changes live repository policy. The read-only fixture admits only the exact current-source six-field query and fixture owner/name, never arbitrary GraphQL POSTs.

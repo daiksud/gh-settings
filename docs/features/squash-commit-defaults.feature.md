@@ -31,7 +31,7 @@ Stable comparison order is the five base fields, three merge-method booleans, br
 
 ## Read-only hosted evidence
 
-The feature PR includes a temporary isolated Actions proof using only Contents read and implicit Metadata read, with no checkout, App credential, Environment or write permission. Its final run evidence will be recorded here after execution; the probe is removed from the final implementation diff. Local token reads alone do not establish ordinary Actions-token access.
+An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/runs/39108650790) returned `squashMergeCommitTitle: COMMIT_OR_PR_TITLE` and `squashMergeCommitMessage: COMMIT_MESSAGES` alongside the existing four booleans. The job had effective Contents read and Metadata read only, with no checkout, App credential, Environment or write permission. Its temporary workflow is removed from the final implementation diff. This establishes access for that token/repository, not every possible credential.
 
 ## Test mapping
 
