@@ -11,13 +11,13 @@ mise install
 mise run setup
 ```
 
-[mise.toml](../../mise.toml) pins the development toolchains used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies; [package.json](../../package.json) and [package-lock.json](../../package-lock.json) pin commitlint and its npm dependency tree. Node.js is used only for development tooling. Run development commands through mise so a different system toolchain does not change the result.
+[mise.toml](../../mise.toml) pins the development toolchains used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies. Bun, commitlint, and its conventional preset are managed by mise: the npm backend uses Bun to install the CLI and preset together. Their versions are pinned in mise.toml; transitive npm dependencies are resolved during installation. Run development commands through mise so a different system toolchain does not change the result.
 
-`mise run setup` installs the locked npm dependencies and configures this checkout's `core.hooksPath` to use the tracked [.githooks](../../.githooks/commit-msg) directory. Run it after cloning and again when the npm dependencies change. Each worktree needs its own installed dependencies. The setup selects these hooks in place of any existing hook directory configured for this repository.
+`mise run setup` configures this checkout's `core.hooksPath` to use the tracked [.githooks](../../.githooks/commit-msg) directory. Run it after cloning. Run `mise install` again when tool versions change; the installed tools are shared across worktrees. The setup selects these hooks in place of any existing hook directory configured for this repository.
 
 ## Commit messages
 
-The [`commit-msg` hook](../../.githooks/commit-msg) runs [commitlint](https://commitlint.js.org/) before Git creates a commit. Errors and warnings both stop the commit so you can correct the message and retry, including a missing blank line before the body or footers. The hook uses the Node.js version selected by mise and the locally installed commitlint; keep `mise` on the PATH available to your terminal or Git client.
+The [`commit-msg` hook](../../.githooks/commit-msg) runs [commitlint](https://commitlint.js.org/) before Git creates a commit. Errors and warnings both stop the commit so you can correct the message and retry, including a missing blank line before the body or footers. The hook uses mise's installed commitlint with `bun run --bun --no-install`, forcing the Bun runtime and disabling Bun's automatic package installation. Keep `mise` on the PATH available to your terminal or Git client.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
 
@@ -43,7 +43,7 @@ feat!: require the grouped settings schema
 To check a message without creating a commit:
 
 ```sh
-printf '%s\n' 'feat(settings): manage repository topics' | mise exec -- ./node_modules/.bin/commitlint --strict
+printf '%s\n' 'feat(settings): manage repository topics' | mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
 ```
 
 This is a local Git check. GitHub-created squash commits do not run it; PR-title validation remains the separate future work described in [ADR 0016](../adr/0016-conventional-pr-titles.md).

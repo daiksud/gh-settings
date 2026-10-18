@@ -1,2 +1,3 @@
 #!/bin/sh
-exec mise exec -- ./node_modules/.bin/commitlint --strict --edit "$1"
+commitlint=$(mise which commitlint) || exit
+exec mise exec -- bun run --bun --no-install "$commitlint" --strict --edit "$1"
