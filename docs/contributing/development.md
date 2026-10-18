@@ -33,6 +33,8 @@ Commitlint uses the conventional preset with only these additional style rules:
 - Subjects must not end in a period (`.`).
 - Titles must not start or end with whitespace.
 
+The preset already enforces all of these style rules except lowercase scopes. The local configuration only enables `scope-case` and disables the preset's three line-length checks; all other preset rules are inherited unchanged.
+
 The configuration intentionally has no header, body, or footer line-length limit. The body may be empty. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Both `!` and `BREAKING CHANGE:` are supported. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
 
 To check a proposed squash message locally after `mise install`:

@@ -14,15 +14,7 @@ export default {
     'body-max-line-length': [0],
     'footer-max-line-length': [0],
 
-    // The six additional rules selected for this repository.
-    'type-enum': [
-      2, 'always',
-      ['build', 'chore', 'ci', 'docs', 'feat', 'fix', 'perf', 'refactor', 'revert', 'style', 'test'],
-    ],
-    'type-case': [2, 'always', 'lower-case'],
+    // Unlike the other selected style rules, scope-case is not set by the preset.
     'scope-case': [2, 'always', 'lower-case'],
-    'subject-case': [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']],
-    'subject-full-stop': [2, 'never', '.'],
-    'header-trim': [2, 'always'],
   },
 };
