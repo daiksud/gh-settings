@@ -30,7 +30,7 @@ jobs:
           repositories: ${{ github.event.repository.name }}
           permission-administration: write
           permission-issues: write
-      - uses: daiksud/gh-settings@7d6b7d873ec3a06e4298eb27e852138aca24e130 # v0.12.0
+      - uses: daiksud/gh-settings@922707bc6896404ee9f87588ab650dd3ea38d28d # v0.13.0
         with:
           command: apply
           token: ${{ steps.app.outputs.token }}
