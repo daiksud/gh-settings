@@ -1,0 +1,4 @@
+interface:
+  display_name: "gh-settings code review"
+  short_description: "Review PR scope, compatibility, and repository contracts"
+  default_prompt: "Use $code-review to review this gh-settings pull request against its base branch and current title and body."

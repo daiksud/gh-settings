@@ -26,6 +26,7 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 | Understand the current design and code boundaries | [Architecture](contributing/architecture.md) |
 | Look up declaration, observed-state, and comparison terminology | [Model glossary](contributing/glossary.md) |
 | Select checks and understand local/CI evidence | [Testing](contributing/testing.md) |
+| Review PR scope, squash messages, compatibility, and implementation | [Code-review policy](../.agents/skills/code-review/SKILL.md) |
 | Change the private metadata, plan-report, or Summary protocol | [Actions internals](contributing/actions-internals.md) |
 | Maintain this repository's CI, review, and settings automation | [Repository automation](contributing/repository-automation.md) |
 | Prepare, publish, or recover a release | [Releases](contributing/releases.md) |

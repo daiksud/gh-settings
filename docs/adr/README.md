@@ -29,3 +29,4 @@ Keep decision numbers and paths stable. Record a superseding decision and update
 | 0021 | [Require a configuration schema version](0021-require-schema-version.md) |
 | 0022 | [Owner-approved settings workflows](0022-owner-approved-actions.md) |
 | 0023 | [Public composite Action contract](0023-public-composite-action.md) |
+| 0024 | [Require focused PRs and explicit breaking-change reviews](0024-code-review-policy.md) |

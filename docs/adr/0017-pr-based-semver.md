@@ -6,7 +6,7 @@ description: Record the agreed precedence for automatic release version selectio
 
 ## Status
 
-Accepted — future work, not implemented.
+Accepted — future work, not implemented. [ADR 0024](0024-code-review-policy.md) subsequently resolves the breaking-change notation question below; automatic version selection remains unimplemented.
 
 ## Context
 

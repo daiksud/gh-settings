@@ -1,0 +1,110 @@
+---
+name: code-review
+description: Review gh-settings pull requests and diffs for correct behavior, compatibility, security, focused scope, and durable Conventional Commits squash messages. Use for code review, PR review, self-review before opening a PR, and reassessment after review fixes, including changes to code, tests, documentation, Actions, or repository automation.
+---
+
+# gh-settings code review
+
+Review the proposed change against its actual base and public contracts. Apply the PR policy to every PR and the implementation checks only to affected behavior. Keep findings concrete and proportionate to their impact.
+
+## Establish the review context
+
+1. Read the applicable agent instructions and [CONTRIBUTING](../../../CONTRIBUTING.md).
+2. Identify the PR's base and current head, read the complete diff and relevant surrounding code, and obtain its current title, body, checks, and unresolved findings. For a local review, identify the comparison base and any proposed PR metadata supplied by the author.
+3. Read the affected contracts: [commands](../../../docs/commands.md), [configuration](../../../docs/settings.md), or [public Action](../../../docs/github-actions.md). Use [architecture](../../../docs/contributing/architecture.md) and [testing](../../../docs/contributing/testing.md) to find the owners. Treat historical ADRs and proposed designs as context, not automatically as current behavior.
+4. State any unavailable evidence. A diff-only review cannot establish that an unseen PR title/body complies or that hosted checks passed. Reassess changed code and metadata when they change after review.
+
+## Require one coherent change per PR
+
+- Require one change purpose that can be described by one Conventional Commits type and, when present, one meaningful scope. Reject independently useful changes that need different types or scopes; request separate PRs.
+- Treat implementation, tests, specifications, documentation, and necessary wiring for that same change as one unit. File extensions, directories, and the number of layers touched do not themselves define types or scopes. For example, a settings feature can include its codec, API adapter, CLI presentation, tests, and documentation in one `feat(settings)` PR.
+- Split an unrelated bug fix, feature, cleanup, dependency update, or formatting sweep even if discovered while doing the main work. Sharing a type or scope does not justify combining unrelated purposes.
+- Reject combined types such as `feat/fix` and multiple scopes such as `cli,actions`, `cli/actions`, or `cli\actions`. Do not accept scope omission or a vague scope such as `misc` as a way to hide unrelated changes.
+- Keep scope optional. When used, select a single lowercase area that describes the change, such as `settings`, `cli`, `actions`, or `release`; these are examples, not an allowlist. Do not require a scope for each touched package.
+
+## Review the complete squash message
+
+Treat the PR title as the header and the PR body as the body/footers of **one** [Conventional Commits 1.0.0 message](https://www.conventionalcommits.org/en/v1.0.0/). Review `PR_TITLE + "\n\n" + PR_BODY`; do not require a second Conventional Commits header in the PR body or require rewriting every local commit.
+
+### Title and type
+
+Require `type: description` or `type(scope): description`, adding `!` immediately before `:` for a breaking change. Choose the type from the change's purpose and resulting behavior, not its filenames or implementation technique:
+
+| Type | Use for |
+| --- | --- |
+| `feat` | A new user-facing capability or supported behavior in the CLI or published Action |
+| `fix` | Correcting an existing product defect or regression |
+| `perf` | Improving performance without introducing a separate feature or bug fix |
+| `refactor` | Restructuring implementation without adding a feature or fixing a bug; assess compatibility separately |
+| `docs` | Documentation or contributor/reviewer guidance changes |
+| `test` | Test-only additions or corrections without changing product behavior |
+| `ci` | Repository CI and automation changes |
+| `build` | Build, packaging, or dependency maintenance |
+| `style` | Code formatting or whitespace changes without a behavior change |
+| `revert` | Reverting a previous change; identify the reverted commit and reason in the body |
+| `chore` | Maintenance that does not fit a more specific type |
+
+Do not disguise a feature or fix as `chore`, `refactor`, `test`, or `ci` to avoid describing its user impact. A public Action behavior change can be `feat` or `fix` even though it changes YAML or shell. Regression tests and documentation accompanying a fix remain part of that `fix`.
+
+Use the pinned [commitlint configuration](../../../commitlint.config.mjs) and [development guide](../../../docs/contributing/development.md#pull-request-messages) for syntax/style checks: the conventional 11-type list, lowercase type/scope, subject-case restrictions, no final subject period, and no surrounding title whitespace. Do not add arbitrary title/body line-length limits. A passing lint result does not establish that the type matches the diff, that the scope is coherent, or that breaking changes have been disclosed.
+
+### Body and durable history
+
+Require the [PR template](../../../.github/pull_request_template.md)'s explanation of **Why**, **What changed**, and **Verification**, following [the Git history guidance](../../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). The body must explain the problem, resulting behavior, material decisions, and observed verification results without requiring access to an Issue, CI log, or review conversation. An empty body may pass commitlint but does not meet this review policy.
+
+Include compatibility, migration, and operational effects when relevant. Keep links as supporting evidence; use `Closes #123` only for work actually completed. Remove template comments, temporary progress notes, approval requests, full logs, and file-by-file diff narration. Require the final title/body to match the final diff and verify the final squash message before merging.
+
+### Breaking changes: require both signals
+
+Identify incompatibility from the supported behavior before and after the change, even when the author labels it a fix or refactor. Check existing consumers of CLI commands/options, documented output and exit codes, configuration keys/types/omission semantics, target resolution, and Action inputs/outputs, supported runners, or required credentials/permissions. An internal signature change alone is not a public compatibility break; adding an opt-in capability is not breaking when existing supported usage continues to work.
+
+For every change that makes a previously supported use incompatible, require **both**:
+
+1. A title of `type!: description` or `type(scope)!: description`. Reject `type!(scope): description`.
+2. A footer beginning with exactly `BREAKING CHANGE:` followed by a space, separated from the body by a blank line. Explain what was supported before, what changes, who is affected, and the concrete migration or replacement. If no migration exists, say so and explain the consequence.
+
+Use the semantically correct type with `!`; breaking changes are not limited to `feat`. Apply this requirement before 1.0 as well. Do not use either breaking marker for a compatible change, and do not accept a heading, vague warning, or `BREAKING-CHANGE:` alias instead of the required footer spelling.
+
+Conventional Commits itself permits either marker alone. This repository deliberately requires both during review, as recorded in [ADR 0024](../../../docs/adr/0024-code-review-policy.md). The current commitlint configuration accepts either marker alone; reviewers must enforce this stricter rule and assess the actual compatibility impact.
+
+Use the following hypothetical message as a format example, not as a statement of current product behavior:
+
+```text
+feat(settings)!: rename the repository configuration section
+
+## Why
+
+Make the resource represented by the configuration section explicit.
+
+## What changed
+
+Rename the settings section to repository and update its parser and reference.
+
+## Verification
+
+Verified that the new section is accepted and the old section is rejected
+before any API request.
+
+BREAKING CHANGE: Existing declarations using settings must rename that
+section to repository. The old section is no longer accepted.
+```
+
+## Check the affected implementation contracts
+
+Use the linked contract as the source of detail; do not infer supported release behavior from an unmerged proposal or source code alone.
+
+- **Declared state and collections:** Preserve the distinction between omission, explicit `false`, empty strings/collections, and invalid `null`. Update only managed values. For topics and labels, review authoritative collection membership, retained label attribute omission, deletions, and their user-visible consequences against the [configuration contract](../../../docs/settings.md).
+- **Validation and targeting:** Preserve validation before remote work and the isolation of the target checkout and its direct GitHub origin. Check the documented no-op cases without confusing an omitted resource with an explicitly empty managed collection. Preserve the differences between [CLI](../../../docs/commands.md) and [Action](../../../docs/github-actions.md) prerequisites.
+- **Plan, apply, and failures:** Keep plan read-only. Preserve direct apply semantics, fresh label reconciliation, operation ordering, and honest partial-failure reporting. Do not present a saved plan, a zero-difference plan, or an output error as proof of transactional application, no writes, drift protection, or rollback. Review any intended contract change explicitly.
+- **API and file boundaries:** Require complete, correctly typed reads and pagination before comparison/export; do not convert missing data or partial API failures into plausible empty state. Check declared-only payloads, target/path handling, redirect policy, and failure order. Preserve documented file-safety guarantees without inventing stronger atomicity promises.
+- **Ownership and simplicity:** Keep declaration/state/comparison in `internal/settings`, YAML/files/Git in `internal/workspace`, API mapping in `internal/github`, sequencing in `internal/app`, and presentation in `internal/cli` or `internal/actions`. Reuse common use cases. Request new abstractions or compatibility layers only for a concrete need; do not force unrelated architecture work into a focused PR.
+- **Action and release integrity:** Check pinned Action/CLI identity, checksum/version verification, safe escaping, token boundaries, failure status propagation, and output publication after required work succeeds. For release changes, preserve the identity of tested and published artifacts and immutable releases. Confirm availability using the actual Action source, `action/cli-version`, consumer pin, and relevant publication evidence; use the [Action guide](../../../docs/github-actions.md) and [release guide](../../../docs/contributing/releases.md).
+- **Repository automation:** For workflow, credential, guard, or privileged apply-path changes, inspect the code that receives the token, its target, permissions, and referenced Actions. Follow the [repository automation boundaries](../../../docs/contributing/repository-automation.md); a green Environment guard does not review the allowed apply job's step bodies. Verify live settings only when the change or a claimed outcome depends on them. Do not treat source YAML or local fixtures as proof of current approval, ruleset enforcement, or token revocation.
+- **Tests and documentation:** Require evidence for the changed behavior and relevant failure/side-effect cases at their owning layer. For a bug fix, seek a regression case that fails for the original defect; for composition changes, select representative acceptance or Action checks. Avoid repeating every low-level case at every layer or requiring unrelated product tests for documentation-only changes. Update the authoritative public contract and affected behavior specifications together, following [CONTRIBUTING](../../../CONTRIBUTING.md#where-documentation-belongs) and the [testing guide](../../../docs/contributing/testing.md).
+
+## Report actionable findings and a bounded verdict
+
+- Prioritize defects, compatibility mistakes, unsafe mutations, credential exposure, and explicit PR-policy violations. For each finding, identify the file/line or PR title/body, triggering condition, expected versus actual behavior, concrete impact, and a focused correction or split. Describe likelihood when it affects priority; do not present hypothetical concerns as confirmed failures.
+- Mark unmet mandatory type/scope, body, or breaking-change requirements as blocking even if CI passes. Distinguish these from product bugs and optional improvements. Keep personal style preferences and speculative generalization nonblocking; do not manufacture findings to fill a quota.
+- Summarize what was actually reviewed and verified, remaining limitations, and whether changes are required. If no actionable issue was found, say so without claiming unavailable checks passed. Do not make unrelated pre-existing problems blockers for this change.
+- Before reporting merge readiness, confirm current required checks, unresolved findings, and actual reviews for the intended revision. A prior bot completion marker, reaction, or successful approval workflow alone does not establish a current approval; follow [the approval-control guidance](../../../docs/contributing/repository-automation.md#codex-approval-control).
