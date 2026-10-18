@@ -6,7 +6,7 @@ description: Reconcile declared label membership and selected attributes.
 
 ## Feature: Manage repository labels
 
-Labels support is implemented in current source, without changing `schemaVersion: 1`. It is not included in published v0.8.0 or the existing pinned workflows. [Settings](../settings.md#labels) defines the configuration contract. This feature manages repository label definitions, not individual issue/PR assignments.
+Labels support is published in v0.9.0 and included in the current pinned workflows, without changing `schemaVersion: 1`. Older v0.8.0 packages do not include it. [Settings](../settings.md#labels) defines the configuration contract. This feature manages repository label definitions, not individual issue/PR assignments.
 
 ### Rule: Declare authoritative membership explicitly
 

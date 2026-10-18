@@ -4,7 +4,7 @@
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
-This reference describes current source. Published v0.8.0 supports repository fields and topics; **labels are unreleased** and require a [source build](contributing/development.md). The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) still run v0.8.0 and cannot use labels.
+This reference describes published v0.9.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.9.0; older v0.8.0 packages do not support labels.
 
 ## Interface and implementation status
 
@@ -35,7 +35,7 @@ API operations use GitHub CLI authentication. Check access with `gh auth status`
 | Resource | Read permission | Write permission |
 | --- | --- | --- |
 | Repository fields and topics | Metadata read | Administration write |
-| Labels (unreleased) | Issues or Pull requests read | Issues or Pull requests write |
+| Labels | Issues or Pull requests read | Issues or Pull requests write |
 
 Administration write alone does not grant label write permission.[^github-labels] Source export always reads labels as well as repository fields/topics; source apply uses its apply credential for the fresh label read and any required mutations. Public reads may be unauthenticated. Local validation and valid declarations with no managed resources do not require an origin or authentication.
 
@@ -45,7 +45,7 @@ The [topics contract](settings.md#topics) defines names, omission and explicit c
 
 ## Labels command behavior
 
-The unreleased [labels contract](settings.md#labels) makes a declared list authoritative: labels absent from that list are deleted, and `labels: []` deletes all labels. Deletion removes issue/PR associations; recreating the label does not restore them. Omitted `labels` is unmanaged.
+The [labels contract](settings.md#labels) makes a declared list authoritative: labels absent from that list are deleted, and `labels: []` deletes all labels. Deletion removes issue/PR associations; recreating the label does not restore them. Omitted `labels` is unmanaged.
 
 Plan shows explicit create/update/delete operations. Apply reads fresh labels after any repository/topics updates and performs only the needed operations. Omitted label attributes retain existing values; creating a label with omitted attributes delegates those values to GitHub. Changing a name to a different identity is create plus delete, without rename inference.
 
@@ -107,7 +107,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | --- | --- |
 | `settings.repository` | `PATCH /repos/{owner}/{repo}` with only declared repository fields.[^github-update-repository] |
 | `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
-| `settings.labels` (unreleased) | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform required label POST/PATCH/DELETE operations.[^github-labels] |
+| `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform required label POST/PATCH/DELETE operations.[^github-labels] |
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields and label attributes remain outside update requests. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 

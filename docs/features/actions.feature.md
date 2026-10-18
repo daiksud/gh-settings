@@ -229,4 +229,4 @@ Test mapping: [TestTopicsSummaryNativeAndJSONLists](../../internal/actions/summa
 
 ### Rule: Present typed label operations
 
-The current source's same-version report/Summary adds typed label create/update/delete operations and explains association loss for deletions. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The committed installer and pinned workflows still select v0.8.0, which does not include labels; source tests do not establish support in that published package.
+The current source's same-version report/Summary adds typed label create/update/delete operations and explains association loss for deletions. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The committed installer and pinned workflows select published v0.9.0, which includes labels. Source protocol tests and published-package verification remain separate evidence.

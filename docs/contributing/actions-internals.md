@@ -4,7 +4,7 @@
 
 This page is for contributors changing the composite Action or its Go adapters. Consumers should use the [public Action guide](../github-actions.md) and the four [settings commands](../commands.md); the internal interfaces below are same-version wiring, not an independent compatibility API.
 
-This page describes the Go interfaces in current source, including the unreleased labels report extension. Published v0.8.0 and the current composite Action still run the pre-labels CLI; see the [consumer package boundary](../github-actions.md#unreleased-labels). Source protocol tests use the built candidate binary.
+This page describes the Go interfaces in current source and published v0.9.0, including typed label operations. See the [consumer package boundary](../github-actions.md#labels-and-permissions). Source protocol tests use the built candidate binary.
 
 The [composite Action](../../action.yml) installs one verified Go executable, resolves metadata, runs the selected command, renders a plan Summary when needed, then publishes success outputs. The plan report is temporary presentation data. The same executable owns metadata and Summary rendering; shell owns installation bootstrap and Actions wiring. [ADR 0023](../adr/0023-public-composite-action.md) records the public packaging decision, and the [testing guide](testing.md) describes verification boundaries.
 
@@ -28,7 +28,7 @@ The [Actions-owned report](../../internal/actions/plan.go) has these fields:
 | `target` | Available origin owner/repository; omitted for unmanaged, validation or target-resolution failure. |
 | `managed` | Number of managed fields/collections in a successful comparison; labels counts once, including an empty declared list. Zero on failure does not mean unmanaged. |
 | `changes` | Ordered repository/topic field/before/after entries; values remain native strings, booleans or topic string arrays. Field paths are `repository.FIELD` or `topics.names`. Empty comparisons, failures and label-only changes use an empty array. |
-| `labels` | Optional typed create/update/delete entries with `operation`, `name` and applicable `before`/`after` attribute objects. Omitted when no label operations exist; current source only. |
+| `labels` | Optional typed create/update/delete entries with `operation`, `name` and applicable `before`/`after` attribute objects. Omitted when no label operations exist; available in v0.9.0. |
 | `diagnostic` | Static categorical failure text; omitted on success. No raw error, token, environment dump or request header is serialized. |
 
 Validation precedes target resolution and API access. Valid unmanaged declarations succeed locally without origin or credentials. Read failures include the already-resolved target; ordinary stderr diagnostics retain their existing text. The report is ephemeral presentation data, never apply input. The composite calls this entry with its explicit read token, then passes the report to a separate credential-free Summary step. Shared planning owns validation; no separate CLI validation call, multi-version format or saved-plan execution is introduced. See the [report behavior](../features/actions.feature.md#rule-source-planning-writes-ephemeral-typed-presentation-data).
