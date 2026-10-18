@@ -10,7 +10,7 @@ Accepted — future work, not implemented.
 
 ## Context
 
-The initial release still takes an [explicit version](0010-explicit-release-version.md). Once strict PR titles are available under [ADR 0016](0016-conventional-pr-titles.md), merged changes can inform a later automatic version proposal.
+The initial release still takes an [explicit version](0010-explicit-release-version.md). PR titles and bodies are validated under [ADR 0016](0016-conventional-pr-titles.md). Merged changes can inform a later automatic version proposal.
 
 ## Decision
 

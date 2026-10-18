@@ -4,13 +4,47 @@ Use this guide when changing gh-settings. The [architecture](architecture.md) ex
 
 ## Set up the tools
 
-Install [mise](https://mise.jdx.dev/getting-started.html), then run the following from the repository root:
+Install [mise](https://mise.jdx.dev/getting-started.html), then run from the repository root:
 
 ```sh
 mise install
 ```
 
-[mise.toml](../../mise.toml) is the source of truth for the exact development tool versions used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies. Run development commands through mise so a different system toolchain does not change the result.
+[mise.toml](../../mise.toml) pins the development tools used locally and in CI. [go.mod](../../go.mod) declares the minimum Go version and library dependencies. Mise's npm backend installs commitlint and its conventional preset with Bun; Node.js, npm, a package manifest, and local Git hooks are not required. Transitive npm dependencies are resolved during installation. Run development commands through mise to use the pinned tool versions.
+
+## Pull request messages
+
+PR titles and bodies are validated by the [PR CI workflow](../../.github/workflows/ci-pr.yml) as one squash commit message: the title is the subject, followed by a blank line and the optional PR body. The message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
+
+```text
+<type>[optional scope][!]: <description>
+
+[optional body]
+
+[optional footers]
+```
+
+Commitlint uses the conventional preset with only these additional style rules:
+
+- Types are restricted to `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`.
+- Types must be lowercase.
+- Scopes must be lowercase.
+- Subjects must not be sentence-case, start-case, PascalCase, or uppercase.
+- Subjects must not end in a period (`.`).
+- Titles must not start or end with whitespace.
+
+The preset already enforces all of these style rules except lowercase scopes. The local configuration only enables `scope-case` and disables the preset's three line-length checks; all other preset rules are inherited unchanged.
+
+The configuration intentionally has no header, body, or footer line-length limit. The body may be empty. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Both `!` and `BREAKING CHANGE:` are supported. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
+
+To check a proposed squash message locally after `mise install`:
+
+```sh
+printf '%s\n\n%s\n' 'feat(settings): manage repository topics' 'Describe why this changed.' |
+  mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
+```
+
+Keep the PR body consistent with [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). The repository's PR CI rechecks when the title or body changes. Local `git commit` messages are not validated; the final squash message must still be confirmed at merge time.
 
 ## Build and run from source
 

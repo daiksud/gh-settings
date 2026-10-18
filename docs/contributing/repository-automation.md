@@ -18,7 +18,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 
 ## PR lifecycle
 
-The PR CI workflow sets Draft, runs commit-stage, then marks the PR Ready before acceptance-stage and composite-smoke. The final `pass` job rejects failed, cancelled, or skipped validation. Editing the PR body can start this sequence again even when its HEAD commit has not changed.
+The PR CI workflow sets Draft, runs commit-stage, then marks the PR Ready before acceptance-stage and composite-smoke. A separate `commitlint` job checks the PR title and body together as the proposed squash message, including on title/body edits. The final `pass` job rejects failed, cancelled, or skipped validation, including commitlint.
 
 Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready jobs have write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state changes; the workflow does not bypass them.
 
@@ -30,7 +30,7 @@ The active [default-branch ruleset](https://github.com/daiksud/gh-settings/rules
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
-| `pass` | [PR CI](../../.github/workflows/ci-pr.yml) aggregates acceptance and composite smoke; the ordinary suite also includes the Environment scope assertion | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `pass` | [PR CI](../../.github/workflows/ci-pr.yml) aggregates commitlint, acceptance, and composite smoke; the ordinary suite also includes the Environment scope assertion | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
 | `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's App/name does not identify a unique workflow |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring both names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
