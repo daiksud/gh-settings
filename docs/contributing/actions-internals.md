@@ -4,7 +4,7 @@
 
 This page is for contributors changing the composite Action or its Go adapters. Consumers should use the [public Action guide](../github-actions.md) and the four [settings commands](../commands.md); the internal interfaces below are same-version wiring, not an independent compatibility API.
 
-This page describes the Go interfaces in current source and published v0.9.0, including typed label operations. See the [consumer package boundary](../github-actions.md#labels-and-permissions). Source protocol tests use the built candidate binary.
+This page describes the Go interfaces in current source and published v0.10.0, including typed label operations and merge-method booleans. See the [consumer package boundary](../github-actions.md#labels-and-permissions). Source protocol tests use the built candidate binary.
 
 The [composite Action](../../action.yml) installs one verified Go executable, resolves metadata, runs the selected command, renders a plan Summary when needed, then publishes success outputs. The plan report is temporary presentation data. The same executable owns metadata and Summary rendering; shell owns installation bootstrap and Actions wiring. [ADR 0023](../adr/0023-public-composite-action.md) records the public packaging decision, and the [testing guide](testing.md) describes verification boundaries.
 
