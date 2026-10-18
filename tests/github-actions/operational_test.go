@@ -76,6 +76,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 			"owner":                     "${{ github.repository_owner }}",
 			"repositories":              "${{ github.event.repository.name }}",
 			"permission-administration": "write",
+			"permission-issues":         "write",
 		}) {
 		t.Fatal("operational App credentials, target scope or revocation changed")
 	}
