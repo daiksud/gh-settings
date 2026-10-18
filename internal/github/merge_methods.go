@@ -11,12 +11,13 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// mergeMethodsQuery reads only the three settings unavailable to read-only REST callers.
+// mergeMethodsQuery reads only the four merge-related settings through the same read-only GraphQL path.
 const mergeMethodsQuery = `query($owner: String!, $name: String!) {
  repository(owner: $owner, name: $name) {
   mergeCommitAllowed
   squashMergeAllowed
   rebaseMergeAllowed
+  deleteBranchOnMerge
  }
 }`
 
@@ -51,6 +52,7 @@ func (client *MergeMethodsClient) ReadMergeMethods(repo repository.Repository) (
 		{"mergeCommitAllowed", &result.AllowMergeCommit},
 		{"squashMergeAllowed", &result.AllowSquashMerge},
 		{"rebaseMergeAllowed", &result.AllowRebaseMerge},
+		{"deleteBranchOnMerge", &result.DeleteBranchOnMerge},
 	} {
 		value, present := (*response.Repository)[field.name]
 		if !present {

@@ -11,14 +11,15 @@ import (
 )
 
 type repositoryDocument struct {
-	Description      *string `yaml:"description,omitempty"`
-	Homepage         *string `yaml:"homepage,omitempty"`
-	HasIssues        *bool   `yaml:"has_issues,omitempty"`
-	HasProjects      *bool   `yaml:"has_projects,omitempty"`
-	HasWiki          *bool   `yaml:"has_wiki,omitempty"`
-	AllowMergeCommit *bool   `yaml:"allow_merge_commit,omitempty"`
-	AllowSquashMerge *bool   `yaml:"allow_squash_merge,omitempty"`
-	AllowRebaseMerge *bool   `yaml:"allow_rebase_merge,omitempty"`
+	Description         *string `yaml:"description,omitempty"`
+	Homepage            *string `yaml:"homepage,omitempty"`
+	HasIssues           *bool   `yaml:"has_issues,omitempty"`
+	HasProjects         *bool   `yaml:"has_projects,omitempty"`
+	HasWiki             *bool   `yaml:"has_wiki,omitempty"`
+	AllowMergeCommit    *bool   `yaml:"allow_merge_commit,omitempty"`
+	AllowSquashMerge    *bool   `yaml:"allow_squash_merge,omitempty"`
+	AllowRebaseMerge    *bool   `yaml:"allow_rebase_merge,omitempty"`
+	DeleteBranchOnMerge *bool   `yaml:"delete_branch_on_merge,omitempty"`
 }
 
 type topicsDocument struct {
@@ -39,7 +40,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	document.Settings.Repository = repositoryDocument{
 		Description: declaration.Repository.Description, Homepage: declaration.Repository.Homepage,
 		HasIssues: declaration.Repository.HasIssues, HasProjects: declaration.Repository.HasProjects, HasWiki: declaration.Repository.HasWiki,
-		AllowMergeCommit: declaration.Repository.AllowMergeCommit, AllowSquashMerge: declaration.Repository.AllowSquashMerge, AllowRebaseMerge: declaration.Repository.AllowRebaseMerge,
+		AllowMergeCommit: declaration.Repository.AllowMergeCommit, AllowSquashMerge: declaration.Repository.AllowSquashMerge, AllowRebaseMerge: declaration.Repository.AllowRebaseMerge, DeleteBranchOnMerge: declaration.Repository.DeleteBranchOnMerge,
 	}
 	if declaration.Topics.Names != nil {
 		names := settings.SortedTopics(*declaration.Topics.Names)
@@ -152,7 +153,7 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 			} else {
 				repository.Homepage = &text
 			}
-		case "has_issues", "has_projects", "has_wiki", "allow_merge_commit", "allow_squash_merge", "allow_rebase_merge":
+		case "has_issues", "has_projects", "has_wiki", "allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
 				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean", field)
 			}
@@ -176,6 +177,8 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 				repository.AllowSquashMerge = &parsed
 			case "allow_rebase_merge":
 				repository.AllowRebaseMerge = &parsed
+			case "delete_branch_on_merge":
+				repository.DeleteBranchOnMerge = &parsed
 			}
 		default:
 			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)
