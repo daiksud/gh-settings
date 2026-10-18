@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.11.0 supports nine repository fields, topics and labels, using the same file-format version. The pinned v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.11.0 supports nine repository fields, topics and labels, using the same file-format version. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -30,7 +30,7 @@ v0.11.0 adds optional `settings.repository.delete_branch_on_merge`, a boolean co
 
 v0.11.0 export includes the value after a complete read. Plan uses the same fixed GraphQL read as merge methods; apply sends only declared fields through the existing Administration-write REST PATCH, with no preliminary read. Missing/null/invalid data or any GraphQL error fails the read instead of becoming false. See the [feature contract and read-only Actions evidence](features/delete-branch-on-merge.feature.md).
 
-Published v0.10.0 does not accept this key. Review source-exported configuration before using the pinned older CLI/Action; a separate consumer update to v0.11.0 is needed to adopt it.
+Published v0.10.0 does not accept this key. The pinned v0.11.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
 
 ## Topics
 
@@ -60,7 +60,7 @@ Topic reads require Metadata read; public resources may be read without authenti
 
 ## Labels
 
-`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.10.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
+`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.11.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
 
 ```yaml
 schemaVersion: 1

@@ -25,7 +25,7 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Validate and plan with the Action Summary
-        uses: daiksud/gh-settings@07978217b6f3b68a235fe11996944b63416402b8 # v0.10.0
+        uses: daiksud/gh-settings@266b96ed81c713e32bb4f554718981aa4ad0bfc3 # v0.11.0
         with:
           command: plan
           token: ${{ github.token }}
