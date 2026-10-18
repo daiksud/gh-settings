@@ -125,7 +125,7 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 }
 
 func validatePlanReport(report PlanReport, target string) error {
-	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 15 {
+	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 17 {
 		return fmt.Errorf("invalid plan report comparison")
 	}
 	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+1 {
@@ -167,12 +167,18 @@ func validatePlanReport(report PlanReport, target string) error {
 					return fmt.Errorf("invalid plan report change")
 				}
 			}
-		case "repository.squash_merge_commit_title", "repository.squash_merge_commit_message":
+		case "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message":
 			before, beforeOK := change.Before.(string)
 			after, afterOK := change.After.(string)
 			valid := settings.ValidSquashMergeCommitTitle
 			if change.Field == "repository.squash_merge_commit_message" {
 				valid = settings.ValidSquashMergeCommitMessage
+			}
+			if change.Field == "repository.merge_commit_title" {
+				valid = settings.ValidMergeCommitTitle
+			}
+			if change.Field == "repository.merge_commit_message" {
+				valid = settings.ValidMergeCommitMessage
 			}
 			nativePair = beforeOK && afterOK && valid(before) && valid(after)
 		case "repository.description", "repository.homepage":

@@ -13,7 +13,7 @@ import (
 func TestPROptionsCompleteGraphQLRead(t *testing.T) {
 	for _, field := range []string{"autoMergeAllowed", "allowUpdateBranch"} {
 		for _, value := range []any{true, false, nil, "false", 0, "missing"} {
-			fields := map[string]any{"mergeCommitAllowed": false, "squashMergeAllowed": true, "rebaseMergeAllowed": false, "deleteBranchOnMerge": true, "autoMergeAllowed": true, "allowUpdateBranch": true, "squashMergeCommitTitle": "COMMIT_OR_PR_TITLE", "squashMergeCommitMessage": "COMMIT_MESSAGES"}
+			fields := map[string]any{"mergeCommitAllowed": false, "squashMergeAllowed": true, "rebaseMergeAllowed": false, "deleteBranchOnMerge": true, "autoMergeAllowed": true, "allowUpdateBranch": true, "squashMergeCommitTitle": "COMMIT_OR_PR_TITLE", "squashMergeCommitMessage": "COMMIT_MESSAGES", "mergeCommitTitle": "MERGE_MESSAGE", "mergeCommitMessage": "PR_TITLE"}
 			fields[field] = value
 			if value == "missing" {
 				delete(fields, field)

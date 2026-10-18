@@ -116,7 +116,7 @@ func TestLabelsReadFailurePreservesExport(t *testing.T) {
 	path := appCheckout(t, before, true)
 	failure := errors.New("later labels page unavailable")
 	err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-		return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}, nil
+		return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 	}, Repository: func(repository.Repository) (settings.RepositoryState, error) { return settings.RepositoryState{}, nil }, Topics: func(repository.Repository) ([]string, error) { return []string{}, nil }, Labels: func(repository.Repository) ([]settings.LabelState, error) { return nil, failure }})
 	data, readErr := os.ReadFile(path)
 	if !errors.Is(err, failure) || readErr != nil || string(data) != before {

@@ -38,7 +38,7 @@ func TestExportStoredSettings(t *testing.T) {
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			calls := 0
 			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}, nil
+				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 			}, Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				if repo != target {
@@ -58,7 +58,7 @@ func TestExportStoredSettings(t *testing.T) {
 				t.Fatalf("error=%v reads=%d, want one read", err, calls)
 			}
 			got, err := os.ReadFile(path)
-			if err != nil || string(got) != test.want+"        allow_merge_commit: false\n        allow_squash_merge: false\n        allow_rebase_merge: false\n        delete_branch_on_merge: false\n        allow_auto_merge: false\n        allow_update_branch: false\n        squash_merge_commit_title: COMMIT_OR_PR_TITLE\n        squash_merge_commit_message: COMMIT_MESSAGES\n    topics:\n        names: []\n    labels: []\n" {
+			if err != nil || string(got) != test.want+"        allow_merge_commit: false\n        allow_squash_merge: false\n        allow_rebase_merge: false\n        delete_branch_on_merge: false\n        allow_auto_merge: false\n        allow_update_branch: false\n        squash_merge_commit_title: COMMIT_OR_PR_TITLE\n        squash_merge_commit_message: COMMIT_MESSAGES\n        merge_commit_title: MERGE_MESSAGE\n        merge_commit_message: PR_TITLE\n    topics:\n        names: []\n    labels: []\n" {
 				t.Fatalf("stored=%q error=%v, want %q", got, err, test.want)
 			}
 		})
@@ -96,7 +96,7 @@ func TestExportReadFailure(t *testing.T) {
 			readError := errors.New("read unavailable")
 			calls := 0
 			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}, nil
+				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 			}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				checkUnchanged()
@@ -124,7 +124,7 @@ func TestExportTargetFailureBeforeRead(t *testing.T) {
 			}
 			calls := 0
 			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}, nil
+				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 			}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				return settings.RepositoryState{}, nil
@@ -146,7 +146,7 @@ func TestExportStorageFailure(t *testing.T) {
 	}
 	calls := 0
 	err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-		return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}, nil
+		return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 	}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
 		calls++
 		return settings.RepositoryState{}, nil

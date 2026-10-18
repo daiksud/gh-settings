@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.13.0 supports thirteen repository fields, topics and labels, using the same file-format version. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Current source adds merge commit title/message defaults (unreleased; planned v0.14.0). Published v0.13.0 supports thirteen repository fields, topics and labels, using the same file-format version. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -76,6 +76,31 @@ settings:
 Each field is independent: omission remains unmanaged, explicit `false` is retained, and null/wrong types fail local validation. Neither value is synthesized. Export includes both after a complete fixed GraphQL read; plan reads only when a merge-related field is declared and compares declared fields only. Missing/null/wrong-typed observations or partial GraphQL errors fail the complete read. Apply sends declared fields only through the existing Administration-write REST PATCH, with no preliminary read or additional permissions.
 
 Published v0.12.0 rejects these keys. The pinned v0.13.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
+
+## Merge commit defaults (unreleased; planned v0.14.0)
+
+Current source adds optional `merge_commit_title` and `merge_commit_message` string enums to `settings.repository` under `schemaVersion: 1`:
+
+| Field | Exact values |
+| --- | --- |
+| `merge_commit_title` | `PR_TITLE`, `MERGE_MESSAGE` |
+| `merge_commit_message` | `PR_BODY`, `PR_TITLE`, `BLANK` |
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    merge_commit_title: MERGE_MESSAGE
+    merge_commit_message: PR_TITLE
+```
+
+These select default title/body formatting for normal merge commits. Title uses the PR title or GitHub's classic merge message; body uses the PR body, PR title, or a blank body. `BLANK` is an enum, not an empty YAML string. These keys do not enable `allow_merge_commit`, change squash defaults, or merge PRs. They can be managed while normal merge commits are disabled.
+
+Omission remains unmanaged; title-only is valid. Message requires an explicit `merge_commit_title` in the same mapping, matching GitHub's REST contract; a squash title cannot satisfy that dependency. Null, empty strings, wrong types, case variants and unknown enums fail local validation before API access. The CLI never infers a missing title or toggles a merge method.
+
+Export reads both values in the fixed complete GraphQL observation. Plan compares declared fields only; missing/null/invalid data or partial GraphQL errors fail the whole read. Apply sends declared values only through the existing Administration-write repository PATCH, with no preliminary read or implicit companion values. See the [feature contract](features/merge-commit-defaults.feature.md) for exact API mapping, hosted evidence and tests.
+
+Published v0.13.0 and currently pinned examples reject these keys. Verify the intended v0.14.0 package and update consumer pins before adopting them.
 
 ## Topics
 

@@ -37,7 +37,7 @@ func TestMergeMethodBooleanCodec(t *testing.T) {
 			})
 		}
 	}
-	for _, field := range []string{"allow_forking", "allow_merge_queue", "squash_merge_commit_title", "merge_commit_message"} {
+	for _, field := range []string{"allow_forking", "allow_merge_queue", "squash_merge_commit_title", "merge_queue"} {
 		if _, err := DecodeConfig([]byte("schemaVersion: 1\nsettings: {repository: {" + field + ": true}}")); err == nil {
 			t.Fatalf("expanded scope: %s", field)
 		}

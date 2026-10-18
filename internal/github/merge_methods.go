@@ -22,6 +22,8 @@ const mergeMethodsQuery = `query($owner: String!, $name: String!) {
   allowUpdateBranch
   squashMergeCommitTitle
   squashMergeCommitMessage
+  mergeCommitTitle
+  mergeCommitMessage
  }
 }`
 
@@ -78,6 +80,8 @@ func (client *MergeMethodsClient) ReadMergeMethods(repo repository.Repository) (
 	}{
 		{"squashMergeCommitTitle", &result.SquashMergeCommitTitle, settings.ValidSquashMergeCommitTitle},
 		{"squashMergeCommitMessage", &result.SquashMergeCommitMessage, settings.ValidSquashMergeCommitMessage},
+		{"mergeCommitTitle", &result.MergeCommitTitle, settings.ValidMergeCommitTitle},
+		{"mergeCommitMessage", &result.MergeCommitMessage, settings.ValidMergeCommitMessage},
 	} {
 		value, present := (*response.Repository)[field.name]
 		if !present {

@@ -40,11 +40,14 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		AllowUpdateBranch        *bool   `json:"allow_update_branch,omitempty"`
 		SquashMergeCommitTitle   *string `json:"squash_merge_commit_title,omitempty"`
 		SquashMergeCommitMessage *string `json:"squash_merge_commit_message,omitempty"`
+		MergeCommitTitle         *string `json:"merge_commit_title,omitempty"`
+		MergeCommitMessage       *string `json:"merge_commit_message,omitempty"`
 	}{
 		Description: desired.Description, Homepage: desired.Homepage,
 		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki,
 		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge, DeleteBranchOnMerge: desired.DeleteBranchOnMerge, AllowAutoMerge: desired.AllowAutoMerge, AllowUpdateBranch: desired.AllowUpdateBranch,
 		SquashMergeCommitTitle: desired.SquashMergeCommitTitle, SquashMergeCommitMessage: desired.SquashMergeCommitMessage,
+		MergeCommitTitle: desired.MergeCommitTitle, MergeCommitMessage: desired.MergeCommitMessage,
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
