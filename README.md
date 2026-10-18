@@ -95,7 +95,7 @@ jobs:
 
 The pinned v0.9.0 Action supports `validate`, `plan`, and `apply` for repository settings, topics and labels. Validate needs no token; plan takes an explicit read token; repository/topic apply takes a target-scoped App installation token with Administration write; label mutations additionally require Issues or Pull requests write. The caller owns approval, credential issuance and revocation, and concurrency.
 
-Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
+Before enabling apply, follow the [approval and required-check guidance](docs/github-actions.md#protect-the-apply-path) to protect both `main` and the job that receives the write credential. Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 
 ## Documentation
 
