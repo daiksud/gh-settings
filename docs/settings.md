@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Current source adds merge commit title/message defaults (unreleased; planned v0.14.0). Published v0.13.0 supports thirteen repository fields, topics and labels, using the same file-format version. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.14.0 supports fifteen repository fields, topics and labels, using the same file-format version. v0.13.0 supports thirteen repository fields, excluding normal merge commit defaults. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -77,9 +77,9 @@ Each field is independent: omission remains unmanaged, explicit `false` is retai
 
 Published v0.12.0 rejects these keys. The pinned v0.13.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
 
-## Merge commit defaults (unreleased; planned v0.14.0)
+## Merge commit defaults (v0.14.0)
 
-Current source adds optional `merge_commit_title` and `merge_commit_message` string enums to `settings.repository` under `schemaVersion: 1`:
+v0.14.0 adds optional `merge_commit_title` and `merge_commit_message` string enums to `settings.repository` under `schemaVersion: 1`:
 
 | Field | Exact values |
 | --- | --- |
@@ -100,7 +100,7 @@ Omission remains unmanaged; title-only is valid. Message requires an explicit `m
 
 Export reads both values in the fixed complete GraphQL observation. Plan compares declared fields only; missing/null/invalid data or partial GraphQL errors fail the whole read. Apply sends declared values only through the existing Administration-write repository PATCH, with no preliminary read or implicit companion values. See the [feature contract](features/merge-commit-defaults.feature.md) for exact API mapping, hosted evidence and tests.
 
-Published v0.13.0 and currently pinned examples reject these keys. Verify the intended v0.14.0 package and update consumer pins before adopting them.
+Published v0.13.0 and currently pinned examples reject these keys. Verify the v0.14.0 package and update consumer pins before adopting them.
 
 ## Topics
 

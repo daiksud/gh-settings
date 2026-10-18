@@ -27,7 +27,7 @@ The published [v0.13.0 CLI and Action](https://github.com/daiksud/gh-settings/re
 
 [v0.13.0](https://github.com/daiksud/gh-settings/releases/tag/v0.13.0) adds [`allow_auto_merge` and `allow_update_branch`](docs/features/pull-request-options.feature.md). The pinned v0.13.0 package includes these keys; publication does not change live policy.
 
-Current source adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md) (unreleased; planned v0.14.0). The pinned v0.13.0 package rejects these keys.
+[v0.14.0](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md). The pinned v0.13.0 package rejects these keys.
 
 ## Quick start
 
