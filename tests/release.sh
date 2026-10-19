@@ -13,7 +13,7 @@ cat > "$fixture/bin/gh" <<'MOCK'
 set -euo pipefail
 printf '%s\n' "$*" >> "$MOCK_ROOT/calls"
 release_json() {
-  jq -n --arg tag "$VERSION" --rawfile body "$MOCK_ROOT/body" --rawfile draft "$MOCK_ROOT/draft" --argjson assets "$(find "$MOCK_ROOT/assets" -type f -exec basename {} \; | jq -R . | jq -s .)" '{id:123,tag_name:$tag,name:$tag,prerelease:false,draft:($draft == "true\n"),body:$body,assets:[$assets[] | {name:.}]}'
+  jq -n --arg tag "$VERSION" --arg invalid_draft "${MOCK_INVALID_DRAFT:-}" --rawfile body "$MOCK_ROOT/body" --rawfile draft "$MOCK_ROOT/draft" --argjson assets "$(find "$MOCK_ROOT/assets" -type f -exec basename {} \; | jq -R . | jq -s .)" '{id:123,tag_name:$tag,name:$tag,prerelease:false,draft:(if $invalid_draft == "1" then "unknown" else ($draft == "true\n") end),body:$body,assets:[$assets[] | {name:.}]}'
 }
 if [[ "$1" == api ]]; then
   shift
@@ -40,6 +40,10 @@ if [[ "$1" == api ]]; then
   fi
   case "$1" in
     */git/ref/tags/*)
+      if [[ "${MOCK_TAG_AUTH_FAILURE:-}" == 1 ]]; then
+        echo 'gh: Bad credentials (HTTP 401)' >&2
+        exit 1
+      fi
       [[ -f "$MOCK_ROOT/tag.json" ]] || { echo 'gh: Not Found (HTTP 404)' >&2; exit 1; }
       if [[ "${MOCK_TAG_MOVE_ON_SECOND_READ:-}" == 1 ]]; then
         reads=0
@@ -211,6 +215,27 @@ rm "$fixture/assets/SHA256SUMS"
 publish
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 4 ]]
 [[ "$(cat "$fixture/draft")" == false ]]
+cmp "$fixture/original-notes" "$fixture/body"
+
+# Draft state is checked only after tag processing, and before asset reads.
+previous_mutations="$(grep -c '^api -X ' "$fixture/calls")"
+previous_downloads="$(grep -c '^release download ' "$fixture/calls")"
+previous_tag_reads="$(grep -c '^api repos/owner/repo/git/ref/tags/' "$fixture/calls")"
+mv "$fixture/tag.json" "$fixture/tag.saved"
+MOCK_INVALID_DRAFT=1 reject
+grep -q 'existing release has no tag' "$fixture/output"
+[[ ! -e "$fixture/tag.json" ]]
+mv "$fixture/tag.saved" "$fixture/tag.json"
+MOCK_INVALID_DRAFT=1 reject
+grep -q 'unknown release state' "$fixture/output"
+[[ "$(grep -c '^api repos/owner/repo/git/ref/tags/' "$fixture/calls")" == "$((previous_tag_reads + 2))" ]]
+[[ "$(grep -c '^release download ' "$fixture/calls")" == "$previous_downloads" ]]
+
+# Authentication/transport errors must not be mistaken for an absent tag.
+MOCK_TAG_AUTH_FAILURE=1 reject
+grep -q 'HTTP 401' "$fixture/output"
+grep -q 'GitHub API lookup failed: repos/owner/repo/git/ref/tags/v1.2.3' "$fixture/output"
+[[ "$(grep -c '^api -X ' "$fixture/calls")" == "$previous_mutations" ]]
 cmp "$fixture/original-notes" "$fixture/body"
 
 # Version, tag target, draft manifest, and bytes each reject conflicts.
