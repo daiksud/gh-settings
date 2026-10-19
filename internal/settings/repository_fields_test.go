@@ -1,6 +1,9 @@
 package settings
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestOrdinaryStringFieldValidation(t *testing.T) {
 	for index, name := range []string{"repository.description", "repository.homepage"} {
@@ -64,16 +67,43 @@ func TestMergeStringFieldValidation(t *testing.T) {
 	}
 }
 
-func TestBooleanFieldValidation(t *testing.T) {
-	for _, name := range []string{
-		"repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions",
-		"repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge",
-		"repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch",
+func TestBooleanFieldDefinitions(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		want func(bool) RepositoryDeclaration
+	}{
+		{"repository.has_issues", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{HasIssues: &value} }},
+		{"repository.has_projects", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{HasProjects: &value} }},
+		{"repository.has_wiki", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{HasWiki: &value} }},
+		{"repository.has_discussions", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{HasDiscussions: &value} }},
+		{"repository.allow_merge_commit", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowMergeCommit: &value} }},
+		{"repository.allow_squash_merge", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowSquashMerge: &value} }},
+		{"repository.allow_rebase_merge", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowRebaseMerge: &value} }},
+		{"repository.delete_branch_on_merge", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{DeleteBranchOnMerge: &value} }},
+		{"repository.allow_auto_merge", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowAutoMerge: &value} }},
+		{"repository.allow_update_branch", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowUpdateBranch: &value} }},
 	} {
 		for _, value := range []bool{false, true} {
-			if !ValidRepositoryFieldValue(name, value) {
-				t.Errorf("%s rejected native boolean %t", name, value)
+			if !ValidRepositoryFieldValue(test.name, value) {
+				t.Errorf("%s rejected native boolean %t", test.name, value)
 			}
+			set, ok := RepositoryBoolSetter(test.name)
+			if !ok || set == nil {
+				t.Fatalf("missing setter for %s", test.name)
+			}
+			var declaration RepositoryDeclaration
+			set(&declaration, value)
+			if !reflect.DeepEqual(declaration, test.want(value)) {
+				t.Errorf("%s assigned %+v, want %+v", test.name, declaration, test.want(value))
+			}
+		}
+	}
+}
+
+func TestRepositoryBoolSetterRejectsOtherNames(t *testing.T) {
+	for _, name := range []string{"", "has_issues", "repository.unknown", "repository.description", "repository.merge_commit_title", "topics.names"} {
+		if set, ok := RepositoryBoolSetter(name); ok || set != nil {
+			t.Errorf("unexpected boolean setter for %q", name)
 		}
 	}
 }
