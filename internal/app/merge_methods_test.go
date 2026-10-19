@@ -21,7 +21,7 @@ func TestPlanMergeMethodsSelectsOnlyNeededReads(t *testing.T) {
 		}
 		return settings.MergeMethodsState{AllowMergeCommit: true}, nil
 	}})
-	want := []settings.Change{{Field: "repository.allow_merge_commit", Before: true, After: false}, {Field: "repository.allow_squash_merge", Before: false, After: true}}
+	want := []settings.Change{comparisonChange(t, "repository.allow_merge_commit", true, false), comparisonChange(t, "repository.allow_squash_merge", false, true)}
 	data, _ := os.ReadFile(path)
 	if err != nil || calls != 1 || result.Comparison.Managed != 2 || !reflect.DeepEqual(result.Comparison.Changes, want) || string(data) != input {
 		t.Fatalf("result=%+v calls=%d err=%v", result, calls, err)

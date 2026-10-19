@@ -14,7 +14,7 @@ func TestPROptionsDeferredReadAndDirectWrite(t *testing.T) {
 			calls++
 			return settings.MergeMethodsState{AllowAutoMerge: true, AllowUpdateBranch: true}, nil
 		}})
-		if err != nil || calls != 1 || got.Comparison.Managed != 1 || len(got.Comparison.Changes) != 1 || got.Comparison.Changes[0].Field != "repository."+field || got.Comparison.Changes[0].After != false {
+		if err != nil || calls != 1 || got.Comparison.Managed != 1 || len(got.Comparison.Changes) != 1 || got.Comparison.Changes[0].Field().Path() != "repository."+field || got.Comparison.Changes[0].After != false {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 		}
 		result, err := Apply(Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {

@@ -19,7 +19,7 @@ func TestSquashCommitReportAndSummary(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, Changes: []settings.Change{{Field: "repository.squash_merge_commit_title", Before: "COMMIT_OR_PR_TITLE", After: "PR_TITLE"}, {Field: "repository.squash_merge_commit_message", Before: "COMMIT_MESSAGES", After: "BLANK"}}}}, nil
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, Changes: []settings.Change{comparisonChange(t, "repository.squash_merge_commit_title", "COMMIT_OR_PR_TITLE", "PR_TITLE"), comparisonChange(t, "repository.squash_merge_commit_message", "COMMIT_MESSAGES", "BLANK")}}}, nil
 	})
 	data, err := os.ReadFile(path)
 	if err != nil || status != 0 || stderr.Len() != 0 {

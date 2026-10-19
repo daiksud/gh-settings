@@ -154,11 +154,15 @@ func validatePlanReport(report PlanReport, target string) error {
 	if !valid {
 		return fmt.Errorf("invalid plan report state")
 	}
-	seen := make(map[string]bool, len(report.Changes))
+	seen := make(map[settings.FieldID]bool, len(report.Changes))
 	for _, change := range report.Changes {
+		field, err := settings.ParseFieldID(change.Field)
+		if err != nil {
+			return fmt.Errorf("invalid plan report change")
+		}
 		nativePair := false
-		switch change.Field {
-		case "topics.names":
+		switch field {
+		case settings.TopicsField():
 			before, beforeOK := summaryTopics(change.Before)
 			after, afterOK := summaryTopics(change.After)
 			nativePair = beforeOK && afterOK
@@ -169,12 +173,12 @@ func validatePlanReport(report PlanReport, target string) error {
 				}
 			}
 		default:
-			nativePair = settings.ValidRepositoryFieldValue(change.Field, change.Before) && settings.ValidRepositoryFieldValue(change.Field, change.After)
+			nativePair = settings.ValidRepositoryFieldValue(field.Path(), change.Before) && settings.ValidRepositoryFieldValue(field.Path(), change.After)
 		}
-		if !nativePair || seen[change.Field] || reflect.DeepEqual(change.Before, change.After) {
+		if !nativePair || seen[field] || reflect.DeepEqual(change.Before, change.After) {
 			return fmt.Errorf("invalid plan report change")
 		}
-		seen[change.Field] = true
+		seen[field] = true
 	}
 	return nil
 }

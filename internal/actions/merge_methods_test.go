@@ -18,7 +18,7 @@ import (
 func TestMergeMethodTypedReportAndSummary(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
-	changes := []settings.Change{{Field: "repository.allow_merge_commit", Before: true, After: false}, {Field: "repository.allow_squash_merge", Before: false, After: true}, {Field: "repository.allow_rebase_merge", Before: true, After: false}, {Field: "repository.delete_branch_on_merge", Before: true, After: false}, {Field: "repository.allow_auto_merge", Before: true, After: false}, {Field: "repository.allow_update_branch", Before: false, After: true}}
+	changes := []settings.Change{comparisonChange(t, "repository.allow_merge_commit", true, false), comparisonChange(t, "repository.allow_squash_merge", false, true), comparisonChange(t, "repository.allow_rebase_merge", true, false), comparisonChange(t, "repository.delete_branch_on_merge", true, false), comparisonChange(t, "repository.allow_auto_merge", true, false), comparisonChange(t, "repository.allow_update_branch", false, true)}
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 6, Changes: changes}}, nil
 	})

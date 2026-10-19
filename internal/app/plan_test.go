@@ -19,7 +19,7 @@ func TestPlanResults(t *testing.T) {
 		current     settings.RepositoryState
 		want        settings.Comparison
 	}{
-		{"changes", "schemaVersion: 1\nsettings:\n  repository:\n    description: after\n    has_issues: false\n", settings.RepositoryState{Description: "before", HasIssues: true}, settings.Comparison{Managed: 2, Changes: []settings.Change{{Field: "repository.description", Before: "before", After: "after"}, {Field: "repository.has_issues", Before: true, After: false}}}},
+		{"changes", "schemaVersion: 1\nsettings:\n  repository:\n    description: after\n    has_issues: false\n", settings.RepositoryState{Description: "before", HasIssues: true}, settings.Comparison{Managed: 2, Changes: []settings.Change{comparisonChange(t, "repository.description", "before", "after"), comparisonChange(t, "repository.has_issues", true, false)}}},
 		{"no differences", "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", settings.RepositoryState{}, settings.Comparison{Managed: 1}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -122,4 +122,17 @@ func TestPlanReadFailure(t *testing.T) {
 	if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target != (repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}) || err.Error() != readError.Error() {
 		t.Fatalf("read failure lost stage, target or original diagnostic: %v", err)
 	}
+}
+
+func comparisonChange(t *testing.T, path string, before, after any) settings.Change {
+	t.Helper()
+	field, err := settings.ParseFieldID(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err := settings.NewChange(field, before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return change
 }

@@ -17,7 +17,7 @@ func TestMergeMethodsPresenceAndComparison(t *testing.T) {
 	}
 	current := MergeMethodsState{AllowMergeCommit: true, AllowRebaseMerge: true}
 	got := CompareMergeMethods(current, RepositoryDeclaration{AllowMergeCommit: &no, AllowSquashMerge: &yes, AllowRebaseMerge: &no})
-	want := []Change{{Field: "repository.allow_merge_commit", Before: true, After: false}, {Field: "repository.allow_squash_merge", Before: false, After: true}, {Field: "repository.allow_rebase_merge", Before: true, After: false}}
+	want := []Change{{field: FieldID{path: "repository.allow_merge_commit"}, Before: true, After: false}, {field: FieldID{path: "repository.allow_squash_merge"}, Before: false, After: true}, {field: FieldID{path: "repository.allow_rebase_merge"}, Before: true, After: false}}
 	if got.Managed != 3 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("got=%+v", got)
 	}
@@ -34,7 +34,7 @@ func TestDeleteBranchOnMergePresenceAndComparison(t *testing.T) {
 	no := false
 	current := MergeMethodsState{DeleteBranchOnMerge: true}
 	got := CompareMergeMethods(current, RepositoryDeclaration{DeleteBranchOnMerge: &no})
-	want := []Change{{Field: "repository.delete_branch_on_merge", Before: true, After: false}}
+	want := []Change{{field: FieldID{path: "repository.delete_branch_on_merge"}, Before: true, After: false}}
 	if got.Managed != 1 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("comparison=%+v", got)
 	}
@@ -50,7 +50,7 @@ func TestPROptionsComparison(t *testing.T) {
 	no, yes := false, true
 	current := MergeMethodsState{AllowAutoMerge: true, AllowUpdateBranch: true}
 	got := CompareMergeMethods(current, RepositoryDeclaration{AllowAutoMerge: &no, AllowUpdateBranch: &no})
-	want := []Change{{Field: "repository.allow_auto_merge", Before: true, After: false}, {Field: "repository.allow_update_branch", Before: true, After: false}}
+	want := []Change{{field: FieldID{path: "repository.allow_auto_merge"}, Before: true, After: false}, {field: FieldID{path: "repository.allow_update_branch"}, Before: true, After: false}}
 	if got.Managed != 2 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("comparison=%+v", got)
 	}

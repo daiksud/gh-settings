@@ -45,6 +45,10 @@ func TestStringFieldDefinitions(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			field, err := ParseFieldID(test.name)
+			if err != nil || field.Path() != test.name {
+				t.Fatalf("field identity=%+v: %v", field, err)
+			}
 			set, enum, ok := RepositoryStringSetter(test.name)
 			if !ok || set == nil || enum != test.enum {
 				t.Fatalf("string lookup: found=%t enum=%t, want enum=%t", ok, enum, test.enum)
@@ -101,6 +105,10 @@ func TestBooleanFieldDefinitions(t *testing.T) {
 		{"repository.allow_auto_merge", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowAutoMerge: &value} }},
 		{"repository.allow_update_branch", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowUpdateBranch: &value} }},
 	} {
+		field, err := ParseFieldID(test.name)
+		if err != nil || field.Path() != test.name {
+			t.Fatalf("field identity=%+v: %v", field, err)
+		}
 		for _, value := range []bool{false, true} {
 			if !ValidRepositoryFieldValue(test.name, value) {
 				t.Errorf("%s rejected native boolean %t", test.name, value)
