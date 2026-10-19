@@ -92,6 +92,23 @@ func TestReleaseCandidateGate(t *testing.T) {
 	if publish.If != "" || publish.Continue {
 		t.Fatal("publish overrides the ordinary prerequisite-success gate")
 	}
+	var publishCheckout, releaseTools step
+	for _, s := range publish.Steps {
+		if strings.HasPrefix(s.Uses, "actions/checkout@") {
+			publishCheckout = s
+		}
+		if strings.HasPrefix(s.Uses, "jdx/mise-action@") {
+			releaseTools = s
+		}
+	}
+	if publishCheckout.With["ref"] != "${{ needs.resolve.outputs.source-sha }}" || publishCheckout.With["fetch-depth"] != "0" || publishCheckout.With["persist-credentials"] != "false" {
+		t.Fatalf("release notes require complete history at the frozen source: %+v", publishCheckout)
+	}
+	for _, tool := range []string{"go", "jq"} {
+		if !slices.Contains(strings.Fields(releaseTools.With["install_args"]), tool) {
+			t.Fatalf("release notes and publication require pinned %s", tool)
+		}
+	}
 }
 
 func TestCandidateDownloadFixtureIdentity(t *testing.T) {

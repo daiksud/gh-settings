@@ -14,7 +14,8 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | CLI and Actions presentation | [CLI tests](../../internal/cli/), [Actions tests](../../internal/actions/), [label reports](../../internal/actions/labels_test.go) | Dispatch, diagnostics/status, typed field/label reports, metadata, escaped rendering, and Summary storage |
 | Composite and caller wiring | [Composite](../../tests/github-actions/composite_test.go), [consumer](../../tests/github-actions/consumer_test.go), [operational caller](../../tests/github-actions/operational_test.go) | Actual YAML composition, token exposure, output/status ordering, and caller-owned boundaries |
 | Installed process behavior | [Acceptance tests](../../tests/acceptance/) | The actual supplied binary, isolated Git/files, local API requests, stdout/stderr and exit codes |
-| Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go) | Mock publication/recovery and declared source/version/artifact/gate relationships |
+| Release notes | [Release-notes helper tests](../../scripts/release-notes/main_test.go) | Temporary Git history, published predecessor selection, exact frozen ranges, classification, and Markdown rendering |
+| Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go) | Mock publication/recovery, note generation before remote changes, stored-note preservation, and declared source/version/artifact/gate relationships |
 
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
 
@@ -106,6 +107,8 @@ Local [composite](../../tests/github-actions/composite_test.go) and [caller](../
 Examples and active main callers use the same single-job apply pattern: three `uses` steps for checkout, token creation, and apply. [Operational tests](../../tests/github-actions/operational_test.go) separately verify this repository's Environment and credential bindings. Approval and token lifecycle stubs are simulations; these tests do not load pinned release-tag bytes or establish remote protection/revocation behavior.
 
 ## Release and publication evidence
+
+The [release-notes helper tests](../../scripts/release-notes/main_test.go) run with the ordinary Go suite and pinned Go toolchain. They use local Git repositories and release-list fixtures to verify publication-order selection, full-history requirements, the exact previous-release-to-frozen-source range, and categorized rendering from complete commit messages. The [publisher fixtures](../../tests/release.sh) separately check generation before a new remote tag or release and preservation of existing notes during retries. Neither test layer publishes a release.
 
 The [release runbook](releases.md) owns dispatch and recovery. Its pre-publication candidate job reuses the bounded fixture with the frozen source, requested/committed version, and existing Linux release artifact. Actual token-free validate must succeed before publication; source/helper tests inspect that required gate without dispatching a release.
 
