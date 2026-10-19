@@ -160,8 +160,11 @@ func exportFixtureReader(t *testing.T, state settings.RepositoryState, step func
 			return settings.NewRepositoryObservation(&state, &methods), step("repository", repo)
 		},
 		Topics: func(repo repository.Repository) ([]string, error) { return []string{"b", "a"}, step("topics", repo) },
-		Labels: func(repo repository.Repository) ([]settings.LabelState, error) {
-			return []settings.LabelState{{Name: "bug", Color: "abcdef", Description: "existing label"}}, step("labels", repo)
+		Labels: func(repo repository.Repository) (settings.LabelObservation, error) {
+			if err := step("labels", repo); err != nil {
+				return settings.LabelObservation{}, err
+			}
+			return settings.NewLabelObservation([]settings.LabelState{{Name: "bug", Color: "abcdef", Description: "existing label"}})
 		},
 	}
 }
@@ -193,9 +196,9 @@ func TestExportMissingRepositoryObservationPreventsSave(t *testing.T) {
 					return test.observed, nil
 				},
 				Topics: func(repository.Repository) ([]string, error) { calls = append(calls, "topics"); return nil, nil },
-				Labels: func(repository.Repository) ([]settings.LabelState, error) {
+				Labels: func(repository.Repository) (settings.LabelObservation, error) {
 					calls = append(calls, "labels")
-					return nil, nil
+					return settings.LabelObservation{}, nil
 				},
 			})
 			if err == nil || !strings.Contains(err.Error(), test.missing) || !reflect.DeepEqual(calls, []string{"target", "root", "repository"}) {

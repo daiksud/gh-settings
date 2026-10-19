@@ -34,7 +34,11 @@ func Export(checkout ExportCheckout, read Reader) error {
 	}
 	names = settings.SortedTopics(names)
 	declaration.Topics.Names = &names
-	labels, err := read.Labels(repo)
+	labelObservation, err := read.Labels(repo)
+	if err != nil {
+		return err
+	}
+	labels, err := labelObservation.Values()
 	if err != nil {
 		return err
 	}

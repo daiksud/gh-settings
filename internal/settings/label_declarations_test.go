@@ -24,7 +24,7 @@ func TestLabelDeclarationsOwnValues(t *testing.T) {
 	}
 	*values[0].Color, *values[0].Description, values[0].Name = "bad", "changed", ""
 	values[1] = LabelDeclaration{}
-	comparison, err := CompareLabels(nil, &declarations)
+	comparison, err := CompareLabels(labelObservation(t), &declarations)
 	if err != nil || len(comparison.Labels) != 2 {
 		t.Fatalf("comparison=%+v error=%v", comparison, err)
 	}
@@ -42,7 +42,7 @@ func TestLabelDeclarationsEmpty(t *testing.T) {
 		if err != nil || declarations.Len() != 0 || declarations.Values() == nil {
 			t.Fatalf("declarations=%+v error=%v", declarations, err)
 		}
-		comparison, err := CompareLabels(nil, &declarations)
+		comparison, err := CompareLabels(labelObservation(t), &declarations)
 		if err != nil || comparison.Managed != 1 || len(comparison.Labels) != 0 {
 			t.Fatalf("comparison=%+v error=%v", comparison, err)
 		}

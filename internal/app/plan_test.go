@@ -87,9 +87,9 @@ func TestPlanManagedEmptyCollectionsResolveTarget(t *testing.T) {
 					record("topics", repo)
 					return []string{}, nil
 				},
-				Labels: func(repo repository.Repository) ([]settings.LabelState, error) {
+				Labels: func(repo repository.Repository) (settings.LabelObservation, error) {
 					record("labels", repo)
-					return []settings.LabelState{}, nil
+					return settings.NewLabelObservation(nil)
 				},
 			})
 			if err != nil || got.Target != target || got.Comparison.Managed != 1 || !reflect.DeepEqual(calls, []string{"load", "target", test.name}) {

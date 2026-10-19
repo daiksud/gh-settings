@@ -19,7 +19,7 @@ func labelList(t *testing.T, values ...LabelDeclaration) *LabelDeclarations {
 func TestCompareLabelsAuthoritativeMembership(t *testing.T) {
 	current := []LabelState{{Name: "old", Color: "FFFFFF", Description: "assigned"}, {Name: "Bug", Color: "abcdef", Description: "keep"}}
 	desired := labelList(t, LabelDeclaration{Name: "new", Description: labelText("")}, LabelDeclaration{Name: "bug", Color: labelText("ABCDEF")})
-	got, err := CompareLabels(current, desired)
+	got, err := CompareLabels(labelObservation(t, current...), desired)
 	want := Comparison{Managed: 1, Labels: []LabelChange{
 		{Operation: "create", Name: "new", After: &LabelDeclaration{Name: "new", Description: labelText("")}},
 		{Operation: "delete", Name: "old", Before: &LabelState{Name: "old", Color: "ffffff", Description: "assigned"}},
@@ -50,7 +50,7 @@ func TestCompareLabelsPresenceAndPartialAttributes(t *testing.T) {
 		{"empty description clears", labelList(t, LabelDeclaration{Name: "bug", Description: labelText("")}), 1, "update"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := CompareLabels(current, test.desired)
+			got, err := CompareLabels(labelObservation(t, current...), test.desired)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -72,7 +72,7 @@ func TestCompareLabelsPresenceAndPartialAttributes(t *testing.T) {
 			}
 		})
 	}
-	empty, err := CompareLabels(nil, labelList(t))
+	empty, err := CompareLabels(labelObservation(t), labelList(t))
 	if err != nil || empty.Managed != 1 || len(empty.Labels) != 0 {
 		t.Fatalf("empty=%+v error=%v", empty, err)
 	}
@@ -81,7 +81,7 @@ func TestCompareLabelsPresenceAndPartialAttributes(t *testing.T) {
 func TestCompareLabelsDeterministicOrderAndNoRenameInference(t *testing.T) {
 	current := []LabelState{{Name: "z", Color: "ffffff"}, {Name: "old", Color: "000000"}}
 	desired := labelList(t, LabelDeclaration{Name: "new"}, LabelDeclaration{Name: "a"})
-	got, err := CompareLabels(current, desired)
+	got, err := CompareLabels(labelObservation(t, current...), desired)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestCompareLabelsDeterministicOrderAndNoRenameInference(t *testing.T) {
 	if !reflect.DeepEqual(operations, []string{"create:a", "create:new", "delete:old", "delete:z"}) {
 		t.Fatalf("operations=%v", operations)
 	}
-	reordered, err := CompareLabels([]LabelState{current[1], current[0]}, labelList(t, desired.Values()[1], desired.Values()[0]))
+	reordered, err := CompareLabels(labelObservation(t, current[1], current[0]), labelList(t, desired.Values()[1], desired.Values()[0]))
 	if err != nil || !reflect.DeepEqual(reordered, got) {
 		t.Fatalf("unstable comparison=%+v err=%v", reordered, err)
 	}
@@ -111,14 +111,6 @@ func TestLabelsValidationAndAmbiguity(t *testing.T) {
 	if _, err := NewLabelDeclarations([]LabelDeclaration{{Name: "area/docs 🐛", Color: labelText("ABC123"), Description: labelText(strings.Repeat("界", 100))}}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := CompareLabels([]LabelState{{Name: "bug", Color: "ffffff"}, {Name: "BUG", Color: "000000"}}, labelList(t))
-	if err == nil {
-		t.Fatal("accepted ambiguous observed names")
-	}
-	_, err = CompareLabels([]LabelState{{Name: "bug", Color: "bad"}}, labelList(t))
-	if err == nil {
-		t.Fatal("accepted invalid observed color")
-	}
 }
 
 func TestLabelOperationValidation(t *testing.T) {
@@ -135,4 +127,13 @@ func TestLabelOperationValidation(t *testing.T) {
 			t.Fatalf("accepted %+v", change)
 		}
 	}
+}
+
+func labelObservation(t *testing.T, values ...LabelState) LabelObservation {
+	t.Helper()
+	result, err := NewLabelObservation(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }

@@ -9,13 +9,13 @@ import (
 type Reader struct {
 	ObserveRepository func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error)
 	Topics            func(repository.Repository) ([]string, error)
-	Labels            func(repository.Repository) ([]settings.LabelState, error)
+	Labels            func(repository.Repository) (settings.LabelObservation, error)
 }
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
 	Repository func(repository.Repository, settings.RepositoryDeclaration) error
 	Topics     func(repository.Repository, settings.TopicsDeclaration) error
-	ReadLabels func(repository.Repository) ([]settings.LabelState, error)
+	ReadLabels func(repository.Repository) (settings.LabelObservation, error)
 	Labels     func(repository.Repository, []settings.LabelChange) error
 }
