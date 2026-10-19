@@ -12,6 +12,14 @@ type RepositoryState struct {
 	HasDiscussions bool
 }
 
+// Declaration explicitly manages every field in the complete REST observation.
+func (state RepositoryState) Declaration() RepositoryDeclaration {
+	var declaration RepositoryDeclaration
+	declareRepositoryFields(repositoryStringFields[:], state, &declaration)
+	declareRepositoryFields(repositoryBoolFields[:], state, &declaration)
+	return declaration
+}
+
 // RepositoryDeclaration leaves nil fields unmanaged; false and empty strings are declared values.
 type RepositoryDeclaration struct {
 	Description              *string
