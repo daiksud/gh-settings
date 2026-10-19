@@ -46,7 +46,7 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 - Omitted fields are unmanaged and produce no difference.
 - Explicit false and empty strings are managed values.
-- Show changed REST fields in description, homepage, has_issues, has_projects, has_wiki, has_discussions order, followed by the [merge-related fields](../commands.md#plan-behavior), topics and labels. Discussions is current-source support planned for v0.15.0; v0.14.0 retains the five-field REST state.
+- Show changed REST fields in description, homepage, has_issues, has_projects, has_wiki, has_discussions order, followed by the [merge-related fields](../commands.md#plan-behavior), topics and labels. Discussions is supported since v0.15.0; v0.14.0 retains the five-field REST state.
 - Each line uses `settings.repository.FIELD: CURRENT → DESIRED`.
 - Strings are double-quoted with Go string escaping; booleans use `true` or `false`.
 - Equal managed values produce `No differences for managed repository settings.`

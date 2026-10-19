@@ -8,7 +8,7 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 A repository maintainer can capture all sixteen current-source repository fields, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
 
-The six-field REST state includes `has_discussions`, planned for v0.15.0; published v0.14.0 exports fifteen repository fields without that key. The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
+The six-field REST state includes `has_discussions` since v0.15.0; published v0.14.0 exports fifteen repository fields without that key. The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
 
 This feature assumes an owner-controlled checkout whose directory and link entries remain stable during export. Concurrent replacement of those entries is outside its scope.
 

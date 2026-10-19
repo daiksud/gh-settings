@@ -2,7 +2,7 @@
 
 ## Status
 
-Current-source support, planned for v0.15.0. Published v0.14.0 and current consumer pins reject `has_discussions`. This is an optional field in `settings.repository` under `schemaVersion: 1`, not a new resource family.
+CLI/Action v0.15.0 and current consumer pins support `has_discussions`. Published v0.14.0 and older packages reject the key. This is an optional field in `settings.repository` under `schemaVersion: 1`, not a new resource family.
 
 ## Behavior
 

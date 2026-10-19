@@ -1,10 +1,10 @@
 # Use the public settings Action
 
-Current-source [`has_discussions` support](features/discussions.feature.md) is planned for v0.15.0. The current v0.14.0 consumer pins do not accept this field; update the released CLI/Action before adopting it.
+The pinned v0.15.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
 
 ## Public Action and supported checkout
 
-`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.14.0 package for repository fields, topics and [labels](#labels-and-permissions).
+`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.15.0 package for repository fields, topics and [labels](#labels-and-permissions).
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and commit `.github/settings.yml` at its root.
 
@@ -36,7 +36,7 @@ Missing command/token, unsupported prerequisites, install/metadata/output failur
 
 ## Published package and consumer pins
 
-The examples use the published [v0.14.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0), pinned to the full Action SHA `6e736c8cfa0c770306f8b4cd72193823f8ecac2b`. Its selected CLI version is fixed by that package; use a reviewed full SHA when adopting or updating the workflows. Release assets and `SHA256SUMS` are available on the release page.
+The examples use the published [v0.15.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.15.0), pinned to the full Action SHA `235af9170a7e40fa393f54613d39bf3623f1448e`. Its selected CLI version is fixed by that package; use a reviewed full SHA when adopting or updating the workflows. Release assets and `SHA256SUMS` are available on the release page.
 
 Installation downloads the selected `gh-settings-linux-amd64` asset and `SHA256SUMS` from fixed upstream HTTPS release paths. It requires one valid checksum for the exact asset, verifies before execution and checks exact `gh-settings <version>` output. There is no latest fallback or caller version/URL override. The binary and checksum come from the same GitHub release; the Action SHA fixes the selected version, not an independent binary digest.
 
@@ -46,7 +46,7 @@ Older pins retain their released behavior. Maintainers document immutable packag
 
 [Labels support](settings.md#labels) is published in v0.9.0 and included in the pinned package. Older v0.8.0 packages reject `settings.labels`. Checking out newer Action source does not build that source; the selected release determines CLI capabilities.
 
-Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Do not assume installing or pinning v0.14.0 grants access.
+Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Do not assume installing or pinning v0.15.0 grants access.
 
 Labels apply reads fresh membership and performs only needed CRUD operations, with authoritative deletion of undeclared labels and their issue/PR associations. Review the [labels contract](settings.md#labels) before adoption.
 
