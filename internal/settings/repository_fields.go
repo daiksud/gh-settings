@@ -54,6 +54,31 @@ func validatedStringSetter[S any](field repositoryField[S, string]) func(*Reposi
 	}
 }
 
+// VisitDeclaredRepositoryFields visits native values in the stable repository field order.
+func VisitDeclaredRepositoryFields(declaration RepositoryDeclaration, visitString func(string, string) error, visitBool func(string, bool) error) error {
+	if err := visitDeclaredRepositoryFields(repositoryStringFields[:], declaration, visitString); err != nil {
+		return err
+	}
+	if err := visitDeclaredRepositoryFields(repositoryBoolFields[:], declaration, visitBool); err != nil {
+		return err
+	}
+	if err := visitDeclaredRepositoryFields(mergeMethodsBoolFields[:], declaration, visitBool); err != nil {
+		return err
+	}
+	return visitDeclaredRepositoryFields(mergeMethodsStringFields[:], declaration, visitString)
+}
+
+func visitDeclaredRepositoryFields[S any, V bool | string](fields []repositoryField[S, V], declaration RepositoryDeclaration, visit func(string, V) error) error {
+	for _, field := range fields {
+		if value := field.desired(declaration); value != nil {
+			if err := visit(field.name, *value); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // RepositoryFieldCount counts the supported scalar repository fields.
 func RepositoryFieldCount() int {
 	return len(repositoryStringFields) + len(repositoryBoolFields) + len(mergeMethodsBoolFields) + len(mergeMethodsStringFields)
