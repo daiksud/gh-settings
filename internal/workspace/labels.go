@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"go.yaml.in/yaml/v4"
-	"strings"
 )
 
 type labelDocument struct {
@@ -13,7 +12,7 @@ type labelDocument struct {
 	Description *string `yaml:"description,omitempty"`
 }
 
-func parseLabels(node *yaml.Node) (*[]settings.LabelDeclaration, error) {
+func parseLabels(node *yaml.Node) (*settings.LabelDeclarations, error) {
 	node, err := resolveAlias(node)
 	if err != nil {
 		return nil, err
@@ -44,7 +43,6 @@ func parseLabels(node *yaml.Node) (*[]settings.LabelDeclaration, error) {
 			case "name":
 				label.Name = text
 			case "color":
-				text = strings.ToLower(text)
 				label.Color = &text
 			case "description":
 				label.Description = &text
@@ -52,8 +50,9 @@ func parseLabels(node *yaml.Node) (*[]settings.LabelDeclaration, error) {
 		}
 		labels = append(labels, label)
 	}
-	if err := settings.ValidateLabels(labels); err != nil {
+	declarations, err := settings.NewLabelDeclarations(labels)
+	if err != nil {
 		return nil, err
 	}
-	return &labels, nil
+	return &declarations, nil
 }

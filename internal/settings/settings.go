@@ -9,7 +9,7 @@ import (
 type Declaration struct {
 	Repository RepositoryDeclaration
 	Topics     TopicsDeclaration
-	Labels     *[]LabelDeclaration
+	Labels     *LabelDeclarations
 }
 
 // TopicsDeclaration distinguishes omitted names from an explicitly empty list.

@@ -102,7 +102,7 @@ func TestApplyWriteFailure(t *testing.T) {
 }
 
 func TestApplyManagedEmptyCollectionsResolveTarget(t *testing.T) {
-	topics, labels := []string{}, []settings.LabelDeclaration{}
+	topics, labels := []string{}, settings.LabelDeclarations{}
 	for _, test := range []struct {
 		name    string
 		desired settings.Declaration

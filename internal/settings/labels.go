@@ -16,6 +16,44 @@ type LabelDeclaration struct {
 	Description *string
 }
 
+// LabelDeclarations retains validated, unique declarations and owns their values.
+// Its zero value is an explicitly empty collection; omission uses a nil pointer.
+type LabelDeclarations struct{ entries []LabelDeclaration }
+
+func NewLabelDeclarations(labels []LabelDeclaration) (LabelDeclarations, error) {
+	if err := ValidateLabels(labels); err != nil {
+		return LabelDeclarations{}, err
+	}
+	owned := copyLabelDeclarations(labels)
+	for _, label := range owned {
+		if label.Color != nil {
+			*label.Color = strings.ToLower(*label.Color)
+		}
+	}
+	return LabelDeclarations{entries: owned}, nil
+}
+
+func (d LabelDeclarations) Len() int { return len(d.entries) }
+
+// Values returns an independent slice, including independent attribute pointers.
+func (d LabelDeclarations) Values() []LabelDeclaration { return copyLabelDeclarations(d.entries) }
+
+func copyLabelDeclarations(labels []LabelDeclaration) []LabelDeclaration {
+	result := make([]LabelDeclaration, len(labels))
+	for i, label := range labels {
+		if label.Color != nil {
+			color := *label.Color
+			label.Color = &color
+		}
+		if label.Description != nil {
+			description := *label.Description
+			label.Description = &description
+		}
+		result[i] = label
+	}
+	return result
+}
+
 // LabelState is the complete writable subset observed from GitHub.
 type LabelState struct{ Name, Color, Description string }
 
@@ -101,12 +139,9 @@ func SortedLabels(labels []LabelDeclaration) []LabelDeclaration {
 }
 
 // CompareLabels treats any declared list, including [], as authoritative membership.
-func CompareLabels(current []LabelState, desired *[]LabelDeclaration) (Comparison, error) {
+func CompareLabels(current []LabelState, desired *LabelDeclarations) (Comparison, error) {
 	if desired == nil {
 		return Comparison{}, nil
-	}
-	if err := ValidateLabels(*desired); err != nil {
-		return Comparison{}, err
 	}
 	observed := make(map[string]LabelState, len(current))
 	for _, label := range current {
@@ -123,11 +158,7 @@ func CompareLabels(current []LabelState, desired *[]LabelDeclaration) (Compariso
 		observed[key] = label
 	}
 	result := Comparison{Managed: 1}
-	for _, declared := range SortedLabels(*desired) {
-		if declared.Color != nil {
-			color := strings.ToLower(*declared.Color)
-			declared.Color = &color
-		}
+	for _, declared := range SortedLabels(desired.Values()) {
 		key := LabelIdentity(declared.Name)
 		before, present := observed[key]
 		if !present {

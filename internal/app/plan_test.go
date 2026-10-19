@@ -59,7 +59,7 @@ func TestPlanNoManagedSettings(t *testing.T) {
 }
 
 func TestPlanManagedEmptyCollectionsResolveTarget(t *testing.T) {
-	names, labels := []string{}, []settings.LabelDeclaration{}
+	names, labels := []string{}, settings.LabelDeclarations{}
 	for _, test := range []struct {
 		name    string
 		desired settings.Declaration

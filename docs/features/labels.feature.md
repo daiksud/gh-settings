@@ -57,6 +57,7 @@ Credentials and caller permissions remain the owner's responsibility. This sourc
 | Boundary | Evidence |
 | --- | --- |
 | Identity, validation, omission, attribute presence, stable reconciliation | [Settings model tests](../../internal/settings/labels_test.go) |
+| Validated declaration ownership, independent retrieved values and operations | [Declaration collection tests](../../internal/settings/label_declarations_test.go) |
 | Strict schema, aliases/merges, null rejection, stable serialization | [Workspace codec tests](../../internal/workspace/labels_test.go) |
 | Pagination/completeness, exact payloads, escaped paths, failure stop | [GitHub adapter tests](../../internal/github/labels_test.go) |
 | Fresh read, conditional resources, sequencing and partial failures | [Application tests](../../internal/app/labels_test.go) |

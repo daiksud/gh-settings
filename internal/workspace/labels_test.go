@@ -27,10 +27,10 @@ func TestLabelsConfigOmissionEmptyAndRoundTrip(t *testing.T) {
 			if (got.Labels != nil) != test.managed {
 				t.Fatalf("declaration=%+v", got)
 			}
-			if test.managed && len(*got.Labels) != test.count {
+			if test.managed && got.Labels.Len() != test.count {
 				t.Fatalf("labels=%+v", *got.Labels)
 			}
-			if test.count == 1 && (*got.Labels)[0].Color != nil && *(*got.Labels)[0].Color != "abcdef" {
+			if test.count == 1 && got.Labels.Values()[0].Color != nil && *got.Labels.Values()[0].Color != "abcdef" {
 				t.Fatal("color not canonical")
 			}
 			data, err := EncodeConfig(got)
@@ -68,7 +68,7 @@ func TestLabelsConfigExportSortsNamesAndPreservesOmittedFields(t *testing.T) {
 	if strings.Index(text, "name: a") > strings.Index(text, "name: z") || !strings.Contains(text, "color: abcdef") || !strings.Contains(text, `description: ""`) {
 		t.Fatalf("encoded=%s", text)
 	}
-	if (*declaration.Labels)[0].Color != nil || (*declaration.Labels)[1].Description != nil {
+	if declaration.Labels.Values()[0].Color != nil || declaration.Labels.Values()[1].Description != nil {
 		t.Fatal("injected omitted values")
 	}
 }
