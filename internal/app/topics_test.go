@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -94,33 +93,5 @@ func TestInvalidTopicsBeforeRemote(t *testing.T) {
 	}
 	if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil || !strings.Contains(err.Error(), "array of strings") {
 		t.Fatalf("error=%v", err)
-	}
-}
-func TestTopicsExportFailureBeforeOverwrite(t *testing.T) {
-	for _, existing := range []bool{true, false} {
-		t.Run(map[bool]string{true: "existing", false: "absent"}[existing], func(t *testing.T) {
-			before := "previous configuration"
-			path := appCheckout(t, before, true)
-			if !existing {
-				if err := os.Remove(path); err != nil {
-					t.Fatal(err)
-				}
-			}
-			failure := errors.New("topics forbidden")
-			var calls []string
-			err := Export(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-				return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
-			}, Repository: func(repository.Repository) (settings.RepositoryState, error) {
-				calls = append(calls, "repository")
-				return settings.RepositoryState{}, nil
-			}, Topics: func(repository.Repository) ([]string, error) { calls = append(calls, "topics"); return nil, failure }})
-			if !errors.Is(err, failure) || !reflect.DeepEqual(calls, []string{"repository", "topics"}) {
-				t.Fatalf("calls=%v error=%v", calls, err)
-			}
-			data, err := os.ReadFile(path)
-			if existing && (err != nil || string(data) != before) || !existing && !os.IsNotExist(err) {
-				t.Fatalf("destination=%q error=%v", data, err)
-			}
-		})
 	}
 }

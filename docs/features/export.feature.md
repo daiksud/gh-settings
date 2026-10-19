@@ -184,13 +184,13 @@ These origin-support changes are published in v0.7.0 and do not change settings 
 
 ### Test mapping
 
-These scenarios map to ordinary Go tests, [application export tests](../../internal/app/export_test.go), [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
+These scenarios map to ordinary Go tests, [application export tests](../../internal/app/export_test.go), [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Application tests record target and destination resolution, complete typed observations, and the final save without Git or files. Workspace tests retain guarded replacement and verify that a prepared saver remains bound to its resolved checkout root. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
-| Export from a subdirectory without a settings directory | — | `TestExportSavesAtCheckoutRoot` |
-| Refresh an existing regular configuration | `TestExportStoredSettings/zero_values` | `TestExportExistingFile/replace` |
-| Report a failed write | — | `TestExportReportsWriteFailure` |
+| Export from a subdirectory without a settings directory | `TestCheckoutPrepareSaveBindsResolvedRoot` | `TestExportSavesAtCheckoutRoot` |
+| Refresh an existing regular configuration | `TestWriteConfigAtRoot/replace`, `TestCheckoutPrepareSaveBindsResolvedRoot` | `TestExportExistingFile/replace` |
+| Report a failed write | `TestExportStorageFailure` | `TestExportReportsWriteFailure` |
 | Refuse symlink destinations and non-regular files | `TestWriteConfigRejectsUnsafeDestination`, `TestExportStorageFailure` | `TestExportRejectsUnsafeDestination` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
 | Export complete repository settings successfully | `TestExportStoredSettings/five_values` | `five-settings` |
@@ -204,7 +204,7 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | Read an origin from repository-specific Git configuration | `TestCurrentRepositoryIgnoresUnscopedOrigins` | `origin-worktree` |
 | Save export output and validate it locally | — | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
 | Settings cannot be retrieved | `TestReadRepositoryFailures`, `TestExportReadFailure` | `read-failure`, `TestExportExistingFile/api-failure` |
-| There is no usable current repository | `TestExportTargetFailureBeforeRead` | `repository-failure` |
+| There is no usable current repository | `TestExportTargetFailureBeforeRead`, `TestExportRootFailureBeforeRead`, `TestCheckoutPrepareSaveOutsideGit` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestCurrentRepositoryRequiresCheckout` | — |
 | The response cannot form a complete configuration | `TestReadRepositoryFailures` | `incomplete-response`, `TestExportExistingFile/malformed-response`, `TestExportExistingFile/incomplete-response` |
 | Standard output is unavailable | [TestExportDoesNotWriteStdout](../../internal/cli/run_test.go) | `TestExportExistingFile/replace` |
@@ -219,7 +219,7 @@ Export changes the local configuration but only reads GitHub settings; [apply](.
 - Then repository fields and sorted topic names are saved with schemaVersion 1.
 - And a failed topics read leaves an existing destination unchanged.
 
-Test mapping: [TestTopicsExportFailureBeforeOverwrite](../../internal/app/topics_test.go) and [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).
+Test mapping: [TestExportReadFailure/topics](../../internal/app/export_test.go) and [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).
 
 ### Rule: Read labels completely
 

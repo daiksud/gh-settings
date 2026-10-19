@@ -137,9 +137,17 @@ func TestWriteConfigRejectsUnsafeDestination(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			err = WriteConfig(root, []byte(repositoryYAML("has_issues: false\n")))
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("error=%v, want %q", err, test.want)
+			disabled := false
+			for _, save := range []func() error{
+				func() error { return WriteConfig(root, []byte(repositoryYAML("has_issues: false\n"))) },
+				func() error {
+					return saveDeclaration(root, settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}})
+				},
+			} {
+				err = save()
+				if err == nil || !strings.Contains(err.Error(), test.want) {
+					t.Fatalf("error=%v, want %q", err, test.want)
+				}
 			}
 			after, err := os.Lstat(observed)
 			if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() {

@@ -96,3 +96,51 @@ func TestCheckoutRepositoryUsesItsDirectory(t *testing.T) {
 		t.Fatalf("outside checkout selected %+v, error=%v", got, err)
 	}
 }
+
+func TestCheckoutPrepareSaveBindsResolvedRoot(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "nested")
+	if err := os.Mkdir(nested, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if output, err := exec.Command("git", "init", "--quiet", root).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, output)
+	}
+	github := filepath.Join(root, ".github")
+	if err := os.Mkdir(github, 0700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(github, "settings.yml")
+	before := "existing configuration\n"
+	if err := os.WriteFile(path, []byte(before), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir())
+	save, err := NewCheckout(nested).PrepareSave()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != before {
+		t.Fatalf("destination changed during resolution: %q %v", data, err)
+	}
+	other := t.TempDir()
+	t.Chdir(other)
+	disabled := false
+	if err := save(settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}); err != nil {
+		t.Fatal(err)
+	}
+	want := "schemaVersion: 1\nsettings:\n    repository:\n        has_issues: false\n"
+	if data, err := os.ReadFile(path); err != nil || string(data) != want {
+		t.Fatalf("saved=%q error=%v, want %q", data, err, want)
+	}
+	if _, err := os.Lstat(filepath.Join(other, ".github")); !os.IsNotExist(err) {
+		t.Fatalf("unrelated destination exists: %v", err)
+	}
+}
+
+func TestCheckoutPrepareSaveOutsideGit(t *testing.T) {
+	save, err := NewCheckout(t.TempDir()).PrepareSave()
+	if save != nil || err == nil || !strings.Contains(err.Error(), "locate .github/settings.yml:") {
+		t.Fatalf("save present=%v error=%v", save != nil, err)
+	}
+}

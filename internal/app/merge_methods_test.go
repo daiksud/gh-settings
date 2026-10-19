@@ -72,18 +72,6 @@ func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 	}
 }
 
-func TestMergeMethodsExportReadFailurePreservesFile(t *testing.T) {
-	path := appCheckout(t, "previous configuration\n", true)
-	failure := errors.New("GraphQL permission denied")
-	err := Export(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) { return settings.RepositoryState{}, nil }, MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-		return settings.MergeMethodsState{}, failure
-	}})
-	data, readErr := os.ReadFile(path)
-	if !errors.Is(err, failure) || readErr != nil || string(data) != "previous configuration\n" {
-		t.Fatalf("error=%v file=%q read=%v", err, data, readErr)
-	}
-}
-
 func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {delete_branch_on_merge: false}}\n", true)
 	calls := 0
