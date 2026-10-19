@@ -139,6 +139,6 @@ Current source accepts a label list as an authoritative collection, distinguishe
 
 ### Rule: Validate the optional Discussions field
 
-Current source, planned for v0.15.0, accepts omitted `has_discussions` or an explicit native boolean under `settings.repository`. Omission remains unmanaged; false remains declared. Null, quoted booleans, numbers, collections and legacy boolean spellings fail before origin/authentication/API access. Published v0.14.0 rejects this key. The [Discussions specification](discussions.feature.md) owns its behavior and test boundaries.
+v0.15.0 and current source accept omitted `has_discussions` or an explicit native boolean under `settings.repository`. Omission remains unmanaged; false remains declared. Null, quoted booleans, numbers, collections and legacy boolean spellings fail before origin/authentication/API access. Published v0.14.0 rejects this key. The [Discussions specification](discussions.feature.md) owns its behavior and test boundaries.
 
 Test mapping: [TestDiscussionsDeclaration](../../internal/workspace/discussions_test.go) and [TestApplyAcceptance](../../tests/acceptance/apply_test.go).

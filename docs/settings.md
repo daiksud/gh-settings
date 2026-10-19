@@ -2,7 +2,7 @@
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.14.0 supports fifteen repository fields, topics and labels, using the same file-format version. v0.13.0 supports thirteen repository fields, excluding normal merge commit defaults. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.15.0 supports sixteen repository fields, topics and labels, using the same file-format version. v0.14.0 supports fifteen repository fields, excluding Discussions. v0.13.0 supports thirteen repository fields, excluding normal merge commit defaults. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -18,9 +18,9 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
-## Discussions (current source; planned v0.15.0)
+## Discussions (v0.15.0)
 
-Current source adds optional `settings.repository.has_discussions`, a boolean controlling GitHub Discussions. It extends the repository group; it does not manage discussion categories or individual discussions. Published v0.14.0 and the currently pinned Action reject this key, so update to a release containing it before adopting the declaration.
+v0.15.0 adds optional `settings.repository.has_discussions`, a boolean controlling GitHub Discussions. It extends the repository group; it does not manage discussion categories or individual discussions. Published v0.14.0 and older packages reject this key. The pinned v0.15.0 CLI/Action supports it; update older consumer pins before adopting the declaration.
 
 ```yaml
 schemaVersion: 1
@@ -29,7 +29,7 @@ settings:
     has_discussions: false
 ```
 
-Omission leaves the value unmanaged; explicit `false` remains a declared value. Null, quoted booleans, and other types are invalid. Export includes the observed value only after complete reads; current-source exports contain sixteen repository fields, topics, and labels. Existing configurations that omit this field keep their previous managed count.
+Omission leaves the value unmanaged; explicit `false` remains a declared value. Null, quoted booleans, and other types are invalid. Export includes the observed value only after complete reads; v0.15.0 exports contain sixteen repository fields, topics, and labels. Existing configurations that omit this field keep their previous managed count.
 
 Plan reads the value from the existing repository REST GET without an additional GraphQL query. Apply sends it only when declared, through the existing Administration-write PATCH. When declared, a successful PATCH must return the same boolean; a missing, null, wrongly typed, or unequal value is an error. This check occurs after the request and does not roll back repository writes or prove transactional application. No prerequisite read, implicit enabling, or additional permission is introduced.
 
@@ -47,7 +47,7 @@ v0.11.0 adds optional `settings.repository.delete_branch_on_merge`, a boolean co
 
 v0.11.0 export includes the value after a complete read. Plan uses the same fixed GraphQL read as merge methods; apply sends only declared fields through the existing Administration-write REST PATCH, with no preliminary read. Missing/null/invalid data or any GraphQL error fails the read instead of becoming false. See the [feature contract and read-only Actions evidence](features/delete-branch-on-merge.feature.md).
 
-Published v0.10.0 does not accept this key. The pinned v0.14.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
+Published v0.10.0 does not accept this key. The pinned v0.15.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
 
 ## Squash commit defaults (v0.12.0)
 
@@ -72,7 +72,7 @@ Omission leaves each field unmanaged. Title-only declarations are valid; message
 
 Export includes both values only after a complete read. Plan uses the fixed merge-related GraphQL query, compares declared fields in title-then-message order after branch deletion, and presents string values. Apply includes only declared fields in the existing Administration-write repository PATCH, without a preliminary read or inferred companion values. Existing token permissions are sufficient for that PATCH; no additional resource family is introduced. The [feature contract](features/squash-commit-defaults.feature.md) records read validation, hosted evidence and test mappings.
 
-Published v0.11.0 rejects these keys. The pinned v0.14.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
+Published v0.11.0 rejects these keys. The pinned v0.15.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
 
 ## Auto-merge and branch updates (v0.13.0)
 
@@ -92,7 +92,7 @@ settings:
 
 Each field is independent: omission remains unmanaged, explicit `false` is retained, and null/wrong types fail local validation. Neither value is synthesized. Export includes both after a complete fixed GraphQL read; plan reads only when a merge-related field is declared and compares declared fields only. Missing/null/wrong-typed observations or partial GraphQL errors fail the complete read. Apply sends declared fields only through the existing Administration-write REST PATCH, with no preliminary read or additional permissions.
 
-Published v0.12.0 rejects these keys. The pinned v0.14.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
+Published v0.12.0 rejects these keys. The pinned v0.15.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
 
 ## Merge commit defaults (v0.14.0)
 
@@ -117,7 +117,7 @@ Omission remains unmanaged; title-only is valid. Message requires an explicit `m
 
 Export reads both values in the fixed complete GraphQL observation. Plan compares declared fields only; missing/null/invalid data or partial GraphQL errors fail the whole read. Apply sends declared values only through the existing Administration-write repository PATCH, with no preliminary read or implicit companion values. See the [feature contract](features/merge-commit-defaults.feature.md) for exact API mapping, hosted evidence and tests.
 
-Published v0.13.0 rejects these keys. The pinned v0.14.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
+Published v0.13.0 rejects these keys. The pinned v0.15.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
 
 ## Topics
 
@@ -147,7 +147,7 @@ Topic reads require Metadata read; public resources may be read without authenti
 
 ## Labels
 
-`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.14.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
+`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.15.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
 
 ```yaml
 schemaVersion: 1
@@ -212,7 +212,7 @@ The supported repository fields distinguish omission from explicit values:
 | `description: ""` | A declared empty string; single-quoted empty strings are equivalent. |
 | `description: null` or `has_issues: null` | Invalid for these string and boolean fields. A bare `description:` is also YAML null and invalid. |
 
-The same type rules apply to `homepage`, `has_projects`, `has_wiki` and the current-source `has_discussions`. Quoted `'null'` is a string value, not YAML null. Null is invalid for the version, mappings, topic list and label declarations too.
+The same type rules apply to `homepage`, `has_projects`, `has_wiki` and `has_discussions` (v0.15.0). Quoted `'null'` is a string value, not YAML null. Null is invalid for the version, mappings, topic list and label declarations too.
 
 A version-only document manages nothing:
 
