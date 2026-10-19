@@ -68,9 +68,10 @@ func TestReadMergeMethodsGraphQLBoundary(t *testing.T) {
 }
 
 func TestMergeMethodBooleanResponseValidation(t *testing.T) {
-	// The shared boundary cases already cover missing rebase/deletion fields and
-	// invalid merge/deletion values. Exercise the remaining boolean combinations
-	// against a complete literal response so no earlier missing field masks them.
+	// The shared boundary cases already cover missing rebase/deletion fields,
+	// invalid merge values, and null/string deletion values. Exercise only the
+	// remaining combinations against a complete literal response so no earlier
+	// missing field masks them.
 	for _, test := range []struct {
 		field  string
 		values []any
@@ -78,6 +79,7 @@ func TestMergeMethodBooleanResponseValidation(t *testing.T) {
 		{"mergeCommitAllowed", []any{"missing"}},
 		{"squashMergeAllowed", []any{"missing", nil, "false", 0}},
 		{"rebaseMergeAllowed", []any{nil, "false", 0}},
+		{"deleteBranchOnMerge", []any{0}},
 	} {
 		for _, value := range test.values {
 			t.Run(test.field+"/"+stringValue(value), func(t *testing.T) {
