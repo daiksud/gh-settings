@@ -1,5 +1,7 @@
 package settings
 
+import "errors"
+
 // RepositoryState contains the six complete values from the repository REST read.
 type RepositoryState struct {
 	Description    string
@@ -33,6 +35,17 @@ type RepositoryDeclaration struct {
 // Empty reports whether every field is unmanaged, regardless of declared values.
 func (d RepositoryDeclaration) Empty() bool {
 	return d == (RepositoryDeclaration{})
+}
+
+// ValidateCommitDependencies requires the corresponding title for each declared message.
+func (d RepositoryDeclaration) ValidateCommitDependencies() error {
+	if d.SquashMergeCommitMessage != nil && d.SquashMergeCommitTitle == nil {
+		return errors.New("squash_merge_commit_message requires squash_merge_commit_title")
+	}
+	if d.MergeCommitMessage != nil && d.MergeCommitTitle == nil {
+		return errors.New("merge_commit_message requires merge_commit_title")
+	}
+	return nil
 }
 
 // BaseEmpty reports whether the REST-observed repository fields are unmanaged.
