@@ -26,16 +26,7 @@ func Export(read Reader) error {
 	if err != nil {
 		return err
 	}
-	declaration.Repository.AllowMergeCommit = &methods.AllowMergeCommit
-	declaration.Repository.AllowSquashMerge = &methods.AllowSquashMerge
-	declaration.Repository.AllowRebaseMerge = &methods.AllowRebaseMerge
-	declaration.Repository.DeleteBranchOnMerge = &methods.DeleteBranchOnMerge
-	declaration.Repository.AllowAutoMerge = &methods.AllowAutoMerge
-	declaration.Repository.AllowUpdateBranch = &methods.AllowUpdateBranch
-	declaration.Repository.SquashMergeCommitTitle = &methods.SquashMergeCommitTitle
-	declaration.Repository.SquashMergeCommitMessage = &methods.SquashMergeCommitMessage
-	declaration.Repository.MergeCommitTitle = &methods.MergeCommitTitle
-	declaration.Repository.MergeCommitMessage = &methods.MergeCommitMessage
+	declaration.Repository = declaration.Repository.WithMergeMethods(methods)
 	names, err := read.Topics(repo)
 	if err != nil {
 		return err
