@@ -28,24 +28,40 @@ Treat the PR title as the header and the PR body as the body/footers of **one** 
 
 ### Title and type
 
-Require `type: description` or `type(scope): description`, adding `!` immediately before `:` for a breaking change. Choose the type from the change's purpose and resulting behavior, not its filenames or implementation technique:
+Require `type: description` or `type(scope): description`, adding `!` immediately before `:` for a breaking change. Select the type by the **result for gh-settings users**, not by whether the implementation added code or fixed a problem somewhere in the repository.
+
+For `feat` and `fix`, **users** are people consuming the gh-settings CLI or public GitHub Action in their own repositories, not contributors maintaining this repository. Compare the observable product behavior before and after: supported commands, configuration, output/errors, Action inputs/outputs, installation, and execution. Product features intended for an upcoming release count even before publication. Build scripts, CI, release tooling, and test harnesses used only to maintain this repository are not themselves gh-settings product features.
+
+Decide in order:
+
+1. Does the change add a capability or supported behavior that gh-settings consumers can use? Choose `feat`.
+2. Does it correct a defect or regression in gh-settings product behavior that consumers could encounter? Choose `fix`.
+3. Otherwise, **do not choose `feat` or `fix`**, even when an internal system gains functionality or a defect in that system is repaired. Choose the most specific internal-work type, such as `build`, `ci`, `test`, `docs`, or `refactor`.
 
 | Type | Use for |
 | --- | --- |
-| `feat` | A new user-facing capability or supported behavior in the CLI or published Action |
-| `fix` | Correcting an existing product defect or regression |
-| `perf` | Improving performance without introducing a separate feature or bug fix |
-| `refactor` | Restructuring implementation without adding a feature or fixing a bug; assess compatibility separately |
+| `feat` | A new capability or supported behavior for users of the gh-settings CLI or public Action, not an internal tooling feature |
+| `fix` | Correcting an existing user-observable defect in gh-settings CLI or public Action behavior, not an internal tooling defect |
+| `perf` | Improving the runtime performance experienced by gh-settings users without adding a separate capability or correcting incorrect behavior |
+| `refactor` | Restructuring implementation without changing user-observable product behavior; assess compatibility separately |
 | `docs` | Documentation or contributor/reviewer guidance changes |
 | `test` | Test-only additions or corrections without changing product behavior |
-| `ci` | Repository CI and automation changes |
-| `build` | Build, packaging, or dependency maintenance |
+| `ci` | Adding, changing, or repairing this repository's CI checks or development automation |
+| `build` | Adding, changing, or repairing internal build, packaging, release tooling, or dependency management |
 | `style` | Code formatting or whitespace changes without a behavior change |
 | `revert` | Reverting a previous change; identify the reverted commit and reason in the body |
 | `chore` | Maintenance that does not fit a more specific type |
 
-Do not disguise a feature or fix as `chore`, `refactor`, `test`, or `ci` to avoid describing its user impact. A public Action behavior change can be `feat` or `fix` even though it changes YAML or shell. Regression tests and documentation accompanying a fix remain part of that `fix`.
+Examples of the product-user boundary:
 
+| Change | Type | Reason |
+| --- | --- | --- |
+| Add a new supported settings field, including its tests and documentation | `feat` | Users gain a gh-settings capability |
+| Correct a `gh settings plan` result or public Action failure on a supported runner | `fix` | Users encounter the incorrect behavior |
+| Add a build target or repair a broken internal build script | `build` | The tool's supported behavior does not change |
+| Add a CI job or repair a failing PR workflow | `ci` | Repository maintenance automation changes, not the product |
+
+Do not label internal work `feat` merely because it adds functionality or `fix` merely because it repairs a bug. A faster CI pipeline is `ci`, not a gh-settings `perf` change. Conversely, a public Action behavior change can be `feat` or `fix` even when implemented in YAML or shell. Tests, documentation, and required wiring for the same product change remain part of that change's type. Classify by demonstrated user-visible consequences, not speculative indirect benefits such as faster future releases.
 Use the pinned [commitlint configuration](../../../commitlint.config.mjs) and [development guide](../../../docs/contributing/development.md#pull-request-messages) for syntax/style checks: the conventional 11-type list, lowercase type/scope, subject-case restrictions, no final subject period, and no surrounding title whitespace. Do not add arbitrary title/body line-length limits. A passing lint result does not establish that the type matches the diff, that the scope is coherent, or that breaking changes have been disclosed.
 
 ### Body and durable history
