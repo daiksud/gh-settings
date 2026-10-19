@@ -54,26 +54,7 @@ type MergeMethodsState struct {
 // CompareMergeMethods uses only declared fields, in the repository's stable order.
 func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaration) Comparison {
 	var result Comparison
-	for _, field := range []struct {
-		name   string
-		before bool
-		after  *bool
-	}{
-		{"repository.allow_merge_commit", current.AllowMergeCommit, desired.AllowMergeCommit},
-		{"repository.allow_squash_merge", current.AllowSquashMerge, desired.AllowSquashMerge},
-		{"repository.allow_rebase_merge", current.AllowRebaseMerge, desired.AllowRebaseMerge},
-		{"repository.delete_branch_on_merge", current.DeleteBranchOnMerge, desired.DeleteBranchOnMerge},
-		{"repository.allow_auto_merge", current.AllowAutoMerge, desired.AllowAutoMerge},
-		{"repository.allow_update_branch", current.AllowUpdateBranch, desired.AllowUpdateBranch},
-	} {
-		if field.after == nil {
-			continue
-		}
-		result.Managed++
-		if field.before != *field.after {
-			result.Changes = append(result.Changes, Change{Field: field.name, Before: field.before, After: *field.after})
-		}
-	}
+	compareRepositoryBoolFields(&result, mergeMethodsBoolFields[:], current, desired)
 	for _, field := range []struct {
 		name, before string
 		after        *string

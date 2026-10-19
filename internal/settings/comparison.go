@@ -25,22 +25,22 @@ func CompareRepository(current RepositoryState, desired RepositoryDeclaration) C
 			result.Changes = append(result.Changes, Change{Field: name, Before: current, After: *desired})
 		}
 	}
-	boolField := func(name string, current bool, desired *bool) {
-		if desired == nil {
-			return
-		}
-		result.Managed++
-		if current != *desired {
-			result.Changes = append(result.Changes, Change{Field: name, Before: current, After: *desired})
-		}
-	}
 	stringField("repository.description", current.Description, desired.Description)
 	stringField("repository.homepage", current.Homepage, desired.Homepage)
-	boolField("repository.has_issues", current.HasIssues, desired.HasIssues)
-	boolField("repository.has_projects", current.HasProjects, desired.HasProjects)
-	boolField("repository.has_wiki", current.HasWiki, desired.HasWiki)
-	for _, field := range discussionsFields {
-		boolField(field.name, field.current(current), field.desired(desired))
-	}
+	compareRepositoryBoolFields(&result, repositoryBoolFields[:], current, desired)
 	return result
+}
+
+func compareRepositoryBoolFields[S any](result *Comparison, fields []repositoryBoolField[S], current S, desired RepositoryDeclaration) {
+	for _, field := range fields {
+		after := field.desired(desired)
+		if after == nil {
+			continue
+		}
+		result.Managed++
+		before := field.current(current)
+		if before != *after {
+			result.Changes = append(result.Changes, Change{Field: field.name, Before: before, After: *after})
+		}
+	}
 }

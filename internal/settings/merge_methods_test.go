@@ -54,9 +54,16 @@ func TestPROptionsComparison(t *testing.T) {
 	if got.Managed != 2 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("comparison=%+v", got)
 	}
-	for _, d := range []RepositoryDeclaration{{AllowAutoMerge: &yes, AllowUpdateBranch: &yes}, {AllowAutoMerge: &yes}, {AllowUpdateBranch: &yes}} {
-		got := CompareMergeMethods(current, d)
-		if got.Managed < 1 || len(got.Changes) != 0 {
+	for _, test := range []struct {
+		desired RepositoryDeclaration
+		managed int
+	}{
+		{desired: RepositoryDeclaration{AllowAutoMerge: &yes, AllowUpdateBranch: &yes}, managed: 2},
+		{desired: RepositoryDeclaration{AllowAutoMerge: &yes}, managed: 1},
+		{desired: RepositoryDeclaration{AllowUpdateBranch: &yes}, managed: 1},
+	} {
+		got := CompareMergeMethods(current, test.desired)
+		if got.Managed != test.managed || len(got.Changes) != 0 {
 			t.Fatalf("equal=%+v", got)
 		}
 	}
