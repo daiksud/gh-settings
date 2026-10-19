@@ -24,7 +24,7 @@ func TestTopicsSetComparison(t *testing.T) {
 			if got.Managed != test.managed || len(got.Changes) != test.changes {
 				t.Fatalf("comparison=%+v", got)
 			}
-			if test.name == "changed sorted" && !reflect.DeepEqual(got.Changes, []Change{{field: FieldID{path: "topics.names"}, Before: []string{"a", "z"}, After: []string{"b", "y"}}}) {
+			if test.name == "changed sorted" && !reflect.DeepEqual(got.Changes, []Change{{field: FieldID{path: "topics.names"}, values: topicsPair{before: []string{"a", "z"}, after: []string{"b", "y"}}}}) {
 				t.Fatalf("comparison=%+v", got)
 			}
 			if test.desired != nil && (Declaration{Topics: TopicsDeclaration{Names: test.desired}}).Empty() {

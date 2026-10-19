@@ -63,7 +63,13 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		}
 	}
 	for _, change := range result.Comparison.Changes {
-		report.Changes = append(report.Changes, PlanChange{Field: change.Field().Path(), Before: change.Before, After: change.After})
+		entry := PlanChange{Field: change.Field().Path()}
+		change.Visit(
+			func(before, after bool) { entry.Before, entry.After = before, after },
+			func(before, after string) { entry.Before, entry.After = before, after },
+			func(before, after []string) { entry.Before, entry.After = before, after },
+		)
+		report.Changes = append(report.Changes, entry)
 	}
 	for _, change := range result.Comparison.Labels {
 		report.Labels = append(report.Labels, labelPlanChange(change))

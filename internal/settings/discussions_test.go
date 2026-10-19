@@ -13,7 +13,7 @@ func TestDiscussionsComparison(t *testing.T) {
 	}
 	desired := RepositoryDeclaration{HasWiki: &disabled, HasDiscussions: &disabled}
 	got := CompareRepository(current, desired)
-	want := []Change{{field: FieldID{path: "repository.has_wiki"}, Before: true, After: false}, {field: FieldID{path: "repository.has_discussions"}, Before: true, After: false}}
+	want := []Change{{field: FieldID{path: "repository.has_wiki"}, values: boolPair{before: true, after: false}}, {field: FieldID{path: "repository.has_discussions"}, values: boolPair{before: true, after: false}}}
 	if got.Managed != 2 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("comparison=%+v", got)
 	}

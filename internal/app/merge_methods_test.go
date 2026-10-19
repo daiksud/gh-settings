@@ -91,7 +91,7 @@ func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
 		calls++
 		return settings.MergeMethodsState{DeleteBranchOnMerge: true}, nil
 	}})
-	if err != nil || calls != 1 || result.Comparison.Managed != 1 || len(result.Comparison.Changes) != 1 || result.Comparison.Changes[0].After != false {
+	if err != nil || calls != 1 || result.Comparison.Managed != 1 || len(result.Comparison.Changes) != 1 || comparisonAfterBool(t, result.Comparison.Changes[0]) != false {
 		t.Fatalf("plan=%+v err=%v calls=%d", result, err, calls)
 	}
 	applied, err := Apply(Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
