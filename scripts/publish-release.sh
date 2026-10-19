@@ -78,6 +78,43 @@ if find_release; then
   check_marker || fail 'existing release lacks matching version, commit, and binary identity evidence'
 fi
 
+# Generate from the frozen local history before creating any remote state.
+# Existing drafts retain their reviewed notes when publication is resumed.
+if [[ "$release_exists" == false ]]; then
+  (
+    cd "${BASH_SOURCE[0]%/*}/.."
+    go run ./scripts/release-notes/main.go "$repo" "$VERSION" "$SOURCE_SHA" "$work/releases.json"
+  ) > "$work/changes.md"
+  cat > "$work/notes.md" <<EOF
+$marker
+
+$(cat "$work/changes.md")
+
+---
+
+## 📦 Installation
+
+\`\`\`sh
+gh extension install $repo
+\`\`\`
+
+Already installed? Run \`gh extension upgrade ${repo##*/}\`.
+
+Or download \`$macos\` (macOS Apple Silicon) or \`$linux\` (Linux x86_64) below and verify it with \`SHA256SUMS\`.
+
+<details>
+<summary>🔐 SHA-256 checksums</summary>
+
+\`\`\`text
+$(cat "$RELEASE_DIR/$checksums")
+\`\`\`
+
+</details>
+
+Built from main commit [\`${SOURCE_SHA:0:7}\`](https://github.com/$repo/commit/$SOURCE_SHA).
+EOF
+fi
+
 # Resolve both lightweight and annotated tags without moving either.
 if optional_api "repos/$repo/git/ref/tags/$VERSION" "$work/tag.json"; then
   verify_tag_target 'existing tag targets another commit'
@@ -87,24 +124,6 @@ else
 fi
 
 if [[ "$release_exists" == false ]]; then
-  gh api -X POST "repos/$repo/releases/generate-notes" -f "tag_name=$VERSION" -f "target_commitish=$SOURCE_SHA" --jq .body > "$work/changes.md"
-  cat > "$work/notes.md" <<EOF
-$marker
-
-Release $VERSION from main commit \`$SOURCE_SHA\`.
-
-Install with \`gh extension install $repo\`, or download the raw executable matching your platform. The assets are \`$macos\` and \`$linux\`; verify them with \`SHA256SUMS\` before use.
-
-## SHA-256
-
-\`\`\`text
-$(cat "$RELEASE_DIR/$checksums")
-\`\`\`
-
-## Changes
-
-$(cat "$work/changes.md")
-EOF
   jq -n --arg tag "$VERSION" --arg commit "$SOURCE_SHA" --rawfile body "$work/notes.md" '{tag_name:$tag,target_commitish:$commit,name:$tag,body:$body,draft:true,prerelease:false}' > "$work/create.json"
   gh api -X POST "repos/$repo/releases" --input "$work/create.json" > "$work/release.json"
   release_id="$(jq -r '.id' "$work/release.json")"

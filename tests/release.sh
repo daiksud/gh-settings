@@ -19,12 +19,6 @@ if [[ "$1" == api ]]; then
   shift
   if [[ "$1" == -X ]]; then
     case "$2:$3" in
-      POST:*/releases/generate-notes)
-        if [[ "${MOCK_LONG_NOTES:-}" == 1 ]]; then
-          head -c 262144 /dev/zero | tr '\0' x
-        else
-          printf '{"body":"- Test change"}\n' | jq -r .body
-        fi ;;
       POST:*/git/refs)
         printf '{"object":{"type":"commit","sha":"%s"}}\n' "$SOURCE_SHA" > "$MOCK_ROOT/tag.json" ;;
       POST:*/releases)
@@ -66,9 +60,10 @@ if [[ "$1" == api ]]; then
       release_json ;;
     */releases\?per_page=100)
       if [[ -f "$MOCK_ROOT/body" ]]; then
-        release_json | jq -s '[.]'
+        release_json > "$MOCK_ROOT/current.json"
+        jq --slurpfile current "$MOCK_ROOT/current.json" '.[0] += $current' "$MOCK_ROOT/catalog.json"
       else
-        printf '[[]]\n'
+        cat "$MOCK_ROOT/catalog.json"
       fi ;;
     */releases/123)
       [[ -f "$MOCK_ROOT/body" ]] || { echo 'gh: Not Found (HTTP 404)' >&2; exit 1; }
@@ -103,17 +98,32 @@ esac
 MOCK
 chmod +x "$fixture/bin/gh"
 export MOCK_ROOT="$fixture" PATH="$fixture/bin:$PATH" GITHUB_REPOSITORY=owner/repo
-export VERSION=v1.2.3 SOURCE_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa RELEASE_DIR="$fixture/release"
+export VERSION=v1.2.3 RELEASE_DIR="$fixture/release"
 printf 'macos-binary' > "$RELEASE_DIR/gh-settings-darwin-arm64"
 printf 'linux-binary' > "$RELEASE_DIR/gh-settings-linux-amd64"
 MACOS_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-darwin-arm64" | cut -d ' ' -f 1)"
 LINUX_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-linux-amd64" | cut -d ' ' -f 1)"
 export MACOS_SHA256 LINUX_SHA256
-MOCK_LONG_NOTES="${MOCK_LONG_NOTES:-1}"
-export MOCK_LONG_NOTES
-mkdir -p "$fixture/source/scripts" "$fixture/source/action"
+mkdir -p "$fixture/source/scripts/release-notes" "$fixture/source/action"
 cp "$repo_root/scripts/publish-release.sh" "$fixture/source/scripts/publish-release.sh"
+cp "$repo_root/scripts/release-notes/main.go" "$fixture/source/scripts/release-notes/main.go"
 printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
+git -C "$fixture/source" init --quiet
+git -C "$fixture/source" config user.name Fixture
+git -C "$fixture/source" config user.email fixture@example.invalid
+git -C "$fixture/source" config commit.gpgsign false
+git -C "$fixture/source" commit --quiet --allow-empty -m 'chore: initialize release fixture'
+git -C "$fixture/source" -c tag.gpgsign=false tag v1.2.2
+printf 'feat!: update the test fixture\n\nBREAKING CHANGE: Migrate the previous fixture.\n' > "$fixture/message"
+if [[ "${MOCK_LONG_NOTES:-1}" == 1 ]]; then
+  head -c 262144 /dev/zero | tr '\0' x >> "$fixture/message"
+  printf '\n' >> "$fixture/message"
+fi
+git -C "$fixture/source" commit --quiet --allow-empty -F "$fixture/message"
+SOURCE_SHA="$(git -C "$fixture/source" rev-parse HEAD)"
+export SOURCE_SHA
+git -C "$fixture/source" commit --quiet --allow-empty -m 'feat: do not include later HEAD'
+printf '[[{"id":120,"tag_name":"v1.2.2","draft":false,"prerelease":false,"published_at":"2026-10-01T00:00:00Z"}]]\n' > "$fixture/catalog.json"
 publish() { bash "$fixture/source/scripts/publish-release.sh"; }
 reject() {
   if publish > "$fixture/output" 2>&1; then
@@ -130,16 +140,44 @@ reject
 grep -q 'committed CLI version' "$fixture/output"
 printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
 
+# Incomplete predecessor history must fail before creating a remote tag or draft.
+mv "$fixture/catalog.json" "$fixture/catalog.saved"
+jq '.[0][0].tag_name = "v1.2.1"' "$fixture/catalog.saved" > "$fixture/catalog.json"
+reject
+grep -q 'resolve previous release v1.2.1' "$fixture/output"
+if grep -q '^api -X ' "$fixture/calls"; then
+  echo 'history failure created remote state' >&2
+  exit 1
+fi
+[[ ! -e "$fixture/tag.json" && ! -e "$fixture/body" ]]
+mv "$fixture/catalog.saved" "$fixture/catalog.json"
+
 # The tag endpoint hides drafts in this mock, as it does in GitHub's REST API.
 # First run must use the created draft ID, then publish its three assets.
 publish
 [[ "$(cat "$fixture/draft")" == false ]]
 [[ "$(find "$fixture/assets" -type f | wc -l | tr -d ' ')" == 3 ]]
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 3 ]]
+grep -q '^## 🚨 BREAKING CHANGE$' "$fixture/body"
+grep -q 'Migrate the previous fixture' "$fixture/body"
+if grep -q 'do not include later HEAD\|initialize release fixture\|generate-notes' "$fixture/body" "$fixture/calls"; then
+  echo 'release notes used history outside the frozen range or GitHub generation' >&2
+  exit 1
+fi
+[[ "$(grep -n '^## 🚨' "$fixture/body" | cut -d: -f1)" -lt "$(grep -n '^## 📦' "$fixture/body" | cut -d: -f1)" ]]
+if [[ "${MOCK_LONG_NOTES:-1}" == 1 ]]; then
+  [[ "$(wc -c < "$fixture/body")" -gt 262144 ]]
+fi
+cp "$fixture/body" "$fixture/original-notes"
+
+# Later publications cannot change notes or make an existing release regenerate.
+# The intentionally unavailable new predecessor would fail first-time generation.
+printf '[[{"id":999,"tag_name":"v9.0.0","draft":false,"prerelease":false,"published_at":"2026-10-02T00:00:00Z"}]]\n' > "$fixture/catalog.json"
 
 # A completed run is an identity-checked no-op.
 publish
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 3 ]]
+cmp "$fixture/original-notes" "$fixture/body"
 
 # Interrupted draft: retain matching assets and upload only the absent one.
 printf 'true\n' > "$fixture/draft"
@@ -147,6 +185,7 @@ rm "$fixture/assets/SHA256SUMS"
 publish
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 4 ]]
 [[ "$(cat "$fixture/draft")" == false ]]
+cmp "$fixture/original-notes" "$fixture/body"
 
 # Version, tag target, draft manifest, and bytes each reject conflicts.
 rm "$fixture/tag.json"
