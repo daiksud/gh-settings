@@ -75,3 +75,37 @@ func TestCompareRepositoryObservationPreservesOrderAndNativeValues(t *testing.T)
 		t.Fatalf("comparison=%+v error=%v, want %+v", got, err, want)
 	}
 }
+
+func TestRepositoryObservationDeclarationRequiresCompleteValues(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		base    *RepositoryState
+		merge   *MergeMethodsState
+		missing string
+	}{
+		{"unread base", nil, &MergeMethodsState{}, "repository.description"},
+		{"unread merge", &RepositoryState{}, nil, "repository.allow_merge_commit"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := NewRepositoryObservation(test.base, test.merge).Declaration()
+			if err == nil || !strings.Contains(err.Error(), test.missing) || !reflect.DeepEqual(got, RepositoryDeclaration{}) {
+				t.Fatalf("declaration=%+v error=%v", got, err)
+			}
+		})
+	}
+}
+
+func TestCompleteDeclarationCopiesObservedValues(t *testing.T) {
+	observed := NewRepositoryObservation(&RepositoryState{Description: "before"}, &MergeMethodsState{SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "BLANK"})
+	declaration, err := observed.Declaration()
+	if err != nil {
+		t.Fatal(err)
+	}
+	*declaration.Description = "changed"
+	*declaration.AllowMergeCommit = true
+	*declaration.MergeCommitTitle = "MERGE_MESSAGE"
+	again, err := observed.Declaration()
+	if err != nil || *again.Description != "before" || *again.AllowMergeCommit || *again.MergeCommitTitle != "PR_TITLE" {
+		t.Fatalf("observation changed through declaration: %+v error=%v", again, err)
+	}
+}
