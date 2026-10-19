@@ -32,6 +32,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		HasIssues                *bool   `json:"has_issues,omitempty"`
 		HasProjects              *bool   `json:"has_projects,omitempty"`
 		HasWiki                  *bool   `json:"has_wiki,omitempty"`
+		HasDiscussions           *bool   `json:"has_discussions,omitempty"`
 		AllowMergeCommit         *bool   `json:"allow_merge_commit,omitempty"`
 		AllowSquashMerge         *bool   `json:"allow_squash_merge,omitempty"`
 		AllowRebaseMerge         *bool   `json:"allow_rebase_merge,omitempty"`
@@ -44,7 +45,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		MergeCommitMessage       *string `json:"merge_commit_message,omitempty"`
 	}{
 		Description: desired.Description, Homepage: desired.Homepage,
-		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki,
+		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki, HasDiscussions: desired.HasDiscussions,
 		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge, DeleteBranchOnMerge: desired.DeleteBranchOnMerge, AllowAutoMerge: desired.AllowAutoMerge, AllowUpdateBranch: desired.AllowUpdateBranch,
 		SquashMergeCommitTitle: desired.SquashMergeCommitTitle, SquashMergeCommitMessage: desired.SquashMergeCommitMessage,
 		MergeCommitTitle: desired.MergeCommitTitle, MergeCommitMessage: desired.MergeCommitMessage,
@@ -53,8 +54,23 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 	if err != nil {
 		return fmt.Errorf("encode repository settings: %w", err)
 	}
-	if err := client.rest.Patch("repos/"+repo.Owner+"/"+repo.Name, bytes.NewReader(body), nil); err != nil {
+	var response map[string]json.RawMessage
+	var result any
+	if desired.HasDiscussions != nil {
+		result = &response
+	}
+	if err := client.rest.Patch("repos/"+repo.Owner+"/"+repo.Name, bytes.NewReader(body), result); err != nil {
 		return fmt.Errorf("apply repository settings: %w", err)
+	}
+	if desired.HasDiscussions != nil {
+		var actual *bool
+		value, present := response["has_discussions"]
+		if !present || json.Unmarshal(value, &actual) != nil || actual == nil {
+			return fmt.Errorf("apply repository settings: GitHub response lacks boolean has_discussions (repository writes may already have applied)")
+		}
+		if *actual != *desired.HasDiscussions {
+			return fmt.Errorf("apply repository settings: GitHub returned has_discussions=%t, expected %t (repository writes may already have applied)", *actual, *desired.HasDiscussions)
+		}
 	}
 	return nil
 }

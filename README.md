@@ -29,6 +29,8 @@ The published [v0.14.0 CLI and Action](https://github.com/daiksud/gh-settings/re
 
 [v0.14.0](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md). The pinned v0.14.0 package includes these keys; publication does not change live policy.
 
+Current source additionally supports [`has_discussions`](docs/features/discussions.feature.md), planned for v0.15.0. The currently published and pinned v0.14.0 package does not accept this declaration.
+
 ## Quick start
 
 Run these commands inside the Git checkout whose settings you want to manage, including from a subdirectory.

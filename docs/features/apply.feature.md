@@ -20,6 +20,7 @@ description: Send declared repository fields directly after local validation.
 - Reject redirects, including those that would convert PATCH into GET.
 - Omit schemaVersion, outer YAML mappings, and every undeclared field.
 - Preserve false and empty strings as explicit values.
+- When current-source `has_discussions` is declared, verify the PATCH response contains the requested boolean. Missing, null, wrong-type or unequal values fail after the request, can leave repository writes applied, and stop later resources without rollback. Omission keeps the previous response handling. See the [Discussions contract](discussions.feature.md) for the v0.15.0 version boundary.
 - For repository fields and topics, do not fetch current values or reconcile differences; apply never requires a saved plan.
 - Send declared values even if they already match or remote values changed after plan.
 - Preserve the configuration file and leave omitted remote fields unmanaged.
@@ -37,7 +38,8 @@ Application tests use real temporary checkouts/files and a writer spy; GitHub ad
 
 | Behavior | Test |
 | --- | --- |
-| Exact PATCH payload, omission, five fields, false/empty strings, escaping | [`TestApplyRepositorySettings`](../../internal/github/apply_test.go) |
+| Exact PATCH payload, omission, original five fields, false/empty strings, escaping | [`TestApplyRepositorySettings`](../../internal/github/apply_test.go) |
+| Discussions declared-only true/false writes, verified response, ignored/malformed responses and permission failures | [TestDiscussionsPATCHVerifiesDeclaredValue](../../internal/github/discussions_test.go), [TestApplyAcceptance](../../tests/acceptance/apply_test.go) |
 | HTTP/response/transport failures | [`TestApplyRepositoryFailures`](../../internal/github/apply_test.go) |
 | System/global/command origins ignored; local/include/worktree selection retained; rewrite-only aliases rejected | [TestCurrentRepositoryIgnoresUnscopedOrigins and TestCurrentRepositoryRejectsRewriteOnlyAlias](../../internal/workspace/repository_test.go) |
 | Typed target/declaration, false/empty/omitted values, one write and unchanged file | [`TestApplyDeclaredSettings`](../../internal/app/apply_test.go) |

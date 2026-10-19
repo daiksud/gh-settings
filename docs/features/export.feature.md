@@ -6,7 +6,9 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 ## Feature: Export repository settings as YAML
 
-A repository maintainer can capture the current five supported settings as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+A repository maintainer can capture all sixteen current-source repository fields, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+
+The six-field REST state includes `has_discussions`, planned for v0.15.0; published v0.14.0 exports fifteen repository fields without that key. The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
 
 This feature assumes an owner-controlled checkout whose directory and link entries remain stable during export. Concurrent replacement of those entries is outside its scope.
 
@@ -44,14 +46,14 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 
 ### Rule: Export only the current checkout's supported settings
 
-#### Scenario: Export five settings successfully
+#### Scenario: Export complete repository settings successfully
 
 - Given the current Git checkout has a GitHub `origin` remote
-- And its settings are description "Example repository", homepage "https://example.com", issues enabled, projects disabled, and wiki enabled
+- And its settings are description "Example repository", homepage "https://example.com", issues enabled, projects disabled, wiki enabled, and Discussions disabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And `.github/settings.yml` has root `schemaVersion: 1` and `settings.repository` containing those five fields and values
-- And response metadata and other settings are absent
+- And `.github/settings.yml` has root `schemaVersion: 1` and `settings.repository` containing those six REST fields and their values plus the ten merge-related fields
+- And topics and complete labels are present, while response metadata and unsupported settings are absent
 - And standard error is empty
 - And standard output is empty
 - And no repository settings are changed
@@ -59,12 +61,12 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 #### Scenario: Preserve false and empty string values
 
 - Given the repository's description and homepage are empty strings
-- And issues, projects, and wiki are disabled
+- And issues, projects, wiki, and Discussions are disabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And all five keys are present in the YAML output
+- And all six REST keys and all ten merge-related keys are present in the YAML output
 - And the two string values remain empty strings
-- And the three boolean values remain false
+- And the four REST boolean values remain false
 
 #### Scenario: Export unset strings as empty strings
 
@@ -128,7 +130,7 @@ These origin-support changes are published in v0.7.0 and do not change settings 
 - Given the current checkout has ordinary settings or zero values with an unset string
 - When the maintainer runs `gh settings export`
 - And runs `gh settings validate` with the same executable
-- Then the exported document contains `schemaVersion: 1`, the five supported `settings.repository` values, `settings.topics.names`, and the complete `settings.labels` list
+- Then the exported document contains `schemaVersion: 1`, all sixteen supported `settings.repository` values, `settings.topics.names`, and the complete `settings.labels` list
 - And validation succeeds without output or changing the saved file bytes
 - And export reads repository settings, topics, and all label pages while validation makes no additional API request
 
@@ -191,7 +193,8 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | Report a failed write | — | `TestExportReportsWriteFailure` |
 | Refuse symlink destinations and non-regular files | `TestWriteConfigRejectsUnsafeDestination`, `TestExportStorageFailure` | `TestExportRejectsUnsafeDestination` |
 | Save to the linked checkout selected by its worktree origin | — | `TestExportLinkedWorktree` |
-| Export five settings successfully | `TestExportStoredSettings/five_values` | `five-settings` |
+| Export complete repository settings successfully | `TestExportStoredSettings/five_values` | `five-settings` |
+| Export observed Discussions true/false after complete reads | [TestExportStoredSettings](../../internal/app/export_test.go), [TestDiscussionsReadRequiresBoolean](../../internal/github/discussions_test.go) | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
 | Preserve false and empty string values | `TestExportStoredSettings/zero_values` | `zero-values` |
 | Export unset strings as empty strings | `TestReadRepositorySettings` | `unset-strings` |
 | Ignore a repository override | `TestCurrentRepositoryIgnoresOverride` | `origin-override` |

@@ -23,7 +23,7 @@ func Export(read Reader) error {
 	}
 	declaration := settings.Declaration{Repository: settings.RepositoryDeclaration{
 		Description: &current.Description, Homepage: &current.Homepage,
-		HasIssues: &current.HasIssues, HasProjects: &current.HasProjects, HasWiki: &current.HasWiki,
+		HasIssues: &current.HasIssues, HasProjects: &current.HasProjects, HasWiki: &current.HasWiki, HasDiscussions: &current.HasDiscussions,
 	}}
 	methods, err := read.MergeMethods(repo)
 	if err != nil {

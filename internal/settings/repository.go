@@ -1,12 +1,13 @@
 package settings
 
-// RepositoryState contains the five complete values from the repository REST read.
+// RepositoryState contains the six complete values from the repository REST read.
 type RepositoryState struct {
-	Description string
-	Homepage    string
-	HasIssues   bool
-	HasProjects bool
-	HasWiki     bool
+	Description    string
+	Homepage       string
+	HasIssues      bool
+	HasProjects    bool
+	HasWiki        bool
+	HasDiscussions bool
 }
 
 // RepositoryDeclaration leaves nil fields unmanaged; false and empty strings are declared values.
@@ -16,6 +17,7 @@ type RepositoryDeclaration struct {
 	HasIssues                *bool
 	HasProjects              *bool
 	HasWiki                  *bool
+	HasDiscussions           *bool
 	AllowMergeCommit         *bool
 	AllowSquashMerge         *bool
 	AllowRebaseMerge         *bool
@@ -35,7 +37,7 @@ func (d RepositoryDeclaration) Empty() bool {
 
 // BaseEmpty reports whether the REST-observed repository fields are unmanaged.
 func (d RepositoryDeclaration) BaseEmpty() bool {
-	return d.Description == nil && d.Homepage == nil && d.HasIssues == nil && d.HasProjects == nil && d.HasWiki == nil
+	return d.Description == nil && d.Homepage == nil && d.HasIssues == nil && d.HasProjects == nil && d.HasWiki == nil && d.HasDiscussions == nil
 }
 
 // MergeMethodsEmpty keeps the GraphQL read optional for existing declarations.

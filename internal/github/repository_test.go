@@ -18,13 +18,13 @@ func TestReadRepositorySettings(t *testing.T) {
 		name, body string
 		want       settings.RepositoryState
 	}{
-		{"five values and extra fields", `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"id":123,"private":true}`, settings.RepositoryState{Description: "Example repository", Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
-		{"zero values", `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`, settings.RepositoryState{}},
-		{"enabled projects", `{"description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":false}`, settings.RepositoryState{HasProjects: true}},
-		{"null strings", `{"description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, settings.RepositoryState{}},
-		{"null description", `{"description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`, settings.RepositoryState{}},
-		{"null homepage", `{"description":"","homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false}`, settings.RepositoryState{}},
-		{"null description with values", `{"description":null,"homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true}`, settings.RepositoryState{Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
+		{"five values and extra fields", `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"id":123,"private":true}`, settings.RepositoryState{Description: "Example repository", Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
+		{"zero values", `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false}`, settings.RepositoryState{}},
+		{"enabled projects", `{"description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":false,"has_discussions":false}`, settings.RepositoryState{HasProjects: true}},
+		{"null strings", `{"description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false}`, settings.RepositoryState{}},
+		{"null description", `{"description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false}`, settings.RepositoryState{}},
+		{"null homepage", `{"description":"","homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false}`, settings.RepositoryState{}},
+		{"null description with values", `{"description":null,"homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false}`, settings.RepositoryState{Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			client := readTestClient(t, func(req *http.Request) (*http.Response, error) {
@@ -47,19 +47,19 @@ func TestReadRepositoryFailures(t *testing.T) {
 		{name: "forbidden", body: `{"message":"Resource not accessible"}`, status: 403, want: "403"},
 		{name: "malformed", body: "not json", status: 200, want: "read repository settings"},
 		{name: "empty response", body: `{}`, status: 200, want: "missing description"},
-		{name: "missing description", body: `{"homepage":null,"has_issues":true,"has_projects":false,"has_wiki":true}`, status: 200, want: "missing description"},
-		{name: "missing homepage", body: `{"description":null,"has_issues":true,"has_projects":false,"has_wiki":true}`, status: 200, want: "missing homepage"},
-		{name: "missing issues", body: `{"description":"","homepage":"","has_projects":false,"has_wiki":true}`, status: 200, want: "missing has_issues"},
-		{name: "missing projects", body: `{"description":"","homepage":"","has_issues":true,"has_wiki":true}`, status: 200, want: "missing has_projects"},
+		{name: "missing description", body: `{"homepage":null,"has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false}`, status: 200, want: "missing description"},
+		{name: "missing homepage", body: `{"description":null,"has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false}`, status: 200, want: "missing homepage"},
+		{name: "missing issues", body: `{"description":"","homepage":"","has_projects":false,"has_wiki":true,"has_discussions":false}`, status: 200, want: "missing has_issues"},
+		{name: "missing projects", body: `{"description":"","homepage":"","has_issues":true,"has_wiki":true,"has_discussions":false}`, status: 200, want: "missing has_projects"},
 		{name: "missing wiki", body: `{"description":"ok","homepage":"","has_issues":true,"has_projects":false}`, status: 200, want: "missing has_wiki"},
 		{name: "wrong description type", body: `{"description":123}`, status: 200, want: "decode description"},
 		{name: "wrong homepage type", body: `{"description":"","homepage":123}`, status: 200, want: "decode homepage"},
-		{name: "wrong issues type", body: `{"description":"ok","homepage":"","has_issues":"true","has_projects":false,"has_wiki":true}`, status: 200, want: "decode has_issues"},
-		{name: "wrong projects type", body: `{"description":"","homepage":"","has_issues":false,"has_projects":"false","has_wiki":true}`, status: 200, want: "decode has_projects"},
-		{name: "wrong wiki type", body: `{"description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":"true"}`, status: 200, want: "decode has_wiki"},
+		{name: "wrong issues type", body: `{"description":"ok","homepage":"","has_issues":"true","has_projects":false,"has_wiki":true,"has_discussions":false}`, status: 200, want: "decode has_issues"},
+		{name: "wrong projects type", body: `{"description":"","homepage":"","has_issues":false,"has_projects":"false","has_wiki":true,"has_discussions":false}`, status: 200, want: "decode has_projects"},
+		{name: "wrong wiki type", body: `{"description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":"true","has_discussions":false}`, status: 200, want: "decode has_wiki"},
 		{name: "null issues", body: `{"description":null,"homepage":null,"has_issues":null}`, status: 200, want: "null for has_issues"},
-		{name: "null projects", body: `{"description":"","homepage":"","has_issues":true,"has_projects":null,"has_wiki":true}`, status: 200, want: "null for has_projects"},
-		{name: "null wiki", body: `{"description":"","homepage":"","has_issues":true,"has_projects":false,"has_wiki":null}`, status: 200, want: "null for has_wiki"},
+		{name: "null projects", body: `{"description":"","homepage":"","has_issues":true,"has_projects":null,"has_wiki":true,"has_discussions":false}`, status: 200, want: "null for has_projects"},
+		{name: "null wiki", body: `{"description":"","homepage":"","has_issues":true,"has_projects":false,"has_wiki":null,"has_discussions":false}`, status: 200, want: "null for has_wiki"},
 		{name: "network", transportError: errors.New("network unavailable"), want: "network unavailable"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

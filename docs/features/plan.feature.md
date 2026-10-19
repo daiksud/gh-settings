@@ -11,7 +11,7 @@ description: Observe differences for declared repository fields without mutation
 - Read `.github/settings.yml` from the Git root, including from a subdirectory.
 - Reject missing files and invalid configuration before API access.
 - For declared fields, resolve the same GitHub.com origin as export and ignore `GH_REPO`.
-- For declared repository fields, read the current five fields using the existing GET normalization and validation; topics and labels use their own selective reads below.
+- When any REST-backed repository field is declared, read the complete six-field REST state, including `has_discussions`, using the existing GET normalization and validation. Merge-related fields use the selective [GraphQL read](merge-methods.feature.md); topics and labels use their own reads below.
 - Never send a mutation request or change the configuration file.
 
 ### Rule: Empty declarations are local no-ops
@@ -46,7 +46,7 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 - Omitted fields are unmanaged and produce no difference.
 - Explicit false and empty strings are managed values.
-- Show changed fields in description, homepage, has_issues, has_projects, has_wiki order.
+- Show changed REST fields in description, homepage, has_issues, has_projects, has_wiki, has_discussions order, followed by the [merge-related fields](../commands.md#plan-behavior), topics and labels. Discussions is current-source support planned for v0.15.0; v0.14.0 retains the five-field REST state.
 - Each line uses `settings.repository.FIELD: CURRENT → DESIRED`.
 - Strings are double-quoted with Go string escaping; booleans use `true` or `false`.
 - Equal managed values produce `No differences for managed repository settings.`
@@ -64,7 +64,8 @@ Focused application, comparison and CLI tests cover target selection, declaratio
 
 | Behavior | Test |
 | --- | --- |
-| Five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../internal/settings/comparison_test.go), [TestRenderRepositoryComparison](../../internal/cli/comparison_test.go) |
+| Original five-field order, omission, false, empty strings, escaping, equality, no managed fields | [TestCompareRepositoryChanges and TestCompareRepositoryDeclaredFields](../../internal/settings/comparison_test.go), [TestRenderRepositoryComparison](../../internal/cli/comparison_test.go) |
+| Discussions omission/false/equality/order after wiki and REST-only selective read | [TestDiscussionsComparison](../../internal/settings/discussions_test.go), [TestPlanDiscussionsOnlyReadsREST](../../internal/app/discussions_test.go), [TestPlanAcceptance](../../tests/acceptance/plan_test.go) |
 | CLI operation selection and output failure | [TestRunSelectsOperation and TestPlanOutputFailure](../../internal/cli/run_test.go) |
 | API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../internal/github/repository_test.go) |
 | Typed target/comparison, changes/no differences, unchanged configuration | [TestPlanResults](../../internal/app/plan_test.go) |

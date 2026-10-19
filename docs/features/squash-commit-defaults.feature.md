@@ -25,9 +25,9 @@ Apply uses the existing repository REST PATCH with Administration write. It send
 
 ## Export, ordering and presentation
 
-Complete export saves fifteen repository fields in current source, thirteen in v0.13.0, eleven in v0.12.0, complete topics and all label pages only after all reads and serialization succeed. Older v0.11.0 retains its nine-field shape.
+Complete export saves sixteen repository fields in current source, fifteen in v0.14.0, thirteen in v0.13.0, eleven in v0.12.0, complete topics and all label pages only after all reads and serialization succeed. Older v0.11.0 retains its nine-field shape.
 
-Stable comparison order is the five base fields, three merge-method booleans, branch deletion, current-source auto-merge/branch-update booleans, squash title, squash message, current-source normal merge title/message, topics and labels. Each declared repository field counts once. Current-source report/Summary accepts at most seventeen managed units; v0.13.0 retains fifteen; v0.12.0 retains thirteen; v0.11.0 retains eleven. Enum changes retain native JSON strings and quoted CLI/Summary values. Unknown, empty or wrong-typed enum report values are rejected. Reports remain presentation data, never apply input.
+Stable comparison order is the six current-source REST fields (including `has_discussions` after `has_wiki`), three merge-method booleans, branch deletion, current-source auto-merge/branch-update booleans, squash title, squash message, current-source normal merge title/message, topics and labels. Each declared repository field counts once. Current-source report/Summary accepts at most eighteen managed units; v0.14.0 retains seventeen; v0.13.0 retains fifteen; v0.12.0 retains thirteen; v0.11.0 retains eleven. Enum changes retain native JSON strings and quoted CLI/Summary values. Unknown, empty or wrong-typed enum report values are rejected. Reports remain presentation data, never apply input.
 
 ## Read-only hosted evidence
 
@@ -40,7 +40,7 @@ An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/ru
 | Declaration/model | [Codec](../../internal/workspace/squash_commit_test.go): every enum combination, title-only/omitted message, invalid values/types, aliases/merges, message-only rejection and round trips. [Comparison](../../internal/settings/squash_commit_test.go): strings, equality, omission and order. |
 | GitHub transport | [Enum read and exact PATCH](../../internal/github/squash_commit_test.go), [shared GraphQL boundary](../../internal/github/merge_methods_test.go): missing/null/invalid values, complete response validation, partial errors, declared-only title/pair PATCH and no GET. |
 | Application | [Sequencing](../../internal/app/squash_commit_test.go), [shared failure cases](../../internal/app/merge_methods_test.go), [export](../../internal/app/export_test.go): deferred reads, local validation, direct writes, earlier-comparison discard and export preservation. |
-| Actions | [Typed report/Summary](../../internal/actions/squash_commit_test.go): strings, quoted changes, enum rejection and the current-source seventeen-unit bound. |
+| Actions | [Typed report/Summary](../../internal/actions/squash_commit_test.go): strings, quoted changes, enum rejection and the current-source eighteen-unit bound. |
 | Installed binary | [Process acceptance](../../tests/acceptance/merge_methods_test.go): title-only/pair plan, equality, missing/null/partial errors, exact direct PATCH, message-only rejection, complete export, typed report and credential-free Summary. Existing acceptance retains empty/no-op and prior merge-field behavior. |
 
 Owner/process fixtures use dummy credentials and local API responses. Hosted token proof establishes access only for the observed token/repository. Release native acceptance and published Action smoke establish the separate package identity boundary.

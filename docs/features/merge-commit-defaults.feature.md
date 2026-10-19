@@ -19,7 +19,7 @@ The [GraphQL public schema](https://docs.github.com/en/graphql/overview/public-s
 
 Apply includes declared fields only in the existing Administration-write REST PATCH. It adds no preliminary read, inferred companion value, merge-method update or new permission. Existing redirect/timeout/target and direct-apply race/partial-failure behavior remains unchanged. No PR mutation or branch-protection change is introduced.
 
-Complete export saves fifteen repository fields plus complete topics/all label pages after all reads/serialization succeed. v0.13.0 retains thirteen. Stable comparison order appends normal merge title/message after squash title/message and before topics/labels, preserving prior field order. Each declared field counts once; v0.14.0 and current-source report/Summary support seventeen managed units, while v0.13.0 retains fifteen. CLI/Summary quote enum strings, typed reports retain strings, and unsupported report enum values/types are rejected.
+Current-source complete export saves sixteen repository fields (fifteen in v0.14.0) plus complete topics/all label pages after all reads/serialization succeed. v0.13.0 retains thirteen. Stable comparison order appends normal merge title/message after squash title/message and before topics/labels, preserving prior field order. Each declared field counts once; current-source report/Summary supports eighteen managed units; v0.14.0 retains seventeen and v0.13.0 retains fifteen. CLI/Summary quote enum strings, typed reports retain strings, and unsupported report enum values/types are rejected.
 
 ## Read-only hosted evidence
 
@@ -32,7 +32,7 @@ An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/ru
 | Declaration/model | [Merge codec](../../internal/workspace/merge_commit_test.go): enum combinations, title-only, message-only rejection, null/type/value matrices, aliases and round trips. [Comparison](../../internal/settings/merge_commit_test.go): omission/equality/order and strings. |
 | GitHub adapter | [Merge enum reads/PATCH](../../internal/github/merge_commit_test.go), [shared boundary](../../internal/github/merge_methods_test.go): incomplete/invalid/partial-error reads, declared-only title/pair PATCH and no GET. |
 | Application | [Merge sequencing](../../internal/app/merge_commit_test.go), [shared failures](../../internal/app/merge_methods_test.go), [export](../../internal/app/export_test.go): selective reads, local validation, direct writes and file preservation. |
-| Actions | [Merge report/Summary](../../internal/actions/merge_commit_test.go): native strings, quoted output, invalid enums/types and seventeen-unit bound. |
+| Actions | [Merge report/Summary](../../internal/actions/merge_commit_test.go): native strings, quoted output, invalid enums/types and the current-source eighteen-unit bound. |
 | Installed binary | [Process acceptance](../../tests/acceptance/merge_methods_test.go): title-only/pair plan, equality, missing/null/partial errors, exact direct PATCH, cross-family message-only rejection, full export, typed reports and credential-free Summary. Existing tests retain unmanaged/no-op and prior settings behavior. |
 
 Local fixtures use dummy credentials, not live mutations. Hosted proof establishes access for its observed token/repository. Native release acceptance and published Action smoke establish the separate package identity boundary.

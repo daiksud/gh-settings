@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Validate repository settings
-description: Specify local validation of the five supported YAML settings and its Go test mapping.
+description: Specify local validation of supported YAML settings and its Go test mapping.
 ---
 
 ## Feature: Validate repository settings locally
@@ -12,7 +12,7 @@ description: Specify local validation of the five supported YAML settings and it
 
 #### Scenario: Validate all supported settings
 
-- Given `.github/settings.yml` declares `schemaVersion: 1` and the five supported fields under `settings.repository` as strings and booleans
+- Given `.github/settings.yml` declares `schemaVersion: 1` and supported fields under `settings.repository` with their required strings, booleans and validated enums
 - When the maintainer runs `gh settings validate`
 - Then validation succeeds without output
 - And no GitHub API request is made
@@ -120,7 +120,7 @@ The scenarios map to ordinary Go tests and [process acceptance cases](../../test
 | A mapping or merge source has a contradictory YAML tag | `TestParseConfigValidation/tagged_settings_mapping_as_string`, `TestParseConfigValidation/mistagged_merge_mapping` | `validate-mistagged-mapping` |
 | The configuration file is missing | `TestValidateErrors/missing_file` | `validate-missing-file` |
 
-The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for these five update-request fields. It does not establish how GitHub handles live null updates.
+The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for the original five update-request fields; the same non-null rule applies to later fields, including Discussions. It does not establish how GitHub handles live null updates.
 
 ### Rule: Distinguish omitted topics from explicit empty names
 
@@ -136,3 +136,9 @@ Test mapping: [TestTopicsConfigPresenceAndRoundTrip and TestTopicsConfigRejectsI
 ### Rule: Validate label declarations
 
 Current source accepts a label list as an authoritative collection, distinguishes omission from an empty list, and validates names, identity, and optional attributes before API access. The [Labels specification](labels.feature.md#rule-declare-authoritative-membership-explicitly) owns these scenarios and test mappings. Published v0.8.0 does not include labels.
+
+### Rule: Validate the optional Discussions field
+
+Current source, planned for v0.15.0, accepts omitted `has_discussions` or an explicit native boolean under `settings.repository`. Omission remains unmanaged; false remains declared. Null, quoted booleans, numbers, collections and legacy boolean spellings fail before origin/authentication/API access. Published v0.14.0 rejects this key. The [Discussions specification](discussions.feature.md) owns its behavior and test boundaries.
+
+Test mapping: [TestDiscussionsDeclaration](../../internal/workspace/discussions_test.go) and [TestApplyAcceptance](../../tests/acceptance/apply_test.go).

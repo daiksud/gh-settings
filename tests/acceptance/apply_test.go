@@ -19,11 +19,16 @@ import (
 func TestApplyAcceptance(t *testing.T) {
 	binary := acceptanceBinary(t)
 	for _, test := range []struct {
-		name, input, payload, wantError                              string
+		name, input, payload, wantError, response                    string
 		status                                                       int
 		noAPI, noOrigin, noAuth, nested, outputFailure, globalOrigin bool
 		gitSetup                                                     func(string, []string) error
 	}{
+		{name: "discussions-false", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":false}`},
+		{name: "discussions-ignored", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":true}`, wantError: "expected false"},
+		{name: "discussions-missing-response", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, wantError: "lacks boolean has_discussions"},
+		{name: "discussions-forbidden", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, status: 403, wantError: "403"},
+		{name: "discussions-invalid-before-origin", input: repositoryInput("has_discussions: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
 		{name: "partial-false", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, nested: true},
 		{name: "all-zero-values", input: repositoryInput("description: ''\nhomepage: ''\nhas_issues: false\nhas_projects: false\nhas_wiki: false\n"), payload: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`},
 		{name: "true-and-escaped-string", input: repositoryInput("description: \"quote\\\"\\n\\\\\"\nhas_wiki: true\n"), payload: `{"description":"quote\"\n\\","has_wiki":true}`},
@@ -80,7 +85,11 @@ func TestApplyAcceptance(t *testing.T) {
 					}
 				}
 				w.WriteHeader(status)
-				fmt.Fprint(w, `{"message":"fixture response"}`)
+				responseBody := test.response
+				if responseBody == "" {
+					responseBody = `{"message":"fixture response"}`
+				}
+				fmt.Fprint(w, responseBody)
 			}, false)
 			if err != nil {
 				t.Fatal(err)
@@ -162,7 +171,7 @@ func TestApplyAcceptance(t *testing.T) {
 func TestExportEditValidatePlanApply(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
-	remote := map[string]any{"description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true}
+	remote := map[string]any{"description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false}
 	var methods []string
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -246,7 +255,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
