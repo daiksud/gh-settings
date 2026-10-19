@@ -19,27 +19,16 @@ check_hash() {
   [[ -f "$path" && "$(digest "$path")" == "$expected" ]] || fail "artifact hash mismatch: $(basename "$path")"
 }
 
-[[ "${VERSION:-}" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail 'version must be vMAJOR.MINOR.PATCH'
-[[ "$VERSION" == "$(cat "${BASH_SOURCE[0]%/*}/../action/cli-version")" ]] || fail 'release version differs from committed CLI version'
-[[ "${SOURCE_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || fail 'invalid source commit'
-[[ "${LINUX_SHA256:-}" =~ ^[0-9a-f]{64}$ && "${MACOS_SHA256:-}" =~ ^[0-9a-f]{64}$ ]] || fail 'invalid expected binary hash'
-[[ "${GITHUB_REPOSITORY:-}" == */* ]] || fail 'missing repository'
-[[ -d "${RELEASE_DIR:-}" ]] || fail 'missing release directory'
-
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+go build -o "$work/release-publisher" "${BASH_SOURCE[0]%/*}/release-publisher/main.go"
+"$work/release-publisher" preflight \
+  "${BASH_SOURCE[0]%/*}/../action/cli-version" > "$work/identity.json"
 linux=gh-settings-linux-amd64
 macos=gh-settings-darwin-arm64
 checksums=SHA256SUMS
-check_hash "$RELEASE_DIR/$linux" "$LINUX_SHA256"
-check_hash "$RELEASE_DIR/$macos" "$MACOS_SHA256"
-(
-  cd "$RELEASE_DIR"
-  sha256sum "$macos" "$linux" > "$checksums"
-)
-checksum_sha="$(digest "$RELEASE_DIR/$checksums")"
-manifest="$(jq -cn --arg v "$VERSION" --arg c "$SOURCE_SHA" --arg m "$MACOS_SHA256" --arg l "$LINUX_SHA256" --arg s "$checksum_sha" '{version:$v,commit:$c,macos_sha256:$m,linux_sha256:$l,checksums_sha256:$s}')"
-marker="<!-- gh-settings-release: $manifest -->"
+checksum_sha="$(jq -r '.checksums_sha256' "$work/identity.json")"
+marker="$(jq -r '.marker' "$work/identity.json")"
 repo="$GITHUB_REPOSITORY"
 release_id=''
 find_release() {
