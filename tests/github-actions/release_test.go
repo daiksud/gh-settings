@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -209,18 +210,112 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 	}
 	resolveNode := workflow.Jobs["resolve"]
 	var resolve struct {
-		Steps []step `yaml:"steps"`
+		Outputs map[string]string `yaml:"outputs"`
+		Steps   []step            `yaml:"steps"`
 	}
 	if err := resolveNode.Decode(&resolve); err != nil {
 		t.Fatal(err)
 	}
 	source := findStep(t, job{Steps: resolve.Steps}, "source")
-	guard := `[[ "$sha" == "$EXPECTED_SOURCE_SHA" ]]`
 	if source.Env["EXPECTED_SOURCE_SHA"] != "${{ inputs.source_sha }}" ||
-		!strings.Contains(source.Run, `[[ "$EXPECTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]`) ||
-		!strings.Contains(source.Run, guard) ||
-		strings.Index(source.Run, guard) > strings.Index(source.Run, `printf 'source-sha=%s`) {
-		t.Fatal("release resolve must validate and pin the requested source before output")
+		resolve.Outputs["source-sha"] != "${{ steps.source.outputs.source-sha }}" {
+		t.Fatal("release resolve must bind the requested source and publish the source step's output")
 	}
 
+	// The hosted Ubuntu workflow uses modern Bash. macOS's system Bash 3.2
+	// does not apply errexit to a failed [[ ... ]] compound command.
+	version, err := exec.Command("bash", "-c", `printf '%s' "${BASH_VERSINFO[0]}"`).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	major, err := strconv.Atoi(string(version))
+	if err != nil {
+		t.Fatalf("invalid Bash major version %q: %v", version, err)
+	}
+	if major < 5 {
+		if os.Getenv("GITHUB_ACTIONS") == "true" {
+			t.Fatal("hosted resolve-step coverage requires Bash 5 or newer")
+		}
+		t.Skip("resolve-step execution requires Bash 5 or newer, matching the hosted Ubuntu runner; structural bindings were checked")
+	}
+
+	sha := strings.Repeat("a", 40)
+	for _, test := range []struct {
+		name, requested, response, apiStatus string
+		success, allowNoLookup               bool
+	}{
+		{name: "omitted pin", response: sha, apiStatus: "0", success: true},
+		{name: "matching pin", requested: sha, response: sha, apiStatus: "0", success: true},
+		{name: "mismatched pin", requested: strings.Repeat("b", 40), response: sha, apiStatus: "0"},
+		{name: "invalid requested pin", requested: "main", response: sha, apiStatus: "0", allowNoLookup: true},
+		{name: "invalid API response", response: "not-a-sha", apiStatus: "0"},
+		{name: "API failure with valid stdout", response: sha, apiStatus: "7"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+			bin := filepath.Join(dir, "bin")
+			if err := os.Mkdir(bin, 0700); err != nil {
+				t.Fatal(err)
+			}
+			stub := `#!/bin/bash
+set -euo pipefail
+[[ "$1" == api ]] || exit 90
+shift
+endpoint='' query=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --jq|-q) query="$2"; shift 2 ;;
+    *) [[ -z "$endpoint" ]] || exit 90; endpoint="$1"; shift ;;
+  esac
+done
+[[ "$endpoint" == "repos/$GITHUB_REPOSITORY/git/ref/heads/main" ]] || exit 91
+printf '%s\n' "$endpoint" >> "$GH_CALLS"
+if [[ -n "$query" ]]; then
+  [[ "$query" == .object.sha ]] || exit 92
+  printf '%s\n' "$GH_RESPONSE"
+else
+  printf '{"object":{"sha":"%s"}}\n' "$GH_RESPONSE"
+fi
+exit "$GH_STATUS"
+`
+			if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(stub), 0700); err != nil {
+				t.Fatal(err)
+			}
+			output, calls := filepath.Join(dir, "output"), filepath.Join(dir, "calls")
+			for _, path := range []string{output, calls} {
+				if err := os.WriteFile(path, nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", source.Run)
+			cmd.Dir = dir
+			cmd.Env = fixtureEnvironment(map[string]string{
+				"PATH":    bin + string(os.PathListSeparator) + os.Getenv("PATH"),
+				"VERSION": "v1.2.3", "EXPECTED_SOURCE_SHA": test.requested,
+				"GITHUB_REPOSITORY": "fixture-owner/fixture-repo", "GITHUB_OUTPUT": output,
+				"GH_CALLS": calls, "GH_RESPONSE": test.response, "GH_STATUS": test.apiStatus,
+			})
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err := cmd.Run()
+			if test.success != (err == nil) || stdout.Len() != 0 || (test.success && stderr.Len() != 0) {
+				t.Fatalf("source resolution: err=%v stdout=%q stderr=%q", err, stdout.String(), stderr.String())
+			}
+			actual, err := os.ReadFile(output)
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := ""
+			if test.success {
+				want = "source-sha=" + sha + "\n"
+			}
+			if string(actual) != want {
+				t.Fatalf("source output=%q, want %q", actual, want)
+			}
+			requested, err := os.ReadFile(calls)
+			if err != nil || (string(requested) != "repos/fixture-owner/fixture-repo/git/ref/heads/main\n" && !(test.allowNoLookup && len(requested) == 0)) {
+				t.Fatalf("main API request=%q err=%v", requested, err)
+			}
+		})
+	}
 }
