@@ -238,7 +238,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || fields["squash_merge_commit_title"] != "COMMIT_OR_PR_TITLE" || fields["squash_merge_commit_message"] != "COMMIT_MESSAGES" || fields["allow_auto_merge"] != false || fields["allow_update_branch"] != false || fields["merge_commit_title"] != "MERGE_MESSAGE" || fields["merge_commit_message"] != "PR_TITLE" || fields["has_discussions"] != false || len(fields) != 16 {
 				t.Fatalf("fields=%v", fields)
 			}
-			input := repositoryInput("allow_merge_commit: false\nallow_squash_merge: true\nallow_rebase_merge: false\ndelete_branch_on_merge: false\nallow_auto_merge: true\nallow_update_branch: true\nsquash_merge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\nmerge_commit_title: PR_TITLE\nmerge_commit_message: BLANK\n")
+			input := repositoryInput("merge_commit_message: BLANK\nmerge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\nsquash_merge_commit_title: PR_TITLE\nallow_update_branch: true\nallow_auto_merge: true\ndelete_branch_on_merge: false\nallow_rebase_merge: false\nallow_squash_merge: true\nallow_merge_commit: false\nhas_discussions: true\nhas_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: https://example.com/new\ndescription: ''\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -255,27 +255,29 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			if err := json.Unmarshal(data, &typed); err != nil {
 				t.Fatal(err)
 			}
-			changes := typed["changes"].([]any)
-			if typed["managed"] != float64(10) || typed["outcome"] != "changed" || len(changes) != 10 {
-				t.Fatalf("report=%s", data)
+			wantReport := map[string]any{
+				"outcome": "changed", "target": "owner/current", "managed": float64(16),
+				"changes": []any{
+					map[string]any{"field": "repository.description", "before": "old", "after": ""},
+					map[string]any{"field": "repository.homepage", "before": "old-url", "after": "https://example.com/new"},
+					map[string]any{"field": "repository.has_issues", "before": true, "after": false},
+					map[string]any{"field": "repository.has_projects", "before": true, "after": false},
+					map[string]any{"field": "repository.has_wiki", "before": true, "after": false},
+					map[string]any{"field": "repository.has_discussions", "before": false, "after": true},
+					map[string]any{"field": "repository.allow_merge_commit", "before": true, "after": false},
+					map[string]any{"field": "repository.allow_squash_merge", "before": false, "after": true},
+					map[string]any{"field": "repository.allow_rebase_merge", "before": true, "after": false},
+					map[string]any{"field": "repository.delete_branch_on_merge", "before": true, "after": false},
+					map[string]any{"field": "repository.allow_auto_merge", "before": false, "after": true},
+					map[string]any{"field": "repository.allow_update_branch", "before": false, "after": true},
+					map[string]any{"field": "repository.squash_merge_commit_title", "before": "COMMIT_OR_PR_TITLE", "after": "PR_TITLE"},
+					map[string]any{"field": "repository.squash_merge_commit_message", "before": "COMMIT_MESSAGES", "after": "BLANK"},
+					map[string]any{"field": "repository.merge_commit_title", "before": "MERGE_MESSAGE", "after": "PR_TITLE"},
+					map[string]any{"field": "repository.merge_commit_message", "before": "PR_TITLE", "after": "BLANK"},
+				},
 			}
-			for _, change := range changes {
-				c := change.(map[string]any)
-				if strings.HasPrefix(c["field"].(string), "repository.squash_merge_commit_") || strings.HasPrefix(c["field"].(string), "repository.merge_commit_") {
-					if _, ok := c["before"].(string); !ok {
-						t.Fatal("non-string before")
-					}
-					if _, ok := c["after"].(string); !ok {
-						t.Fatal("non-string after")
-					}
-				} else {
-					if _, ok := c["before"].(bool); !ok {
-						t.Fatal("non-boolean before")
-					}
-					if _, ok := c["after"].(bool); !ok {
-						t.Fatal("non-boolean after")
-					}
-				}
+			if !reflect.DeepEqual(typed, wantReport) {
+				t.Fatalf("report=%s want=%v", data, wantReport)
 			}
 			summary := filepath.Join(fixture.root, "summary.md")
 			summaryEnv := append(fixtureEnv(fixture.cfg), "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=pull_request", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_TARGET=owner/current", "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
@@ -287,12 +289,37 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(html.UnescapeString(string(data)), `settings.repository.merge_commit_message: "PR_TITLE" → "BLANK"`) || !strings.Contains(html.UnescapeString(string(data)), "settings.repository.allow_auto_merge: false → true") || !strings.Contains(html.UnescapeString(string(data)), "settings.repository.allow_update_branch: false → true") || !strings.Contains(html.UnescapeString(string(data)), `settings.repository.squash_merge_commit_message: "COMMIT_MESSAGES" → "BLANK"`) || !strings.Contains(html.UnescapeString(string(data)), "settings.repository.allow_merge_commit: true → false") || !strings.Contains(html.UnescapeString(string(data)), "settings.repository.delete_branch_on_merge: true → false") {
-				t.Fatalf("summary=%s", data)
+			visible := html.UnescapeString(string(data))
+			for _, line := range []string{
+				`settings.repository.description: "old" → ""`,
+				`settings.repository.homepage: "old-url" → "https://example.com/new"`,
+				"settings.repository.has_issues: true → false",
+				"settings.repository.has_projects: true → false",
+				"settings.repository.has_wiki: true → false",
+				"settings.repository.has_discussions: false → true",
+				"settings.repository.allow_merge_commit: true → false",
+				"settings.repository.allow_squash_merge: false → true",
+				"settings.repository.allow_rebase_merge: true → false",
+				"settings.repository.delete_branch_on_merge: true → false",
+				"settings.repository.allow_auto_merge: false → true",
+				"settings.repository.allow_update_branch: false → true",
+				`settings.repository.squash_merge_commit_title: "COMMIT_OR_PR_TITLE" → "PR_TITLE"`,
+				`settings.repository.squash_merge_commit_message: "COMMIT_MESSAGES" → "BLANK"`,
+				`settings.repository.merge_commit_title: "MERGE_MESSAGE" → "PR_TITLE"`,
+				`settings.repository.merge_commit_message: "PR_TITLE" → "BLANK"`,
+			} {
+				position := strings.Index(visible, line)
+				if position < 0 {
+					t.Fatalf("Summary missing ordered line %q: %s", line, data)
+				}
+				visible = visible[position+len(line):]
+			}
+			if err := checkSettingsUnchanged(fixture.work, input); err != nil {
+				t.Fatal(err)
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "POST /graphql"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "POST /graphql"}) {
 				t.Fatalf("paths=%v", paths)
 			}
 		})
