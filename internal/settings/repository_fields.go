@@ -14,6 +14,12 @@ type repositoryField[S any, V bool | string] struct {
 	valueDescription string
 }
 
+func declareRepositoryFields[S any, V bool | string](fields []repositoryField[S, V], state S, declaration *RepositoryDeclaration) {
+	for _, field := range fields {
+		field.setDesired(declaration, field.current(state))
+	}
+}
+
 // RepositoryBoolSetter returns a typed setter for a supported boolean field.
 func RepositoryBoolSetter(name string) (func(*RepositoryDeclaration, bool), bool) {
 	for _, field := range repositoryBoolFields {

@@ -21,10 +21,7 @@ func Export(read Reader) error {
 	if err != nil {
 		return err
 	}
-	declaration := settings.Declaration{Repository: settings.RepositoryDeclaration{
-		Description: &current.Description, Homepage: &current.Homepage,
-		HasIssues: &current.HasIssues, HasProjects: &current.HasProjects, HasWiki: &current.HasWiki, HasDiscussions: &current.HasDiscussions,
-	}}
+	declaration := settings.Declaration{Repository: current.Declaration()}
 	methods, err := read.MergeMethods(repo)
 	if err != nil {
 		return err
