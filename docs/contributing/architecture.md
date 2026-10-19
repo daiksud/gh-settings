@@ -69,9 +69,9 @@ The comparison produces closed create/update/delete variants in a `settings.Labe
 
 Creates and updates run together in identity order, followed by deletes in identity order. Create requests contain the name and declared attributes; updates contain only changed declared attributes. Omitted attributes of existing labels preserve remote values, and no default attributes are synthesized for new labels. Deleting an undeclared label removes its issue/PR associations; recreating its name does not restore them. The [labels contract](../features/labels.feature.md) defines the full behavior.
 
-Application apply performs this fresh comparison only after any declared repository PATCH and topics PUT have succeeded. It reads all labels pages using the apply credential, then submits the required operations to the write adapter. A read, comparison, or write failure stops subsequent work while earlier resource/label writes remain applied. No saved plan, drift protection, transaction, rollback, or automatic retry is introduced.
+Application apply performs this fresh comparison only after any declared repository PATCH and topics PUT have succeeded. It reads all labels pages using the apply credential, then executes the required individual operations in comparison order. A read, comparison, or write failure stops subsequent work while earlier resource/label writes remain applied. No saved plan, drift protection, transaction, rollback, or automatic retry is introduced.
 
-The GitHub adapter's `CreateLabel`, `UpdateLabel`, and `DeleteLabel` methods own individual request payloads and HTTP dispatch from typed operations. `ApplyLabels` calls these methods in sequence and retains the existing stop-on-failure behavior and operation error context. Individual requests can be verified independently of that collection loop.
+The GitHub adapter's `CreateLabel`, `UpdateLabel`, and `DeleteLabel` methods own individual request payloads and HTTP dispatch from typed operations. `app.Apply` owns the entire resource and label sequence, stopping at the first failure and adding the existing label-operation error context. Deferred writer callbacks bind each individual API operation. Individual requests are verified in the API adapter; ordering and partial-failure behavior are verified in the application.
 
 ### Adapter boundaries
 

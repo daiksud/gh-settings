@@ -43,9 +43,18 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		if err != nil {
 			return ApplyResult{}, fmt.Errorf("compare labels for apply (earlier resource writes remain applied): %w", err)
 		}
-		if comparison.Labels.Len() > 0 {
-			if err := write.Labels(repo, comparison.Labels); err != nil {
-				return ApplyResult{}, err
+		for _, change := range comparison.Labels.Values() {
+			var err error
+			switch change.Operation() {
+			case "create":
+				err = write.CreateLabel(repo, change)
+			case "update":
+				err = write.UpdateLabel(repo, change)
+			case "delete":
+				err = write.DeleteLabel(repo, change)
+			}
+			if err != nil {
+				return ApplyResult{}, fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 			}
 		}
 	}

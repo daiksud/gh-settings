@@ -67,22 +67,3 @@ func labelPath(repo repository.Repository, name string) string {
 	}
 	return "repos/" + repo.Owner + "/" + repo.Name + "/labels/" + escaped
 }
-
-// ApplyLabels executes only a fresh, typed comparison in its existing stable order.
-func (client *Client) ApplyLabels(repo repository.Repository, changes settings.LabelChanges) error {
-	for _, change := range changes.Values() {
-		var err error
-		switch change.Operation() {
-		case "create":
-			err = client.CreateLabel(repo, change)
-		case "update":
-			err = client.UpdateLabel(repo, change)
-		case "delete":
-			err = client.DeleteLabel(repo, change)
-		}
-		if err != nil {
-			return fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
-		}
-	}
-	return nil
-}

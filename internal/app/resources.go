@@ -14,8 +14,10 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
-	Repository func(repository.Repository, settings.RepositoryDeclaration) error
-	Topics     func(repository.Repository, settings.TopicsDeclaration) error
-	ReadLabels func(repository.Repository) (settings.LabelObservation, error)
-	Labels     func(repository.Repository, settings.LabelChanges) error
+	Repository  func(repository.Repository, settings.RepositoryDeclaration) error
+	Topics      func(repository.Repository, settings.TopicsDeclaration) error
+	ReadLabels  func(repository.Repository) (settings.LabelObservation, error)
+	CreateLabel func(repository.Repository, settings.LabelChange) error
+	UpdateLabel func(repository.Repository, settings.LabelChange) error
+	DeleteLabel func(repository.Repository, settings.LabelChange) error
 }

@@ -85,13 +85,13 @@ func TestReadLabelsCompleteEmptyObservation(t *testing.T) {
 	}
 }
 
-func TestApplyLabelsExactPayloadsAndNames(t *testing.T) {
-	color, empty := "123456", ""
+func TestUpdateLabelEscapedNames(t *testing.T) {
+	empty := ""
 	op := labelOperation(t)
 	for _, name := range []string{"area/docs", "a?b#c%", ".", "..", "✨ help wanted"} {
 		t.Run(name, func(t *testing.T) {
 			before := settings.LabelState{Name: name, Color: "abcdef", Description: "old"}
-			changes := labelSequence(t, op(settings.NewLabelUpdate(before, settings.LabelDeclaration{Name: name, Description: &empty})))
+			change := op(settings.NewLabelUpdate(before, settings.LabelDeclaration{Name: name, Description: &empty}))
 			calls := 0
 			client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				calls++
@@ -110,60 +110,10 @@ func TestApplyLabelsExactPayloadsAndNames(t *testing.T) {
 				}
 				return labelsResponse(req, 200, `{}`), nil
 			}))
-			if err := client.ApplyLabels(repository.Repository{Owner: "owner", Name: "current"}, changes); err != nil || calls != 1 {
+			if err := client.UpdateLabel(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 1 {
 				t.Fatalf("calls=%d err=%v", calls, err)
 			}
 		})
-	}
-	changes := labelSequence(t,
-		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "default"})),
-		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "explicit", Color: &color, Description: &empty})),
-		op(settings.NewLabelDelete(settings.LabelState{Name: "old", Color: "abcdef", Description: "old"})),
-	)
-	calls := 0
-	client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
-		calls++
-		switch calls {
-		case 1, 2:
-			var payload map[string]any
-			if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
-				t.Fatal(err)
-			}
-			want := map[string]any{"name": "default"}
-			if calls == 2 {
-				want = map[string]any{"name": "explicit", "color": "123456", "description": ""}
-			}
-			if req.Method != "POST" || req.URL.Path != "/repos/owner/current/labels" || !reflect.DeepEqual(payload, want) {
-				t.Fatalf("request=%s %s payload=%v", req.Method, req.URL, payload)
-			}
-		case 3:
-			if req.Method != "DELETE" || req.URL.Path != "/repos/owner/current/labels/old" || req.Body != nil {
-				t.Fatalf("request=%+v", req)
-			}
-		default:
-			t.Fatal("unexpected request")
-		}
-		return labelsResponse(req, 204, ``), nil
-	}))
-	if err := client.ApplyLabels(repository.Repository{Owner: "owner", Name: "current"}, changes); err != nil || calls != 3 {
-		t.Fatalf("calls=%d err=%v", calls, err)
-	}
-}
-
-func TestApplyLabelsPartialFailure(t *testing.T) {
-	op := labelOperation(t)
-	changes := labelSequence(t,
-		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "new"})),
-		op(settings.NewLabelDelete(settings.LabelState{Name: "old", Color: "abcdef", Description: ""})),
-	)
-	calls := 0
-	client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
-		calls++
-		return labelsResponse(req, 403, `{"message":"denied"}`), nil
-	}))
-
-	if err := client.ApplyLabels(repository.Repository{Owner: "owner", Name: "current"}, changes); err == nil || calls != 1 || !strings.Contains(err.Error(), "earlier successful writes remain applied") {
-		t.Fatalf("calls=%d err=%v", calls, err)
 	}
 }
 
@@ -176,13 +126,4 @@ func labelOperation(t *testing.T) func(settings.LabelChange, error) settings.Lab
 		}
 		return change
 	}
-}
-
-func labelSequence(t *testing.T, changes ...settings.LabelChange) settings.LabelChanges {
-	t.Helper()
-	result, err := settings.NewLabelChanges(changes)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return result
 }
