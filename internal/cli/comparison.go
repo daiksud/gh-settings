@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/daiksud/gh-settings/internal/presentation"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -27,7 +28,7 @@ func RenderComparison(comparison settings.Comparison) []byte {
 			)
 		}
 		for _, change := range comparison.Labels.Values() {
-			fmt.Fprintln(&output, labelLine(change))
+			fmt.Fprintln(&output, presentation.LabelLine(change))
 		}
 	}
 	return []byte(output.String())
