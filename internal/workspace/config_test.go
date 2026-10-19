@@ -9,6 +9,7 @@ import (
 
 func TestConfigLeafPresence(t *testing.T) {
 	empty := ""
+	booleanText, nullText, multiline := "true", "null", "first line\nsecond line\n"
 	disabled := false
 	for _, test := range []struct {
 		name       string
@@ -28,6 +29,16 @@ func TestConfigLeafPresence(t *testing.T) {
 			name:       "all present zero",
 			repository: settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &empty, Homepage: &empty, HasIssues: &disabled, HasProjects: &disabled, HasWiki: &disabled}},
 			want:       "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        homepage: \"\"\n        has_issues: false\n        has_projects: false\n        has_wiki: false\n",
+		},
+		{
+			name:       "strings that resemble other YAML types",
+			repository: settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &booleanText, Homepage: &nullText}},
+			want:       "schemaVersion: 1\nsettings:\n    repository:\n        description: \"true\"\n        homepage: \"null\"\n",
+		},
+		{
+			name:       "multiline string",
+			repository: settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &multiline}},
+			want:       "schemaVersion: 1\nsettings:\n    repository:\n        description: |\n            first line\n            second line\n",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

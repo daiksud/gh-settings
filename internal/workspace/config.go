@@ -10,25 +10,6 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-type repositoryDocument struct {
-	Description              *string `yaml:"description,omitempty"`
-	Homepage                 *string `yaml:"homepage,omitempty"`
-	HasIssues                *bool   `yaml:"has_issues,omitempty"`
-	HasProjects              *bool   `yaml:"has_projects,omitempty"`
-	HasWiki                  *bool   `yaml:"has_wiki,omitempty"`
-	HasDiscussions           *bool   `yaml:"has_discussions,omitempty"`
-	AllowMergeCommit         *bool   `yaml:"allow_merge_commit,omitempty"`
-	AllowSquashMerge         *bool   `yaml:"allow_squash_merge,omitempty"`
-	AllowRebaseMerge         *bool   `yaml:"allow_rebase_merge,omitempty"`
-	DeleteBranchOnMerge      *bool   `yaml:"delete_branch_on_merge,omitempty"`
-	AllowAutoMerge           *bool   `yaml:"allow_auto_merge,omitempty"`
-	AllowUpdateBranch        *bool   `yaml:"allow_update_branch,omitempty"`
-	SquashMergeCommitTitle   *string `yaml:"squash_merge_commit_title,omitempty"`
-	SquashMergeCommitMessage *string `yaml:"squash_merge_commit_message,omitempty"`
-	MergeCommitTitle         *string `yaml:"merge_commit_title,omitempty"`
-	MergeCommitMessage       *string `yaml:"merge_commit_message,omitempty"`
-}
-
 type topicsDocument struct {
 	Names *[]string `yaml:"names,omitempty"`
 }
@@ -38,18 +19,22 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	var document struct {
 		SchemaVersion int `yaml:"schemaVersion"`
 		Settings      struct {
-			Repository repositoryDocument `yaml:"repository"`
-			Topics     *topicsDocument    `yaml:"topics,omitempty"`
-			Labels     *[]labelDocument   `yaml:"labels,omitempty"`
+			Repository yaml.Node        `yaml:"repository"`
+			Topics     *topicsDocument  `yaml:"topics,omitempty"`
+			Labels     *[]labelDocument `yaml:"labels,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
-	document.Settings.Repository = repositoryDocument{
-		Description: declaration.Repository.Description, Homepage: declaration.Repository.Homepage,
-		HasIssues: declaration.Repository.HasIssues, HasProjects: declaration.Repository.HasProjects, HasWiki: declaration.Repository.HasWiki, HasDiscussions: declaration.Repository.HasDiscussions,
-		AllowMergeCommit: declaration.Repository.AllowMergeCommit, AllowSquashMerge: declaration.Repository.AllowSquashMerge, AllowRebaseMerge: declaration.Repository.AllowRebaseMerge, DeleteBranchOnMerge: declaration.Repository.DeleteBranchOnMerge, AllowAutoMerge: declaration.Repository.AllowAutoMerge, AllowUpdateBranch: declaration.Repository.AllowUpdateBranch,
-		SquashMergeCommitTitle: declaration.Repository.SquashMergeCommitTitle, SquashMergeCommitMessage: declaration.Repository.SquashMergeCommitMessage,
-		MergeCommitTitle: declaration.Repository.MergeCommitTitle, MergeCommitMessage: declaration.Repository.MergeCommitMessage,
+	document.Settings.Repository = yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	if err := settings.VisitDeclaredRepositoryFields(declaration.Repository,
+		func(name, value string) error {
+			return appendRepositoryYAMLValue(&document.Settings.Repository, name, value)
+		},
+		func(name string, value bool) error {
+			return appendRepositoryYAMLValue(&document.Settings.Repository, name, value)
+		},
+	); err != nil {
+		return nil, err
 	}
 	if declaration.Topics.Names != nil {
 		names := settings.SortedTopics(*declaration.Topics.Names)
@@ -68,6 +53,16 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 		document.Settings.Labels = &labels
 	}
 	return yaml.Marshal(document)
+}
+
+func appendRepositoryYAMLValue[V bool | string](repository *yaml.Node, name string, value V) error {
+	var node yaml.Node
+	if err := node.Encode(value); err != nil {
+		return err
+	}
+	key := yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: strings.TrimPrefix(name, "repository.")}
+	repository.Content = append(repository.Content, &key, &node)
+	return nil
 }
 
 // DecodeConfig validates the YAML envelope and returns its supported resource declarations.
