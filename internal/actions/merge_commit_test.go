@@ -19,7 +19,7 @@ func TestMergeCommitReportAndSummary(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, Changes: []settings.Change{{Field: "repository.merge_commit_title", Before: "MERGE_MESSAGE", After: "PR_TITLE"}, {Field: "repository.merge_commit_message", Before: "PR_TITLE", After: "BLANK"}}}}, nil
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, Changes: []settings.Change{comparisonChange(t, "repository.merge_commit_title", "MERGE_MESSAGE", "PR_TITLE"), comparisonChange(t, "repository.merge_commit_message", "PR_TITLE", "BLANK")}}}, nil
 	})
 	data, err := os.ReadFile(path)
 	if err != nil || status != 0 || stderr.Len() != 0 {

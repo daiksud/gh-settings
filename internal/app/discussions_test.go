@@ -17,7 +17,7 @@ func TestPlanDiscussionsOnlyReadsREST(t *testing.T) {
 		}
 		return settings.RepositoryState{HasDiscussions: true}, nil
 	}})
-	if err != nil || calls != 1 || got.Comparison.Managed != 1 || len(got.Comparison.Changes) != 1 || got.Comparison.Changes[0].Field != "repository.has_discussions" || got.Comparison.Changes[0].After != false {
+	if err != nil || calls != 1 || got.Comparison.Managed != 1 || len(got.Comparison.Changes) != 1 || got.Comparison.Changes[0].Field().Path() != "repository.has_discussions" || got.Comparison.Changes[0].After != false {
 		t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 	}
 }

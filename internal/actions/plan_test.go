@@ -105,3 +105,16 @@ func TestPlanTargetFailureReport(t *testing.T) {
 		t.Fatalf("configuration changed: %q error=%v", data, err)
 	}
 }
+
+func comparisonChange(t *testing.T, path string, before, after any) settings.Change {
+	t.Helper()
+	field, err := settings.ParseFieldID(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err := settings.NewChange(field, before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return change
+}
