@@ -27,6 +27,8 @@ func TestLabelsPaginationAndCompleteRead(t *testing.T) {
 		{"later page", `[{"name":"last","color":"ABCDEF","description":null,"default":true}]`, 200, 101},
 		{"exact page", `[]`, 200, 100},
 		{"later failure", `{"message":"denied"}`, 403, 0},
+		{"later invalid state", `[{"name":"last","color":"bad","description":""}]`, 200, 0},
+		{"later incomplete state", `[{"name":"last","color":"abcdef"}]`, 200, 0},
 		{"cross page duplicate", `[{"name":"LABEL-0","color":"abcdef","description":""}]`, 200, 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -50,25 +52,36 @@ func TestLabelsPaginationAndCompleteRead(t *testing.T) {
 				return labelsResponse(req, test.status, test.last), nil
 			}))
 			got, err := client.ReadLabels(repository.Repository{Owner: "owner", Name: "current"})
-			if calls != 2 || (test.want == 0 && (err == nil || got != nil)) || (test.want > 0 && (err != nil || len(got) != test.want)) {
+			values, readErr := got.Values()
+			if calls != 2 || (test.want == 0 && (err == nil || readErr == nil || values != nil)) || (test.want > 0 && (err != nil || readErr != nil || len(values) != test.want)) {
 				t.Fatalf("got=%v err=%v calls=%d", got, err, calls)
 			}
-			if test.want == 101 && (got[100].Color != "abcdef" || got[100].Description != "") {
-				t.Fatalf("last=%+v", got[100])
+			if test.want == 101 && (values[100].Color != "abcdef" || values[100].Description != "") {
+				t.Fatalf("last=%+v", values[100])
 			}
 		})
 	}
 }
 
 func TestReadLabelsRejectsIncompleteState(t *testing.T) {
-	for _, body := range []string{`null`, `{}`, `[null]`, `not json`, `[{"name":"a","color":"abcdef"}]`, `[{"name":null,"color":"abcdef","description":""}]`, `[{"name":"a","color":null,"description":""}]`, `[{"name":"a","color":"#abcdef","description":""}]`, `[{"name":"a","color":"abcdef","description":false}]`, `[{"name":"a","color":"abcdef","description":""},{"name":"A","color":"abcdef","description":""}]`} {
+	for _, body := range []string{`[{"color":"abcdef","description":""}]`, `[{"name":"a","description":""}]`, `[{"name":42,"color":"abcdef","description":""}]`, `[{"name":"a","color":false,"description":""}]`, `[{"name":"","color":"abcdef","description":""}]`, `null`, `{}`, `[null]`, `not json`, `[{"name":"a","color":"abcdef"}]`, `[{"name":null,"color":"abcdef","description":""}]`, `[{"name":"a","color":null,"description":""}]`, `[{"name":"a","color":"#abcdef","description":""}]`, `[{"name":"a","color":"abcdef","description":false}]`, `[{"name":"a","color":"abcdef","description":""},{"name":"A","color":"abcdef","description":""}]`} {
 		t.Run(body, func(t *testing.T) {
 			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) { return labelsResponse(req, 200, body), nil }))
 			got, err := client.ReadLabels(repository.Repository{Owner: "owner", Name: "current"})
-			if err == nil || got != nil {
+			values, readErr := got.Values()
+			if err == nil || readErr == nil || values != nil {
 				t.Fatalf("got=%v err=%v", got, err)
 			}
 		})
+	}
+}
+
+func TestReadLabelsCompleteEmptyObservation(t *testing.T) {
+	client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) { return labelsResponse(req, 200, `[]`), nil }))
+	observed, err := client.ReadLabels(repository.Repository{Owner: "owner", Name: "current"})
+	values, readErr := observed.Values()
+	if err != nil || readErr != nil || values == nil || len(values) != 0 {
+		t.Fatalf("values=%+v error=%v read error=%v", values, err, readErr)
 	}
 }
 

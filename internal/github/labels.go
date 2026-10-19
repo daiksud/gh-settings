@@ -12,20 +12,20 @@ import (
 )
 
 // ReadLabels completes every page before exposing a collection to export/plan/apply.
-func (client *Client) ReadLabels(repo repository.Repository) ([]settings.LabelState, error) {
+func (client *Client) ReadLabels(repo repository.Repository) (settings.LabelObservation, error) {
 	result := []settings.LabelState{}
 	for page := 1; ; page++ {
 		var raw json.RawMessage
 		path := fmt.Sprintf("repos/%s/%s/labels?per_page=100&page=%d", repo.Owner, repo.Name, page)
 		if err := client.rest.Get(path, &raw); err != nil {
-			return nil, fmt.Errorf("read repository labels page %d: %w", page, err)
+			return settings.LabelObservation{}, fmt.Errorf("read repository labels page %d: %w", page, err)
 		}
 		if len(raw) == 0 || strings.TrimSpace(string(raw)) == "null" {
-			return nil, fmt.Errorf("GitHub returned no labels array")
+			return settings.LabelObservation{}, fmt.Errorf("GitHub returned no labels array")
 		}
 		var items []map[string]json.RawMessage
 		if err := json.Unmarshal(raw, &items); err != nil {
-			return nil, fmt.Errorf("decode repository labels: %w", err)
+			return settings.LabelObservation{}, fmt.Errorf("decode repository labels: %w", err)
 		}
 		for _, item := range items {
 			var label settings.LabelState
@@ -35,35 +35,29 @@ func (client *Client) ReadLabels(repo repository.Repository) ([]settings.LabelSt
 			}{{"name", &label.Name}, {"color", &label.Color}, {"description", &label.Description}} {
 				value, present := item[field.name]
 				if !present {
-					return nil, fmt.Errorf("GitHub label response is missing %s", field.name)
+					return settings.LabelObservation{}, fmt.Errorf("GitHub label response is missing %s", field.name)
 				}
 				if string(value) == "null" {
 					if field.name == "description" {
 						continue
 					}
-					return nil, fmt.Errorf("GitHub returned null label %s", field.name)
+					return settings.LabelObservation{}, fmt.Errorf("GitHub returned null label %s", field.name)
 				}
 				if err := json.Unmarshal(value, field.target); err != nil {
-					return nil, fmt.Errorf("decode label %s: %w", field.name, err)
+					return settings.LabelObservation{}, fmt.Errorf("decode label %s: %w", field.name, err)
 				}
 			}
-			label.Color = strings.ToLower(label.Color)
 			result = append(result, label)
 		}
 		if len(items) < 100 {
 			break
 		}
 	}
-	// Reuse domain completeness/identity checks without interpreting membership as a write.
-	declarations := make([]settings.LabelDeclaration, 0, len(result))
-	for _, label := range result {
-		color, description := label.Color, label.Description
-		declarations = append(declarations, settings.LabelDeclaration{Name: label.Name, Color: &color, Description: &description})
+	observed, err := settings.NewLabelObservation(result)
+	if err != nil {
+		return settings.LabelObservation{}, fmt.Errorf("decode repository labels: %w", err)
 	}
-	if err := settings.ValidateLabels(declarations); err != nil {
-		return nil, fmt.Errorf("decode repository labels: %w", err)
-	}
-	return result, nil
+	return observed, nil
 }
 
 func labelPath(repo repository.Repository, name string) string {

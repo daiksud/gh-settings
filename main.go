@@ -61,17 +61,17 @@ func writeTopics(repo repository.Repository, desired settings.TopicsDeclaration)
 	return client.ApplyTopics(repo, desired)
 }
 
-func readLabels(repo repository.Repository) ([]settings.LabelState, error) {
+func readLabels(repo repository.Repository) (settings.LabelObservation, error) {
 	client, err := github.NewReadClient(repo.Host)
 	if err != nil {
-		return nil, err
+		return settings.LabelObservation{}, err
 	}
 	return client.ReadLabels(repo)
 }
-func readLabelsForApply(repo repository.Repository) ([]settings.LabelState, error) {
+func readLabelsForApply(repo repository.Repository) (settings.LabelObservation, error) {
 	client, err := github.NewWriteClient(repo.Host)
 	if err != nil {
-		return nil, err
+		return settings.LabelObservation{}, err
 	}
 	return client.ReadLabels(repo)
 }

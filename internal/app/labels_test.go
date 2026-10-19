@@ -15,12 +15,12 @@ func TestLabelsPlanAndApplyEmptyListDeletesAll(t *testing.T) {
 	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	state := []settings.LabelState{{Name: "assigned", Color: "abcdef", Description: "old"}}
 	reads := 0
-	read := func(repo repository.Repository) ([]settings.LabelState, error) {
+	read := func(repo repository.Repository) (settings.LabelObservation, error) {
 		if repo != target {
 			t.Fatalf("target=%+v", repo)
 		}
 		reads++
-		return state, nil
+		return settings.NewLabelObservation(state)
 	}
 	plan, err := Plan(checkoutDeclaration, checkoutRepository, Reader{Labels: read})
 	if err != nil || plan.Comparison.Managed != 1 || len(plan.Comparison.Labels) != 1 || plan.Comparison.Labels[0].Operation != "delete" {
@@ -49,12 +49,12 @@ func TestLabelsApplyReadsFreshStateAndSkipsUnchangedWrites(t *testing.T) {
 	}, func() (repository.Repository, error) {
 		calls = append(calls, "target")
 		return target, nil
-	}, Writer{ReadLabels: func(repo repository.Repository) ([]settings.LabelState, error) {
+	}, Writer{ReadLabels: func(repo repository.Repository) (settings.LabelObservation, error) {
 		calls = append(calls, "labels-read")
 		if repo != target {
 			t.Fatalf("target=%+v", repo)
 		}
-		return []settings.LabelState{{Name: "BUG", Color: "abcdef", Description: "external edit"}}, nil
+		return settings.NewLabelObservation([]settings.LabelState{{Name: "BUG", Color: "abcdef", Description: "external edit"}})
 	}})
 	if err != nil || !result.Applied || !reflect.DeepEqual(calls, []string{"load", "target", "labels-read"}) {
 		t.Fatalf("result=%+v err=%v calls=%v", result, err, calls)
@@ -115,9 +115,12 @@ func TestLabelsMixedApplyFailureOrder(t *testing.T) {
 					}
 					return step("topics", repo)
 				},
-				ReadLabels: func(repo repository.Repository) ([]settings.LabelState, error) {
+				ReadLabels: func(repo repository.Repository) (settings.LabelObservation, error) {
 					err := step("labels-read", repo)
-					return []settings.LabelState{{Name: "old", Color: "abcdef"}}, err
+					if err != nil {
+						return settings.LabelObservation{}, err
+					}
+					return settings.NewLabelObservation([]settings.LabelState{{Name: "old", Color: "abcdef"}})
 				},
 				Labels: func(repo repository.Repository, changes []settings.LabelChange) error {
 					if len(changes) != 1 || changes[0].Operation != "delete" || changes[0].Name != "old" {
@@ -144,16 +147,19 @@ func TestLabelsMixedApplyFailureOrder(t *testing.T) {
 
 func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository: {has_issues: false}\n  labels: []\n", true)
-	for _, ambiguous := range []bool{false, true} {
+	for _, failureMode := range []string{"later-page", "ambiguous", "missing"} {
 		result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{
 			ObserveRepository: observeBaseFixture(func(repository.Repository) (settings.RepositoryState, error) {
 				return settings.RepositoryState{HasIssues: true}, nil
 			}),
-			Labels: func(repository.Repository) ([]settings.LabelState, error) {
-				if !ambiguous {
-					return nil, errors.New("later page failed")
+			Labels: func(repository.Repository) (settings.LabelObservation, error) {
+				if failureMode == "later-page" {
+					return settings.LabelObservation{}, errors.New("later page failed")
 				}
-				return []settings.LabelState{{Name: "bug", Color: "abcdef"}, {Name: "BUG", Color: "abcdef"}}, nil
+				if failureMode == "missing" {
+					return settings.LabelObservation{}, nil
+				}
+				return settings.NewLabelObservation([]settings.LabelState{{Name: "bug", Color: "abcdef"}, {Name: "BUG", Color: "abcdef"}})
 			},
 		})
 		var failure *PlanError
@@ -170,4 +176,35 @@ func appLabelDeclarations(t *testing.T, values ...settings.LabelDeclaration) set
 		t.Fatal(err)
 	}
 	return result
+}
+
+func TestMissingLabelObservationPreventsExportAndApplyWrites(t *testing.T) {
+	appCheckout(t, "schemaVersion: 1\nsettings: {labels: []}\n", true)
+	missing := func(repository.Repository) (settings.LabelObservation, error) {
+		return settings.LabelObservation{}, nil
+	}
+	result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{
+		ReadLabels: missing,
+		Labels: func(repository.Repository, []settings.LabelChange) error {
+			t.Fatal("label writes after missing observation")
+			return nil
+		},
+	})
+	if err == nil || result.Applied {
+		t.Fatalf("apply=%+v error=%v", result, err)
+	}
+	read := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
+	read.Labels = missing
+	err = Export(ExportCheckout{
+		Repository: checkoutRepository,
+		PrepareSave: func() (func(settings.Declaration) error, error) {
+			return func(settings.Declaration) error {
+				t.Fatal("save after missing observation")
+				return nil
+			}, nil
+		},
+	}, read)
+	if err == nil {
+		t.Fatal("export accepted missing observation")
+	}
 }

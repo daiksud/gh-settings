@@ -139,23 +139,17 @@ func SortedLabels(labels []LabelDeclaration) []LabelDeclaration {
 }
 
 // CompareLabels treats any declared list, including [], as authoritative membership.
-func CompareLabels(current []LabelState, desired *LabelDeclarations) (Comparison, error) {
+func CompareLabels(current LabelObservation, desired *LabelDeclarations) (Comparison, error) {
 	if desired == nil {
 		return Comparison{}, nil
 	}
-	observed := make(map[string]LabelState, len(current))
-	for _, label := range current {
-		color := strings.ToLower(label.Color)
-		description := label.Description
-		if err := ValidateLabels([]LabelDeclaration{{Name: label.Name, Color: &color, Description: &description}}); err != nil {
-			return Comparison{}, err
-		}
-		key := LabelIdentity(label.Name)
-		if _, present := observed[key]; present {
-			return Comparison{}, fmt.Errorf("ambiguous observed label name %q", label.Name)
-		}
-		label.Color = color
-		observed[key] = label
+	labels, err := current.Values()
+	if err != nil {
+		return Comparison{}, err
+	}
+	observed := make(map[string]LabelState, len(labels))
+	for _, label := range labels {
+		observed[LabelIdentity(label.Name)] = label
 	}
 	result := Comparison{Managed: 1}
 	for _, declared := range SortedLabels(desired.Values()) {
