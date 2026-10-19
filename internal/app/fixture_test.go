@@ -40,3 +40,23 @@ func appCheckout(t *testing.T, input string, origin bool) string {
 	t.Chdir(root)
 	return path
 }
+
+func observeBaseFixture(read func(repository.Repository) (settings.RepositoryState, error)) func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
+	return func(repo repository.Repository, _ []settings.FieldID) (settings.RepositoryObservation, error) {
+		state, err := read(repo)
+		if err != nil {
+			return settings.RepositoryObservation{}, err
+		}
+		return settings.NewRepositoryObservation(&state, nil), nil
+	}
+}
+
+func observeMergeFixture(read func(repository.Repository) (settings.MergeMethodsState, error)) func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
+	return func(repo repository.Repository, _ []settings.FieldID) (settings.RepositoryObservation, error) {
+		state, err := read(repo)
+		if err != nil {
+			return settings.RepositoryObservation{}, err
+		}
+		return settings.NewRepositoryObservation(nil, &state), nil
+	}
+}

@@ -10,10 +10,10 @@ func TestMergeCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 	for _, input := range []string{"merge_commit_title: PR_TITLE", "merge_commit_title: PR_TITLE, merge_commit_message: BLANK"} {
 		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+input+"}}", true)
 		calls := 0
-		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{ObserveRepository: observeMergeFixture(func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
 			return settings.MergeMethodsState{MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
-		}})
+		})})
 		if err != nil || calls != 1 || got.Comparison.Managed < 1 {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 		}

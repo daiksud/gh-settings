@@ -10,10 +10,10 @@ func TestPROptionsDeferredReadAndDirectWrite(t *testing.T) {
 	for _, field := range []string{"allow_auto_merge", "allow_update_branch"} {
 		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+field+": false}}", true)
 		calls := 0
-		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{ObserveRepository: observeMergeFixture(func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
 			return settings.MergeMethodsState{AllowAutoMerge: true, AllowUpdateBranch: true}, nil
-		}})
+		})})
 		if err != nil || calls != 1 || got.Comparison.Managed != 1 || len(got.Comparison.Changes) != 1 || got.Comparison.Changes[0].Field().Path() != "repository."+field || comparisonAfterBool(t, got.Comparison.Changes[0]) != false {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 		}

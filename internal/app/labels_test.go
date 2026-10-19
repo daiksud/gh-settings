@@ -146,9 +146,9 @@ func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository: {has_issues: false}\n  labels: []\n", true)
 	for _, ambiguous := range []bool{false, true} {
 		result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{
-			Repository: func(repository.Repository) (settings.RepositoryState, error) {
+			ObserveRepository: observeBaseFixture(func(repository.Repository) (settings.RepositoryState, error) {
 				return settings.RepositoryState{HasIssues: true}, nil
-			},
+			}),
 			Labels: func(repository.Repository) ([]settings.LabelState, error) {
 				if !ambiguous {
 					return nil, errors.New("later page failed")

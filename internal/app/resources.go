@@ -7,10 +7,11 @@ import (
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
-	MergeMethods func(repository.Repository) (settings.MergeMethodsState, error)
-	Repository   func(repository.Repository) (settings.RepositoryState, error)
-	Topics       func(repository.Repository) ([]string, error)
-	Labels       func(repository.Repository) ([]settings.LabelState, error)
+	ObserveRepository func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error)
+	MergeMethods      func(repository.Repository) (settings.MergeMethodsState, error)
+	Repository        func(repository.Repository) (settings.RepositoryState, error)
+	Topics            func(repository.Repository) ([]string, error)
+	Labels            func(repository.Repository) ([]settings.LabelState, error)
 }
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
