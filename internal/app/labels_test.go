@@ -40,7 +40,7 @@ func TestLabelsPlanAndApplyEmptyListDeletesAll(t *testing.T) {
 }
 
 func TestLabelsApplyReadsFreshStateAndSkipsUnchangedWrites(t *testing.T) {
-	labels := []settings.LabelDeclaration{{Name: "bug"}}
+	labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "bug"})
 	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	var calls []string
 	result, err := Apply(func() (settings.Declaration, error) {
@@ -82,7 +82,7 @@ func TestInvalidLabelsBeforeTargetAndRemoteAccess(t *testing.T) {
 func TestLabelsMixedApplyFailureOrder(t *testing.T) {
 	for _, failureStage := range []string{"", "repository", "topics", "labels-read", "labels-write"} {
 		t.Run(failureStage, func(t *testing.T) {
-			disabled, names, labels := false, []string{}, []settings.LabelDeclaration{}
+			disabled, names, labels := false, []string{}, settings.LabelDeclarations{}
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			failure := errors.New("fixture failure")
 			var calls []string
@@ -161,4 +161,13 @@ func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
 			t.Fatalf("result=%+v error=%v", result, err)
 		}
 	}
+}
+
+func appLabelDeclarations(t *testing.T, values ...settings.LabelDeclaration) settings.LabelDeclarations {
+	t.Helper()
+	result, err := settings.NewLabelDeclarations(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }

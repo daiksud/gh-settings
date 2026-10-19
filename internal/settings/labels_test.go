@@ -7,16 +7,18 @@ import (
 )
 
 func labelText(value string) *string { return &value }
-func labelList(values ...LabelDeclaration) *[]LabelDeclaration {
-	if values == nil {
-		values = []LabelDeclaration{}
+func labelList(t *testing.T, values ...LabelDeclaration) *LabelDeclarations {
+	t.Helper()
+	result, err := NewLabelDeclarations(values)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return &values
+	return &result
 }
 
 func TestCompareLabelsAuthoritativeMembership(t *testing.T) {
 	current := []LabelState{{Name: "old", Color: "FFFFFF", Description: "assigned"}, {Name: "Bug", Color: "abcdef", Description: "keep"}}
-	desired := labelList(LabelDeclaration{Name: "new", Description: labelText("")}, LabelDeclaration{Name: "bug", Color: labelText("ABCDEF")})
+	desired := labelList(t, LabelDeclaration{Name: "new", Description: labelText("")}, LabelDeclaration{Name: "bug", Color: labelText("ABCDEF")})
 	got, err := CompareLabels(current, desired)
 	want := Comparison{Managed: 1, Labels: []LabelChange{
 		{Operation: "create", Name: "new", After: &LabelDeclaration{Name: "new", Description: labelText("")}},
@@ -28,7 +30,7 @@ func TestCompareLabelsAuthoritativeMembership(t *testing.T) {
 	if err := ValidateLabelChanges(got.Labels); err != nil {
 		t.Fatal(err)
 	}
-	if current[0].Color != "FFFFFF" || *(*desired)[1].Color != "ABCDEF" {
+	if current[0].Color != "FFFFFF" || *desired.Values()[1].Color != "abcdef" {
 		t.Fatal("comparison mutated input")
 	}
 }
@@ -37,15 +39,15 @@ func TestCompareLabelsPresenceAndPartialAttributes(t *testing.T) {
 	current := []LabelState{{Name: "bug", Color: "ffffff", Description: "keep"}}
 	for _, test := range []struct {
 		name      string
-		desired   *[]LabelDeclaration
+		desired   *LabelDeclarations
 		managed   int
 		operation string
 	}{
 		{"omitted", nil, 0, ""},
-		{"empty deletes all", labelList(), 1, "delete"},
-		{"name only preserves attributes", labelList(LabelDeclaration{Name: "BUG"}), 1, ""},
-		{"color only", labelList(LabelDeclaration{Name: "bug", Color: labelText("000000")}), 1, "update"},
-		{"empty description clears", labelList(LabelDeclaration{Name: "bug", Description: labelText("")}), 1, "update"},
+		{"empty deletes all", labelList(t), 1, "delete"},
+		{"name only preserves attributes", labelList(t, LabelDeclaration{Name: "BUG"}), 1, ""},
+		{"color only", labelList(t, LabelDeclaration{Name: "bug", Color: labelText("000000")}), 1, "update"},
+		{"empty description clears", labelList(t, LabelDeclaration{Name: "bug", Description: labelText("")}), 1, "update"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := CompareLabels(current, test.desired)
@@ -70,7 +72,7 @@ func TestCompareLabelsPresenceAndPartialAttributes(t *testing.T) {
 			}
 		})
 	}
-	empty, err := CompareLabels(nil, labelList())
+	empty, err := CompareLabels(nil, labelList(t))
 	if err != nil || empty.Managed != 1 || len(empty.Labels) != 0 {
 		t.Fatalf("empty=%+v error=%v", empty, err)
 	}
@@ -78,7 +80,7 @@ func TestCompareLabelsPresenceAndPartialAttributes(t *testing.T) {
 
 func TestCompareLabelsDeterministicOrderAndNoRenameInference(t *testing.T) {
 	current := []LabelState{{Name: "z", Color: "ffffff"}, {Name: "old", Color: "000000"}}
-	desired := labelList(LabelDeclaration{Name: "new"}, LabelDeclaration{Name: "a"})
+	desired := labelList(t, LabelDeclaration{Name: "new"}, LabelDeclaration{Name: "a"})
 	got, err := CompareLabels(current, desired)
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +92,7 @@ func TestCompareLabelsDeterministicOrderAndNoRenameInference(t *testing.T) {
 	if !reflect.DeepEqual(operations, []string{"create:a", "create:new", "delete:old", "delete:z"}) {
 		t.Fatalf("operations=%v", operations)
 	}
-	reordered, err := CompareLabels([]LabelState{current[1], current[0]}, labelList((*desired)[1], (*desired)[0]))
+	reordered, err := CompareLabels([]LabelState{current[1], current[0]}, labelList(t, desired.Values()[1], desired.Values()[0]))
 	if err != nil || !reflect.DeepEqual(reordered, got) {
 		t.Fatalf("unstable comparison=%+v err=%v", reordered, err)
 	}
@@ -98,22 +100,22 @@ func TestCompareLabelsDeterministicOrderAndNoRenameInference(t *testing.T) {
 
 func TestLabelsValidationAndAmbiguity(t *testing.T) {
 	for _, labels := range [][]LabelDeclaration{
-		{{Name: ""}}, {{Name: " "}}, {{Name: "a\nb"}}, {{Name: "bug"}, {Name: "BUG"}}, {{Name: "Σ"}, {Name: "ς"}},
+		{{Name: ""}}, {{Name: "\xff"}}, {{Name: " "}}, {{Name: "a\nb"}}, {{Name: "bug"}, {Name: "BUG"}}, {{Name: "Σ"}, {Name: "ς"}},
 		{{Name: "bug", Color: labelText("#ffffff")}}, {{Name: "bug", Color: labelText("fff")}}, {{Name: "bug", Color: labelText("gggggg")}},
-		{{Name: "bug", Description: labelText(strings.Repeat("界", 101))}},
+		{{Name: "bug", Description: labelText(strings.Repeat("界", 101))}}, {{Name: "bug", Description: labelText("\xff")}},
 	} {
-		if err := ValidateLabels(labels); err == nil {
+		if _, err := NewLabelDeclarations(labels); err == nil {
 			t.Fatalf("accepted %+v", labels)
 		}
 	}
-	if err := ValidateLabels([]LabelDeclaration{{Name: "area/docs 🐛", Color: labelText("ABC123"), Description: labelText(strings.Repeat("界", 100))}}); err != nil {
+	if _, err := NewLabelDeclarations([]LabelDeclaration{{Name: "area/docs 🐛", Color: labelText("ABC123"), Description: labelText(strings.Repeat("界", 100))}}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := CompareLabels([]LabelState{{Name: "bug", Color: "ffffff"}, {Name: "BUG", Color: "000000"}}, labelList())
+	_, err := CompareLabels([]LabelState{{Name: "bug", Color: "ffffff"}, {Name: "BUG", Color: "000000"}}, labelList(t))
 	if err == nil {
 		t.Fatal("accepted ambiguous observed names")
 	}
-	_, err = CompareLabels([]LabelState{{Name: "bug", Color: "bad"}}, labelList())
+	_, err = CompareLabels([]LabelState{{Name: "bug", Color: "bad"}}, labelList(t))
 	if err == nil {
 		t.Fatal("accepted invalid observed color")
 	}

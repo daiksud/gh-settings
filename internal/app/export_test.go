@@ -42,7 +42,7 @@ func TestExportStoredSettings(t *testing.T) {
 			squashTitle, squashMessage, mergeTitle, mergeMessage := "COMMIT_OR_PR_TITLE", "COMMIT_MESSAGES", "MERGE_MESSAGE", "PR_TITLE"
 			names := []string{"a", "b"}
 			color, description := "abcdef", "existing label"
-			labels := []settings.LabelDeclaration{{Name: "bug", Color: &color, Description: &description}}
+			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "bug", Color: &color, Description: &description})
 			want := settings.Declaration{
 				Repository: settings.RepositoryDeclaration{
 					Description: &test.state.Description, Homepage: &test.state.Homepage,

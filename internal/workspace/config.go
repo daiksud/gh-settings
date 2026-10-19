@@ -41,14 +41,9 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 		document.Settings.Topics = &topicsDocument{Names: &names}
 	}
 	if declaration.Labels != nil {
-		labels := make([]labelDocument, 0, len(*declaration.Labels))
-		for _, label := range settings.SortedLabels(*declaration.Labels) {
-			color := label.Color
-			if color != nil {
-				normalized := strings.ToLower(*color)
-				color = &normalized
-			}
-			labels = append(labels, labelDocument{Name: label.Name, Color: color, Description: label.Description})
+		labels := make([]labelDocument, 0, declaration.Labels.Len())
+		for _, label := range settings.SortedLabels(declaration.Labels.Values()) {
+			labels = append(labels, labelDocument{Name: label.Name, Color: label.Color, Description: label.Description})
 		}
 		document.Settings.Labels = &labels
 	}

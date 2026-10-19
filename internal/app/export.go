@@ -43,6 +43,10 @@ func Export(checkout ExportCheckout, read Reader) error {
 		color, description := label.Color, label.Description
 		labelDeclarations = append(labelDeclarations, settings.LabelDeclaration{Name: label.Name, Color: &color, Description: &description})
 	}
-	declaration.Labels = &labelDeclarations
+	validated, err := settings.NewLabelDeclarations(labelDeclarations)
+	if err != nil {
+		return err
+	}
+	declaration.Labels = &validated
 	return save(declaration)
 }
