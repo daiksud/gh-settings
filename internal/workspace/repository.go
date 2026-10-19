@@ -10,7 +10,13 @@ import (
 
 // GitRoot returns the checkout root containing the current working directory.
 func GitRoot() (string, error) {
-	root, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
+	return gitRoot("")
+}
+
+func gitRoot(directory string) (string, error) {
+	command := exec.Command("git", "rev-parse", "--show-toplevel")
+	command.Dir = directory
+	root, err := command.Output()
 	if err != nil {
 		return "", err
 	}

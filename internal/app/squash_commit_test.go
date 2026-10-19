@@ -10,14 +10,14 @@ func TestSquashCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 	for _, input := range []string{"squash_merge_commit_title: PR_TITLE", "squash_merge_commit_title: PR_TITLE, squash_merge_commit_message: BLANK"} {
 		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+input+"}}", true)
 		calls := 0
-		got, err := Plan(Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+		got, err := Plan(checkoutDeclaration, Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
 			return settings.MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 		}})
 		if err != nil || calls != 1 || got.Comparison.Managed < 1 {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 		}
-		result, err := Apply(Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {
+		result, err := Apply(checkoutDeclaration, Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {
 			calls++
 			if d.SquashMergeCommitTitle == nil || *d.SquashMergeCommitTitle != "PR_TITLE" || !d.BaseEmpty() {
 				t.Fatalf("desired=%+v", d)
@@ -30,10 +30,10 @@ func TestSquashCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 	}
 	for _, input := range []string{"squash_merge_commit_message: BLANK", "squash_merge_commit_title: null", "squash_merge_commit_title: ''"} {
 		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+input+"}}", false)
-		if _, err := Plan(Reader{}); err == nil {
+		if _, err := Plan(checkoutDeclaration, Reader{}); err == nil {
 			t.Fatal("invalid plan reached target/read")
 		}
-		if _, err := Apply(Writer{}); err == nil {
+		if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {
 			t.Fatal("invalid apply reached target/write")
 		}
 	}

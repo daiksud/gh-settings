@@ -10,7 +10,7 @@ import (
 func TestPlanDiscussionsOnlyReadsREST(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {has_discussions: false}}\n", true)
 	calls := 0
-	got, err := Plan(Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
+	got, err := Plan(checkoutDeclaration, Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
 		calls++
 		if repo.Owner != "owner" || repo.Name != "current" {
 			t.Fatalf("wrong target: %+v", repo)

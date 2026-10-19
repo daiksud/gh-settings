@@ -20,7 +20,7 @@ One Go implementation serves thin CLI and Actions adapters. Keep declaration, ob
 | --- | --- | --- |
 | Settings model | Optional declarations, complete observed values, topic sets, label identity/membership, and ordered native comparisons; no I/O or YAML/JSON/presentation tags | [Repository model](../../internal/settings/repository.go), [resources/topics](../../internal/settings/settings.go), [comparison](../../internal/settings/comparison.go), [labels](../../internal/settings/labels.go) |
 | Workspace YAML | Decode and encode the versioned/grouped contract through private YAML mappings | [Codec](../../internal/workspace/config.go), [labels codec](../../internal/workspace/labels.go) |
-| Workspace files and Git | Fixed configuration path, file reads/writes, checkout root, commit, and checkout-scoped target resolution | [Files](../../internal/workspace/config_file.go), [Git](../../internal/workspace/repository.go) |
+| Workspace files and Git | Fixed configuration path, file reads/writes, checkout root, commit, and checkout-scoped target resolution | [Checkout](../../internal/workspace/checkout.go), [files](../../internal/workspace/config_file.go), [Git](../../internal/workspace/repository.go) |
 | GitHub adapter | Client configuration, complete read normalization, declared-only repository PATCH, topics GET/PUT, paginated labels reads/CRUD, and write redirect handling | [Repository reads](../../internal/github/repository.go), [repository writes](../../internal/github/apply.go), [topics](../../internal/github/topics.go), [labels](../../internal/github/labels.go) |
 | Shared application | Validation, resource selection, operation sequencing, and typed results | [Application operations](../../internal/app/), [deferred readers/writers](../../internal/app/resources.go) |
 | CLI adapter | Arguments, help/version, terminal field/operation presentation, diagnostics, and process exit status | [Dispatch](../../internal/cli/run.go), [comparison rendering](../../internal/cli/comparison.go), [labels rendering](../../internal/cli/labels.go) |
@@ -31,7 +31,7 @@ The [root entry point](../../main.go) binds both adapters to shared application 
 
 ### Workspace and GitHub boundaries
 
-The workspace codec returns a typed declaration. Its file boundary accepts already encoded export bytes and owns writing; it does not contact GitHub. Git resolution uses the checkout's local/worktree origin, including repository-specific configuration, ignores `GH_REPO` and unscoped origins, and retains the direct repository identity even when Git rewrites transport URLs.
+The workspace codec returns a typed declaration. `workspace.Checkout.Declaration` resolves the Git root for its explicit directory and loads the fixed configuration path with the existing diagnostic context. The root entry point supplies this deferred loader to validation, CLI/Action planning, and apply; constructing a Checkout does not resolve Git or read files. The file boundary accepts already encoded export bytes and owns writing; it does not contact GitHub. Git resolution uses the checkout's local/worktree origin, including repository-specific configuration, ignores `GH_REPO` and unscoped origins, and retains the direct repository identity even when Git rewrites transport URLs.
 
 The GitHub read adapter requires complete repository values, normalizes permitted null strings to empty strings, and rejects missing fields or null booleans. Repository/topics writes map declarations to private request DTOs without preliminary reads. The labels adapter completes and validates every page before exposing observed state. Read and write clients retain separate 30-second timeouts; writes reject redirects. Labels reads during apply use the write-client policy too, rejecting redirects. A network error does not establish whether a remote update occurred.
 
@@ -39,7 +39,7 @@ The GitHub read adapter requires complete repository values, normalizes permitte
 
 | Operation | Application behavior |
 | --- | --- |
-| Validate | Find the checkout root, read configuration, and return a typed declaration; no origin, authentication, API access, or output formatting |
+| Validate | Invoke the declaration loader and return its typed declaration or error; no origin, authentication, API access, or output formatting |
 | Plan | Validate; return a local no-op for an empty declaration; otherwise resolve the target, read only managed resources, and return native field changes and typed label operations |
 | Apply | Validate; return a local no-op for an empty declaration; otherwise send declared repository settings, then topics, then read/reconcile declared labels, stopping on the first failure |
 | Export | Resolve the checkout/target; read complete repository settings, topics, and every labels page; construct a complete declaration, serialize it, then write the configuration |

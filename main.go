@@ -9,27 +9,29 @@ import (
 	"github.com/daiksud/gh-settings/internal/cli"
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 // version is set with -ldflags at build time.
 var version = "dev"
 
 func main() {
+	checkout := workspace.NewCheckout(".")
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
-			return app.Plan(app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
+			return app.Plan(checkout.Declaration, app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func() error {
 			return app.Export(app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
 		},
-		Validate: app.Validate,
+		Validate: func() (settings.Declaration, error) { return app.Validate(checkout.Declaration) },
 		Plan: func() (app.PlanResult, error) {
-			return app.Plan(app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
+			return app.Plan(checkout.Declaration, app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, Labels: writeLabels})
+			return app.Apply(checkout.Declaration, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, Labels: writeLabels})
 		},
 	}))
 }
