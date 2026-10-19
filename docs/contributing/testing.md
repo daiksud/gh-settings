@@ -76,7 +76,7 @@ CI installs tools from the same pinned mise configuration. Acceptance installs o
 
 ### Hosted candidate composite
 
-The PR workflow delegates candidate verification and scenarios to the local [candidate composite](../../.github/actions/candidate-smoke/action.yml), passing the producer source, version, digest, and existing binary path explicitly. The caller retains the runner, permissions, prerequisites, exact-source checkout, Go setup, and artifact download. The push workflow retains its existing inline scenarios.
+The PR and push workflows delegate candidate verification and scenarios to the same local [candidate composite](../../.github/actions/candidate-smoke/action.yml), passing the producer source, version, digest, and existing binary path explicitly. Each caller retains its runner, permissions, prerequisites, exact-source checkout, Go setup, and artifact download. PR additionally requires its Ready transition; push depends directly on commit-stage. Their separate `pass` gates reject failed, skipped, or cancelled candidate validation.
 
 The `composite-smoke` job runs on the public Action's supported Ubuntu 24.04 x64 runner; commit/acceptance jobs use `ubuntu-slim`. It checks out exact producer source into `.action` and creates a separate consumer that tracks only `.github/settings.yml`. The consumer has no root `action.yml` or `action/` helper directory.
 
