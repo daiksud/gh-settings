@@ -19,7 +19,7 @@ func main() {
 	checkout := workspace.NewCheckout(".")
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
-			return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
+			return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels})
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
@@ -28,7 +28,7 @@ func main() {
 		},
 		Validate: func() (settings.Declaration, error) { return app.Validate(checkout.Declaration) },
 		Plan: func() (app.PlanResult, error) {
-			return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
+			return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels})
 		},
 		Apply: func() (app.ApplyResult, error) {
 			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, Labels: writeLabels})

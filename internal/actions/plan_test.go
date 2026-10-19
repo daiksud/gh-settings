@@ -81,9 +81,9 @@ func TestPlanTargetFailureReport(t *testing.T) {
 	calls := 0
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
 		checkout := workspace.NewCheckout(".")
-		return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+		return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
 			calls++
-			return settings.RepositoryState{}, nil
+			return settings.RepositoryObservation{}, nil
 		}})
 	})
 	data, err := os.ReadFile(path)

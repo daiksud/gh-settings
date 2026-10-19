@@ -29,13 +29,13 @@ func TestPlanResults(t *testing.T) {
 			}, func() (repository.Repository, error) {
 				calls = append(calls, "target")
 				return target, nil
-			}, Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
+			}, Reader{ObserveRepository: observeBaseFixture(func(repo repository.Repository) (settings.RepositoryState, error) {
 				calls = append(calls, "repository")
 				if repo != target {
 					t.Fatalf("read target=%+v, want %+v", repo, target)
 				}
 				return test.current, nil
-			}})
+			})})
 			want := PlanResult{Target: target, Comparison: test.want}
 			if err != nil || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(calls, []string{"load", "target", "repository"}) {
 				t.Fatalf("result=%+v error=%v calls=%v, want %+v after load, target and read", got, err, calls, want)
@@ -144,13 +144,13 @@ func TestPlanReadFailure(t *testing.T) {
 	}, func() (repository.Repository, error) {
 		calls = append(calls, "target")
 		return target, nil
-	}, Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
+	}, Reader{ObserveRepository: observeBaseFixture(func(repo repository.Repository) (settings.RepositoryState, error) {
 		calls = append(calls, "repository")
 		if repo != target {
 			t.Fatalf("read target=%+v, want %+v", repo, target)
 		}
 		return settings.RepositoryState{}, readError
-	}})
+	})})
 	if !errors.Is(err, readError) || !reflect.DeepEqual(got, PlanResult{}) || !reflect.DeepEqual(calls, []string{"load", "target", "repository"}) {
 		t.Fatalf("result=%+v error=%v calls=%v, want read error and zero result", got, err, calls)
 	}

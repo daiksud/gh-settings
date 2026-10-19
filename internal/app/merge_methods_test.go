@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"os"
 	"reflect"
 	"testing"
 
@@ -10,41 +9,58 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func TestPlanMergeMethodsSelectsOnlyNeededReads(t *testing.T) {
-	input := "schemaVersion: 1\nsettings: {repository: {allow_merge_commit: false, allow_squash_merge: true}}\n"
-	path := appCheckout(t, input, true)
+func TestPlanRequestsMergeMethodFields(t *testing.T) {
+	disabled, enabled := false, true
+	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	calls := 0
-	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{MergeMethods: func(repo repository.Repository) (settings.MergeMethodsState, error) {
+	result, err := Plan(func() (settings.Declaration, error) {
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{AllowMergeCommit: &disabled, AllowSquashMerge: &enabled}}, nil
+	}, func() (repository.Repository, error) { return target, nil }, Reader{ObserveRepository: func(repo repository.Repository, fields []settings.FieldID) (settings.RepositoryObservation, error) {
 		calls++
-		if repo.Owner != "owner" || repo.Name != "current" {
-			t.Fatalf("target=%+v", repo)
+		var paths []string
+		for _, field := range fields {
+			paths = append(paths, field.Path())
 		}
-		return settings.MergeMethodsState{AllowMergeCommit: true}, nil
+		if repo != target || !reflect.DeepEqual(paths, []string{"repository.allow_merge_commit", "repository.allow_squash_merge"}) {
+			t.Fatalf("target=%+v fields=%v", repo, paths)
+		}
+		return settings.NewRepositoryObservation(nil, &settings.MergeMethodsState{AllowMergeCommit: true}), nil
 	}})
 	want := []settings.Change{comparisonChange(t, "repository.allow_merge_commit", true, false), comparisonChange(t, "repository.allow_squash_merge", false, true)}
-	data, _ := os.ReadFile(path)
-	if err != nil || calls != 1 || result.Comparison.Managed != 2 || !reflect.DeepEqual(result.Comparison.Changes, want) || string(data) != input {
-		t.Fatalf("result=%+v calls=%d err=%v", result, calls, err)
+	if err != nil || calls != 1 || result.Comparison.Managed != 2 || !reflect.DeepEqual(result.Comparison.Changes, want) {
+		t.Fatalf("result=%+v calls=%d error=%v", result, calls, err)
 	}
 }
 
-func TestPlanMixedRepositoryMergeReadFailureDiscardsComparison(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {has_issues: false, allow_merge_commit: false}}\n", true)
-	failure := errors.New("GraphQL partial response denied")
-	var calls []string
-	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{
-		Repository: func(repository.Repository) (settings.RepositoryState, error) {
-			calls = append(calls, "rest")
-			return settings.RepositoryState{HasIssues: true}, nil
-		},
-		MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
-			calls = append(calls, "graphql")
-			return settings.MergeMethodsState{AllowMergeCommit: true}, failure
-		},
-	})
-	var stage *PlanError
-	if !errors.As(err, &stage) || stage.Stage != "read-failure" || !errors.Is(err, failure) || result.Comparison.Managed != 0 || len(result.Comparison.Changes) != 0 || !reflect.DeepEqual(calls, []string{"rest", "graphql"}) {
-		t.Fatalf("result=%+v calls=%v error=%v", result, calls, err)
+func TestPlanMixedRepositoryObservationFailureDiscardsComparison(t *testing.T) {
+	for _, missing := range []bool{false, true} {
+		t.Run(map[bool]string{false: "later read failure", true: "missing observation"}[missing], func(t *testing.T) {
+			disabled, names := false, []string{}
+			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+			cause := errors.New("GraphQL partial response denied")
+			calls := 0
+			result, err := Plan(func() (settings.Declaration, error) {
+				return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled, AllowMergeCommit: &disabled}, Topics: settings.TopicsDeclaration{Names: &names}}, nil
+			}, func() (repository.Repository, error) { return target, nil }, Reader{ObserveRepository: func(repo repository.Repository, fields []settings.FieldID) (settings.RepositoryObservation, error) {
+				calls++
+				var paths []string
+				for _, field := range fields {
+					paths = append(paths, field.Path())
+				}
+				if repo != target || !reflect.DeepEqual(paths, []string{"repository.has_issues", "repository.allow_merge_commit"}) {
+					t.Fatalf("target=%+v fields=%v", repo, paths)
+				}
+				observed := settings.NewRepositoryObservation(&settings.RepositoryState{HasIssues: true}, nil)
+				if missing {
+					return observed, nil
+				}
+				return observed, cause
+			}})
+			var stage *PlanError
+			if !errors.As(err, &stage) || stage.Stage != "read-failure" || stage.Target != target || (!missing && !errors.Is(err, cause)) || !reflect.DeepEqual(result, PlanResult{}) || calls != 1 {
+				t.Fatalf("result=%+v calls=%d error=%v", result, calls, err)
+			}
+		})
 	}
 }
 
@@ -75,10 +91,10 @@ func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {delete_branch_on_merge: false}}\n", true)
 	calls := 0
-	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{MergeMethods: func(repo repository.Repository) (settings.MergeMethodsState, error) {
+	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{ObserveRepository: observeMergeFixture(func(repo repository.Repository) (settings.MergeMethodsState, error) {
 		calls++
 		return settings.MergeMethodsState{DeleteBranchOnMerge: true}, nil
-	}})
+	})})
 	if err != nil || calls != 1 || result.Comparison.Managed != 1 || len(result.Comparison.Changes) != 1 || comparisonAfterBool(t, result.Comparison.Changes[0]) != false {
 		t.Fatalf("plan=%+v err=%v calls=%d", result, err, calls)
 	}

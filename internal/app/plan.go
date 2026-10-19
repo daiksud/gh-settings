@@ -39,21 +39,15 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		return PlanResult{}, &PlanError{Stage: "target-failure", Err: err}
 	}
 	var comparison settings.Comparison
-	if !desired.Repository.BaseEmpty() {
-		current, err := read.Repository(repo)
+	if fields := settings.DeclaredRepositoryFields(desired.Repository); len(fields) > 0 {
+		observed, err := read.ObserveRepository(repo, fields)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
-		comparison = settings.CompareRepository(current, desired.Repository)
-	}
-	if !desired.Repository.MergeMethodsEmpty() {
-		current, err := read.MergeMethods(repo)
+		comparison, err = settings.CompareRepositoryObservation(observed, desired.Repository)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
-		methods := settings.CompareMergeMethods(current, desired.Repository)
-		comparison.Managed += methods.Managed
-		comparison.Changes = append(comparison.Changes, methods.Changes...)
 	}
 	if desired.Topics.Names != nil {
 		current, err := read.Topics(repo)
