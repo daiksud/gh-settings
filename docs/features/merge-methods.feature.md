@@ -40,7 +40,7 @@ An [isolated Actions experiment](https://github.com/daiksud/gh-settings/actions/
 
 - Plan calls this deferred read only when a merge-related field is declared. Existing declarations that omit all four source fields retain their existing API reads and credentials.
 - A merge-method-only plan needs only GraphQL; the base repository REST read is skipped. Metadata, Summary and unmanaged local no-ops do not initialize a GraphQL client.
-- Export reads base repository settings, merge methods, topics and labels, then serializes all fifteen repository values in current source (thirteen in v0.13.0, eleven in v0.12.0, nine in published v0.11.0 and eight in v0.10.0) and complete collections. All reads and serialization finish before opening the destination. Published v0.9.0 export retains its original five-field repository shape.
+- Export reads base repository settings, merge methods, topics and labels, then serializes all sixteen repository values in current source (fifteen in v0.14.0, thirteen in v0.13.0, eleven in v0.12.0, nine in published v0.11.0 and eight in v0.10.0) and complete collections. All reads and serialization finish before opening the destination. Published v0.9.0 export retains its original five-field repository shape.
 - The adapter retains the existing gh host/authentication, Unix-socket fixture support and 30-second read timeout through the already-used go-gh dependency. There is no caller-supplied query, target or mutation path.
 - Missing/null repository or fields, wrong scalar types, HTTP/transport/JSON failure, or any GraphQL errors fail the whole read. Partial data with errors is discarded. Neither plan nor export synthesizes false or falls back to a privileged REST read.
 
@@ -50,7 +50,7 @@ Apply uses the existing `PATCH /repos/{owner}/{repo}` and [Administration write 
 
 Existing target resolution, write timeout, redirect rejection, failure propagation and partial-failure behavior remain unchanged. This feature does not change root managed configuration, live merge policy, App grants, PR token permissions, consumer pins, or release selection. GitHub may reject combinations that pass local boolean validation; no additional merge policy is inferred locally.
 
-CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. The maximum current-source managed count is seventeen: fifteen repository fields, topics and labels. Published v0.10.0 retains its ten-item limit. Reports remain presentation data, never apply input.
+CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. The maximum current-source managed count is eighteen: sixteen repository fields, topics and labels. Published v0.14.0 retains seventeen. Published v0.10.0 retains its ten-item limit. Reports remain presentation data, never apply input.
 
 ### Test mapping
 

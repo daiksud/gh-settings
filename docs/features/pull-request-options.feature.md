@@ -21,7 +21,7 @@ The shared `MergeMethodsState`, fixed query and deferred read retain their names
 
 Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 
-Current-source export saves fifteen repository fields; v0.13.0 saves thirteen, plus complete topics and all label pages after every read/serialization succeeds. v0.12.0 retains eleven fields. Stable comparison order is five base fields, three merge-method booleans, branch deletion, auto-merge, branch updates, squash title/message, current-source normal merge title/message, topics and labels. Each declared repository field counts once; Current-source report/Summary supports seventeen managed units; v0.13.0 retains fifteen, while v0.12.0 retains thirteen. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
+Current-source export saves sixteen repository fields; v0.14.0 retains fifteen, and v0.13.0 saves thirteen, plus complete topics and all label pages after every read/serialization succeeds. v0.12.0 retains eleven fields. Stable comparison order is six current-source REST fields (including `has_discussions` after `has_wiki`), three merge-method booleans, branch deletion, auto-merge, branch updates, squash title/message, current-source normal merge title/message, topics and labels. Each declared repository field counts once; current-source report/Summary supports eighteen managed units; v0.14.0 retains seventeen, v0.13.0 retains fifteen, while v0.12.0 retains thirteen. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
 
 ## Hosted read evidence
 
