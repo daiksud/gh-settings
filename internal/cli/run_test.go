@@ -94,7 +94,7 @@ func TestRunSelectsOperation(t *testing.T) {
 				},
 				Apply: func() (app.ApplyResult, error) {
 					applyCalls++
-					return app.ApplyResult{Applied: true}, test.operationError
+					return app.ApplyResult{Outcome: app.ApplyCompleted}, test.operationError
 				},
 				Validate: func() (settings.Declaration, error) {
 					validateCalls++
@@ -170,13 +170,13 @@ func TestPlanOutputFailure(t *testing.T) {
 }
 
 func TestApplyOutputFailure(t *testing.T) {
-	for _, applied := range []bool{true, false} {
+	for _, outcome := range []app.ApplyOutcome{app.ApplyCompleted, app.ApplyMatchingLabels, app.ApplyUnmanaged} {
 		var stderr bytes.Buffer
 		calls := 0
 		code := Run([]string{"apply"}, brokenWriter{}, &stderr, "fixture-version", Operations{
 			Apply: func() (app.ApplyResult, error) {
 				calls++
-				return app.ApplyResult{Applied: applied}, nil
+				return app.ApplyResult{Outcome: outcome}, nil
 			},
 		})
 		if code != 1 || calls != 1 || stderr.String() != "gh settings: write output: output unavailable\n" {
@@ -185,16 +185,24 @@ func TestApplyOutputFailure(t *testing.T) {
 	}
 }
 
-func TestApplyNoManagedResult(t *testing.T) {
-	var stdout, stderr bytes.Buffer
-	calls := 0
-	status := Run([]string{"apply"}, &stdout, &stderr, "fixture-version", Operations{
-		Apply: func() (app.ApplyResult, error) {
-			calls++
-			return app.ApplyResult{}, nil
-		},
-	})
-	if status != 0 || calls != 1 || stdout.String() != "No managed repository settings.\n" || stderr.Len() != 0 {
-		t.Fatalf("status=%d calls=%d stdout=%q stderr=%q", status, calls, stdout.String(), stderr.String())
+func TestApplyResultMessages(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		outcome app.ApplyOutcome
+		message string
+	}{
+		{"unmanaged", app.ApplyUnmanaged, "No managed repository settings.\n"},
+		{"matching labels", app.ApplyMatchingLabels, "Applied repository settings.\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			calls := 0
+			status := Run([]string{"apply"}, &stdout, &stderr, "fixture-version", Operations{
+				Apply: func() (app.ApplyResult, error) { calls++; return app.ApplyResult{Outcome: test.outcome}, nil },
+			})
+			if status != 0 || calls != 1 || stdout.String() != test.message || stderr.Len() != 0 {
+				t.Fatalf("status=%d calls=%d stdout=%q stderr=%q", status, calls, stdout.String(), stderr.String())
+			}
+		})
 	}
 }

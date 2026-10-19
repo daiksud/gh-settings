@@ -60,7 +60,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		if err != nil {
 			return err
 		}
-		if result.Applied {
+		if result.Completed() {
 			data = []byte("Applied repository settings.\n")
 		} else {
 			data = []byte("No managed repository settings.\n")

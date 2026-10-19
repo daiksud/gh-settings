@@ -24,7 +24,7 @@ func TestMergeCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 			}
 			return nil
 		}})
-		if err != nil || !result.Applied || calls != 2 {
+		if err != nil || !result.Completed() || calls != 2 {
 			t.Fatalf("apply=%+v err=%v", result, err)
 		}
 	}

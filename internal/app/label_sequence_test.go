@@ -74,10 +74,10 @@ func TestApplyLabelSequenceAndFailureStop(t *testing.T) {
 				}
 				kind, name, _ := strings.Cut(failAt, ":")
 				message := fmt.Sprintf("%s label %q (earlier successful writes remain applied): fixture failure", kind, name)
-				if !errors.Is(err, cause) || err.Error() != message || result.Applied {
+				if !errors.Is(err, cause) || err.Error() != message || result.Completed() {
 					t.Fatalf("result=%+v error=%v", result, err)
 				}
-			} else if err != nil || !result.Applied {
+			} else if err != nil || !result.Completed() {
 				t.Fatalf("result=%+v error=%v", result, err)
 			}
 			if !reflect.DeepEqual(calls, want) {
