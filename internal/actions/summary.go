@@ -82,9 +82,14 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 	if !ok || ref == "" || len(workflow) != 3 || workflow[0] == "" || workflow[1] == "" || workflow[2] == "" {
 		return "", fmt.Errorf("invalid workflow reference")
 	}
-	if err := validatePlanReport(report, metadata.Target); err != nil {
+	validated, err := validatePlanReport(report, metadata.Target)
+	if err != nil {
 		return "", err
 	}
+	return renderSummary(validated, metadata, workflow), nil
+}
+
+func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []string) string {
 	workflowRepository := workflow[0] + "/" + workflow[1]
 	actionRepository, actionRef := metadata.ActionRepository, metadata.ActionRef
 	if actionRepository == "" && actionRef == "" {
@@ -109,33 +114,51 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 	for _, row := range rows {
 		fmt.Fprintf(&content, "<tr><th>%s</th><td>%s</td></tr>\n", quoteHTML(row.label), row.value)
 	}
-	result, failed := summaryOutcome(report.Outcome)
+	result, failed := summaryOutcome(report.outcome)
 	fmt.Fprintf(&content, "</table>\n\n<p>%s</p>\n\n<pre>", result)
 	if failed {
-		content.WriteString(quoteHTML(report.Diagnostic))
+		content.WriteString(quoteHTML(report.diagnostic))
 	}
-	for _, change := range report.Changes {
-		fmt.Fprintf(&content, "settings.%s: %s → %s\n", quoteHTML(change.Field), quoteHTML(summaryValue(change.Before)), quoteHTML(summaryValue(change.After)))
+	for _, change := range report.comparison.Changes {
+		line := func(before, after string) {
+			fmt.Fprintf(&content, "settings.%s: %s → %s\n", quoteHTML(change.Field().Path()), quoteHTML(before), quoteHTML(after))
+		}
+		change.Visit(
+			func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },
+			func(before, after string) { line(strconv.Quote(before), strconv.Quote(after)) },
+			func(before, after []string) {
+				beforeJSON, _ := json.Marshal(before)
+				afterJSON, _ := json.Marshal(after)
+				line(string(beforeJSON), string(afterJSON))
+			},
+		)
 	}
-	for _, change := range report.Labels {
+	for _, change := range report.comparison.Labels.Values() {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(labelSummaryLine(change)))
 	}
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
-	return content.String(), nil
+	return content.String()
 }
 
-func validatePlanReport(report PlanReport, target string) error {
+// validatedPlanReport retains the result of the JSON and report-state boundary.
+type validatedPlanReport struct {
+	outcome, diagnostic string
+	comparison          settings.Comparison
+}
+
+func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
 	maxManaged := settings.RepositoryFieldCount() + 2 // Topics and labels each count once.
 	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > maxManaged {
-		return fmt.Errorf("invalid plan report comparison")
+		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}
 	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+1 {
-		return fmt.Errorf("invalid label report managed count")
+		return validatedPlanReport{}, fmt.Errorf("invalid label report managed count")
 	}
-	if err := validateLabelReport(report.Labels); err != nil {
-		return err
+	labels, err := validateLabelReport(report.Labels)
+	if err != nil {
+		return validatedPlanReport{}, err
 	}
-	hasChanges := len(report.Changes) > 0 || len(report.Labels) > 0
+	hasChanges := len(report.Changes) > 0 || labels.Len() > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
@@ -152,35 +175,59 @@ func validatePlanReport(report PlanReport, target string) error {
 		valid = report.Managed == 0 && report.Target == target && report.Diagnostic == readFailureDiagnostic
 	}
 	if !valid {
-		return fmt.Errorf("invalid plan report state")
+		return validatedPlanReport{}, fmt.Errorf("invalid plan report state")
 	}
+	comparison := settings.Comparison{Managed: report.Managed, Labels: labels}
 	seen := make(map[settings.FieldID]bool, len(report.Changes))
-	for _, change := range report.Changes {
-		field, err := settings.ParseFieldID(change.Field)
+	for _, raw := range report.Changes {
+		change, err := parseReportChange(raw)
 		if err != nil {
-			return fmt.Errorf("invalid plan report change")
+			return validatedPlanReport{}, err
 		}
-		nativePair := false
-		switch field {
-		case settings.TopicsField():
-			before, beforeOK := summaryTopics(change.Before)
-			after, afterOK := summaryTopics(change.After)
-			nativePair = beforeOK && afterOK
-			if nativePair {
-				change.Before, change.After = before, after
-				if reflect.DeepEqual(before, after) {
-					return fmt.Errorf("invalid plan report change")
-				}
-			}
-		default:
-			nativePair = settings.ValidRepositoryFieldValue(field.Path(), change.Before) && settings.ValidRepositoryFieldValue(field.Path(), change.After)
+		if seen[change.Field()] {
+			return validatedPlanReport{}, fmt.Errorf("invalid plan report change")
 		}
-		if !nativePair || seen[field] || reflect.DeepEqual(change.Before, change.After) {
-			return fmt.Errorf("invalid plan report change")
-		}
-		seen[field] = true
+		seen[change.Field()] = true
+		comparison.Changes = append(comparison.Changes, change)
 	}
-	return nil
+	return validatedPlanReport{outcome: report.Outcome, diagnostic: report.Diagnostic, comparison: comparison}, nil
+}
+
+func parseReportChange(raw PlanChange) (settings.Change, error) {
+	field, err := settings.ParseFieldID(raw.Field)
+	if err != nil {
+		return settings.Change{}, fmt.Errorf("invalid plan report change")
+	}
+	var change settings.Change
+	if field == settings.TopicsField() {
+		before, beforeOK := summaryTopics(raw.Before)
+		after, afterOK := summaryTopics(raw.After)
+		if !beforeOK || !afterOK || reflect.DeepEqual(before, after) {
+			return settings.Change{}, fmt.Errorf("invalid plan report change")
+		}
+		change, err = settings.NewTopicsChange(before, after)
+	} else {
+		switch before := raw.Before.(type) {
+		case bool:
+			after, ok := raw.After.(bool)
+			if !ok || before == after {
+				return settings.Change{}, fmt.Errorf("invalid plan report change")
+			}
+			change, err = settings.NewBoolChange(field, before, after)
+		case string:
+			after, ok := raw.After.(string)
+			if !ok || before == after {
+				return settings.Change{}, fmt.Errorf("invalid plan report change")
+			}
+			change, err = settings.NewStringChange(field, before, after)
+		default:
+			return settings.Change{}, fmt.Errorf("invalid plan report change")
+		}
+	}
+	if err != nil {
+		return settings.Change{}, fmt.Errorf("invalid plan report change")
+	}
+	return change, nil
 }
 
 func summaryOutcome(outcome string) (label string, failed bool) {
@@ -205,17 +252,6 @@ func quoteHTML(value string) string {
 func summaryLink(path, label string) string {
 	u := url.URL{Scheme: "https", Host: "github.com", Path: "/" + path}
 	return `<a href="` + quoteHTML(u.String()) + `">` + quoteHTML(label) + `</a>`
-}
-
-func summaryValue(value any) string {
-	if names, ok := summaryTopics(value); ok {
-		data, _ := json.Marshal(names)
-		return string(data)
-	}
-	if text, ok := value.(string); ok {
-		return strconv.Quote(text)
-	}
-	return fmt.Sprint(value)
 }
 
 func writeSummary(reportPath, summaryPath string) error {

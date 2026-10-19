@@ -76,6 +76,8 @@ The CLI owns terminal quoting, arrows, messages, and exit codes. Actions metadat
 
 Reports preserve native field values and carry label operations separately, retaining omitted declared attributes and explicit create/update/delete names. A declared labels collection counts as one managed item regardless of its number of operations. Categorical review diagnostics stay separate from original stderr errors. Apply never consumes a report. Failed plans remain nonzero after report/Summary output, and the composite exposes success outputs only after required work succeeds. See [Actions internals](actions-internals.md) for those entry contracts and [testing](testing.md) for their verification boundaries.
 
+Summary validation converts the JSON report DTO to a private validated presentation input, retaining native comparisons, label operations, and checked report state. Typed visitors render the retained values; JSON type assertions and operation reconstruction remain at the input boundary. This preserves credential-free rendering and validates all input and metadata before opening the Summary destination.
+
 The current-source executable implements label reports/Summary, but the public Action still installs the released CLI selected by [`action/cli-version`](../../action/cli-version). A matching future release and reviewed consumer adoption are required before using labels through that public package.
 
 ## v0 simplification contract
