@@ -34,6 +34,12 @@ The harness requires an explicit binary path and Unix-socket support. It uses go
 
 Process cases cover export → edit → validate → plan → apply, native false/empty values, read-side null normalization, checkout selection, declared-field comparison, exact requests, file preservation, diagnostics, and failure paths. Plan is read-only. Repository/topics apply has no preliminary GET; labels apply reads fresh collection state after those direct writes. Invalid input and empty CLI plan/apply make no API requests. Explicitly empty topics or labels collections are managed, so they are not the empty-declaration case. [Topics acceptance](../../tests/acceptance/topics_test.go) covers the topics resource through the built product.
 
+### Merge response acceptance
+
+[Merge transport tests](../../internal/github/merge_methods_test.go), [PR option tests](../../internal/github/pr_options_test.go), and [squash](../../internal/github/squash_commit_test.go)/[normal merge enum tests](../../internal/github/merge_commit_test.go) own response completeness: each required field must be present with the correct type and a supported enum value. Any GraphQL errors discard even complete data. [Observation tests](../../internal/github/observation_test.go) also reject missing fields that were not declared; expected responses use literal fixtures independent of production field definitions.
+
+[Merge acceptance](../../tests/acceptance/merge_methods_test.go) retains representative permission, incomplete-response, and partial-data/error failures, including rejection of an earlier REST comparison with empty stdout and nonzero status. Its failed export preserves the existing destination. Detailed null/type/enum matrices remain at the adapter boundary; successful plan cases and complete declared-only PATCH cases remain at the process boundary.
+
 ### Labels resource acceptance
 
 [Labels acceptance](../../tests/acceptance/labels_test.go) runs the current-source binary through omission, clearing, case-insensitive identity, omitted attributes, create/update/delete ordering, no-change reads, invalid input, and failures that stop later operations. It checks rejected GET/POST/PATCH/DELETE redirects during apply, complete pagination during export, and preservation of the existing file when a later page fails. Typed label reports and a separate credential-free Summary retain attribute presence, escaped names, and the warning that deletes remove issue/PR associations.
