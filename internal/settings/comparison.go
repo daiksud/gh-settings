@@ -39,6 +39,8 @@ func CompareRepository(current RepositoryState, desired RepositoryDeclaration) C
 	boolField("repository.has_issues", current.HasIssues, desired.HasIssues)
 	boolField("repository.has_projects", current.HasProjects, desired.HasProjects)
 	boolField("repository.has_wiki", current.HasWiki, desired.HasWiki)
-	boolField("repository.has_discussions", current.HasDiscussions, desired.HasDiscussions)
+	for _, field := range discussionsFields {
+		boolField(field.name, field.current(current), field.desired(desired))
+	}
 	return result
 }
