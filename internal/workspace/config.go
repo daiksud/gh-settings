@@ -165,52 +165,19 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 			set(&repository, parsed)
 			continue
 		}
-		switch field {
-		case "squash_merge_commit_title", "squash_merge_commit_message":
+		if set, enum, ok := settings.RepositoryStringSetter("repository." + field); ok {
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a supported string enum", field)
-			}
-			text := value.Value
-			if field == "squash_merge_commit_title" {
-				if !settings.ValidSquashMergeCommitTitle(text) {
-					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_TITLE or COMMIT_OR_PR_TITLE", field)
+				if enum {
+					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a supported string enum", field)
 				}
-				repository.SquashMergeCommitTitle = &text
-			} else {
-				if !settings.ValidSquashMergeCommitMessage(text) {
-					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_BODY, COMMIT_MESSAGES or BLANK", field)
-				}
-				repository.SquashMergeCommitMessage = &text
-			}
-		case "merge_commit_title", "merge_commit_message":
-			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a supported string enum", field)
-			}
-			text := value.Value
-			if field == "merge_commit_title" {
-				if !settings.ValidMergeCommitTitle(text) {
-					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_TITLE or MERGE_MESSAGE", field)
-				}
-				repository.MergeCommitTitle = &text
-			} else {
-				if !settings.ValidMergeCommitMessage(text) {
-					return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be PR_BODY, PR_TITLE or BLANK", field)
-				}
-				repository.MergeCommitMessage = &text
-			}
-		case "description", "homepage":
-			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
 				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a string", field)
 			}
-			text := value.Value
-			if field == "description" {
-				repository.Description = &text
-			} else {
-				repository.Homepage = &text
+			if err := set(&repository, value.Value); err != nil {
+				return settings.RepositoryDeclaration{}, err
 			}
-		default:
-			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)
+			continue
 		}
+		return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)
 	}
 	if err := repository.ValidateCommitDependencies(); err != nil {
 		return settings.RepositoryDeclaration{}, err

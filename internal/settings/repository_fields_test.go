@@ -5,65 +5,83 @@ import (
 	"testing"
 )
 
-func TestOrdinaryStringFieldValidation(t *testing.T) {
-	for index, name := range []string{"repository.description", "repository.homepage"} {
-		field := repositoryStringFields[index]
-		if field.name != name {
-			t.Fatalf("field=%q want=%q", field.name, name)
-		}
-		for _, value := range []string{"", "example value"} {
-			if !ValidRepositoryFieldValue(name, value) {
-				t.Errorf("%s rejected ordinary string %q", name, value)
-			}
-		}
-	}
-}
-
-func TestSquashStringFieldValidation(t *testing.T) {
-	for index, test := range []struct {
-		name    string
-		allowed []string
-	}{
-		{name: "repository.squash_merge_commit_title", allowed: []string{"PR_TITLE", "COMMIT_OR_PR_TITLE"}},
-		{name: "repository.squash_merge_commit_message", allowed: []string{"PR_BODY", "COMMIT_MESSAGES", "BLANK"}},
-	} {
-		field := mergeMethodsStringFields[index]
-		if field.name != test.name {
-			t.Fatalf("field=%q want=%q", field.name, test.name)
-		}
-		for _, value := range test.allowed {
-			if !ValidRepositoryFieldValue(test.name, value) {
-				t.Errorf("%s rejected %q", test.name, value)
-			}
-		}
-		for _, value := range []string{"", "UNKNOWN"} {
-			if ValidRepositoryFieldValue(test.name, value) {
-				t.Errorf("%s accepted %q", test.name, value)
-			}
-		}
-	}
-}
-
-func TestMergeStringFieldValidation(t *testing.T) {
+func TestStringFieldDefinitions(t *testing.T) {
 	for _, test := range []struct {
-		name    string
-		allowed []string
+		name      string
+		allowed   []string
+		enum      bool
+		want      func(string) RepositoryDeclaration
+		wantError string
 	}{
-		{name: "repository.merge_commit_title", allowed: []string{"PR_TITLE", "MERGE_MESSAGE"}},
-		{name: "repository.merge_commit_message", allowed: []string{"PR_TITLE", "PR_BODY", "BLANK"}},
+		{
+			name: "repository.description", allowed: []string{"", "example value"},
+			want: func(value string) RepositoryDeclaration { return RepositoryDeclaration{Description: &value} },
+		},
+		{
+			name: "repository.homepage", allowed: []string{"", "example value"},
+			want: func(value string) RepositoryDeclaration { return RepositoryDeclaration{Homepage: &value} },
+		},
+		{
+			name: "repository.squash_merge_commit_title", allowed: []string{"PR_TITLE", "COMMIT_OR_PR_TITLE"}, enum: true,
+			want:      func(value string) RepositoryDeclaration { return RepositoryDeclaration{SquashMergeCommitTitle: &value} },
+			wantError: "squash_merge_commit_title must be PR_TITLE or COMMIT_OR_PR_TITLE",
+		},
+		{
+			name: "repository.squash_merge_commit_message", allowed: []string{"PR_BODY", "COMMIT_MESSAGES", "BLANK"}, enum: true,
+			want: func(value string) RepositoryDeclaration {
+				return RepositoryDeclaration{SquashMergeCommitMessage: &value}
+			},
+			wantError: "squash_merge_commit_message must be PR_BODY, COMMIT_MESSAGES or BLANK",
+		},
+		{
+			name: "repository.merge_commit_title", allowed: []string{"PR_TITLE", "MERGE_MESSAGE"}, enum: true,
+			want:      func(value string) RepositoryDeclaration { return RepositoryDeclaration{MergeCommitTitle: &value} },
+			wantError: "merge_commit_title must be PR_TITLE or MERGE_MESSAGE",
+		},
+		{
+			name: "repository.merge_commit_message", allowed: []string{"PR_TITLE", "PR_BODY", "BLANK"}, enum: true,
+			want:      func(value string) RepositoryDeclaration { return RepositoryDeclaration{MergeCommitMessage: &value} },
+			wantError: "merge_commit_message must be PR_BODY, PR_TITLE or BLANK",
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			set, enum, ok := RepositoryStringSetter(test.name)
+			if !ok || set == nil || enum != test.enum {
+				t.Fatalf("string lookup: found=%t enum=%t, want enum=%t", ok, enum, test.enum)
+			}
 			for _, value := range test.allowed {
 				if !ValidRepositoryFieldValue(test.name, value) {
-					t.Errorf("%s rejected %q", test.name, value)
+					t.Errorf("rejected %q", value)
+				}
+				var declaration RepositoryDeclaration
+				if err := set(&declaration, value); err != nil || !reflect.DeepEqual(declaration, test.want(value)) {
+					t.Errorf("value=%q assigned %+v, want %+v: %v", value, declaration, test.want(value), err)
 				}
 			}
-			for _, value := range []string{"", "UNKNOWN"} {
+			if !test.enum {
+				return
+			}
+			for _, value := range []string{"", "UNKNOWN", "pr_title", " PR_TITLE"} {
 				if ValidRepositoryFieldValue(test.name, value) {
-					t.Errorf("%s accepted %q", test.name, value)
+					t.Errorf("accepted invalid enum %q", value)
+				}
+				disabled := false
+				declaration := RepositoryDeclaration{HasIssues: &disabled}
+				before := declaration
+				err := set(&declaration, value)
+				if err == nil || err.Error() != test.wantError || declaration != before {
+					t.Errorf("invalid value=%q assigned %+v: %v; want unchanged declaration and %q", value, declaration, err, test.wantError)
 				}
 			}
 		})
+	}
+}
+
+func TestRepositoryStringSetterRejectsOtherNames(t *testing.T) {
+	for _, name := range []string{"", "description", "repository.unknown", "repository.has_issues", "topics.names"} {
+		if set, enum, ok := RepositoryStringSetter(name); ok || enum || set != nil {
+			t.Errorf("unexpected string setter for %q", name)
+		}
 	}
 }
 
