@@ -43,4 +43,6 @@ An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/ru
 | Actions | [Typed report/Summary](../../internal/actions/squash_commit_test.go): strings, quoted changes, enum rejection and the current-source eighteen-unit bound. |
 | Installed binary | [Process acceptance](../../tests/acceptance/merge_methods_test.go): title-only/pair plan, equality, missing/null/partial errors, exact direct PATCH, message-only rejection, complete export, typed report and credential-free Summary. Existing acceptance retains empty/no-op and prior merge-field behavior. |
 
+The process cases `squash unknown rejected` (plan) and `squash message-only rejected` (apply) represent enum and message/title dependency validation across the executable boundary. Both verify a nonzero exit status, the diagnostic, zero API requests, and preservation of the input file. Full enum/type/null matrices remain in `TestSquashCommitCodec`; `TestCommitMessageDependencies` in the [settings tests](../../internal/settings/commit_dependencies_test.go) owns dependencies within and across commit-default families.
+
 Owner/process fixtures use dummy credentials and local API responses. Hosted token proof establishes access only for the observed token/repository. Release native acceptance and published Action smoke establish the separate package identity boundary.

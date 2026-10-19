@@ -37,7 +37,7 @@ func TestMergeCommitCodec(t *testing.T) {
 		}
 	}
 	for _, field := range []string{"merge_commit_title", "merge_commit_message"} {
-		for _, value := range []string{"null", "", "''", "true", "0", "[]", "{}", "pr_title", "UNKNOWN", "' PR_TITLE'", "!!bool PR_TITLE"} {
+		for _, value := range []string{"null", "", "''", "true", "0", "[]", "{}", "pr_title", "UNKNOWN", "COMMIT_OR_PR_TITLE", "' PR_TITLE'", "!!bool PR_TITLE"} {
 			prefix := ""
 			if field == "merge_commit_message" {
 				prefix = "merge_commit_title: PR_TITLE, "
