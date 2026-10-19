@@ -76,6 +76,8 @@ CI installs tools from the same pinned mise configuration. Acceptance installs o
 
 ### Hosted candidate composite
 
+The PR workflow delegates candidate verification and scenarios to the local [candidate composite](../../.github/actions/candidate-smoke/action.yml), passing the producer source, version, digest, and existing binary path explicitly. The caller retains the runner, permissions, prerequisites, exact-source checkout, Go setup, and artifact download. The push workflow retains its existing inline scenarios.
+
 The `composite-smoke` job runs on the public Action's supported Ubuntu 24.04 x64 runner; commit/acceptance jobs use `ubuntu-slim`. It checks out exact producer source into `.action` and creates a separate consumer that tracks only `.github/settings.yml`. The consumer has no root `action.yml` or `action/` helper directory.
 
 [Fixture preparation](../../tests/github-actions/prepare-candidate-download.sh) verifies the transferred candidate's checksum and the Action checkout's source/version. A bounded [curl stand-in](../../tests/github-actions/candidate-curl.sh) serves only the unchanged installer's two fixed versioned asset/checksum URLs from those verified bytes, with no network forwarding. Actual `uses: ./.action` expansion exercises installation, checksum/version validation, metadata, and settings operations. No product rebuild, caller version/download override, committed version rewrite, or old-release fallback is used.

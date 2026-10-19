@@ -1,0 +1,231 @@
+name: Validate candidate Action
+description: Exercise the verified candidate with an independent consumer and local API fixtures.
+inputs:
+  source-sha:
+    description: Exact producer source commit already checked out into .action.
+    required: true
+  cli-version:
+    description: CLI version reported by the producer.
+    required: true
+  binary-sha256:
+    description: SHA-256 reported for the producer binary.
+    required: true
+  binary-path:
+    description: Path to the existing downloaded producer binary.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Prepare the bounded candidate download fixture
+      env:
+        BINARY_PATH: ${{ inputs.binary-path }}
+        EXPECTED_SHA256: ${{ inputs.binary-sha256 }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        CLI_VERSION: ${{ inputs.cli-version }}
+      shell: bash
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+        bash .action/tests/github-actions/prepare-candidate-download.sh \
+          "$BINARY_PATH" "$EXPECTED_SHA256" "$SOURCE_SHA" "$CLI_VERSION"
+    - name: Create a configuration-only consumer checkout
+      shell: bash
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+        [[ ! -e .git && ! -e action.yml && ! -e action ]]
+        mkdir -p .github
+        printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: Hosted composite fixture\n' > .github/settings.yml
+        git init --quiet
+        git remote add origin https://github.com/example-owner/settings-fixture.git
+        git add .github/settings.yml
+        git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: initialize consumer fixture'
+        [[ "$(git rev-parse --show-toplevel)" != "$(git -C .action rev-parse --show-toplevel)" ]]
+    - name: Validate through the actual root composite
+      id: validate
+      uses: ./.action
+      with:
+        command: validate
+    - name: Assert consumer identity and all public outputs
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
+        TARGET: ${{ steps.validate.outputs.target }}
+        CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+        [[ ! -e action.yml && ! -e action ]]
+        [[ "$(git ls-files)" == .github/settings.yml ]]
+        [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
+        [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
+        [[ "$TARGET" == example-owner/settings-fixture ]]
+        [[ "$CLI_VERSION" == "$EXPECTED_CLI_VERSION" ]]
+        [[ "$CLI_SHA256" == "$EXPECTED_CLI_SHA256" ]]
+        printf 'Action checkout: %s at %s\nConsumer checkout: %s at %s\n' \
+          "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
+          "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
+        printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
+    - name: Build and start the required local repository API
+      env:
+        GOTOOLCHAIN: local
+      shell: bash
+      run: |
+        (cd .action && go build -o "$RUNNER_TEMP/plan-fixture" ./tests/github-actions/plan-fixture)
+        bash .action/tests/github-actions/candidate-plan.sh start "$RUNNER_TEMP/plan-fixture"
+    - name: Prepare the changed plan and Summary snapshot
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare
+    - name: Plan through the actual root composite
+      id: plan
+      uses: ./.action
+      with:
+        command: plan
+        token: plan-fixture-read
+    - name: Assert actual plan and Summary bytes
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        CONFIG_SHA: ${{ steps.plan.outputs.config-sha }}
+        TARGET: ${{ steps.plan.outputs.target }}
+        CLI_VERSION: ${{ steps.plan.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.plan.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert
+    - name: Prepare the repository read failure
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare read-failure
+    - name: Plan through an actual local read403
+      id: read-failure
+      continue-on-error: true
+      uses: ./.action
+      with:
+        command: plan
+        token: plan-fixture-read
+    - name: Require read failure and diagnostic Summary
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.read-failure.outcome }}
+        CONFIG_SHA: ${{ steps.read-failure.outputs.config-sha }}
+        TARGET: ${{ steps.read-failure.outputs.target }}
+        CLI_VERSION: ${{ steps.read-failure.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.read-failure.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert read-failure
+    - name: Prepare the committed invalid configuration
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare invalid-config
+    - name: Plan through an actual configuration failure
+      id: invalid-config
+      continue-on-error: true
+      uses: ./.action
+      with:
+        command: plan
+        token: plan-fixture-read
+    - name: Require config failure without API access
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.invalid-config.outcome }}
+        CONFIG_SHA: ${{ steps.invalid-config.outputs.config-sha }}
+        TARGET: ${{ steps.invalid-config.outputs.target }}
+        CLI_VERSION: ${{ steps.invalid-config.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.invalid-config.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert invalid-config
+    - name: Prepare the direct apply declaration and Summary snapshot
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare apply
+    - name: Apply through the actual root composite
+      id: apply
+      uses: ./.action
+      with:
+        command: apply
+        token: apply-fixture-write
+    - name: Require exact direct PATCH and all public outputs
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.apply.outcome }}
+        CONFIG_SHA: ${{ steps.apply.outputs.config-sha }}
+        TARGET: ${{ steps.apply.outputs.target }}
+        CLI_VERSION: ${{ steps.apply.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.apply.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert apply
+    - name: Prepare the local write failure
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare apply-write-failure
+    - name: Apply through an actual local write403
+      id: write-failure
+      continue-on-error: true
+      uses: ./.action
+      with:
+        command: apply
+        token: apply-fixture-write
+    - name: Require write failure and four empty outputs
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.write-failure.outcome }}
+        CONFIG_SHA: ${{ steps.write-failure.outputs.config-sha }}
+        TARGET: ${{ steps.write-failure.outputs.target }}
+        CLI_VERSION: ${{ steps.write-failure.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.write-failure.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert apply-write-failure
+    - name: Prepare the invalid apply declaration
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare apply-invalid
+    - name: Apply through an actual configuration failure
+      id: apply-invalid
+      continue-on-error: true
+      uses: ./.action
+      with:
+        command: apply
+        token: apply-fixture-write
+    - name: Require invalid apply failure without API access
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.apply-invalid.outcome }}
+        CONFIG_SHA: ${{ steps.apply-invalid.outputs.config-sha }}
+        TARGET: ${{ steps.apply-invalid.outputs.target }}
+        CLI_VERSION: ${{ steps.apply-invalid.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.apply-invalid.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert apply-invalid
+    - name: Prepare the empty apply declaration
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare apply-empty
+    - name: Apply an actual empty declaration
+      id: apply-empty
+      uses: ./.action
+      with:
+        command: apply
+        token: apply-fixture-write
+    - name: Require successful empty apply without API access
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.apply-empty.outcome }}
+        CONFIG_SHA: ${{ steps.apply-empty.outputs.config-sha }}
+        TARGET: ${{ steps.apply-empty.outputs.target }}
+        CLI_VERSION: ${{ steps.apply-empty.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.apply-empty.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert apply-empty
+    - name: Stop the owned local repository API
+      if: always()
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh stop
