@@ -125,7 +125,8 @@ func RenderSummary(report PlanReport, metadata RunMetadata) (string, error) {
 }
 
 func validatePlanReport(report PlanReport, target string) error {
-	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > 18 {
+	maxManaged := settings.RepositoryFieldCount() + 2 // Topics and labels each count once.
+	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > maxManaged {
 		return fmt.Errorf("invalid plan report comparison")
 	}
 	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+1 {
@@ -167,28 +168,8 @@ func validatePlanReport(report PlanReport, target string) error {
 					return fmt.Errorf("invalid plan report change")
 				}
 			}
-		case "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message":
-			before, beforeOK := change.Before.(string)
-			after, afterOK := change.After.(string)
-			valid := settings.ValidSquashMergeCommitTitle
-			if change.Field == "repository.squash_merge_commit_message" {
-				valid = settings.ValidSquashMergeCommitMessage
-			}
-			if change.Field == "repository.merge_commit_title" {
-				valid = settings.ValidMergeCommitTitle
-			}
-			if change.Field == "repository.merge_commit_message" {
-				valid = settings.ValidMergeCommitMessage
-			}
-			nativePair = beforeOK && afterOK && valid(before) && valid(after)
-		case "repository.description", "repository.homepage":
-			_, before := change.Before.(string)
-			_, after := change.After.(string)
-			nativePair = before && after
-		case "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge", "repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch":
-			_, before := change.Before.(bool)
-			_, after := change.After.(bool)
-			nativePair = before && after
+		default:
+			nativePair = settings.ValidRepositoryFieldValue(change.Field, change.Before) && settings.ValidRepositoryFieldValue(change.Field, change.After)
 		}
 		if !nativePair || seen[change.Field] || reflect.DeepEqual(change.Before, change.After) {
 			return fmt.Errorf("invalid plan report change")

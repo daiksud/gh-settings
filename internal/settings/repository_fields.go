@@ -7,6 +7,32 @@ type repositoryField[S any, V bool | string] struct {
 	valid   func(V) bool
 }
 
+// RepositoryFieldCount counts the supported scalar repository fields.
+func RepositoryFieldCount() int {
+	return len(repositoryStringFields) + len(repositoryBoolFields) + len(mergeMethodsBoolFields) + len(mergeMethodsStringFields)
+}
+
+// ValidRepositoryFieldValue checks a field's native type and existing value policy.
+func ValidRepositoryFieldValue(name string, value any) bool {
+	switch value := value.(type) {
+	case bool:
+		return validRepositoryFieldValue(repositoryBoolFields[:], name, value) || validRepositoryFieldValue(mergeMethodsBoolFields[:], name, value)
+	case string:
+		return validRepositoryFieldValue(repositoryStringFields[:], name, value) || validRepositoryFieldValue(mergeMethodsStringFields[:], name, value)
+	default:
+		return false
+	}
+}
+
+func validRepositoryFieldValue[S any, V bool | string](fields []repositoryField[S, V], name string, value V) bool {
+	for _, field := range fields {
+		if field.name == name {
+			return field.valid == nil || field.valid(value)
+		}
+	}
+	return false
+}
+
 var repositoryBoolFields = [...]repositoryField[RepositoryState, bool]{
 	{
 		name:    "repository.has_issues",
