@@ -70,14 +70,14 @@ func labelPlanChange(change settings.LabelChange) LabelPlanChange {
 	return result
 }
 
-func validateLabelReport(changes []LabelPlanChange) error {
+func validateLabelReport(changes []LabelPlanChange) (settings.LabelChanges, error) {
 	native := make([]settings.LabelChange, 0, len(changes))
 	for _, change := range changes {
 		var before settings.LabelState
 		var after settings.LabelDeclaration
 		if change.Before != nil {
 			if change.Before.Color == nil || change.Before.Description == nil {
-				return fmt.Errorf("incomplete label before value")
+				return settings.LabelChanges{}, fmt.Errorf("incomplete label before value")
 			}
 			before = settings.LabelState{Name: change.Name, Color: *change.Before.Color, Description: *change.Before.Description}
 		}
@@ -89,56 +89,52 @@ func validateLabelReport(changes []LabelPlanChange) error {
 		switch change.Operation {
 		case "create":
 			if change.Before != nil || change.After == nil {
-				return fmt.Errorf("invalid %q label operation", change.Operation)
+				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 			}
 			value, err = settings.NewLabelCreate(after)
 		case "update":
 			if change.Before == nil || change.After == nil {
-				return fmt.Errorf("invalid %q label operation", change.Operation)
+				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 			}
 			value, err = settings.NewLabelUpdate(before, after)
 		case "delete":
 			if change.Before == nil || change.After != nil {
-				return fmt.Errorf("invalid %q label operation", change.Operation)
+				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 			}
 			value, err = settings.NewLabelDelete(before)
 		default:
-			return fmt.Errorf("invalid %q label operation", change.Operation)
+			return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 		}
 		if err != nil {
-			return err
+			return settings.LabelChanges{}, err
 		}
 		native = append(native, value)
 	}
-	_, err := settings.NewLabelChanges(native)
-	return err
+	return settings.NewLabelChanges(native)
 }
 
-func labelSummaryLine(change LabelPlanChange) string {
-	prefix := fmt.Sprintf("settings.labels: %s %q", change.Operation, change.Name)
-	switch change.Operation {
-	case "delete":
-		return prefix + " (removes issue/PR associations)"
-	case "create":
+func labelSummaryLine(change settings.LabelChange) string {
+	prefix := fmt.Sprintf("settings.labels: %s %q", change.Operation(), change.Name())
+	change.Visit(func(after settings.LabelDeclaration) {
 		var attributes []string
-		if change.After.Color != nil {
-			attributes = append(attributes, fmt.Sprintf("color=%q", *change.After.Color))
+		if after.Color != nil {
+			attributes = append(attributes, fmt.Sprintf("color=%q", *after.Color))
 		}
-		if change.After.Description != nil {
-			attributes = append(attributes, fmt.Sprintf("description=%q", *change.After.Description))
+		if after.Description != nil {
+			attributes = append(attributes, fmt.Sprintf("description=%q", *after.Description))
 		}
 		if len(attributes) > 0 {
 			prefix += " " + strings.Join(attributes, " ")
 		}
-	case "update":
+	}, func(before settings.LabelState, after settings.LabelDeclaration) {
 		var attributes []string
-		if change.After.Color != nil {
-			attributes = append(attributes, fmt.Sprintf("color: %q → %q", *change.Before.Color, *change.After.Color))
+		if after.Color != nil {
+			attributes = append(attributes, fmt.Sprintf("color: %q → %q", before.Color, *after.Color))
 		}
-		if change.After.Description != nil {
-			attributes = append(attributes, fmt.Sprintf("description: %q → %q", *change.Before.Description, *change.After.Description))
+		if after.Description != nil {
+			attributes = append(attributes, fmt.Sprintf("description: %q → %q", before.Description, *after.Description))
 		}
 		prefix += " " + strings.Join(attributes, ", ")
-	}
+	}, func(settings.LabelState) { prefix += " (removes issue/PR associations)" })
 	return prefix
 }
