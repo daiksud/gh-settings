@@ -62,6 +62,7 @@ Examples of the product-user boundary:
 | Add a CI job or repair a failing PR workflow | `ci` | Repository maintenance automation changes, not the product |
 
 Do not label internal work `feat` merely because it adds functionality or `fix` merely because it repairs a bug. A faster CI pipeline is `ci`, not a gh-settings `perf` change. Conversely, a public Action behavior change can be `feat` or `fix` even when implemented in YAML or shell. Tests, documentation, and required wiring for the same product change remain part of that change's type. Classify by demonstrated user-visible consequences, not speculative indirect benefits such as faster future releases.
+
 Use the pinned [commitlint configuration](../../../commitlint.config.mjs) and [development guide](../../../docs/contributing/development.md#pull-request-messages) for syntax/style checks: the conventional 11-type list, lowercase type/scope, subject-case restrictions, no final subject period, and no surrounding title whitespace. Do not add arbitrary title/body line-length limits. A passing lint result does not establish that the type matches the diff, that the scope is coherent, or that breaking changes have been disclosed.
 
 ### Body and durable history
