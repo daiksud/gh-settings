@@ -80,7 +80,7 @@ func TestPlanTargetFailureReport(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	calls := 0
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.Plan(workspace.NewCheckout(".").Declaration, app.Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+		return app.Plan(workspace.NewCheckout(".").Declaration, workspace.NewCheckout(".").Repository, app.Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 			calls++
 			return settings.RepositoryState{}, nil
 		}})

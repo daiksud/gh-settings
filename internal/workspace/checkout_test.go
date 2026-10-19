@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -59,5 +60,37 @@ func TestCheckoutDeclarationOutsideGit(t *testing.T) {
 	got, err := NewCheckout(t.TempDir()).Declaration()
 	if err == nil || !strings.Contains(err.Error(), "locate .github/settings.yml: current directory is not in a Git repository") || !reflect.DeepEqual(got, settings.Declaration{}) {
 		t.Fatalf("declaration=%+v error=%v", got, err)
+	}
+}
+
+func TestCheckoutRepositoryIsolation(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GH_REPO", "unrelated/override")
+	var checkouts []Checkout
+	for _, name := range []string{"first", "second"} {
+		root := t.TempDir()
+		for _, args := range [][]string{
+			{"init", "--quiet", root},
+			{"-C", root, "remote", "add", "origin", "https://github.com/owner/" + name + ".git"},
+			{"-C", root, "config", "url.https://mirror.example/.insteadOf", "https://github.com/"},
+		} {
+			if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+				t.Fatalf("git: %v: %s", err, output)
+			}
+		}
+		nested := filepath.Join(root, "nested")
+		if err := os.Mkdir(nested, 0700); err != nil {
+			t.Fatal(err)
+		}
+		checkouts = append(checkouts, NewCheckout(nested))
+	}
+	t.Chdir(t.TempDir())
+	for _, index := range []int{0, 1, 0} {
+		want := repository.Repository{Host: "github.com", Owner: "owner", Name: []string{"first", "second"}[index]}
+		got, err := checkouts[index].Repository()
+		if err != nil || got != want {
+			t.Fatalf("repository=%+v error=%v, want %+v", got, err, want)
+		}
 	}
 }
