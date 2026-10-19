@@ -96,3 +96,49 @@ func compareObservedFields[S any, V bool | string](result *Comparison, fields []
 	}
 	return nil
 }
+
+// AllRepositoryFields requests every supported scalar in canonical order.
+func AllRepositoryFields() []FieldID {
+	fields := make([]FieldID, 0, RepositoryFieldCount())
+	fields = appendRepositoryFieldIDs(fields, repositoryStringFields[:])
+	fields = appendRepositoryFieldIDs(fields, repositoryBoolFields[:])
+	fields = appendRepositoryFieldIDs(fields, mergeMethodsBoolFields[:])
+	return appendRepositoryFieldIDs(fields, mergeMethodsStringFields[:])
+}
+
+func appendRepositoryFieldIDs[S any, V bool | string](identities []FieldID, fields []repositoryField[S, V]) []FieldID {
+	for _, field := range fields {
+		identities = append(identities, FieldID{path: field.name})
+	}
+	return identities
+}
+
+// Declaration returns all supported values only after every field was acquired.
+// Values are copied, preserving explicit false, empty strings and enum values.
+func (observation RepositoryObservation) Declaration() (RepositoryDeclaration, error) {
+	var result RepositoryDeclaration
+	if err := copyObservedFields(&result, repositoryStringFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
+	if err := copyObservedFields(&result, repositoryBoolFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
+	if err := copyObservedFields(&result, mergeMethodsBoolFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
+	if err := copyObservedFields(&result, mergeMethodsStringFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
+	return result, nil
+}
+
+func copyObservedFields[S any, V bool | string](result *RepositoryDeclaration, fields []repositoryField[S, V], observed RepositoryDeclaration) error {
+	for _, field := range fields {
+		value := field.desired(observed)
+		if value == nil {
+			return fmt.Errorf("repository observation is missing %s", field.name)
+		}
+		field.setDesired(result, *value)
+	}
+	return nil
+}

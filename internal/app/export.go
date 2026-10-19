@@ -19,16 +19,15 @@ func Export(checkout ExportCheckout, read Reader) error {
 	if err != nil {
 		return err
 	}
-	current, err := read.Repository(repo)
+	observed, err := read.ObserveRepository(repo, settings.AllRepositoryFields())
 	if err != nil {
 		return err
 	}
-	declaration := settings.Declaration{Repository: current.Declaration()}
-	methods, err := read.MergeMethods(repo)
+	repositoryDeclaration, err := observed.Declaration()
 	if err != nil {
 		return err
 	}
-	declaration.Repository = declaration.Repository.WithMergeMethods(methods)
+	declaration := settings.Declaration{Repository: repositoryDeclaration}
 	names, err := read.Topics(repo)
 	if err != nil {
 		return err
