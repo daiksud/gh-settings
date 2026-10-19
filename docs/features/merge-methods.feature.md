@@ -61,6 +61,8 @@ CLI and the same-version Actions report/Summary preserve native boolean before/a
 | Fixed GraphQL query/target, complete booleans, errors/partial data, exact PATCH | [GitHub adapter tests](../../internal/github/merge_methods_test.go) |
 | Conditional reads, direct apply, failed comparison/export preservation | [Application tests](../../internal/app/merge_methods_test.go) |
 | Native booleans, report validation and Summary rendering | [Actions tests](../../internal/actions/merge_methods_test.go) |
-| Built executable: read order, no extra read for apply, zero/null/missing values, export preservation, report and credential-free Summary | [Process acceptance](../../tests/acceptance/merge_methods_test.go) |
+| Built executable: read order, no extra read for apply, representative local validation failures, zero/null/missing response values, export preservation, report and credential-free Summary | [Process acceptance](../../tests/acceptance/merge_methods_test.go) |
+
+Input validation matrices stay at their owning layers. `TestMergeMethodBooleanCodec` in the workspace tests rejects null and wrong-typed values for all six merge-related booleans, including the former process cases `deletion invalid local` and `PR auto invalid local`. The process cases `invalid local` (plan with null) and `PR update invalid local` (apply with a quoted boolean) retain representative checks for nonzero exit status, diagnostics, zero API requests, and unchanged input bytes. The same process assertions cover the retained squash enum and message/title dependency failures described in the [squash test mapping](squash-commit-defaults.feature.md#test-mapping).
 
 Process fixtures admit only the exact merge-method query and containing repository variables as a read-only POST. Arbitrary GraphQL mutations or unexpected targets fail the fixture. Product tests use local API fixtures with dummy credentials and do not modify live repository policy.
