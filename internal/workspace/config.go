@@ -231,11 +231,8 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)
 		}
 	}
-	if repository.SquashMergeCommitMessage != nil && repository.SquashMergeCommitTitle == nil {
-		return settings.RepositoryDeclaration{}, fmt.Errorf("squash_merge_commit_message requires squash_merge_commit_title")
-	}
-	if repository.MergeCommitMessage != nil && repository.MergeCommitTitle == nil {
-		return settings.RepositoryDeclaration{}, fmt.Errorf("merge_commit_message requires merge_commit_title")
+	if err := repository.ValidateCommitDependencies(); err != nil {
+		return settings.RepositoryDeclaration{}, err
 	}
 	return repository, nil
 }
