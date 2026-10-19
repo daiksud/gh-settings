@@ -87,10 +87,11 @@ func TestReadLabelsCompleteEmptyObservation(t *testing.T) {
 
 func TestApplyLabelsExactPayloadsAndNames(t *testing.T) {
 	color, empty := "123456", ""
+	op := labelOperation(t)
 	for _, name := range []string{"area/docs", "a?b#c%", ".", "..", "✨ help wanted"} {
 		t.Run(name, func(t *testing.T) {
 			before := settings.LabelState{Name: name, Color: "abcdef", Description: "old"}
-			changes := []settings.LabelChange{{Operation: "update", Name: name, Before: &before, After: &settings.LabelDeclaration{Name: name, Description: &empty}}}
+			changes := labelSequence(t, op(settings.NewLabelUpdate(before, settings.LabelDeclaration{Name: name, Description: &empty})))
 			calls := 0
 			client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				calls++
@@ -114,11 +115,11 @@ func TestApplyLabelsExactPayloadsAndNames(t *testing.T) {
 			}
 		})
 	}
-	changes := []settings.LabelChange{
-		{Operation: "create", Name: "default", After: &settings.LabelDeclaration{Name: "default"}},
-		{Operation: "create", Name: "explicit", After: &settings.LabelDeclaration{Name: "explicit", Color: &color, Description: &empty}},
-		{Operation: "delete", Name: "old", Before: &settings.LabelState{Name: "old", Color: "abcdef", Description: "old"}},
-	}
+	changes := labelSequence(t,
+		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "default"})),
+		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "explicit", Color: &color, Description: &empty})),
+		op(settings.NewLabelDelete(settings.LabelState{Name: "old", Color: "abcdef", Description: "old"})),
+	)
 	calls := 0
 	client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 		calls++
@@ -149,21 +150,39 @@ func TestApplyLabelsExactPayloadsAndNames(t *testing.T) {
 	}
 }
 
-func TestApplyLabelsPrevalidationAndPartialFailure(t *testing.T) {
-	changes := []settings.LabelChange{
-		{Operation: "create", Name: "new", After: &settings.LabelDeclaration{Name: "new"}},
-		{Operation: "delete", Name: "old", Before: &settings.LabelState{Name: "old", Color: "abcdef", Description: ""}},
-	}
+func TestApplyLabelsPartialFailure(t *testing.T) {
+	op := labelOperation(t)
+	changes := labelSequence(t,
+		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "new"})),
+		op(settings.NewLabelDelete(settings.LabelState{Name: "old", Color: "abcdef", Description: ""})),
+	)
 	calls := 0
 	client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 		calls++
 		return labelsResponse(req, 403, `{"message":"denied"}`), nil
 	}))
-	invalid := append(append([]settings.LabelChange{}, changes...), settings.LabelChange{Operation: "rename", Name: "bad"})
-	if err := client.ApplyLabels(repository.Repository{}, invalid); err == nil || calls != 0 {
-		t.Fatalf("calls=%d err=%v", calls, err)
-	}
+
 	if err := client.ApplyLabels(repository.Repository{Owner: "owner", Name: "current"}, changes); err == nil || calls != 1 || !strings.Contains(err.Error(), "earlier successful writes remain applied") {
 		t.Fatalf("calls=%d err=%v", calls, err)
 	}
+}
+
+func labelOperation(t *testing.T) func(settings.LabelChange, error) settings.LabelChange {
+	t.Helper()
+	return func(change settings.LabelChange, err error) settings.LabelChange {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return change
+	}
+}
+
+func labelSequence(t *testing.T, changes ...settings.LabelChange) settings.LabelChanges {
+	t.Helper()
+	result, err := settings.NewLabelChanges(changes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }

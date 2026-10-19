@@ -58,33 +58,60 @@ func (change *LabelPlanChange) UnmarshalJSON(data []byte) error {
 }
 
 func labelPlanChange(change settings.LabelChange) LabelPlanChange {
-	result := LabelPlanChange{Operation: change.Operation, Name: change.Name}
-	if change.Before != nil {
-		color, description := change.Before.Color, change.Before.Description
+	result := LabelPlanChange{Operation: change.Operation(), Name: change.Name()}
+	before := func(value settings.LabelState) {
+		color, description := value.Color, value.Description
 		result.Before = &LabelAttributes{Color: &color, Description: &description}
 	}
-	if change.After != nil {
-		result.After = &LabelAttributes{Color: change.After.Color, Description: change.After.Description}
+	after := func(value settings.LabelDeclaration) {
+		result.After = &LabelAttributes{Color: value.Color, Description: value.Description}
 	}
+	change.Visit(after, func(prior settings.LabelState, declared settings.LabelDeclaration) { before(prior); after(declared) }, before)
 	return result
 }
 
 func validateLabelReport(changes []LabelPlanChange) error {
 	native := make([]settings.LabelChange, 0, len(changes))
 	for _, change := range changes {
-		value := settings.LabelChange{Operation: change.Operation, Name: change.Name}
+		var before settings.LabelState
+		var after settings.LabelDeclaration
 		if change.Before != nil {
 			if change.Before.Color == nil || change.Before.Description == nil {
 				return fmt.Errorf("incomplete label before value")
 			}
-			value.Before = &settings.LabelState{Name: change.Name, Color: *change.Before.Color, Description: *change.Before.Description}
+			before = settings.LabelState{Name: change.Name, Color: *change.Before.Color, Description: *change.Before.Description}
 		}
 		if change.After != nil {
-			value.After = &settings.LabelDeclaration{Name: change.Name, Color: change.After.Color, Description: change.After.Description}
+			after = settings.LabelDeclaration{Name: change.Name, Color: change.After.Color, Description: change.After.Description}
+		}
+		var value settings.LabelChange
+		var err error
+		switch change.Operation {
+		case "create":
+			if change.Before != nil || change.After == nil {
+				return fmt.Errorf("invalid %q label operation", change.Operation)
+			}
+			value, err = settings.NewLabelCreate(after)
+		case "update":
+			if change.Before == nil || change.After == nil {
+				return fmt.Errorf("invalid %q label operation", change.Operation)
+			}
+			value, err = settings.NewLabelUpdate(before, after)
+		case "delete":
+			if change.Before == nil || change.After != nil {
+				return fmt.Errorf("invalid %q label operation", change.Operation)
+			}
+			value, err = settings.NewLabelDelete(before)
+		default:
+			return fmt.Errorf("invalid %q label operation", change.Operation)
+		}
+		if err != nil {
+			return err
 		}
 		native = append(native, value)
 	}
-	return settings.ValidateLabelChanges(native)
+	_, err := settings.NewLabelChanges(native)
+	return err
 }
 
 func labelSummaryLine(change LabelPlanChange) string {

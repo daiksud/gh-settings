@@ -13,7 +13,7 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	var output strings.Builder
 	if comparison.Managed == 0 {
 		output.WriteString("No managed repository settings.\n")
-	} else if len(comparison.Changes) == 0 && len(comparison.Labels) == 0 {
+	} else if len(comparison.Changes) == 0 && comparison.Labels.Len() == 0 {
 		output.WriteString("No differences for managed repository settings.\n")
 	} else {
 		for _, change := range comparison.Changes {
@@ -26,7 +26,7 @@ func RenderComparison(comparison settings.Comparison) []byte {
 				func(before, after []string) { line(topicsValue(before), topicsValue(after)) },
 			)
 		}
-		for _, change := range comparison.Labels {
+		for _, change := range comparison.Labels.Values() {
 			fmt.Fprintln(&output, labelLine(change))
 		}
 	}

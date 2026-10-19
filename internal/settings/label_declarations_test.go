@@ -25,12 +25,12 @@ func TestLabelDeclarationsOwnValues(t *testing.T) {
 	*values[0].Color, *values[0].Description, values[0].Name = "bad", "changed", ""
 	values[1] = LabelDeclaration{}
 	comparison, err := CompareLabels(labelObservation(t), &declarations)
-	if err != nil || len(comparison.Labels) != 2 {
+	if err != nil || comparison.Labels.Len() != 2 {
 		t.Fatalf("comparison=%+v error=%v", comparison, err)
 	}
-	*comparison.Labels[0].After.Color = "bad"
-	*comparison.Labels[0].After.Description = "changed"
-	comparison.Labels[0].After.Name = ""
+	comparison.Labels.Values()[0].Visit(func(after LabelDeclaration) {
+		*after.Color, *after.Description, after.Name = "bad", "changed", ""
+	}, nil, nil)
 	if !reflect.DeepEqual(declarations.Values(), want) {
 		t.Fatal("retrieved values or comparison mutated declarations")
 	}
@@ -43,7 +43,7 @@ func TestLabelDeclarationsEmpty(t *testing.T) {
 			t.Fatalf("declarations=%+v error=%v", declarations, err)
 		}
 		comparison, err := CompareLabels(labelObservation(t), &declarations)
-		if err != nil || comparison.Managed != 1 || len(comparison.Labels) != 0 {
+		if err != nil || comparison.Managed != 1 || comparison.Labels.Len() != 0 {
 			t.Fatalf("comparison=%+v error=%v", comparison, err)
 		}
 	}

@@ -58,7 +58,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	if result.Comparison.Managed > 0 {
 		report.Target = result.Target.Owner + "/" + result.Target.Name
 		report.Outcome = "changed"
-		if len(result.Comparison.Changes) == 0 && len(result.Comparison.Labels) == 0 {
+		if len(result.Comparison.Changes) == 0 && result.Comparison.Labels.Len() == 0 {
 			report.Outcome = "no-difference"
 		}
 	}
@@ -71,7 +71,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		)
 		report.Changes = append(report.Changes, entry)
 	}
-	for _, change := range result.Comparison.Labels {
+	for _, change := range result.Comparison.Labels.Values() {
 		report.Labels = append(report.Labels, labelPlanChange(change))
 	}
 	data, err := json.Marshal(report)

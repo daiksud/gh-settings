@@ -17,11 +17,12 @@ import (
 
 func TestLabelPlanReportAndSummary(t *testing.T) {
 	empty := ""
-	changes := []settings.LabelChange{
-		{Operation: "create", Name: "<new>", After: &settings.LabelDeclaration{Name: "<new>"}},
-		{Operation: "update", Name: "existing", Before: &settings.LabelState{Name: "existing", Color: "abcdef", Description: "old"}, After: &settings.LabelDeclaration{Name: "existing", Description: &empty}},
-		{Operation: "delete", Name: "old", Before: &settings.LabelState{Name: "old", Color: "abcdef", Description: "</pre><script>"}},
-	}
+	op := labelOperation(t)
+	changes := labelSequence(t,
+		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "<new>"})),
+		op(settings.NewLabelUpdate(settings.LabelState{Name: "existing", Color: "abcdef", Description: "old"}, settings.LabelDeclaration{Name: "existing", Description: &empty})),
+		op(settings.NewLabelDelete(settings.LabelState{Name: "old", Color: "abcdef", Description: "</pre><script>"})),
+	)
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
@@ -55,7 +56,18 @@ func TestLabelPlanReportAndSummary(t *testing.T) {
 
 func TestLabelMalformedReportsPreserveSummary(t *testing.T) {
 	for _, labels := range []string{
+		`[null]`,
+		`[{}]`,
 		`[{"operation":"rename","name":"a","after":{}}]`,
+		`[{"operation":"create","name":"a"}]`,
+		`[{"operation":"create","name":"a","after":null}]`,
+		`[{"operation":"create","name":"a","before":{"color":"abcdef","description":""},"after":{}}]`,
+		`[{"operation":"delete","name":"a"}]`,
+		`[{"operation":"delete","name":"a","before":{"color":"ABCDEF","description":""}}]`,
+		`[{"operation":"delete","name":"a","before":{"color":"abcdef","description":""},"after":{}}]`,
+		`[{"operation":"update","name":"a","after":{"description":"new"}}]`,
+		`[{"operation":"update","name":"a","before":{"color":"abcdef","description":"old"}}]`,
+		`[{"operation":"update","name":"a","before":{"color":"abcdef","description":"old"},"after":{}}]`,
 		`[{"operation":"create","name":"a","after":{"color":null}}]`,
 		`[{"operation":"create","name":"a","after":{"description":null}}]`,
 		`[{"operation":"create","name":"a","after":{"color":123456}}]`,
@@ -86,4 +98,24 @@ func TestLabelMalformedReportsPreserveSummary(t *testing.T) {
 			}
 		})
 	}
+}
+
+func labelOperation(t *testing.T) func(settings.LabelChange, error) settings.LabelChange {
+	t.Helper()
+	return func(change settings.LabelChange, err error) settings.LabelChange {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return change
+	}
+}
+
+func labelSequence(t *testing.T, changes ...settings.LabelChange) settings.LabelChanges {
+	t.Helper()
+	result, err := settings.NewLabelChanges(changes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }

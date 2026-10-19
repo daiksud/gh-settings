@@ -59,6 +59,7 @@ Credentials and caller permissions remain the owner's responsibility. This sourc
 | Identity, validation, omission, attribute presence, stable reconciliation | [Settings model tests](../../internal/settings/labels_test.go) |
 | Validated declaration ownership, independent retrieved values and operations | [Declaration collection tests](../../internal/settings/label_declarations_test.go) |
 | Completed observation ownership, invalid state, missing versus empty read | [Observation collection tests](../../internal/settings/label_observation_test.go) |
+| Closed operations, canonical attributes, unique sequence and independent visitor values | [Operation model tests](../../internal/settings/label_operations_test.go) |
 | Strict schema, aliases/merges, null rejection, stable serialization | [Workspace codec tests](../../internal/workspace/labels_test.go) |
 | Pagination/completeness, exact payloads, escaped paths, failure stop | [GitHub adapter tests](../../internal/github/labels_test.go) |
 | Fresh read, conditional resources, sequencing and partial failures | [Application tests](../../internal/app/labels_test.go) |

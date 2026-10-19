@@ -75,7 +75,7 @@ func readLabelsForApply(repo repository.Repository) (settings.LabelObservation, 
 	}
 	return client.ReadLabels(repo)
 }
-func writeLabels(repo repository.Repository, changes []settings.LabelChange) error {
+func writeLabels(repo repository.Repository, changes settings.LabelChanges) error {
 	client, err := github.NewWriteClient(repo.Host)
 	if err != nil {
 		return err

@@ -43,7 +43,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		if err != nil {
 			return ApplyResult{}, fmt.Errorf("compare labels for apply (earlier resource writes remain applied): %w", err)
 		}
-		if len(comparison.Labels) > 0 {
+		if comparison.Labels.Len() > 0 {
 			if err := write.Labels(repo, comparison.Labels); err != nil {
 				return ApplyResult{}, err
 			}

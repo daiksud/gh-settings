@@ -17,5 +17,5 @@ type Writer struct {
 	Repository func(repository.Repository, settings.RepositoryDeclaration) error
 	Topics     func(repository.Repository, settings.TopicsDeclaration) error
 	ReadLabels func(repository.Repository) (settings.LabelObservation, error)
-	Labels     func(repository.Repository, []settings.LabelChange) error
+	Labels     func(repository.Repository, settings.LabelChanges) error
 }
