@@ -41,29 +41,25 @@ func (d LabelDeclarations) Values() []LabelDeclaration { return copyLabelDeclara
 func copyLabelDeclarations(labels []LabelDeclaration) []LabelDeclaration {
 	result := make([]LabelDeclaration, len(labels))
 	for i, label := range labels {
-		if label.Color != nil {
-			color := *label.Color
-			label.Color = &color
-		}
-		if label.Description != nil {
-			description := *label.Description
-			label.Description = &description
-		}
-		result[i] = label
+		result[i] = copyLabelDeclaration(label)
 	}
 	return result
 }
 
+func copyLabelDeclaration(label LabelDeclaration) LabelDeclaration {
+	if label.Color != nil {
+		color := *label.Color
+		label.Color = &color
+	}
+	if label.Description != nil {
+		description := *label.Description
+		label.Description = &description
+	}
+	return label
+}
+
 // LabelState is the complete writable subset observed from GitHub.
 type LabelState struct{ Name, Color, Description string }
-
-// LabelChange describes a fresh collection operation, never a saved apply input.
-type LabelChange struct {
-	Operation string
-	Name      string
-	Before    *LabelState
-	After     *LabelDeclaration
-}
 
 // LabelIdentity uses Unicode simple case folding without trimming or renaming.
 func LabelIdentity(name string) string {
@@ -152,12 +148,13 @@ func CompareLabels(current LabelObservation, desired *LabelDeclarations) (Compar
 		observed[LabelIdentity(label.Name)] = label
 	}
 	result := Comparison{Managed: 1}
+	var changes []LabelChange
 	for _, declared := range SortedLabels(desired.Values()) {
 		key := LabelIdentity(declared.Name)
 		before, present := observed[key]
 		if !present {
 			after := declared
-			result.Labels = append(result.Labels, LabelChange{Operation: "create", Name: declared.Name, After: &after})
+			changes = append(changes, LabelChange{operation: labelCreate{after: after}})
 			continue
 		}
 		delete(observed, key)
@@ -169,7 +166,7 @@ func CompareLabels(current LabelObservation, desired *LabelDeclarations) (Compar
 			after.Description = declared.Description
 		}
 		if after.Color != nil || after.Description != nil {
-			result.Labels = append(result.Labels, LabelChange{Operation: "update", Name: before.Name, Before: &before, After: &after})
+			changes = append(changes, LabelChange{operation: labelUpdate{before: before, after: after}})
 		}
 	}
 	remaining := make([]LabelState, 0, len(observed))
@@ -179,59 +176,8 @@ func CompareLabels(current LabelObservation, desired *LabelDeclarations) (Compar
 	slices.SortFunc(remaining, func(a, b LabelState) int { return strings.Compare(LabelIdentity(a.Name), LabelIdentity(b.Name)) })
 	for _, label := range remaining {
 		before := label
-		result.Labels = append(result.Labels, LabelChange{Operation: "delete", Name: label.Name, Before: &before})
+		changes = append(changes, LabelChange{operation: labelDelete{before: before}})
 	}
+	result.Labels = LabelChanges{entries: changes}
 	return result, nil
-}
-
-// ValidateLabelChanges checks typed operation values at write/report boundaries.
-func ValidateLabelChanges(changes []LabelChange) error {
-	seen := make(map[string]bool, len(changes))
-	for _, change := range changes {
-		if err := ValidateLabelName(change.Name); err != nil {
-			return err
-		}
-		key := LabelIdentity(change.Name)
-		if seen[key] {
-			return fmt.Errorf("duplicate label operation %q", change.Name)
-		}
-		seen[key] = true
-		if change.Before != nil {
-			before := change.Before
-			if before.Name != change.Name || before.Color != strings.ToLower(before.Color) {
-				return fmt.Errorf("invalid label before value")
-			}
-			if err := ValidateLabels([]LabelDeclaration{{Name: before.Name, Color: &before.Color, Description: &before.Description}}); err != nil {
-				return err
-			}
-		}
-		if change.After != nil {
-			if change.After.Name != change.Name {
-				return fmt.Errorf("label operation cannot rename")
-			}
-			if err := ValidateLabels([]LabelDeclaration{*change.After}); err != nil {
-				return err
-			}
-			if change.After.Color != nil && *change.After.Color != strings.ToLower(*change.After.Color) {
-				return fmt.Errorf("invalid label after color")
-			}
-		}
-		valid := false
-		switch change.Operation {
-		case "create":
-			valid = change.Before == nil && change.After != nil
-		case "delete":
-			valid = change.Before != nil && change.After == nil
-		case "update":
-			valid = change.Before != nil && change.After != nil
-			if valid {
-				a, b := change.After, change.Before
-				valid = (a.Color != nil || a.Description != nil) && (a.Color == nil || *a.Color != b.Color) && (a.Description == nil || *a.Description != b.Description)
-			}
-		}
-		if !valid {
-			return fmt.Errorf("invalid %q label operation", change.Operation)
-		}
-	}
-	return nil
 }

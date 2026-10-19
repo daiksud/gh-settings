@@ -70,39 +70,37 @@ func labelPath(repo repository.Repository, name string) string {
 }
 
 // ApplyLabels executes only a fresh, typed comparison in its existing stable order.
-func (client *Client) ApplyLabels(repo repository.Repository, changes []settings.LabelChange) error {
-	if err := settings.ValidateLabelChanges(changes); err != nil {
-		return err
-	}
-	for _, change := range changes {
+func (client *Client) ApplyLabels(repo repository.Repository, changes settings.LabelChanges) error {
+	for _, change := range changes.Values() {
 		var err error
-		switch change.Operation {
-		case "create":
+		change.Visit(func(after settings.LabelDeclaration) {
 			payload := struct {
 				Name        string  `json:"name"`
 				Color       *string `json:"color,omitempty"`
 				Description *string `json:"description,omitempty"`
-			}{change.Name, change.After.Color, change.After.Description}
+			}{after.Name, after.Color, after.Description}
 			body, encodeErr := json.Marshal(payload)
 			if encodeErr != nil {
-				return encodeErr
+				err = encodeErr
+				return
 			}
 			err = client.rest.Post("repos/"+repo.Owner+"/"+repo.Name+"/labels", bytes.NewReader(body), nil)
-		case "update":
+		}, func(before settings.LabelState, after settings.LabelDeclaration) {
 			payload := struct {
 				Color       *string `json:"color,omitempty"`
 				Description *string `json:"description,omitempty"`
-			}{change.After.Color, change.After.Description}
+			}{after.Color, after.Description}
 			body, encodeErr := json.Marshal(payload)
 			if encodeErr != nil {
-				return encodeErr
+				err = encodeErr
+				return
 			}
-			err = client.rest.Patch(labelPath(repo, change.Name), bytes.NewReader(body), nil)
-		case "delete":
-			err = client.rest.Delete(labelPath(repo, change.Name), nil)
-		}
+			err = client.rest.Patch(labelPath(repo, before.Name), bytes.NewReader(body), nil)
+		}, func(before settings.LabelState) {
+			err = client.rest.Delete(labelPath(repo, before.Name), nil)
+		})
 		if err != nil {
-			return fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation, change.Name, err)
+			return fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 		}
 	}
 	return nil

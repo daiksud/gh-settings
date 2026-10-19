@@ -23,11 +23,11 @@ func TestLabelsPlanAndApplyEmptyListDeletesAll(t *testing.T) {
 		return settings.NewLabelObservation(state)
 	}
 	plan, err := Plan(checkoutDeclaration, checkoutRepository, Reader{Labels: read})
-	if err != nil || plan.Comparison.Managed != 1 || len(plan.Comparison.Labels) != 1 || plan.Comparison.Labels[0].Operation != "delete" {
+	if err != nil || plan.Comparison.Managed != 1 || plan.Comparison.Labels.Len() != 1 || plan.Comparison.Labels.Values()[0].Operation() != "delete" {
 		t.Fatalf("plan=%+v err=%v", plan, err)
 	}
 	calls := 0
-	applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{ReadLabels: read, Labels: func(repo repository.Repository, changes []settings.LabelChange) error {
+	applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{ReadLabels: read, Labels: func(repo repository.Repository, changes settings.LabelChanges) error {
 		calls++
 		if repo != target || !reflect.DeepEqual(changes, plan.Comparison.Labels) {
 			t.Fatalf("changes=%+v", changes)
@@ -122,8 +122,8 @@ func TestLabelsMixedApplyFailureOrder(t *testing.T) {
 					}
 					return settings.NewLabelObservation([]settings.LabelState{{Name: "old", Color: "abcdef"}})
 				},
-				Labels: func(repo repository.Repository, changes []settings.LabelChange) error {
-					if len(changes) != 1 || changes[0].Operation != "delete" || changes[0].Name != "old" {
+				Labels: func(repo repository.Repository, changes settings.LabelChanges) error {
+					if changes.Len() != 1 || changes.Values()[0].Operation() != "delete" || changes.Values()[0].Name() != "old" {
 						t.Fatalf("changes=%+v", changes)
 					}
 					return step("labels-write", repo)
@@ -163,7 +163,7 @@ func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
 			},
 		})
 		var failure *PlanError
-		if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target.Owner != "owner" || result.Comparison.Managed != 0 || len(result.Comparison.Changes) != 0 || len(result.Comparison.Labels) != 0 {
+		if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target.Owner != "owner" || result.Comparison.Managed != 0 || len(result.Comparison.Changes) != 0 || result.Comparison.Labels.Len() != 0 {
 			t.Fatalf("result=%+v error=%v", result, err)
 		}
 	}
@@ -185,7 +185,7 @@ func TestMissingLabelObservationPreventsExportAndApplyWrites(t *testing.T) {
 	}
 	result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{
 		ReadLabels: missing,
-		Labels: func(repository.Repository, []settings.LabelChange) error {
+		Labels: func(repository.Repository, settings.LabelChanges) error {
 			t.Fatal("label writes after missing observation")
 			return nil
 		},

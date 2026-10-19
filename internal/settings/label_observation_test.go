@@ -61,7 +61,7 @@ func TestLabelObservationDistinguishesMissingAndCompleteEmpty(t *testing.T) {
 			t.Fatalf("complete empty observation=%+v error=%v", values, err)
 		}
 		comparison, err := CompareLabels(observed, labelList(t))
-		if err != nil || comparison.Managed != 1 || len(comparison.Labels) != 0 {
+		if err != nil || comparison.Managed != 1 || comparison.Labels.Len() != 0 {
 			t.Fatalf("comparison=%+v error=%v", comparison, err)
 		}
 	}

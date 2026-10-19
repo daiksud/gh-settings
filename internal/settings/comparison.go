@@ -4,7 +4,7 @@ package settings
 type Comparison struct {
 	Managed int
 	Changes []Change
-	Labels  []LabelChange
+	Labels  LabelChanges
 }
 
 // Change contains a supported field identifier and a matching typed value pair.

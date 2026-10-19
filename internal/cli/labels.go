@@ -8,30 +8,27 @@ import (
 )
 
 func labelLine(change settings.LabelChange) string {
-	prefix := fmt.Sprintf("settings.labels: %s %q", change.Operation, change.Name)
-	switch change.Operation {
-	case "delete":
-		return prefix + " (removes issue/PR associations)"
-	case "create":
+	prefix := fmt.Sprintf("settings.labels: %s %q", change.Operation(), change.Name())
+	change.Visit(func(after settings.LabelDeclaration) {
 		var attributes []string
-		if change.After.Color != nil {
-			attributes = append(attributes, fmt.Sprintf("color=%q", *change.After.Color))
+		if after.Color != nil {
+			attributes = append(attributes, fmt.Sprintf("color=%q", *after.Color))
 		}
-		if change.After.Description != nil {
-			attributes = append(attributes, fmt.Sprintf("description=%q", *change.After.Description))
+		if after.Description != nil {
+			attributes = append(attributes, fmt.Sprintf("description=%q", *after.Description))
 		}
 		if len(attributes) > 0 {
 			prefix += " " + strings.Join(attributes, " ")
 		}
-	case "update":
+	}, func(before settings.LabelState, after settings.LabelDeclaration) {
 		var attributes []string
-		if change.After.Color != nil {
-			attributes = append(attributes, fmt.Sprintf("color: %q → %q", change.Before.Color, *change.After.Color))
+		if after.Color != nil {
+			attributes = append(attributes, fmt.Sprintf("color: %q → %q", before.Color, *after.Color))
 		}
-		if change.After.Description != nil {
-			attributes = append(attributes, fmt.Sprintf("description: %q → %q", change.Before.Description, *change.After.Description))
+		if after.Description != nil {
+			attributes = append(attributes, fmt.Sprintf("description: %q → %q", before.Description, *after.Description))
 		}
 		prefix += " " + strings.Join(attributes, ", ")
-	}
+	}, func(settings.LabelState) { prefix += " (removes issue/PR associations)" })
 	return prefix
 }
