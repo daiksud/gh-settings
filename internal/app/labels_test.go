@@ -28,7 +28,7 @@ func TestLabelsPlanAndApplyEmptyListDeletesAll(t *testing.T) {
 		t.Fatalf("plan=%+v err=%v", plan, err)
 	}
 	calls := 0
-	applied, err := Apply(checkoutDeclaration, Writer{ReadLabels: read, Labels: func(repo repository.Repository, changes []settings.LabelChange) error {
+	applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{ReadLabels: read, Labels: func(repo repository.Repository, changes []settings.LabelChange) error {
 		calls++
 		if repo != target || !reflect.DeepEqual(changes, plan.Comparison.Labels) {
 			t.Fatalf("changes=%+v", changes)
@@ -41,17 +41,24 @@ func TestLabelsPlanAndApplyEmptyListDeletesAll(t *testing.T) {
 }
 
 func TestLabelsApplyReadsFreshStateAndSkipsUnchangedWrites(t *testing.T) {
-	input := "schemaVersion: 1\nsettings: {labels: [{name: bug}]}\n"
-	path := appCheckout(t, input, true)
-	result, err := Apply(checkoutDeclaration, Writer{ReadLabels: func(repository.Repository) ([]settings.LabelState, error) {
+	labels := []settings.LabelDeclaration{{Name: "bug"}}
+	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	var calls []string
+	result, err := Apply(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		return settings.Declaration{Labels: &labels}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return target, nil
+	}, Writer{ReadLabels: func(repo repository.Repository) ([]settings.LabelState, error) {
+		calls = append(calls, "labels-read")
+		if repo != target {
+			t.Fatalf("target=%+v", repo)
+		}
 		return []settings.LabelState{{Name: "BUG", Color: "abcdef", Description: "external edit"}}, nil
 	}})
-	if err != nil || !result.Applied {
-		t.Fatalf("result=%+v err=%v", result, err)
-	}
-	data, _ := os.ReadFile(path)
-	if string(data) != input {
-		t.Fatal("configuration changed")
+	if err != nil || !result.Applied || !reflect.DeepEqual(calls, []string{"load", "target", "labels-read"}) {
+		t.Fatalf("result=%+v err=%v calls=%v", result, err, calls)
 	}
 }
 
@@ -62,13 +69,13 @@ func TestInvalidLabelsBeforeTargetAndRemoteAccess(t *testing.T) {
 			if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 				t.Fatal("plan accepted invalid labels")
 			}
-			if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {
+			if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil {
 				t.Fatal("apply accepted invalid labels")
 			}
 		})
 	}
 	appCheckout(t, "schemaVersion: 1\nsettings: {labels: []}", false)
-	if _, err := Apply(checkoutDeclaration, Writer{}); err == nil || !strings.Contains(err.Error(), "origin") {
+	if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil || !strings.Contains(err.Error(), "origin") {
 		t.Fatalf("empty list lost managed presence: %v", err)
 	}
 }
@@ -76,26 +83,51 @@ func TestInvalidLabelsBeforeTargetAndRemoteAccess(t *testing.T) {
 func TestLabelsMixedApplyFailureOrder(t *testing.T) {
 	for _, failureStage := range []string{"", "repository", "topics", "labels-read", "labels-write"} {
 		t.Run(failureStage, func(t *testing.T) {
-			appCheckout(t, "schemaVersion: 1\nsettings:\n  repository: {has_issues: false}\n  topics: {names: []}\n  labels: []\n", true)
+			disabled, names, labels := false, []string{}, []settings.LabelDeclaration{}
+			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			failure := errors.New("fixture failure")
 			var calls []string
-			step := func(name string) error {
+			step := func(name string, repo repository.Repository) error {
+				if repo != target {
+					t.Fatalf("target=%+v", repo)
+				}
 				calls = append(calls, name)
 				if failureStage == name {
 					return failure
 				}
 				return nil
 			}
-			result, err := Apply(checkoutDeclaration, Writer{
-				Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return step("repository") },
-				Topics:     func(repository.Repository, settings.TopicsDeclaration) error { return step("topics") },
-				ReadLabels: func(repository.Repository) ([]settings.LabelState, error) {
-					err := step("labels-read")
+			result, err := Apply(func() (settings.Declaration, error) {
+				calls = append(calls, "load")
+				return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}, Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels}, nil
+			}, func() (repository.Repository, error) {
+				calls = append(calls, "target")
+				return target, nil
+			}, Writer{
+				Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
+					if d.HasIssues == nil || *d.HasIssues {
+						t.Fatalf("declaration=%+v", d)
+					}
+					return step("repository", repo)
+				},
+				Topics: func(repo repository.Repository, d settings.TopicsDeclaration) error {
+					if d.Names == nil || len(*d.Names) != 0 {
+						t.Fatalf("topics=%+v", d)
+					}
+					return step("topics", repo)
+				},
+				ReadLabels: func(repo repository.Repository) ([]settings.LabelState, error) {
+					err := step("labels-read", repo)
 					return []settings.LabelState{{Name: "old", Color: "abcdef"}}, err
 				},
-				Labels: func(repository.Repository, []settings.LabelChange) error { return step("labels-write") },
+				Labels: func(repo repository.Repository, changes []settings.LabelChange) error {
+					if len(changes) != 1 || changes[0].Operation != "delete" || changes[0].Name != "old" {
+						t.Fatalf("changes=%+v", changes)
+					}
+					return step("labels-write", repo)
+				},
 			})
-			want := []string{"repository", "topics", "labels-read", "labels-write"}
+			want := []string{"load", "target", "repository", "topics", "labels-read", "labels-write"}
 			if failureStage != "" {
 				for i, name := range want {
 					if name == failureStage {

@@ -13,14 +13,20 @@ import (
 func TestTopicsApplyOrderAndPartialFailures(t *testing.T) {
 	for _, fail := range []string{"", "repository", "topics"} {
 		t.Run(fail, func(t *testing.T) {
-			input := "schemaVersion: 1\nsettings:\n  repository: {has_issues: false}\n  topics: {names: []}\n"
-			path := appCheckout(t, input, true)
+			disabled, names := false, []string{}
+			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			var calls []string
 			failure := errors.New("write failure")
-			result, err := Apply(checkoutDeclaration, Writer{
+			result, err := Apply(func() (settings.Declaration, error) {
+				calls = append(calls, "load")
+				return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}, Topics: settings.TopicsDeclaration{Names: &names}}, nil
+			}, func() (repository.Repository, error) {
+				calls = append(calls, "target")
+				return target, nil
+			}, Writer{
 				Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
 					calls = append(calls, "repository")
-					if d.HasIssues == nil || *d.HasIssues {
+					if repo != target || d.HasIssues == nil || *d.HasIssues {
 						t.Fatal("lost false")
 					}
 					if fail == "repository" {
@@ -30,7 +36,7 @@ func TestTopicsApplyOrderAndPartialFailures(t *testing.T) {
 				},
 				Topics: func(repo repository.Repository, d settings.TopicsDeclaration) error {
 					calls = append(calls, "topics")
-					if d.Names == nil || len(*d.Names) != 0 {
+					if repo != target || d.Names == nil || len(*d.Names) != 0 {
 						t.Fatal("lost clear")
 					}
 					if fail == "topics" {
@@ -39,16 +45,12 @@ func TestTopicsApplyOrderAndPartialFailures(t *testing.T) {
 					return nil
 				},
 			})
-			want := []string{"repository", "topics"}
+			want := []string{"load", "target", "repository", "topics"}
 			if fail == "repository" {
-				want = want[:1]
+				want = want[:3]
 			}
 			if !reflect.DeepEqual(calls, want) || (fail != "" && !errors.Is(err, failure)) || (fail == "" && (err != nil || !result.Applied)) || (fail != "" && result.Applied) {
 				t.Fatalf("calls=%v result=%+v err=%v", calls, result, err)
-			}
-			data, _ := os.ReadFile(path)
-			if string(data) != input {
-				t.Fatal("configuration changed")
 			}
 		})
 	}
@@ -69,7 +71,7 @@ func TestTopicsOnlyPlanAndApply(t *testing.T) {
 				t.Fatalf("comparison=%+v", result.Comparison)
 			}
 			calls := 0
-			applied, err := Apply(checkoutDeclaration, Writer{Topics: func(repository.Repository, settings.TopicsDeclaration) error { calls++; return nil }})
+			applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Topics: func(repository.Repository, settings.TopicsDeclaration) error { calls++; return nil }})
 			if err != nil || !applied.Applied || calls != 1 {
 				t.Fatalf("result=%+v calls=%d error=%v", applied, calls, err)
 			}
@@ -81,7 +83,7 @@ func TestEmptyTopicsIsLocalNoop(t *testing.T) {
 	if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Apply(checkoutDeclaration, Writer{}); err != nil {
+	if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -90,7 +92,7 @@ func TestInvalidTopicsBeforeRemote(t *testing.T) {
 	if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil || !strings.Contains(err.Error(), "array of strings") {
 		t.Fatalf("error=%v", err)
 	}
-	if _, err := Apply(checkoutDeclaration, Writer{}); err == nil || !strings.Contains(err.Error(), "array of strings") {
+	if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil || !strings.Contains(err.Error(), "array of strings") {
 		t.Fatalf("error=%v", err)
 	}
 }

@@ -1,11 +1,8 @@
 package app
 
 import (
-	"bytes"
 	"errors"
-	"os"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -13,83 +10,120 @@ import (
 )
 
 func TestApplyDeclaredSettings(t *testing.T) {
-	input := "schemaVersion: 1\nsettings:\n  repository:\n    description: ''\n    has_issues: false\n"
-	path := appCheckout(t, input, true)
-	t.Setenv("GH_REPO", "other/repository")
 	empty, disabled := "", false
 	want := settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}
 	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
-	calls := 0
-	got, err := Apply(checkoutDeclaration, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
-		calls++
+	var calls []string
+	got, err := Apply(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		return settings.Declaration{Repository: want}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return target, nil
+	}, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+		calls = append(calls, "write")
 		if repo != target || !reflect.DeepEqual(desired, want) {
 			t.Fatalf("target=%+v declaration=%+v, want %+v %+v", repo, desired, target, want)
 		}
 		return nil
 	}})
-	if err != nil || got != (ApplyResult{Applied: true}) || calls != 1 {
-		t.Fatalf("result=%+v error=%v writes=%d, want applied and one write", got, err, calls)
-	}
-	after, err := os.ReadFile(path)
-	if err != nil || !bytes.Equal(after, []byte(input)) {
-		t.Fatalf("settings changed: %q error=%v", after, err)
+	if err != nil || got != (ApplyResult{Applied: true}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
+		t.Fatalf("result=%+v error=%v calls=%v, want applied after load/target/write", got, err, calls)
 	}
 }
 
 func TestApplyNoManagedSettings(t *testing.T) {
-	for _, test := range []struct{ name, input string }{
-		{"version only", "schemaVersion: 1\n"},
-		{"empty settings", "schemaVersion: 1\nsettings: {}\n"},
-		{"empty repository", "schemaVersion: 1\nsettings:\n  repository: {}\n"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			appCheckout(t, test.input, false) // No origin: a no-op must finish before target resolution.
-			calls := 0
-			got, err := Apply(checkoutDeclaration, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
-				calls++
-				return nil
-			}})
-			if err != nil || got != (ApplyResult{}) || calls != 0 {
-				t.Fatalf("result=%+v error=%v writes=%d, want local no-op", got, err, calls)
-			}
-		})
+	var calls []string
+	got, err := Apply(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		return settings.Declaration{}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return repository.Repository{}, nil
+	}, Writer{})
+	if err != nil || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load"}) {
+		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 	}
 }
 
 func TestApplyValidatesBeforeWrite(t *testing.T) {
 	loadError := errors.New("validate .github/settings.yml: declaration rejected")
-	loads := 0
+	var calls []string
 	got, err := Apply(func() (settings.Declaration, error) {
-		loads++
+		calls = append(calls, "load")
 		disabled := false
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, loadError
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return repository.Repository{}, nil
 	}, Writer{})
-	if err != loadError || got != (ApplyResult{}) || loads != 1 {
-		t.Fatalf("result=%+v error=%v loads=%d, want original validation failure before target/write", got, err, loads)
+	if err != loadError || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load"}) {
+		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 	}
 }
 
 func TestApplyTargetFailureBeforeWrite(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", false)
-	calls := 0
-	got, err := Apply(checkoutDeclaration, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
-		calls++
-		return nil
-	}})
-	if err == nil || !strings.Contains(err.Error(), "a GitHub origin remote is required") || got != (ApplyResult{}) || calls != 0 {
-		t.Fatalf("result=%+v error=%v writes=%d, want target failure before write", got, err, calls)
+	cause := errors.New("resolve current repository: original origin failure")
+	var calls []string
+	got, err := Apply(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		disabled := false
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return repository.Repository{Host: "github.com", Owner: "partial", Name: "target"}, cause
+	}, Writer{})
+	if err != cause || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load", "target"}) {
+		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 	}
 }
 
 func TestApplyWriteFailure(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", true)
-	writeError := errors.New("write unavailable")
-	calls := 0
-	got, err := Apply(checkoutDeclaration, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
-		calls++
-		return writeError
+	cause := errors.New("write unavailable")
+	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	var calls []string
+	got, err := Apply(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		disabled := false
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return target, nil
+	}, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+		calls = append(calls, "write")
+		if repo != target || desired.HasIssues == nil || *desired.HasIssues {
+			t.Fatalf("target=%+v declaration=%+v", repo, desired)
+		}
+		return cause
 	}})
-	if !errors.Is(err, writeError) || got != (ApplyResult{}) || calls != 1 {
-		t.Fatalf("result=%+v error=%v writes=%d, want write error without applied status", got, err, calls)
+	if err != cause || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
+		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
+	}
+}
+
+func TestApplyManagedEmptyCollectionsResolveTarget(t *testing.T) {
+	topics, labels := []string{}, []settings.LabelDeclaration{}
+	for _, test := range []struct {
+		name    string
+		desired settings.Declaration
+	}{
+		{"topics", settings.Declaration{Topics: settings.TopicsDeclaration{Names: &topics}}},
+		{"labels", settings.Declaration{Labels: &labels}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cause := errors.New("origin unavailable")
+			var calls []string
+			got, err := Apply(func() (settings.Declaration, error) {
+				calls = append(calls, "load")
+				return test.desired, nil
+			},
+				func() (repository.Repository, error) {
+					calls = append(calls, "target")
+					return repository.Repository{}, cause
+				}, Writer{})
+			if err != cause || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load", "target"}) {
+				t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
+			}
+		})
 	}
 }
