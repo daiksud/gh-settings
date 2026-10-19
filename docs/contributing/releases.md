@@ -13,6 +13,25 @@ Building the source CLI exposes current-source features, while the public Action
 
 Each release contains those two raw executables, `SHA256SUMS`, and notes identifying the source commit, installation guidance, and generated changes. The executable names follow the [GitHub CLI extension asset convention](https://docs.github.com/en/github-cli/github-cli/creating-github-cli-extensions). The pipeline builds with Go; archives, additional platforms, and GoReleaser are outside the current release scope.
 
+## Release notes
+
+The [release-notes helper](../../scripts/release-notes/main.go) generates the changes from Git commit messages. It selects the most recently published release by publication timestamp among non-draft, non-prerelease releases with a numeric `vMAJOR.MINOR.PATCH` tag, excluding the version being published. Version numbers do not determine publication order; unpublished tags and drafts do not establish a release boundary.
+
+The selected tag resolves to a commit, and the notes use exactly `PREVIOUS_SHA..SOURCE_SHA`: commits reachable from the frozen source that were not reachable from the previous release. With no prior qualifying release, the notes include all history reachable from the frozen source. The publisher checks out full history; a shallow checkout, missing predecessor tag, or predecessor that is not an ancestor of the source stops generation instead of guessing another boundary. A later `main` or `HEAD` commit cannot enter the notes.
+
+The first matching category determines each commit's section:
+
+| Commit message | Release-note heading |
+| --- | --- |
+| Conventional header with `!`, or an uppercase `BREAKING CHANGE:` or `BREAKING-CHANGE:` footer | `🚨 BREAKING CHANGE` |
+| `feat` or `perf` | `✨ New Feature` |
+| `fix` | `🐛 Bug Fix` |
+| Other types and legacy messages without a Conventional Commits header | `🧹 Chore` |
+
+Each nonempty section uses a second-level heading. Breaking entries retain the footer's impact and migration description and appear only in the breaking section, regardless of type. Historical messages can use either breaking signal; the stricter [review policy](../../.agents/skills/code-review/SKILL.md#breaking-changes-require-both-signals) still requires both signals for new incompatible changes. Performance improvements belong with new features. Empty sections are omitted, each entry links to its commit, and the comparison link uses the resolved previous and current commit SHAs.
+
+Changes appear before the installation, upgrade, and checksum details, with emoji headings throughout. The existing hidden source/version/binary identity manifest remains part of the notes. Generation runs only when creating a release, before any missing remote tag is created. Matching drafts and completed releases retain their stored notes on retry, including the original comparison range, even if another release has since been published.
+
 ## Start a manual release
 
 1. Have the owner select the intended version. Update [`action/cli-version`](../../action/cli-version) to that version through an ordinary reviewed PR, then verify main CI.
@@ -35,14 +54,14 @@ For a dispatch tied to an already reviewed exact commit, optionally supply `sour
 | Commit/build | Check frozen source and version equality, then build Linux amd64 once; after commit checks, build macOS arm64 once on its native runner |
 | Native acceptance | Download each run's corresponding binary, verify its SHA-256 and embedded version, and launch that exact executable against the local API fixture |
 | Candidate Action smoke | Use frozen Action source and the already-built Linux artifact on supported Ubuntu; actual credential-free validate must report all four expected identities for a separate configuration-only consumer |
-| Publish | Verify both accepted binary hashes, create/validate the tag and draft, upload only missing matching assets, recheck identities, and publish the complete release |
+| Publish | Verify both accepted binary hashes, generate notes for a new release, create/validate the tag and draft, upload only missing matching assets, recheck identities, and publish the complete release |
 | Published Action smoke | Check out the published tag, verify its source/version, execute its unchanged root Action with real release downloads, and compare outputs with the accepted Linux digest |
 
 Builds inject `main.version` with the Go linker's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). Native acceptance uses the shared [acceptance-stage](../../.github/actions/acceptance-stage/action.yml). Its test harness is compiled separately, without rebuilding the accepted product.
 
 `candidate-action-smoke` is a normal required prerequisite of publication alongside both native acceptance jobs. Failure, skipping, or cancellation prevents publication; there is no unconditional or `continue-on-error` publication override. The candidate uses a bounded fixture for download bytes, so its success establishes pre-publication integration rather than real released-download identity. [Release gate tests](../../tests/github-actions/release_test.go) protect that source/version/artifact/dependency contract.
 
-The publisher creates a lightweight tag at the frozen commit if absent and a draft with generated notes plus an identity manifest. It downloads any existing assets to check bytes and publishes only after the two binaries, checksum file, and metadata agree.
+The publisher prepares new notes before creating a lightweight tag at the frozen commit if absent and a draft with those notes plus an identity manifest. It downloads any existing assets to check bytes and publishes only after the two binaries, checksum file, and metadata agree.
 
 Post-publication smoke verifies that the published tag resolves to the frozen accepted source and its committed CLI version equals the release input before executing it. It invokes that root Action locally with credential-free validate on a separate consumer, without a version override, and checks all four outputs against the consumer and accepted release identities. This exercises the actual published tag's Action and real downloaded CLI; it does not use a dynamic remote `uses` reference.
 
@@ -62,7 +81,7 @@ The candidate's embedded version alone does not establish published feature avai
 
 The draft's machine-readable manifest records version, pinned source commit, both binary SHA-256 values, and the checksum file SHA-256. The [publisher](../../scripts/publish-release.sh) finds a matching draft through the authenticated releases list and reads it by release ID; GitHub's [tag lookup](https://docs.github.com/en/rest/releases/releases#get-a-release-by-tag-name) returns published releases.
 
-On retry, the publisher checks that manifest, resolves an existing lightweight or annotated tag, downloads and compares existing asset bytes, and uploads only missing assets. It fetches and checks the tag again immediately before publication. Matching source/version alone is insufficient: the tested bytes must match too.
+On retry, the publisher preserves the existing notes, checks their manifest, resolves an existing lightweight or annotated tag, downloads and compares existing asset bytes, and uploads only missing assets. It fetches and checks the tag again immediately before publication. Matching source/version alone is insufficient: the tested bytes must match too.
 
 | Existing state | Recovery behavior |
 | --- | --- |
@@ -103,4 +122,4 @@ The agreed future precedence is: any breaking change implies major; otherwise a 
 | Future automatic version calculation | [ADR 0017](../adr/0017-pr-based-semver.md) |
 | Immutable published assets | [ADR 0018](../adr/0018-preserve-published-assets.md) |
 
-The [release feature specification](../features/release.feature.md) maps the behavior to tests. [`tests/release.sh`](../../tests/release.sh) uses a local `gh` stand-in for first publication, completed retries, incomplete drafts, conflicts, altered bytes, and tag rechecks. Those tests create no real tags/releases; an authorized workflow run establishes operational publication evidence.
+The [release feature specification](../features/release.feature.md) maps the behavior to tests. The [helper tests](../../scripts/release-notes/main_test.go) use temporary Git history to check predecessor selection, exact commit ranges, classification, and rendering. [`tests/release.sh`](../../tests/release.sh) uses a local `gh` stand-in for first publication, generation failures before remote changes, note preservation on retries, incomplete drafts, conflicts, altered bytes, and tag rechecks. Those tests create no GitHub tags or releases; an authorized workflow run establishes operational publication evidence.
