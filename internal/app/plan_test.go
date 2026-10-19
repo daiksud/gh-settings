@@ -10,7 +10,6 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func TestPlanResults(t *testing.T) {
@@ -27,7 +26,7 @@ func TestPlanResults(t *testing.T) {
 			t.Setenv("GH_REPO", "other/repository")
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 			calls := 0
-			got, err := Plan(Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
+			got, err := Plan(checkoutDeclaration, Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				if repo != target {
 					t.Fatalf("read target=%+v, want %+v", repo, target)
@@ -55,7 +54,7 @@ func TestPlanNoManagedSettings(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			path := appCheckout(t, test.input, false)
 			calls := 0
-			got, err := Plan(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+			got, err := Plan(checkoutDeclaration, Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				calls++
 				return settings.RepositoryState{}, nil
 			}})
@@ -71,30 +70,23 @@ func TestPlanNoManagedSettings(t *testing.T) {
 }
 
 func TestPlanValidatesBeforeRead(t *testing.T) {
-	for _, test := range []struct{ input, want string }{
-		{"settings: {}\n", "missing schemaVersion"},
-		{"schemaVersion: 1\nsettings:\n  repository:\n    has_issues: [\n", "decode YAML"},
-	} {
-		appCheckout(t, test.input, false) // No origin: validation must win over target resolution.
-		calls := 0
-		got, err := Plan(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
-			calls++
-			return settings.RepositoryState{}, nil
-		}})
-		if err == nil || !strings.Contains(err.Error(), "validate "+workspace.SettingsPath) || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, PlanResult{}) || calls != 0 {
-			t.Fatalf("result=%+v error=%v reads=%d, want validation %q before target/read", got, err, calls, test.want)
-		}
-		var failure *PlanError
-		if !errors.As(err, &failure) || failure.Stage != "invalid-config" || errors.Unwrap(err) == nil || err.Error() != errors.Unwrap(err).Error() {
-			t.Fatalf("validation failure lost stage, original text or cause: %v", err)
-		}
+	loadError := errors.New("validate .github/settings.yml: declaration rejected")
+	loads := 0
+	got, err := Plan(func() (settings.Declaration, error) {
+		loads++
+		disabled := false
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, loadError
+	}, Reader{})
+	var failure *PlanError
+	if !errors.As(err, &failure) || failure.Stage != "invalid-config" || !errors.Is(err, loadError) || err.Error() != loadError.Error() || !reflect.DeepEqual(got, PlanResult{}) || loads != 1 {
+		t.Fatalf("result=%+v error=%v loads=%d, want original validation failure before target/read", got, err, loads)
 	}
 }
 
 func TestPlanTargetFailureBeforeRead(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", false)
 	calls := 0
-	got, err := Plan(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+	got, err := Plan(checkoutDeclaration, Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 		calls++
 		return settings.RepositoryState{}, nil
 	}})
@@ -111,7 +103,7 @@ func TestPlanReadFailure(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", true)
 	readError := errors.New("read unavailable")
 	calls := 0
-	got, err := Plan(Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
+	got, err := Plan(checkoutDeclaration, Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
 		calls++
 		return settings.RepositoryState{}, readError
 	}})

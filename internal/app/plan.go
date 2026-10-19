@@ -24,8 +24,8 @@ func (e *PlanError) Error() string { return e.Err.Error() }
 func (e *PlanError) Unwrap() error { return e.Err }
 
 // Plan validates locally, then reads and compares only when fields are declared.
-func Plan(read Reader) (PlanResult, error) {
-	desired, err := Validate()
+func Plan(load DeclarationLoader, read Reader) (PlanResult, error) {
+	desired, err := Validate(load)
 	if err != nil {
 		return PlanResult{}, &PlanError{Stage: "invalid-config", Err: err}
 	}

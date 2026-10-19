@@ -101,12 +101,12 @@ description: Specify local validation of supported YAML settings and its Go test
 
 ### Test mapping
 
-The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture. Detailed YAML parser cases remain in `TestParseConfigValidation` in the [workspace codec tests](../../internal/workspace/config_test.go). File-reading outcomes have [workspace file tests](../../internal/workspace/config_file_test.go). The [public application tests](../../internal/app/validate_test.go) check typed local validation, nested/trailing-space checkout roots, unchanged bytes and representative errors. The process cases retain the CLI, file, Git, output, and request-observation checks.
+The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture. Detailed YAML parser cases remain in `TestParseConfigValidation` in the [workspace codec tests](../../internal/workspace/config_test.go). File-reading outcomes have [workspace file tests](../../internal/workspace/config_file_test.go). The [application tests](../../internal/app/validate_test.go) check injected declarations and loading errors without Git or files. The [checkout tests](../../internal/workspace/checkout_test.go) cover explicit directories, nested/trailing-space roots, unchanged bytes, and Git lookup errors. The process cases retain the CLI, file, Git, output, and request-observation checks.
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
 | Validate all supported settings | `TestParseConfigValues/all_fields` | `validate-all-fields` |
-| Preserve partial declarations and zero values | `TestParseConfigValues/partial_zero_values`, `TestValidateReadsOnlySettingsFile` | `validate-partial-zero-values` |
+| Preserve partial declarations and zero values | `TestParseConfigValues/partial_zero_values`, `TestCheckoutDeclaration` | `validate-partial-zero-values` |
 | Resolve an alias or merge key | `TestParseConfigValidation/alias_value`, `TestParseConfigValidation/merge_key` | `validate-alias`, `validate-merge` |
 | An unknown key is declared | `TestParseConfigValidation/unknown_field` | `validate-unknown-key` |
 | A key is declared twice | `TestParseConfigValidation/duplicate_field` | `validate-duplicate-key` |
@@ -118,7 +118,7 @@ The scenarios map to ordinary Go tests and [process acceptance cases](../../test
 | The schema version is missing or unsupported | `TestParseConfigValidation/missing_schema_version`, `TestParseConfigValidation/unsupported_schema_version` | `validate-missing-schema-version`, `validate-unsupported-schema-version` |
 | Invalid YAML key and scalar tags are rejected | `TestParseConfigValidation/null_key`, `TestParseConfigValidation/duplicate_alias_key`, `TestParseConfigValidation/alias_merge_key`, `TestParseConfigValidation/binary_instead_of_string`, `TestParseConfigValidation/legacy_boolean_yes` | `validate-legacy-tagged-boolean` |
 | A mapping or merge source has a contradictory YAML tag | `TestParseConfigValidation/tagged_settings_mapping_as_string`, `TestParseConfigValidation/mistagged_merge_mapping` | `validate-mistagged-mapping` |
-| The configuration file is missing | `TestValidateErrors/missing_file` | `validate-missing-file` |
+| The configuration file is missing | `TestReadConfigErrors/missing_file` | `validate-missing-file` |
 
 The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for the original five update-request fields; the same non-null rule applies to later fields, including Discussions. It does not establish how GitHub handles live null updates.
 

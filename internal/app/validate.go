@@ -1,17 +1,11 @@
 package app
 
-import (
-	"fmt"
+import "github.com/daiksud/gh-settings/internal/settings"
 
-	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
-)
+// DeclarationLoader supplies a locally validated declaration or its loading error.
+type DeclarationLoader func() (settings.Declaration, error)
 
 // Validate reads the current checkout's declaration without remote access or writes.
-func Validate() (settings.Declaration, error) {
-	root, err := workspace.GitRoot()
-	if err != nil {
-		return settings.Declaration{}, fmt.Errorf("locate %s: current directory is not in a Git repository: %w", workspace.SettingsPath, err)
-	}
-	return workspace.ReadConfig(root)
+func Validate(load DeclarationLoader) (settings.Declaration, error) {
+	return load()
 }

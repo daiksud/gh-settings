@@ -13,8 +13,8 @@ type ApplyResult struct {
 }
 
 // Apply keeps direct repository/topics writes; labels read their current collection before CRUD.
-func Apply(write Writer) (ApplyResult, error) {
-	desired, err := Validate()
+func Apply(load DeclarationLoader, write Writer) (ApplyResult, error) {
+	desired, err := Validate(load)
 	if err != nil {
 		return ApplyResult{}, err
 	}

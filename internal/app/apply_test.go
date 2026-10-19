@@ -10,7 +10,6 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func TestApplyDeclaredSettings(t *testing.T) {
@@ -21,7 +20,7 @@ func TestApplyDeclaredSettings(t *testing.T) {
 	want := settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}
 	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	calls := 0
-	got, err := Apply(Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+	got, err := Apply(checkoutDeclaration, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
 		calls++
 		if repo != target || !reflect.DeepEqual(desired, want) {
 			t.Fatalf("target=%+v declaration=%+v, want %+v %+v", repo, desired, target, want)
@@ -46,7 +45,7 @@ func TestApplyNoManagedSettings(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			appCheckout(t, test.input, false) // No origin: a no-op must finish before target resolution.
 			calls := 0
-			got, err := Apply(Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+			got, err := Apply(checkoutDeclaration, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
 				calls++
 				return nil
 			}})
@@ -58,30 +57,22 @@ func TestApplyNoManagedSettings(t *testing.T) {
 }
 
 func TestApplyValidatesBeforeWrite(t *testing.T) {
-	for _, test := range []struct{ name, input, want string }{
-		{"missing version", "settings: {}\n", "missing schemaVersion"},
-		{"malformed YAML", "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: [\n", "decode YAML"},
-		{"null string", "schemaVersion: 1\nsettings:\n  repository:\n    description: null\n", "must be a string"},
-		{"unknown field", "schemaVersion: 1\nsettings:\n  repository:\n    unknown: false\n", "unknown setting"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			appCheckout(t, test.input, false)
-			calls := 0
-			got, err := Apply(Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
-				calls++
-				return nil
-			}})
-			if err == nil || !strings.Contains(err.Error(), "validate "+workspace.SettingsPath) || !strings.Contains(err.Error(), test.want) || got != (ApplyResult{}) || calls != 0 {
-				t.Fatalf("result=%+v error=%v writes=%d, want validation %q before target/write", got, err, calls, test.want)
-			}
-		})
+	loadError := errors.New("validate .github/settings.yml: declaration rejected")
+	loads := 0
+	got, err := Apply(func() (settings.Declaration, error) {
+		loads++
+		disabled := false
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, loadError
+	}, Writer{})
+	if err != loadError || got != (ApplyResult{}) || loads != 1 {
+		t.Fatalf("result=%+v error=%v loads=%d, want original validation failure before target/write", got, err, loads)
 	}
 }
 
 func TestApplyTargetFailureBeforeWrite(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", false)
 	calls := 0
-	got, err := Apply(Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+	got, err := Apply(checkoutDeclaration, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
 		calls++
 		return nil
 	}})
@@ -94,7 +85,7 @@ func TestApplyWriteFailure(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", true)
 	writeError := errors.New("write unavailable")
 	calls := 0
-	got, err := Apply(Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+	got, err := Apply(checkoutDeclaration, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
 		calls++
 		return writeError
 	}})

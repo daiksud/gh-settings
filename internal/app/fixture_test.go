@@ -6,8 +6,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
+
+func checkoutDeclaration() (settings.Declaration, error) {
+	return workspace.NewCheckout(".").Declaration()
+}
 
 func appCheckout(t *testing.T, input string, origin bool) string {
 	t.Helper()
