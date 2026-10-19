@@ -104,8 +104,9 @@ printf 'linux-binary' > "$RELEASE_DIR/gh-settings-linux-amd64"
 MACOS_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-darwin-arm64" | cut -d ' ' -f 1)"
 LINUX_SHA256="$(sha256sum "$RELEASE_DIR/gh-settings-linux-amd64" | cut -d ' ' -f 1)"
 export MACOS_SHA256 LINUX_SHA256
-mkdir -p "$fixture/source/scripts/release-notes" "$fixture/source/action"
+mkdir -p "$fixture/source/scripts/release-notes" "$fixture/source/scripts/release-publisher" "$fixture/source/action"
 cp "$repo_root/scripts/publish-release.sh" "$fixture/source/scripts/publish-release.sh"
+cp "$repo_root/scripts/release-publisher/main.go" "$fixture/source/scripts/release-publisher/main.go"
 cp "$repo_root/scripts/release-notes/main.go" "$fixture/source/scripts/release-notes/main.go"
 printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
 git -C "$fixture/source" init --quiet
@@ -140,6 +141,25 @@ reject
 grep -q 'committed CLI version' "$fixture/output"
 printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
 
+# Every preflight failure must stop before even a GitHub lookup.
+VERSION='v1.2.3;unsafe' reject
+export VERSION=v1.2.3
+SOURCE_SHA=invalid reject
+[[ "$(cat "$fixture/output")" == 'release: invalid source commit' ]]
+LINUX_SHA256=invalid reject
+MACOS_SHA256=invalid reject
+GITHUB_REPOSITORY=owner reject
+RELEASE_DIR="$fixture/absent" reject
+for asset in gh-settings-linux-amd64 gh-settings-darwin-arm64; do
+  cp "$RELEASE_DIR/$asset" "$fixture/$asset.saved"
+  rm "$RELEASE_DIR/$asset"
+  reject
+  printf 'changed bytes' > "$RELEASE_DIR/$asset"
+  reject
+  mv "$fixture/$asset.saved" "$RELEASE_DIR/$asset"
+done
+[[ ! -e "$fixture/calls" && ! -e "$RELEASE_DIR/SHA256SUMS" ]]
+
 # Incomplete predecessor history must fail before creating a remote tag or draft.
 mv "$fixture/catalog.json" "$fixture/catalog.saved"
 jq '.[0][0].tag_name = "v1.2.1"' "$fixture/catalog.saved" > "$fixture/catalog.json"
@@ -155,6 +175,12 @@ mv "$fixture/catalog.saved" "$fixture/catalog.json"
 # The tag endpoint hides drafts in this mock, as it does in GitHub's REST API.
 # First run must use the created draft ID, then publish its three assets.
 publish
+# Freeze the exact legacy checksum order, separators, newlines, and marker bytes.
+printf '69e398f9f4479aba0fcc353dc9acb6819c0a7d260f6e104ca65aae7ac2c21b85  gh-settings-darwin-arm64\n8e05650e3597d536838387f4fb4f08fbd95624760f1ce44bbff4e35de8a353e8  gh-settings-linux-amd64\n' > "$fixture/expected-checksums"
+cmp "$fixture/expected-checksums" "$RELEASE_DIR/SHA256SUMS"
+expected_manifest="{\"version\":\"v1.2.3\",\"commit\":\"$SOURCE_SHA\",\"macos_sha256\":\"69e398f9f4479aba0fcc353dc9acb6819c0a7d260f6e104ca65aae7ac2c21b85\",\"linux_sha256\":\"8e05650e3597d536838387f4fb4f08fbd95624760f1ce44bbff4e35de8a353e8\",\"checksums_sha256\":\"98f9ece90dea10c02544983c6f8bc3e3ccef162fa20869eecebe1df30b297abe\"}"
+IFS= read -r actual_marker < "$fixture/body"
+[[ "$actual_marker" == "<!-- gh-settings-release: $expected_manifest -->" ]]
 [[ "$(cat "$fixture/draft")" == false ]]
 [[ "$(find "$fixture/assets" -type f | wc -l | tr -d ' ')" == 3 ]]
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 3 ]]
@@ -192,8 +218,6 @@ rm "$fixture/tag.json"
 SOURCE_SHA=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb reject
 [[ ! -e "$fixture/tag.json" ]] || { echo 'conflicting release recreated a missing tag' >&2; exit 1; }
 printf '{"object":{"type":"commit","sha":"%s"}}\n' "$SOURCE_SHA" > "$fixture/tag.json"
-VERSION='v1.2.3;unsafe' reject
-export VERSION=v1.2.3
 printf '{"object":{"type":"commit","sha":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}\n' > "$fixture/tag.json"
 reject
 printf '{"object":{"type":"commit","sha":"%s"}}\n' "$SOURCE_SHA" > "$fixture/tag.json"
