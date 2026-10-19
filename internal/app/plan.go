@@ -3,8 +3,10 @@ package app
 import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
+
+// TargetResolver supplies the repository belonging to the selected checkout.
+type TargetResolver func() (repository.Repository, error)
 
 // PlanResult identifies the selected repository and its declared-field comparison.
 // A local no-op has no target and no managed fields.
@@ -24,7 +26,7 @@ func (e *PlanError) Error() string { return e.Err.Error() }
 func (e *PlanError) Unwrap() error { return e.Err }
 
 // Plan validates locally, then reads and compares only when fields are declared.
-func Plan(load DeclarationLoader, read Reader) (PlanResult, error) {
+func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResult, error) {
 	desired, err := Validate(load)
 	if err != nil {
 		return PlanResult{}, &PlanError{Stage: "invalid-config", Err: err}
@@ -32,7 +34,7 @@ func Plan(load DeclarationLoader, read Reader) (PlanResult, error) {
 	if desired.Empty() {
 		return PlanResult{}, nil
 	}
-	repo, err := workspace.CurrentRepository()
+	repo, err := resolve()
 	if err != nil {
 		return PlanResult{}, &PlanError{Stage: "target-failure", Err: err}
 	}

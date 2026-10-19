@@ -1,11 +1,8 @@
 package app
 
 import (
-	"bytes"
 	"errors"
-	"os"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -13,57 +10,90 @@ import (
 )
 
 func TestPlanResults(t *testing.T) {
+	disabled, after := false, "after"
 	for _, test := range []struct {
-		name, input string
-		current     settings.RepositoryState
-		want        settings.Comparison
+		name    string
+		desired settings.RepositoryDeclaration
+		current settings.RepositoryState
+		want    settings.Comparison
 	}{
-		{"changes", "schemaVersion: 1\nsettings:\n  repository:\n    description: after\n    has_issues: false\n", settings.RepositoryState{Description: "before", HasIssues: true}, settings.Comparison{Managed: 2, Changes: []settings.Change{comparisonChange(t, "repository.description", "before", "after"), comparisonChange(t, "repository.has_issues", true, false)}}},
-		{"no differences", "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", settings.RepositoryState{}, settings.Comparison{Managed: 1}},
+		{"changes", settings.RepositoryDeclaration{Description: &after, HasIssues: &disabled}, settings.RepositoryState{Description: "before", HasIssues: true}, settings.Comparison{Managed: 2, Changes: []settings.Change{comparisonChange(t, "repository.description", "before", "after"), comparisonChange(t, "repository.has_issues", true, false)}}},
+		{"no differences", settings.RepositoryDeclaration{HasIssues: &disabled}, settings.RepositoryState{}, settings.Comparison{Managed: 1}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			path := appCheckout(t, test.input, true)
-			t.Setenv("GH_REPO", "other/repository")
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
-			calls := 0
-			got, err := Plan(checkoutDeclaration, Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
-				calls++
+			var calls []string
+			got, err := Plan(func() (settings.Declaration, error) {
+				calls = append(calls, "load")
+				return settings.Declaration{Repository: test.desired}, nil
+			}, func() (repository.Repository, error) {
+				calls = append(calls, "target")
+				return target, nil
+			}, Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
+				calls = append(calls, "repository")
 				if repo != target {
 					t.Fatalf("read target=%+v, want %+v", repo, target)
 				}
 				return test.current, nil
 			}})
 			want := PlanResult{Target: target, Comparison: test.want}
-			if err != nil || !reflect.DeepEqual(got, want) || calls != 1 {
-				t.Fatalf("result=%+v error=%v reads=%d, want %+v and one read", got, err, calls, want)
-			}
-			after, err := os.ReadFile(path)
-			if err != nil || !bytes.Equal(after, []byte(test.input)) {
-				t.Fatalf("settings changed: %q error=%v", after, err)
+			if err != nil || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(calls, []string{"load", "target", "repository"}) {
+				t.Fatalf("result=%+v error=%v calls=%v, want %+v after load, target and read", got, err, calls, want)
 			}
 		})
 	}
 }
 
 func TestPlanNoManagedSettings(t *testing.T) {
-	for _, test := range []struct{ name, input string }{
-		{"version only", "schemaVersion: 1\n"},
-		{"empty settings", "schemaVersion: 1\nsettings: {}\n"},
-		{"empty repository", "schemaVersion: 1\nsettings:\n  repository: {}\n"},
+	var calls []string
+	got, err := Plan(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		return settings.Declaration{}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return repository.Repository{}, nil
+	}, Reader{})
+	if err != nil || !reflect.DeepEqual(got, PlanResult{}) || !reflect.DeepEqual(calls, []string{"load"}) {
+		t.Fatalf("result=%+v error=%v calls=%v, want local no-op after loading", got, err, calls)
+	}
+}
+
+func TestPlanManagedEmptyCollectionsResolveTarget(t *testing.T) {
+	names, labels := []string{}, []settings.LabelDeclaration{}
+	for _, test := range []struct {
+		name    string
+		desired settings.Declaration
+	}{
+		{"topics", settings.Declaration{Topics: settings.TopicsDeclaration{Names: &names}}},
+		{"labels", settings.Declaration{Labels: &labels}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			path := appCheckout(t, test.input, false)
-			calls := 0
-			got, err := Plan(checkoutDeclaration, Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
-				calls++
-				return settings.RepositoryState{}, nil
-			}})
-			if err != nil || !reflect.DeepEqual(got, PlanResult{}) || calls != 0 {
-				t.Fatalf("result=%+v error=%v reads=%d, want local no-op", got, err, calls)
+			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+			var calls []string
+			record := func(name string, repo repository.Repository) {
+				calls = append(calls, name)
+				if repo != target {
+					t.Fatalf("read target=%+v, want %+v", repo, target)
+				}
 			}
-			after, err := os.ReadFile(path)
-			if err != nil || string(after) != test.input {
-				t.Fatalf("settings changed: %q error=%v", after, err)
+			got, err := Plan(func() (settings.Declaration, error) {
+				calls = append(calls, "load")
+				return test.desired, nil
+			}, func() (repository.Repository, error) {
+				calls = append(calls, "target")
+				return target, nil
+			}, Reader{
+				Topics: func(repo repository.Repository) ([]string, error) {
+					record("topics", repo)
+					return []string{}, nil
+				},
+				Labels: func(repo repository.Repository) ([]settings.LabelState, error) {
+					record("labels", repo)
+					return []settings.LabelState{}, nil
+				},
+			})
+			if err != nil || got.Target != target || got.Comparison.Managed != 1 || !reflect.DeepEqual(calls, []string{"load", "target", test.name}) {
+				t.Fatalf("result=%+v error=%v calls=%v, want managed empty collection after target resolution", got, err, calls)
 			}
 		})
 	}
@@ -71,47 +101,61 @@ func TestPlanNoManagedSettings(t *testing.T) {
 
 func TestPlanValidatesBeforeRead(t *testing.T) {
 	loadError := errors.New("validate .github/settings.yml: declaration rejected")
-	loads := 0
+	var calls []string
 	got, err := Plan(func() (settings.Declaration, error) {
-		loads++
+		calls = append(calls, "load")
 		disabled := false
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, loadError
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return repository.Repository{}, nil
 	}, Reader{})
 	var failure *PlanError
-	if !errors.As(err, &failure) || failure.Stage != "invalid-config" || !errors.Is(err, loadError) || err.Error() != loadError.Error() || !reflect.DeepEqual(got, PlanResult{}) || loads != 1 {
-		t.Fatalf("result=%+v error=%v loads=%d, want original validation failure before target/read", got, err, loads)
+	if !errors.As(err, &failure) || failure.Stage != "invalid-config" || !errors.Is(err, loadError) || err.Error() != loadError.Error() || !reflect.DeepEqual(got, PlanResult{}) || !reflect.DeepEqual(calls, []string{"load"}) {
+		t.Fatalf("result=%+v error=%v calls=%v, want original validation failure before target/read", got, err, calls)
 	}
 }
 
 func TestPlanTargetFailureBeforeRead(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", false)
-	calls := 0
-	got, err := Plan(checkoutDeclaration, Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
-		calls++
-		return settings.RepositoryState{}, nil
-	}})
-	if err == nil || !strings.Contains(err.Error(), "a GitHub origin remote is required") || !reflect.DeepEqual(got, PlanResult{}) || calls != 0 {
-		t.Fatalf("result=%+v error=%v reads=%d, want target failure before read", got, err, calls)
-	}
+	targetError := errors.New("resolve current repository: a GitHub origin remote is required: missing origin")
+	var calls []string
+	got, err := Plan(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		disabled := false
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return repository.Repository{Host: "github.com", Owner: "partial", Name: "target"}, targetError
+	}, Reader{})
 	var failure *PlanError
-	if !errors.As(err, &failure) || failure.Stage != "target-failure" || errors.Unwrap(err) == nil || err.Error() != errors.Unwrap(err).Error() {
-		t.Fatalf("target failure lost stage, original text or cause: %v", err)
+	if !errors.As(err, &failure) || failure.Stage != "target-failure" || failure.Target != (repository.Repository{}) || !errors.Is(err, targetError) || err.Error() != targetError.Error() || !reflect.DeepEqual(got, PlanResult{}) || !reflect.DeepEqual(calls, []string{"load", "target"}) {
+		t.Fatalf("result=%+v error=%v calls=%v, want original target failure before read", got, err, calls)
 	}
 }
 
 func TestPlanReadFailure(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n", true)
 	readError := errors.New("read unavailable")
-	calls := 0
-	got, err := Plan(checkoutDeclaration, Reader{Repository: func(repository.Repository) (settings.RepositoryState, error) {
-		calls++
+	target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	var calls []string
+	got, err := Plan(func() (settings.Declaration, error) {
+		calls = append(calls, "load")
+		disabled := false
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}, nil
+	}, func() (repository.Repository, error) {
+		calls = append(calls, "target")
+		return target, nil
+	}, Reader{Repository: func(repo repository.Repository) (settings.RepositoryState, error) {
+		calls = append(calls, "repository")
+		if repo != target {
+			t.Fatalf("read target=%+v, want %+v", repo, target)
+		}
 		return settings.RepositoryState{}, readError
 	}})
-	if !errors.Is(err, readError) || !reflect.DeepEqual(got, PlanResult{}) || calls != 1 {
-		t.Fatalf("result=%+v error=%v reads=%d, want read error and zero result", got, err, calls)
+	if !errors.Is(err, readError) || !reflect.DeepEqual(got, PlanResult{}) || !reflect.DeepEqual(calls, []string{"load", "target", "repository"}) {
+		t.Fatalf("result=%+v error=%v calls=%v, want read error and zero result", got, err, calls)
 	}
 	var failure *PlanError
-	if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target != (repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}) || err.Error() != readError.Error() {
+	if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target != target || err.Error() != readError.Error() {
 		t.Fatalf("read failure lost stage, target or original diagnostic: %v", err)
 	}
 }

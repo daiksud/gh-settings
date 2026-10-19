@@ -34,12 +34,19 @@ func CurrentCommit() (string, error) {
 
 // CurrentRepository resolves the GitHub target from a checkout-scoped origin.
 func CurrentRepository() (repository.Repository, error) {
-	if _, err := GitRoot(); err != nil {
+	return NewCheckout("").Repository()
+}
+
+// Repository resolves the direct GitHub origin belonging to this checkout.
+func (checkout Checkout) Repository() (repository.Repository, error) {
+	if _, err := gitRoot(checkout.directory); err != nil {
 		return repository.Repository{}, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
 	}
 	// Git remote get-url applies insteadOf transport rewrites, which can hide
 	// the configured GitHub repository behind a mirror URL.
-	remote, err := exec.Command("git", "config", "--null", "--show-scope", "--get-all", "remote.origin.url").Output()
+	command := exec.Command("git", "config", "--null", "--show-scope", "--get-all", "remote.origin.url")
+	command.Dir = checkout.directory
+	remote, err := command.Output()
 	if err != nil {
 		return repository.Repository{}, fmt.Errorf("resolve current repository: a GitHub origin remote is required: %w", err)
 	}

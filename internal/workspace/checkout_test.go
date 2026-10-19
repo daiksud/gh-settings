@@ -61,3 +61,38 @@ func TestCheckoutDeclarationOutsideGit(t *testing.T) {
 		t.Fatalf("declaration=%+v error=%v", got, err)
 	}
 }
+
+func TestCheckoutRepositoryUsesItsDirectory(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GIT_CONFIG_COUNT", "0")
+	var checkouts []Checkout
+	for _, name := range []string{"first", "second"} {
+		root := filepath.Join(t.TempDir(), name+" ")
+		nested := filepath.Join(root, "nested")
+		if err := os.MkdirAll(nested, 0700); err != nil {
+			t.Fatal(err)
+		}
+		for _, args := range [][]string{
+			{"init", "--quiet", root},
+			{"-C", root, "remote", "add", "origin", "https://github.com/owner/" + name + ".git"},
+		} {
+			if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+				t.Fatalf("git: %v: %s", err, output)
+			}
+		}
+		checkouts = append(checkouts, NewCheckout(nested))
+	}
+	t.Chdir(checkouts[0].directory)
+	for _, index := range []int{1, 0, 1} {
+		got, err := checkouts[index].Repository()
+		want := []string{"first", "second"}[index]
+		if err != nil || got.Host != "github.com" || got.Owner != "owner" || got.Name != want {
+			t.Fatalf("checkout %d selected %+v, error=%v, want owner/%s", index, got, err, want)
+		}
+	}
+	// An outside directory must not borrow the process cwd's valid checkout.
+	if got, err := NewCheckout(t.TempDir()).Repository(); err == nil || !strings.Contains(err.Error(), "a GitHub origin remote is required") || got.Host != "" {
+		t.Fatalf("outside checkout selected %+v, error=%v", got, err)
+	}
+}
