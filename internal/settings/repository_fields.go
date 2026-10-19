@@ -1,11 +1,17 @@
 package settings
 
+import (
+	"fmt"
+	"strings"
+)
+
 type repositoryField[S any, V bool | string] struct {
-	name       string
-	current    func(S) V
-	desired    func(RepositoryDeclaration) *V
-	setDesired func(*RepositoryDeclaration, V)
-	valid      func(V) bool
+	name             string
+	current          func(S) V
+	desired          func(RepositoryDeclaration) *V
+	setDesired       func(*RepositoryDeclaration, V)
+	valid            func(V) bool
+	valueDescription string
 }
 
 // RepositoryBoolSetter returns a typed setter for a supported boolean field.
@@ -21,6 +27,31 @@ func RepositoryBoolSetter(name string) (func(*RepositoryDeclaration, bool), bool
 		}
 	}
 	return nil, false
+}
+
+// RepositoryStringSetter returns a validating setter and identifies enum fields.
+func RepositoryStringSetter(name string) (set func(*RepositoryDeclaration, string) error, enum, ok bool) {
+	for _, field := range repositoryStringFields {
+		if field.name == name {
+			return validatedStringSetter(field), field.valueDescription != "", true
+		}
+	}
+	for _, field := range mergeMethodsStringFields {
+		if field.name == name {
+			return validatedStringSetter(field), field.valueDescription != "", true
+		}
+	}
+	return nil, false, false
+}
+
+func validatedStringSetter[S any](field repositoryField[S, string]) func(*RepositoryDeclaration, string) error {
+	return func(declaration *RepositoryDeclaration, value string) error {
+		if !field.valid(value) {
+			return fmt.Errorf("%s must be %s", strings.TrimPrefix(field.name, "repository."), field.valueDescription)
+		}
+		field.setDesired(declaration, value)
+		return nil
+	}
 }
 
 // RepositoryFieldCount counts the supported scalar repository fields.
@@ -117,42 +148,52 @@ var mergeMethodsBoolFields = [...]repositoryField[MergeMethodsState, bool]{
 
 var repositoryStringFields = [...]repositoryField[RepositoryState, string]{
 	{
-		name:    "repository.description",
-		current: func(state RepositoryState) string { return state.Description },
-		desired: func(declaration RepositoryDeclaration) *string { return declaration.Description },
-		valid:   func(string) bool { return true },
+		name:       "repository.description",
+		current:    func(state RepositoryState) string { return state.Description },
+		desired:    func(declaration RepositoryDeclaration) *string { return declaration.Description },
+		setDesired: func(declaration *RepositoryDeclaration, value string) { declaration.Description = &value },
+		valid:      func(string) bool { return true },
 	},
 	{
-		name:    "repository.homepage",
-		current: func(state RepositoryState) string { return state.Homepage },
-		desired: func(declaration RepositoryDeclaration) *string { return declaration.Homepage },
-		valid:   func(string) bool { return true },
+		name:       "repository.homepage",
+		current:    func(state RepositoryState) string { return state.Homepage },
+		desired:    func(declaration RepositoryDeclaration) *string { return declaration.Homepage },
+		setDesired: func(declaration *RepositoryDeclaration, value string) { declaration.Homepage = &value },
+		valid:      func(string) bool { return true },
 	},
 }
 
 var mergeMethodsStringFields = [...]repositoryField[MergeMethodsState, string]{
 	{
-		name:    "repository.squash_merge_commit_title",
-		current: func(state MergeMethodsState) string { return state.SquashMergeCommitTitle },
-		desired: func(declaration RepositoryDeclaration) *string { return declaration.SquashMergeCommitTitle },
-		valid:   ValidSquashMergeCommitTitle,
+		name:             "repository.squash_merge_commit_title",
+		current:          func(state MergeMethodsState) string { return state.SquashMergeCommitTitle },
+		desired:          func(declaration RepositoryDeclaration) *string { return declaration.SquashMergeCommitTitle },
+		setDesired:       func(declaration *RepositoryDeclaration, value string) { declaration.SquashMergeCommitTitle = &value },
+		valid:            ValidSquashMergeCommitTitle,
+		valueDescription: "PR_TITLE or COMMIT_OR_PR_TITLE",
 	},
 	{
-		name:    "repository.squash_merge_commit_message",
-		current: func(state MergeMethodsState) string { return state.SquashMergeCommitMessage },
-		desired: func(declaration RepositoryDeclaration) *string { return declaration.SquashMergeCommitMessage },
-		valid:   ValidSquashMergeCommitMessage,
+		name:             "repository.squash_merge_commit_message",
+		current:          func(state MergeMethodsState) string { return state.SquashMergeCommitMessage },
+		desired:          func(declaration RepositoryDeclaration) *string { return declaration.SquashMergeCommitMessage },
+		setDesired:       func(declaration *RepositoryDeclaration, value string) { declaration.SquashMergeCommitMessage = &value },
+		valid:            ValidSquashMergeCommitMessage,
+		valueDescription: "PR_BODY, COMMIT_MESSAGES or BLANK",
 	},
 	{
-		name:    "repository.merge_commit_title",
-		current: func(state MergeMethodsState) string { return state.MergeCommitTitle },
-		desired: func(declaration RepositoryDeclaration) *string { return declaration.MergeCommitTitle },
-		valid:   ValidMergeCommitTitle,
+		name:             "repository.merge_commit_title",
+		current:          func(state MergeMethodsState) string { return state.MergeCommitTitle },
+		desired:          func(declaration RepositoryDeclaration) *string { return declaration.MergeCommitTitle },
+		setDesired:       func(declaration *RepositoryDeclaration, value string) { declaration.MergeCommitTitle = &value },
+		valid:            ValidMergeCommitTitle,
+		valueDescription: "PR_TITLE or MERGE_MESSAGE",
 	},
 	{
-		name:    "repository.merge_commit_message",
-		current: func(state MergeMethodsState) string { return state.MergeCommitMessage },
-		desired: func(declaration RepositoryDeclaration) *string { return declaration.MergeCommitMessage },
-		valid:   ValidMergeCommitMessage,
+		name:             "repository.merge_commit_message",
+		current:          func(state MergeMethodsState) string { return state.MergeCommitMessage },
+		desired:          func(declaration RepositoryDeclaration) *string { return declaration.MergeCommitMessage },
+		setDesired:       func(declaration *RepositoryDeclaration, value string) { declaration.MergeCommitMessage = &value },
+		valid:            ValidMergeCommitMessage,
+		valueDescription: "PR_BODY, PR_TITLE or BLANK",
 	},
 }
