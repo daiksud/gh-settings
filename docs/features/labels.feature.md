@@ -61,8 +61,8 @@ Credentials and caller permissions remain the owner's responsibility. This sourc
 | Completed observation ownership, invalid state, missing versus empty read | [Observation collection tests](../../internal/settings/label_observation_test.go) |
 | Closed operations, canonical attributes, unique sequence and independent visitor values | [Operation model tests](../../internal/settings/label_operations_test.go) |
 | Strict schema, aliases/merges, null rejection, stable serialization | [Workspace codec tests](../../internal/workspace/labels_test.go) |
-| Pagination/completeness, exact payloads, escaped paths, failure stop | [GitHub adapter tests](../../internal/github/labels_test.go), [individual request tests](../../internal/github/label_operations_test.go) |
-| Fresh read, conditional resources, sequencing and partial failures | [Application tests](../../internal/app/labels_test.go) |
+| Pagination/completeness, exact payloads, escaped paths | [GitHub adapter tests](../../internal/github/labels_test.go), [individual request tests](../../internal/github/label_operations_test.go) |
+| Fresh read, conditional resources, sequencing and partial failures | [Application tests](../../internal/app/labels_test.go), [operation sequence tests](../../internal/app/label_sequence_test.go) |
 | Typed report, attribute presence, escaped Summary, malformed-report preservation | [Actions tests](../../internal/actions/labels_test.go) |
 | Built CLI export/plan/apply, failed-page preservation, redirects, report and credential-free Summary | [Process acceptance](../../tests/acceptance/labels_test.go) |
 

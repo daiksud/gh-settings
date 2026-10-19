@@ -32,7 +32,7 @@ func main() {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, Labels: writeLabels})
+			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel})
 		},
 	}))
 }
@@ -75,10 +75,24 @@ func readLabelsForApply(repo repository.Repository) (settings.LabelObservation, 
 	}
 	return client.ReadLabels(repo)
 }
-func writeLabels(repo repository.Repository, changes settings.LabelChanges) error {
+func createLabel(repo repository.Repository, change settings.LabelChange) error {
 	client, err := github.NewWriteClient(repo.Host)
 	if err != nil {
 		return err
 	}
-	return client.ApplyLabels(repo, changes)
+	return client.CreateLabel(repo, change)
+}
+func updateLabel(repo repository.Repository, change settings.LabelChange) error {
+	client, err := github.NewWriteClient(repo.Host)
+	if err != nil {
+		return err
+	}
+	return client.UpdateLabel(repo, change)
+}
+func deleteLabel(repo repository.Repository, change settings.LabelChange) error {
+	client, err := github.NewWriteClient(repo.Host)
+	if err != nil {
+		return err
+	}
+	return client.DeleteLabel(repo, change)
 }
