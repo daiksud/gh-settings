@@ -72,6 +72,13 @@ type MergeMethodsState struct {
 	SquashMergeCommitTitle, SquashMergeCommitMessage, MergeCommitTitle, MergeCommitMessage                       string
 }
 
+// WithMergeMethods explicitly includes the complete merge observation and preserves the base fields.
+func (d RepositoryDeclaration) WithMergeMethods(state MergeMethodsState) RepositoryDeclaration {
+	declareRepositoryFields(mergeMethodsBoolFields[:], state, &d)
+	declareRepositoryFields(mergeMethodsStringFields[:], state, &d)
+	return d
+}
+
 // CompareMergeMethods uses only declared fields, in the repository's stable order.
 func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaration) Comparison {
 	var result Comparison

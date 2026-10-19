@@ -40,3 +40,55 @@ func TestRepositoryObservationDeclaration(t *testing.T) {
 		})
 	}
 }
+
+func TestCombinedRepositoryObservationDeclaration(t *testing.T) {
+	base := RepositoryState{Description: "Example", Homepage: "https://example.com", HasIssues: true, HasWiki: true}
+	for _, test := range []struct {
+		name  string
+		state MergeMethodsState
+	}{
+		{
+			name: "false booleans and PR bodies",
+			state: MergeMethodsState{
+				SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "PR_BODY",
+				MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "PR_BODY",
+			},
+		},
+		{
+			name: "true booleans and commit defaults",
+			state: MergeMethodsState{
+				AllowMergeCommit: true, AllowSquashMerge: true, AllowRebaseMerge: true,
+				DeleteBranchOnMerge: true, AllowAutoMerge: true, AllowUpdateBranch: true,
+				SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES",
+				MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE",
+			},
+		},
+		{
+			name: "mixed booleans and blank messages",
+			state: MergeMethodsState{
+				AllowMergeCommit: true, AllowRebaseMerge: true, AllowAutoMerge: true,
+				SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK",
+				MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "BLANK",
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			before := base.Declaration()
+			got := before.WithMergeMethods(test.state)
+			want := RepositoryDeclaration{
+				Description: &base.Description, Homepage: &base.Homepage,
+				HasIssues: &base.HasIssues, HasProjects: &base.HasProjects, HasWiki: &base.HasWiki, HasDiscussions: &base.HasDiscussions,
+				AllowMergeCommit: &test.state.AllowMergeCommit, AllowSquashMerge: &test.state.AllowSquashMerge, AllowRebaseMerge: &test.state.AllowRebaseMerge,
+				DeleteBranchOnMerge: &test.state.DeleteBranchOnMerge, AllowAutoMerge: &test.state.AllowAutoMerge, AllowUpdateBranch: &test.state.AllowUpdateBranch,
+				SquashMergeCommitTitle: &test.state.SquashMergeCommitTitle, SquashMergeCommitMessage: &test.state.SquashMergeCommitMessage,
+				MergeCommitTitle: &test.state.MergeCommitTitle, MergeCommitMessage: &test.state.MergeCommitMessage,
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("declaration=%+v, want %+v", got, want)
+			}
+			if !reflect.DeepEqual(before, base.Declaration()) {
+				t.Fatal("combining observations changed the input declaration")
+			}
+		})
+	}
+}
