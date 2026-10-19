@@ -1,7 +1,6 @@
 package github
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -73,32 +72,14 @@ func labelPath(repo repository.Repository, name string) string {
 func (client *Client) ApplyLabels(repo repository.Repository, changes settings.LabelChanges) error {
 	for _, change := range changes.Values() {
 		var err error
-		change.Visit(func(after settings.LabelDeclaration) {
-			payload := struct {
-				Name        string  `json:"name"`
-				Color       *string `json:"color,omitempty"`
-				Description *string `json:"description,omitempty"`
-			}{after.Name, after.Color, after.Description}
-			body, encodeErr := json.Marshal(payload)
-			if encodeErr != nil {
-				err = encodeErr
-				return
-			}
-			err = client.rest.Post("repos/"+repo.Owner+"/"+repo.Name+"/labels", bytes.NewReader(body), nil)
-		}, func(before settings.LabelState, after settings.LabelDeclaration) {
-			payload := struct {
-				Color       *string `json:"color,omitempty"`
-				Description *string `json:"description,omitempty"`
-			}{after.Color, after.Description}
-			body, encodeErr := json.Marshal(payload)
-			if encodeErr != nil {
-				err = encodeErr
-				return
-			}
-			err = client.rest.Patch(labelPath(repo, before.Name), bytes.NewReader(body), nil)
-		}, func(before settings.LabelState) {
-			err = client.rest.Delete(labelPath(repo, before.Name), nil)
-		})
+		switch change.Operation() {
+		case "create":
+			err = client.CreateLabel(repo, change)
+		case "update":
+			err = client.UpdateLabel(repo, change)
+		case "delete":
+			err = client.DeleteLabel(repo, change)
+		}
 		if err != nil {
 			return fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 		}
