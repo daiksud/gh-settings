@@ -74,7 +74,7 @@ func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 		}
 		return nil
 	}})
-	if err != nil || !result.Applied || calls != 1 {
+	if err != nil || !result.Completed() || calls != 1 {
 		t.Fatalf("result=%+v calls=%d err=%v", result, calls, err)
 	}
 	for _, input := range []string{"null", "'false'", "[]"} {
@@ -105,7 +105,7 @@ func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
 		}
 		return nil
 	}})
-	if err != nil || !applied.Applied || calls != 2 {
+	if err != nil || !applied.Completed() || calls != 2 {
 		t.Fatalf("apply=%+v err=%v calls=%d", applied, err, calls)
 	}
 }

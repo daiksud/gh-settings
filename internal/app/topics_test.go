@@ -48,7 +48,7 @@ func TestTopicsApplyOrderAndPartialFailures(t *testing.T) {
 			if fail == "repository" {
 				want = want[:3]
 			}
-			if !reflect.DeepEqual(calls, want) || (fail != "" && !errors.Is(err, failure)) || (fail == "" && (err != nil || !result.Applied)) || (fail != "" && result.Applied) {
+			if !reflect.DeepEqual(calls, want) || (fail != "" && !errors.Is(err, failure)) || (fail == "" && (err != nil || !result.Completed())) || (fail != "" && result.Completed()) {
 				t.Fatalf("calls=%v result=%+v err=%v", calls, result, err)
 			}
 		})
@@ -71,7 +71,7 @@ func TestTopicsOnlyPlanAndApply(t *testing.T) {
 			}
 			calls := 0
 			applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Topics: func(repository.Repository, settings.TopicsDeclaration) error { calls++; return nil }})
-			if err != nil || !applied.Applied || calls != 1 {
+			if err != nil || !applied.Completed() || calls != 1 {
 				t.Fatalf("result=%+v calls=%d error=%v", applied, calls, err)
 			}
 		})

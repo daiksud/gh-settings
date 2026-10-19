@@ -34,7 +34,7 @@ func TestLabelsPlanAndApplyEmptyListDeletesAll(t *testing.T) {
 		}
 		return nil
 	}})
-	if err != nil || !applied.Applied || calls != 1 || reads != 2 {
+	if err != nil || !applied.Completed() || calls != 1 || reads != 2 {
 		t.Fatalf("result=%+v reads=%d writes=%d err=%v", applied, reads, calls, err)
 	}
 }
@@ -56,7 +56,7 @@ func TestLabelsApplyReadsFreshStateAndSkipsUnchangedWrites(t *testing.T) {
 		}
 		return settings.NewLabelObservation([]settings.LabelState{{Name: "BUG", Color: "abcdef", Description: "external edit"}})
 	}})
-	if err != nil || !result.Applied || !reflect.DeepEqual(calls, []string{"load", "target", "labels-read"}) {
+	if err != nil || !result.Completed() || !reflect.DeepEqual(result, ApplyResult{Outcome: ApplyMatchingLabels, Target: target, Operations: []ApplyOperation{{Kind: LabelsRead, Status: OperationCompleted}}}) || !reflect.DeepEqual(calls, []string{"load", "target", "labels-read"}) {
 		t.Fatalf("result=%+v err=%v calls=%v", result, err, calls)
 	}
 }
@@ -138,7 +138,13 @@ func TestLabelsMixedApplyFailureOrder(t *testing.T) {
 					}
 				}
 			}
-			if !reflect.DeepEqual(calls, want) || (failureStage != "" && !errors.Is(err, failure)) || (failureStage == "" && (err != nil || !result.Applied)) || (failureStage != "" && result.Applied) {
+			if failureStage == "labels-read" {
+				expected := []ApplyOperation{{Kind: RepositoryUpdate, Status: OperationCompleted}, {Kind: TopicsUpdate, Status: OperationCompleted}, {Kind: LabelsRead, Status: OperationFailedRead}}
+				if result.Outcome != ApplyPartialFailure || !reflect.DeepEqual(result.Operations, expected) {
+					t.Fatalf("read failure progress=%+v", result)
+				}
+			}
+			if !reflect.DeepEqual(calls, want) || (failureStage != "" && !errors.Is(err, failure)) || (failureStage == "" && (err != nil || !result.Completed())) || (failureStage != "" && result.Completed()) {
 				t.Fatalf("calls=%v result=%+v err=%v", calls, result, err)
 			}
 		})
@@ -190,7 +196,7 @@ func TestMissingLabelObservationPreventsExportAndApplyWrites(t *testing.T) {
 			return nil
 		},
 	})
-	if err == nil || result.Applied {
+	if err == nil || result.Completed() || result.Outcome != ApplyFailed || !reflect.DeepEqual(result.Operations, []ApplyOperation{{Kind: LabelsRead, Status: OperationFailedRead}}) {
 		t.Fatalf("apply=%+v error=%v", result, err)
 	}
 	read := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })

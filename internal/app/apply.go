@@ -5,58 +5,100 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// ApplyResult distinguishes successful completion from a local no-op.
-// With an error, Applied:false does not establish the remote outcome.
-type ApplyResult struct {
-	Applied bool
-}
-
 // Apply keeps direct repository/topics writes; labels read their current collection before CRUD.
 func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyResult, error) {
 	desired, err := Validate(load)
 	if err != nil {
-		return ApplyResult{}, err
+		return ApplyResult{Outcome: ApplyFailed}, err
 	}
 	if desired.Empty() {
 		return ApplyResult{}, nil
 	}
 	repo, err := resolve()
 	if err != nil {
-		return ApplyResult{}, err
+		return ApplyResult{Outcome: ApplyFailed}, err
 	}
-	if !desired.Repository.Empty() {
+	result := ApplyResult{Outcome: ApplyFailed, Target: repo}
+	repositoryManaged, topicsManaged := !desired.Repository.Empty(), desired.Topics.Names != nil
+	if repositoryManaged {
+		result.Operations = append(result.Operations, ApplyOperation{Kind: RepositoryUpdate})
+	}
+	if topicsManaged {
+		result.Operations = append(result.Operations, ApplyOperation{Kind: TopicsUpdate})
+	}
+	if desired.Labels != nil {
+		result.Operations = append(result.Operations, ApplyOperation{Kind: LabelsRead})
+	}
+	index := 0
+	if repositoryManaged {
 		if err := write.Repository(repo, desired.Repository); err != nil {
-			return ApplyResult{}, err
+			result.failOperation(index, OperationFailedUnknown)
+			return result, err
 		}
+		result.Operations[index].Status = OperationCompleted
+		index++
 	}
-	if desired.Topics.Names != nil {
+	if topicsManaged {
 		if err := write.Topics(repo, desired.Topics); err != nil {
-			return ApplyResult{}, err
+			result.failOperation(index, OperationFailedUnknown)
+			return result, err
 		}
+		result.Operations[index].Status = OperationCompleted
+		index++
 	}
+	hasWrites := repositoryManaged || topicsManaged
 	if desired.Labels != nil {
 		current, err := write.ReadLabels(repo)
 		if err != nil {
-			return ApplyResult{}, fmt.Errorf("read labels for apply (earlier resource writes remain applied): %w", err)
+			result.failOperation(index, OperationFailedRead)
+			return result, fmt.Errorf("read labels for apply (earlier resource writes remain applied): %w", err)
 		}
 		comparison, err := settings.CompareLabels(current, desired.Labels)
 		if err != nil {
-			return ApplyResult{}, fmt.Errorf("compare labels for apply (earlier resource writes remain applied): %w", err)
+			result.failOperation(index, OperationFailedRead)
+			return result, fmt.Errorf("compare labels for apply (earlier resource writes remain applied): %w", err)
 		}
-		for _, change := range comparison.Labels.Values() {
+		result.Operations[index].Status = OperationCompleted
+		changes := comparison.Labels.Values()
+		hasWrites = hasWrites || len(changes) > 0
+		firstLabel := len(result.Operations)
+		for _, change := range changes {
+			result.Operations = append(result.Operations, ApplyOperation{Kind: labelApplyKind(change), LabelName: change.Name()})
+		}
+		for i, change := range changes {
+			index := firstLabel + i
 			var err error
-			switch change.Operation() {
-			case "create":
+			switch result.Operations[index].Kind {
+			case LabelCreate:
 				err = write.CreateLabel(repo, change)
-			case "update":
+			case LabelUpdate:
 				err = write.UpdateLabel(repo, change)
-			case "delete":
+			case LabelDelete:
 				err = write.DeleteLabel(repo, change)
 			}
 			if err != nil {
-				return ApplyResult{}, fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
+				result.failOperation(index, OperationFailedUnknown)
+				return result, fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 			}
+			result.Operations[index].Status = OperationCompleted
 		}
 	}
-	return ApplyResult{Applied: true}, nil
+	result.Outcome = ApplyCompleted
+	if !hasWrites {
+		result.Outcome = ApplyMatchingLabels
+	}
+	return result, nil
+}
+
+func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
+	switch change.Operation() {
+	case "create":
+		return LabelCreate
+	case "update":
+		return LabelUpdate
+	case "delete":
+		return LabelDelete
+	default:
+		panic("unknown typed label operation")
+	}
 }

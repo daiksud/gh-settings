@@ -18,7 +18,8 @@ These terms describe the shared Go model. [Architecture](architecture.md#impleme
 | Change | A resource-qualified field path and native before/after values: string, boolean, or topic list | `settings.Change` |
 | Label change | A typed create/update/delete operation with a name and applicable observed-before/declared-after values, never saved apply input | `settings.LabelChange` |
 | Plan result/error | A comparison and available target identity; typed failure stages preserve the underlying diagnostic | `app.PlanResult`, `app.PlanError` |
-| Apply result | `Applied: true` means managed apply completed, even when labels already matched without a mutation; false without error is unmanaged, while false with an error does not establish the remote outcome | `app.ApplyResult` |
+| Apply result | Internal outcome, resolved target, and ordered known operation progress; distinguishes unmanaged, completed, matching labels, failure, and partial failure without claiming rollback or readback | `app.ApplyResult` |
+| Apply operation progress | Completed, failed read, failed write with unknown remote effect, or known but unexecuted operation; individual label operations become known after complete fresh reads | `app.ApplyOperation` |
 | Plan report | Same-version ephemeral JSON for Actions presentation, with field changes and optional typed label operations, never input to apply | `actions.PlanReport`, `actions.PlanChange`, `actions.LabelPlanChange` |
 | Label report attributes | Optional color/description fields preserve the operation's attribute presence; complete before values are required where applicable | `actions.LabelAttributes` |
 | Run metadata | Explicit nonsecret run, workflow, consumer, Action, and CLI identity context kept separate from plan data | `actions.RunMetadata` |

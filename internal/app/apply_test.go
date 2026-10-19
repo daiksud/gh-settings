@@ -27,7 +27,7 @@ func TestApplyDeclaredSettings(t *testing.T) {
 		}
 		return nil
 	}})
-	if err != nil || got != (ApplyResult{Applied: true}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
+	if err != nil || !reflect.DeepEqual(got, ApplyResult{Outcome: ApplyCompleted, Target: target, Operations: []ApplyOperation{{Kind: RepositoryUpdate, Status: OperationCompleted}}}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
 		t.Fatalf("result=%+v error=%v calls=%v, want applied after load/target/write", got, err, calls)
 	}
 }
@@ -41,7 +41,7 @@ func TestApplyNoManagedSettings(t *testing.T) {
 		calls = append(calls, "target")
 		return repository.Repository{}, nil
 	}, Writer{})
-	if err != nil || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load"}) {
+	if err != nil || !reflect.DeepEqual(got, ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load"}) {
 		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 	}
 }
@@ -57,7 +57,7 @@ func TestApplyValidatesBeforeWrite(t *testing.T) {
 		calls = append(calls, "target")
 		return repository.Repository{}, nil
 	}, Writer{})
-	if err != loadError || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load"}) {
+	if err != loadError || !reflect.DeepEqual(got, ApplyResult{Outcome: ApplyFailed}) || !reflect.DeepEqual(calls, []string{"load"}) {
 		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 	}
 }
@@ -73,7 +73,7 @@ func TestApplyTargetFailureBeforeWrite(t *testing.T) {
 		calls = append(calls, "target")
 		return repository.Repository{Host: "github.com", Owner: "partial", Name: "target"}, cause
 	}, Writer{})
-	if err != cause || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load", "target"}) {
+	if err != cause || !reflect.DeepEqual(got, ApplyResult{Outcome: ApplyFailed}) || !reflect.DeepEqual(calls, []string{"load", "target"}) {
 		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 	}
 }
@@ -96,7 +96,7 @@ func TestApplyWriteFailure(t *testing.T) {
 		}
 		return cause
 	}})
-	if err != cause || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
+	if err != cause || !reflect.DeepEqual(got, ApplyResult{Outcome: ApplyFailed, Target: target, Operations: []ApplyOperation{{Kind: RepositoryUpdate, Status: OperationFailedUnknown}}}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
 		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 	}
 }
@@ -121,7 +121,7 @@ func TestApplyManagedEmptyCollectionsResolveTarget(t *testing.T) {
 					calls = append(calls, "target")
 					return repository.Repository{}, cause
 				}, Writer{})
-			if err != cause || got != (ApplyResult{}) || !reflect.DeepEqual(calls, []string{"load", "target"}) {
+			if err != cause || !reflect.DeepEqual(got, ApplyResult{Outcome: ApplyFailed}) || !reflect.DeepEqual(calls, []string{"load", "target"}) {
 				t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)
 			}
 		})
