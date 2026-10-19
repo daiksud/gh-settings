@@ -24,7 +24,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func() error {
-			return app.Export(app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
+			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave}, app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
 		},
 		Validate: func() (settings.Declaration, error) { return app.Validate(checkout.Declaration) },
 		Plan: func() (app.PlanResult, error) {

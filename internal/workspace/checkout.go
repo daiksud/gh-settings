@@ -20,3 +20,15 @@ func (checkout Checkout) Declaration() (settings.Declaration, error) {
 	}
 	return ReadConfig(root)
 }
+
+// PrepareSave resolves the Git root without modifying the destination. The saver
+// encodes completely before applying the existing guarded file-writing policy.
+func (checkout Checkout) PrepareSave() (func(settings.Declaration) error, error) {
+	root, err := gitRoot(checkout.directory)
+	if err != nil {
+		return nil, fmt.Errorf("locate %s: %w", SettingsPath, err)
+	}
+	return func(declaration settings.Declaration) error {
+		return saveDeclaration(root, declaration)
+	}, nil
+}

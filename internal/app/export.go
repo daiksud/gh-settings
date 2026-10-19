@@ -1,21 +1,23 @@
 package app
 
-import (
-	"fmt"
+import "github.com/daiksud/gh-settings/internal/settings"
 
-	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
-)
+// ExportCheckout defers target and destination resolution until export runs.
+// PrepareSave resolves the destination before reads and returns its bound saver.
+type ExportCheckout struct {
+	Repository  TargetResolver
+	PrepareSave func() (func(settings.Declaration) error, error)
+}
 
-// Export saves all observed fields only after a complete read and serialization.
-func Export(read Reader) error {
-	repo, err := workspace.CurrentRepository()
+// Export saves all observed fields only after a complete read.
+func Export(checkout ExportCheckout, read Reader) error {
+	repo, err := checkout.Repository()
 	if err != nil {
 		return err
 	}
-	root, err := workspace.GitRoot()
+	save, err := checkout.PrepareSave()
 	if err != nil {
-		return fmt.Errorf("locate %s: %w", workspace.SettingsPath, err)
+		return err
 	}
 	current, err := read.Repository(repo)
 	if err != nil {
@@ -43,9 +45,5 @@ func Export(read Reader) error {
 		labelDeclarations = append(labelDeclarations, settings.LabelDeclaration{Name: label.Name, Color: &color, Description: &description})
 	}
 	declaration.Labels = &labelDeclarations
-	data, err := workspace.EncodeConfig(declaration)
-	if err != nil {
-		return err
-	}
-	return workspace.WriteConfig(root, data)
+	return save(declaration)
 }

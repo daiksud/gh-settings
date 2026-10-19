@@ -49,3 +49,11 @@ func WriteConfig(root string, data []byte) error {
 	}
 	return nil
 }
+
+func saveDeclaration(root string, declaration settings.Declaration) error {
+	data, err := EncodeConfig(declaration)
+	if err != nil {
+		return err
+	}
+	return WriteConfig(root, data)
+}
