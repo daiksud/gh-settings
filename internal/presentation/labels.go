@@ -1,4 +1,4 @@
-package cli
+package presentation
 
 import (
 	"fmt"
@@ -7,7 +7,8 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func labelLine(change settings.LabelChange) string {
+// LabelLine formats a native label operation without HTML or I/O.
+func LabelLine(change settings.LabelChange) string {
 	prefix := fmt.Sprintf("settings.labels: %s %q", change.Operation(), change.Name())
 	change.Visit(func(after settings.LabelDeclaration) {
 		var attributes []string

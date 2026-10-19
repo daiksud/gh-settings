@@ -23,7 +23,8 @@ One Go implementation serves thin CLI and Actions adapters. Keep declaration, ob
 | Workspace files and Git | Fixed configuration path, file reads/writes, checkout root, commit, and checkout-scoped target resolution | [Checkout](../../internal/workspace/checkout.go), [files](../../internal/workspace/config_file.go), [Git](../../internal/workspace/repository.go) |
 | GitHub adapter | Client configuration, complete read normalization, declared-only repository PATCH, topics GET/PUT, paginated labels reads/CRUD, and write redirect handling | [Repository reads](../../internal/github/repository.go), [repository writes](../../internal/github/apply.go), [topics](../../internal/github/topics.go), [labels](../../internal/github/labels.go) |
 | Shared application | Validation, resource selection, operation sequencing, and typed results | [Application operations](../../internal/app/), [deferred readers/writers](../../internal/app/resources.go) |
-| CLI adapter | Arguments, help/version, terminal field/operation presentation, diagnostics, and process exit status | [Dispatch](../../internal/cli/run.go), [comparison rendering](../../internal/cli/comparison.go), [labels rendering](../../internal/cli/labels.go) |
+| CLI adapter | Arguments, help/version, terminal field/operation presentation, diagnostics, and process exit status | [Dispatch](../../internal/cli/run.go), [comparison rendering](../../internal/cli/comparison.go) |
+| Shared presentation | Plain-text label operation wording and quoting shared by CLI and Summary; no HTML or I/O | [Label formatting](../../internal/presentation/labels.go) |
 | Actions adapter | Same-version metadata, ephemeral field/label reports, validated Summary rendering, and status | [Dispatch](../../internal/actions/run.go), [reports](../../internal/actions/plan.go), [label reports](../../internal/actions/labels.go), [Summary](../../internal/actions/summary.go) |
 | Composite Action | Verified installation bootstrap and necessary Actions input/token/status/output wiring | [Root Action](../../action.yml), [installer](../../action/install-cli.sh) |
 
@@ -72,7 +73,7 @@ Application apply performs this fresh comparison only after any declared reposit
 
 ### Adapter boundaries
 
-The CLI owns terminal quoting, arrows, messages, and exit codes. Actions metadata resolves consumer identity and hashes the executing binary without a settings operation. Plan-report generation invokes shared planning once; a separate credential-free Summary entry renders its typed result without planning again.
+The CLI owns terminal field quoting, arrows, messages, and exit codes. Shared presentation owns label-operation wording and quoting for both CLI and Summary; Summary applies its own HTML and newline escaping to that plain text. Actions metadata resolves consumer identity and hashes the executing binary without a settings operation. Plan-report generation invokes shared planning once; a separate credential-free Summary entry renders its typed result without planning again.
 
 Reports preserve native field values and carry label operations separately, retaining omitted declared attributes and explicit create/update/delete names. A declared labels collection counts as one managed item regardless of its number of operations. Categorical review diagnostics stay separate from original stderr errors. Apply never consumes a report. Failed plans remain nonzero after report/Summary output, and the composite exposes success outputs only after required work succeeds. See [Actions internals](actions-internals.md) for those entry contracts and [testing](testing.md) for their verification boundaries.
 

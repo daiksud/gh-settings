@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/daiksud/gh-settings/internal/presentation"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -134,7 +135,7 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 		)
 	}
 	for _, change := range report.comparison.Labels.Values() {
-		fmt.Fprintf(&content, "%s\n", quoteHTML(labelSummaryLine(change)))
+		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))
 	}
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String()
