@@ -151,6 +151,20 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 		if err != nil {
 			return settings.RepositoryDeclaration{}, err
 		}
+		if set, ok := settings.RepositoryBoolSetter("repository." + field); ok {
+			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean", field)
+			}
+			if !strings.EqualFold(value.Value, "true") && !strings.EqualFold(value.Value, "false") {
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean spelled true or false", field)
+			}
+			var parsed bool
+			if err := value.Decode(&parsed); err != nil {
+				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean: %w", field, err)
+			}
+			set(&repository, parsed)
+			continue
+		}
 		switch field {
 		case "squash_merge_commit_title", "squash_merge_commit_message":
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
@@ -193,39 +207,6 @@ func parseRepositoryFields(node *yaml.Node) (settings.RepositoryDeclaration, err
 				repository.Description = &text
 			} else {
 				repository.Homepage = &text
-			}
-		case "has_issues", "has_projects", "has_wiki", "has_discussions", "allow_merge_commit", "allow_squash_merge", "allow_rebase_merge", "delete_branch_on_merge", "allow_auto_merge", "allow_update_branch":
-			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean", field)
-			}
-			if !strings.EqualFold(value.Value, "true") && !strings.EqualFold(value.Value, "false") {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean spelled true or false", field)
-			}
-			var parsed bool
-			if err := value.Decode(&parsed); err != nil {
-				return settings.RepositoryDeclaration{}, fmt.Errorf("%s must be a boolean: %w", field, err)
-			}
-			switch field {
-			case "has_issues":
-				repository.HasIssues = &parsed
-			case "has_projects":
-				repository.HasProjects = &parsed
-			case "has_wiki":
-				repository.HasWiki = &parsed
-			case "has_discussions":
-				repository.HasDiscussions = &parsed
-			case "allow_merge_commit":
-				repository.AllowMergeCommit = &parsed
-			case "allow_squash_merge":
-				repository.AllowSquashMerge = &parsed
-			case "allow_rebase_merge":
-				repository.AllowRebaseMerge = &parsed
-			case "delete_branch_on_merge":
-				repository.DeleteBranchOnMerge = &parsed
-			case "allow_auto_merge":
-				repository.AllowAutoMerge = &parsed
-			case "allow_update_branch":
-				repository.AllowUpdateBranch = &parsed
 			}
 		default:
 			return settings.RepositoryDeclaration{}, fmt.Errorf("unknown setting %q", field)
