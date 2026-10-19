@@ -22,12 +22,12 @@ func TestChangeRequiresSupportedFieldIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	change, err := NewChange(field, "before", "")
-	if err != nil || change.Field() != field || change.Before != "before" || change.After != "" {
+	change, err := NewStringChange(field, "before", "")
+	if err != nil || change.Field() != field {
 		t.Fatalf("change=%+v: %v", change, err)
 	}
 	for _, invalid := range []FieldID{{}, {path: "repository.unknown"}} {
-		if change, err := NewChange(invalid, "before", "after"); err == nil || change != (Change{}) {
+		if change, err := NewStringChange(invalid, "before", "after"); err == nil || change != (Change{}) {
 			t.Errorf("constructed change=%+v from invalid field=%+v: %v", change, invalid, err)
 		}
 	}

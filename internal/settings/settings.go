@@ -56,7 +56,7 @@ func CompareTopics(current []string, desired TopicsDeclaration) Comparison {
 	before, after := SortedTopics(current), SortedTopics(*desired.Names)
 	result := Comparison{Managed: 1}
 	if !slices.Equal(before, after) {
-		result.Changes = []Change{{field: topicsField, Before: before, After: after}}
+		result.Changes = []Change{{field: topicsField, values: topicsPair{before: before, after: after}}}
 	}
 	return result
 }

@@ -9,7 +9,7 @@ func TestSquashCommitComparison(t *testing.T) {
 	title, message := "PR_TITLE", "BLANK"
 	current := MergeMethodsState{SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES"}
 	d := RepositoryDeclaration{SquashMergeCommitTitle: &title, SquashMergeCommitMessage: &message}
-	want := []Change{{field: FieldID{path: "repository.squash_merge_commit_title"}, Before: "COMMIT_OR_PR_TITLE", After: "PR_TITLE"}, {field: FieldID{path: "repository.squash_merge_commit_message"}, Before: "COMMIT_MESSAGES", After: "BLANK"}}
+	want := []Change{{field: FieldID{path: "repository.squash_merge_commit_title"}, values: stringPair{before: "COMMIT_OR_PR_TITLE", after: "PR_TITLE"}}, {field: FieldID{path: "repository.squash_merge_commit_message"}, values: stringPair{before: "COMMIT_MESSAGES", after: "BLANK"}}}
 	got := CompareMergeMethods(current, d)
 	if got.Managed != 2 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("got=%+v", got)

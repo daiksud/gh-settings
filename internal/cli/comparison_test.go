@@ -84,7 +84,20 @@ func comparisonChange(t *testing.T, path string, before, after any) settings.Cha
 	if err != nil {
 		t.Fatal(err)
 	}
-	change, err := settings.NewChange(field, before, after)
+	var change settings.Change
+	switch before := before.(type) {
+	case bool:
+		change, err = settings.NewBoolChange(field, before, after.(bool))
+	case string:
+		change, err = settings.NewStringChange(field, before, after.(string))
+	case []string:
+		if field != settings.TopicsField() {
+			t.Fatal("topic values require the topics field")
+		}
+		change, err = settings.NewTopicsChange(before, after.([]string))
+	default:
+		t.Fatalf("unsupported comparison fixture type %T", before)
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

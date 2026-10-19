@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -16,7 +17,14 @@ func RenderComparison(comparison settings.Comparison) []byte {
 		output.WriteString("No differences for managed repository settings.\n")
 	} else {
 		for _, change := range comparison.Changes {
-			fmt.Fprintf(&output, "settings.%s: %s → %s\n", change.Field().Path(), comparisonValue(change.Before), comparisonValue(change.After))
+			line := func(before, after string) {
+				fmt.Fprintf(&output, "settings.%s: %s → %s\n", change.Field().Path(), before, after)
+			}
+			change.Visit(
+				func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },
+				func(before, after string) { line(strconv.Quote(before), strconv.Quote(after)) },
+				func(before, after []string) { line(topicsValue(before), topicsValue(after)) },
+			)
 		}
 		for _, change := range comparison.Labels {
 			fmt.Fprintln(&output, labelLine(change))
@@ -25,10 +33,7 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	return []byte(output.String())
 }
 
-func comparisonValue(value any) string {
-	if names, ok := value.([]string); ok {
-		data, _ := json.Marshal(names)
-		return string(data)
-	}
-	return fmt.Sprintf("%#v", value)
+func topicsValue(names []string) string {
+	data, _ := json.Marshal(names)
+	return string(data)
 }

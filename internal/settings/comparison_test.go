@@ -7,11 +7,11 @@ import (
 
 func TestCompareChanges(t *testing.T) {
 	want := []Change{
-		{field: FieldID{path: "repository.description"}, Before: "old", After: ""},
-		{field: FieldID{path: "repository.homepage"}, Before: "old-url", After: ""},
-		{field: FieldID{path: "repository.has_issues"}, Before: true, After: false},
-		{field: FieldID{path: "repository.has_projects"}, Before: true, After: false},
-		{field: FieldID{path: "repository.has_wiki"}, Before: true, After: false},
+		{field: FieldID{path: "repository.description"}, values: stringPair{before: "old", after: ""}},
+		{field: FieldID{path: "repository.homepage"}, values: stringPair{before: "old-url", after: ""}},
+		{field: FieldID{path: "repository.has_issues"}, values: boolPair{before: true, after: false}},
+		{field: FieldID{path: "repository.has_projects"}, values: boolPair{before: true, after: false}},
+		{field: FieldID{path: "repository.has_wiki"}, values: boolPair{before: true, after: false}},
 	}
 	current := RepositoryState{
 		Description: "old", Homepage: "old-url", HasIssues: true, HasProjects: true, HasWiki: true,
@@ -50,7 +50,7 @@ func TestCompareRepositoryDeclaredFields(t *testing.T) {
 		{
 			name: "changed partial", current: current,
 			desired: RepositoryDeclaration{Description: &old, HasIssues: &disabled}, managed: 2,
-			changes: []Change{{field: FieldID{path: "repository.has_issues"}, Before: true, After: false}},
+			changes: []Change{{field: FieldID{path: "repository.has_issues"}, values: boolPair{before: true, after: false}}},
 		},
 	}
 	for _, test := range tests {

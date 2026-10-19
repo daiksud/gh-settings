@@ -9,7 +9,7 @@ func TestMergeCommitComparison(t *testing.T) {
 	title, message := "PR_TITLE", "BLANK"
 	current := MergeMethodsState{MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}
 	d := RepositoryDeclaration{MergeCommitTitle: &title, MergeCommitMessage: &message}
-	want := []Change{{field: FieldID{path: "repository.merge_commit_title"}, Before: "MERGE_MESSAGE", After: "PR_TITLE"}, {field: FieldID{path: "repository.merge_commit_message"}, Before: "PR_TITLE", After: "BLANK"}}
+	want := []Change{{field: FieldID{path: "repository.merge_commit_title"}, values: stringPair{before: "MERGE_MESSAGE", after: "PR_TITLE"}}, {field: FieldID{path: "repository.merge_commit_message"}, values: stringPair{before: "PR_TITLE", after: "BLANK"}}}
 	got := CompareMergeMethods(current, d)
 	if got.Managed != 2 || !reflect.DeepEqual(got.Changes, want) {
 		t.Fatalf("got=%+v", got)

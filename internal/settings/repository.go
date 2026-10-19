@@ -82,8 +82,8 @@ func (d RepositoryDeclaration) WithMergeMethods(state MergeMethodsState) Reposit
 // CompareMergeMethods uses only declared fields, in the repository's stable order.
 func CompareMergeMethods(current MergeMethodsState, desired RepositoryDeclaration) Comparison {
 	var result Comparison
-	compareRepositoryFields(&result, mergeMethodsBoolFields[:], current, desired)
-	compareRepositoryFields(&result, mergeMethodsStringFields[:], current, desired)
+	compareRepositoryFields(&result, mergeMethodsBoolFields[:], current, desired, boolChange)
+	compareRepositoryFields(&result, mergeMethodsStringFields[:], current, desired, stringChange)
 	return result
 }
 
