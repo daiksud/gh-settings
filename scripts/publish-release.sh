@@ -3,17 +3,6 @@ set -euo pipefail
 
 fail() { printf 'release: %s\n' "$*" >&2; exit 1; }
 digest() { sha256sum "$1" | cut -d ' ' -f 1; }
-optional_api() {
-  local endpoint="$1" destination="$2" error_file="$work/api-error"
-  if gh api "$endpoint" > "$destination" 2> "$error_file"; then
-    return 0
-  fi
-  if grep -q 'HTTP 404' "$error_file"; then
-    return 1
-  fi
-  cat "$error_file" >&2
-  fail "GitHub API lookup failed: $endpoint"
-}
 check_hash() {
   local path="$1" expected="$2"
   [[ -f "$path" && "$(digest "$path")" == "$expected" ]] || fail "artifact hash mismatch: $(basename "$path")"
@@ -30,42 +19,10 @@ checksums=SHA256SUMS
 checksum_sha="$(jq -r '.checksums_sha256' "$work/identity.json")"
 marker="$(jq -r '.marker' "$work/identity.json")"
 repo="$GITHUB_REPOSITORY"
-release_id=''
-find_release() {
-  local count
-  gh api "repos/$repo/releases?per_page=100" --paginate --slurp > "$work/releases.json"
-  count="$(jq --arg tag "$VERSION" '[.[][] | select(.tag_name == $tag)] | length' "$work/releases.json")"
-  [[ "$count" == 0 || "$count" == 1 ]] || fail 'multiple releases use the requested tag'
-  [[ "$count" == 1 ]] || return 1
-  release_id="$(jq -r --arg tag "$VERSION" '[.[][] | select(.tag_name == $tag)][0].id' "$work/releases.json")"
-  [[ "$release_id" =~ ^[1-9][0-9]*$ ]] || fail 'release has no valid ID'
-  gh api "repos/$repo/releases/$release_id" > "$work/release.json"
-  [[ "$(jq -r '.id' "$work/release.json")" == "$release_id" ]] || fail 'release ID changed'
-}
-check_marker() {
-  jq -e --arg marker "$marker" '.body | startswith($marker + "\n")' "$work/release.json" > /dev/null
-}
-verify_tag_target() {
-  local error_context="$1" tag_type tag_sha
-  tag_type="$(jq -r '.object.type' "$work/tag.json")"
-  tag_sha="$(jq -r '.object.sha' "$work/tag.json")"
-  if [[ "$tag_type" == tag ]]; then
-    gh api "repos/$repo/git/tags/$tag_sha" > "$work/annotated.json"
-    tag_type="$(jq -r '.object.type' "$work/annotated.json")"
-    tag_sha="$(jq -r '.object.sha' "$work/annotated.json")"
-  fi
-  [[ "$tag_type" == commit && "$tag_sha" == "$SOURCE_SHA" ]] || fail "$error_context"
-}
-
 # Inspect existing release identity before creating any missing tag.
-release_exists=false
-if find_release; then
-  release_exists=true
-  [[ "$(jq -r '.tag_name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another tag'
-  [[ "$(jq -r '.name' "$work/release.json")" == "$VERSION" ]] || fail 'existing release has another title'
-  [[ "$(jq -r '.prerelease' "$work/release.json")" == false ]] || fail 'existing release is a prerelease'
-  check_marker || fail 'existing release lacks matching version, commit, and binary identity evidence'
-fi
+"$work/release-publisher" lookup "$work/identity.json" "$work" > "$work/release-observation.json"
+release_exists="$(jq -r '.exists' "$work/release-observation.json")"
+release_id="$(jq -r '.id' "$work/release-observation.json")"
 
 # Generate from the frozen local history before creating any remote state.
 # Existing drafts retain their reviewed notes when publication is resumed.
@@ -105,9 +62,8 @@ EOF
 fi
 
 # Resolve both lightweight and annotated tags without moving either.
-if optional_api "repos/$repo/git/ref/tags/$VERSION" "$work/tag.json"; then
-  verify_tag_target 'existing tag targets another commit'
-else
+"$work/release-publisher" tag "$work/identity.json" "$work" existing > "$work/tag-observation.json"
+if [[ "$(jq -r '.exists' "$work/tag-observation.json")" == false ]]; then
   [[ "$release_exists" == false ]] || fail 'existing release has no tag; refusing to recreate it'
   gh api -X POST "repos/$repo/git/refs" -f "ref=refs/tags/$VERSION" -f "sha=$SOURCE_SHA" > /dev/null
 fi
@@ -115,11 +71,10 @@ fi
 if [[ "$release_exists" == false ]]; then
   jq -n --arg tag "$VERSION" --arg commit "$SOURCE_SHA" --rawfile body "$work/notes.md" '{tag_name:$tag,target_commitish:$commit,name:$tag,body:$body,draft:true,prerelease:false}' > "$work/create.json"
   gh api -X POST "repos/$repo/releases" --input "$work/create.json" > "$work/release.json"
-  release_id="$(jq -r '.id' "$work/release.json")"
-  [[ "$release_id" =~ ^[1-9][0-9]*$ ]] || fail 'created draft has no valid ID'
+  "$work/release-publisher" created-id "$work/release.json" > "$work/created-state.json"
+  release_id="$(jq -r '.id' "$work/created-state.json")"
 fi
-[[ "$(jq -r '.draft' "$work/release.json")" == true || "$(jq -r '.draft' "$work/release.json")" == false ]] || fail 'unknown release state'
-check_marker || fail 'release notes do not match tested identity'
+"$work/release-publisher" state "$work/identity.json" "$work/release.json" initial > "$work/release-state.json"
 
 verify_assets() {
   local name expected download_dir
@@ -141,12 +96,12 @@ verify_assets() {
 }
 
 verify_assets
-if [[ "$(jq -r '.draft' "$work/release.json")" == false ]]; then
+"$work/release-publisher" state "$work/identity.json" "$work/release.json" observed > "$work/release-state.json"
+if [[ "$(jq -r '.state' "$work/release-state.json")" == published ]]; then
   [[ "$(jq -r '.assets | length' "$work/release.json")" == 3 ]] || fail 'published release is missing assets'
   printf 'release %s already published with matching identity\n' "$VERSION"
   exit 0
 fi
-[[ "$(jq -r '.draft' "$work/release.json")" == true ]] || fail 'unknown release state'
 
 for name in "$macos" "$linux" "$checksums"; do
   if ! jq -e --arg name "$name" '.assets[] | select(.name == $name)' "$work/release.json" > /dev/null; then
@@ -156,12 +111,10 @@ done
 
 verify_assets
 [[ "$(jq -r '.assets | length' "$work/release.json")" == 3 ]] || fail 'draft is missing assets'
-[[ "$(jq -r '.draft' "$work/release.json")" == true ]] || fail 'release changed state during upload'
-check_marker || fail 'release notes changed during upload'
-gh api "repos/$repo/git/ref/tags/$VERSION" > "$work/tag.json"
-verify_tag_target 'tag changed before publication'
+"$work/release-publisher" state "$work/identity.json" "$work/release.json" upload > "$work/release-state.json"
+"$work/release-publisher" tag "$work/identity.json" "$work" publication > "$work/tag-observation.json"
 jq -n '{draft:false}' > "$work/publish.json"
 gh api -X PATCH "repos/$repo/releases/$release_id" --input "$work/publish.json" > /dev/null
 gh api "repos/$repo/releases/$release_id" > "$work/release.json"
-[[ "$(jq -r '.draft' "$work/release.json")" == false ]] || fail 'release publication not confirmed'
+"$work/release-publisher" state "$work/identity.json" "$work/release.json" published > "$work/release-state.json"
 printf 'published %s at %s with verified assets\n' "$VERSION" "$SOURCE_SHA"
