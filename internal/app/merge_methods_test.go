@@ -51,7 +51,7 @@ func TestPlanMixedRepositoryMergeReadFailureDiscardsComparison(t *testing.T) {
 func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {allow_rebase_merge: false}}\n", true)
 	calls := 0
-	result, err := Apply(checkoutDeclaration, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
+	result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
 		calls++
 		if repo.Owner != "owner" || d.AllowRebaseMerge == nil || *d.AllowRebaseMerge || !d.BaseEmpty() {
 			t.Fatalf("target=%+v desired=%+v", repo, d)
@@ -66,7 +66,7 @@ func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached remote")
 		}
-		if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {
+		if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil {
 			t.Fatal("invalid apply reached remote")
 		}
 	}
@@ -94,7 +94,7 @@ func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
 	if err != nil || calls != 1 || result.Comparison.Managed != 1 || len(result.Comparison.Changes) != 1 || comparisonAfterBool(t, result.Comparison.Changes[0]) != false {
 		t.Fatalf("plan=%+v err=%v calls=%d", result, err, calls)
 	}
-	applied, err := Apply(checkoutDeclaration, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
+	applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
 		calls++
 		if d.DeleteBranchOnMerge == nil || *d.DeleteBranchOnMerge || !d.BaseEmpty() {
 			t.Fatalf("desired=%+v", d)

@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 // ApplyResult distinguishes successful completion from a local no-op.
@@ -13,7 +12,7 @@ type ApplyResult struct {
 }
 
 // Apply keeps direct repository/topics writes; labels read their current collection before CRUD.
-func Apply(load DeclarationLoader, write Writer) (ApplyResult, error) {
+func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyResult, error) {
 	desired, err := Validate(load)
 	if err != nil {
 		return ApplyResult{}, err
@@ -21,7 +20,7 @@ func Apply(load DeclarationLoader, write Writer) (ApplyResult, error) {
 	if desired.Empty() {
 		return ApplyResult{}, nil
 	}
-	repo, err := workspace.CurrentRepository()
+	repo, err := resolve()
 	if err != nil {
 		return ApplyResult{}, err
 	}

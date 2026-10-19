@@ -31,7 +31,7 @@ func main() {
 			return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{MergeMethods: readMergeMethods, Repository: readRepository, Topics: readTopics, Labels: readLabels})
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(checkout.Declaration, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, Labels: writeLabels})
+			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, Labels: writeLabels})
 		},
 	}))
 }

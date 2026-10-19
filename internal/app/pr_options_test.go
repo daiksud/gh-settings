@@ -17,7 +17,7 @@ func TestPROptionsDeferredReadAndDirectWrite(t *testing.T) {
 		if err != nil || calls != 1 || got.Comparison.Managed != 1 || len(got.Comparison.Changes) != 1 || got.Comparison.Changes[0].Field().Path() != "repository."+field || comparisonAfterBool(t, got.Comparison.Changes[0]) != false {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 		}
-		result, err := Apply(checkoutDeclaration, Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {
+		result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {
 			calls++
 			v := d.AllowAutoMerge
 			if field == "allow_update_branch" {
@@ -35,7 +35,7 @@ func TestPROptionsDeferredReadAndDirectWrite(t *testing.T) {
 		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached read")
 		}
-		if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {
+		if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil {
 			t.Fatal("invalid apply reached write")
 		}
 	}

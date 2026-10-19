@@ -17,7 +17,7 @@ func TestSquashCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 		if err != nil || calls != 1 || got.Comparison.Managed < 1 {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 		}
-		result, err := Apply(checkoutDeclaration, Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {
+		result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {
 			calls++
 			if d.SquashMergeCommitTitle == nil || *d.SquashMergeCommitTitle != "PR_TITLE" || !d.BaseEmpty() {
 				t.Fatalf("desired=%+v", d)
@@ -33,7 +33,7 @@ func TestSquashCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached target/read")
 		}
-		if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {
+		if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil {
 			t.Fatal("invalid apply reached target/write")
 		}
 	}
