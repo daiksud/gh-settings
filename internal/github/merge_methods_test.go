@@ -67,6 +67,52 @@ func TestReadMergeMethodsGraphQLBoundary(t *testing.T) {
 	}
 }
 
+func TestMergeMethodBooleanResponseValidation(t *testing.T) {
+	// The shared boundary cases already cover missing rebase/deletion fields,
+	// invalid merge values, and null/string deletion values. Exercise only the
+	// remaining combinations against a complete literal response so no earlier
+	// missing field masks them.
+	for _, test := range []struct {
+		field  string
+		values []any
+	}{
+		{"mergeCommitAllowed", []any{"missing"}},
+		{"squashMergeAllowed", []any{"missing", nil, "false", 0}},
+		{"rebaseMergeAllowed", []any{nil, "false", 0}},
+		{"deleteBranchOnMerge", []any{0}},
+	} {
+		for _, value := range test.values {
+			t.Run(test.field+"/"+stringValue(value), func(t *testing.T) {
+				fields := map[string]any{
+					"mergeCommitAllowed": true, "squashMergeAllowed": false, "rebaseMergeAllowed": true,
+					"deleteBranchOnMerge": true, "autoMergeAllowed": false, "allowUpdateBranch": false,
+					"squashMergeCommitTitle": "COMMIT_OR_PR_TITLE", "squashMergeCommitMessage": "COMMIT_MESSAGES",
+					"mergeCommitTitle": "MERGE_MESSAGE", "mergeCommitMessage": "PR_TITLE",
+				}
+				if value == "missing" {
+					delete(fields, test.field)
+				} else {
+					fields[test.field] = value
+				}
+				body, err := json.Marshal(map[string]any{"data": map[string]any{"repository": fields}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				gql, err := api.NewGraphQLClient(api.ClientOptions{Host: "github.com", AuthToken: "fixture-token", LogIgnoreEnv: true, Transport: transportFunc(func(req *http.Request) (*http.Response, error) {
+					return labelsResponse(req, 200, string(body)), nil
+				})})
+				if err != nil {
+					t.Fatal(err)
+				}
+				got, err := (&MergeMethodsClient{graphql: gql}).ReadMergeMethods(repository.Repository{Owner: "owner", Name: "current"})
+				if err == nil || !strings.Contains(err.Error(), test.field) || got != (settings.MergeMethodsState{}) {
+					t.Fatalf("state=%+v error=%v, want no state and a %s validation error", got, err, test.field)
+				}
+			})
+		}
+	}
+}
+
 func TestApplyMergeMethodPayload(t *testing.T) {
 	yes, no := true, false
 	for _, test := range []struct {
