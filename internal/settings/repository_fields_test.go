@@ -9,7 +9,7 @@ func TestOrdinaryStringFieldValidation(t *testing.T) {
 			t.Fatalf("field=%q want=%q", field.name, name)
 		}
 		for _, value := range []string{"", "example value"} {
-			if !field.valid(value) {
+			if !ValidRepositoryFieldValue(name, value) {
 				t.Errorf("%s rejected ordinary string %q", name, value)
 			}
 		}
@@ -29,12 +29,12 @@ func TestSquashStringFieldValidation(t *testing.T) {
 			t.Fatalf("field=%q want=%q", field.name, test.name)
 		}
 		for _, value := range test.allowed {
-			if !field.valid(value) {
+			if !ValidRepositoryFieldValue(test.name, value) {
 				t.Errorf("%s rejected %q", test.name, value)
 			}
 		}
 		for _, value := range []string{"", "UNKNOWN"} {
-			if field.valid(value) {
+			if ValidRepositoryFieldValue(test.name, value) {
 				t.Errorf("%s accepted %q", test.name, value)
 			}
 		}
@@ -50,25 +50,51 @@ func TestMergeStringFieldValidation(t *testing.T) {
 		{name: "repository.merge_commit_message", allowed: []string{"PR_TITLE", "PR_BODY", "BLANK"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			var valid func(string) bool
-			for _, field := range mergeMethodsStringFields {
-				if field.name == test.name {
-					valid = field.valid
-				}
-			}
-			if valid == nil {
-				t.Fatalf("missing validator definition for %s", test.name)
-			}
 			for _, value := range test.allowed {
-				if !valid(value) {
+				if !ValidRepositoryFieldValue(test.name, value) {
 					t.Errorf("%s rejected %q", test.name, value)
 				}
 			}
 			for _, value := range []string{"", "UNKNOWN"} {
-				if valid(value) {
+				if ValidRepositoryFieldValue(test.name, value) {
 					t.Errorf("%s accepted %q", test.name, value)
 				}
 			}
 		})
+	}
+}
+
+func TestBooleanFieldValidation(t *testing.T) {
+	for _, name := range []string{
+		"repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions",
+		"repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge",
+		"repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch",
+	} {
+		for _, value := range []bool{false, true} {
+			if !ValidRepositoryFieldValue(name, value) {
+				t.Errorf("%s rejected native boolean %t", name, value)
+			}
+		}
+	}
+}
+
+func TestRepositoryFieldValidationRejectsUnknownNamesAndTypes(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value any
+	}{
+		{"repository.unknown", false},
+		{"repository.unknown", "value"},
+		{"repository.has_issues", "false"},
+		{"repository.has_issues", nil},
+		{"repository.description", false},
+		{"repository.description", nil},
+		{"repository.description", float64(1)},
+		{"repository.description", []string{}},
+		{"topics.names", "value"},
+	} {
+		if ValidRepositoryFieldValue(test.name, test.value) {
+			t.Errorf("%s accepted %T value %#v", test.name, test.value, test.value)
+		}
 	}
 }
