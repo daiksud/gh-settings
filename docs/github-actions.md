@@ -1,5 +1,7 @@
 # Use the public settings Action
 
+Current-source [`has_discussions` support](features/discussions.feature.md) is planned for v0.15.0. The current v0.14.0 consumer pins do not accept this field; update the released CLI/Action before adopting it.
+
 ## Public Action and supported checkout
 
 `daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.14.0 package for repository fields, topics and [labels](#labels-and-permissions).

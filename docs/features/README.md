@@ -25,3 +25,5 @@ The v0.12.0 [squash commit defaults](squash-commit-defaults.feature.md) add two 
 The v0.13.0 [auto-merge and branch-update options](pull-request-options.feature.md) add two independent repository booleans through the existing fixed GraphQL read and direct REST PATCH.
 
 The v0.14.0 [normal merge commit defaults](merge-commit-defaults.feature.md) add two repository enums with an independent message/title dependency, without enabling normal merges.
+
+Current source adds the optional [`has_discussions` setting](discussions.feature.md), planned for v0.15.0, through the repository REST read/write path with a verified PATCH response.

@@ -19,9 +19,10 @@ func TestExportStoredSettings(t *testing.T) {
 		want     string
 		existing bool
 	}{
-		{"five values", settings.RepositoryState{Description: "Example repository", Homepage: "https://example.com", HasIssues: true, HasWiki: true}, "schemaVersion: 1\nsettings:\n    repository:\n        description: Example repository\n        homepage: https://example.com\n        has_issues: true\n        has_projects: false\n        has_wiki: true\n", false},
-		{"zero values", settings.RepositoryState{}, "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        homepage: \"\"\n        has_issues: false\n        has_projects: false\n        has_wiki: false\n", true},
-		{"projects enabled", settings.RepositoryState{Description: "Projects", HasProjects: true, HasWiki: true}, "schemaVersion: 1\nsettings:\n    repository:\n        description: Projects\n        homepage: \"\"\n        has_issues: false\n        has_projects: true\n        has_wiki: true\n", true},
+		{"five values", settings.RepositoryState{Description: "Example repository", Homepage: "https://example.com", HasIssues: true, HasWiki: true}, "schemaVersion: 1\nsettings:\n    repository:\n        description: Example repository\n        homepage: https://example.com\n        has_issues: true\n        has_projects: false\n        has_wiki: true\n        has_discussions: false\n", false},
+		{"zero values", settings.RepositoryState{}, "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        homepage: \"\"\n        has_issues: false\n        has_projects: false\n        has_wiki: false\n        has_discussions: false\n", true},
+		{"discussions enabled", settings.RepositoryState{HasDiscussions: true}, "schemaVersion: 1\nsettings:\n    repository:\n        description: \"\"\n        homepage: \"\"\n        has_issues: false\n        has_projects: false\n        has_wiki: false\n        has_discussions: true\n", true},
+		{"projects enabled", settings.RepositoryState{Description: "Projects", HasProjects: true, HasWiki: true}, "schemaVersion: 1\nsettings:\n    repository:\n        description: Projects\n        homepage: \"\"\n        has_issues: false\n        has_projects: true\n        has_wiki: true\n        has_discussions: false\n", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			before := []byte("previous configuration\n") // Export does not validate an old document.

@@ -39,7 +39,7 @@ func decodeRepositoryResponse(response map[string]json.RawMessage) (settings.Rep
 		target any
 	}{
 		{"description", &result.Description}, {"homepage", &result.Homepage},
-		{"has_issues", &result.HasIssues}, {"has_projects", &result.HasProjects}, {"has_wiki", &result.HasWiki},
+		{"has_issues", &result.HasIssues}, {"has_projects", &result.HasProjects}, {"has_wiki", &result.HasWiki}, {"has_discussions", &result.HasDiscussions},
 	}
 	for _, field := range fields {
 		value, present := response[field.name]

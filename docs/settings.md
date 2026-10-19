@@ -6,7 +6,7 @@ Configuration lives in `.github/settings.yml` at the Git checkout root and manag
 
 ## Supported fields
 
-The keys inside `settings.repository` follow GitHub's repository update request body schema.[^github-update-repository]
+The keys inside `settings.repository` follow GitHub's repository update request body parameters.[^github-update-repository] Discussions additionally uses the parameter sent by GitHub's official CLI, as explained below.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -17,6 +17,23 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 | `has_wiki` | boolean | Whether the wiki is enabled |
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
+
+## Discussions (current source; planned v0.15.0)
+
+Current source adds optional `settings.repository.has_discussions`, a boolean controlling GitHub Discussions. It extends the repository group; it does not manage discussion categories or individual discussions. Published v0.14.0 and the currently pinned Action reject this key, so update to a release containing it before adopting the declaration.
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    has_discussions: false
+```
+
+Omission leaves the value unmanaged; explicit `false` remains a declared value. Null, quoted booleans, and other types are invalid. Export includes the observed value only after complete reads; current-source exports contain sixteen repository fields, topics, and labels. Existing configurations that omit this field keep their previous managed count.
+
+Plan reads the value from the existing repository REST GET without an additional GraphQL query. Apply sends it only when declared, through the existing Administration-write PATCH. When declared, a successful PATCH must return the same boolean; a missing, null, wrongly typed, or unequal value is an error. This check occurs after the request and does not roll back repository writes or prove transactional application. No prerequisite read, implicit enabling, or additional permission is introduced.
+
+GitHub's [official CLI sends this field through repository PATCH](https://github.com/cli/cli/blob/6fcf2ea52718ad1ef8b12130f07430269e871352/pkg/cmd/repo/edit/edit.go#L76-L94), although the public REST update schema does not currently list it. The [feature contract](features/discussions.feature.md) describes strict reads, response verification, and test boundaries.
 
 ## Merge methods (v0.10.0)
 
@@ -195,7 +212,7 @@ The supported repository fields distinguish omission from explicit values:
 | `description: ""` | A declared empty string; single-quoted empty strings are equivalent. |
 | `description: null` or `has_issues: null` | Invalid for these string and boolean fields. A bare `description:` is also YAML null and invalid. |
 
-The same type rules apply to `homepage`, `has_projects` and `has_wiki`. Quoted `'null'` is a string value, not YAML null. Null is invalid for the version, mappings, topic list and label declarations too.
+The same type rules apply to `homepage`, `has_projects`, `has_wiki` and the current-source `has_discussions`. Quoted `'null'` is a string value, not YAML null. Null is invalid for the version, mappings, topic list and label declarations too.
 
 A version-only document manages nothing:
 

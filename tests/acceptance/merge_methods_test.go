@@ -235,7 +235,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				t.Fatal(err)
 			}
 			fields := document["settings"].(map[string]any)["repository"].(map[string]any)
-			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || fields["squash_merge_commit_title"] != "COMMIT_OR_PR_TITLE" || fields["squash_merge_commit_message"] != "COMMIT_MESSAGES" || fields["allow_auto_merge"] != false || fields["allow_update_branch"] != false || fields["merge_commit_title"] != "MERGE_MESSAGE" || fields["merge_commit_message"] != "PR_TITLE" || len(fields) != 15 {
+			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || fields["squash_merge_commit_title"] != "COMMIT_OR_PR_TITLE" || fields["squash_merge_commit_message"] != "COMMIT_MESSAGES" || fields["allow_auto_merge"] != false || fields["allow_update_branch"] != false || fields["merge_commit_title"] != "MERGE_MESSAGE" || fields["merge_commit_message"] != "PR_TITLE" || fields["has_discussions"] != false || len(fields) != 16 {
 				t.Fatalf("fields=%v", fields)
 			}
 			input := repositoryInput("allow_merge_commit: false\nallow_squash_merge: true\nallow_rebase_merge: false\ndelete_branch_on_merge: false\nallow_auto_merge: true\nallow_update_branch: true\nsquash_merge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\nmerge_commit_title: PR_TITLE\nmerge_commit_message: BLANK\n")

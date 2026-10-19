@@ -19,18 +19,18 @@ func TestExportThenValidate(t *testing.T) {
 	}{
 		{
 			name:     "ordinary-values",
-			response: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"id":123}`,
+			response: `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"id":123}`,
 			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
 				"description": "Example repository", "homepage": "https://example.com",
-				"has_issues": true, "has_projects": false, "has_wiki": true, "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE",
+				"has_issues": true, "has_projects": false, "has_wiki": true, "has_discussions": false, "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE",
 			}}},
 		},
 		{
 			name:     "zero-and-null-strings",
-			response: `{"description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`,
+			response: `{"description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false}`,
 			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
 				"description": "", "homepage": "",
-				"has_issues": false, "has_projects": false, "has_wiki": false, "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE",
+				"has_issues": false, "has_projects": false, "has_wiki": false, "has_discussions": false, "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE",
 			}}},
 		},
 	} {
