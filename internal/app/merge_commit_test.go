@@ -10,7 +10,7 @@ func TestMergeCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 	for _, input := range []string{"merge_commit_title: PR_TITLE", "merge_commit_title: PR_TITLE, merge_commit_message: BLANK"} {
 		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+input+"}}", true)
 		calls := 0
-		got, err := Plan(checkoutDeclaration, Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
+		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{MergeMethods: func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
 			return settings.MergeMethodsState{MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 		}})
@@ -30,7 +30,7 @@ func TestMergeCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 	}
 	for _, input := range []string{"merge_commit_message: BLANK", "merge_commit_title: null", "merge_commit_title: ''"} {
 		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+input+"}}", false)
-		if _, err := Plan(checkoutDeclaration, Reader{}); err == nil {
+		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached target/read")
 		}
 		if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {

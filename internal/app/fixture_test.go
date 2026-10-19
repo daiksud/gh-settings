@@ -6,12 +6,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func checkoutDeclaration() (settings.Declaration, error) {
 	return workspace.NewCheckout(".").Declaration()
+}
+
+func checkoutRepository() (repository.Repository, error) {
+	return workspace.NewCheckout(".").Repository()
 }
 
 func appCheckout(t *testing.T, input string, origin bool) string {

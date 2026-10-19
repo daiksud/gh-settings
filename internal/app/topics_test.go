@@ -57,7 +57,7 @@ func TestTopicsOnlyPlanAndApply(t *testing.T) {
 	for _, names := range []string{"[]", "[b, a]"} {
 		t.Run(names, func(t *testing.T) {
 			appCheckout(t, "schemaVersion: 1\nsettings: {topics: {names: "+names+"}}", true)
-			result, err := Plan(checkoutDeclaration, Reader{Topics: func(repository.Repository) ([]string, error) { return []string{"a", "b"}, nil }})
+			result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{Topics: func(repository.Repository) ([]string, error) { return []string{"a", "b"}, nil }})
 			if err != nil || result.Comparison.Managed != 1 {
 				t.Fatalf("result=%+v error=%v", result, err)
 			}
@@ -78,7 +78,7 @@ func TestTopicsOnlyPlanAndApply(t *testing.T) {
 }
 func TestEmptyTopicsIsLocalNoop(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {topics: {}}", false)
-	if _, err := Plan(checkoutDeclaration, Reader{}); err != nil {
+	if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Apply(checkoutDeclaration, Writer{}); err != nil {
@@ -87,7 +87,7 @@ func TestEmptyTopicsIsLocalNoop(t *testing.T) {
 }
 func TestInvalidTopicsBeforeRemote(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {topics: {names: [null]}}", false)
-	if _, err := Plan(checkoutDeclaration, Reader{}); err == nil || !strings.Contains(err.Error(), "array of strings") {
+	if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil || !strings.Contains(err.Error(), "array of strings") {
 		t.Fatalf("error=%v", err)
 	}
 	if _, err := Apply(checkoutDeclaration, Writer{}); err == nil || !strings.Contains(err.Error(), "array of strings") {

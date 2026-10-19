@@ -60,7 +60,7 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 ### Test mapping
 
-Focused application, comparison and CLI tests cover target selection, declaration semantics, exact output, and failures. Process acceptance uses the already-built executable with an isolated local API fixture, checks exact exit codes and output, observes GET-only requests, and verifies configuration preservation.
+Focused application tests record declaration loading, target resolution, and reads without Git or YAML fixtures. Workspace tests own origin syntax, configuration scope, and isolation between Checkout instances; comparison and CLI tests own declaration semantics and exact output. Process acceptance uses the already-built executable with an isolated local API fixture, checks exact exit codes and output, observes GET-only requests, and verifies configuration preservation.
 
 | Behavior | Test |
 | --- | --- |
@@ -68,8 +68,9 @@ Focused application, comparison and CLI tests cover target selection, declaratio
 | Discussions omission/false/equality/order after wiki and REST-only selective read | [TestDiscussionsComparison](../../internal/settings/discussions_test.go), [TestPlanDiscussionsOnlyReadsREST](../../internal/app/discussions_test.go), [TestPlanAcceptance](../../tests/acceptance/plan_test.go) |
 | CLI operation selection and output failure | [TestRunSelectsOperation and TestPlanOutputFailure](../../internal/cli/run_test.go) |
 | API, decoding, transport failures and GET-only access | [TestReadRepositorySettings and TestReadRepositoryFailures](../../internal/github/repository_test.go) |
-| Typed target/comparison, changes/no differences, unchanged configuration | [TestPlanResults](../../internal/app/plan_test.go) |
-| All three empty forms succeed before origin/read, zero result and unchanged file | [TestPlanNoManagedSettings](../../internal/app/plan_test.go) |
+| Typed target/comparison, changes/no differences, load → target → read order | [TestPlanResults](../../internal/app/plan_test.go) |
+| Unmanaged declaration returns a zero result without target resolution or reads; explicit empty topics/labels remain managed | [TestPlanNoManagedSettings and TestPlanManagedEmptyCollectionsResolveTarget](../../internal/app/plan_test.go) |
+| Direct origin syntax, configuration scope and overrides; multiple explicit Checkout directories | [TestCurrentRepositoryFormats and TestCurrentRepositoryIgnoresUnscopedOrigins](../../internal/workspace/repository_test.go), [TestCheckoutRepositoryUsesItsDirectory](../../internal/workspace/checkout_test.go) |
 | Omitted fields versus each explicit false/empty field | [TestRepositoryDeclarationEmpty](../../internal/settings/repository_test.go) |
 | Validation before target/read, target failure before read, read failures | [TestPlanValidatesBeforeRead, TestPlanTargetFailureBeforeRead and TestPlanReadFailure](../../internal/app/plan_test.go) |
 | File/subdirectory, managed false/empty values, GET nulls, API/output failures, no PATCH; three empty forms without origin/auth/GET | [TestPlanAcceptance](../../tests/acceptance/plan_test.go) |

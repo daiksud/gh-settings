@@ -23,7 +23,7 @@ func TestLabelsPlanAndApplyEmptyListDeletesAll(t *testing.T) {
 		reads++
 		return state, nil
 	}
-	plan, err := Plan(checkoutDeclaration, Reader{Labels: read})
+	plan, err := Plan(checkoutDeclaration, checkoutRepository, Reader{Labels: read})
 	if err != nil || plan.Comparison.Managed != 1 || len(plan.Comparison.Labels) != 1 || plan.Comparison.Labels[0].Operation != "delete" {
 		t.Fatalf("plan=%+v err=%v", plan, err)
 	}
@@ -59,7 +59,7 @@ func TestInvalidLabelsBeforeTargetAndRemoteAccess(t *testing.T) {
 	for _, input := range []string{"null", "[{name: bug}, {name: BUG}]", "[{name: bug, color: false}]"} {
 		t.Run(input, func(t *testing.T) {
 			appCheckout(t, "schemaVersion: 1\nsettings: {labels: "+input+"}", false)
-			if _, err := Plan(checkoutDeclaration, Reader{}); err == nil {
+			if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 				t.Fatal("plan accepted invalid labels")
 			}
 			if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {
@@ -127,7 +127,7 @@ func TestLabelsReadFailurePreservesExport(t *testing.T) {
 func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository: {has_issues: false}\n  labels: []\n", true)
 	for _, ambiguous := range []bool{false, true} {
-		result, err := Plan(checkoutDeclaration, Reader{
+		result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{
 			Repository: func(repository.Repository) (settings.RepositoryState, error) {
 				return settings.RepositoryState{HasIssues: true}, nil
 			},

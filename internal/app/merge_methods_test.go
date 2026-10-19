@@ -14,7 +14,7 @@ func TestPlanMergeMethodsSelectsOnlyNeededReads(t *testing.T) {
 	input := "schemaVersion: 1\nsettings: {repository: {allow_merge_commit: false, allow_squash_merge: true}}\n"
 	path := appCheckout(t, input, true)
 	calls := 0
-	result, err := Plan(checkoutDeclaration, Reader{MergeMethods: func(repo repository.Repository) (settings.MergeMethodsState, error) {
+	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{MergeMethods: func(repo repository.Repository) (settings.MergeMethodsState, error) {
 		calls++
 		if repo.Owner != "owner" || repo.Name != "current" {
 			t.Fatalf("target=%+v", repo)
@@ -32,7 +32,7 @@ func TestPlanMixedRepositoryMergeReadFailureDiscardsComparison(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {has_issues: false, allow_merge_commit: false}}\n", true)
 	failure := errors.New("GraphQL partial response denied")
 	var calls []string
-	result, err := Plan(checkoutDeclaration, Reader{
+	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{
 		Repository: func(repository.Repository) (settings.RepositoryState, error) {
 			calls = append(calls, "rest")
 			return settings.RepositoryState{HasIssues: true}, nil
@@ -63,7 +63,7 @@ func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 	}
 	for _, input := range []string{"null", "'false'", "[]"} {
 		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {allow_merge_commit: "+input+"}}\n", false)
-		if _, err := Plan(checkoutDeclaration, Reader{}); err == nil {
+		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached remote")
 		}
 		if _, err := Apply(checkoutDeclaration, Writer{}); err == nil {
@@ -87,7 +87,7 @@ func TestMergeMethodsExportReadFailurePreservesFile(t *testing.T) {
 func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
 	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {delete_branch_on_merge: false}}\n", true)
 	calls := 0
-	result, err := Plan(checkoutDeclaration, Reader{MergeMethods: func(repo repository.Repository) (settings.MergeMethodsState, error) {
+	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{MergeMethods: func(repo repository.Repository) (settings.MergeMethodsState, error) {
 		calls++
 		return settings.MergeMethodsState{DeleteBranchOnMerge: true}, nil
 	}})
