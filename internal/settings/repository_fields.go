@@ -1,12 +1,13 @@
 package settings
 
-type repositoryBoolField[S any] struct {
+type repositoryField[S any, V bool | string] struct {
 	name    string
-	current func(S) bool
-	desired func(RepositoryDeclaration) *bool
+	current func(S) V
+	desired func(RepositoryDeclaration) *V
+	valid   func(V) bool
 }
 
-var repositoryBoolFields = [...]repositoryBoolField[RepositoryState]{
+var repositoryBoolFields = [...]repositoryField[RepositoryState, bool]{
 	{
 		name:    "repository.has_issues",
 		current: func(state RepositoryState) bool { return state.HasIssues },
@@ -29,7 +30,7 @@ var repositoryBoolFields = [...]repositoryBoolField[RepositoryState]{
 	},
 }
 
-var mergeMethodsBoolFields = [...]repositoryBoolField[MergeMethodsState]{
+var mergeMethodsBoolFields = [...]repositoryField[MergeMethodsState, bool]{
 	{
 		name:    "repository.allow_merge_commit",
 		current: func(state MergeMethodsState) bool { return state.AllowMergeCommit },
@@ -59,5 +60,47 @@ var mergeMethodsBoolFields = [...]repositoryBoolField[MergeMethodsState]{
 		name:    "repository.allow_update_branch",
 		current: func(state MergeMethodsState) bool { return state.AllowUpdateBranch },
 		desired: func(declaration RepositoryDeclaration) *bool { return declaration.AllowUpdateBranch },
+	},
+}
+
+var repositoryStringFields = [...]repositoryField[RepositoryState, string]{
+	{
+		name:    "repository.description",
+		current: func(state RepositoryState) string { return state.Description },
+		desired: func(declaration RepositoryDeclaration) *string { return declaration.Description },
+		valid:   func(string) bool { return true },
+	},
+	{
+		name:    "repository.homepage",
+		current: func(state RepositoryState) string { return state.Homepage },
+		desired: func(declaration RepositoryDeclaration) *string { return declaration.Homepage },
+		valid:   func(string) bool { return true },
+	},
+}
+
+var mergeMethodsStringFields = [...]repositoryField[MergeMethodsState, string]{
+	{
+		name:    "repository.squash_merge_commit_title",
+		current: func(state MergeMethodsState) string { return state.SquashMergeCommitTitle },
+		desired: func(declaration RepositoryDeclaration) *string { return declaration.SquashMergeCommitTitle },
+		valid:   ValidSquashMergeCommitTitle,
+	},
+	{
+		name:    "repository.squash_merge_commit_message",
+		current: func(state MergeMethodsState) string { return state.SquashMergeCommitMessage },
+		desired: func(declaration RepositoryDeclaration) *string { return declaration.SquashMergeCommitMessage },
+		valid:   ValidSquashMergeCommitMessage,
+	},
+	{
+		name:    "repository.merge_commit_title",
+		current: func(state MergeMethodsState) string { return state.MergeCommitTitle },
+		desired: func(declaration RepositoryDeclaration) *string { return declaration.MergeCommitTitle },
+		valid:   ValidMergeCommitTitle,
+	},
+	{
+		name:    "repository.merge_commit_message",
+		current: func(state MergeMethodsState) string { return state.MergeCommitMessage },
+		desired: func(declaration RepositoryDeclaration) *string { return declaration.MergeCommitMessage },
+		valid:   ValidMergeCommitMessage,
 	},
 }
