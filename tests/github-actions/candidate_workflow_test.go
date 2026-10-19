@@ -10,67 +10,84 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func TestPRCandidateCompositeWiring(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var workflow struct{ Jobs map[string]yaml.Node }
-	if err := yaml.Unmarshal(data, &workflow); err != nil {
-		t.Fatal(err)
-	}
-	var smoke struct {
-		Needs       []string          `yaml:"needs"`
-		Runner      string            `yaml:"runs-on"`
-		Timeout     int               `yaml:"timeout-minutes"`
-		Permissions map[string]string `yaml:"permissions"`
-		If          string            `yaml:"if"`
-		Continue    bool              `yaml:"continue-on-error"`
-		Steps       []step            `yaml:"steps"`
-	}
-	node := workflow.Jobs["composite-smoke"]
-	if err := node.Decode(&smoke); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(smoke.Needs, []string{"commit-stage", "ready"}) || smoke.Runner != "ubuntu-24.04" || smoke.Timeout != 5 || !reflect.DeepEqual(smoke.Permissions, map[string]string{"contents": "read"}) || smoke.If != "" || smoke.Continue || len(smoke.Steps) != 4 {
-		t.Fatalf("PR candidate caller boundaries changed: %+v", smoke)
-	}
-	checkout, tools, download, candidate := smoke.Steps[0], smoke.Steps[1], smoke.Steps[2], smoke.Steps[3]
-	if checkout.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(checkout.With, map[string]string{
-		"ref": "${{ needs.commit-stage.outputs.source-sha }}", "path": ".action", "persist-credentials": "false",
-	}) {
-		t.Fatalf("candidate must check out the exact producer source separately: %+v", checkout)
-	}
-	if !strings.HasPrefix(tools.Uses, "jdx/mise-action@") || tools.With["working_directory"] != ".action" || tools.With["install_args"] != "go" || tools.With["cache"] != "false" {
-		t.Fatalf("caller must install Go only for the local API fixture: %+v", tools)
-	}
-	if !strings.HasPrefix(download.Uses, "actions/download-artifact@") || !reflect.DeepEqual(download.With, map[string]string{
-		"name": "gh-settings", "path": "${{ runner.temp }}/product", "digest-mismatch": "error",
-	}) {
-		t.Fatalf("candidate must consume the existing producer artifact: %+v", download)
-	}
-	if candidate.Uses != "./.action/.github/actions/candidate-smoke" || !reflect.DeepEqual(candidate.With, map[string]string{
-		"source-sha": "${{ needs.commit-stage.outputs.source-sha }}", "cli-version": "${{ needs.commit-stage.outputs.cli-version }}",
-		"binary-sha256": "${{ needs.commit-stage.outputs.binary-sha256 }}", "binary-path": "${{ runner.temp }}/product/gh-settings",
-	}) {
-		t.Fatalf("candidate source/version/artifact handoff changed: %+v", candidate)
-	}
-	for _, s := range smoke.Steps {
-		if s.If != "" || s.Continue || s.Run != "" || len(s.Env) != 0 {
-			t.Fatalf("candidate caller bypasses its success gate or adds execution/token bindings: %+v", s)
-		}
-	}
-	var pass struct {
-		Needs []string `yaml:"needs"`
-		If    string   `yaml:"if"`
-		Steps []step   `yaml:"steps"`
-	}
-	node = workflow.Jobs["pass"]
-	if err := node.Decode(&pass); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(pass.Needs, []string{"commitlint", "acceptance-stage", "composite-smoke"}) || pass.If != "always()" || len(pass.Steps) != 1 || pass.Steps[0].If != "cancelled() || needs.commitlint.result != 'success' || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'" || pass.Steps[0].Run != "exit 1" || pass.Steps[0].Continue {
-		t.Fatalf("PR pass must reject failed, skipped or cancelled candidate validation: %+v", pass)
+func TestCandidateCompositeCallers(t *testing.T) {
+	for _, test := range []struct {
+		workflow         string
+		needs, passNeeds []string
+		failureCondition string
+	}{
+		{workflow: "ci-pr.yml", needs: []string{"commit-stage", "ready"}, passNeeds: []string{"commitlint", "acceptance-stage", "composite-smoke"}, failureCondition: "cancelled() || needs.commitlint.result != 'success' || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'"},
+		{workflow: "ci-push.yml", needs: []string{"commit-stage"}, passNeeds: []string{"acceptance-stage", "composite-smoke"}, failureCondition: "cancelled() || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'"},
+	} {
+		t.Run(test.workflow, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", test.workflow))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var workflow struct{ Jobs map[string]yaml.Node }
+			if err := yaml.Unmarshal(data, &workflow); err != nil {
+				t.Fatal(err)
+			}
+			var smoke struct {
+				Needs       yaml.Node         `yaml:"needs"`
+				Runner      string            `yaml:"runs-on"`
+				Timeout     int               `yaml:"timeout-minutes"`
+				Permissions map[string]string `yaml:"permissions"`
+				If          string            `yaml:"if"`
+				Continue    bool              `yaml:"continue-on-error"`
+				Steps       []step            `yaml:"steps"`
+			}
+			node := workflow.Jobs["composite-smoke"]
+			if err := node.Decode(&smoke); err != nil {
+				t.Fatal(err)
+			}
+			var needs []string
+			if smoke.Needs.Kind == yaml.ScalarNode {
+				needs = []string{smoke.Needs.Value}
+			} else if err := smoke.Needs.Decode(&needs); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(needs, test.needs) || smoke.Runner != "ubuntu-24.04" || smoke.Timeout != 5 || !reflect.DeepEqual(smoke.Permissions, map[string]string{"contents": "read"}) || smoke.If != "" || smoke.Continue || len(smoke.Steps) != 4 {
+				t.Fatalf("candidate caller boundaries changed: %+v", smoke)
+			}
+			checkout, tools, download, candidate := smoke.Steps[0], smoke.Steps[1], smoke.Steps[2], smoke.Steps[3]
+			if checkout.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(checkout.With, map[string]string{
+				"ref": "${{ needs.commit-stage.outputs.source-sha }}", "path": ".action", "persist-credentials": "false",
+			}) {
+				t.Fatalf("candidate must check out the exact producer source separately: %+v", checkout)
+			}
+			if !strings.HasPrefix(tools.Uses, "jdx/mise-action@") || tools.With["working_directory"] != ".action" || tools.With["install_args"] != "go" || tools.With["cache"] != "false" {
+				t.Fatalf("caller must install Go only for the local API fixture: %+v", tools)
+			}
+			if !strings.HasPrefix(download.Uses, "actions/download-artifact@") || !reflect.DeepEqual(download.With, map[string]string{
+				"name": "gh-settings", "path": "${{ runner.temp }}/product", "digest-mismatch": "error",
+			}) {
+				t.Fatalf("candidate must consume the existing producer artifact: %+v", download)
+			}
+			if candidate.Uses != "./.action/.github/actions/candidate-smoke" || !reflect.DeepEqual(candidate.With, map[string]string{
+				"source-sha": "${{ needs.commit-stage.outputs.source-sha }}", "cli-version": "${{ needs.commit-stage.outputs.cli-version }}",
+				"binary-sha256": "${{ needs.commit-stage.outputs.binary-sha256 }}", "binary-path": "${{ runner.temp }}/product/gh-settings",
+			}) {
+				t.Fatalf("candidate source/version/artifact handoff changed: %+v", candidate)
+			}
+			for _, s := range smoke.Steps {
+				if s.If != "" || s.Continue || s.Run != "" || len(s.Env) != 0 {
+					t.Fatalf("candidate caller bypasses its success gate or adds execution/token bindings: %+v", s)
+				}
+			}
+			var pass struct {
+				Needs []string `yaml:"needs"`
+				If    string   `yaml:"if"`
+				Steps []step   `yaml:"steps"`
+			}
+			node = workflow.Jobs["pass"]
+			if err := node.Decode(&pass); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(pass.Needs, test.passNeeds) || pass.If != "always()" || len(pass.Steps) != 1 || pass.Steps[0].If != test.failureCondition || pass.Steps[0].Run != "exit 1" || pass.Steps[0].Continue {
+				t.Fatalf("pass must reject failed, skipped or cancelled candidate validation: %+v", pass)
+			}
+		})
 	}
 }
 
