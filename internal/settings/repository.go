@@ -46,6 +46,7 @@ type RepositoryDeclaration struct {
 	MergeCommitMessage        *string
 	HasPullRequests           *bool
 	PullRequestCreationPolicy *string
+	IssueCreationPolicy       *string
 }
 
 // Empty reports whether every field is unmanaged, regardless of declared values.
@@ -129,4 +130,14 @@ func (d RepositoryDeclaration) WithPRAccess(state PRAccessState) RepositoryDecla
 	declareRepositoryFields(prAccessBoolFields[:], state, &d)
 	declareRepositoryFields(prAccessStringFields[:], state, &d)
 	return d
+}
+
+// IssueCreationPolicyState contains a complete independently acquired policy.
+type IssueCreationPolicyState struct{ Policy string }
+
+func ValidIssueCreationPolicy(value string) bool {
+	return value == "ALL" || value == "COLLABORATORS_ONLY"
+}
+func (d RepositoryDeclaration) RepositoryAccessEmpty() bool {
+	return d.PRAccessEmpty() && d.IssueCreationPolicy == nil
 }

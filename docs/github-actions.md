@@ -12,6 +12,8 @@ Current source additionally supports [Rulesets declarations with basic, PR revie
 
 Current source also supports unreleased [PR access settings](settings.md#pull-request-access-unreleased), with native boolean/enum report and Summary values. Published v0.16.0 and older CLI/Action packages reject them. Complete authenticated GraphQL reads and an authorized repository-update credential are required; no new Action input, token discovery or caller grant is added. PR access writes follow existing repository REST writes and precede later resources, so a later failure can leave earlier writes applied.
 
+The unreleased [`issue_creation_policy` setting](settings.md#issue-creation-policy-unreleased) adds a native enum to current-source plan reports and Summary. It shares PR access's validated repository mutation and preserves `has_issues` when omitted. Complete authenticated reads and an authorized repository-update credential are required; existing inputs, outputs and caller grants are unchanged. Published v0.16.0 and older CLI/Action packages reject the key.
+
 ## Public Action and supported checkout
 
 `daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.15.0 package for repository fields, topics and [labels](#labels-and-permissions).

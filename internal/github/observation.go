@@ -24,17 +24,24 @@ func ObserveRepository(repo repository.Repository, fields []settings.FieldID) (s
 			return client.ReadMergeMethods(repo)
 		},
 		func(repo repository.Repository) (settings.PRAccessState, error) {
-			client, err := NewPRAccessClient(repo.Host)
+			client, err := NewRepositoryAccessClient(repo.Host)
 			if err != nil {
 				return settings.PRAccessState{}, err
 			}
 			return client.ReadPRAccess(repo)
 		},
+		func(repo repository.Repository) (settings.IssueCreationPolicyState, error) {
+			client, err := NewRepositoryAccessClient(repo.Host)
+			if err != nil {
+				return settings.IssueCreationPolicyState{}, err
+			}
+			return client.ReadIssueCreationPolicy(repo)
+		},
 	)
 }
 
-func observeRepository(repo repository.Repository, fields []settings.FieldID, readBase func(repository.Repository) (settings.RepositoryState, error), readMerge func(repository.Repository) (settings.MergeMethodsState, error), readPR func(repository.Repository) (settings.PRAccessState, error)) (settings.RepositoryObservation, error) {
-	baseNeeded, mergeNeeded, prNeeded, err := settings.RepositoryObservationGroups(fields)
+func observeRepository(repo repository.Repository, fields []settings.FieldID, readBase func(repository.Repository) (settings.RepositoryState, error), readMerge func(repository.Repository) (settings.MergeMethodsState, error), readPR func(repository.Repository) (settings.PRAccessState, error), readIssue func(repository.Repository) (settings.IssueCreationPolicyState, error)) (settings.RepositoryObservation, error) {
+	baseNeeded, mergeNeeded, prNeeded, issueNeeded, err := settings.RepositoryObservationGroups(fields)
 	if err != nil {
 		return settings.RepositoryObservation{}, err
 	}
@@ -62,5 +69,13 @@ func observeRepository(repo repository.Repository, fields []settings.FieldID, re
 		}
 		pr = &state
 	}
-	return settings.NewRepositoryObservation(base, merge, pr), nil
+	observed := settings.NewRepositoryObservation(base, merge, pr)
+	if issueNeeded {
+		state, err := readIssue(repo)
+		if err != nil {
+			return settings.RepositoryObservation{}, err
+		}
+		observed = observed.WithIssueCreationPolicy(state)
+	}
+	return observed, nil
 }

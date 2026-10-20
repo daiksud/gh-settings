@@ -42,7 +42,7 @@ func TestObserveRepositorySelectsReads(t *testing.T) {
 					check("graphql", repo)
 					return settings.MergeMethodsState{}, nil
 				},
-				nil)
+				nil, nil)
 			if err != nil || !reflect.DeepEqual(calls, test.want) || len(got.Fields()) != test.acquired {
 				t.Fatalf("fields=%v calls=%v error=%v, want %d fields and %v", got.Fields(), calls, err, test.acquired, test.want)
 			}
@@ -69,7 +69,7 @@ func TestObserveRepositoryDiscardsPartialRead(t *testing.T) {
 				func(repository.Repository) (settings.MergeMethodsState, error) {
 					return settings.MergeMethodsState{AllowMergeCommit: true}, step("graphql")
 				},
-				nil)
+				nil, nil)
 			want := []string{"rest"}
 			if fail == "graphql" {
 				want = append(want, "graphql")
@@ -83,7 +83,7 @@ func TestObserveRepositoryDiscardsPartialRead(t *testing.T) {
 
 func TestObserveRepositoryRejectsInvalidRequestBeforeReads(t *testing.T) {
 	for _, fields := range [][]settings.FieldID{{{}}, {settings.TopicsField()}} {
-		got, err := observeRepository(repository.Repository{}, fields, nil, nil, nil)
+		got, err := observeRepository(repository.Repository{}, fields, nil, nil, nil, nil)
 		if err == nil || len(got.Fields()) != 0 {
 			t.Fatalf("observation=%+v error=%v", got, err)
 		}
@@ -116,7 +116,7 @@ func TestObserveRepositoryRetainsCompleteResponseValidation(t *testing.T) {
 				t.Fatal(err)
 			}
 			merge := &MergeMethodsClient{graphql: gql}
-			got, err := observeRepository(repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, observationFields(t, test.field), rest.ReadRepository, merge.ReadMergeMethods, nil)
+			got, err := observeRepository(repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, observationFields(t, test.field), rest.ReadRepository, merge.ReadMergeMethods, nil, nil)
 			if err == nil || !strings.Contains(err.Error(), test.want) || len(got.Fields()) != 0 {
 				t.Fatalf("fields=%v error=%v, want %q", got.Fields(), err, test.want)
 			}

@@ -18,6 +18,25 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Issue creation policy (unreleased)
+
+Current source adds optional `settings.repository.issue_creation_policy`, mapped to GraphQL `issueCreationPolicy`. Published v0.16.0 and older CLI/Action packages reject this key. Use a source-built CLI until a supporting package is published; newer Action source still installs its selected published CLI.
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    issue_creation_policy: COLLABORATORS_ONLY
+```
+
+When Issues are enabled, `ALL` permits creation by anyone and `COLLABORATORS_ONLY` limits it to collaborators, following [GitHub's enum contract](https://docs.github.com/en/graphql/reference/issues#issuecreationpolicy). Omission leaves the setting unmanaged. Null, empty strings, booleans/numbers, case variants and unknown policies are invalid. This controls creation eligibility independently of `has_issues`; it does not enable Issues, edit individual Issues, invite collaborators or change grants.
+
+Plan uses a separate complete authenticated GraphQL query only when this policy is declared. PR-only and older declarations retain their reads. Export includes the observed policy after all reads succeed, including when Issues are disabled. Missing/null/wrong-type/unsupported values and partial GraphQL errors fail instead of becoming `ALL`; failed export preserves the old file. Policy reads and ID lookup disable rename following, so stale origins fail.
+
+Direct apply reuses the validated opaque repository-ID lookup and `updateRepository` transport. Send only declared Issue/PR values; never synthesize `hasIssuesEnabled`, `has_issues` or PR companions. If PR and Issue controls are both declared, one lookup and one mutation carry them together. Explicitly declared REST fields such as `has_issues` run first, then GraphQL, topics, labels and Rulesets. Repeated scalar apply still sends declared values. Mutation response identity and requested values must match; failures stop later work and may leave earlier writes applied, with no rollback or retry.
+
+Read credentials need complete policy visibility and write credentials must be authorized to update the target repository; caller grants are unchanged. Isolated fixtures and read-only observations do not prove live mutation compatibility, token permissions or published-package support. See the [feature specification](features/issue-creation-policy.feature.md).
+
 ## Pull request access (unreleased)
 
 Current source adds two independent `settings.repository` values. Published v0.16.0 and older CLI/Action packages reject them; use a source-built CLI until a supporting package is published. Checking out newer Action source still installs its selected published CLI.
@@ -45,7 +64,7 @@ Reads require complete policy visibility; writes require a credential authorized
 
 ## Default branch (unreleased)
 
-Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-one repository fields, topics and labels.
+Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-two repository fields, topics and labels.
 
 ```yaml
 schemaVersion: 1
@@ -79,7 +98,7 @@ Apply sends only declared fields through the existing Administration-write repos
 
 ## Web commit sign-off (unreleased)
 
-Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes twenty-one repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes twenty-two repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1

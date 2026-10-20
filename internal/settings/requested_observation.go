@@ -40,7 +40,7 @@ func DeclaredRepositoryFields(desired RepositoryDeclaration) []FieldID {
 
 // RepositoryObservationGroups identifies the complete model observations needed
 // for a field request. The adapter selects the API for each observation group.
-func RepositoryObservationGroups(fields []FieldID) (base, merge, pr bool, err error) {
+func RepositoryObservationGroups(fields []FieldID) (base, merge, pr, issue bool, err error) {
 	for _, field := range fields {
 		switch {
 		case containsRepositoryField(repositoryStringFields[:], field), containsRepositoryField(repositoryBoolFields[:], field):
@@ -49,11 +49,13 @@ func RepositoryObservationGroups(fields []FieldID) (base, merge, pr bool, err er
 			merge = true
 		case containsRepositoryField(prAccessBoolFields[:], field), containsRepositoryField(prAccessStringFields[:], field):
 			pr = true
+		case containsRepositoryField(issuePolicyStringFields[:], field):
+			issue = true
 		default:
-			return false, false, false, fmt.Errorf("field %q is not a supported repository observation", field.path)
+			return false, false, false, false, fmt.Errorf("field %q is not a supported repository observation", field.path)
 		}
 	}
-	return base, merge, pr, nil
+	return base, merge, pr, issue, nil
 }
 
 func containsRepositoryField[S any, V bool | string](fields []repositoryField[S, V], identity FieldID) bool {
@@ -87,6 +89,9 @@ func CompareRepositoryObservation(observed RepositoryObservation, desired Reposi
 	if err := compareObservedFields(&result, prAccessStringFields[:], observed.values, desired, stringChange); err != nil {
 		return Comparison{}, err
 	}
+	if err := compareObservedFields(&result, issuePolicyStringFields[:], observed.values, desired, stringChange); err != nil {
+		return Comparison{}, err
+	}
 	return result, nil
 }
 
@@ -116,7 +121,8 @@ func AllRepositoryFields() []FieldID {
 	fields = appendRepositoryFieldIDs(fields, mergeMethodsBoolFields[:])
 	fields = appendRepositoryFieldIDs(fields, mergeMethodsStringFields[:])
 	fields = appendRepositoryFieldIDs(fields, prAccessBoolFields[:])
-	return appendRepositoryFieldIDs(fields, prAccessStringFields[:])
+	fields = appendRepositoryFieldIDs(fields, prAccessStringFields[:])
+	return appendRepositoryFieldIDs(fields, issuePolicyStringFields[:])
 }
 
 func appendRepositoryFieldIDs[S any, V bool | string](identities []FieldID, fields []repositoryField[S, V]) []FieldID {
@@ -148,6 +154,9 @@ func (observation RepositoryObservation) Declaration() (RepositoryDeclaration, e
 	if err := copyObservedFields(&result, prAccessStringFields[:], observation.values); err != nil {
 		return RepositoryDeclaration{}, err
 	}
+	if err := copyObservedFields(&result, issuePolicyStringFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
 	return result, nil
 }
 
@@ -160,4 +169,10 @@ func copyObservedFields[S any, V bool | string](result *RepositoryDeclaration, f
 		field.setDesired(result, *value)
 	}
 	return nil
+}
+
+// WithIssueCreationPolicy returns a copied observation with the acquired policy.
+func (observation RepositoryObservation) WithIssueCreationPolicy(state IssueCreationPolicyState) RepositoryObservation {
+	declareRepositoryFields(issuePolicyStringFields[:], state, &observation.values)
+	return observation
 }

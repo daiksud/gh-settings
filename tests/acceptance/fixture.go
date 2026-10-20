@@ -29,6 +29,9 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 		if servePRAccessFixtureRead(w, r) {
 			return
 		}
+		if serveIssueCreationPolicyFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
@@ -79,7 +82,7 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, err
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
-		if readOnly && !isMergeMethodsFixtureRead(r) && !isPRAccessFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
+		if readOnly && !isMergeMethodsFixtureRead(r) && !isPRAccessFixtureRead(r) && !isIssueCreationPolicyFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
 			fixture.invalid.Store(true)
 			http.Error(w, "unexpected fixture request", 400)
 			return
@@ -152,5 +155,19 @@ func servePRAccessFixtureRead(w http.ResponseWriter, r *http.Request) bool {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, prAccessFixtureResponse)
+	return true
+}
+
+const issueCreationPolicyFixtureResponse = `{"data":{"repository":{"issueCreationPolicy":"ALL"}}}`
+
+func isIssueCreationPolicyFixtureRead(r *http.Request) bool {
+	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { issueCreationPolicy } }`)
+}
+func serveIssueCreationPolicyFixtureRead(w http.ResponseWriter, r *http.Request) bool {
+	if !isIssueCreationPolicyFixtureRead(r) {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, issueCreationPolicyFixtureResponse)
 	return true
 }
