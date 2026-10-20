@@ -6,7 +6,7 @@ description: Separate repository security intent from permission, entitlement, a
 
 ## Status
 
-Accepted design for [#343](https://github.com/daiksud/gh-settings/issues/343). The Secret scanning subset from #345 is implemented in current source, unreleased; other families remain planned/gated. Published v0.16.0 and older packages reject security keys/options. Implementation remains split across #344–#347, subject to the gates below.
+Accepted design for [#343](https://github.com/daiksud/gh-settings/issues/343). The Secret scanning subset from #345 and private vulnerability reporting for public repositories from #347 are implemented in current source, unreleased; other families remain planned/gated. Published v0.16.0 and older packages reject security keys/options. Implementation remains split across #344–#347, subject to the gates below.
 
 ## Context
 

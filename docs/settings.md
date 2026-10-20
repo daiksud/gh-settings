@@ -30,7 +30,7 @@ settings:
     secret_scanning_push_protection: true
 ```
 
-`secret_scanning` controls the repository feature; `secret_scanning_push_protection` controls repository push protection. User-level push protection, partner notifications, patterns, bypasses, alerts, scanning workflows, paid-product enrollment and organization configurations are outside this resource. Dependabot, Code Security, Advanced Security and private vulnerability reporting keys remain unsupported.
+`secret_scanning` controls the repository feature; `secret_scanning_push_protection` controls repository push protection. User-level push protection, partner notifications, patterns, bypasses, alerts, scanning workflows, paid-product enrollment and organization configurations are outside this resource. Dependabot, Code Security and Advanced Security keys remain unsupported. [Private vulnerability reporting](#private-vulnerability-reporting-unreleased) is an independent public-repository control.
 
 Each key is optional: omission is unmanaged, false explicitly disables, and `security: {}` manages nothing. Null, non-booleans, duplicate/unknown keys and an explicit scanning=false/push-protection=true pair fail local validation. No parent setting is implicitly enabled. Declaring push protection true with scanning omitted requires freshly observed scanning=true. Disabling scanning while push protection is active requires declaring push protection false too; unknown companion state fails before this family's writes. Enable scanning before protection; disable protection before scanning.
 
@@ -39,6 +39,25 @@ Explicit `export --security secret-scanning` reads both statuses and adds only t
 Plan reads both statuses only when security is managed, checks prerequisites and displays native boolean differences without writing. Apply runs after existing resources, including workflow permissions. It completes family preflight, then sends one narrow `security_and_analysis` PATCH per needed member in dependency order. Each update rereads fresh prerequisites, skips an already matching member, and verifies both the desired value and preserved companion afterward. It never replays unrelated security fields. A failed first read means no security write was attempted; later write/readback failures retain uncertain effects and any earlier confirmed operations. There is no transaction, drift lock, automatic retry or rollback. A successful rerun reconciles fresh state.
 
 The [repository endpoint](https://docs.github.com/en/rest/repos/repos#update-a-repository) documents Metadata read for GET, with admin/organization-owner/security-manager visibility for the security block, and Administration write plus applicable role for security updates. A normal read token or repository role alone does not establish the required token grants or visibility. Public availability differs from private/internal Secret Protection entitlement; existing applicable entitlement is required. This feature neither buys a product nor expands credentials. Upper configurations can return apparent PATCH success without changing settings, so readback mismatch fails visibly. API schema presence and a zero plan do not prove licensing or writable access. See the [design and acceptance specification](features/security.feature.md).
+
+## Private vulnerability reporting (unreleased)
+
+Current source supports optional boolean `settings.security.private_vulnerability_reporting`. Published v0.16.0 and older CLI/Action packages reject the key and `export --security private-vulnerability-reporting`; use a source-built CLI. Installed Action CLI pins are unchanged.
+
+```yaml
+schemaVersion: 1
+settings:
+  security:
+    private_vulnerability_reporting: false
+```
+
+Omission is unmanaged; false explicitly disables reporting, true enables it, and an empty security mapping manages nothing. Null, wrong types, duplicate/unknown keys and an `enabled` submapping fail local validation. The control applies only to public repositories: private/internal targets are inapplicable even for desired false. Unknown visibility or enabled state fails; it never becomes disabled. Reports, advisories, notifications, forms, organization configurations and paid-product enrollment are outside this feature.
+
+Explicit `export --security private-vulnerability-reporting` includes the completely observed boolean. It does not require Secret scanning visibility or entitlement. Repeat `--security` with the distinct `secret-scanning` family to include both, in either argument order; duplicate/unimplemented families fail before reads or destination changes. Ordinary export retains its existing requests and omits security. Selected reads and serialization complete before saving; an unavailable/inapplicable request preserves the destination. An unchanged supported export produces zero differences for its declared values.
+
+Plan checks public visibility and the dedicated enabled boolean with GETs only. Apply runs after other resources, including Secret scanning, and rereads applicability and state before its single PUT (true) or DELETE (false). Matching state makes no mutation. Complete fresh readback, including public applicability, must retain the requested boolean; apparent success with unchanged or missing state fails verification. Pre-write read/applicability failures are confirmed not to have attempted this toggle. Write or verification failures retain uncertain effects and any earlier completed resource writes. There is no transaction, automatic retry or rollback.
+
+The [dedicated repository endpoint](https://docs.github.com/en/rest/repos/repos#check-if-private-vulnerability-reporting-is-enabled-for-a-repository) documents Metadata read for observation and Administration write plus applicable admin access for updates. A declaration containing only this control uses public metadata and reporting-state reads, without requiring Secret scanning visibility, Actions permissions or a paid entitlement. These grants must already exist; the CLI does not provision them. The [public-repository feature guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository) defines applicability. Local fixtures and a read-only enabled observation do not establish real update permissions, upper-policy behavior or actual reports. See the [security specification](features/security.feature.md#implemented-private-vulnerability-reporting-test-mappings).
 
 ## Default workflow permissions (unreleased)
 
