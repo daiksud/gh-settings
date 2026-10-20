@@ -146,3 +146,23 @@ func TestRulesetReviewerAndDismissalMembership(t *testing.T) {
 		t.Fatal("membership or retained restriction flag changed", p)
 	}
 }
+
+func TestPullRequestRuleRejectsTagBeforeMutation(t *testing.T) {
+	tag := "tag"
+	newTag := reviewPolicy()
+	newTag.Target = &tag
+	if _, err := NewRulesetDeclarations([]RulesetDeclaration{newTag}); err == nil {
+		t.Fatal("accepted PR rule on explicit tag target")
+	}
+	// A target omitted in a partial declaration is checked against fresh state.
+	before := basicPolicy("default")
+	before.Target = &tag
+	desired := RulesetDeclaration{Name: "default", Rules: &[]RulesetRule{{Type: "pull_request", Parameters: ruleOf(t, reviewPolicy(), "pull_request")}}}
+	if _, err := ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, desired)); err == nil {
+		t.Fatal("partial PR addition to tag accepted")
+	}
+	// Target-only edits must validate retained rules too.
+	if _, err := ReconcileRulesets(rsObserved(t, RulesetState{7, reviewPolicy()}), rsDesired(t, RulesetDeclaration{Name: "default", Target: &tag})); err == nil {
+		t.Fatal("tag target accepted with retained PR rule")
+	}
+}

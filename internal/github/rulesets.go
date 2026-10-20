@@ -293,10 +293,15 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	}
 	var response map[string]json.RawMessage
 	var output any
-	for _, rule := range *after.Rules {
-		if rule.Type == "pull_request" || rule.Type == "required_status_checks" {
-			output = &response
-			break
+	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
+		if policy == nil {
+			continue
+		}
+		for _, rule := range *policy.Rules {
+			if rule.Type == "pull_request" || rule.Type == "required_status_checks" {
+				output = &response
+				break
+			}
 		}
 	}
 	switch change.Operation() {

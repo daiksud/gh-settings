@@ -94,6 +94,9 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 				return fmt.Errorf("unsupported or duplicate ruleset rule %q", r.Type)
 			}
 			seen[r.Type] = true
+			if r.Type == "pull_request" && d.Target != nil && *d.Target != "branch" {
+				return fmt.Errorf("pull_request rule requires branch target")
+			}
 			if err := validateRule(r, complete); err != nil {
 				return err
 			}

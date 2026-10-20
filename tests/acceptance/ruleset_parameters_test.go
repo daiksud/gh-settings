@@ -311,42 +311,48 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 }
 
 func TestRulesetPRResponseMismatchStopsLaterDeletes(t *testing.T) {
-	binary := acceptanceBinary(t)
-	var mu sync.Mutex
-	var methods []string
-	fixture, e := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		defer mu.Unlock()
-		methods = append(methods, r.Method+" "+r.URL.Path)
-		w.Header().Set("Content-Type", "application/json")
-		switch {
-		case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/rulesets"):
-			fmt.Fprint(w, `[{"id":7,"source_type":"Repository","source":"owner/current"},{"id":8,"source_type":"Repository","source":"owner/current"}]`)
-		case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/7"):
-			fmt.Fprint(w, acceptanceReviewRuleset)
-		case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/8"):
-			fmt.Fprint(w, strings.Replace(strings.Replace(acceptanceRuleset, `"id":7`, `"id":8`, 1), `"name":"basic"`, `"name":"old"`, 1))
-		case r.Method == "PUT" && strings.HasSuffix(r.URL.Path, "/7"):
-			var policy map[string]any
-			if e := json.NewDecoder(r.Body).Decode(&policy); e != nil {
-				t.Error(e)
+	for _, removeAll := range []bool{false, true} {
+		t.Run(fmt.Sprintf("remove-all-%t", removeAll), func(t *testing.T) {
+			binary := acceptanceBinary(t)
+			var mu sync.Mutex
+			var methods []string
+			fixture, e := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				defer mu.Unlock()
+				methods = append(methods, r.Method+" "+r.URL.Path)
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/rulesets"):
+					fmt.Fprint(w, `[{"id":7,"source_type":"Repository","source":"owner/current"},{"id":8,"source_type":"Repository","source":"owner/current"}]`)
+				case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/7"):
+					fmt.Fprint(w, acceptanceReviewRuleset)
+				case r.Method == "GET" && strings.HasSuffix(r.URL.Path, "/8"):
+					fmt.Fprint(w, strings.Replace(strings.Replace(acceptanceRuleset, `"id":7`, `"id":8`, 1), `"name":"basic"`, `"name":"old"`, 1))
+				case r.Method == "PUT" && strings.HasSuffix(r.URL.Path, "/7"):
+					var policy map[string]any
+					if e := json.NewDecoder(r.Body).Decode(&policy); e != nil {
+						t.Error(e)
+					}
+					if removeAll {
+						fmt.Fprint(w, acceptanceReviewRuleset)
+						return
+					}
+					acceptanceRuleParams(t, policy, "pull_request")["require_extra_approval_for_unattributed_changes"] = true
+					json.NewEncoder(w).Encode(policy)
+				default:
+					t.Error("unexpected later operation", r.Method, r.URL)
+					w.WriteHeader(400)
+				}
+			}, false)
+			if e != nil {
+				t.Fatal(e)
 			}
-			acceptanceRuleParams(t, policy, "pull_request")["require_extra_approval_for_unattributed_changes"] = true
-			json.NewEncoder(w).Encode(policy)
-		default:
-			t.Error("unexpected later operation", r.Method, r.URL)
-			w.WriteHeader(400)
-		}
-	}, false)
-	if e != nil {
-		t.Fatal(e)
-	}
-	defer fixture.close()
-	env := exportFixtureEnv(fixture.cfg)
-	if e := setupOrdinaryOrigin(fixture.work, env); e != nil {
-		t.Fatal(e)
-	}
-	writeSettingsFile(fixture.work, `schemaVersion: 1
+			defer fixture.close()
+			env := exportFixtureEnv(fixture.cfg)
+			if e := setupOrdinaryOrigin(fixture.work, env); e != nil {
+				t.Fatal(e)
+			}
+			writeSettingsFile(fixture.work, `schemaVersion: 1
 settings:
   rulesets:
     - name: default
@@ -358,14 +364,20 @@ settings:
           parameters: {required_approving_review_count: 0}
         - type: required_status_checks
 `)
-	result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if e != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "writes may already have applied") {
-		t.Fatal(e, result)
-	}
-	mu.Lock()
-	defer mu.Unlock()
-	want := []string{"GET /repos/owner/current/rulesets", "GET /repos/owner/current/rulesets/7", "GET /repos/owner/current/rulesets/8", "PUT /repos/owner/current/rulesets/7"}
-	if !reflect.DeepEqual(methods, want) {
-		t.Fatal("response mismatch did not stop delete", methods)
+			if removeAll {
+				writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{name: default, rules: [{type: deletion}]}]}\n")
+			}
+			result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
+			if e != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "writes may already have applied") {
+				t.Fatal(e, result)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			want := []string{"GET /repos/owner/current/rulesets", "GET /repos/owner/current/rulesets/7", "GET /repos/owner/current/rulesets/8", "PUT /repos/owner/current/rulesets/7"}
+			if !reflect.DeepEqual(methods, want) {
+				t.Fatal("response mismatch did not stop delete", methods)
+			}
+
+		})
 	}
 }

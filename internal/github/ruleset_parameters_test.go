@@ -216,3 +216,34 @@ func TestCreateReviewRulesetExactPolicyAndResponse(t *testing.T) {
 		t.Fatal(calls, err)
 	}
 }
+
+func TestRemovingReviewAndChecksStillVerifiesResponse(t *testing.T) {
+	before, err := decodeRulesetPolicyFromTest([]byte(fullReviewRulesetJSON))
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := before
+	after.Rules = &[]settings.RulesetRule{{Type: "deletion"}}
+	change, err := settings.NewRulesetChange("update", 7, &before, &after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ignored := range []bool{false, true} {
+		calls := 0
+		client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+			calls++
+			data, _ := io.ReadAll(r.Body)
+			if r.Method != "PUT" || r.URL.Path != "/repos/owner/current/rulesets/7" {
+				t.Fatal(r.Method, r.URL)
+			}
+			if ignored {
+				return labelsResponse(r, 200, fullReviewRulesetJSON), nil
+			}
+			return labelsResponse(r, 200, string(data)), nil
+		}))
+		err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
+		if calls != 1 || (err != nil) != ignored || (ignored && !strings.Contains(err.Error(), "writes may already have applied")) {
+			t.Fatal("removal response not verified", ignored, calls, err)
+		}
+	}
+}
