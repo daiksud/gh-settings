@@ -44,6 +44,9 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		if servePRAccessFixtureRead(w, r) {
 			return
 		}
+		if serveIssueCreationPolicyFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
 			return

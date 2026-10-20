@@ -196,6 +196,9 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		if servePRAccessFixtureRead(w, r) {
 			return
 		}
+		if serveIssueCreationPolicyFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
 			return
@@ -274,7 +277,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

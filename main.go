@@ -47,6 +47,7 @@ func writeRepository(repo repository.Repository, desired settings.RepositoryDecl
 	restDesired := desired
 	restDesired.HasPullRequests = nil
 	restDesired.PullRequestCreationPolicy = nil
+	restDesired.IssueCreationPolicy = nil
 	if !restDesired.Empty() {
 		client, err := github.NewWriteClient(repo.Host)
 		if err != nil {
@@ -56,14 +57,17 @@ func writeRepository(repo repository.Repository, desired settings.RepositoryDecl
 			return err
 		}
 	}
-	if desired.PRAccessEmpty() {
+	if desired.RepositoryAccessEmpty() {
 		return nil
 	}
-	client, err := github.NewPRAccessClient(repo.Host)
+	client, err := github.NewRepositoryAccessClient(repo.Host)
 	if err == nil {
-		err = client.ApplyPRAccess(repo, desired)
+		err = client.ApplyRepositoryAccess(repo, desired)
 	}
 	if err != nil && !restDesired.Empty() {
+		if desired.IssueCreationPolicy != nil {
+			return fmt.Errorf("apply repository access (earlier repository writes remain applied): %w", err)
+		}
 		return fmt.Errorf("apply PR access (earlier repository writes remain applied): %w", err)
 	}
 	return err

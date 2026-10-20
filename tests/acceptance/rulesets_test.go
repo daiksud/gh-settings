@@ -40,6 +40,9 @@ func TestRulesetsExistingPolicyLifecycle(t *testing.T) {
 		if servePRAccessFixtureRead(w, r) {
 			return
 		}
+		if serveIssueCreationPolicyFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
 			return
@@ -309,6 +312,9 @@ func TestRulesetsOptedExportFailurePreservesFile(t *testing.T) {
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if servePRAccessFixtureRead(w, r) {
+			return
+		}
+		if serveIssueCreationPolicyFixtureRead(w, r) {
 			return
 		}
 		if isMergeMethodsFixtureRead(r) {

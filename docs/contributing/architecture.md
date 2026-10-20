@@ -117,9 +117,15 @@ Prefer the Go standard library where sufficient; no command framework is mandate
 
 ## Pull request access transport
 
-The unreleased [PR access feature](../features/pull-request-access.feature.md) adds a third complete scalar observation group in `internal/settings`, alongside base REST and merge-related GraphQL values. Existing field IDs, requested observation routing and native report presentation retain omission and stable order. Export requests all twenty-one scalar fields; selective plan skips clients for unrelated groups.
+The unreleased [PR access feature](../features/pull-request-access.feature.md) adds a third complete scalar observation group in `internal/settings`, alongside base REST and merge-related GraphQL values. Existing field IDs, requested observation routing and native report presentation retain omission and stable order. Export requests all twenty-two scalar fields; selective plan skips clients for unrelated groups.
 
-The [PR access adapter](../../internal/github/pr_access.go) uses GraphQL query variables for complete policy reads and an independently validated repository-ID lookup before a declared-only `updateRepository` mutation. The root composition retains existing REST writes, skips an empty PATCH for PR-only input, and then invokes PR access before later resources. Mutation response values and identity are verified; mixed-resource errors preserve evidence of earlier writes. This does not add a generic backend registry, saved plans, retries, or permission expansion.
+The [PR access adapter](../../internal/github/repository_access.go) uses GraphQL query variables for complete policy reads and an independently validated repository-ID lookup before a declared-only `updateRepository` mutation. The root composition retains existing REST writes, skips an empty PATCH for PR-only input, and then invokes PR access before later resources. Mutation response values and identity are verified; mixed-resource errors preserve evidence of earlier writes. This does not add a generic backend registry, saved plans, retries, or permission expansion.
+
+## Issue creation policy
+
+The unreleased [Issue creation policy](../features/issue-creation-policy.feature.md) has its own complete observation group and query, so PR-only reads do not acquire unrelated Issue data. `RepositoryObservation.WithIssueCreationPolicy` adds the independently acquired enum without mutating an earlier observation. The static field definitions retain order, native values and omission; full source export acquires twenty-two scalars.
+
+The shared [repository access adapter](../../internal/github/repository_access.go) retains the narrow PR query and adds a separate Issue query. Both use `followRenames: false`. Its closed mutation selects only declared Issue/PR fields and performs one validated ID lookup and mutation for combined input. The root composition excludes these fields from REST payloads and preserves existing REST-first partial-failure behavior. `has_issues` keeps its existing REST ownership and is never synthesized by an Issue policy declaration.
 
 ## Future direction
 

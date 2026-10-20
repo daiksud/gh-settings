@@ -22,7 +22,7 @@ func TestExportThenValidate(t *testing.T) {
 			response: `{"default_branch":"release/v2","description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":true,"is_template":true,"id":123}`,
 			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
 				"description": "Example repository", "homepage": "https://example.com",
-				"has_issues": true, "has_projects": false, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": true, "is_template": true, "default_branch": "release/v2", "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE", "has_pull_requests": false, "pull_request_creation_policy": "ALL",
+				"has_issues": true, "has_projects": false, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": true, "is_template": true, "default_branch": "release/v2", "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE", "has_pull_requests": false, "pull_request_creation_policy": "ALL", "issue_creation_policy": "ALL",
 			}}},
 		},
 		{
@@ -30,7 +30,7 @@ func TestExportThenValidate(t *testing.T) {
 			response: `{"default_branch":"main","description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`,
 			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
 				"description": "", "homepage": "",
-				"has_issues": false, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false, "default_branch": "main", "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE", "has_pull_requests": false, "pull_request_creation_policy": "ALL",
+				"has_issues": false, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false, "default_branch": "main", "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE", "has_pull_requests": false, "pull_request_creation_policy": "ALL", "issue_creation_policy": "ALL",
 			}}},
 		},
 	} {
@@ -55,8 +55,8 @@ func TestExportThenValidate(t *testing.T) {
 			if err := fixture.checkRequests(false); err != nil {
 				t.Fatal(err)
 			}
-			if reads := fixture.reads.Load(); reads != 5 {
-				t.Fatalf("export made %d API requests, want 5", reads)
+			if reads := fixture.reads.Load(); reads != 6 {
+				t.Fatalf("export made %d API requests, want 6", reads)
 			}
 
 			var actual map[string]any
@@ -82,8 +82,8 @@ func TestExportThenValidate(t *testing.T) {
 			if err := fixture.checkRequests(false); err != nil {
 				t.Fatal(err)
 			}
-			if reads := fixture.reads.Load(); reads != 5 {
-				t.Fatalf("validate made %d additional API requests, want 0", reads-5)
+			if reads := fixture.reads.Load(); reads != 6 {
+				t.Fatalf("validate made %d additional API requests, want 0", reads-6)
 			}
 			if err := checkSettingsUnchanged(fixture.work, original); err != nil {
 				t.Fatal(err)
