@@ -116,6 +116,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		result.Operations[index].Status = OperationCompleted
 		hasWrites = true
 	}
+	if !desired.Security.Empty() {
+		wrote, err := applySecretScanning(&result, repo, desired.Security, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	result.Outcome = ApplyCompleted
 	if !hasWrites {
 		result.Outcome = ApplyMatchingLabels

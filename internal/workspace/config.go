@@ -24,6 +24,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 			Labels     *[]labelDocument                   `yaml:"labels,omitempty"`
 			Rulesets   *[]settings.RulesetDeclaration     `yaml:"rulesets,omitempty"`
 			Actions    *settings.ActionsPolicyDeclaration `yaml:"actions,omitempty"`
+			Security   *settings.SecurityDeclaration      `yaml:"security,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
@@ -58,6 +59,12 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 			return nil, err
 		}
 		document.Settings.Actions = &declaration.Actions
+	}
+	if !declaration.Security.Empty() {
+		if err := declaration.Security.Validate(); err != nil {
+			return nil, err
+		}
+		document.Settings.Security = &declaration.Security
 	}
 	return yaml.Marshal(document)
 }
@@ -110,6 +117,14 @@ func DecodeConfig(data []byte) (settings.Declaration, error) {
 			return settings.Declaration{}, err
 		}
 		for group, value := range groups {
+			if group == "security" {
+				security, err := parseSecurity(&value)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				declaration.Security = security
+				continue
+			}
 			if group == "actions" {
 				policy, err := parseActionsPolicy(&value)
 				if err != nil {

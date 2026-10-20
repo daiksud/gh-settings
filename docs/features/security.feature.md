@@ -6,7 +6,7 @@ description: Planned declarations, complete observations, dependencies, and acce
 
 ## Status and scope
 
-**Design only; not implemented in current source or any published package.** [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a list of supported CLI options. Implementation PRs must update the public configuration, command, and Action references before claiming support.
+**Secret scanning subset implemented in current source, unreleased; other families remain planned/gated.** Published v0.16.0 and older packages reject security keys/options. [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a claim that unimplemented families are supported. Implementation PRs must update the public configuration, command, and Action references before claiming support.
 
 Manage repository feature enablement only. Exclude alert contents or dismissal, dependency/version-update files, scanning workflows/default setup/query suites, bypass actors/patterns, advisories/reports/notifications, contract purchases or product migration, and organization/enterprise security configuration attachment, detachment, or editing. Applying an enabled setting can cause GitHub to perform its documented background work; the CLI does not start a separate scan or manage its results.
 
@@ -24,7 +24,7 @@ The schema version remains 1. Under optional `settings.security`, use these exac
 | `advanced_security` | #346 | Distinct reserved legacy-product candidate; not an alias. |
 | `private_vulnerability_reporting` | #347 | Adopt for public repositories only. |
 
-Omitted group/key means unmanaged. `security: {}` manages nothing and performs no security reads. Explicit false means disable; true means enable. Null at the group or any key, strings such as `enabled`, sequences, duplicate/unknown keys, and wrong types are invalid before remote work. There are no security collections: empty mappings do not mean disable all or clear anything. Reserved candidate keys remain unknown to the executable until a separate adoption and implementation change supports them.
+Omitted group/key means unmanaged. `security: {}` manages nothing and performs no security reads. Explicit false means disable; true means enable. Null at the group or any key, strings such as `enabled`, sequences, duplicate/unknown keys, and wrong types are invalid before remote work. There are no security collections: empty mappings do not mean disable all or clear anything. Only `secret_scanning` and `secret_scanning_push_protection` are currently accepted. Other planned/reserved keys remain unknown to the executable until their separate implementation/adoption.
 
 Plan reads only declared families and the prerequisite/companion observations needed to establish a safe transition. Unrelated hidden security fields do not prevent private vulnerability reporting or an ordinary repository-only plan. API response-only metadata, including pause, entitlement, and enforcement evidence, cannot be declared as desired state.
 
@@ -60,7 +60,7 @@ A product-level toggle can affect subordinate security features. Before adoption
 
 ## Explicit export selection
 
-Choose proposed repeatable `--security FAMILY` with exact implemented family values `dependabot`, `secret-scanning`, and `private-vulnerability-reporting`. Each selects the adopted keys in its table row(s), not every security setting. Reserve no accepted `all` value or product option. Reject unknown, missing, or duplicate family values before reads or destination changes. Compose distinct families with existing `--rulesets`, `--actions`, and `--workflow-permissions` choices without making security selection implicit.
+Choose proposed repeatable `--security FAMILY` with exact implemented family values `dependabot`, `secret-scanning`, and `private-vulnerability-reporting`. Only `secret-scanning` is currently implemented. Each future family selects its adopted keys in its table row(s), not every security setting. Reserve no accepted `all` value or product option. Reject unknown, missing, or duplicate family values before reads or destination changes. Compose distinct families with existing `--rulesets`, `--actions`, and `--workflow-permissions` choices without making security selection implicit.
 
 Ordinary export preserves all existing requests and credential requirements. Selected security reads follow the existing resources in table-family order: Dependabot, Secret scanning, private vulnerability reporting. Complete all selected reads and serialization before opening/replacing the destination. Selection is an explicit request: unavailable/inapplicable/unknown data fails, rather than being omitted with success. Export false values when authoritatively observed, omit unselected families, and exclude operational metadata. An unchanged export must yield zero differences for exported booleans; zero does not prove writable access, active scans, or an unlocked policy.
 
@@ -107,7 +107,7 @@ Security families append after existing apply resources in the same fixed order 
 
 ## Implementation acceptance and fixture plan
 
-These are planned checks, **not existing test mappings or claims of live verification**. Each implementation supplies its owning Go test names and public references when merged. Use local fake clients, bounded HTTP fixtures, and built-CLI process tests with dummy credentials. Do not enable scans, change production settings, purchase contracts, or expand permissions for these tests.
+The matrix remains the acceptance plan for all families; the implemented Secret scanning mappings follow it. Unimplemented rows are planned checks, **not claims of completed tests or live verification**. Each implementation supplies its owning Go test names and public references when merged. Use local fake clients, bounded HTTP fixtures, and built-CLI process tests with dummy credentials. Do not enable scans, change production settings, purchase contracts, or expand permissions for these tests.
 
 | Issue / layer | Required evidence before completion |
 | --- | --- |
@@ -121,3 +121,16 @@ These are planned checks, **not existing test mappings or claims of live verific
 | CLI/Action | Native boolean differences, strict report reconstruction and bounds, read/write failure and partial-progress output, escaping of untrusted diagnostics; published pinned CLI must reject unsupported additions rather than pretend source support is released. |
 
 The [private vulnerability reporting guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository) establishes public-repository scope. The source/runtime privilege boundary and fixture limitations belong in the public references and testing guide at implementation time. API schema inspection and local fixtures do not prove all token types, billing availability, upper enforcement, or real scan outcomes.
+
+## Implemented Secret scanning test mappings
+
+The [public configuration contract](../settings.md#secret-scanning-and-push-protection-unreleased) owns current-source usage. The source implementation accepts only the two Secret scanning booleans and `--security secret-scanning`. Other families and product candidates remain unsupported.
+
+- Declaration/observation/transition/forged-change boundaries: [TestSecretScanningObservationAndTransitions](../../internal/settings/security_test.go) and [TestSecurityComparisonsRejectForgedValues](../../internal/settings/security_test.go).
+- Strict YAML, explicit false and omission round-trip: [TestSecurityYAMLContract](../../internal/workspace/security_test.go).
+- Complete API reads, unknown/denied/redirect responses, fresh prerequisites, narrow payload and readback/companion failures: [TestSecretScanningCompleteReads](../../internal/github/security_test.go) and [TestSecretScanningNarrowPayloadReadbackAndFreshPreflight](../../internal/github/security_test.go).
+- Dependency order, read certainty, matching state and confirmed partial progress: [TestSecretScanningApplyOrderAndPartialProgress](../../internal/app/security_test.go) and [TestSecretScanningReadFailureAndOmission](../../internal/app/security_test.go).
+- Export selection/composition and forged native Summary values: [TestSecurityExportSelectionIsExplicitAndComposable](../../internal/cli/security_test.go) and [TestSecuritySummaryHasNativeClosedValues](../../internal/actions/security_test.go).
+- Built-CLI ordinary/explicit export, zero plan, native Action report/Summary, enable/disable/idempotence, unavailable reads preserving files, redirect rejection and enforced/partial writes: [TestSecretScanningExportPlanApplyAndSummary](../../tests/acceptance/security_test.go).
+
+Fixtures use dummy credentials and local modeled responses. A read-only observation of this repository confirmed both enabled statuses and additional unowned siblings; no live PATCH, private entitlement, enforcement or token-grant behavior was exercised or established. No scan, contract, organization setting, workflow permission, grant or release changed.

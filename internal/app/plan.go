@@ -106,5 +106,21 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.Actions = append(comparison.Actions, changes...)
 	}
+	if !desired.Security.Empty() {
+		observed, err := read.SecretScanning(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		if _, err := settings.SecretScanningTransitions(observed, desired.Security); err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareSecretScanning(observed, desired.Security)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Security = changes
+	}
+
 	return PlanResult{Target: repo, Comparison: comparison}, nil
 }

@@ -9,6 +9,7 @@ type ExportCheckout struct {
 	IncludeActions             bool
 	IncludeWorkflowPermissions bool
 	IncludeRulesets            bool
+	IncludeSecretScanning      bool
 	ExcludedRulesets           func(int)
 	PrepareSave                func() (func(settings.Declaration) error, error)
 }
@@ -94,6 +95,16 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Actions, err = declaration.Actions.WithWorkflowPermissions(state)
+		if err != nil {
+			return err
+		}
+	}
+	if checkout.IncludeSecretScanning {
+		observed, err := read.SecretScanning(repo)
+		if err != nil {
+			return err
+		}
+		declaration.Security, err = observed.Declaration()
 		if err != nil {
 			return err
 		}

@@ -18,6 +18,8 @@ Current source adds unreleased [Actions execution policy](settings.md#actions-ex
 
 Current source adds unreleased [default workflow token/approval permissions](settings.md#default-workflow-permissions-unreleased). Plan needs Administration read and apply needs Administration write for the dedicated endpoint, independently of execution policy. Native Summary displays read/write and false/true changes explicitly. No Action input/output, installed CLI pin, token grant or workflow permission is changed; published v0.16.0 and older packages reject the keys.
 
+Current source adds unreleased [Secret scanning and repository push protection](settings.md#secret-scanning-and-push-protection-unreleased) to shared validate/plan/apply and native boolean Summary entries. Complete security-block visibility is required for reads; Metadata read alone can return hidden data, and updates need Administration write plus the applicable role and existing entitlement. Unknown state fails rather than becoming disabled. Update ordering and readback preserve companion values and report partial failures. Existing Action inputs, installed CLI pins and caller grants are unchanged; the Action has no export operation. Published v0.16.0 and older packages reject these keys.
+
 ## Public Action and supported checkout
 
 `daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.15.0 package for repository fields, topics and [labels](#labels-and-permissions).

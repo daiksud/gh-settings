@@ -12,7 +12,7 @@ import (
 var errUnsupportedCommand = errors.New("unsupported command or arguments; usage: gh settings <export|validate|plan|apply>")
 
 // ExportOptions selects independently acquired opt-in resources.
-type ExportOptions struct{ Rulesets, Actions, WorkflowPermissions bool }
+type ExportOptions struct{ Rulesets, Actions, WorkflowPermissions, SecretScanning bool }
 
 // Operations binds shared application operations to their real dependencies.
 type Operations struct {
@@ -34,8 +34,15 @@ func Run(args []string, stdout, stderr io.Writer, version string, operations Ope
 func executeCommand(args []string, stdout io.Writer, version string, operations Operations) error {
 	if len(args) > 0 && args[0] == "export" {
 		var options ExportOptions
-		for _, flag := range args[1:] {
+		for i := 1; i < len(args); i++ {
+			flag := args[i]
 			switch flag {
+			case "--security":
+				if i+1 >= len(args) || args[i+1] != "secret-scanning" || options.SecretScanning {
+					return errUnsupportedCommand
+				}
+				i++
+				options.SecretScanning = true
 			case "--rulesets":
 				if options.Rulesets {
 					return errUnsupportedCommand
@@ -68,7 +75,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--rulesets] [--actions] [--workflow-permissions]\n       gh settings validate\n       gh settings plan\n       gh settings apply\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--rulesets] [--actions] [--workflow-permissions] [--security secret-scanning]\n       gh settings validate\n       gh settings plan\n       gh settings apply\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 		return nil

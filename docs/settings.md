@@ -18,6 +18,28 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Secret scanning and push protection (unreleased)
+
+Current source supports two optional booleans under `settings.security`. Published v0.16.0 and older CLI/Action packages reject this group and `export --security secret-scanning`; use a source-built CLI. The Action still installs its selected published CLI.
+
+```yaml
+schemaVersion: 1
+settings:
+  security:
+    secret_scanning: true
+    secret_scanning_push_protection: true
+```
+
+`secret_scanning` controls the repository feature; `secret_scanning_push_protection` controls repository push protection. User-level push protection, partner notifications, patterns, bypasses, alerts, scanning workflows, paid-product enrollment and organization configurations are outside this resource. Dependabot, Code Security, Advanced Security and private vulnerability reporting keys remain unsupported.
+
+Each key is optional: omission is unmanaged, false explicitly disables, and `security: {}` manages nothing. Null, non-booleans, duplicate/unknown keys and an explicit scanning=false/push-protection=true pair fail local validation. No parent setting is implicitly enabled. Declaring push protection true with scanning omitted requires freshly observed scanning=true. Disabling scanning while push protection is active requires declaring push protection false too; unknown companion state fails before this family's writes. Enable scanning before protection; disable protection before scanning.
+
+Explicit `export --security secret-scanning` reads both statuses and adds only these keys; combine it with the existing export selections in any order. Ordinary export retains its existing requests and omits security. Missing/null/unknown requested data, permission failure or an observation that cannot form a consistent declaration fails before replacing the destination. Complete false values are retained. An unchanged supported export produces zero differences for the exported values.
+
+Plan reads both statuses only when security is managed, checks prerequisites and displays native boolean differences without writing. Apply runs after existing resources, including workflow permissions. It completes family preflight, then sends one narrow `security_and_analysis` PATCH per needed member in dependency order. Each update rereads fresh prerequisites, skips an already matching member, and verifies both the desired value and preserved companion afterward. It never replays unrelated security fields. A failed first read means no security write was attempted; later write/readback failures retain uncertain effects and any earlier confirmed operations. There is no transaction, drift lock, automatic retry or rollback. A successful rerun reconciles fresh state.
+
+The [repository endpoint](https://docs.github.com/en/rest/repos/repos#update-a-repository) documents Metadata read for GET, with admin/organization-owner/security-manager visibility for the security block, and Administration write plus applicable role for security updates. A normal read token or repository role alone does not establish the required token grants or visibility. Public availability differs from private/internal Secret Protection entitlement; existing applicable entitlement is required. This feature neither buys a product nor expands credentials. Upper configurations can return apparent PATCH success without changing settings, so readback mismatch fails visibly. API schema presence and a zero plan do not prove licensing or writable access. See the [design and acceptance specification](features/security.feature.md).
+
 ## Default workflow permissions (unreleased)
 
 Current source adds two independent optional fields under `settings.actions`. Published v0.16.0 and older CLI/Action packages reject these keys and `export --workflow-permissions`; use a source-built CLI. Newer Action source still installs its selected published CLI.
