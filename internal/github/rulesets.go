@@ -138,7 +138,7 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 		switch key {
 		case "name", "target", "enforcement", "conditions", "bypass_actors", "rules":
 			policy[key] = value
-		case "id", "node_id", "source_type", "source", "_links", "created_at", "updated_at": // Explicit read-only metadata.
+		case "id", "node_id", "source_type", "source", "_links", "created_at", "updated_at", "current_user_can_bypass": // Explicit read-only metadata.
 		default:
 			return settings.RulesetDeclaration{}, fmt.Errorf("unknown Ruleset response field %q", key)
 		}

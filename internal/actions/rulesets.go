@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -20,8 +21,8 @@ func (c *RulesetPlanChange) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	if rulesetReportHasNull(raw) {
-		return fmt.Errorf("null Ruleset report value")
+	if invalidRulesetReportValue(raw) {
+		return fmt.Errorf("null or noncanonical Ruleset report field")
 	}
 	type plain RulesetPlanChange
 	var out plain
@@ -33,19 +34,23 @@ func (c *RulesetPlanChange) UnmarshalJSON(data []byte) error {
 	*c = RulesetPlanChange(out)
 	return nil
 }
-func rulesetReportHasNull(v any) bool {
+func invalidRulesetReportValue(v any) bool {
 	switch x := v.(type) {
 	case nil:
 		return true
 	case map[string]any:
-		for _, v := range x {
-			if rulesetReportHasNull(v) {
+		for key, v := range x {
+			// All protocol keys are lower-case; encoding/json otherwise accepts case aliases.
+			if key != strings.ToLower(key) {
+				return true
+			}
+			if invalidRulesetReportValue(v) {
 				return true
 			}
 		}
 	case []any:
 		for _, v := range x {
-			if rulesetReportHasNull(v) {
+			if invalidRulesetReportValue(v) {
 				return true
 			}
 		}

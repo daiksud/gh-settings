@@ -16,7 +16,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const acceptanceRuleset = `{"id":7,"name":"basic","source_type":"Repository","source":"owner/current","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]}`
+const acceptanceRuleset = `{"id":7,"name":"basic","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]}`
 
 func TestRulesetsExistingPolicyLifecycle(t *testing.T) {
 	binary := acceptanceBinary(t)

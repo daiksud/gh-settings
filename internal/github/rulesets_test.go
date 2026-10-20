@@ -13,7 +13,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-const basicRulesetJSON = `{"id":7,"name":"basic","source_type":"Repository","source":"Owner/Current","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]}`
+const basicRulesetJSON = `{"id":7,"name":"basic","source_type":"Repository","source":"Owner/Current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]}`
 
 func TestReadRulesetsCompleteOwnershipAndTargets(t *testing.T) {
 	calls := []string{}

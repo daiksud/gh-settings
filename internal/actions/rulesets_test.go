@@ -52,7 +52,7 @@ settings: {rulesets: [{name: '<policy>', target: branch, enforcement: active, co
 	if _, err := actions.RenderSummary(report, summaryMetadata()); err == nil {
 		t.Fatal("invalid count")
 	}
-	for _, body := range []string{`{"operation":"delete","before":null}`, strings.Replace(string(data), `"target":"branch"`, `"target":"branch","unknown":true`, 1)} {
+	for _, body := range []string{`{"operation":"delete","before":null}`, strings.Replace(string(data), `"target":"branch"`, `"target":"branch","unknown":true`, 1), strings.Replace(string(data), `"target":"branch"`, `"Target":"branch"`, 1)} {
 		var r actions.PlanReport
 		if strings.HasPrefix(body, `{"operation"`) {
 			var c actions.RulesetPlanChange
