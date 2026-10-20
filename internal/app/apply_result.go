@@ -25,6 +25,7 @@ const (
 	RulesetCreate
 	RulesetUpdate
 	RulesetDelete
+	ActionsPolicyUpdate
 )
 
 type ApplyOperationStatus uint8

@@ -26,12 +26,14 @@ Current source also adds unreleased [PR access controls](settings.md#pull-reques
 
 Current source also adds unreleased [`issue_creation_policy`](settings.md#issue-creation-policy-unreleased). It has an independent narrow GraphQL plan read and shares declared-only repository mutations with PR access; it never enables Issues implicitly. Source export now includes twenty-two repository fields. Published v0.16.0 and older packages reject the new key.
 
+Current source also adds unreleased [Actions execution policy](settings.md#actions-execution-policy-unreleased) and explicit `export --actions`. Normal export keeps its existing permissions; selected policy reads require Administration read. Published v0.16.0 and older packages reject this group and option.
+
 ## Interface and implementation status
 
 Current source (planned for v0.16.0, not yet published) additionally supports [`web_commit_signoff_required`](settings.md#web-commit-sign-off-unreleased), an unreleased repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
-gh settings export [--rulesets]
+gh settings export [--rulesets] [--actions]
 gh settings validate
 gh settings plan
 gh settings apply
@@ -73,6 +75,8 @@ The [labels contract](settings.md#labels) makes a declared list authoritative: l
 Plan shows explicit create/update/delete operations. Apply reads fresh labels after any repository/topics updates and performs only the needed operations. Omitted label attributes retain existing values; creating a label with omitted attributes delegates those values to GitHub. Changing a name to a different identity is create plus delete, without rename inference.
 
 ## Export behavior
+
+`export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy-unreleased) for required credentials and transition limits.
 
 `export --rulesets` additionally reads complete repository-owned branch/tag Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Excluded push Rulesets produce a diagnostic on stderr; export success otherwise stays silent. See the [Rulesets contract](settings.md#rulesets-unreleased) before adoption.
 
@@ -123,6 +127,8 @@ Successful comparison exits 0 whether differences exist or not. File, validation
 The [public Action](github-actions.md#inputs-outputs-and-failures) separately requires target/commit metadata and explicit plan/apply tokens, including for empty declarations.
 
 ## Apply behavior
+
+Unreleased Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings.md#actions-execution-policy-unreleased).
 
 Apply validates the configuration before resolving origin, configuring authentication or contacting GitHub. When no resources are managed, it prints `No managed repository settings.` and exits 0 locally. A topics-only declaration, including `names: []`, performs an update. A labels-only declaration, including `labels: []`, reads current labels and reconciles membership and declared attributes.
 

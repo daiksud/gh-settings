@@ -142,3 +142,7 @@ Current source accepts a label list as an authoritative collection, distinguishe
 v0.15.0 and current source accept omitted `has_discussions` or an explicit native boolean under `settings.repository`. Omission remains unmanaged; false remains declared. Null, quoted booleans, numbers, collections and legacy boolean spellings fail before origin/authentication/API access. Published v0.14.0 rejects this key. The [Discussions specification](discussions.feature.md) owns its behavior and test boundaries.
 
 Test mapping: [TestDiscussionsDeclaration](../../internal/workspace/discussions_test.go) and [TestApplyAcceptance](../../tests/acceptance/apply_test.go).
+
+### Rule: Actions execution policy validation
+
+Current source accepts only the strict optional `actions` mapping. The [Actions policy specification](actions-execution-policy.feature.md#rule-validate-only-explicit-native-values) owns omission/false/empty/null semantics and zero-network failure cases.

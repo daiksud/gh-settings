@@ -41,3 +41,5 @@ The [Rulesets design](rulesets.feature.md) records the accepted declaration/reco
 Current source adds unreleased [pull request access controls](pull-request-access.feature.md) with independent availability/policy declarations, complete GraphQL reads and declared-only mutations. Published v0.16.0 and older packages reject these keys.
 
 Current source adds unreleased [Issue creation policy](issue-creation-policy.feature.md), an independent enum with selective GraphQL reads and a shared declared-only repository mutation. It does not change `has_issues` implicitly; published v0.16.0 and older packages reject the key.
+
+Current source adds unreleased [Actions execution policy](actions-execution-policy.feature.md), with explicit export opt-in, complete conditional reads, inactive-value comparisons and fresh nontransactional apply. Published v0.16.0 and older packages reject it.

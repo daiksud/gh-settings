@@ -225,3 +225,7 @@ Test mapping: [TestExportReadFailure/topics](../../internal/app/export_test.go) 
 ### Rule: Read labels completely
 
 Current source reads every label page after repository settings and topics, before opening the output file. Export includes the complete authoritative label list; a failed read preserves the previous file. The [Labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation) owns these scenarios and test mappings. Published v0.8.0 does not include labels.
+
+### Rule: Actions execution policy export opt-in
+
+Current source keeps ordinary export unchanged and adds explicit `--actions`, composing with `--rulesets`. The [Actions policy specification](actions-execution-policy.feature.md#rule-export-only-complete-observable-policy) owns complete active/inactive reads, preserved destinations and test mappings.

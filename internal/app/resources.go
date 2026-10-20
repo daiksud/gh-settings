@@ -7,6 +7,7 @@ import (
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	Actions           func(repository.Repository, bool) (settings.ActionsPolicyState, error)
 	ObserveRepository func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error)
 	Topics            func(repository.Repository) ([]string, error)
 	Labels            func(repository.Repository) (settings.LabelObservation, error)
@@ -15,6 +16,7 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	Actions      func(repository.Repository, settings.ActionsPolicyDeclaration) error
 	Repository   func(repository.Repository, settings.RepositoryDeclaration) error
 	Topics       func(repository.Repository, settings.TopicsDeclaration) error
 	ReadLabels   func(repository.Repository) (settings.LabelObservation, error)
