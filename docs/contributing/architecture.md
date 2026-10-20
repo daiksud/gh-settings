@@ -143,7 +143,7 @@ Pages and unadopted Actions endpoints remain outside current support. Rulesets l
 
 Other future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version selection](releases.md#future-automatic-versioning) is also future work.
 
-[ADR 0026](../adr/0026-explicit-security-observations.md) accepts explicit per-family security observations and export selection. The [Security specification](../features/security.feature.md) records planned boolean declarations, permissions/availability, dependencies, failure semantics, and gates for #344–#347. Current source implements Secret scanning and private vulnerability reporting for public repositories, unreleased; ambiguous Dependabot disabled reads and distinct paid-product adoption still require the documented evidence before implementation.
+[ADR 0026](../adr/0026-explicit-security-observations.md) accepts explicit per-family security observations and export selection. The [Security specification](../features/security.feature.md) records planned boolean declarations, permissions/availability, dependencies, failure semantics, and gates for #344–#347. Published v0.17.0 implements Secret scanning and private vulnerability reporting for public repositories; ambiguous Dependabot disabled reads and distinct paid-product adoption still require the documented evidence before implementation.
 
 ## Secret scanning
 
