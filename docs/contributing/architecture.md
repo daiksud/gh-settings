@@ -119,6 +119,6 @@ Prefer the Go standard library where sufficient; no command framework is mandate
 
 Rulesets, Pages, and Actions settings remain outside current support. Label definitions are implemented in current source; individual issue/PR assignment management, renaming, and archive settings are not part of that feature.
 
-Names also identify outer rulesets, ambiguous matches are errors, and no rename is inferred. Applying label-like membership or nested collection behavior to rulesets was proposed but **not confirmed**. Ruleset deletion semantics and inner-rule identity remain unresolved.
+[ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. The [unimplemented Rulesets specification](../features/rulesets.feature.md) owns exact-name-to-ID matching, nested identity, deletion, complete observations, export opt-in and staged acceptance criteria. Inherited/push Rulesets and legacy branch protection remain outside that managed collection; legacy protection implementation is deferred. No current CLI/Action supports this design.
 
-Null handling for future fields, new output options, new-object required fields, and inner-rule identity require their own decisions. Current configuration and authentication contracts do not resolve those future choices. [Automatic version selection](releases.md#future-automatic-versioning) is also future work.
+Other future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version selection](releases.md#future-automatic-versioning) is also future work.
