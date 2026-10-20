@@ -77,7 +77,7 @@ func run() error {
 			fmt.Fprintln(w, `{"message":"fixture read denied"}`)
 			return
 		}
-		fmt.Fprintln(w, `{"description":"before <b>bold</b>\nline","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false}`)
+		fmt.Fprintln(w, `{"description":"before <b>bold</b>\nline","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`)
 	})}
 	stopped := make(chan os.Signal, 1)
 	signal.Notify(stopped, os.Interrupt, syscall.SIGTERM)

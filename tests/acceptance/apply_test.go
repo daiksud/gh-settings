@@ -24,9 +24,14 @@ func TestApplyAcceptance(t *testing.T) {
 		noAPI, noOrigin, noAuth, nested, outputFailure, globalOrigin bool
 		gitSetup                                                     func(string, []string) error
 	}{
+		{name: "template-disable", input: repositoryInput("is_template: false\n"), payload: `{"is_template":false}`},
 		{name: "web-signoff-disable", input: repositoryInput("web_commit_signoff_required: false\n"), payload: `{"web_commit_signoff_required":false}`},
+		{name: "template-enable", input: repositoryInput("is_template: true\n"), payload: `{"is_template":true}`},
 		{name: "web-signoff-enable", input: repositoryInput("web_commit_signoff_required: true\n"), payload: `{"web_commit_signoff_required":true}`},
+		{name: "template-rejected", input: repositoryInput("is_template: true\n"), payload: `{"is_template":true}`, status: 422, wantError: "422"},
+		{name: "template-forbidden", input: repositoryInput("is_template: false\n"), payload: `{"is_template":false}`, status: 403, wantError: "403"},
 		{name: "web-signoff-forbidden", input: repositoryInput("web_commit_signoff_required: false\n"), payload: `{"web_commit_signoff_required":false}`, status: 403, wantError: "403"},
+		{name: "template-invalid-before-origin", input: repositoryInput("is_template: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
 		{name: "web-signoff-invalid-before-origin", input: repositoryInput("web_commit_signoff_required: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
 		{name: "discussions-false", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":false}`},
 		{name: "discussions-ignored", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":true}`, wantError: "expected false"},
@@ -175,7 +180,7 @@ func TestApplyAcceptance(t *testing.T) {
 func TestExportEditValidatePlanApply(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
-	remote := map[string]any{"description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false}
+	remote := map[string]any{"description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}
 	var methods []string
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -259,7 +264,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

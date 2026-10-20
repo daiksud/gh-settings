@@ -19,6 +19,7 @@ func TestExportStoredSettings(t *testing.T) {
 		{"zero values", settings.RepositoryState{}},
 		{"discussions enabled", settings.RepositoryState{HasDiscussions: true}},
 		{"web sign-off required", settings.RepositoryState{WebCommitSignoffRequired: true}},
+		{"template repository", settings.RepositoryState{IsTemplate: true}},
 		{"projects enabled", settings.RepositoryState{Description: "Projects", HasProjects: true, HasWiki: true}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -47,7 +48,7 @@ func TestExportStoredSettings(t *testing.T) {
 			want := settings.Declaration{
 				Repository: settings.RepositoryDeclaration{
 					Description: &test.state.Description, Homepage: &test.state.Homepage,
-					HasIssues: &test.state.HasIssues, HasProjects: &test.state.HasProjects, HasWiki: &test.state.HasWiki, HasDiscussions: &test.state.HasDiscussions, WebCommitSignoffRequired: &test.state.WebCommitSignoffRequired,
+					HasIssues: &test.state.HasIssues, HasProjects: &test.state.HasProjects, HasWiki: &test.state.HasWiki, HasDiscussions: &test.state.HasDiscussions, WebCommitSignoffRequired: &test.state.WebCommitSignoffRequired, IsTemplate: &test.state.IsTemplate,
 					AllowMergeCommit: &yes, AllowSquashMerge: &no, AllowRebaseMerge: &yes, DeleteBranchOnMerge: &no, AllowAutoMerge: &no, AllowUpdateBranch: &yes,
 					SquashMergeCommitTitle: &squashTitle, SquashMergeCommitMessage: &squashMessage, MergeCommitTitle: &mergeTitle, MergeCommitMessage: &mergeMessage,
 				}, Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels,
@@ -153,7 +154,7 @@ func exportFixtureReader(t *testing.T, state settings.RepositoryState, step func
 			for _, field := range fields {
 				paths = append(paths, field.Path())
 			}
-			want := []string{"repository.description", "repository.homepage", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge", "repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message"}
+			want := []string{"repository.description", "repository.homepage", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.is_template", "repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge", "repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message"}
 			if !reflect.DeepEqual(paths, want) {
 				t.Fatalf("export fields=%v, want %v", paths, want)
 			}

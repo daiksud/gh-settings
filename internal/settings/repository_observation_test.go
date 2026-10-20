@@ -17,7 +17,7 @@ func TestRepositoryObservationDeclaration(t *testing.T) {
 			name: "explicit zero values",
 			want: RepositoryDeclaration{
 				Description: &empty, Homepage: &empty,
-				HasIssues: &disabled, HasProjects: &disabled, HasWiki: &disabled, HasDiscussions: &disabled, WebCommitSignoffRequired: &disabled,
+				HasIssues: &disabled, HasProjects: &disabled, HasWiki: &disabled, HasDiscussions: &disabled, WebCommitSignoffRequired: &disabled, IsTemplate: &disabled,
 			},
 		},
 		{
@@ -28,7 +28,7 @@ func TestRepositoryObservationDeclaration(t *testing.T) {
 			},
 			want: RepositoryDeclaration{
 				Description: &description, Homepage: &homepage,
-				HasIssues: &enabled, HasProjects: &disabled, HasWiki: &enabled, HasDiscussions: &enabled, WebCommitSignoffRequired: &disabled,
+				HasIssues: &enabled, HasProjects: &disabled, HasWiki: &enabled, HasDiscussions: &enabled, WebCommitSignoffRequired: &disabled, IsTemplate: &disabled,
 			},
 		},
 	} {
@@ -77,7 +77,7 @@ func TestCombinedRepositoryObservationDeclaration(t *testing.T) {
 			got := before.WithMergeMethods(test.state)
 			want := RepositoryDeclaration{
 				Description: &base.Description, Homepage: &base.Homepage,
-				HasIssues: &base.HasIssues, HasProjects: &base.HasProjects, HasWiki: &base.HasWiki, HasDiscussions: &base.HasDiscussions, WebCommitSignoffRequired: &base.WebCommitSignoffRequired,
+				HasIssues: &base.HasIssues, HasProjects: &base.HasProjects, HasWiki: &base.HasWiki, HasDiscussions: &base.HasDiscussions, WebCommitSignoffRequired: &base.WebCommitSignoffRequired, IsTemplate: &base.IsTemplate,
 				AllowMergeCommit: &test.state.AllowMergeCommit, AllowSquashMerge: &test.state.AllowSquashMerge, AllowRebaseMerge: &test.state.AllowRebaseMerge,
 				DeleteBranchOnMerge: &test.state.DeleteBranchOnMerge, AllowAutoMerge: &test.state.AllowAutoMerge, AllowUpdateBranch: &test.state.AllowUpdateBranch,
 				SquashMergeCommitTitle: &test.state.SquashMergeCommitTitle, SquashMergeCommitMessage: &test.state.SquashMergeCommitMessage,
