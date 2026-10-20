@@ -18,11 +18,11 @@ v0.14.0 adds [merge commit title/body defaults](features/merge-commit-defaults.f
 
 v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a sixteenth exported repository field; published v0.14.0 rejects it. Apply verifies the returned boolean when this field is declared; verification errors can occur after repository writes.
 
-Current source also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased). It also supports the unreleased [`default_branch` setting](settings.md#default-branch-unreleased). Source export includes nineteen repository fields; published v0.15.1 and older packages reject the new key.
+Current source (planned for v0.16.0, not yet published) also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased). It also supports the unreleased [`default_branch` setting](settings.md#default-branch-unreleased). Source export includes nineteen repository fields; published v0.15.1 and older packages reject the new key.
 
 ## Interface and implementation status
 
-Current source additionally supports [`web_commit_signoff_required`](settings.md#web-commit-sign-off-unreleased), an unreleased repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
+Current source (planned for v0.16.0, not yet published) additionally supports [`web_commit_signoff_required`](settings.md#web-commit-sign-off-unreleased), an unreleased repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
 gh settings export

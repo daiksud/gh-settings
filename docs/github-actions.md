@@ -2,7 +2,7 @@
 
 The pinned v0.15.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
 
-The source-only [`web_commit_signoff_required` setting](settings.md#web-commit-sign-off-unreleased) is unreleased. Published v0.15.1 and older CLI/Action packages reject it, including the pinned examples. Its candidate plan report and Summary use native booleans; apply uses the existing Administration-write repository PATCH. No Action input or permission expansion is added.
+The source-only [`web_commit_signoff_required` setting](settings.md#web-commit-sign-off-unreleased) is unreleased and planned for v0.16.0. Published v0.15.1 and older CLI/Action packages reject it, including the pinned examples. Its candidate plan report and Summary use native booleans; apply uses the existing Administration-write repository PATCH. No Action input or permission expansion is added.
 
 Current source also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased), using the same repository read/PATCH permissions and native boolean report/Summary path. Published v0.15.1 and older packages reject it.
 
