@@ -6,7 +6,7 @@ This page explains the design for contributors. The [settings reference](../sett
 
 gh-settings lets repository maintainers record intended settings in version control, review differences, and apply declared values. It is inspired by [babarot/gh-infra](https://github.com/babarot/gh-infra), [noirbizarre/gh-settings](https://github.com/noirbizarre/gh-settings), and [the GitHub Terraform provider](https://github.com/integrations/terraform-provider-github), rather than being a fork of those implementations.
 
-Configuration lives at the current checkout's root `.github/settings.yml` and targets only that checkout's GitHub.com repository. Current-source resources are repository fields, topics, and labels. Labels support is not yet included in the [published package or active consumer pins](../github-actions.md#published-package-and-consumer-pins). Organization settings, inherited organization rulesets, and management of multiple repositories are outside this product boundary.
+Configuration lives at the current checkout's root `.github/settings.yml` and targets only that checkout's GitHub.com repository. Current resources are repository fields, topics, and labels. The [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) owns supported-version and adoption guidance. Organization settings, inherited organization rulesets, and management of multiple repositories are outside this product boundary.
 
 Written fields are managed and authoritative; omitted fields remain unmanaged. Declaring a labels list additionally owns its collection membership, while omitted attributes of retained labels stay unmanaged. Configuration keys and value types follow the corresponding update request schema, within the explicit versioned resource grouping. A repository GET response does not define the writable configuration schema. The [settings reference](../settings.md#configuration-semantics) owns exact field, omission, null, and grouping behavior.
 
@@ -83,7 +83,7 @@ Reports preserve native field values and carry label operations separately, reta
 
 Summary validation converts the JSON report DTO to a private validated presentation input, retaining native comparisons, label operations, and checked report state. Typed visitors render the retained values; JSON type assertions and operation reconstruction remain at the input boundary. This preserves credential-free rendering and validates all input and metadata before opening the Summary destination.
 
-The current-source executable implements label reports/Summary, but the public Action still installs the released CLI selected by [`action/cli-version`](../../action/cli-version). A matching future release and reviewed consumer adoption are required before using labels through that public package.
+The public Action installs the released CLI selected by its committed [`action/cli-version`](../../action/cli-version). See the [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) for released capabilities and the [labels permission guidance](../github-actions.md#labels-and-permissions) for caller requirements.
 
 ## v0 simplification contract
 
