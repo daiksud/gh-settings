@@ -45,3 +45,5 @@ Current source adds unreleased [Issue creation policy](issue-creation-policy.fea
 Current source adds unreleased [Actions execution policy](actions-execution-policy.feature.md), with explicit export opt-in, complete conditional reads, inactive-value comparisons and fresh nontransactional apply. Published v0.16.0 and older packages reject it.
 
 Current source adds unreleased [default workflow permissions](workflow-permissions.feature.md), independently of execution policy, with declared-only updates and explicit export selection. Published v0.16.0 and older packages reject it.
+
+The [Security design](security.feature.md) defines proposed feature-family selection, complete observations, dependency ordering, and adoption gates for #344–#347. It is documentation only; no current or published package supports the proposed keys/options.

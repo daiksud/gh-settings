@@ -31,3 +31,4 @@ Keep decision numbers and paths stable. Record a superseding decision and update
 | 0023 | [Public composite Action contract](0023-public-composite-action.md) |
 | 0024 | [Require focused PRs and explicit breaking-change reviews](0024-code-review-policy.md) |
 | 0025 | [Reconcile repository Rulesets as declarative collections](0025-declarative-repository-rulesets.md) |
+| 0026 | [Require explicit, complete security observations](0026-explicit-security-observations.md) |
