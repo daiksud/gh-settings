@@ -18,6 +18,21 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Web commit sign-off (unreleased)
+
+Current source adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes seventeen repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    web_commit_signoff_required: true
+```
+
+Omission leaves the field unmanaged. Explicit `false` disables the requirement; null, quoted booleans and other types are invalid. Plan reads a complete non-null boolean from the existing repository REST GET, compares declared values only, and makes no GraphQL request for this field. Export includes the observed boolean after all reads succeed. Missing or wrongly typed values fail the read instead of becoming false.
+
+Apply sends the field only when declared, in the existing repository PATCH with Administration write permission and no preliminary read. No new token grant is introduced. This is a sign-off requirement, not cryptographic commit-signature enforcement or a DCO check. It does not rewrite commits or change branch protections. The [feature contract](features/web-commit-signoff.feature.md) maps the request, failure and presentation tests. GitHub's [repository update API](https://docs.github.com/en/rest/repos/repos#update-a-repository) documents the exact field name.
+
 ## Discussions (v0.15.0)
 
 v0.15.0 adds optional `settings.repository.has_discussions`, a boolean controlling GitHub Discussions. It extends the repository group; it does not manage discussion categories or individual discussions. Published v0.14.0 and older packages reject this key. The pinned v0.15.0 CLI/Action supports it; update older consumer pins before adopting the declaration.

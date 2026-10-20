@@ -24,6 +24,10 @@ func TestApplyAcceptance(t *testing.T) {
 		noAPI, noOrigin, noAuth, nested, outputFailure, globalOrigin bool
 		gitSetup                                                     func(string, []string) error
 	}{
+		{name: "web-signoff-disable", input: repositoryInput("web_commit_signoff_required: false\n"), payload: `{"web_commit_signoff_required":false}`},
+		{name: "web-signoff-enable", input: repositoryInput("web_commit_signoff_required: true\n"), payload: `{"web_commit_signoff_required":true}`},
+		{name: "web-signoff-forbidden", input: repositoryInput("web_commit_signoff_required: false\n"), payload: `{"web_commit_signoff_required":false}`, status: 403, wantError: "403"},
+		{name: "web-signoff-invalid-before-origin", input: repositoryInput("web_commit_signoff_required: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
 		{name: "discussions-false", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":false}`},
 		{name: "discussions-ignored", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":true}`, wantError: "expected false"},
 		{name: "discussions-missing-response", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, wantError: "lacks boolean has_discussions"},
@@ -171,7 +175,7 @@ func TestApplyAcceptance(t *testing.T) {
 func TestExportEditValidatePlanApply(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
-	remote := map[string]any{"description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false}
+	remote := map[string]any{"description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false}
 	var methods []string
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -255,7 +259,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

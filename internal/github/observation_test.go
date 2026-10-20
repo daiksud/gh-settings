@@ -18,10 +18,10 @@ func TestObserveRepositorySelectsReads(t *testing.T) {
 		paths, want []string
 		acquired    int
 	}{
-		{"REST only", []string{"repository.has_issues"}, []string{"rest"}, 6},
+		{"REST only", []string{"repository.has_issues"}, []string{"rest"}, 7},
 		{"GraphQL only", []string{"repository.allow_merge_commit"}, []string{"graphql"}, 10},
 		{"GraphQL string only", []string{"repository.merge_commit_title"}, []string{"graphql"}, 10},
-		{"mixed preserves REST first", []string{"repository.allow_merge_commit", "repository.description"}, []string{"rest", "graphql"}, 16},
+		{"mixed preserves REST first", []string{"repository.allow_merge_commit", "repository.description"}, []string{"rest", "graphql"}, 17},
 		{"no fields", nil, nil, 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {

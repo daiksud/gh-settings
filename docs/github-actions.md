@@ -2,6 +2,8 @@
 
 The pinned v0.15.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
 
+The source-only [`web_commit_signoff_required` setting](settings.md#web-commit-sign-off-unreleased) is unreleased. Published v0.15.1 and older CLI/Action packages reject it, including the pinned examples. Its candidate plan report and Summary use native booleans; apply uses the existing Administration-write repository PATCH. No Action input or permission expansion is added.
+
 ## Public Action and supported checkout
 
 `daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.15.0 package for repository fields, topics and [labels](#labels-and-permissions).
