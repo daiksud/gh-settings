@@ -70,7 +70,8 @@ Ordinary export preserves all existing requests and credential requirements. Sel
 | --- | --- |
 | Complete enabled/disabled boolean or supported status enum | Compare native booleans; equal yields no difference. |
 | Updates `enabled: true, paused: true` | Preserve enabled=true and pause metadata; emit a diagnostic in plan/export/apply. Do not report running/healthy, synthesize false, or disable/re-enable to resume. |
-| Updates `enabled: false, paused: true`, or missing/invalid pause metadata | Reject inconsistent/incomplete state; do not discard pause to manufacture a usable observation. |
+| Any other complete `enabled`/`paused` boolean pair | Compare enabled independently and retain pause metadata; warn whenever paused. Do not invent a correlation between the two booleans that the API schema does not establish. |
+| Missing/null/wrong-type enabled or pause metadata | Reject incomplete state; do not discard pause to manufacture a usable observation. |
 | Missing/null/invalid requested response field | Fail that read; no successful empty/false comparison or export. |
 | 401/403, unqualified 404, redirect, transport failure, invalid JSON | Fail read as unknown/denied as evidenced; never infer disabled or follow a changed target. |
 | Confirmed unsupported visibility/entitlement | Report inapplicable/unavailable as evidenced; never false. Do not guess licensing from arbitrary 403/404 text. |
