@@ -233,9 +233,9 @@ Direct apply performs existing repository REST updates first, then resolves the 
 
 Reads require complete policy visibility; writes require a credential authorized to update the target repository. Authentication and caller grants are unchanged, and no permission is expanded automatically. Local fixtures and read-only observations do not prove live write compatibility, token permissions or published-package support. See the [feature specification](features/pull-request-access.feature.md) for test mappings and evidence limits.
 
-## Default branch (unreleased)
+## Default branch
 
-Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-two repository fields, topics and labels.
+Published v0.16.0 and current source support optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-two repository fields, topics and labels.
 
 ```yaml
 schemaVersion: 1
@@ -252,9 +252,9 @@ Apply sends only declared repository fields in one Administration-write PATCH, w
 
 This feature does not create or rename branches, change the local checkout/origin, retarget individual PRs, or edit protections. Existing policies targeting the default branch, including Rulesets using `~DEFAULT_BRANCH`, can follow the newly selected branch, so review those effects before applying. GitHub's [default-branch guidance](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/changing-the-default-branch) and [repository update API](https://docs.github.com/en/rest/repos/repos#update-a-repository) apply. The [feature contract](features/default-branch.feature.md) maps validation, requests and post-write verification to tests.
 
-## Template repository (unreleased)
+## Template repository
 
-Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.is_template`, a boolean controlling whether the repository can be used as a template. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group; no repository-generation command is added.
+Published v0.16.0 and current source support optional `settings.repository.is_template`, a boolean controlling whether the repository can be used as a template. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group; no repository-generation command is added.
 
 ```yaml
 schemaVersion: 1
@@ -267,9 +267,9 @@ Omission leaves the setting unmanaged; explicit `false` removes template status.
 
 Apply sends only declared fields through the existing Administration-write repository PATCH, with no preliminary read or GraphQL request. GitHub's [template prerequisites](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-template-repository), including the Git LFS restriction, still apply; API rejections remain errors rather than triggering workarounds. The tool does not create repositories, copy files, change template provenance, or manage template contents. See the [feature contract](features/template-repository.feature.md).
 
-## Web commit sign-off (unreleased)
+## Web commit sign-off
 
-Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes twenty-two repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Published v0.16.0 and current source support optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; adopt v0.16.0 or newer before using it. Source export includes twenty-two repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1

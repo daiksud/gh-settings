@@ -146,3 +146,18 @@ Test mapping: [TestDiscussionsDeclaration](../../internal/workspace/discussions_
 ### Rule: Actions execution policy validation
 
 Current source accepts only the strict optional `actions` mapping. The [Actions policy specification](actions-execution-policy.feature.md#rule-validate-only-explicit-native-values) owns omission/false/empty/null semantics and zero-network failure cases.
+
+### Rule: Validate all adopted fields in the planned v0.17.0 package locally
+
+Validation accepts the twenty-two repository fields (including v0.16.0 branch/template/sign-off and the new PR/Issue policies), authoritative Rulesets, fourteen Actions policy fields and three adopted security booleans. Omission remains unmanaged; false and supported empty collections remain explicit; null and unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Dependabot/product/immutable-release candidates are not accepted.
+
+| Subset | Existing owning tests and specification |
+| --- | --- |
+| Branch/template/sign-off | [Default branch](default-branch.feature.md), [template](template-repository.feature.md), [sign-off](web-commit-signoff.feature.md) |
+| PR and Issue policies | [PR codec](../../internal/workspace/pr_access_test.go), [Issue codec](../../internal/workspace/issue_creation_policy_test.go) |
+| Rulesets and nested identities | [Ruleset codec](../../internal/workspace/rulesets_test.go), [Ruleset contract](rulesets.feature.md) |
+| Workflow permissions and retention | [Workflow codec](../../internal/workspace/workflow_permissions_test.go), [retention codec](../../internal/workspace/retention_test.go) |
+| Secret scanning and public reporting | [Security codec](../../internal/workspace/security_test.go), [security contract](security.feature.md) |
+| Fork workflow policies | [Fork codec](../../internal/workspace/fork_workflows_test.go), [fork contract](fork-workflows.feature.md) |
+
+Dedicated process cases exercise the same supplied CLI through these interfaces; detailed type matrices remain with the codec/model owners. Validation success does not establish remote policy, grants, applicability or published availability.

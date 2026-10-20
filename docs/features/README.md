@@ -28,13 +28,13 @@ The v0.14.0 [normal merge commit defaults](merge-commit-defaults.feature.md) add
 
 v0.15.0 adds the optional [`has_discussions` setting](discussions.feature.md) through the repository REST read/write path with a verified PATCH response.
 
-Current source adds the unreleased [web commit sign-off requirement](web-commit-signoff.feature.md) through the existing repository REST read/write path.
+Published v0.16.0 adds the [web commit sign-off requirement](web-commit-signoff.feature.md) through the existing repository REST read/write path.
 
-Current source also adds the unreleased [template repository setting](template-repository.feature.md) through the existing repository REST read/write path.
+Published v0.16.0 also adds the [template repository setting](template-repository.feature.md) through the existing repository REST read/write path.
 
-Current source adds the unreleased [default branch setting](default-branch.feature.md), including literal-name validation and PATCH response verification.
+Published v0.16.0 adds the [default branch setting](default-branch.feature.md), including literal-name validation and PATCH response verification.
 
-These three current-source features are planned for v0.16.0 and remain unreleased until the separate release workflow publishes and verifies the matching package.
+These three features are published in v0.16.0; older consumer pins must be updated before adopting them.
 
 The [Rulesets design](rulesets.feature.md) records the accepted declaration/reconciliation contract and its current-source, unreleased implementation, including PR/check rules; published v0.16.0 and older CLI/Action packages reject Rulesets.
 

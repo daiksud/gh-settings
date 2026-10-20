@@ -6,9 +6,9 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 ## Feature: Export repository settings as YAML
 
-A repository maintainer can capture all sixteen current-source repository fields, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+A repository maintainer can capture all twenty-two current-source repository fields, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
 
-The six-field REST state includes `has_discussions` since v0.15.0; published v0.14.0 exports fifteen repository fields without that key. The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
+The nine-field current-source REST state includes `has_discussions` since v0.15.0, plus default branch, web commit sign-off and template status since v0.16.0; published v0.14.0 exports fifteen repository fields without that key. The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
 
 This feature assumes an owner-controlled checkout whose directory and link entries remain stable during export. Concurrent replacement of those entries is outside its scope.
 
@@ -52,7 +52,7 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - And its settings are description "Example repository", homepage "https://example.com", issues enabled, projects disabled, wiki enabled, and Discussions disabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And `.github/settings.yml` has root `schemaVersion: 1` and `settings.repository` containing those six REST fields and their values plus the ten merge-related fields
+- And `.github/settings.yml` has root `schemaVersion: 1` and `settings.repository` containing all nine REST fields, the ten merge-related fields and three PR/Issue access fields, each with its completely observed value
 - And topics and complete labels are present, while response metadata and unsupported settings are absent
 - And standard error is empty
 - And standard output is empty
@@ -64,9 +64,9 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - And issues, projects, wiki, and Discussions are disabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And all six REST keys and all ten merge-related keys are present in the YAML output
+- And all nine REST keys, all ten merge-related keys and all three PR/Issue access keys are present in the YAML output
 - And the two string values remain empty strings
-- And the four REST boolean values remain false
+- And the six REST boolean values retain their observed values (including explicit false)
 
 #### Scenario: Export unset strings as empty strings
 
@@ -127,10 +127,10 @@ These origin-support changes are published in v0.7.0 and do not change settings 
 
 #### Scenario: Save export output and validate it locally
 
-- Given the current checkout has ordinary settings or zero values with an unset string
+- Given the current checkout has ordinary settings or explicit false/empty values with a valid existing default branch
 - When the maintainer runs `gh settings export`
 - And runs `gh settings validate` with the same executable
-- Then the exported document contains `schemaVersion: 1`, all sixteen supported `settings.repository` values, `settings.topics.names`, and the complete `settings.labels` list
+- Then the exported document contains `schemaVersion: 1`, all twenty-two supported `settings.repository` values, `settings.topics.names`, and the complete `settings.labels` list
 - And validation succeeds without output or changing the saved file bytes
 - And export reads repository settings, topics, and all label pages while validation makes no additional API request
 
@@ -229,3 +229,9 @@ Current source reads every label page after repository settings and topics, befo
 ### Rule: Actions execution policy export opt-in
 
 Current source keeps ordinary export unchanged and adds explicit `--actions`, composing with `--rulesets`. The [Actions policy specification](actions-execution-policy.feature.md#rule-export-only-complete-observable-policy) owns complete active/inactive reads, preserved destinations and test mappings.
+
+### Rule: Complete explicit export choices for the planned v0.17.0 package
+
+Ordinary export reads twenty-two repository fields, topics and labels. Each explicit selection adds only its independent resource: `--rulesets`, `--actions`, `--workflow-permissions`, `--retention`, `--fork-approval`, `--private-fork-workflows`, and repeatable distinct `--security secret-scanning` / `--security private-vulnerability-reporting`. Duplicate/unknown selections fail before export. Complete all requested observations and serialization before opening the destination; an inapplicable/denied/partial selection fails without plausible defaults or a successful partial save. Unchanged supported exports validate and plan with zero differences. Family applicability can prevent combining otherwise independently parsed choices; public and private fork choices cannot both apply to a fixed target.
+
+The dedicated [Rulesets](rulesets.feature.md), [workflow permissions](workflow-permissions.feature.md), [retention](retention.feature.md), [security](security.feature.md), [fork workflow](fork-workflows.feature.md), [PR access](pull-request-access.feature.md) and [Issue policy](issue-creation-policy.feature.md) specifications own complete-read and payload details. Existing process coverage includes [Rulesets](../../tests/acceptance/rulesets_test.go), [workflow permissions](../../tests/acceptance/workflow_permissions_test.go), [retention](../../tests/acceptance/retention_test.go), [Secret scanning](../../tests/acceptance/security_test.go), [private reporting](../../tests/acceptance/private_reporting_test.go), [fork workflows](../../tests/acceptance/fork_workflows_test.go) [PR access](../../tests/acceptance/pr_access_test.go) and [Issue policy](../../tests/acceptance/issue_creation_policy_test.go). These test mappings prove modeled current-source behavior; publication remains a separate required verification.

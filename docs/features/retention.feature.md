@@ -28,7 +28,7 @@ Test mapping: [TestRetentionFreshCapNarrowPUTAndReadback](../../internal/github/
 
 ## Native reports and process evidence
 
-The closed Actions comparison registry adds `actions.artifact_and_log_retention_days`, taking its field count to nine. Report reconstruction normalizes bounded whole JSON numbers to native integers; null/unavailable before values, fractions, strings, wrong fields and no-op changes are rejected. Other field/type decoding is unchanged. CLI and credential-free Summary share unquoted numeric output, and the current managed bound is thirty-seven. Reports remain presentation data and never enter apply.
+The closed Actions comparison registry adds `actions.artifact_and_log_retention_days`, one of fourteen current-source policy fields. Report reconstruction normalizes bounded whole JSON numbers to native integers; null/unavailable before values, fractions, strings, wrong fields and no-op changes are rejected. Other field/type decoding is unchanged. CLI and credential-free Summary share unquoted numeric output, and the current managed bound is forty-two. Reports remain presentation data and never enter apply.
 
 Test mapping: [TestRetentionNativeReportNumbersAreClosed](../../internal/settings/retention_test.go), [TestRetentionSummaryHasNativeIntegerValues](../../internal/actions/retention_test.go), [TestRetentionExportPlanApplyAndSummary](../../tests/acceptance/retention_test.go). The process case covers ordinary/selected export→zero plan→edit→apply, upper-cap reduction, over-cap correction, policy refusal/unchanged readback, file preservation, GET/PUT redirect rejection, choice composition and retained earlier workflow writes. API owner fixtures separately permit a changing, still-compatible maximum.
 

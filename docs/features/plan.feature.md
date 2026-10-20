@@ -97,3 +97,17 @@ Current source reads a declared label collection and reports typed create/update
 ### Rule: Actions execution policy comparison
 
 Current source compares six independent managed fields and explicitly marks inactive selected before values unavailable. The [Actions policy specification](actions-execution-policy.feature.md#rule-plan-inactive-values-honestly) owns native comparisons, Summary validation and error boundaries.
+
+### Rule: Compare the complete planned v0.17.0 feature set without writes
+
+Plan reads only declared resources, retaining registry order for repository fields and resource order for collections/policies. Current source has twenty-two scalar repository fields; each scalar counts once, each authoritative collection once, and each of fourteen Actions/three security fields once, for a maximum managed count of forty-two. Rulesets have typed operations; Actions and security retain closed native before/after values. Unknown/denied/inapplicable/incomplete observations fail and discard earlier partial comparisons. A zero plan covers only successfully observed managed intent; it proves neither write permission nor future drift protection.
+
+| Subset | Existing application and supplied-binary coverage |
+| --- | --- |
+| PR/Issue policies | [PR access](../../tests/acceptance/pr_access_test.go), [Issue policy](../../tests/acceptance/issue_creation_policy_test.go) |
+| Ruleset operations and parameters | [Rulesets](../../tests/acceptance/rulesets_test.go), [PR/check parameters](../../tests/acceptance/ruleset_parameters_test.go) |
+| Workflow permissions and retention | [Workflow](../../tests/acceptance/workflow_permissions_test.go), [retention](../../tests/acceptance/retention_test.go) |
+| Secret scanning and public reporting | [Secret scanning](../../tests/acceptance/security_test.go), [reporting](../../tests/acceptance/private_reporting_test.go) |
+| Fork workflow policies | [Fork app sequencing](../../internal/app/fork_workflows_test.go), [fork process/Summary](../../tests/acceptance/fork_workflows_test.go) |
+
+The dedicated feature specifications own conditional reads, dependencies, cap checks and visibility boundaries. The same typed comparison feeds credential-free Summary validation; no saved report becomes apply input.
