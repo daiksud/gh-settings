@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,48 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestPublishStopsAfterFirstUploadError(t *testing.T) {
+	version, env := preflightFixture(t)
+	identity, err := prepareIdentity(version, func(key string) string { return env[key] })
+	if err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("first upload failed")
+	wantCalls := [][]string{
+		{"api", "repos/owner/repo/releases?per_page=100", "--paginate", "--slurp"},
+		{"api", "repos/owner/repo/releases/123"},
+		{"api", "repos/owner/repo/git/ref/tags/v1.2.3"},
+		{"api", "repos/owner/repo/releases/123"},
+		{"release", "upload", "v1.2.3", env["RELEASE_DIR"] + "/gh-settings-darwin-arm64", "--repo", "owner/repo"},
+	}
+	var calls [][]string
+	gh := func(args ...string) ([]byte, error) {
+		calls = append(calls, append([]string(nil), args...))
+		switch {
+		case reflect.DeepEqual(args, wantCalls[0]):
+			return []byte(`[[{"id":123,"tag_name":"v1.2.3"}]]`), nil
+		case reflect.DeepEqual(args, wantCalls[1]):
+			// A matching draft with all three assets missing requires uploads.
+			return releaseDocument(t, map[string]any{
+				"body": identity.Marker + "\nreviewed notes\n", "assets": []any{},
+			}), nil
+		case reflect.DeepEqual(args, wantCalls[2]):
+			return []byte(fmt.Sprintf(`{"object":{"type":"commit","sha":%q}}`, identity.Commit)), nil
+		case len(args) >= 2 && args[0] == "release" && args[1] == "upload":
+			return nil, cause
+		default:
+			return nil, fmt.Errorf("unexpected GitHub operation: %v", args)
+		}
+	}
+	var output bytes.Buffer
+	err = publishRelease(identity, "/unavailable-history", t.TempDir(), &output, gh)
+	// The complete trace rejects later uploads, reads, tag checks, or publication,
+	// even if the original error is eventually returned after that extra work.
+	if !errors.Is(err, cause) || !reflect.DeepEqual(calls, wantCalls) || output.Len() != 0 {
+		t.Fatalf("error=%v calls=%v output=%q, want original error and calls=%v", err, calls, output.String(), wantCalls)
+	}
+}
 
 func TestPublishDraftChecksFreshAssetsStateMarkerThenTag(t *testing.T) {
 	for _, test := range []struct {
