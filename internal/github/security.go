@@ -40,13 +40,12 @@ func (c *SecretScanningClient) Read(repo repository.Repository) (settings.Secret
 	}
 	values := make([]bool, 0, 2)
 	for _, key := range []string{"secret_scanning", "secret_scanning_push_protection"} {
-		var field struct {
-			Status *string `json:"status"`
-		}
-		if json.Unmarshal(block[key], &field) != nil || field.Status == nil || (*field.Status != "enabled" && *field.Status != "disabled") {
+		var field map[string]json.RawMessage
+		var status *string
+		if json.Unmarshal(block[key], &field) != nil || field == nil || json.Unmarshal(field["status"], &status) != nil || status == nil || (*status != "enabled" && *status != "disabled") {
 			return settings.SecretScanningObservation{}, fmt.Errorf("GitHub returned missing/null or unsupported %s status", key)
 		}
-		values = append(values, *field.Status == "enabled")
+		values = append(values, *status == "enabled")
 	}
 	return settings.NewSecretScanningObservation(values[0], values[1]), nil
 }

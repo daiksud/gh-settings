@@ -41,7 +41,7 @@ func TestSecretScanningCompleteReads(t *testing.T) {
 		}
 	}
 
-	for _, body := range []string{`{}`, `null`, `{"security_and_analysis":null}`, `{"security_and_analysis":{}}`, `{"security_and_analysis":{"secret_scanning":{"status":"enabled"}}}`, `{"security_and_analysis":{"secret_scanning":{"status":null},"secret_scanning_push_protection":{"status":"disabled"}}}`, `{"security_and_analysis":{"secret_scanning":{"status":"unknown"},"secret_scanning_push_protection":{"status":"disabled"}}}`} {
+	for _, body := range []string{`{}`, `null`, `{"security_and_analysis":null}`, `{"security_and_analysis":{}}`, `{"security_and_analysis":{"secret_scanning":{"status":"enabled"}}}`, `{"security_and_analysis":{"secret_scanning":{"status":null},"secret_scanning_push_protection":{"status":"disabled"}}}`, `{"security_and_analysis":{"secret_scanning":{"status":"unknown"},"secret_scanning_push_protection":{"status":"disabled"}}}`, `{"security_and_analysis":{"secret_scanning":{"Status":"enabled"},"secret_scanning_push_protection":{"status":"disabled"}}}`} {
 		client := &SecretScanningClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
 			if r.Method != "GET" {
 				t.Fatal("read mutated")
