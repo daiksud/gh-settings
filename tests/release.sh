@@ -20,16 +20,21 @@ if [[ "$1" == api ]]; then
   if [[ "$1" == -X ]]; then
     case "$2:$3" in
       POST:*/git/refs)
-        printf '{"object":{"type":"commit","sha":"%s"}}\n' "$SOURCE_SHA" > "$MOCK_ROOT/tag.json" ;;
+        [[ $# == 7 && "$3" == "repos/$GITHUB_REPOSITORY/git/refs" && "$4" == -f && "$5" == "ref=refs/tags/$VERSION" && "$6" == -f && "$7" == "sha=$SOURCE_SHA" ]] || {
+          echo 'unexpected tag creation request' >&2; exit 1
+        }
+        printf '{"object":{"type":"commit","sha":"%s"}}\n' "${7#sha=}" > "$MOCK_ROOT/tag.json" ;;
       POST:*/releases)
-        while [[ $# -gt 0 ]]; do
-          if [[ "$1" == --input ]]; then
-            jq -r .body "$2" > "$MOCK_ROOT/body"
-            break
-          fi
-          shift
-        done
-        printf 'true\n' > "$MOCK_ROOT/draft"
+        [[ $# == 5 && "$3" == "repos/$GITHUB_REPOSITORY/releases" && "$4" == --input ]] || {
+          echo 'unexpected release creation arguments' >&2; exit 1
+        }
+        # The independent complete-notes golden below owns the body bytes.
+        jq -e --arg tag "$VERSION" --arg commit "$SOURCE_SHA" '
+          . == {tag_name:$tag,target_commitish:$commit,name:$tag,body:.body,draft:true,prerelease:false}
+          and (.body | type == "string")
+        ' "$5" > /dev/null || { echo 'unexpected release creation payload' >&2; exit 1; }
+        jq -r .body "$5" > "$MOCK_ROOT/body"
+        jq -r .draft "$5" > "$MOCK_ROOT/draft"
         release_json ;;
       PATCH:*/releases/123)
         printf 'false\n' > "$MOCK_ROOT/draft"
