@@ -7,6 +7,7 @@ type Comparison struct {
 	Labels   LabelChanges
 	Rulesets []RulesetChange
 	Actions  []ActionsPolicyChange
+	Security []SecurityChange
 }
 
 // Change contains a supported field identifier and a matching typed value pair.

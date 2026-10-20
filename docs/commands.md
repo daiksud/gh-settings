@@ -78,6 +78,8 @@ Plan shows explicit create/update/delete operations. Apply reads fresh labels af
 
 ## Export behavior
 
+Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection-unreleased). It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Only `secret-scanning` is implemented: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export requests and scope are unchanged; published v0.16.0 and older packages reject this option.
+
 `export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy after any other requested resources. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
 
 `export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy-unreleased) for required credentials and transition limits.

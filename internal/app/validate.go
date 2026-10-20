@@ -7,5 +7,12 @@ type DeclarationLoader func() (settings.Declaration, error)
 
 // Validate reads the current checkout's declaration without remote access or writes.
 func Validate(load DeclarationLoader) (settings.Declaration, error) {
-	return load()
+	d, err := load()
+	if err != nil {
+		return settings.Declaration{}, err
+	}
+	if err := d.Security.Validate(); err != nil {
+		return settings.Declaration{}, err
+	}
+	return d, nil
 }

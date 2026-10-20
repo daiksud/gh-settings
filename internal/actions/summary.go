@@ -143,6 +143,9 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	for _, change := range report.comparison.Actions {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.ActionsPolicyLine(change)))
 	}
+	for _, change := range report.comparison.Security {
+		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.SecurityLine(change)))
+	}
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String()
 }
@@ -154,11 +157,11 @@ type validatedPlanReport struct {
 }
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
-	maxManaged := settings.RepositoryFieldCount() + 3 + settings.ActionsPolicyFieldCount // Collections count once; Actions execution/workflow policies have eight fields.
-	if report.Changes == nil || report.Managed < len(report.Changes)+len(report.Actions) || report.Managed > maxManaged {
+	maxManaged := settings.RepositoryFieldCount() + 3 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount // Collections count once; scalar policy controls retain their closed bounds.
+	if report.Changes == nil || report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security) || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}
-	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+len(report.Actions)+1 {
+	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security)+1 {
 		return validatedPlanReport{}, fmt.Errorf("invalid label report managed count")
 	}
 	labels, err := validateLabelReport(report.Labels)
@@ -176,10 +179,10 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if len(rulesets) > 0 {
 		collections++
 	}
-	if report.Managed < len(report.Changes)+len(report.Actions)+collections {
+	if report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security)+collections {
 		return validatedPlanReport{}, fmt.Errorf("invalid collection managed count")
 	}
-	hasChanges := len(report.Changes) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(report.Actions) > 0
+	hasChanges := len(report.Changes) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(report.Actions) > 0 || len(report.Security) > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
@@ -207,6 +210,16 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 		comparison.Actions = append(comparison.Actions, change)
 	}
 	if err := settings.ValidateActionsPolicyChanges(comparison.Actions); err != nil {
+		return validatedPlanReport{}, err
+	}
+	for _, raw := range report.Security {
+		change, err := settings.NewSecurityChange(raw.Field, raw.Before, raw.After)
+		if err != nil {
+			return validatedPlanReport{}, err
+		}
+		comparison.Security = append(comparison.Security, change)
+	}
+	if err := settings.ValidateSecurityChanges(comparison.Security); err != nil {
 		return validatedPlanReport{}, err
 	}
 	seen := make(map[settings.FieldID]bool, len(report.Changes))
