@@ -1,12 +1,12 @@
 ---
 type: Feature
-title: Declarative repository Rulesets design
-description: Planned ownership, round-trip, reconciliation, and acceptance contract for existing Rulesets.
+title: Declarative repository Rulesets
+description: Ownership, round-trip, reconciliation, and acceptance contract for existing Rulesets.
 ---
 
 ## Status and goal
 
-The basic subset from #336 and PR/check extension from #337 are implemented in current source and **unreleased, planned for v0.17.0**; published v0.16.0 and older CLI/Action packages reject it. [ADR 0025](../adr/0025-declarative-repository-rulesets.md) records the accepted design. The [user contract](../settings.md#rulesets-unreleased) owns usage and scope. The PR/check extension uses the same declaration contract and preserves ordered reviewer patterns.
+The basic subset from #336 and PR/check extension from #337 are implemented in current source and **published in v0.17.0**; published v0.16.0 and older CLI/Action packages reject it. [ADR 0025](../adr/0025-declarative-repository-rulesets.md) records the accepted design. The [user contract](../settings.md#rulesets) owns usage and scope. The PR/check extension uses the same declaration contract and preserves ordered reviewer patterns.
 
 The adoption path is: export existing repository configuration, validate it, plan without changes and obtain zero Rulesets differences, edit the desired state, then reconcile creates/updates/deletes. The [labels contract](labels.feature.md) supplies collection membership and retained-attribute semantics; it does not establish Rulesets API identity or PUT behavior.
 

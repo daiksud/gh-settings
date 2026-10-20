@@ -1,6 +1,6 @@
 # Actions execution policy
 
-Status: implemented in current source, unreleased, planned for v0.17.0. Published v0.16.0 and older CLI/Action packages reject the group and export option. The [configuration contract](../settings.md#actions-execution-policy-unreleased) is authoritative for users; this specification records scenarios and test mappings.
+Status: implemented in current source, published in v0.17.0. Published v0.16.0 and older CLI/Action packages reject the group and export option. The [configuration contract](../settings.md#actions-execution-policy) is authoritative for users; this specification records scenarios and test mappings.
 
 ## Rule: Validate only explicit native values
 

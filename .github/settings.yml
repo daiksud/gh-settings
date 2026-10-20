@@ -5,10 +5,13 @@ settings:
     # Protected main provides review; the main-only Environment adds no approval.
     description: "Manage GitHub repository settings as code"
     homepage: ""
+    default_branch: main
     has_issues: true
     has_projects: true
     has_wiki: true
     has_discussions: false
+    web_commit_signoff_required: false
+    is_template: false
     allow_merge_commit: false
     allow_squash_merge: true
     allow_rebase_merge: false
@@ -19,6 +22,9 @@ settings:
     squash_merge_commit_message: PR_BODY
     merge_commit_title: MERGE_MESSAGE
     merge_commit_message: PR_TITLE
+    has_pull_requests: true
+    pull_request_creation_policy: ALL
+    issue_creation_policy: ALL
   topics:
     names:
       - github-cli
@@ -54,3 +60,5 @@ settings:
     - name: wontfix
       color: ffffff
       description: This will not be worked on
+  security:
+    private_vulnerability_reporting: true

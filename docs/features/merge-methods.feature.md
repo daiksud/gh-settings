@@ -6,7 +6,7 @@ description: Read three merge-method booleans through GraphQL and apply declared
 
 ## Feature: Manage repository merge-method settings
 
-CLI and Action v0.10.0 add three optional booleans under the existing `settings.repository` group and retain `schemaVersion: 1`. Published v0.9.0 does not support these keys; the pinned v0.15.0 consumer workflows do. No new resource group, auto-merge, merge queue, or commit-message policy is introduced.
+CLI and Action v0.10.0 add three optional booleans under the existing `settings.repository` group and retain `schemaVersion: 1`. Published v0.9.0 does not support these keys; the pinned v0.17.0 consumer workflows do. No new resource group, auto-merge, merge queue, or commit-message policy is introduced.
 
 ```yaml
 schemaVersion: 1

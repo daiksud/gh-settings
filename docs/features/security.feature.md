@@ -6,7 +6,7 @@ description: Planned declarations, complete observations, dependencies, and acce
 
 ## Status and scope
 
-**Secret scanning and private vulnerability reporting for public repositories implemented in current source, unreleased, planned for v0.17.0; other families remain planned/gated.** Published v0.16.0 and older packages reject security keys/options. [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a claim that unimplemented families are supported. Implementation PRs must update the public configuration, command, and Action references before claiming support.
+**Secret scanning and private vulnerability reporting for public repositories implemented in current source, published in v0.17.0; other families remain planned/gated.** Published v0.16.0 and older packages reject security keys/options. [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a claim that unimplemented families are supported. Implementation PRs must update the public configuration, command, and Action references before claiming support.
 
 Manage repository feature enablement only. Exclude alert contents or dismissal, dependency/version-update files, scanning workflows/default setup/query suites, bypass actors/patterns, advisories/reports/notifications, contract purchases or product migration, and organization/enterprise security configuration attachment, detachment, or editing. Applying an enabled setting can cause GitHub to perform its documented background work; the CLI does not start a separate scan or manage its results.
 
@@ -124,7 +124,7 @@ The [private vulnerability reporting guide](https://docs.github.com/en/code-secu
 
 ## Implemented Secret scanning test mappings
 
-The [public configuration contract](../settings.md#secret-scanning-and-push-protection-unreleased) owns current-source usage. The Secret scanning subset uses its two booleans and `--security secret-scanning`, independently of private vulnerability reporting below. Other families and product candidates remain unsupported.
+The [public configuration contract](../settings.md#secret-scanning-and-push-protection) owns current-source usage. The Secret scanning subset uses its two booleans and `--security secret-scanning`, independently of private vulnerability reporting below. Other families and product candidates remain unsupported.
 
 - Declaration/observation/transition/forged-change boundaries: [TestSecretScanningObservationAndTransitions](../../internal/settings/security_test.go) and [TestSecurityComparisonsRejectForgedValues](../../internal/settings/security_test.go).
 - Strict YAML, explicit false and omission round-trip: [TestSecurityYAMLContract](../../internal/workspace/security_test.go).
@@ -137,7 +137,7 @@ Fixtures use dummy credentials and local modeled responses. A read-only observat
 
 ## Implemented private vulnerability reporting test mappings
 
-The [public configuration contract](../settings.md#private-vulnerability-reporting-unreleased) owns usage. Current source accepts `private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Dependabot and product candidates remain gated/unsupported.
+The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Dependabot and product candidates remain gated/unsupported.
 
 - Acquired observations, omitted/false/true comparison and independent field domains: [TestPrivateReportingObservationAndIndependentDeclaration](../../internal/settings/private_reporting_test.go).
 - Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [TestPrivateReportingYAML](../../internal/workspace/private_reporting_test.go).

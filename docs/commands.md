@@ -1,14 +1,14 @@
 # Settings commands
 
-## v0.17.0 release preparation
+## v0.17.0 package
 
-Current-source additions since v0.16.0 are planned for **v0.17.0** and remain **unreleased until its release workflow publishes and verifies the package**. This boundary includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Dependabot, paid-product candidates and immutable-release policy remain unsupported. Published v0.16.0 already includes web commit sign-off, template repository status and default branch settings. Existing v0.15.0 consumer pins retain their original capabilities; a version-file update alone does not upgrade those pins or change live settings.
+Published [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0) includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39508410269). Dependabot, paid-product candidates and immutable-release policy remain unsupported. v0.16.0 already includes web commit sign-off, template repository status and default branch settings. The maintained examples select v0.17.0; adopting its pin does not expand caller grants or change settings by itself.
 
 ## Scope and status
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
-This reference describes v0.15.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.15.0; older v0.8.0 packages do not support labels.
+This reference describes v0.17.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.17.0; older v0.8.0 packages do not support labels.
 
 v0.10.0 adds [merge-method booleans](features/merge-methods.feature.md); published v0.9.0 does not accept those keys. Their GraphQL query runs only for declared fields during plan and always during export. Existing repository PATCH behavior is retained.
 
@@ -24,22 +24,22 @@ v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a six
 
 Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Source export includes twenty-two repository fields; published v0.15.1 and older packages reject the new key.
 
-Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets-unreleased), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
+Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
 
-Current source also adds unreleased [PR access controls](settings.md#pull-request-access-unreleased): `has_pull_requests` and `pull_request_creation_policy`. Published v0.16.0 and older packages reject them. Plan uses a separate complete GraphQL query; apply resolves repository identity and sends only declared PR values through `updateRepository`, after any existing REST update. No current-policy comparison is added to direct apply.
+Published v0.17.0 also adds [PR access controls](settings.md#pull-request-access): `has_pull_requests` and `pull_request_creation_policy`. Published v0.16.0 and older packages reject them. Plan uses a separate complete GraphQL query; apply resolves repository identity and sends only declared PR values through `updateRepository`, after any existing REST update. No current-policy comparison is added to direct apply.
 
-Current source also adds unreleased [`issue_creation_policy`](settings.md#issue-creation-policy-unreleased). It has an independent narrow GraphQL plan read and shares declared-only repository mutations with PR access; it never enables Issues implicitly. Source export now includes twenty-two repository fields. Published v0.16.0 and older packages reject the new key.
+Published v0.17.0 also adds [`issue_creation_policy`](settings.md#issue-creation-policy). It has an independent narrow GraphQL plan read and shares declared-only repository mutations with PR access; it never enables Issues implicitly. Source export now includes twenty-two repository fields. Published v0.16.0 and older packages reject the new key.
 
-Current source also adds unreleased [Actions execution policy](settings.md#actions-execution-policy-unreleased) and explicit `export --actions`. Normal export keeps its existing permissions; selected policy reads require Administration read. Published v0.16.0 and older packages reject this group and option.
+Published v0.17.0 also adds [Actions execution policy](settings.md#actions-execution-policy) and explicit `export --actions`. Normal export keeps its existing permissions; selected policy reads require Administration read. Published v0.16.0 and older packages reject this group and option.
 
-Current source adds unreleased [default workflow permissions](settings.md#default-workflow-permissions-unreleased). Its two fields are independent of execution policy; explicit `export --workflow-permissions` acquires them without expanding normal export or `--actions`. Published v0.16.0 and older packages reject the keys/option.
+Published v0.17.0 adds [default workflow permissions](settings.md#default-workflow-permissions). Its two fields are independent of execution policy; explicit `export --workflow-permissions` acquires them without expanding normal export or `--actions`. Published v0.16.0 and older packages reject the keys/option.
 
 ## Interface and implementation status
 
 Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
-gh settings export [--rulesets] [--actions] [--workflow-permissions]
+gh settings export [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply
@@ -82,15 +82,15 @@ Plan shows explicit create/update/delete operations. Apply reads fresh labels af
 
 ## Export behavior
 
-Current source adds `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention-unreleased). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Existing export choices and published package support are unchanged.
+Published v0.17.0 adds `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Existing export choices are unchanged; published v0.16.0 and older packages reject `--retention`.
 
-Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection-unreleased), and `export --security private-vulnerability-reporting` for the independent [public-repository reporting toggle](settings.md#private-vulnerability-reporting-unreleased). Repeat `--security` with distinct families to include both. It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Implemented families are `secret-scanning` and `private-vulnerability-reporting`: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export requests and scope are unchanged; published v0.16.0 and older packages reject this option.
+Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection), and `export --security private-vulnerability-reporting` for the independent [public-repository reporting toggle](settings.md#private-vulnerability-reporting). Repeat `--security` with distinct families to include both. It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Implemented families are `secret-scanning` and `private-vulnerability-reporting`: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export requests and scope are unchanged; published v0.16.0 and older packages reject this option.
 
 `export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy after any other requested resources. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
 
-`export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy-unreleased) for required credentials and transition limits.
+`export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy) for required credentials and transition limits.
 
-`export --rulesets` additionally reads complete repository-owned branch/tag Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Excluded push Rulesets produce a diagnostic on stderr; export success otherwise stays silent. See the [Rulesets contract](settings.md#rulesets-unreleased) before adoption.
+`export --rulesets` additionally reads complete repository-owned branch/tag Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Excluded push Rulesets produce a diagnostic on stderr; export success otherwise stays silent. See the [Rulesets contract](settings.md#rulesets) before adoption.
 
 Export uses the [repository and authentication rules](#repository-and-authentication) above. It reads repository settings, then topics, then every labels page, and serializes the complete supported configuration before opening the destination. Label reads use pages of 100 until a short page; a failed later page fails the operation before any file replacement. Published v0.8.0 export stops after topics. Unsupported fields and read-only metadata are excluded. Export preserves false and empty strings; the [settings reference](settings.md#exported-values) explains response normalization and invalid-response handling.
 
@@ -115,7 +115,7 @@ Plan validates the configuration before resolving origin, configuring authentica
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (v0.17.0), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
 
 ```text
 settings.repository.has_issues: true → false
@@ -140,9 +140,9 @@ The [public Action](github-actions.md#inputs-outputs-and-failures) separately re
 
 ## Apply behavior
 
-Unreleased workflow permissions are applied after execution policy as a separate operation. Partial declarations send only their own keys; fresh complete readback verifies desired and preserved values. Failure retains earlier execution/resource writes and does not broaden existing credentials. See the [workflow-permission contract](settings.md#default-workflow-permissions-unreleased).
+v0.17.0 workflow permissions are applied after execution policy as a separate operation. Partial declarations send only their own keys; fresh complete readback verifies desired and preserved values. Failure retains earlier execution/resource writes and does not broaden existing credentials. See the [workflow-permission contract](settings.md#default-workflow-permissions).
 
-Unreleased Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings.md#actions-execution-policy-unreleased).
+v0.17.0 Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings.md#actions-execution-policy).
 
 Apply validates the configuration before resolving origin, configuring authentication or contacting GitHub. When no resources are managed, it prints `No managed repository settings.` and exits 0 locally. A topics-only declaration, including `names: []`, performs an update. A labels-only declaration, including `labels: []`, reads current labels and reconciles membership and declared attributes.
 
@@ -150,13 +150,13 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 
 | Resource | Request |
 | --- | --- |
-| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] Unreleased PR access and Issue creation policy then use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
+| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] v0.17.0 PR access and Issue creation policy then use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
 | `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
 | `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform required label POST/PATCH/DELETE operations.[^github-labels] |
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields and label attributes remain outside update requests. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
-Repository fields and topics are sent without a preliminary comparison read, even when the YAML values already match GitHub. Unreleased PR access and Issue creation policy apply add only the required repository-ID lookup; it does not infer companion values. A later GraphQL failure leaves earlier REST writes applied. Declared labels use a fresh read: creates/updates run in identity order, then deletes in identity order. Create sends the name and only declared attributes; update sends only changed declared attributes; delete removes each undeclared remote label. Names are escaped as individual URL path segments, and no rename or archive fields are sent.
+Repository fields and topics are sent without a preliminary comparison read, even when the YAML values already match GitHub. v0.17.0 PR access and Issue creation policy apply add only the required repository-ID lookup; it does not infer companion values. A later GraphQL failure leaves earlier REST writes applied. Declared labels use a fresh read: creates/updates run in identity order, then deletes in identity order. Create sends the name and only declared attributes; update sends only changed declared attributes; delete removes each undeclared remote label. Names are escaped as individual URL path segments, and no rename or archive fields are sent.
 
 Apply never consumes a saved plan. Remote changes after review can alter label operations and be overwritten for managed values or membership. Label deletion removes issue/PR associations, which are not restored by recreating the name. Review these semantics before applying.
 
@@ -174,8 +174,8 @@ Contributors can find the [behavior specifications](features/README.md), [testin
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the update endpoint and failure responses. This reference does not expand the supported scope.
 
-## Fork workflow export choices (unreleased)
+## Fork workflow export choices
 
 Current-source `gh settings export --fork-approval` adds the public-repository contributor approval enum. `gh settings export --private-fork-workflows` adds the four private-repository execution/token/secrets/approval booleans. Both require existing Administration read credentials and preserve ordinary export requests when omitted. They compose with `--rulesets`, `--actions`, `--workflow-permissions`, `--retention` and distinct `--security` selections; duplicate flags fail before export. Selecting both fork families fails because their adopted visibility scopes differ, preserving an existing destination. Published v0.16.0 and older packages reject both options.
 
-Plan and the credential-free Action Summary show native credential-exposure booleans and the exact approval enum. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies-unreleased) for exact values, applicability and failure behavior.
+Plan and the credential-free Action Summary show native credential-exposure booleans and the exact approval enum. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
