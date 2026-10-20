@@ -20,6 +20,8 @@ v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a six
 
 ## Interface and implementation status
 
+Current source additionally supports [`web_commit_signoff_required`](settings.md#web-commit-sign-off-unreleased), an unreleased seventeenth repository field. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
+
 ```text
 gh settings export
 gh settings validate
@@ -87,7 +89,7 @@ Plan validates the configuration before resolving origin, configuring authentica
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, has_issues, has_projects, has_wiki, has_discussions (v0.15.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+Changed repository fields appear in this order: description, homepage, has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (unreleased source), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
 
 ```text
 settings.repository.has_issues: true → false

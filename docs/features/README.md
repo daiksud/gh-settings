@@ -27,3 +27,5 @@ The v0.13.0 [auto-merge and branch-update options](pull-request-options.feature.
 The v0.14.0 [normal merge commit defaults](merge-commit-defaults.feature.md) add two repository enums with an independent message/title dependency, without enabling normal merges.
 
 v0.15.0 adds the optional [`has_discussions` setting](discussions.feature.md) through the repository REST read/write path with a verified PATCH response.
+
+Current source adds the unreleased [web commit sign-off requirement](web-commit-signoff.feature.md) through the existing repository REST read/write path.

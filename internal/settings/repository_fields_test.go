@@ -98,6 +98,7 @@ func TestBooleanFieldDefinitions(t *testing.T) {
 		{"repository.has_projects", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{HasProjects: &value} }},
 		{"repository.has_wiki", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{HasWiki: &value} }},
 		{"repository.has_discussions", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{HasDiscussions: &value} }},
+		{"repository.web_commit_signoff_required", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{WebCommitSignoffRequired: &value} }},
 		{"repository.allow_merge_commit", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowMergeCommit: &value} }},
 		{"repository.allow_squash_merge", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowSquashMerge: &value} }},
 		{"repository.allow_rebase_merge", func(value bool) RepositoryDeclaration { return RepositoryDeclaration{AllowRebaseMerge: &value} }},

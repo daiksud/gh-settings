@@ -136,6 +136,12 @@ var repositoryBoolFields = [...]repositoryField[RepositoryState, bool]{
 		desired:    func(declaration RepositoryDeclaration) *bool { return declaration.HasDiscussions },
 		setDesired: func(declaration *RepositoryDeclaration, value bool) { declaration.HasDiscussions = &value },
 	},
+	{
+		name:       "repository.web_commit_signoff_required",
+		current:    func(state RepositoryState) bool { return state.WebCommitSignoffRequired },
+		desired:    func(declaration RepositoryDeclaration) *bool { return declaration.WebCommitSignoffRequired },
+		setDesired: func(declaration *RepositoryDeclaration, value bool) { declaration.WebCommitSignoffRequired = &value },
+	},
 }
 
 var mergeMethodsBoolFields = [...]repositoryField[MergeMethodsState, bool]{
