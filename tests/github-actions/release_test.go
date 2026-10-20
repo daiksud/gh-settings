@@ -105,10 +105,21 @@ func TestReleaseCandidateGate(t *testing.T) {
 	if publishCheckout.With["ref"] != "${{ needs.resolve.outputs.source-sha }}" || publishCheckout.With["fetch-depth"] != "0" || publishCheckout.With["persist-credentials"] != "false" {
 		t.Fatalf("release notes require complete history at the frozen source: %+v", publishCheckout)
 	}
-	for _, tool := range []string{"go", "jq"} {
-		if !slices.Contains(strings.Fields(releaseTools.With["install_args"]), tool) {
-			t.Fatalf("release notes and publication require pinned %s", tool)
+	if !slices.Contains(strings.Fields(releaseTools.With["install_args"]), "go") {
+		t.Fatal("release notes and the publisher require pinned Go")
+	}
+	var publisher step
+	for _, s := range publish.Steps {
+		if s.Run == "bash scripts/publish-release.sh" {
+			publisher = s
 		}
+	}
+	if publisher.If != "" || publisher.Continue || !reflect.DeepEqual(publisher.Env, map[string]string{
+		"GH_TOKEN": "${{ github.token }}", "VERSION": "${{ inputs.version }}",
+		"SOURCE_SHA": "${{ needs.resolve.outputs.source-sha }}", "LINUX_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
+		"MACOS_SHA256": "${{ needs.build-macos.outputs.binary-sha256 }}", "RELEASE_DIR": "${{ runner.temp }}/release",
+	}) {
+		t.Fatalf("publisher must use the frozen accepted artifact identities: %+v", publisher)
 	}
 }
 

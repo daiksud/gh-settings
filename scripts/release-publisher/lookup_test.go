@@ -83,18 +83,17 @@ func TestLookupReleaseValidatesIdentityBeforeState(t *testing.T) {
 			if test.exists {
 				want.ID = "123"
 			}
-			if message != test.wantError || got != want || calls != test.calls {
+			if test.exists {
+				if err := json.Unmarshal(details, &want.view); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if message != test.wantError || !reflect.DeepEqual(got, want) || calls != test.calls {
 				t.Fatalf("lookup=%+v error=%v calls=%d", got, err, calls)
 			}
 			data, err := os.ReadFile(filepath.Join(work, "releases.json"))
 			if err != nil || string(data) != catalog {
 				t.Fatalf("raw catalog=%q error=%v", data, err)
-			}
-			if calls == 2 {
-				data, err = os.ReadFile(filepath.Join(work, "release.json"))
-				if err != nil || string(data) != string(details) {
-					t.Fatalf("raw release=%q error=%v", data, err)
-				}
 			}
 		})
 	}
@@ -113,7 +112,7 @@ func TestLookupAPIFailuresAreNotAbsence(t *testing.T) {
 					}
 					return []byte(`[[{"id":123,"tag_name":"v1.2.3"}]]`), nil
 				})
-				if err != cause || got != (releaseLookup{}) || calls != failAt {
+				if err != cause || !reflect.DeepEqual(got, releaseLookup{}) || calls != failAt {
 					t.Fatalf("lookup=%+v error=%v calls=%d", got, err, calls)
 				}
 			})
@@ -160,7 +159,7 @@ func TestTagIdentityAndLookupBoundary(t *testing.T) {
 			if test.optional {
 				context = "existing tag targets another commit"
 			}
-			got, err := inspectTag(observedIdentity(), t.TempDir(), test.optional, context, gh)
+			got, err := inspectTag(observedIdentity(), test.optional, context, gh)
 			message := ""
 			if err != nil {
 				message = err.Error()
@@ -169,7 +168,7 @@ func TestTagIdentityAndLookupBoundary(t *testing.T) {
 			if test.exists {
 				want = tagObservation{Exists: true, Type: "commit", SHA: sha}
 			}
-			if message != test.wantError || got != want || calls != test.calls {
+			if message != test.wantError || !reflect.DeepEqual(got, want) || calls != test.calls {
 				t.Fatalf("tag=%+v error=%v calls=%d", got, err, calls)
 			}
 		})
@@ -186,11 +185,10 @@ func TestTagIsReadAgainAtPublication(t *testing.T) {
 		}
 		return []byte(fmt.Sprintf(`{"object":{"type":"commit","sha":%q}}`, sha)), nil
 	}
-	work := t.TempDir()
-	if _, err := inspectTag(observedIdentity(), work, true, "existing tag targets another commit", gh); err != nil {
+	if _, err := inspectTag(observedIdentity(), true, "existing tag targets another commit", gh); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := inspectTag(observedIdentity(), work, false, "tag changed before publication", gh); err == nil || err.Error() != "tag changed before publication" || got != (tagObservation{}) || reads != 2 {
+	if got, err := inspectTag(observedIdentity(), false, "tag changed before publication", gh); err == nil || err.Error() != "tag changed before publication" || got != (tagObservation{}) || reads != 2 {
 		t.Fatalf("tag=%+v error=%v reads=%d", got, err, reads)
 	}
 }

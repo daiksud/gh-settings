@@ -1,4 +1,4 @@
-// Command release-publisher validates the immutable inputs to release publication.
+// Command release-publisher publishes the immutable, tested release artifacts.
 package main
 
 import (
@@ -57,101 +57,161 @@ func main() {
 }
 
 func runCommand(args []string, output io.Writer, gh ghAPI) error {
-	if len(args) == 0 {
-		return fmt.Errorf("missing publisher command")
+	if len(args) != 2 {
+		return fmt.Errorf("usage: release-publisher SOURCE_ROOT WORK_DIR")
 	}
-	var result any
-	switch args[0] {
-	case "preflight":
-		if len(args) != 2 {
-			return fmt.Errorf("usage: release-publisher preflight COMMITTED_VERSION_FILE")
-		}
-		identity, err := prepareIdentity(args[1], os.Getenv)
-		if err != nil {
-			return err
-		}
-		result = identity
-	case "lookup":
-		if len(args) != 3 {
-			return fmt.Errorf("usage: release-publisher lookup IDENTITY_JSON WORK_DIR")
-		}
-		identity, err := readIdentity(args[1])
-		if err != nil {
-			return err
-		}
-		observation, err := lookupRelease(identity, args[2], gh)
-		if err != nil {
-			return err
-		}
-		result = observation
-	case "tag":
-		if len(args) != 4 || (args[3] != "existing" && args[3] != "publication") {
-			return fmt.Errorf("usage: release-publisher tag IDENTITY_JSON WORK_DIR existing|publication")
-		}
-		identity, err := readIdentity(args[1])
-		if err != nil {
-			return err
-		}
-		optional, context := args[3] == "existing", "tag changed before publication"
-		if optional {
-			context = "existing tag targets another commit"
-		}
-		observation, err := inspectTag(identity, args[2], optional, context, gh)
-		if err != nil {
-			return err
-		}
-		result = observation
-	case "assets":
-		if len(args) != 4 {
-			return fmt.Errorf("usage: release-publisher assets IDENTITY_JSON WORK_DIR RELEASE_ID")
-		}
-		identity, err := readIdentity(args[1])
-		if err != nil {
-			return err
-		}
-		assets, err := verifyAssets(identity, args[3], args[2], gh)
-		if err != nil {
-			return err
-		}
-		result = assets
-	case "created-id":
-		if len(args) != 2 {
-			return fmt.Errorf("usage: release-publisher created-id RELEASE_JSON")
-		}
-		view, err := readRelease(args[1])
-		if err != nil {
-			return err
-		}
-		id, err := checkedReleaseID(view.ID, "created draft has no valid ID")
-		if err != nil {
-			return err
-		}
-		result = struct {
-			ID string `json:"id"`
-		}{id}
-	case "state":
-		if len(args) != 4 {
-			return fmt.Errorf("usage: release-publisher state IDENTITY_JSON RELEASE_JSON CHECKPOINT")
-		}
-		identity, err := readIdentity(args[1])
-		if err != nil {
-			return err
-		}
-		view, err := readRelease(args[2])
-		if err != nil {
-			return err
-		}
-		state, err := checkedReleaseState(identity, view, args[3])
-		if err != nil {
-			return err
-		}
-		result = struct {
-			State releaseState `json:"state"`
-		}{state}
-	default:
-		return fmt.Errorf("unknown publisher command %q", args[0])
+	identity, err := prepareIdentity(args[0]+"/action/cli-version", os.Getenv)
+	if err != nil {
+		return err
 	}
-	return json.NewEncoder(output).Encode(result)
+	return publishRelease(identity, args[0], args[1], output, gh)
+}
+
+func publishRelease(identity releaseIdentity, root, work string, output io.Writer, gh ghAPI) error {
+	observed, err := lookupRelease(identity, work, gh)
+	if err != nil {
+		return err
+	}
+	var notes string
+	if !observed.Exists {
+		// Freeze the complete body before creating any remote state. Existing
+		// drafts and published releases retain their reviewed notes on rerun.
+		notes, err = prepareNotes(identity, root, work)
+		if err != nil {
+			return err
+		}
+	}
+	tag, err := inspectTag(identity, true, "existing tag targets another commit", gh)
+	if err != nil {
+		return err
+	}
+	if !tag.Exists {
+		if observed.Exists {
+			return fmt.Errorf("existing release has no tag; refusing to recreate it")
+		}
+		if _, err := gh("api", "-X", "POST", "repos/"+identity.Repository+"/git/refs", "-f", "ref=refs/tags/"+identity.Version, "-f", "sha="+identity.Commit); err != nil {
+			return err
+		}
+	}
+	id, view := observed.ID, observed.view
+	if !observed.Exists {
+		request := struct {
+			Tag        string `json:"tag_name"`
+			Commit     string `json:"target_commitish"`
+			Name       string `json:"name"`
+			Body       string `json:"body"`
+			Draft      bool   `json:"draft"`
+			Prerelease bool   `json:"prerelease"`
+		}{identity.Version, identity.Commit, identity.Version, notes, true, false}
+		data, err := mutateRelease(work+"/create.json", "POST", "repos/"+identity.Repository+"/releases", request, gh)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(data, &view); err != nil {
+			return fmt.Errorf("decode release: %w", err)
+		}
+		id, err = checkedReleaseID(view.ID, "created draft has no valid ID")
+		if err != nil {
+			return err
+		}
+	}
+	if _, err := checkedReleaseState(identity, view, "initial"); err != nil {
+		return err
+	}
+	assets, err := verifyAssets(identity, id, work, gh)
+	if err != nil {
+		return err
+	}
+	state, err := checkedReleaseState(identity, assets.view, "observed")
+	if err != nil {
+		return err
+	}
+	if state == publishedRelease {
+		if len(assets.Missing) != 0 {
+			return fmt.Errorf("published release is missing assets")
+		}
+		_, err := fmt.Fprintf(output, "release %s already published with matching identity\n", identity.Version)
+		return err
+	}
+	for _, name := range assets.Missing {
+		if _, err := gh("release", "upload", identity.Version, identity.Directory+"/"+name, "--repo", identity.Repository); err != nil {
+			return err
+		}
+	}
+	assets, err = verifyAssets(identity, id, work, gh)
+	if err != nil {
+		return err
+	}
+	if len(assets.Missing) != 0 {
+		return fmt.Errorf("draft is missing assets")
+	}
+	if _, err := checkedReleaseState(identity, assets.view, "upload"); err != nil {
+		return err
+	}
+	if _, err := inspectTag(identity, false, "tag changed before publication", gh); err != nil {
+		return err
+	}
+	endpoint := "repos/" + identity.Repository + "/releases/" + id
+	if _, err := mutateRelease(work+"/publish.json", "PATCH", endpoint, struct {
+		Draft bool `json:"draft"`
+	}{false}, gh); err != nil {
+		return err
+	}
+	data, err := gh("api", endpoint)
+	if err != nil {
+		return err
+	}
+	var confirmation releaseView
+	if err := json.Unmarshal(data, &confirmation); err != nil {
+		return fmt.Errorf("decode release: %w", err)
+	}
+	if _, err := checkedReleaseState(identity, confirmation, "published"); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(output, "published %s at %s with verified assets\n", identity.Version, identity.Commit)
+	return err
+}
+
+// Request files are input to gh, not intermediate publisher state.
+func mutateRelease(path, method, endpoint string, request any, gh ghAPI) ([]byte, error) {
+	data, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	if err := os.WriteFile(path, append(data, '\n'), 0600); err != nil {
+		return nil, err
+	}
+	return gh("api", "-X", method, endpoint, "--input", path)
+}
+
+func prepareNotes(identity releaseIdentity, root, work string) (string, error) {
+	command := exec.Command("go", "run", "./scripts/release-notes/main.go", identity.Repository, identity.Version, identity.Commit, work+"/releases.json")
+	command.Dir = root
+	var changes, stderr bytes.Buffer
+	command.Stdout, command.Stderr = &changes, &stderr
+	if err := command.Run(); err != nil {
+		var exit *exec.ExitError
+		if !errors.As(err, &exit) {
+			return "", err
+		}
+		return "", &commandError{stderr: stderr.Bytes(), status: max(1, exit.ExitCode())}
+	}
+	if _, err := os.Stderr.Write(stderr.Bytes()); err != nil {
+		return "", err
+	}
+	checksums, err := os.ReadFile(identity.Directory + "/" + checksumsAsset)
+	if err != nil {
+		return "", err
+	}
+	extension := identity.Repository[strings.LastIndex(identity.Repository, "/")+1:]
+	return strings.Join([]string{
+		identity.Marker, "", strings.TrimRight(changes.String(), "\n"), "", "---", "",
+		"## 📦 Installation", "", "```sh", "gh extension install " + identity.Repository, "```", "",
+		"Already installed? Run `gh extension upgrade " + extension + "`.", "",
+		"Or download `" + macosAsset + "` (macOS Apple Silicon) or `" + linuxAsset + "` (Linux x86_64) below and verify it with `SHA256SUMS`.", "",
+		"<details>", "<summary>🔐 SHA-256 checksums</summary>", "", "```text", strings.TrimRight(string(checksums), "\n"), "```", "", "</details>", "",
+		"Built from main commit [`" + identity.Commit[:7] + "`](https://github.com/" + identity.Repository + "/commit/" + identity.Commit + ").", "",
+	}, "\n"), nil
 }
 
 func prepareIdentity(committedVersionFile string, getenv func(string) string) (releaseIdentity, error) {
@@ -271,18 +331,6 @@ func ghCommand(args ...string) ([]byte, error) {
 	return stdout.Bytes(), nil
 }
 
-func readIdentity(path string) (releaseIdentity, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return releaseIdentity{}, err
-	}
-	var identity releaseIdentity
-	if err := json.Unmarshal(data, &identity); err != nil {
-		return releaseIdentity{}, fmt.Errorf("decode publisher identity: %w", err)
-	}
-	return identity, nil
-}
-
 type releaseView struct {
 	ID         json.RawMessage `json:"id"`
 	Tag        json.RawMessage `json:"tag_name"`
@@ -290,18 +338,6 @@ type releaseView struct {
 	Prerelease json.RawMessage `json:"prerelease"`
 	Draft      json.RawMessage `json:"draft"`
 	Body       json.RawMessage `json:"body"`
-}
-
-func readRelease(path string) (releaseView, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return releaseView{}, err
-	}
-	var view releaseView
-	if err := json.Unmarshal(data, &view); err != nil {
-		return releaseView{}, fmt.Errorf("decode release: %w", err)
-	}
-	return view, nil
 }
 
 // Preserve the scalar forms previously accepted by jq -r at each checkpoint.
@@ -356,8 +392,9 @@ func markerMatches(identity releaseIdentity, view releaseView) bool {
 }
 
 type releaseLookup struct {
-	Exists bool   `json:"exists"`
-	ID     string `json:"id"`
+	Exists bool
+	ID     string
+	view   releaseView
 }
 
 func lookupRelease(identity releaseIdentity, work string, gh ghAPI) (releaseLookup, error) {
@@ -401,9 +438,6 @@ func lookupRelease(identity releaseIdentity, work string, gh ghAPI) (releaseLook
 	if err != nil {
 		return releaseLookup{}, err
 	}
-	if err := os.WriteFile(filepath.Join(work, "release.json"), data, 0600); err != nil {
-		return releaseLookup{}, err
-	}
 	var view releaseView
 	if err := json.Unmarshal(data, &view); err != nil {
 		return releaseLookup{}, fmt.Errorf("decode release: %w", err)
@@ -424,7 +458,7 @@ func lookupRelease(identity releaseIdentity, work string, gh ghAPI) (releaseLook
 		return releaseLookup{}, fmt.Errorf("existing release lacks matching version, commit, and binary identity evidence")
 	}
 	// Draft state is deliberately unchecked until after tag processing/creation.
-	return releaseLookup{Exists: true, ID: id}, nil
+	return releaseLookup{Exists: true, ID: id, view: view}, nil
 }
 
 type tagObservation struct {
@@ -433,7 +467,7 @@ type tagObservation struct {
 	SHA    string `json:"sha"`
 }
 
-func inspectTag(identity releaseIdentity, work string, optional bool, context string, gh ghAPI) (tagObservation, error) {
+func inspectTag(identity releaseIdentity, optional bool, context string, gh ghAPI) (tagObservation, error) {
 	endpoint := "repos/" + identity.Repository + "/git/ref/tags/" + identity.Version
 	data, err := gh("api", endpoint)
 	if err != nil {
@@ -446,9 +480,6 @@ func inspectTag(identity releaseIdentity, work string, optional bool, context st
 			copy.context, copy.status = "GitHub API lookup failed: "+endpoint, 1
 			return tagObservation{}, &copy
 		}
-		return tagObservation{}, err
-	}
-	if err := os.WriteFile(filepath.Join(work, "tag.json"), data, 0600); err != nil {
 		return tagObservation{}, err
 	}
 	decode := func(data []byte) (string, string, error) {
@@ -470,9 +501,6 @@ func inspectTag(identity releaseIdentity, work string, optional bool, context st
 	if kind == "tag" {
 		data, err = gh("api", "repos/"+identity.Repository+"/git/tags/"+sha)
 		if err != nil {
-			return tagObservation{}, err
-		}
-		if err := os.WriteFile(filepath.Join(work, "annotated.json"), data, 0600); err != nil {
 			return tagObservation{}, err
 		}
 		kind, sha, err = decode(data)
@@ -524,16 +552,14 @@ func checkedReleaseState(identity releaseIdentity, view releaseView, checkpoint 
 }
 
 type assetVerification struct {
-	Verified []string `json:"verified"`
-	Missing  []string `json:"missing"`
+	Verified []string
+	Missing  []string
+	view     releaseView
 }
 
 func verifyAssets(identity releaseIdentity, id, work string, gh ghAPI) (assetVerification, error) {
 	data, err := gh("api", "repos/"+identity.Repository+"/releases/"+id)
 	if err != nil {
-		return assetVerification{}, err
-	}
-	if err := os.WriteFile(filepath.Join(work, "release.json"), data, 0600); err != nil {
 		return assetVerification{}, err
 	}
 	var response struct {
@@ -595,6 +621,9 @@ func verifyAssets(identity releaseIdentity, id, work string, gh ghAPI) (assetVer
 			return assetVerification{}, err
 		}
 		result.Verified = append(result.Verified, asset.name)
+	}
+	if err := json.Unmarshal(data, &result.view); err != nil {
+		return assetVerification{}, fmt.Errorf("decode release: %w", err)
 	}
 	return result, nil
 }

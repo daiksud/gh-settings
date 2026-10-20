@@ -94,14 +94,13 @@ func TestVerifyAssetsDownloadsBytesAndReportsMissing(t *testing.T) {
 				message = err.Error()
 			}
 			want := assetVerification{Verified: test.verified, Missing: test.missing}
+			if test.wantError == "" {
+				if err := json.Unmarshal(body, &want.view); err != nil {
+					t.Fatal(err)
+				}
+			}
 			if message != test.wantError || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(downloads, test.downloads) || reads != 1 {
 				t.Fatalf("assets=%+v error=%v downloads=%v reads=%d", got, err, downloads, reads)
-			}
-			if !test.apiFailure {
-				data, err := os.ReadFile(filepath.Join(work, "release.json"))
-				if err != nil || string(data) != string(body) {
-					t.Fatalf("refreshed metadata=%q error=%v", data, err)
-				}
 			}
 		})
 	}
