@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented in current source, unreleased and planned for v0.16.0. Published v0.15.1 and older CLI/Action packages reject `settings.repository.is_template`. The [settings reference](../settings.md#template-repository-unreleased) owns usage and package-adoption guidance.
+Published in v0.16.0 and implemented in current source. Published v0.15.1 and older CLI/Action packages reject `settings.repository.is_template`. The [settings reference](../settings.md#template-repository) owns usage and package-adoption guidance.
 
 ## Behavior
 

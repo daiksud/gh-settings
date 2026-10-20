@@ -1,5 +1,9 @@
 # Settings commands
 
+## v0.17.0 release preparation
+
+Current-source additions since v0.16.0 are planned for **v0.17.0** and remain **unreleased until its release workflow publishes and verifies the package**. This boundary includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Dependabot, paid-product candidates and immutable-release policy remain unsupported. Published v0.16.0 already includes web commit sign-off, template repository status and default branch settings. Existing v0.15.0 consumer pins retain their original capabilities; a version-file update alone does not upgrade those pins or change live settings.
+
 ## Scope and status
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
@@ -18,7 +22,7 @@ v0.14.0 adds [merge commit title/body defaults](features/merge-commit-defaults.f
 
 v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a sixteenth exported repository field; published v0.14.0 rejects it. Apply verifies the returned boolean when this field is declared; verification errors can occur after repository writes.
 
-Current source (planned for v0.16.0, not yet published) also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased). It also supports the unreleased [`default_branch` setting](settings.md#default-branch-unreleased). Source export includes twenty-two repository fields; published v0.15.1 and older packages reject the new key.
+Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Source export includes twenty-two repository fields; published v0.15.1 and older packages reject the new key.
 
 Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets-unreleased), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
 
@@ -32,7 +36,7 @@ Current source adds unreleased [default workflow permissions](settings.md#defaul
 
 ## Interface and implementation status
 
-Current source (planned for v0.16.0, not yet published) additionally supports [`web_commit_signoff_required`](settings.md#web-commit-sign-off-unreleased), an unreleased repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
+Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
 gh settings export [--rulesets] [--actions] [--workflow-permissions]
@@ -111,7 +115,7 @@ Plan validates the configuration before resolving origin, configuring authentica
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, default_branch (unreleased source), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (unreleased source), is_template (unreleased source), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
 
 ```text
 settings.repository.has_issues: true → false

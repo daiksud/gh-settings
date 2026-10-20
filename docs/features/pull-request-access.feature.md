@@ -6,7 +6,7 @@ description: Declarative pull request availability and creation policy.
 
 ## Contract
 
-Current source adds unreleased `settings.repository.has_pull_requests` (boolean) and `pull_request_creation_policy` (`ALL` or `COLLABORATORS_ONLY`). Published v0.16.0 and older packages reject these keys. Omission leaves each setting unmanaged; false disables PR access without synthesizing a creation policy. Null, wrong types and unknown enum values are invalid.
+Current source adds unreleased, planned for v0.17.0 `settings.repository.has_pull_requests` (boolean) and `pull_request_creation_policy` (`ALL` or `COLLABORATORS_ONLY`). Published v0.16.0 and older packages reject these keys. Omission leaves each setting unmanaged; false disables PR access without synthesizing a creation policy. Null, wrong types and unknown enum values are invalid.
 
 The [GraphQL repository contract](https://docs.github.com/en/graphql/reference/repos) exposes both fields and `updateRepository` inputs. Read both policy values completely when either is needed, rejecting missing/null/unknown values and partial-data errors. Export includes both values only after the complete observation succeeds; failure preserves the old file. PR-disabled state does not imply an absent or default policy.
 

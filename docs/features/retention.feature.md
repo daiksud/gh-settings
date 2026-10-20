@@ -6,7 +6,7 @@ description: Configured days, complete read-only upper bounds, native comparison
 
 ## Status and scope
 
-Implemented in current source, **unreleased**, for [#341](https://github.com/daiksud/gh-settings/issues/341). Published v0.16.0 and older CLI/Action packages reject the key and `--retention`. The [public configuration contract](../settings.md#check-run-status-artifact-and-log-retention-unreleased) owns usage. No version, pin, grant or live setting changes with this feature.
+Implemented in current source, **unreleased, planned for v0.17.0**, for [#341](https://github.com/daiksud/gh-settings/issues/341). Published v0.16.0 and older CLI/Action packages reject the key and `--retention`. The [public configuration contract](../settings.md#check-run-status-artifact-and-log-retention-unreleased) owns usage. No version, pin, grant or live setting changes with this feature.
 
 The repository policy applies to new checks (suites/runs/annotations), workflow runs, third-party commit statuses, artifacts and logs. It is independent of Actions execution and does not enable it. Individual data deletion, workflow `retention-days`, managing organization/enterprise configuration and retroactive cleanup are outside scope. The [official API](https://docs.github.com/en/rest/actions/permissions#set-artifact-and-log-retention-settings-for-a-repository) specifies only `days` in PUT; GET additionally requires `maximum_allowed_days`. The [repository guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository) documents public/private ranges, upper policy, the October 2026 expansion and new-object-only application.
 
@@ -28,7 +28,7 @@ Test mapping: [TestRetentionFreshCapNarrowPUTAndReadback](../../internal/github/
 
 ## Native reports and process evidence
 
-The closed Actions comparison registry adds `actions.artifact_and_log_retention_days`, taking its field count to nine. Report reconstruction normalizes bounded whole JSON numbers to native integers; null/unavailable before values, fractions, strings, wrong fields and no-op changes are rejected. Other field/type decoding is unchanged. CLI and credential-free Summary share unquoted numeric output, and the current managed bound is thirty-seven. Reports remain presentation data and never enter apply.
+The closed Actions comparison registry adds `actions.artifact_and_log_retention_days`, one of fourteen current-source policy fields. Report reconstruction normalizes bounded whole JSON numbers to native integers; null/unavailable before values, fractions, strings, wrong fields and no-op changes are rejected. Other field/type decoding is unchanged. CLI and credential-free Summary share unquoted numeric output, and the current managed bound is forty-two. Reports remain presentation data and never enter apply.
 
 Test mapping: [TestRetentionNativeReportNumbersAreClosed](../../internal/settings/retention_test.go), [TestRetentionSummaryHasNativeIntegerValues](../../internal/actions/retention_test.go), [TestRetentionExportPlanApplyAndSummary](../../tests/acceptance/retention_test.go). The process case covers ordinary/selected export→zero plan→edit→apply, upper-cap reduction, over-cap correction, policy refusal/unchanged readback, file preservation, GET/PUT redirect rejection, choice composition and retained earlier workflow writes. API owner fixtures separately permit a changing, still-compatible maximum.
 

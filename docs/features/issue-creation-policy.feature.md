@@ -6,7 +6,7 @@ description: Declarative Issue creation eligibility without changing issue avail
 
 ## Contract
 
-Current source adds unreleased `settings.repository.issue_creation_policy` with exact values `ALL` and `COLLABORATORS_ONLY`. Published v0.16.0 and older CLI/Action packages reject the key. Omission leaves it unmanaged. Null, empty strings, wrong types, case variants and unknown policies are invalid. Declaring a policy never enables or disables `has_issues`.
+Current source adds unreleased, planned for v0.17.0 `settings.repository.issue_creation_policy` with exact values `ALL` and `COLLABORATORS_ONLY`. Published v0.16.0 and older CLI/Action packages reject the key. Omission leaves it unmanaged. Null, empty strings, wrong types, case variants and unknown policies are invalid. Declaring a policy never enables or disables `has_issues`.
 
 A separate narrow authenticated GraphQL query reads this policy only when requested; PR-only and existing repository declarations retain their reads. Export includes the complete observed policy after all resource reads succeed. Missing/null/unsupported data and partial GraphQL errors fail rather than becoming `ALL`, including when issues are disabled. Failed export preserves the old file. Reads and ID lookup disable rename following to reject stale origins.
 
@@ -28,4 +28,4 @@ Test both policies, independent omission, disabled-Issue observations, invalid l
 | Native enum report and Summary validation | [Issue policy presentation](../../internal/actions/issue_creation_policy_test.go) |
 | Built CLI disabled-Issue lifecycle, exact writes and failure sequencing | [Issue policy acceptance](../../tests/acceptance/issue_creation_policy_test.go) |
 
-The existing PR-access tests continue to check their unchanged selective reads, identity guards and failure semantics through the shared writer. The source report limit is twenty-five: twenty-two scalar repository fields and one each for topics, labels and Rulesets. The read-only disabled-Issue sample returns policy `ALL`; fixtures cover explicit edits while availability remains false without asserting live write preservation.
+The existing PR-access tests continue to check their unchanged selective reads, identity guards and failure semantics through the shared writer. The current-source report limit is forty-two: twenty-two scalar repository fields, one each for topics, labels and Rulesets, fourteen Actions policy fields and three security fields. The read-only disabled-Issue sample returns policy `ALL`; fixtures cover explicit edits while availability remains false without asserting live write preservation.
