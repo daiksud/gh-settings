@@ -154,7 +154,7 @@ type validatedPlanReport struct {
 }
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
-	maxManaged := settings.RepositoryFieldCount() + 3 + settings.ActionsPolicyFieldCount // Collections count once; Actions policy has six fields.
+	maxManaged := settings.RepositoryFieldCount() + 3 + settings.ActionsPolicyFieldCount // Collections count once; Actions execution/workflow policies have eight fields.
 	if report.Changes == nil || report.Managed < len(report.Changes)+len(report.Actions) || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}

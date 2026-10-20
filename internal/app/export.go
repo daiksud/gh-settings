@@ -5,11 +5,12 @@ import "github.com/daiksud/gh-settings/internal/settings"
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
-	Repository       TargetResolver
-	IncludeActions   bool
-	IncludeRulesets  bool
-	ExcludedRulesets func(int)
-	PrepareSave      func() (func(settings.Declaration) error, error)
+	Repository                 TargetResolver
+	IncludeActions             bool
+	IncludeWorkflowPermissions bool
+	IncludeRulesets            bool
+	ExcludedRulesets           func(int)
+	PrepareSave                func() (func(settings.Declaration) error, error)
 }
 
 // Export saves all observed fields only after a complete read.
@@ -83,6 +84,16 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Actions, err = observed.Declaration()
+		if err != nil {
+			return err
+		}
+	}
+	if checkout.IncludeWorkflowPermissions {
+		state, err := read.WorkflowPermissions(repo)
+		if err != nil {
+			return err
+		}
+		declaration.Actions, err = declaration.Actions.WithWorkflowPermissions(state)
 		if err != nil {
 			return err
 		}

@@ -82,7 +82,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed++
 		comparison.Rulesets = changes
 	}
-	if !desired.Actions.Empty() {
+	if !desired.Actions.ExecutionEmpty() {
 		observed, err := read.Actions(repo, !desired.Actions.SelectedActions.Empty())
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
@@ -93,6 +93,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		}
 		comparison.Managed += managed
 		comparison.Actions = changes
+	}
+	if !desired.Actions.WorkflowPermissionsEmpty() {
+		observed, err := read.WorkflowPermissions(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareWorkflowPermissions(observed, desired.Actions)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Actions = append(comparison.Actions, changes...)
 	}
 	return PlanResult{Target: repo, Comparison: comparison}, nil
 }
