@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const planResponse = `{"description":"old","homepage":"old-url","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`
+const planResponse = `{"default_branch":"main","description":"old","homepage":"old-url","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`
 
 func TestPlanAcceptance(t *testing.T) {
 	binary := acceptanceBinary(t)
@@ -20,6 +20,10 @@ func TestPlanAcceptance(t *testing.T) {
 		noRead, outputFailure, nested, noOrigin, noAuth bool
 	}{
 		{name: "partial-zero-values", input: repositoryInput("description: ''\nhomepage: ''\nhas_issues: false\n"), want: "settings.repository.description: \"old\" → \"\"\nsettings.repository.homepage: \"old-url\" → \"\"\nsettings.repository.has_issues: true → false\n", nested: true},
+		{name: "default-branch-equal", input: repositoryInput("default_branch: main\n"), want: "No differences for managed repository settings.\n"},
+		{name: "default-branch-change", input: repositoryInput("default_branch: release/v2\n"), want: "settings.repository.default_branch: \"main\" → \"release/v2\"\n"},
+		{name: "default-branch-missing", input: repositoryInput("description: new\n"), body: strings.Replace(planResponse, `"default_branch":"main",`, "", 1), wantError: "missing default_branch"},
+		{name: "default-branch-invalid-before-origin", input: repositoryInput("default_branch: ''\n"), noRead: true, noOrigin: true, noAuth: true, wantError: "valid literal branch name"},
 		{name: "template-no-difference", input: repositoryInput("is_template: false\n"), want: "No differences for managed repository settings.\n"},
 		{name: "web-signoff-no-difference", input: repositoryInput("web_commit_signoff_required: false\n"), want: "No differences for managed repository settings.\n"},
 		{name: "template-enable", input: repositoryInput("is_template: true\n"), want: "settings.repository.is_template: false → true\n"},
@@ -31,14 +35,14 @@ func TestPlanAcceptance(t *testing.T) {
 		{name: "template-invalid-before-origin", input: repositoryInput("is_template: 'false'\n"), noRead: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
 		{name: "web-signoff-invalid-before-origin", input: repositoryInput("web_commit_signoff_required: 'false'\n"), noRead: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
 		{name: "discussions-no-difference", input: repositoryInput("has_discussions: false\n"), want: "No differences for managed repository settings.\n"},
-		{name: "discussions-false", input: repositoryInput("has_discussions: false\n"), body: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":true,"web_commit_signoff_required":false,"is_template":false}`, want: "settings.repository.has_discussions: true → false\n"},
+		{name: "discussions-false", input: repositoryInput("has_discussions: false\n"), body: `{"default_branch":"main","description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":true,"web_commit_signoff_required":false,"is_template":false}`, want: "settings.repository.has_discussions: true → false\n"},
 		{name: "no-differences", input: repositoryInput("has_wiki: true\n"), want: "No differences for managed repository settings.\n"},
 		{name: "all-fields", input: repositoryInput("has_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: new-url\ndescription: new\n"), want: "settings.repository.description: \"old\" → \"new\"\nsettings.repository.homepage: \"old-url\" → \"new-url\"\nsettings.repository.has_issues: true → false\nsettings.repository.has_projects: true → false\nsettings.repository.has_wiki: true → false\n"},
 		{name: "no-managed-fields", input: "schemaVersion: 1\n", want: "No managed repository settings.\n", noRead: true, noOrigin: true, noAuth: true},
 		{name: "empty-settings", input: "schemaVersion: 1\nsettings: {}\n", want: "No managed repository settings.\n", noRead: true, noOrigin: true, noAuth: true},
 		{name: "empty-repository", input: "schemaVersion: 1\nsettings:\n  repository: {}\n", want: "No managed repository settings.\n", noRead: true, noOrigin: true, noAuth: true},
-		{name: "null-strings", input: repositoryInput("description: ''\nhomepage: ''\n"), body: `{"description":null,"homepage":null,"has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, want: "No differences for managed repository settings.\n"},
-		{name: "escaped-strings", input: repositoryInput("description: \"new\\n\\\"\\\\\\u001b\"\n"), body: `{"description":"old\n\"\\\u001b","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, want: "settings.repository.description: \"old\\n\\\"\\\\^[\" → \"new\\n\\\"\\\\\\x1b\"\n"},
+		{name: "null-strings", input: repositoryInput("description: ''\nhomepage: ''\n"), body: `{"default_branch":"main","description":null,"homepage":null,"has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, want: "No differences for managed repository settings.\n"},
+		{name: "escaped-strings", input: repositoryInput("description: \"new\\n\\\"\\\\\\u001b\"\n"), body: `{"default_branch":"main","description":"old\n\"\\\u001b","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, want: "settings.repository.description: \"old\\n\\\"\\\\^[\" → \"new\\n\\\"\\\\\\x1b\"\n"},
 		{name: "malformed-before-api", input: repositoryInput("has_issues: [\n"), wantError: "validate .github/settings.yml: decode YAML", noRead: true},
 		{name: "invalid-before-origin", input: repositoryInput("has_issues: 'false'\n"), wantError: "must be a boolean", noRead: true, noOrigin: true},
 		{name: "missing-file", wantError: "read .github/settings.yml", noRead: true},

@@ -2,10 +2,11 @@ package settings
 
 import "errors"
 
-// RepositoryState contains the eight complete values from the repository REST read.
+// RepositoryState contains the nine complete values from the repository REST read.
 type RepositoryState struct {
 	Description              string
 	Homepage                 string
+	DefaultBranch            string
 	HasIssues                bool
 	HasProjects              bool
 	HasWiki                  bool
@@ -26,6 +27,7 @@ func (state RepositoryState) Declaration() RepositoryDeclaration {
 type RepositoryDeclaration struct {
 	Description              *string
 	Homepage                 *string
+	DefaultBranch            *string
 	HasIssues                *bool
 	HasProjects              *bool
 	HasWiki                  *bool
@@ -62,7 +64,7 @@ func (d RepositoryDeclaration) ValidateCommitDependencies() error {
 
 // BaseEmpty reports whether the REST-observed repository fields are unmanaged.
 func (d RepositoryDeclaration) BaseEmpty() bool {
-	return d.Description == nil && d.Homepage == nil && d.HasIssues == nil && d.HasProjects == nil && d.HasWiki == nil && d.HasDiscussions == nil && d.WebCommitSignoffRequired == nil && d.IsTemplate == nil
+	return d.Description == nil && d.Homepage == nil && d.DefaultBranch == nil && d.HasIssues == nil && d.HasProjects == nil && d.HasWiki == nil && d.HasDiscussions == nil && d.WebCommitSignoffRequired == nil && d.IsTemplate == nil
 }
 
 // MergeMethodsEmpty keeps the GraphQL read optional for existing declarations.

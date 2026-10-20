@@ -18,15 +18,16 @@ func TestReadRepositorySettings(t *testing.T) {
 		name, body string
 		want       settings.RepositoryState
 	}{
-		{"five values and extra fields", `{"description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false,"id":123,"private":true}`, settings.RepositoryState{Description: "Example repository", Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
-		{"zero values", `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
-		{"enabled projects", `{"description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{HasProjects: true}},
-		{"null strings", `{"description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
-		{"null description", `{"description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
-		{"null homepage", `{"description":"","homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
-		{"null description with values", `{"description":null,"homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
+		{"five values and extra fields", `{"default_branch":"main","description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false,"id":123,"private":true}`, settings.RepositoryState{Description: "Example repository", Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
+		{"zero values", `{"default_branch":"main","description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
+		{"enabled projects", `{"default_branch":"main","description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{HasProjects: true}},
+		{"null strings", `{"default_branch":"main","description":null,"homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
+		{"null description", `{"default_branch":"main","description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
+		{"null homepage", `{"default_branch":"main","description":"","homepage":null,"has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{}},
+		{"null description with values", `{"default_branch":"main","description":null,"homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, settings.RepositoryState{Homepage: "https://example.com", HasIssues: true, HasWiki: true}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			test.want.DefaultBranch = "main"
 			client := readTestClient(t, func(req *http.Request) (*http.Response, error) {
 				return &http.Response{Request: req, StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(test.body))}, nil
 			})
@@ -48,18 +49,18 @@ func TestReadRepositoryFailures(t *testing.T) {
 		{name: "malformed", body: "not json", status: 200, want: "read repository settings"},
 		{name: "empty response", body: `{}`, status: 200, want: "missing description"},
 		{name: "missing description", body: `{"homepage":null,"has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false}`, status: 200, want: "missing description"},
-		{name: "missing homepage", body: `{"description":null,"has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "missing homepage"},
-		{name: "missing issues", body: `{"description":"","homepage":"","has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false}`, status: 200, want: "missing has_issues"},
-		{name: "missing projects", body: `{"description":"","homepage":"","has_issues":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "missing has_projects"},
-		{name: "missing wiki", body: `{"description":"ok","homepage":"","has_issues":true,"has_projects":false}`, status: 200, want: "missing has_wiki"},
+		{name: "missing homepage", body: `{"default_branch":"main","description":null,"has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "missing homepage"},
+		{name: "missing issues", body: `{"default_branch":"main","description":"","homepage":"","has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false}`, status: 200, want: "missing has_issues"},
+		{name: "missing projects", body: `{"default_branch":"main","description":"","homepage":"","has_issues":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "missing has_projects"},
+		{name: "missing wiki", body: `{"default_branch":"main","description":"ok","homepage":"","has_issues":true,"has_projects":false}`, status: 200, want: "missing has_wiki"},
 		{name: "wrong description type", body: `{"description":123}`, status: 200, want: "decode description"},
-		{name: "wrong homepage type", body: `{"description":"","homepage":123}`, status: 200, want: "decode homepage"},
-		{name: "wrong issues type", body: `{"description":"ok","homepage":"","has_issues":"true","has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "decode has_issues"},
-		{name: "wrong projects type", body: `{"description":"","homepage":"","has_issues":false,"has_projects":"false","has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "decode has_projects"},
-		{name: "wrong wiki type", body: `{"description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":"true","has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "decode has_wiki"},
-		{name: "null issues", body: `{"description":null,"homepage":null,"has_issues":null}`, status: 200, want: "null for has_issues"},
-		{name: "null projects", body: `{"description":"","homepage":"","has_issues":true,"has_projects":null,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "null for has_projects"},
-		{name: "null wiki", body: `{"description":"","homepage":"","has_issues":true,"has_projects":false,"has_wiki":null,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "null for has_wiki"},
+		{name: "wrong homepage type", body: `{"default_branch":"main","description":"","homepage":123}`, status: 200, want: "decode homepage"},
+		{name: "wrong issues type", body: `{"default_branch":"main","description":"ok","homepage":"","has_issues":"true","has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "decode has_issues"},
+		{name: "wrong projects type", body: `{"default_branch":"main","description":"","homepage":"","has_issues":false,"has_projects":"false","has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "decode has_projects"},
+		{name: "wrong wiki type", body: `{"default_branch":"main","description":"","homepage":"","has_issues":false,"has_projects":true,"has_wiki":"true","has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "decode has_wiki"},
+		{name: "null issues", body: `{"default_branch":"main","description":null,"homepage":null,"has_issues":null}`, status: 200, want: "null for has_issues"},
+		{name: "null projects", body: `{"default_branch":"main","description":"","homepage":"","has_issues":true,"has_projects":null,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "null for has_projects"},
+		{name: "null wiki", body: `{"default_branch":"main","description":"","homepage":"","has_issues":true,"has_projects":false,"has_wiki":null,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, status: 200, want: "null for has_wiki"},
 		{name: "network", transportError: errors.New("network unavailable"), want: "network unavailable"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

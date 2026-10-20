@@ -8,26 +8,28 @@ import (
 func TestRepositoryObservationDeclaration(t *testing.T) {
 	empty, description, homepage := "", "Example", "https://example.com"
 	enabled, disabled := true, false
+	branch := "main"
 	for _, test := range []struct {
 		name  string
 		state RepositoryState
 		want  RepositoryDeclaration
 	}{
 		{
-			name: "explicit zero values",
+			name:  "empty metadata and false flags",
+			state: RepositoryState{DefaultBranch: branch},
 			want: RepositoryDeclaration{
-				Description: &empty, Homepage: &empty,
+				Description: &empty, Homepage: &empty, DefaultBranch: &branch,
 				HasIssues: &disabled, HasProjects: &disabled, HasWiki: &disabled, HasDiscussions: &disabled, WebCommitSignoffRequired: &disabled, IsTemplate: &disabled,
 			},
 		},
 		{
 			name: "mixed values",
 			state: RepositoryState{
-				Description: description, Homepage: homepage,
+				Description: description, Homepage: homepage, DefaultBranch: branch,
 				HasIssues: true, HasProjects: false, HasWiki: true, HasDiscussions: true,
 			},
 			want: RepositoryDeclaration{
-				Description: &description, Homepage: &homepage,
+				Description: &description, Homepage: &homepage, DefaultBranch: &branch,
 				HasIssues: &enabled, HasProjects: &disabled, HasWiki: &enabled, HasDiscussions: &enabled, WebCommitSignoffRequired: &disabled, IsTemplate: &disabled,
 			},
 		},
@@ -42,7 +44,7 @@ func TestRepositoryObservationDeclaration(t *testing.T) {
 }
 
 func TestCombinedRepositoryObservationDeclaration(t *testing.T) {
-	base := RepositoryState{Description: "Example", Homepage: "https://example.com", HasIssues: true, HasWiki: true}
+	base := RepositoryState{DefaultBranch: "main", Description: "Example", Homepage: "https://example.com", HasIssues: true, HasWiki: true}
 	for _, test := range []struct {
 		name  string
 		state MergeMethodsState
@@ -76,7 +78,7 @@ func TestCombinedRepositoryObservationDeclaration(t *testing.T) {
 			before := base.Declaration()
 			got := before.WithMergeMethods(test.state)
 			want := RepositoryDeclaration{
-				Description: &base.Description, Homepage: &base.Homepage,
+				Description: &base.Description, Homepage: &base.Homepage, DefaultBranch: &base.DefaultBranch,
 				HasIssues: &base.HasIssues, HasProjects: &base.HasProjects, HasWiki: &base.HasWiki, HasDiscussions: &base.HasDiscussions, WebCommitSignoffRequired: &base.WebCommitSignoffRequired, IsTemplate: &base.IsTemplate,
 				AllowMergeCommit: &test.state.AllowMergeCommit, AllowSquashMerge: &test.state.AllowSquashMerge, AllowRebaseMerge: &test.state.AllowRebaseMerge,
 				DeleteBranchOnMerge: &test.state.DeleteBranchOnMerge, AllowAutoMerge: &test.state.AllowAutoMerge, AllowUpdateBranch: &test.state.AllowUpdateBranch,

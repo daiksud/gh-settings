@@ -29,6 +29,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 	payload := struct {
 		Description              *string `json:"description,omitempty"`
 		Homepage                 *string `json:"homepage,omitempty"`
+		DefaultBranch            *string `json:"default_branch,omitempty"`
 		HasIssues                *bool   `json:"has_issues,omitempty"`
 		HasProjects              *bool   `json:"has_projects,omitempty"`
 		HasWiki                  *bool   `json:"has_wiki,omitempty"`
@@ -46,7 +47,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		MergeCommitTitle         *string `json:"merge_commit_title,omitempty"`
 		MergeCommitMessage       *string `json:"merge_commit_message,omitempty"`
 	}{
-		Description: desired.Description, Homepage: desired.Homepage,
+		Description: desired.Description, Homepage: desired.Homepage, DefaultBranch: desired.DefaultBranch,
 		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki, HasDiscussions: desired.HasDiscussions, WebCommitSignoffRequired: desired.WebCommitSignoffRequired, IsTemplate: desired.IsTemplate,
 		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge, DeleteBranchOnMerge: desired.DeleteBranchOnMerge, AllowAutoMerge: desired.AllowAutoMerge, AllowUpdateBranch: desired.AllowUpdateBranch,
 		SquashMergeCommitTitle: desired.SquashMergeCommitTitle, SquashMergeCommitMessage: desired.SquashMergeCommitMessage,
@@ -58,7 +59,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 	}
 	var response map[string]json.RawMessage
 	var result any
-	if desired.HasDiscussions != nil {
+	if desired.HasDiscussions != nil || desired.DefaultBranch != nil {
 		result = &response
 	}
 	if err := client.rest.Patch("repos/"+repo.Owner+"/"+repo.Name, bytes.NewReader(body), result); err != nil {
@@ -72,6 +73,16 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		}
 		if *actual != *desired.HasDiscussions {
 			return fmt.Errorf("apply repository settings: GitHub returned has_discussions=%t, expected %t (repository writes may already have applied)", *actual, *desired.HasDiscussions)
+		}
+	}
+	if desired.DefaultBranch != nil {
+		var actual *string
+		value, present := response["default_branch"]
+		if !present || json.Unmarshal(value, &actual) != nil || actual == nil || !settings.ValidDefaultBranch(*actual) {
+			return fmt.Errorf("apply repository settings: GitHub response lacks valid default_branch (repository writes may already have applied)")
+		}
+		if *actual != *desired.DefaultBranch {
+			return fmt.Errorf("apply repository settings: GitHub returned default_branch=%q, expected %q (repository writes may already have applied)", *actual, *desired.DefaultBranch)
 		}
 	}
 	return nil
