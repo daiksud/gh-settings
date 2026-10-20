@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented in current source, unreleased. Published v0.15.1 and older CLI/Action packages reject `settings.repository.default_branch`. The [settings reference](../settings.md#default-branch-unreleased) owns usage and adoption guidance.
+Implemented in current source, unreleased and planned for v0.16.0. Published v0.15.1 and older CLI/Action packages reject `settings.repository.default_branch`. The [settings reference](../settings.md#default-branch-unreleased) owns usage and adoption guidance.
 
 ## Behavior
 

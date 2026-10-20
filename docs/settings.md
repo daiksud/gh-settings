@@ -20,7 +20,7 @@ The booleans accept `true` or `false`; the string fields accept strings, includi
 
 ## Default branch (unreleased)
 
-Current source adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes nineteen repository fields, topics and labels.
+Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes nineteen repository fields, topics and labels.
 
 ```yaml
 schemaVersion: 1
@@ -39,7 +39,7 @@ This feature does not create or rename branches, change the local checkout/origi
 
 ## Template repository (unreleased)
 
-Current source adds optional `settings.repository.is_template`, a boolean controlling whether the repository can be used as a template. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group; no repository-generation command is added.
+Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.is_template`, a boolean controlling whether the repository can be used as a template. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group; no repository-generation command is added.
 
 ```yaml
 schemaVersion: 1
@@ -54,7 +54,7 @@ Apply sends only declared fields through the existing Administration-write repos
 
 ## Web commit sign-off (unreleased)
 
-Current source adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes nineteen repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes nineteen repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1

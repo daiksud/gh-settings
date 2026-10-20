@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented in current source, unreleased. Published v0.15.1 and older CLI/Action packages reject `settings.repository.web_commit_signoff_required`. The field is an optional boolean under `schemaVersion: 1`, not a new resource group. The [settings reference](../settings.md#web-commit-sign-off-unreleased) owns adoption and usage guidance.
+Implemented in current source, unreleased and planned for v0.16.0. Published v0.15.1 and older CLI/Action packages reject `settings.repository.web_commit_signoff_required`. The field is an optional boolean under `schemaVersion: 1`, not a new resource group. The [settings reference](../settings.md#web-commit-sign-off-unreleased) owns adoption and usage guidance.
 
 ## Behavior
 
