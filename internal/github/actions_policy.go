@@ -14,8 +14,11 @@ import (
 
 type ActionsPolicyClient struct{ rest *api.RESTClient }
 
+func newActionsPolicyRESTClient(host string) (*api.RESTClient, error) {
+	return api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+}
 func NewActionsPolicyClient(host string) (*ActionsPolicyClient, error) {
-	client, err := api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+	client, err := newActionsPolicyRESTClient(host)
 	if err != nil {
 		return nil, fmt.Errorf("configure Actions policy API: %w", err)
 	}

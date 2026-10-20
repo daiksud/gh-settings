@@ -18,7 +18,7 @@ var version = "dev"
 
 func main() {
 	checkout := workspace.NewCheckout(".")
-	reader := app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, PrivateReporting: readPrivateReporting}
+	reader := app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, PrivateReporting: readPrivateReporting, Retention: readRetention}
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
@@ -26,7 +26,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, ExcludedRulesets: func(count int) {
+			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeRetention: options.Retention, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -35,7 +35,7 @@ func main() {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: readSecretScanning, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, PrivateReporting: writePrivateReporting})
+			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: readSecretScanning, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention})
 		},
 	}))
 }
@@ -195,4 +195,19 @@ func writePrivateReporting(repo repository.Repository, change settings.SecurityC
 		return false, err
 	}
 	return client.Update(repo, change)
+}
+
+func readRetention(repo repository.Repository) (settings.RetentionObservation, error) {
+	client, err := github.NewRetentionClient(repo.Host)
+	if err != nil {
+		return settings.RetentionObservation{}, err
+	}
+	return client.Read(repo)
+}
+func writeRetention(repo repository.Repository, days int) (bool, error) {
+	client, err := github.NewRetentionClient(repo.Host)
+	if err != nil {
+		return false, err
+	}
+	return client.Update(repo, days)
 }

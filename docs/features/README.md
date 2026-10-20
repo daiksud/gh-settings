@@ -47,3 +47,5 @@ Current source adds unreleased [Actions execution policy](actions-execution-poli
 Current source adds unreleased [default workflow permissions](workflow-permissions.feature.md), independently of execution policy, with declared-only updates and explicit export selection. Published v0.16.0 and older packages reject it.
 
 The [Security design](security.feature.md) defines proposed feature-family selection, complete observations, dependency ordering, and adoption gates for #344–#347. Secret scanning and private vulnerability reporting for public repositories are implemented in current source, unreleased; other families remain planned/gated. Published v0.16.0 and older packages reject all proposed security keys/options.
+
+Current source adds unreleased [repository retention policy](retention.feature.md), with complete configured/maximum observations, explicit export opt-in, native integer differences and fresh upper-limit verification. Published v0.16.0 and older packages reject the key and option.

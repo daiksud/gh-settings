@@ -11,6 +11,7 @@ type ExportCheckout struct {
 	IncludeRulesets            bool
 	IncludeSecretScanning      bool
 	IncludePrivateReporting    bool
+	IncludeRetention           bool
 	ExcludedRulesets           func(int)
 	PrepareSave                func() (func(settings.Declaration) error, error)
 }
@@ -99,6 +100,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
+	}
+	if checkout.IncludeRetention {
+		observed, err := read.Retention(repo)
+		if err != nil {
+			return err
+		}
+		retention, err := observed.Declaration()
+		if err != nil {
+			return err
+		}
+		declaration.Actions.RetentionDays = retention.RetentionDays
 	}
 	if checkout.IncludeSecretScanning {
 		observed, err := read.SecretScanning(repo)

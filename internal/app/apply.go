@@ -116,6 +116,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		result.Operations[index].Status = OperationCompleted
 		hasWrites = true
 	}
+	if !desired.Actions.RetentionEmpty() {
+		wrote, err := applyRetention(&result, repo, desired.Actions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if !desired.Security.SecretScanningEmpty() {
 		wrote, err := applySecretScanning(&result, repo, desired.Security, write)
 		if err != nil {
