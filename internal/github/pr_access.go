@@ -13,10 +13,10 @@ import (
 )
 
 const prAccessQuery = `query($owner: String!, $name: String!) {
- repository(owner: $owner, name: $name) { hasPullRequestsEnabled pullRequestCreationPolicy }
+ repository(owner: $owner, name: $name, followRenames: false) { hasPullRequestsEnabled pullRequestCreationPolicy }
 }`
 const prAccessIdentityQuery = `query($owner: String!, $name: String!) {
- repository(owner: $owner, name: $name) { id nameWithOwner }
+ repository(owner: $owner, name: $name, followRenames: false) { id nameWithOwner }
 }`
 
 type PRAccessClient struct{ graphql *api.GraphQLClient }

@@ -159,3 +159,37 @@ func TestInvalidPRAccessWriteFailsBeforeLookup(t *testing.T) {
 		t.Fatal("unknown policy accepted")
 	}
 }
+
+func TestPRAccessQueriesRejectRenamedRepository(t *testing.T) {
+	for _, operation := range []string{"read", "lookup"} {
+		t.Run(operation, func(t *testing.T) {
+			calls := 0
+			client := prAccessTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+				calls++
+				data, _ := io.ReadAll(req.Body)
+				var request struct{ Query string }
+				json.Unmarshal(data, &request)
+				if strings.Contains(request.Query, "followRenames: false") {
+					return labelsResponse(req, 200, `{"data":{"repository":null},"errors":[{"message":"stale checkout origin"}]}`), nil
+				}
+				if operation == "lookup" {
+					t.Error("identity lookup followed repository rename")
+					return labelsResponse(req, 200, `{"data":{"repository":{"id":"renamed-id","nameWithOwner":"owner/renamed"}}}`), nil
+				}
+				// GitHub's default would silently resolve the old name to this policy.
+				return labelsResponse(req, 200, `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`), nil
+			}))
+			var err error
+			repo := repository.Repository{Owner: "owner", Name: "current"}
+			if operation == "read" {
+				_, err = client.ReadPRAccess(repo)
+			} else {
+				no := false
+				err = client.ApplyPRAccess(repo, settings.RepositoryDeclaration{HasPullRequests: &no})
+			}
+			if err == nil || calls != 1 || !strings.Contains(err.Error(), "stale checkout origin") {
+				t.Fatal("renamed repository accepted", calls, err)
+			}
+		})
+	}
+}

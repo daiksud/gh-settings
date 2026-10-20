@@ -144,7 +144,7 @@ func isMergeMethodsFixtureRead(r *http.Request) bool {
 const prAccessFixtureResponse = `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`
 
 func isPRAccessFixtureRead(r *http.Request) bool {
-	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { hasPullRequestsEnabled pullRequestCreationPolicy } }`)
+	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { hasPullRequestsEnabled pullRequestCreationPolicy } }`)
 }
 func servePRAccessFixtureRead(w http.ResponseWriter, r *http.Request) bool {
 	if !isPRAccessFixtureRead(r) {

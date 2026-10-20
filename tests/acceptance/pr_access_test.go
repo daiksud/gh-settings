@@ -12,6 +12,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -292,5 +293,42 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 				t.Fatal("unexpected write/read or followed redirect", methods)
 			}
 		})
+	}
+}
+
+func TestPRAccessPlanRejectsStaleOrigin(t *testing.T) {
+	binary := acceptanceBinary(t)
+	var calls atomic.Int32
+	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		var request struct{ Query string }
+		if r.Method != "POST" || r.URL.Path != "/graphql" || json.NewDecoder(r.Body).Decode(&request) != nil {
+			t.Error("unexpected target request", r.Method, r.URL)
+			w.WriteHeader(400)
+			return
+		}
+		if strings.Contains(request.Query, "followRenames: false") {
+			fmt.Fprint(w, `{"data":{"repository":null},"errors":[{"message":"stale checkout origin"}]}`)
+			return
+		}
+		fmt.Fprint(w, `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`)
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fixture.close()
+	env := exportFixtureEnv(fixture.cfg)
+	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
+		t.Fatal(err)
+	}
+	input := repositoryInput("has_pull_requests: false\n")
+	writeSettingsFile(fixture.work, input)
+	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
+	if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "stale checkout origin") || calls.Load() != 1 {
+		t.Fatal("followed stale origin", err, result.stdout.String(), result.stderr.String(), calls.Load())
+	}
+	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
+		t.Fatal(err)
 	}
 }
