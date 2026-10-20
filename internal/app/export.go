@@ -5,8 +5,10 @@ import "github.com/daiksud/gh-settings/internal/settings"
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
-	Repository  TargetResolver
-	PrepareSave func() (func(settings.Declaration) error, error)
+	Repository       TargetResolver
+	IncludeRulesets  bool
+	ExcludedRulesets func(int)
+	PrepareSave      func() (func(settings.Declaration) error, error)
 }
 
 // Export saves all observed fields only after a complete read.
@@ -52,5 +54,27 @@ func Export(checkout ExportCheckout, read Reader) error {
 		return err
 	}
 	declaration.Labels = &validated
+	if checkout.IncludeRulesets {
+		observed, err := read.Rulesets(repo)
+		if err != nil {
+			return err
+		}
+		values, err := observed.Values()
+		if err != nil {
+			return err
+		}
+		entries := make([]settings.RulesetDeclaration, 0, len(values))
+		for _, value := range values {
+			entries = append(entries, value.Policy)
+		}
+		desired, err := settings.NewRulesetDeclarations(entries)
+		if err != nil {
+			return err
+		}
+		declaration.Rulesets = &desired
+		if observed.ExcludedPush() > 0 && checkout.ExcludedRulesets != nil {
+			checkout.ExcludedRulesets(observed.ExcludedPush())
+		}
+	}
 	return save(declaration)
 }

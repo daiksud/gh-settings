@@ -19,9 +19,10 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	var document struct {
 		SchemaVersion int `yaml:"schemaVersion"`
 		Settings      struct {
-			Repository yaml.Node        `yaml:"repository"`
-			Topics     *topicsDocument  `yaml:"topics,omitempty"`
-			Labels     *[]labelDocument `yaml:"labels,omitempty"`
+			Repository yaml.Node                      `yaml:"repository"`
+			Topics     *topicsDocument                `yaml:"topics,omitempty"`
+			Labels     *[]labelDocument               `yaml:"labels,omitempty"`
+			Rulesets   *[]settings.RulesetDeclaration `yaml:"rulesets,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
@@ -46,6 +47,10 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 			labels = append(labels, labelDocument{Name: label.Name, Color: label.Color, Description: label.Description})
 		}
 		document.Settings.Labels = &labels
+	}
+	if declaration.Rulesets != nil {
+		values := declaration.Rulesets.Values()
+		document.Settings.Rulesets = &values
 	}
 	return yaml.Marshal(document)
 }
@@ -98,6 +103,14 @@ func DecodeConfig(data []byte) (settings.Declaration, error) {
 			return settings.Declaration{}, err
 		}
 		for group, value := range groups {
+			if group == "rulesets" {
+				rulesets, err := parseRulesets(&value)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				declaration.Rulesets = rulesets
+				continue
+			}
 			if group == "labels" {
 				labels, err := parseLabels(&value)
 				if err != nil {

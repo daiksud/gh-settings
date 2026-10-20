@@ -10,13 +10,14 @@ type Declaration struct {
 	Repository RepositoryDeclaration
 	Topics     TopicsDeclaration
 	Labels     *LabelDeclarations
+	Rulesets   *RulesetDeclarations
 }
 
 // TopicsDeclaration distinguishes omitted names from an explicitly empty list.
 type TopicsDeclaration struct{ Names *[]string }
 
 func (d Declaration) Empty() bool {
-	return d.Repository.Empty() && d.Topics.Names == nil && d.Labels == nil
+	return d.Repository.Empty() && d.Topics.Names == nil && d.Labels == nil && d.Rulesets == nil
 }
 
 // ValidateTopics follows GitHub's canonical topic naming rules.

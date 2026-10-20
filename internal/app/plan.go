@@ -70,5 +70,17 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += labels.Managed
 		comparison.Labels = labels.Labels
 	}
+	if desired.Rulesets != nil {
+		observed, err := read.Rulesets(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		changes, err := settings.ReconcileRulesets(observed, desired.Rulesets)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.Rulesets = changes
+	}
 	return PlanResult{Target: repo, Comparison: comparison}, nil
 }

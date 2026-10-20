@@ -155,7 +155,7 @@ func TestParseConfigValidation(t *testing.T) {
 		{"duplicate schema version", "schemaVersion: 1\nschemaVersion: 1\n", "duplicate key"},
 		{"old flat format", "schemaVersion: 1\nhas_issues: false\n", "unknown root key"},
 		{"root metadata not supported", "schemaVersion: 1\nversion: 1\n", "unknown root key"},
-		{"future group not supported", "schemaVersion: 1\nsettings:\n  rulesets: []\n", "unknown settings group"},
+		{"future group not supported", "schemaVersion: 1\nsettings:\n  pages: []\n", "unknown settings group"},
 		{"null settings", "schemaVersion: 1\nsettings: null\n", "settings must be a mapping"},
 		{"null repository", "schemaVersion: 1\nsettings:\n  repository: null\n", "settings.repository must be a mapping"},
 		{"tagged root mapping as string", "!!str {schemaVersion: 1}\n", "expected a root mapping"},

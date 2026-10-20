@@ -137,6 +137,9 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	for _, change := range report.comparison.Labels.Values() {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))
 	}
+	for _, change := range report.comparison.Rulesets {
+		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.RulesetLine(change)))
+	}
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String()
 }
@@ -148,7 +151,7 @@ type validatedPlanReport struct {
 }
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
-	maxManaged := settings.RepositoryFieldCount() + 2 // Topics and labels each count once.
+	maxManaged := settings.RepositoryFieldCount() + 3 // Topics, labels and Rulesets each count once.
 	if report.Changes == nil || report.Managed < len(report.Changes) || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}
@@ -159,7 +162,21 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err != nil {
 		return validatedPlanReport{}, err
 	}
-	hasChanges := len(report.Changes) > 0 || labels.Len() > 0
+	rulesets, err := validateRulesetReport(report.Rulesets)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	collections := 0
+	if labels.Len() > 0 {
+		collections++
+	}
+	if len(rulesets) > 0 {
+		collections++
+	}
+	if report.Managed < len(report.Changes)+collections {
+		return validatedPlanReport{}, fmt.Errorf("invalid collection managed count")
+	}
+	hasChanges := len(report.Changes) > 0 || labels.Len() > 0 || len(rulesets) > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
@@ -178,7 +195,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if !valid {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report state")
 	}
-	comparison := settings.Comparison{Managed: report.Managed, Labels: labels}
+	comparison := settings.Comparison{Managed: report.Managed, Labels: labels, Rulesets: rulesets}
 	seen := make(map[settings.FieldID]bool, len(report.Changes))
 	for _, raw := range report.Changes {
 		change, err := parseReportChange(raw)
