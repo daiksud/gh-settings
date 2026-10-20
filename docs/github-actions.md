@@ -208,3 +208,7 @@ Implementation protocols belong in [Action internals](contributing/actions-inter
 [^composite-metadata]: [GitHub composite metadata syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/metadata-syntax). Inputs and mapped step outputs; runtime checks remain Action-owned.
 [^environment-controls]: [GitHub Environment controls](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). Check availability and protection rules for the actual target before owner setup.
 [^app-token-action]: [Official token Action at the reviewed revision](https://github.com/actions/create-github-app-token/tree/64ab729a6294000f5aa4a4bc0b73d1f32bc45510). Explicit target/permission inputs and default post-job revocation; actual revocation needs runtime evidence.
+
+## Fork workflow policies (unreleased)
+
+Current source adds [fork workflow policies](settings.md#fork-pr-workflow-policies-unreleased), with public contributor approval separate from private fork execution/token/secrets/approval controls. Existing Administration read/write credentials are required; no Action input or grant is added. Summary shows exact enum and native boolean differences, including credentials passed to forks. It remains credential-free presentation; apply independently rereads state. Published v0.16.0 and older packages reject these declarations, so the unchanged installed CLI pin cannot use them. Fixtures do not establish live mutation compatibility, workflow execution safety or organization-policy enforcement.

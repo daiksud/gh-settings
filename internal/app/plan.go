@@ -118,6 +118,30 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.Actions = append(comparison.Actions, changes...)
 	}
+	if desired.Actions.ForkApprovalPolicy != nil {
+		o, err := read.ForkApproval(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareForkApproval(o, desired.Actions)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Actions = append(comparison.Actions, changes...)
+	}
+	if !desired.Actions.PrivateFork.Empty() {
+		o, err := read.PrivateFork(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.ComparePrivateFork(o, desired.Actions.PrivateFork)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Actions = append(comparison.Actions, changes...)
+	}
 	if !desired.Security.SecretScanningEmpty() {
 		observed, err := read.SecretScanning(repo)
 		if err != nil {

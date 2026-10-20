@@ -81,6 +81,49 @@ Plan reads the complete workflow policy only when at least one of its fields is 
 
 The [dedicated workflow-permission endpoint](https://docs.github.com/en/rest/actions/permissions#set-default-workflow-permissions-for-a-repository) requires target Administration read for observation and Administration write for update. These grants must already exist; the feature neither creates nor broadens them. Organization conflicts, unsupported access and redirects fail visibly. Local fixtures verify the transport and failure contract; read-only live observations do not establish actual mutation compatibility, organization policy or token permissions. No workflow, token, grant or live setting is changed by building this feature. See the [behavior specification](features/workflow-permissions.feature.md).
 
+## Fork PR workflow policies (unreleased)
+
+Current source supports `settings.actions.fork_pr_approval_policy` and `settings.actions.private_fork_workflows`. Published v0.16.0 and older CLI/Action packages reject these keys and the `--fork-approval` / `--private-fork-workflows` export options. Use a source-built CLI; installed pins are unchanged.
+
+For **public repositories**, `fork_pr_approval_policy` accepts exactly `first_time_contributors_new_to_github`, `first_time_contributors`, or `all_external_contributors`. These select the external-contributor workflow approval requirement. GitHub considers both the PR author and event actor. Workflows triggered by `pull_request_target` run in the base context outside this contributor approval gate; this setting does not make those workflows safe to execute untrusted code.
+
+```yaml
+schemaVersion: 1
+settings:
+  actions:
+    fork_pr_approval_policy: all_external_contributors
+```
+
+For **private repositories**, `private_fork_workflows` has four optional booleans:
+
+| Key | Meaning |
+| --- | --- |
+| `run_workflows_from_fork_pull_requests` | Allow fork PR workflows to run. |
+| `send_write_tokens_to_workflows` | Allow write `GITHUB_TOKEN` permissions in fork PR workflows. |
+| `send_secrets_and_variables` | Make secrets and variables available to fork PR workflows. |
+| `require_approval_for_fork_pr_workflows` | Require approval before fork PR workflows run. |
+
+```yaml
+schemaVersion: 1
+settings:
+  actions:
+    private_fork_workflows:
+      run_workflows_from_fork_pull_requests: true
+      send_write_tokens_to_workflows: false
+      send_secrets_and_variables: false
+      require_approval_for_fork_pr_workflows: true
+```
+
+Sending write tokens or secrets can expose repository credentials to code from forks. Review those native boolean differences explicitly. The default read-only/no-secrets fork behavior, this fork-specific token control, default workflow permissions, approving PR reviews, and approvals to run a workflow are distinct controls. This feature never implicitly changes any of them, enables repository Actions, or edits workflows. An organization may prevent repository enabling; repository configuration cannot override it. Internal repositories are outside the adopted applicability contract.
+
+Every field is optional: omission is unmanaged, an empty mapping manages nothing, and explicit false remains desired state. Null, wrong types, unknown keys/enums and duplicate keys fail locally. For private policies, a matching partial declaration requires no PUT. If any declared value differs, the API requires `run_workflows_from_fork_pull_requests`; declare it explicitly, even if unchanged. The tool will not resend an undeclared observed value to satisfy that requirement. A disabled-to-enabled transition additionally requires all four values explicitly, so latent token/secrets/approval choices cannot be activated implicitly. Disabling execution does not automatically reset stored companions.
+
+Ordinary export, `--actions`, `--workflow-permissions` and `--retention` retain their scopes. Explicit `export --fork-approval` reads only the public contributor family; `export --private-fork-workflows` reads all four private booleans. Other independent export choices compose in any order. Each selected family first verifies exact repository visibility and a complete typed response before saving. Both fork families cannot be applicable to one fixed repository: selecting both fails and preserves the destination. Missing/null/denied/not-found/redirected responses are errors, never false/default state. A successful unchanged export produces zero differences.
+
+Plan is read-only and requests only declared resources. Apply runs after retention and before security, with contributor approval before private fork policy if both are declared. Fresh applicability and complete reads precede each changed resource. PUT contains only declared keys (the contributor enum maps to API `approval_policy`); a matching fresh state skips PUT. Private readback verifies all desired and unowned companions without replaying them in the payload. Upper-policy refusal, ignored writes, unexpected companion changes, visibility drift or incomplete readback fail with uncertain effects after a PUT. Concurrent drift may therefore fail verification; this is not locking or rollback. Pre-write read/preflight errors confirm no PUT for that operation; earlier completed resource writes remain applied. A later inapplicable family can fail after an earlier valid update during direct apply. There is no transaction, retry, rollback, workflow dispatch, organization update or credential grant expansion.
+
+The [contributor API](https://docs.github.com/en/rest/actions/permissions#set-fork-pr-contributor-approval-permissions-for-a-repository) and [private fork API](https://docs.github.com/en/rest/actions/permissions#set-private-repo-fork-pr-workflow-settings-for-a-repository) document existing Administration read/write credentials (classic tokens need `repo`). The [repository guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository) explains visibility and credential consequences. Local fixtures verify modeled optional-key preservation and failures, not actual live mutation compatibility or policy enforcement. No live policy update, token/secrets access, grant change or release was performed. See the [behavior specification](features/fork-workflows.feature.md).
+
 ## Check, run, status, artifact and log retention (unreleased)
 
 Current source supports optional integer `settings.actions.artifact_and_log_retention_days`. Published v0.16.0 and older CLI/Action packages reject this key and `export --retention`; use a source-built CLI. Installed CLI pins are unchanged.

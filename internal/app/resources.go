@@ -14,6 +14,8 @@ type PreWriteReadFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	ForkApproval        func(repository.Repository) (settings.ForkApprovalObservation, error)
+	PrivateFork         func(repository.Repository) (settings.PrivateForkObservation, error)
 	Retention           func(repository.Repository) (settings.RetentionObservation, error)
 	PrivateReporting    func(repository.Repository) (settings.PrivateReportingObservation, error)
 	SecretScanning      func(repository.Repository) (settings.SecretScanningObservation, error)
@@ -27,6 +29,10 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadForkApproval     func(repository.Repository) (settings.ForkApprovalObservation, error)
+	ForkApproval         func(repository.Repository, string) (bool, error)
+	ReadPrivateFork      func(repository.Repository) (settings.PrivateForkObservation, error)
+	PrivateFork          func(repository.Repository, settings.PrivateForkDeclaration) (bool, error)
 	ReadRetention        func(repository.Repository) (settings.RetentionObservation, error)
 	Retention            func(repository.Repository, int) (bool, error)
 	ReadPrivateReporting func(repository.Repository) (settings.PrivateReportingObservation, error)

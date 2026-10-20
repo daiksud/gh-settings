@@ -123,6 +123,20 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if desired.Actions.ForkApprovalPolicy != nil {
+		wrote, err := applyForkApproval(&result, repo, desired.Actions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if !desired.Actions.PrivateFork.Empty() {
+		wrote, err := applyPrivateFork(&result, repo, desired.Actions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if !desired.Security.SecretScanningEmpty() {
 		wrote, err := applySecretScanning(&result, repo, desired.Security, write)
 		if err != nil {

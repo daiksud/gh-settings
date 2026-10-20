@@ -7,10 +7,12 @@ import (
 	"strings"
 )
 
-const ActionsPolicyFieldCount = 9
+const ActionsPolicyFieldCount = 14
 
 // ActionsPolicyDeclaration contains only explicitly managed repository policy values.
 type ActionsPolicyDeclaration struct {
+	ForkApprovalPolicy           *string                    `yaml:"fork_pr_approval_policy,omitempty" json:"fork_pr_approval_policy,omitempty"`
+	PrivateFork                  PrivateForkDeclaration     `yaml:"private_fork_workflows,omitempty" json:"private_fork_workflows,omitempty"`
 	RetentionDays                *int                       `yaml:"artifact_and_log_retention_days,omitempty" json:"artifact_and_log_retention_days,omitempty"`
 	DefaultWorkflowPermissions   *string                    `yaml:"default_workflow_permissions,omitempty" json:"default_workflow_permissions,omitempty"`
 	CanApprovePullRequestReviews *bool                      `yaml:"can_approve_pull_request_reviews,omitempty" json:"can_approve_pull_request_reviews,omitempty"`
@@ -69,6 +71,9 @@ func ValidateActionPatterns(values []string) error {
 }
 
 func (d ActionsPolicyDeclaration) Validate() error {
+	if d.ForkApprovalPolicy != nil && !ValidForkApprovalPolicy(*d.ForkApprovalPolicy) {
+		return fmt.Errorf("actions.fork_pr_approval_policy must be a supported contributor approval policy")
+	}
 	if d.RetentionDays != nil {
 		if err := ValidateRetentionDays(*d.RetentionDays); err != nil {
 			return err
@@ -175,6 +180,14 @@ func actionValue(field string, value any) (any, error) {
 			return int(v), nil
 		}
 	case "actions.enabled", "actions.sha_pinning_required", "actions.selected_actions.github_owned_allowed", "actions.selected_actions.verified_allowed", "actions.can_approve_pull_request_reviews":
+		if v, ok := value.(bool); ok {
+			return v, nil
+		}
+	case "actions.fork_pr_approval_policy":
+		if v, ok := value.(string); ok && ValidForkApprovalPolicy(v) {
+			return v, nil
+		}
+	case "actions.private_fork_workflows.run_workflows_from_fork_pull_requests", "actions.private_fork_workflows.send_write_tokens_to_workflows", "actions.private_fork_workflows.send_secrets_and_variables", "actions.private_fork_workflows.require_approval_for_fork_pr_workflows":
 		if v, ok := value.(bool); ok {
 			return v, nil
 		}
