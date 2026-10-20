@@ -98,7 +98,7 @@ Current source reads a declared label collection and reports typed create/update
 
 Current source compares six independent managed fields and explicitly marks inactive selected before values unavailable. The [Actions policy specification](actions-execution-policy.feature.md#rule-plan-inactive-values-honestly) owns native comparisons, Summary validation and error boundaries.
 
-### Rule: Compare the complete planned v0.17.0 feature set without writes
+### Rule: Compare the complete v0.17.0 feature set without writes
 
 Plan reads only declared resources, retaining registry order for repository fields and resource order for collections/policies. Current source has twenty-two scalar repository fields; each scalar counts once, each authoritative collection once, and each of fourteen Actions/three security fields once, for a maximum managed count of forty-two. Rulesets have typed operations; Actions and security retain closed native before/after values. Unknown/denied/inapplicable/incomplete observations fail and discard earlier partial comparisons. A zero plan covers only successfully observed managed intent; it proves neither write permission nor future drift protection.
 

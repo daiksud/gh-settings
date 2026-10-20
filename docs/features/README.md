@@ -36,20 +36,20 @@ Published v0.16.0 adds the [default branch setting](default-branch.feature.md), 
 
 These three features are published in v0.16.0; older consumer pins must be updated before adopting them.
 
-The [Rulesets design](rulesets.feature.md) records the accepted declaration/reconciliation contract and its current-source, unreleased implementation, including PR/check rules; published v0.16.0 and older CLI/Action packages reject Rulesets.
+The [Rulesets design](rulesets.feature.md) records the accepted declaration/reconciliation contract and its implementation published in v0.17.0, including PR/check rules; published v0.16.0 and older CLI/Action packages reject Rulesets.
 
-Current source adds unreleased [pull request access controls](pull-request-access.feature.md) with independent availability/policy declarations, complete GraphQL reads and declared-only mutations. Published v0.16.0 and older packages reject these keys.
+Published v0.17.0 adds [pull request access controls](pull-request-access.feature.md) with independent availability/policy declarations, complete GraphQL reads and declared-only mutations. Published v0.16.0 and older packages reject these keys.
 
-Current source adds unreleased [Issue creation policy](issue-creation-policy.feature.md), an independent enum with selective GraphQL reads and a shared declared-only repository mutation. It does not change `has_issues` implicitly; published v0.16.0 and older packages reject the key.
+Published v0.17.0 adds [Issue creation policy](issue-creation-policy.feature.md), an independent enum with selective GraphQL reads and a shared declared-only repository mutation. It does not change `has_issues` implicitly; published v0.16.0 and older packages reject the key.
 
-Current source adds unreleased [Actions execution policy](actions-execution-policy.feature.md), with explicit export opt-in, complete conditional reads, inactive-value comparisons and fresh nontransactional apply. Published v0.16.0 and older packages reject it.
+Published v0.17.0 adds [Actions execution policy](actions-execution-policy.feature.md), with explicit export opt-in, complete conditional reads, inactive-value comparisons and fresh nontransactional apply. Published v0.16.0 and older packages reject it.
 
-Current source adds unreleased [default workflow permissions](workflow-permissions.feature.md), independently of execution policy, with declared-only updates and explicit export selection. Published v0.16.0 and older packages reject it.
+Published v0.17.0 adds [default workflow permissions](workflow-permissions.feature.md), independently of execution policy, with declared-only updates and explicit export selection. Published v0.16.0 and older packages reject it.
 
-The [Security design](security.feature.md) defines proposed feature-family selection, complete observations, dependency ordering, and adoption gates for #344–#347. Secret scanning and private vulnerability reporting for public repositories are implemented in current source, unreleased; other families remain planned/gated. Published v0.16.0 and older packages reject all proposed security keys/options.
+The [Security design](security.feature.md) defines proposed feature-family selection, complete observations, dependency ordering, and adoption gates for #344–#347. Secret scanning and private vulnerability reporting for public repositories are implemented in v0.17.0; other families remain planned/gated. Published v0.16.0 and older packages reject all proposed security keys/options.
 
-Current source adds unreleased [repository retention policy](retention.feature.md), with complete configured/maximum observations, explicit export opt-in, native integer differences and fresh upper-limit verification. Published v0.16.0 and older packages reject the key and option.
+Published v0.17.0 adds [repository retention policy](retention.feature.md), with complete configured/maximum observations, explicit export opt-in, native integer differences and fresh upper-limit verification. Published v0.16.0 and older packages reject the key and option.
 
-Current source adds unreleased [fork workflow policies](fork-workflows.feature.md): public contributor approval and private fork execution/token/secrets/approval choices, with explicit export selections, declared-only updates and fresh visibility/readback boundaries. Published v0.16.0 and older packages reject the keys and options.
+Published v0.17.0 adds [fork workflow policies](fork-workflows.feature.md): public contributor approval and private fork execution/token/secrets/approval choices, with explicit export selections, declared-only updates and fresh visibility/readback boundaries. Published v0.16.0 and older packages reject the keys and options.
 
-The implemented current-source features added since v0.16.0 are planned for **v0.17.0**. They remain unreleased until the matching release workflow verifies publication; unimplemented/gated candidates remain outside that package. See the [release boundary](../settings.md#v0170-release-preparation).
+The implemented features added since v0.16.0 are published in [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0). The native acceptance, immutable assets and published Action smoke checks passed. Unimplemented/gated candidates remain outside this package. See the [package boundary](../settings.md#v0170-package).
