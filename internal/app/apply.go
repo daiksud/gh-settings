@@ -83,6 +83,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 			result.Operations[index].Status = OperationCompleted
 		}
 	}
+	if desired.Rulesets != nil {
+		wrote, err := applyRulesets(&result, repo, desired.Rulesets, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	result.Outcome = ApplyCompleted
 	if !hasWrites {
 		result.Outcome = ApplyMatchingLabels

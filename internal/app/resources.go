@@ -10,14 +10,17 @@ type Reader struct {
 	ObserveRepository func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error)
 	Topics            func(repository.Repository) ([]string, error)
 	Labels            func(repository.Repository) (settings.LabelObservation, error)
+	Rulesets          func(repository.Repository) (settings.RulesetObservation, error)
 }
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
-	Repository  func(repository.Repository, settings.RepositoryDeclaration) error
-	Topics      func(repository.Repository, settings.TopicsDeclaration) error
-	ReadLabels  func(repository.Repository) (settings.LabelObservation, error)
-	CreateLabel func(repository.Repository, settings.LabelChange) error
-	UpdateLabel func(repository.Repository, settings.LabelChange) error
-	DeleteLabel func(repository.Repository, settings.LabelChange) error
+	Repository   func(repository.Repository, settings.RepositoryDeclaration) error
+	Topics       func(repository.Repository, settings.TopicsDeclaration) error
+	ReadLabels   func(repository.Repository) (settings.LabelObservation, error)
+	CreateLabel  func(repository.Repository, settings.LabelChange) error
+	UpdateLabel  func(repository.Repository, settings.LabelChange) error
+	DeleteLabel  func(repository.Repository, settings.LabelChange) error
+	ReadRulesets func(repository.Repository) (settings.RulesetObservation, error)
+	Ruleset      func(repository.Repository, settings.RulesetChange) error
 }

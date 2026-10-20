@@ -6,7 +6,7 @@ description: Adopt label-style ownership for repository Rulesets while preservin
 
 ## Status
 
-Accepted for implementation, not implemented. Design issue [#335](https://github.com/daiksud/gh-settings/issues/335) precedes the separate basic lifecycle and PR/check implementation issues. No CLI or Action version supports this contract yet.
+Accepted; the basic branch/tag subset is implemented in current source, unreleased. Published v0.16.0 and older packages do not support it. Design issue [#335](https://github.com/daiksud/gh-settings/issues/335) precedes the separate basic lifecycle and PR/check implementation issues. PR/check support remains separate future work.
 
 ## Context
 

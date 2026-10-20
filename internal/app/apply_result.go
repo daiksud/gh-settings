@@ -21,6 +21,10 @@ const (
 	LabelCreate
 	LabelUpdate
 	LabelDelete
+	RulesetsRead
+	RulesetCreate
+	RulesetUpdate
+	RulesetDelete
 )
 
 type ApplyOperationStatus uint8
@@ -35,9 +39,10 @@ const (
 // ApplyOperation records only what this execution established for one operation.
 // A failed write has an unknown remote effect, rather than an unapplied status.
 type ApplyOperation struct {
-	Kind      ApplyOperationKind
-	LabelName string
-	Status    ApplyOperationStatus
+	Kind        ApplyOperationKind
+	LabelName   string
+	RulesetName string
+	Status      ApplyOperationStatus
 }
 
 // ApplyResult retains known execution progress without claiming readback or rollback.
@@ -57,7 +62,7 @@ func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus)
 	result.Operations[index].Status = status
 	result.Outcome = ApplyFailed
 	for _, operation := range result.Operations {
-		if operation.Status == OperationCompleted && operation.Kind != LabelsRead {
+		if operation.Status == OperationCompleted && operation.Kind != LabelsRead && operation.Kind != RulesetsRead {
 			result.Outcome = ApplyPartialFailure
 			break
 		}

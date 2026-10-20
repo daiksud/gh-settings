@@ -17,12 +17,13 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
-	Outcome    string            `json:"outcome"`
-	Target     string            `json:"target,omitempty"`
-	Managed    int               `json:"managed"`
-	Changes    []PlanChange      `json:"changes"`
-	Diagnostic string            `json:"diagnostic,omitempty"`
-	Labels     []LabelPlanChange `json:"labels,omitempty"`
+	Outcome    string              `json:"outcome"`
+	Target     string              `json:"target,omitempty"`
+	Managed    int                 `json:"managed"`
+	Changes    []PlanChange        `json:"changes"`
+	Diagnostic string              `json:"diagnostic,omitempty"`
+	Labels     []LabelPlanChange   `json:"labels,omitempty"`
+	Rulesets   []RulesetPlanChange `json:"rulesets,omitempty"`
 }
 
 // PlanChange retains the native string, boolean or string-list comparison values.
@@ -58,7 +59,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	if result.Comparison.Managed > 0 {
 		report.Target = result.Target.Owner + "/" + result.Target.Name
 		report.Outcome = "changed"
-		if len(result.Comparison.Changes) == 0 && result.Comparison.Labels.Len() == 0 {
+		if len(result.Comparison.Changes) == 0 && result.Comparison.Labels.Len() == 0 && len(result.Comparison.Rulesets) == 0 {
 			report.Outcome = "no-difference"
 		}
 	}
@@ -73,6 +74,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, change := range result.Comparison.Labels.Values() {
 		report.Labels = append(report.Labels, labelPlanChange(change))
+	}
+	for _, change := range result.Comparison.Rulesets {
+		report.Rulesets = append(report.Rulesets, RulesetPlanChange{Operation: change.Operation(), Before: change.Before(), After: change.After()})
 	}
 	data, err := json.Marshal(report)
 	if err != nil {

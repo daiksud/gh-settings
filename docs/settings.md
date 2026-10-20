@@ -283,9 +283,53 @@ For labels, response descriptions may be null and are normalized to empty string
 
 This response normalization does not make explicit YAML null valid input. The published read schema permits null for description/homepage, while the update schema defines optional strings without `nullable`.[^github-repository-openapi] The [export command](commands.md#export-behavior) documents file replacement and write-failure behavior.
 
+## Rulesets (unreleased)
+
+Current source adds `settings.rulesets` for repository-owned branch/tag Rulesets with only `deletion`, `non_fast_forward`, `required_linear_history` and `required_signatures` rules. Published v0.16.0 and older CLI/Action packages reject this group and the new export option. Use a source-built CLI for these capabilities until a supporting package is published; checking out newer Action source still installs its selected published CLI.
+
+```yaml
+schemaVersion: 1
+settings:
+  rulesets:
+    - name: release-tags
+      target: tag
+      enforcement: active
+      conditions:
+        ref_name:
+          include: ["refs/tags/v*"]
+          exclude: []
+      bypass_actors: []
+      rules:
+        - type: deletion
+```
+
+This creates or reconciles the whole owned branch/tag collection. It is not an additive example to apply alongside undeclared existing Rulesets. Start with `gh settings export --rulesets`, review all exported members, and run plan before editing or applying.
+
+| Declaration | Meaning |
+| --- | --- |
+| Omitted `rulesets` | Unmanaged; plan/apply make no Rulesets requests. |
+| `rulesets: []` | Delete every owned branch/tag Ruleset after complete supported reads. |
+| Nonempty list | Create missing names, update retained members, delete undeclared owned branch/tag members. |
+| Omitted attribute of retained member | Preserve the fresh observed value. |
+| Declared `rules` / `bypass_actors` | Authoritative inner membership, including removal; `[]` clears the collection. |
+| Declared ref `include` / `exclude` | Replace that entire pattern list; omission preserves the other list. |
+| `null`, unknown keys or wrong types at any depth | Invalid; null is neither omission nor clearing. |
+
+Ruleset identity uses exact names without trimming, case folding or rename inference. Duplicate names are errors, including across targets. Changing a name means creating the new object and deleting the old one. Numeric Ruleset IDs are observed for PUT/DELETE and never declared in YAML. Inner rules use unique `type`; bypass actors use `(actor_type, actor_id)`. Empty mappings manage no child attributes and clear nothing. Basic rules have no parameters; `parameters: {}` is equivalent to omission, while nonempty parameters are unsupported.
+
+New Rulesets require explicit name, branch/tag target, enforcement (`active`, `disabled`, or `evaluate`), both ref condition lists, bypass actor list and rule list. Existing members may declare only a name. A newly added bypass actor requires `bypass_mode`; omission preserves the mode of a retained actor. Modes are `always`, `pull_request` (branch, non-DeployKey actors only) and `exempt`. Actor types are `Integration`, `RepositoryRole`, `Team`, `User`, `OrganizationAdmin` and `DeployKey`; the first four require a positive `actor_id`, while the latter two omit it in YAML. `OrganizationAdmin` is unavailable for personal repositories. The adapter explicitly maps DeployKey IDs to API null. GitHub validates plan/account prerequisites; errors do not trigger bypass expansion, defaults or workarounds.
+
+Opted-in export reads all pages and each owned Ruleset detail, saving complete writable branch/tag state in canonical order. Empty collections remain explicit. Push Rulesets are excluded with a diagnostic; inherited organization/enterprise Rulesets and legacy branch protection remain outside ownership and are never changed. These policies can still affect effective protection. Missing bypass visibility, unsupported rules (including PR approval and required checks), unknown writable fields, null/incomplete values, failed pages or unreadable details stop export/plan/apply rather than producing partial or empty state. Failed export preserves the previous file. Explicitly clearing a collection still requires a complete supported observation.
+
+Plan is read-only and shows complete before/after policies, operation names and protection-removal warnings. The collection counts once as managed. Apply runs after repository/topics/labels, reads fresh Rulesets with the apply credential, prepares all operations before the first Rulesets mutation, and preserves omitted siblings in complete PUT bodies. Creates/updates run in name order, then deletes in name order. An unchanged policy causes no Rulesets write; a repeat apply after successful reconciliation also causes no Rulesets write absent concurrent changes. Earlier resources retain their own direct-write behavior.
+
+The first API failure stops later operations; earlier writes can remain applied, failed writes have uncertain effect, and there is no transaction, rollback, automatic retry or saved-plan execution. Review plan, including nested removals, before authorizing apply. Concurrent edits can change the fresh apply result.
+
+[Rulesets REST](https://docs.github.com/en/rest/repos/rules) lists Metadata read for GET and Administration write for mutations, but complete detail GET also needs write visibility to return bypass actors. Missing actors are an error, not an empty list. No token grant or App permission is expanded automatically. Branch/tag Rulesets are available for public repositories on Free and applicable public/private repositories on Pro/Team/Enterprise; evaluate requires Enterprise. [GitHub availability and layering](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) and [available rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) apply. PR/check rules and other rule types remain unsupported until a separate extension; the [feature contract](features/rulesets.feature.md) distinguishes the initial implementation from that future work.
+
 ## Unsupported settings
 
-Rulesets, Pages and Actions settings are not supported. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
+Pages and Actions settings are not supported. Rulesets support is limited to the current-source subset above; PR/check rules, push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five body parameters and their request body placement. This reference does not expand the supported scope.
 

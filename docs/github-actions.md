@@ -8,6 +8,8 @@ Current source also supports the unreleased [`is_template` setting](settings.md#
 
 The unreleased [`default_branch` setting](settings.md#default-branch-unreleased) uses the same Administration-write repository PATCH and validates its returned name. Published v0.15.1 and older packages reject the key; no Action input or permission expansion is introduced.
 
+Current source additionally supports [basic Rulesets declarations](settings.md#rulesets-unreleased) in validate/plan/apply and native before/after policy Summary entries. This is unreleased: published v0.16.0 and older packages reject the group. Complete Rulesets plan reads need bypass visibility (write access to the Ruleset); hidden or unsupported policy fails instead of becoming empty. Existing Action inputs and caller grants are unchanged; there is no Action export command.
+
 ## Public Action and supported checkout
 
 `daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.15.0 package for repository fields, topics and [labels](#labels-and-permissions).

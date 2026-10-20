@@ -6,13 +6,13 @@ description: Planned ownership, round-trip, reconciliation, and acceptance contr
 
 ## Status and goal
 
-Accepted design under [ADR 0025](../adr/0025-declarative-repository-rulesets.md), **not implemented or supported by any CLI/Action version**. Examples and command options below describe future implementation, not commands users can run today. Existing [settings support](../settings.md) is unchanged.
+The basic subset from #336 is implemented in current source and **unreleased**; published v0.16.0 and older CLI/Action packages reject it. [ADR 0025](../adr/0025-declarative-repository-rulesets.md) records the accepted design. The [user contract](../settings.md#rulesets-unreleased) owns usage and scope. PR/check identities, parameters and acceptance requirements below remain future #337 work, not current support.
 
 The adoption path is: export existing repository configuration, validate it, plan without changes and obtain zero Rulesets differences, edit the desired state, then reconcile creates/updates/deletes. The [labels contract](labels.feature.md) supplies collection membership and retained-attribute semantics; it does not establish Rulesets API identity or PUT behavior.
 
 ## Ownership and identity
 
-| Object | Planned ownership and matching |
+| Object | Ownership and matching (PR/check rows are future work) |
 | --- | --- |
 | Repository-owned branch/tag Ruleset | Member of `settings.rulesets`, identified by exact `name`; ID is observed transport identity, not YAML configuration. |
 | Organization/enterprise/inherited Ruleset | Outside the managed collection; never exported as repository-owned, matched by name, updated, or deleted. |
@@ -25,7 +25,7 @@ The adoption path is: export existing repository configuration, validate it, pla
 
 Names are nonempty, non-whitespace-only UTF-8 strings without control characters. Do not trim, normalize, case-fold, or infer renames. Reject duplicate names in declarations or the complete owned branch/tag observation, including duplicates across different targets. Renaming a declared identity means create the new object and delete the old one; its ID/history is not retained. Compare the repository owner/name in `source` with the resolved checkout repository case-insensitively, independently of exact Ruleset-name identity: `Owner/Repo` and `owner/repo` identify the same GitHub repository. Require `source_type: Repository`; missing or contradictory source ownership/target/ID is an error, not permission to ignore an entry.
 
-## Planned schema and presence
+## Schema and presence
 
 Use the existing `schemaVersion: 1` and resource grouping:
 
@@ -69,11 +69,11 @@ Bypass declarations use API actor types and IDs, not name lookup. A new actor mu
 
 ## Complete observation and export
 
-- Planned `gh settings export --rulesets` adds Rulesets to the existing export. Ordinary export retains its current requests and permission requirements. This is a CLI export extension only: the public Action still accepts validate/plan/apply and does not gain an export command or input. Omitted opt-in excludes Rulesets, with no capability fallback.
+- Current-source `gh settings export --rulesets` adds Rulesets to the existing export. Ordinary export retains its current requests and permission requirements. This is a CLI export extension only: the public Action still accepts validate/plan/apply and does not gain an export command or input. Omitted opt-in excludes Rulesets, with no capability fallback.
 - Inventory all pages of `GET /repos/{owner}/{repo}/rulesets?includes_parents=false&per_page=100&page=N`, validate repository ownership and IDs, then GET every repository-owned Ruleset by ID with `includes_parents=false`. Classify target from each detail response before validating branch/tag policy or excluding push policy; do not depend on an undocumented list-summary `target` field. Do not use effective branch-rule results: they omit disabled/evaluate policy and lose the editable Ruleset structure.
 - Validate every required value, complete supported writable rule parameters and nested collections, unique identity, and ownership. Do not follow arbitrary response links for authenticated requests. An exact full page requires another page; later failure invalidates the observation.
 - Missing `bypass_actors` means an incomplete observation, even if other fields are present. It never means no actors. Reject before saving or issuing Rulesets writes, including a declared empty outer list.
-- Explicitly classify response-only metadata (`id`, `node_id`, source ownership, links, timestamps and other documented read-only fields); do not serialize it as desired state. Unknown content that might affect writable policy, unknown rules or parameters, and unrecognized enforcement/actor values fail the complete owned observation. Do not drop or blindly replay them.
+- Explicitly classify response-only metadata (`id`, `node_id`, source ownership, links, timestamps, `current_user_can_bypass` and other documented read-only fields); do not serialize it as desired state. [GitHub documents bypass-status metadata](https://github.blog/changelog/2023-06-27-repository-rules-public-beta-updates/) as caller context, not desired policy or evidence of complete bypass-actor visibility. Unknown content that might affect writable policy, unknown rules or parameters, and unrecognized enforcement/actor values fail the complete owned observation. Do not drop or blindly replay them.
 - Export every supported owned branch/tag member and all its writable attributes, including explicit empty lists, booleans and numbers. Canonical ordering is by the identity keys above (numeric IDs numerically, absent optional IDs first); ref include/exclude, allowed merge methods and reviewer file patterns use exact string sorting for serialization and set equality, with duplicates rejected. Do not treat an arbitrary new API array as a set without verifying its contract. Mapping order has no semantic effect.
 - Rules and actor/check lists compare by identity, not array position. Preserve meaningful parameter values and API defaults observed in complete reads; never normalize distinct policies into equality. API nullable identifiers, such as an any-source check integration, map to an absent optional YAML ID only after that equivalence is verified; missing required response fields remain errors.
 - Finish all existing resource reads, Rulesets reads and serialization before opening the destination. Failure preserves the old configuration, with no partial export. Excluded push/inherited policy is outside the zero-difference guarantee, which concerns owned branch/tag desired state, not effective protection.
@@ -114,3 +114,16 @@ Push/file restrictions, merge queues, deployments, code-scanning/licensing rules
 | Built-product acceptance | Isolated existing-policy export → zero plan → edit/add/remove → exact CRUD → zero plan and no-write repeat apply; inherited/push/legacy objects untouched; mixed-resource partial failure and read-permission failure. |
 
 Use local HTTP/files/Git fixtures with dummy credentials. Under #337, include a fixture shaped like an existing default-branch policy with bypass `[]`, three basic rules, PR approvals, and two integration-bound required checks, including every observed policy parameter. This must not install or modify the active repository Ruleset. Test mappings are added only when the corresponding tests exist; this design document itself is not executed by CI.
+
+## Existing test mapping and evidence limits
+
+| Boundary | Tests |
+| --- | --- |
+| Presence, identity, complete observations, canonical copies and reconciliation | [Rulesets model](../../internal/settings/rulesets_test.go) |
+| Strict YAML/null/unknown rejection, aliases and encode/decode | [Rulesets codec](../../internal/workspace/rulesets_test.go) |
+| Inventory/detail pagination, owner/target isolation, unknown fields and exact CRUD/actor null | [Rulesets API](../../internal/github/rulesets_test.go) |
+| Export opt-in, selective reads, preflight, sequence and partial failures | [Rulesets application](../../internal/app/rulesets_test.go) |
+| Native policy report and escaped Summary | [Rulesets Action presentation](../../internal/actions/rulesets_test.go) |
+| Built CLI export/zero-plan/edit/CRUD/repeat, unsupported policy, redirects and preserved export | [Rulesets process acceptance](../../tests/acceptance/rulesets_test.go) |
+
+Tests use isolated Git/files and a local API with dummy credentials, not live policy writes. They do not establish actual write grants or published-package support. The API adapter pins `2026-03-10`; GitHub can still return additional unsupported content, which is rejected.

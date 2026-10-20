@@ -20,12 +20,14 @@ v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a six
 
 Current source (planned for v0.16.0, not yet published) also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased). It also supports the unreleased [`default_branch` setting](settings.md#default-branch-unreleased). Source export includes nineteen repository fields; published v0.15.1 and older packages reject the new key.
 
+Current source also supports [basic Rulesets](settings.md#rulesets-unreleased), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. PR/check rules are unsupported, and incomplete or unsupported Rulesets are never partially exported or reconciled.
+
 ## Interface and implementation status
 
 Current source (planned for v0.16.0, not yet published) additionally supports [`web_commit_signoff_required`](settings.md#web-commit-sign-off-unreleased), an unreleased repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
-gh settings export
+gh settings export [--rulesets]
 gh settings validate
 gh settings plan
 gh settings apply
@@ -67,6 +69,8 @@ The [labels contract](settings.md#labels) makes a declared list authoritative: l
 Plan shows explicit create/update/delete operations. Apply reads fresh labels after any repository/topics updates and performs only the needed operations. Omitted label attributes retain existing values; creating a label with omitted attributes delegates those values to GitHub. Changing a name to a different identity is create plus delete, without rename inference.
 
 ## Export behavior
+
+`export --rulesets` additionally reads complete repository-owned branch/tag Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Excluded push Rulesets produce a diagnostic on stderr; export success otherwise stays silent. See the [Rulesets contract](settings.md#rulesets-unreleased) before adoption.
 
 Export uses the [repository and authentication rules](#repository-and-authentication) above. It reads repository settings, then topics, then every labels page, and serializes the complete supported configuration before opening the destination. Label reads use pages of 100 until a short page; a failed later page fails the operation before any file replacement. Published v0.8.0 export stops after topics. Unsupported fields and read-only metadata are excluded. Export preserves false and empty strings; the [settings reference](settings.md#exported-values) explains response normalization and invalid-response handling.
 

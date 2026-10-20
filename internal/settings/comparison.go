@@ -2,9 +2,10 @@ package settings
 
 // Comparison counts all declared fields and records only changed values.
 type Comparison struct {
-	Managed int
-	Changes []Change
-	Labels  LabelChanges
+	Managed  int
+	Changes  []Change
+	Labels   LabelChanges
+	Rulesets []RulesetChange
 }
 
 // Change contains a supported field identifier and a matching typed value pair.
