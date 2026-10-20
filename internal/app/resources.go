@@ -5,6 +5,13 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
+// PreWriteReadFailure confirms that a writer's prerequisite read failed before
+// any write attempt. PUT and post-write verification errors must not mark this.
+type PreWriteReadFailure interface {
+	error
+	ReadFailedBeforeWrite()
+}
+
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
 	WorkflowPermissions func(repository.Repository) (settings.WorkflowPermissionsState, error)

@@ -31,9 +31,10 @@ Test mapping: [TestWorkflowPermissionSummaryTypes](../../internal/actions/workfl
 - Fresh complete preflight precedes a PUT containing only declared optional keys; no enabled/allowlist or inferred workflow companion is sent.
 - Fresh complete readback verifies desired and preserved companion values. Direct repeated apply still writes.
 - Workflow policy is a distinct operation after execution policy; organization conflicts and other failures retain earlier completed progress and never trigger rollback or permission expansion.
-- Redirects, denied/conflicting writes, unknown/missing readback and mismatches fail honestly with uncertain write effects.
+- A preflight read failure records a confirmed read failure before any PUT. PUT and readback errors retain uncertain write effects; wrapped errors preserve this distinction.
+- Redirects, denied/conflicting writes, unknown/missing readback and mismatches fail honestly.
 
-Test mapping: [TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification and TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionFailureRetainsEarlierExecutionProgress](../../internal/app/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
+Test mapping: [TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification and TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionFailureRetainsEarlierExecutionProgress and TestWorkflowPreflightReadFailureHasNoUncertainWrite](../../internal/app/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
 
 ## Evidence boundary
 

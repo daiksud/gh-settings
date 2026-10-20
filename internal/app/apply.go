@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -104,7 +105,12 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		index := len(result.Operations)
 		result.Operations = append(result.Operations, ApplyOperation{Kind: WorkflowPermissionsUpdate})
 		if err := write.WorkflowPermissions(repo, desired.Actions); err != nil {
-			result.failOperation(index, OperationFailedUnknown)
+			status := OperationFailedUnknown
+			var readFailure PreWriteReadFailure
+			if errors.As(err, &readFailure) {
+				status = OperationFailedRead
+			}
+			result.failOperation(index, status)
 			return result, fmt.Errorf("apply workflow permissions (earlier resource writes remain applied): %w", err)
 		}
 		result.Operations[index].Status = OperationCompleted

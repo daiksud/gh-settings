@@ -2,6 +2,7 @@ package github
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"reflect"
 	"strings"
@@ -95,6 +96,10 @@ func TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification(t *testing.T
 			if err == nil || !strings.Contains(err.Error(), "may already have applied") {
 				t.Fatal(err)
 			}
+			var readFailure interface{ ReadFailedBeforeWrite() }
+			if errors.As(err, &readFailure) {
+				t.Fatal("post-write verification mislabeled as a preflight read failure", err)
+			}
 		})
 	}
 }
@@ -113,6 +118,10 @@ func TestWorkflowPermissionsErrorsAndOmission(t *testing.T) {
 				return actionsResponse(req, 200, `{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`), nil
 			})
 			err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{CanApprovePullRequestReviews: actionsPointer(true)})
+			var readFailure interface{ ReadFailedBeforeWrite() }
+			if errors.As(err, &readFailure) != (method == "GET") {
+				t.Fatal("incorrect pre-write/write stage", method, status, err)
+			}
 			want := 1
 			if method == "GET" {
 				want = 0

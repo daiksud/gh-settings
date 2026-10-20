@@ -8,6 +8,13 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
+// The use case recognizes this stage without depending on the API adapter.
+type workflowPermissionsReadFailure struct{ cause error }
+
+func (failure *workflowPermissionsReadFailure) Error() string  { return failure.cause.Error() }
+func (failure *workflowPermissionsReadFailure) Unwrap() error  { return failure.cause }
+func (*workflowPermissionsReadFailure) ReadFailedBeforeWrite() {}
+
 func (c *ActionsPolicyClient) ReadWorkflowPermissions(repo repository.Repository) (settings.WorkflowPermissionsState, error) {
 	var fields map[string]json.RawMessage
 	if err := c.rest.Get(actionsPolicyPath(repo)+"/workflow", &fields); err != nil {
@@ -36,7 +43,7 @@ func (c *ActionsPolicyClient) ApplyWorkflowPermissions(repo repository.Repositor
 	}
 	current, err := c.ReadWorkflowPermissions(repo)
 	if err != nil {
-		return err
+		return &workflowPermissionsReadFailure{cause: err}
 	}
 	expected := current
 	payload := map[string]any{}

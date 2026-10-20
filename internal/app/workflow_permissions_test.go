@@ -2,12 +2,43 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
+
+type workflowReadFailure struct{ error }
+
+func (*workflowReadFailure) ReadFailedBeforeWrite() {}
+
+func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
+	for _, earlier := range []bool{false, true} {
+		d, err := workspace.DecodeConfig([]byte("schemaVersion: 1\nsettings: {actions: {default_workflow_permissions: read}}"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if earlier {
+			value := false
+			d.Actions.Enabled = &value
+		}
+		result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) error {
+			return fmt.Errorf("wrapped read: %w", &workflowReadFailure{errors.New("denied before PUT")})
+		}})
+		want := ApplyFailed
+		if earlier {
+			want = ApplyPartialFailure
+		}
+		if err == nil || result.Outcome != want || result.Operations[len(result.Operations)-1].Status != OperationFailedRead {
+			t.Fatal(earlier, result, err)
+		}
+		if earlier && result.Operations[0].Status != OperationCompleted {
+			t.Fatal("earlier progress lost", result)
+		}
+	}
+}
 
 func TestWorkflowPermissionFailureRetainsEarlierExecutionProgress(t *testing.T) {
 	d, err := workspace.DecodeConfig([]byte("schemaVersion: 1\nsettings: {actions: {enabled: false, default_workflow_permissions: read}}"))
