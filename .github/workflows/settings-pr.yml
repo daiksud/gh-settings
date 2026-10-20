@@ -29,3 +29,46 @@ jobs:
         with:
           command: plan
           token: ${{ github.token }}
+
+      - name: Read-only capability diagnosis
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PYPROBE'
+          import json, os, urllib.request, urllib.error
+          repo = os.environ["GITHUB_REPOSITORY"]
+          routes = [
+              ("repository", "", ["visibility", "security_and_analysis"]),
+              ("ruleset", "/rulesets/24911852", ["bypass_actors"]),
+              ("actions", "/actions/permissions", ["enabled", "allowed_actions", "sha_pinning_required"]),
+              ("workflow_permissions", "/actions/permissions/workflow", ["default_workflow_permissions", "can_approve_pull_request_reviews"]),
+              ("retention", "/actions/permissions/artifact-and-log-retention", ["days", "maximum_allowed_days"]),
+              ("fork_approval", "/actions/permissions/fork-pr-contributor-approval", ["approval_policy"]),
+              ("private_reporting", "/private-vulnerability-reporting", ["enabled"]),
+          ]
+          for group, suffix, fields in routes:
+              path = "/repos/" + repo + suffix
+              request = urllib.request.Request("https://api.github.com" + path, headers={
+                  "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                  "Accept": "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2026-03-10",
+              }, method="GET")
+              result = {"group": group, "api": "GET " + path}
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      result["http_status"] = response.status
+                      data = json.load(response)
+                  result["fields"] = {key: {"present": key in data, **({"value": data[key]} if key in data else {})} for key in fields}
+                  if "security_and_analysis" in data and isinstance(data["security_and_analysis"], dict):
+                      result["fields"]["security_and_analysis"] = {key: {"present": key in data["security_and_analysis"], **({"value": data["security_and_analysis"][key]} if key in data["security_and_analysis"] else {})} for key in ["secret_scanning", "secret_scanning_push_protection"]}
+              except urllib.error.HTTPError as error:
+                  result["http_status"] = error.code
+                  try:
+                      result["message"] = json.load(error).get("message")
+                  except (ValueError, AttributeError):
+                      result["message"] = "unparseable API error; cause unverified"
+              except Exception as error:
+                  result["error"] = type(error).__name__ + ": " + str(error)
+              print("READ_CAPABILITY " + json.dumps(result), flush=True)
+          PYPROBE
