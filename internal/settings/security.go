@@ -2,15 +2,21 @@ package settings
 
 import "fmt"
 
-const SecurityFieldCount = 2
+const SecurityFieldCount = 3
 
-// SecurityDeclaration owns only the two adopted Secret scanning controls.
+// SecurityDeclaration owns only the adopted repository security controls.
 type SecurityDeclaration struct {
-	SecretScanning *bool `yaml:"secret_scanning,omitempty"`
-	PushProtection *bool `yaml:"secret_scanning_push_protection,omitempty"`
+	SecretScanning                *bool `yaml:"secret_scanning,omitempty"`
+	PushProtection                *bool `yaml:"secret_scanning_push_protection,omitempty"`
+	PrivateVulnerabilityReporting *bool `yaml:"private_vulnerability_reporting,omitempty"`
 }
 
-func (d SecurityDeclaration) Empty() bool { return d.SecretScanning == nil && d.PushProtection == nil }
+func (d SecurityDeclaration) SecretScanningEmpty() bool {
+	return d.SecretScanning == nil && d.PushProtection == nil
+}
+func (d SecurityDeclaration) Empty() bool {
+	return d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil
+}
 func (d SecurityDeclaration) Validate() error {
 	if d.SecretScanning != nil && !*d.SecretScanning && d.PushProtection != nil && *d.PushProtection {
 		return fmt.Errorf("security.secret_scanning_push_protection requires secret_scanning")
@@ -57,7 +63,7 @@ func (c SecurityChange) Values() (bool, bool) { return c.before, c.after }
 func NewSecurityChange(field string, before, after any) (SecurityChange, error) {
 	b, bok := before.(bool)
 	a, aok := after.(bool)
-	if (field != "security.secret_scanning" && field != "security.secret_scanning_push_protection") || !bok || !aok || b == a {
+	if (field != "security.secret_scanning" && field != "security.secret_scanning_push_protection" && field != "security.private_vulnerability_reporting") || !bok || !aok || b == a {
 		return SecurityChange{}, fmt.Errorf("invalid security comparison")
 	}
 	return SecurityChange{field: field, before: b, after: a}, nil
@@ -71,10 +77,15 @@ func ValidateSecurityChanges(changes []SecurityChange) error {
 		}
 		seen[c.field] = true
 		v := c.after
-		if c.field == "security.secret_scanning" {
+		switch c.field {
+		case "security.secret_scanning":
 			d.SecretScanning = &v
-		} else {
+		case "security.secret_scanning_push_protection":
 			d.PushProtection = &v
+		case "security.private_vulnerability_reporting":
+			d.PrivateVulnerabilityReporting = &v
+		default:
+			return fmt.Errorf("unknown security comparison")
 		}
 	}
 	return d.Validate()
@@ -139,11 +150,13 @@ func AfterSecretScanningChange(o SecretScanningObservation, c SecurityChange) (S
 			return SecretScanningObservation{}, fmt.Errorf("active push protection prevents disabling secret_scanning")
 		}
 		s = c.after
-	} else {
+	} else if c.field == "security.secret_scanning_push_protection" {
 		if c.after && !s {
 			return SecretScanningObservation{}, fmt.Errorf("secret_scanning must be enabled before push protection")
 		}
 		p = c.after
+	} else {
+		return SecretScanningObservation{}, fmt.Errorf("change does not belong to Secret scanning")
 	}
 	return NewSecretScanningObservation(s, p), nil
 }

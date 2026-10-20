@@ -10,6 +10,7 @@ type ExportCheckout struct {
 	IncludeWorkflowPermissions bool
 	IncludeRulesets            bool
 	IncludeSecretScanning      bool
+	IncludePrivateReporting    bool
 	ExcludedRulesets           func(int)
 	PrepareSave                func() (func(settings.Declaration) error, error)
 }
@@ -108,6 +109,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
+	}
+	if checkout.IncludePrivateReporting {
+		observed, err := read.PrivateReporting(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.Security.PrivateVulnerabilityReporting = &enabled
 	}
 	return save(declaration)
 }

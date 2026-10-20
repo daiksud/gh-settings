@@ -19,8 +19,11 @@ type securityPreWriteFailure struct{ cause error }
 func (e *securityPreWriteFailure) Error() string        { return e.cause.Error() }
 func (e *securityPreWriteFailure) Unwrap() error        { return e.cause }
 func (*securityPreWriteFailure) ReadFailedBeforeWrite() {}
+func newSecurityRESTClient(host string) (*api.RESTClient, error) {
+	return api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+}
 func NewSecretScanningClient(host string) (*SecretScanningClient, error) {
-	client, err := api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+	client, err := newSecurityRESTClient(host)
 	if err != nil {
 		return nil, &securityPreWriteFailure{fmt.Errorf("configure Secret scanning API: %w", err)}
 	}
@@ -53,6 +56,9 @@ func (c *SecretScanningClient) Read(repo repository.Repository) (settings.Secret
 // Update writes one declared member after a fresh prerequisite read. It verifies
 // the desired value and preserved companion; apparent enforcement success fails.
 func (c *SecretScanningClient) Update(repo repository.Repository, change settings.SecurityChange) (bool, error) {
+	if change.Field() != "security.secret_scanning" && change.Field() != "security.secret_scanning_push_protection" {
+		return false, &securityPreWriteFailure{fmt.Errorf("change does not belong to Secret scanning")}
+	}
 	before, after := change.Values()
 	if _, err := settings.NewSecurityChange(change.Field(), before, after); err != nil {
 		return false, &securityPreWriteFailure{err}
