@@ -101,6 +101,19 @@ func runCommand(args []string, output io.Writer, gh ghAPI) error {
 			return err
 		}
 		result = observation
+	case "assets":
+		if len(args) != 4 {
+			return fmt.Errorf("usage: release-publisher assets IDENTITY_JSON WORK_DIR RELEASE_ID")
+		}
+		identity, err := readIdentity(args[1])
+		if err != nil {
+			return err
+		}
+		assets, err := verifyAssets(identity, args[3], args[2], gh)
+		if err != nil {
+			return err
+		}
+		result = assets
 	case "created-id":
 		if len(args) != 2 {
 			return fmt.Errorf("usage: release-publisher created-id RELEASE_JSON")
@@ -508,4 +521,80 @@ func checkedReleaseState(identity releaseIdentity, view releaseView, checkpoint 
 		return draftRelease, nil
 	}
 	return publishedRelease, nil
+}
+
+type assetVerification struct {
+	Verified []string `json:"verified"`
+	Missing  []string `json:"missing"`
+}
+
+func verifyAssets(identity releaseIdentity, id, work string, gh ghAPI) (assetVerification, error) {
+	data, err := gh("api", "repos/"+identity.Repository+"/releases/"+id)
+	if err != nil {
+		return assetVerification{}, err
+	}
+	if err := os.WriteFile(filepath.Join(work, "release.json"), data, 0600); err != nil {
+		return assetVerification{}, err
+	}
+	var response struct {
+		Assets *[]struct {
+			Name json.RawMessage `json:"name"`
+		} `json:"assets"`
+	}
+	if err := json.Unmarshal(data, &response); err != nil {
+		return assetVerification{}, fmt.Errorf("decode release assets: %w", err)
+	}
+	if response.Assets == nil {
+		return assetVerification{}, fmt.Errorf("missing release assets")
+	}
+	seen := make(map[string]bool)
+	names := make([]string, 0, len(*response.Assets))
+	// Check the whole name list for duplicates before rejecting unexpected names,
+	// preserving the original validation order even for duplicate unknown names.
+	for _, asset := range *response.Assets {
+		var value any
+		if len(asset.Name) != 0 {
+			if err := json.Unmarshal(asset.Name, &value); err != nil {
+				return assetVerification{}, fmt.Errorf("decode asset name: %w", err)
+			}
+		}
+		key, err := json.Marshal(value)
+		if err != nil {
+			return assetVerification{}, fmt.Errorf("encode asset name: %w", err)
+		}
+		if seen[string(key)] {
+			return assetVerification{}, fmt.Errorf("duplicate asset names")
+		}
+		seen[string(key)] = true
+		name, _ := value.(string)
+		names = append(names, name)
+	}
+	present := make(map[string]bool)
+	for _, name := range names {
+		if name != macosAsset && name != linuxAsset && name != checksumsAsset {
+			return assetVerification{}, fmt.Errorf("unexpected release asset")
+		}
+		present[name] = true
+	}
+	downloads, err := os.MkdirTemp(work, "downloads.")
+	if err != nil {
+		return assetVerification{}, err
+	}
+	result := assetVerification{Verified: []string{}, Missing: []string{}}
+	for _, asset := range []struct{ name, digest string }{
+		{macosAsset, identity.MacosSHA256}, {linuxAsset, identity.LinuxSHA256}, {checksumsAsset, identity.ChecksumsSHA256},
+	} {
+		if !present[asset.name] {
+			result.Missing = append(result.Missing, asset.name)
+			continue
+		}
+		if _, err := gh("release", "download", identity.Version, "--repo", identity.Repository, "--pattern", asset.name, "--dir", downloads); err != nil {
+			return assetVerification{}, err
+		}
+		if err := checkBinary(downloads+"/"+asset.name, asset.digest); err != nil {
+			return assetVerification{}, err
+		}
+		result.Verified = append(result.Verified, asset.name)
+	}
+	return result, nil
 }

@@ -13,7 +13,7 @@ cat > "$fixture/bin/gh" <<'MOCK'
 set -euo pipefail
 printf '%s\n' "$*" >> "$MOCK_ROOT/calls"
 release_json() {
-  jq -n --arg tag "$VERSION" --arg invalid_draft "${MOCK_INVALID_DRAFT:-}" --rawfile body "$MOCK_ROOT/body" --rawfile draft "$MOCK_ROOT/draft" --argjson assets "$(find "$MOCK_ROOT/assets" -type f -exec basename {} \; | jq -R . | jq -s .)" '{id:123,tag_name:$tag,name:$tag,prerelease:false,draft:(if $invalid_draft == "1" then "unknown" else ($draft == "true\n") end),body:$body,assets:[$assets[] | {name:.}]}'
+  jq -n --arg tag "$VERSION" --arg invalid_draft "${MOCK_INVALID_DRAFT:-}" --arg duplicate_assets "${MOCK_DUPLICATE_ASSET:-}" --rawfile body "$MOCK_ROOT/body" --rawfile draft "$MOCK_ROOT/draft" --argjson assets "$(find "$MOCK_ROOT/assets" -type f -exec basename {} \; | jq -R . | jq -s .)" '{id:123,tag_name:$tag,name:$tag,prerelease:false,draft:(if $invalid_draft == "1" then "unknown" else ($draft == "true\n") end),body:$body,assets:([$assets[] | {name:.}] | if $duplicate_assets == "1" then . + [.[0]] else . end)}'
 }
 if [[ "$1" == api ]]; then
   shift
@@ -85,7 +85,13 @@ case "$2" in
     done
     printf 'true\n' > "$MOCK_ROOT/draft" ;;
   upload)
-    cp "$4" "$MOCK_ROOT/assets/$(basename "$4")" ;;
+    asset_name="$(basename "$4")"
+    [[ "${MOCK_DROP_UPLOAD:-}" != "$asset_name" ]] || exit 0
+    cp "$4" "$MOCK_ROOT/assets/$asset_name"
+    if [[ "${MOCK_CORRUPT_UPLOAD:-}" == "$asset_name" ]]; then
+      printf 'changed uploaded bytes' > "$MOCK_ROOT/assets/$asset_name"
+    fi ;;
+
   download)
     pattern='' destination=''
     while [[ $# -gt 0 ]]; do
@@ -95,6 +101,10 @@ case "$2" in
         *) shift ;;
       esac
     done
+    if [[ "${MOCK_DOWNLOAD_FAILURE:-}" == "$pattern" ]]; then
+      echo 'fixture download failed' >&2
+      exit 1
+    fi
     [[ ! -e "$destination/$pattern" ]] || { echo "asset already exists at $destination/$pattern" >&2; exit 1; }
     cp "$MOCK_ROOT/assets/$pattern" "$destination/$pattern" ;;
   *) echo "unexpected release operation: $2" >&2; exit 1 ;;
@@ -209,6 +219,17 @@ publish
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 3 ]]
 cmp "$fixture/original-notes" "$fixture/body"
 
+# A published release missing an asset is immutable, not a draft to repair.
+previous_uploads="$(grep -c '^release upload ' "$fixture/calls")"
+previous_mutations="$(grep -c '^api -X ' "$fixture/calls")"
+rm "$fixture/assets/SHA256SUMS"
+reject
+grep -q 'published release is missing assets' "$fixture/output"
+[[ "$(grep -c '^release upload ' "$fixture/calls")" == "$previous_uploads" ]]
+[[ "$(grep -c '^api -X ' "$fixture/calls")" == "$previous_mutations" ]]
+[[ "$(cat "$fixture/draft")" == false ]]
+cp "$RELEASE_DIR/SHA256SUMS" "$fixture/assets/SHA256SUMS"
+
 # Interrupted draft: retain matching assets and upload only the absent one.
 printf 'true\n' > "$fixture/draft"
 rm "$fixture/assets/SHA256SUMS"
@@ -216,6 +237,23 @@ publish
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 4 ]]
 [[ "$(cat "$fixture/draft")" == false ]]
 cmp "$fixture/original-notes" "$fixture/body"
+
+# Reject all name conflicts before downloading any existing bytes.
+previous_downloads="$(grep -c '^release download ' "$fixture/calls")"
+previous_uploads="$(grep -c '^release upload ' "$fixture/calls")"
+previous_mutations="$(grep -c '^api -X ' "$fixture/calls")"
+MOCK_DUPLICATE_ASSET=1 reject
+grep -q 'duplicate asset names' "$fixture/output"
+printf 'unexpected' > "$fixture/assets/unexpected"
+reject
+grep -q 'unexpected release asset' "$fixture/output"
+rm "$fixture/assets/unexpected"
+[[ "$(grep -c '^release download ' "$fixture/calls")" == "$previous_downloads" ]]
+MOCK_DOWNLOAD_FAILURE=gh-settings-linux-amd64 reject
+grep -q 'fixture download failed' "$fixture/output"
+[[ "$(grep -c '^release download ' "$fixture/calls")" == "$((previous_downloads + 2))" ]]
+[[ "$(grep -c '^release upload ' "$fixture/calls")" == "$previous_uploads" ]]
+[[ "$(grep -c '^api -X ' "$fixture/calls")" == "$previous_mutations" ]]
 
 # Draft state is checked only after tag processing, and before asset reads.
 previous_mutations="$(grep -c '^api -X ' "$fixture/calls")"
@@ -236,6 +274,34 @@ MOCK_TAG_AUTH_FAILURE=1 reject
 grep -q 'HTTP 401' "$fixture/output"
 grep -q 'GitHub API lookup failed: repos/owner/repo/git/ref/tags/v1.2.3' "$fixture/output"
 [[ "$(grep -c '^api -X ' "$fixture/calls")" == "$previous_mutations" ]]
+cmp "$fixture/original-notes" "$fixture/body"
+
+# A successful upload response is insufficient: verify all bytes again.
+printf 'true\n' > "$fixture/draft"
+rm "$fixture/assets/SHA256SUMS"
+previous_publishes="$(grep -c '^api -X PATCH ' "$fixture/calls")"
+MOCK_DROP_UPLOAD=SHA256SUMS reject
+grep -q 'draft is missing assets' "$fixture/output"
+[[ "$(cat "$fixture/draft")" == true ]]
+[[ "$(grep -c '^api -X PATCH ' "$fixture/calls")" == "$previous_publishes" ]]
+publish
+cmp "$fixture/original-notes" "$fixture/body"
+
+printf 'true\n' > "$fixture/draft"
+rm "$fixture/assets/SHA256SUMS"
+previous_publishes="$(grep -c '^api -X PATCH ' "$fixture/calls")"
+MOCK_CORRUPT_UPLOAD=SHA256SUMS reject
+grep -q 'artifact hash mismatch: SHA256SUMS' "$fixture/output"
+[[ "$(cat "$fixture/draft")" == true ]]
+[[ "$(grep -c '^api -X PATCH ' "$fixture/calls")" == "$previous_publishes" ]]
+previous_uploads="$(grep -c '^release upload ' "$fixture/calls")"
+reject
+grep -q 'artifact hash mismatch: SHA256SUMS' "$fixture/output"
+[[ "$(grep -c '^release upload ' "$fixture/calls")" == "$previous_uploads" ]]
+[[ "$(grep -c '^api -X PATCH ' "$fixture/calls")" == "$previous_publishes" ]]
+# Reset only the owned local fixture; the publisher must not replace bad bytes.
+cp "$RELEASE_DIR/SHA256SUMS" "$fixture/assets/SHA256SUMS"
+printf 'false\n' > "$fixture/draft"
 cmp "$fixture/original-notes" "$fixture/body"
 
 # Version, tag target, draft manifest, and bytes each reject conflicts.
