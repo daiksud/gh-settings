@@ -20,7 +20,7 @@ v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a six
 
 Current source (planned for v0.16.0, not yet published) also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased). It also supports the unreleased [`default_branch` setting](settings.md#default-branch-unreleased). Source export includes nineteen repository fields; published v0.15.1 and older packages reject the new key.
 
-Current source also supports [basic Rulesets](settings.md#rulesets-unreleased), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. PR/check rules are unsupported, and incomplete or unsupported Rulesets are never partially exported or reconciled.
+Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets-unreleased), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
 
 ## Interface and implementation status
 

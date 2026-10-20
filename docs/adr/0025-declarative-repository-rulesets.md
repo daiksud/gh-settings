@@ -6,7 +6,7 @@ description: Adopt label-style ownership for repository Rulesets while preservin
 
 ## Status
 
-Accepted; the basic branch/tag subset is implemented in current source, unreleased. Published v0.16.0 and older packages do not support it. Design issue [#335](https://github.com/daiksud/gh-settings/issues/335) precedes the separate basic lifecycle and PR/check implementation issues. PR/check support remains separate future work.
+Accepted; the branch/tag subset including PR/check rules is implemented in current source, unreleased. Published v0.16.0 and older packages do not support it. Design issue [#335](https://github.com/daiksud/gh-settings/issues/335) precedes the separate basic lifecycle and PR/check implementation issues. The separate #336 and #337 implementations remain unreleased.
 
 ## Context
 
@@ -16,7 +16,7 @@ Rulesets differ at the API boundary: names must resolve to numeric write IDs, in
 
 ## Decision
 
-Use the existing labels declaration model for the outer Rulesets collection and declared inner collections. Omission leaves a field unmanaged; a declared collection owns membership, including deletion; omitted attributes of retained members preserve observed values. Reject YAML null rather than treating it as omission or clearing. No rename is inferred.
+Use the existing labels declaration model for the outer Rulesets collection and declared inner collections. Omission leaves a field unmanaged; a declared collection owns membership, including deletion; omitted attributes of retained members preserve observed values. Reject YAML null rather than treating it as omission or clearing. No rename is inferred. Collection ownership does not imply set equality for every array: reviewer file-pattern order and repetitions are preserved because negations are evaluated in order; the earlier specification's set treatment is corrected by #337.
 
 The [Rulesets design specification](../features/rulesets.feature.md) owns the exact planned schema, identity keys, ownership boundary, complete-read requirements, reconciliation, failure behavior, and acceptance matrix. Outer Rulesets use exact names, not labels' Unicode case folding: no verified Rulesets API guarantee establishes that differently cased names are the same object. Resolve unique names to fresh observed IDs; ambiguous identity is an error.
 

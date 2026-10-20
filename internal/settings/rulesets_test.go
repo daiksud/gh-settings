@@ -100,7 +100,7 @@ func TestRulesetsCreationValidationAndOrdering(t *testing.T) {
 	}
 }
 func TestRulesetsRejectInvalidAndIncompleteState(t *testing.T) {
-	for _, mutate := range []func(*RulesetDeclaration){func(d *RulesetDeclaration) { d.Name = " " }, func(d *RulesetDeclaration) { d.Name = "x\n" }, func(d *RulesetDeclaration) { d.Target = rsText("push") }, func(d *RulesetDeclaration) { d.Enforcement = rsText("enabled") }, func(d *RulesetDeclaration) { d.Rules = &[]RulesetRule{{Type: "pull_request"}} }, func(d *RulesetDeclaration) { d.Rules = &[]RulesetRule{{Type: "deletion"}, {Type: "deletion"}} }, func(d *RulesetDeclaration) { d.BypassActors = &[]BypassActor{{ActorType: "Team", ActorID: rsID(0)}} }, func(d *RulesetDeclaration) {
+	for _, mutate := range []func(*RulesetDeclaration){func(d *RulesetDeclaration) { d.Name = " " }, func(d *RulesetDeclaration) { d.Name = "x\n" }, func(d *RulesetDeclaration) { d.Target = rsText("push") }, func(d *RulesetDeclaration) { d.Enforcement = rsText("enabled") }, func(d *RulesetDeclaration) { d.Rules = &[]RulesetRule{{Type: "merge_queue"}} }, func(d *RulesetDeclaration) { d.Rules = &[]RulesetRule{{Type: "deletion"}, {Type: "deletion"}} }, func(d *RulesetDeclaration) { d.BypassActors = &[]BypassActor{{ActorType: "Team", ActorID: rsID(0)}} }, func(d *RulesetDeclaration) {
 		d.BypassActors = &[]BypassActor{{ActorType: "DeployKey", ActorID: rsID(4)}}
 	}, func(d *RulesetDeclaration) {
 		d.Target = rsText("tag")
