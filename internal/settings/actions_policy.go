@@ -7,14 +7,16 @@ import (
 	"strings"
 )
 
-const ActionsPolicyFieldCount = 6
+const ActionsPolicyFieldCount = 8
 
 // ActionsPolicyDeclaration contains only explicitly managed repository policy values.
 type ActionsPolicyDeclaration struct {
-	Enabled            *bool                      `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-	AllowedActions     *string                    `yaml:"allowed_actions,omitempty" json:"allowed_actions,omitempty"`
-	SHAPinningRequired *bool                      `yaml:"sha_pinning_required,omitempty" json:"sha_pinning_required,omitempty"`
-	SelectedActions    SelectedActionsDeclaration `yaml:"selected_actions,omitempty" json:"selected_actions,omitempty"`
+	DefaultWorkflowPermissions   *string                    `yaml:"default_workflow_permissions,omitempty" json:"default_workflow_permissions,omitempty"`
+	CanApprovePullRequestReviews *bool                      `yaml:"can_approve_pull_request_reviews,omitempty" json:"can_approve_pull_request_reviews,omitempty"`
+	Enabled                      *bool                      `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	AllowedActions               *string                    `yaml:"allowed_actions,omitempty" json:"allowed_actions,omitempty"`
+	SHAPinningRequired           *bool                      `yaml:"sha_pinning_required,omitempty" json:"sha_pinning_required,omitempty"`
+	SelectedActions              SelectedActionsDeclaration `yaml:"selected_actions,omitempty" json:"selected_actions,omitempty"`
 }
 
 type SelectedActionsDeclaration struct {
@@ -43,7 +45,7 @@ func (d SelectedActionsDeclaration) Empty() bool {
 func (d SelectedActionsDeclaration) Complete() bool {
 	return d.GitHubOwnedAllowed != nil && d.VerifiedAllowed != nil && d.PatternsAllowed != nil
 }
-func (d ActionsPolicyDeclaration) Empty() bool {
+func (d ActionsPolicyDeclaration) ExecutionEmpty() bool {
 	return d.Enabled == nil && d.AllowedActions == nil && d.SHAPinningRequired == nil && d.SelectedActions.Empty()
 }
 func ValidAllowedActions(value string) bool {
@@ -66,6 +68,9 @@ func ValidateActionPatterns(values []string) error {
 }
 
 func (d ActionsPolicyDeclaration) Validate() error {
+	if d.DefaultWorkflowPermissions != nil && !ValidDefaultWorkflowPermissions(*d.DefaultWorkflowPermissions) {
+		return fmt.Errorf("actions.default_workflow_permissions must be read or write")
+	}
 	if d.AllowedActions != nil && !ValidAllowedActions(*d.AllowedActions) {
 		return fmt.Errorf("actions.allowed_actions must be all, local_only or selected")
 	}
@@ -156,8 +161,12 @@ func (c ActionsPolicyChange) Values() (any, any) {
 
 func actionValue(field string, value any) (any, error) {
 	switch field {
-	case "actions.enabled", "actions.sha_pinning_required", "actions.selected_actions.github_owned_allowed", "actions.selected_actions.verified_allowed":
+	case "actions.enabled", "actions.sha_pinning_required", "actions.selected_actions.github_owned_allowed", "actions.selected_actions.verified_allowed", "actions.can_approve_pull_request_reviews":
 		if v, ok := value.(bool); ok {
+			return v, nil
+		}
+	case "actions.default_workflow_permissions":
+		if v, ok := value.(string); ok && ValidDefaultWorkflowPermissions(v) {
 			return v, nil
 		}
 	case "actions.allowed_actions":

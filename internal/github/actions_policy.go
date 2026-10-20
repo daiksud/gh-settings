@@ -104,7 +104,7 @@ func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d s
 	if err := d.Validate(); err != nil {
 		return err
 	}
-	if d.Empty() {
+	if d.ExecutionEmpty() {
 		return nil
 	}
 	current, err := c.ReadActionsPolicy(repo, !d.SelectedActions.Empty())

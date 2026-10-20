@@ -18,15 +18,15 @@ var version = "dev"
 
 func main() {
 	checkout := workspace.NewCheckout(".")
-	reader := app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy}
+	reader := app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions}
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
-		Export: func(includeRulesets, includeActions bool) error {
-			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: includeRulesets, IncludeActions: includeActions, ExcludedRulesets: func(count int) {
+		Export: func(options cli.ExportOptions) error {
+			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -35,7 +35,7 @@ func main() {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy})
+			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions})
 		},
 	}))
 }
@@ -150,4 +150,19 @@ func writeActionsPolicy(repo repository.Repository, desired settings.ActionsPoli
 		return err
 	}
 	return client.ApplyActionsPolicy(repo, desired)
+}
+
+func readWorkflowPermissions(repo repository.Repository) (settings.WorkflowPermissionsState, error) {
+	client, err := github.NewActionsPolicyClient(repo.Host)
+	if err != nil {
+		return settings.WorkflowPermissionsState{}, err
+	}
+	return client.ReadWorkflowPermissions(repo)
+}
+func writeWorkflowPermissions(repo repository.Repository, desired settings.ActionsPolicyDeclaration) error {
+	client, err := github.NewActionsPolicyClient(repo.Host)
+	if err != nil {
+		return err
+	}
+	return client.ApplyWorkflowPermissions(repo, desired)
 }

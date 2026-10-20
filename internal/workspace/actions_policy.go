@@ -20,16 +20,24 @@ func parseActionsPolicy(node *yaml.Node) (settings.ActionsPolicyDeclaration, err
 			return d, err
 		}
 		switch field {
-		case "enabled", "sha_pinning_required":
+		case "enabled", "sha_pinning_required", "can_approve_pull_request_reviews":
 			v, err := actionsYAMLBool(n)
 			if err != nil {
 				return d, err
 			}
-			if field == "enabled" {
+			if field == "can_approve_pull_request_reviews" {
+				d.CanApprovePullRequestReviews = &v
+			} else if field == "enabled" {
 				d.Enabled = &v
 			} else {
 				d.SHAPinningRequired = &v
 			}
+		case "default_workflow_permissions":
+			if n.Kind != yaml.ScalarNode || n.Tag != "!!str" {
+				return d, fmt.Errorf("actions.default_workflow_permissions must be a string")
+			}
+			value := n.Value
+			d.DefaultWorkflowPermissions = &value
 		case "allowed_actions":
 			if n.Kind != yaml.ScalarNode || n.Tag != "!!str" {
 				return d, fmt.Errorf("actions.allowed_actions must be a string")

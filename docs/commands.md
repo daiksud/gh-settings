@@ -28,12 +28,14 @@ Current source also adds unreleased [`issue_creation_policy`](settings.md#issue-
 
 Current source also adds unreleased [Actions execution policy](settings.md#actions-execution-policy-unreleased) and explicit `export --actions`. Normal export keeps its existing permissions; selected policy reads require Administration read. Published v0.16.0 and older packages reject this group and option.
 
+Current source adds unreleased [default workflow permissions](settings.md#default-workflow-permissions-unreleased). Its two fields are independent of execution policy; explicit `export --workflow-permissions` acquires them without expanding normal export or `--actions`. Published v0.16.0 and older packages reject the keys/option.
+
 ## Interface and implementation status
 
 Current source (planned for v0.16.0, not yet published) additionally supports [`web_commit_signoff_required`](settings.md#web-commit-sign-off-unreleased), an unreleased repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
-gh settings export [--rulesets] [--actions]
+gh settings export [--rulesets] [--actions] [--workflow-permissions]
 gh settings validate
 gh settings plan
 gh settings apply
@@ -75,6 +77,8 @@ The [labels contract](settings.md#labels) makes a declared list authoritative: l
 Plan shows explicit create/update/delete operations. Apply reads fresh labels after any repository/topics updates and performs only the needed operations. Omitted label attributes retain existing values; creating a label with omitted attributes delegates those values to GitHub. Changing a name to a different identity is create plus delete, without rename inference.
 
 ## Export behavior
+
+`export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy after any other requested resources. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
 
 `export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy-unreleased) for required credentials and transition limits.
 
@@ -127,6 +131,8 @@ Successful comparison exits 0 whether differences exist or not. File, validation
 The [public Action](github-actions.md#inputs-outputs-and-failures) separately requires target/commit metadata and explicit plan/apply tokens, including for empty declarations.
 
 ## Apply behavior
+
+Unreleased workflow permissions are applied after execution policy as a separate operation. Partial declarations send only their own keys; fresh complete readback verifies desired and preserved values. Failure retains earlier execution/resource writes and does not broaden existing credentials. See the [workflow-permission contract](settings.md#default-workflow-permissions-unreleased).
 
 Unreleased Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings.md#actions-execution-policy-unreleased).
 

@@ -18,9 +18,31 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Default workflow permissions (unreleased)
+
+Current source adds two independent optional fields under `settings.actions`. Published v0.16.0 and older CLI/Action packages reject these keys and `export --workflow-permissions`; use a source-built CLI. Newer Action source still installs its selected published CLI.
+
+```yaml
+schemaVersion: 1
+settings:
+  actions:
+    default_workflow_permissions: read
+    can_approve_pull_request_reviews: false
+```
+
+`default_workflow_permissions` accepts exactly `read` or `write`, selecting the default permissions of workflow `GITHUB_TOKEN`s. `can_approve_pull_request_reviews` is a boolean controlling whether Actions can submit approving PR reviews. They do not change individual workflow/job `permissions`, caller credentials, App grants, Rulesets bypass or the execution policy described below. A write default or approval permission can broaden what workflows can do; plan displays both transitions explicitly. Organization policy can prevent the requested setting, and repository configuration does not override that policy.
+
+Each field is optional; omission is unmanaged and explicit false remains declared. Either field can be declared alone, including while repository Actions execution is disabled. Null, wrong types, case variants and unknown enum values fail local validation before origin/authentication/API access. Workflow-only declarations do not read or write the separate execution-policy endpoints and never infer `enabled`, `allowed_actions` or selected companions.
+
+Ordinary export and `export --actions` keep their existing scope. Explicit `export --workflow-permissions` reads both values completely and adds them to the actions mapping; combine it with `--actions` and/or `--rulesets` in any order to include those independent resources. Missing/null/invalid values and permission failures stop before saving; they never become read/false defaults. An unchanged export produces zero differences for the exported values.
+
+Plan reads the complete workflow policy only when at least one of its fields is declared. Apply runs after existing resources, including execution policy, reads fresh complete workflow state, and sends only declared optional PUT keys. It reads back both values to verify requested values and preserved companions; failure or unexpected state is reported with a warning that writes may already have applied. A concurrent change can therefore cause verification failure; this is not locking or rollback. Direct repeated apply still writes the declared values. An error stops later work and retains the known progress of completed earlier resources.
+
+The [dedicated workflow-permission endpoint](https://docs.github.com/en/rest/actions/permissions#set-default-workflow-permissions-for-a-repository) requires target Administration read for observation and Administration write for update. These grants must already exist; the feature neither creates nor broadens them. Organization conflicts, unsupported access and redirects fail visibly. Local fixtures verify the transport and failure contract; read-only live observations do not establish actual mutation compatibility, organization policy or token permissions. No workflow, token, grant or live setting is changed by building this feature. See the [behavior specification](features/workflow-permissions.feature.md).
+
 ## Actions execution policy (unreleased)
 
-Current source adds optional `settings.actions`. Published v0.16.0 and older CLI/Action packages reject this group and `export --actions`; use a source-built CLI. This manages repository execution policy, not workflow files, individual runs, token grants, default `GITHUB_TOKEN` permissions or organization policy.
+Current source adds optional `settings.actions`. Published v0.16.0 and older CLI/Action packages reject this group and `export --actions`; use a source-built CLI. The six execution-policy fields below manage repository execution policy, not workflow files, individual runs, token grants or organization policy. [Default workflow permissions](#default-workflow-permissions-unreleased) use separate fields and transport.
 
 ```yaml
 schemaVersion: 1

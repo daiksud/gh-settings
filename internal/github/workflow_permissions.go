@@ -1,0 +1,62 @@
+package github
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
+)
+
+func (c *ActionsPolicyClient) ReadWorkflowPermissions(repo repository.Repository) (settings.WorkflowPermissionsState, error) {
+	var fields map[string]json.RawMessage
+	if err := c.rest.Get(actionsPolicyPath(repo)+"/workflow", &fields); err != nil {
+		return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: %w", err)
+	}
+	var state settings.WorkflowPermissionsState
+	if json.Unmarshal(fields["default_workflow_permissions"], &state.DefaultWorkflowPermissions) != nil || !settings.ValidDefaultWorkflowPermissions(state.DefaultWorkflowPermissions) {
+		return settings.WorkflowPermissionsState{}, fmt.Errorf("GitHub returned missing/null or unsupported default_workflow_permissions")
+	}
+	value, err := actionsBool(fields, "can_approve_pull_request_reviews")
+	if err != nil {
+		return settings.WorkflowPermissionsState{}, err
+	}
+	state.CanApprovePullRequestReviews = value
+	return state, nil
+}
+
+// ApplyWorkflowPermissions sends only declared optional PUT keys. Fresh complete
+// reads verify desired and preserved companions without promising atomicity.
+func (c *ActionsPolicyClient) ApplyWorkflowPermissions(repo repository.Repository, desired settings.ActionsPolicyDeclaration) error {
+	if err := desired.Validate(); err != nil {
+		return err
+	}
+	if desired.WorkflowPermissionsEmpty() {
+		return nil
+	}
+	current, err := c.ReadWorkflowPermissions(repo)
+	if err != nil {
+		return err
+	}
+	expected := current
+	payload := map[string]any{}
+	if value := desired.DefaultWorkflowPermissions; value != nil {
+		expected.DefaultWorkflowPermissions = *value
+		payload["default_workflow_permissions"] = *value
+	}
+	if value := desired.CanApprovePullRequestReviews; value != nil {
+		expected.CanApprovePullRequestReviews = *value
+		payload["can_approve_pull_request_reviews"] = *value
+	}
+	if err := c.putActionsPolicy(actionsPolicyPath(repo)+"/workflow", payload); err != nil {
+		return fmt.Errorf("write default workflow permissions (this and earlier writes may already have applied): %w", err)
+	}
+	actual, err := c.ReadWorkflowPermissions(repo)
+	if err != nil {
+		return fmt.Errorf("verify default workflow permissions (writes may already have applied): %w", err)
+	}
+	if actual != expected {
+		return fmt.Errorf("GitHub did not retain requested/default workflow permission companions (writes may already have applied)")
+	}
+	return nil
+}

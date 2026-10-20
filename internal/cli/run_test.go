@@ -12,7 +12,7 @@ import (
 
 func TestVersion(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := Run([]string{"--version"}, &stdout, &stderr, "fixture-version", Operations{Export: func(bool, bool) error {
+	code := Run([]string{"--version"}, &stdout, &stderr, "fixture-version", Operations{Export: func(ExportOptions) error {
 		t.Fatal("version command must not call GitHub")
 		return nil
 	}})
@@ -34,7 +34,7 @@ func TestHelpAndVersionOutputFailure(t *testing.T) {
 		t.Run(test.arg, func(t *testing.T) {
 			var stderr bytes.Buffer
 			status := Run([]string{test.arg}, brokenWriter{}, &stderr, "fixture-version", Operations{
-				Export: func(bool, bool) error {
+				Export: func(ExportOptions) error {
 					t.Fatal("help/version output failure invoked export")
 					return nil
 				},
@@ -84,7 +84,7 @@ func TestRunSelectsOperation(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			exportCalls, validateCalls, planCalls, applyCalls := 0, 0, 0, 0
 			status := Run(test.args, &stdout, &stderr, "fixture-version", Operations{
-				Export: func(bool, bool) error {
+				Export: func(ExportOptions) error {
 					exportCalls++
 					return test.operationError
 				},
@@ -129,7 +129,7 @@ func TestRunSelectsOperation(t *testing.T) {
 func TestUnsupportedCommand(t *testing.T) {
 	for _, args := range [][]string{nil, {"unknown"}, {"apply", "extra"}, {"plan", "--json"}, {"export", "--repo", "owner/other"}, {"validate", "--repo", "owner/other"}} {
 		var stdout, stderr bytes.Buffer
-		code := Run(args, &stdout, &stderr, "fixture-version", Operations{Export: func(bool, bool) error {
+		code := Run(args, &stdout, &stderr, "fixture-version", Operations{Export: func(ExportOptions) error {
 			t.Fatal("unsupported command invoked API operation")
 			return errors.New("unexpected API call")
 		}})
@@ -141,7 +141,7 @@ func TestUnsupportedCommand(t *testing.T) {
 
 func TestExportDoesNotWriteStdout(t *testing.T) {
 	var stderr bytes.Buffer
-	code := Run([]string{"export"}, brokenWriter{}, &stderr, "fixture-version", Operations{Export: func(bool, bool) error { return nil }})
+	code := Run([]string{"export"}, brokenWriter{}, &stderr, "fixture-version", Operations{Export: func(ExportOptions) error { return nil }})
 	if code != 0 || stderr.Len() != 0 {
 		t.Fatalf("status=%d stderr=%q", code, stderr.String())
 	}
@@ -153,7 +153,7 @@ func (brokenWriter) Write([]byte) (int, error) { return 0, errors.New("output un
 
 func TestHelp(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	status := Run([]string{"--help"}, &stdout, &stderr, "fixture-version", Operations{Export: func(bool, bool) error { t.Fatal("help invoked API operation"); return nil }})
+	status := Run([]string{"--help"}, &stdout, &stderr, "fixture-version", Operations{Export: func(ExportOptions) error { t.Fatal("help invoked API operation"); return nil }})
 	if status != 0 || !strings.Contains(stdout.String(), "as YAML to .github/settings.yml at the checkout root") || stderr.Len() != 0 {
 		t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 	}

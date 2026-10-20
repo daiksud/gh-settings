@@ -90,12 +90,22 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if !desired.Actions.Empty() {
+	if !desired.Actions.ExecutionEmpty() {
 		index := len(result.Operations)
 		result.Operations = append(result.Operations, ApplyOperation{Kind: ActionsPolicyUpdate})
 		if err := write.Actions(repo, desired.Actions); err != nil {
 			result.failOperation(index, OperationFailedUnknown)
 			return result, fmt.Errorf("apply Actions policy (earlier resource writes remain applied): %w", err)
+		}
+		result.Operations[index].Status = OperationCompleted
+		hasWrites = true
+	}
+	if !desired.Actions.WorkflowPermissionsEmpty() {
+		index := len(result.Operations)
+		result.Operations = append(result.Operations, ApplyOperation{Kind: WorkflowPermissionsUpdate})
+		if err := write.WorkflowPermissions(repo, desired.Actions); err != nil {
+			result.failOperation(index, OperationFailedUnknown)
+			return result, fmt.Errorf("apply workflow permissions (earlier resource writes remain applied): %w", err)
 		}
 		result.Operations[index].Status = OperationCompleted
 		hasWrites = true
