@@ -67,6 +67,7 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch {
+				case servePRAccessFixtureRead(w, r):
 				case isMergeMethodsFixtureRead(r):
 					fmt.Fprint(w, test.body)
 				case r.Method == "GET" && r.URL.Path == "/repos/owner/current":
@@ -132,6 +133,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				paths = append(paths, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
 				switch {
+				case servePRAccessFixtureRead(w, r):
 				case isMergeMethodsFixtureRead(r):
 					if fail {
 						fmt.Fprint(w, `{"data":{"repository":null},"errors":[{"message":"fixture read denied"}]}`)
@@ -191,7 +193,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				t.Fatal(err)
 			}
 			fields := document["settings"].(map[string]any)["repository"].(map[string]any)
-			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || fields["squash_merge_commit_title"] != "COMMIT_OR_PR_TITLE" || fields["squash_merge_commit_message"] != "COMMIT_MESSAGES" || fields["allow_auto_merge"] != false || fields["allow_update_branch"] != false || fields["merge_commit_title"] != "MERGE_MESSAGE" || fields["merge_commit_message"] != "PR_TITLE" || fields["has_discussions"] != false || fields["web_commit_signoff_required"] != false || fields["is_template"] != false || fields["default_branch"] != "main" || len(fields) != 19 {
+			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || fields["squash_merge_commit_title"] != "COMMIT_OR_PR_TITLE" || fields["squash_merge_commit_message"] != "COMMIT_MESSAGES" || fields["allow_auto_merge"] != false || fields["allow_update_branch"] != false || fields["merge_commit_title"] != "MERGE_MESSAGE" || fields["merge_commit_message"] != "PR_TITLE" || fields["has_discussions"] != false || fields["web_commit_signoff_required"] != false || fields["is_template"] != false || fields["default_branch"] != "main" || len(fields) != 21 {
 				t.Fatalf("fields=%v", fields)
 			}
 			input := repositoryInput("merge_commit_message: BLANK\nmerge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\nsquash_merge_commit_title: PR_TITLE\nallow_update_branch: true\nallow_auto_merge: true\ndelete_branch_on_merge: false\nallow_rebase_merge: false\nallow_squash_merge: true\nallow_merge_commit: false\nhas_discussions: true\nhas_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: https://example.com/new\ndescription: ''\n")
@@ -275,7 +277,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "POST /graphql"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "POST /graphql"}) {
 				t.Fatalf("paths=%v", paths)
 			}
 		})

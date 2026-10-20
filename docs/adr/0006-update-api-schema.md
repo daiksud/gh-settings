@@ -10,7 +10,7 @@ sources:
 
 ## Status
 
-Accepted for field keys and types. The YAML root-placement consequence below was superseded by [ADR 0020](0020-group-settings-by-resource.md).
+Accepted for field keys and types. The YAML root-placement consequence below was superseded by [ADR 0020](0020-group-settings-by-resource.md). The current-source [PR access extension](../features/pull-request-access.feature.md) explicitly maps its two YAML fields to GraphQL inputs and defines mixed REST/GraphQL write ordering; the five-field historical scope below remains unchanged.
 
 ## Context
 

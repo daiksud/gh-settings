@@ -115,6 +115,12 @@ ADRs record the context and consequences of individual decisions. Read their sta
 
 Prefer the Go standard library where sufficient; no command framework is mandated. The selected YAML implementation is maintained by the YAML organization, not the Go team. Its release-candidate dependency is an explicit choice recorded in ADR 0009; current dependency versions belong in [go.mod](../../go.mod).
 
+## Pull request access transport
+
+The unreleased [PR access feature](../features/pull-request-access.feature.md) adds a third complete scalar observation group in `internal/settings`, alongside base REST and merge-related GraphQL values. Existing field IDs, requested observation routing and native report presentation retain omission and stable order. Export requests all twenty-one scalar fields; selective plan skips clients for unrelated groups.
+
+The [PR access adapter](../../internal/github/pr_access.go) uses GraphQL query variables for complete policy reads and an independently validated repository-ID lookup before a declared-only `updateRepository` mutation. The root composition retains existing REST writes, skips an empty PATCH for PR-only input, and then invokes PR access before later resources. Mutation response values and identity are verified; mixed-resource errors preserve evidence of earlier writes. This does not add a generic backend registry, saved plans, retries, or permission expansion.
+
 ## Future direction
 
 Pages and Actions settings remain outside current support. Rulesets lifecycle and PR/check rules are implemented in current source, unreleased. Label definitions are implemented in current source; individual issue/PR assignment management, renaming, and archive settings are not part of that feature.

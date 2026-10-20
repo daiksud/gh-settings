@@ -44,11 +44,29 @@ func main() {
 }
 
 func writeRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
-	client, err := github.NewWriteClient(repo.Host)
-	if err != nil {
-		return err
+	restDesired := desired
+	restDesired.HasPullRequests = nil
+	restDesired.PullRequestCreationPolicy = nil
+	if !restDesired.Empty() {
+		client, err := github.NewWriteClient(repo.Host)
+		if err != nil {
+			return err
+		}
+		if err := client.ApplyRepository(repo, restDesired); err != nil {
+			return err
+		}
 	}
-	return client.ApplyRepository(repo, desired)
+	if desired.PRAccessEmpty() {
+		return nil
+	}
+	client, err := github.NewPRAccessClient(repo.Host)
+	if err == nil {
+		err = client.ApplyPRAccess(repo, desired)
+	}
+	if err != nil && !restDesired.Empty() {
+		return fmt.Errorf("apply PR access (earlier repository writes remain applied): %w", err)
+	}
+	return err
 }
 
 func readTopics(repo repository.Repository) ([]string, error) {

@@ -36,7 +36,7 @@ func TestCompareRepositoryObservationRequiresAcquiredFields(t *testing.T) {
 		{"observed false", &RepositoryState{}, &MergeMethodsState{}, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			observation := NewRepositoryObservation(test.base, test.merge)
+			observation := NewRepositoryObservation(test.base, test.merge, nil)
 			got, err := CompareRepositoryObservation(observation, desired)
 			if test.missing != "" {
 				if err == nil || !strings.Contains(err.Error(), test.missing) || !reflect.DeepEqual(got, Comparison{}) {
@@ -50,7 +50,7 @@ func TestCompareRepositoryObservationRequiresAcquiredFields(t *testing.T) {
 }
 
 func TestRepositoryObservationFields(t *testing.T) {
-	observed := NewRepositoryObservation(&RepositoryState{}, nil)
+	observed := NewRepositoryObservation(&RepositoryState{}, nil, nil)
 	var paths []string
 	for _, field := range observed.Fields() {
 		paths = append(paths, field.Path())
@@ -63,7 +63,7 @@ func TestRepositoryObservationFields(t *testing.T) {
 
 func TestCompareRepositoryObservationPreservesOrderAndNativeValues(t *testing.T) {
 	empty, disabled, title := "", false, "MERGE_MESSAGE"
-	observed := NewRepositoryObservation(&RepositoryState{Description: "old", HasIssues: true}, &MergeMethodsState{MergeCommitTitle: "PR_TITLE"})
+	observed := NewRepositoryObservation(&RepositoryState{Description: "old", HasIssues: true}, &MergeMethodsState{MergeCommitTitle: "PR_TITLE"}, nil)
 	desired := RepositoryDeclaration{Description: &empty, HasIssues: &disabled, AllowMergeCommit: &disabled, MergeCommitTitle: &title}
 	got, err := CompareRepositoryObservation(observed, desired)
 	want := Comparison{Managed: 4, Changes: []Change{
@@ -85,9 +85,10 @@ func TestRepositoryObservationDeclarationRequiresCompleteValues(t *testing.T) {
 	}{
 		{"unread base", nil, &MergeMethodsState{}, "repository.description"},
 		{"unread merge", &RepositoryState{}, nil, "repository.allow_merge_commit"},
+		{"unread PR access", &RepositoryState{}, &MergeMethodsState{}, "repository.has_pull_requests"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := NewRepositoryObservation(test.base, test.merge).Declaration()
+			got, err := NewRepositoryObservation(test.base, test.merge, nil).Declaration()
 			if err == nil || !strings.Contains(err.Error(), test.missing) || !reflect.DeepEqual(got, RepositoryDeclaration{}) {
 				t.Fatalf("declaration=%+v error=%v", got, err)
 			}
@@ -96,7 +97,7 @@ func TestRepositoryObservationDeclarationRequiresCompleteValues(t *testing.T) {
 }
 
 func TestCompleteDeclarationCopiesObservedValues(t *testing.T) {
-	observed := NewRepositoryObservation(&RepositoryState{Description: "before"}, &MergeMethodsState{SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "BLANK"})
+	observed := NewRepositoryObservation(&RepositoryState{Description: "before"}, &MergeMethodsState{SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "BLANK"}, &PRAccessState{PullRequestCreationPolicy: "ALL"})
 	declaration, err := observed.Declaration()
 	if err != nil {
 		t.Fatal(err)

@@ -8,13 +8,16 @@ type RepositoryObservation struct{ values RepositoryDeclaration }
 
 // NewRepositoryObservation copies only complete observations supplied by readers.
 // A nil group means that group was not read.
-func NewRepositoryObservation(base *RepositoryState, merge *MergeMethodsState) RepositoryObservation {
+func NewRepositoryObservation(base *RepositoryState, merge *MergeMethodsState, pr *PRAccessState) RepositoryObservation {
 	var values RepositoryDeclaration
 	if base != nil {
 		values = base.Declaration()
 	}
 	if merge != nil {
 		values = values.WithMergeMethods(*merge)
+	}
+	if pr != nil {
+		values = values.WithPRAccess(*pr)
 	}
 	return RepositoryObservation{values: values}
 }
@@ -37,18 +40,20 @@ func DeclaredRepositoryFields(desired RepositoryDeclaration) []FieldID {
 
 // RepositoryObservationGroups identifies the complete model observations needed
 // for a field request. The adapter selects the API for each observation group.
-func RepositoryObservationGroups(fields []FieldID) (base, merge bool, err error) {
+func RepositoryObservationGroups(fields []FieldID) (base, merge, pr bool, err error) {
 	for _, field := range fields {
 		switch {
 		case containsRepositoryField(repositoryStringFields[:], field), containsRepositoryField(repositoryBoolFields[:], field):
 			base = true
 		case containsRepositoryField(mergeMethodsBoolFields[:], field), containsRepositoryField(mergeMethodsStringFields[:], field):
 			merge = true
+		case containsRepositoryField(prAccessBoolFields[:], field), containsRepositoryField(prAccessStringFields[:], field):
+			pr = true
 		default:
-			return false, false, fmt.Errorf("field %q is not a supported repository observation", field.path)
+			return false, false, false, fmt.Errorf("field %q is not a supported repository observation", field.path)
 		}
 	}
-	return base, merge, nil
+	return base, merge, pr, nil
 }
 
 func containsRepositoryField[S any, V bool | string](fields []repositoryField[S, V], identity FieldID) bool {
@@ -74,6 +79,12 @@ func CompareRepositoryObservation(observed RepositoryObservation, desired Reposi
 		return Comparison{}, err
 	}
 	if err := compareObservedFields(&result, mergeMethodsStringFields[:], observed.values, desired, stringChange); err != nil {
+		return Comparison{}, err
+	}
+	if err := compareObservedFields(&result, prAccessBoolFields[:], observed.values, desired, boolChange); err != nil {
+		return Comparison{}, err
+	}
+	if err := compareObservedFields(&result, prAccessStringFields[:], observed.values, desired, stringChange); err != nil {
 		return Comparison{}, err
 	}
 	return result, nil
@@ -103,7 +114,9 @@ func AllRepositoryFields() []FieldID {
 	fields = appendRepositoryFieldIDs(fields, repositoryStringFields[:])
 	fields = appendRepositoryFieldIDs(fields, repositoryBoolFields[:])
 	fields = appendRepositoryFieldIDs(fields, mergeMethodsBoolFields[:])
-	return appendRepositoryFieldIDs(fields, mergeMethodsStringFields[:])
+	fields = appendRepositoryFieldIDs(fields, mergeMethodsStringFields[:])
+	fields = appendRepositoryFieldIDs(fields, prAccessBoolFields[:])
+	return appendRepositoryFieldIDs(fields, prAccessStringFields[:])
 }
 
 func appendRepositoryFieldIDs[S any, V bool | string](identities []FieldID, fields []repositoryField[S, V]) []FieldID {
@@ -127,6 +140,12 @@ func (observation RepositoryObservation) Declaration() (RepositoryDeclaration, e
 		return RepositoryDeclaration{}, err
 	}
 	if err := copyObservedFields(&result, mergeMethodsStringFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
+	if err := copyObservedFields(&result, prAccessBoolFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
+	if err := copyObservedFields(&result, prAccessStringFields[:], observation.values); err != nil {
 		return RepositoryDeclaration{}, err
 	}
 	return result, nil

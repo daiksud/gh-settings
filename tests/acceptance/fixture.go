@@ -26,6 +26,9 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 		status = 200
 	}
 	return startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		if servePRAccessFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
@@ -76,7 +79,7 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, err
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
-		if readOnly && !isMergeMethodsFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
+		if readOnly && !isMergeMethodsFixtureRead(r) && !isPRAccessFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
 			fixture.invalid.Store(true)
 			http.Error(w, "unexpected fixture request", 400)
 			return
@@ -115,7 +118,7 @@ func (fixture *apiFixture) checkRequests(noRead bool) error {
 const mergeMethodsFixtureResponse = `{"data":{"repository":{"mergeCommitAllowed":false,"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"autoMergeAllowed":false,"allowUpdateBranch":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`
 
 // Only this fixed query to the fixture repository is read-only, never arbitrary POSTs.
-func isMergeMethodsFixtureRead(r *http.Request) bool {
+func isFixedRepositoryFixtureRead(r *http.Request, expected string) bool {
 	if r.Method != http.MethodPost || r.URL.Path != "/graphql" {
 		return false
 	}
@@ -131,6 +134,23 @@ func isMergeMethodsFixtureRead(r *http.Request) bool {
 	if err := json.Unmarshal(body, &query); err != nil {
 		return false
 	}
-	expected := `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed deleteBranchOnMerge autoMergeAllowed allowUpdateBranch squashMergeCommitTitle squashMergeCommitMessage mergeCommitTitle mergeCommitMessage } }`
 	return strings.Join(strings.Fields(query.Query), " ") == expected && len(query.Variables) == 2 && query.Variables["owner"] == "owner" && query.Variables["name"] == "current"
+}
+
+func isMergeMethodsFixtureRead(r *http.Request) bool {
+	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed deleteBranchOnMerge autoMergeAllowed allowUpdateBranch squashMergeCommitTitle squashMergeCommitMessage mergeCommitTitle mergeCommitMessage } }`)
+}
+
+const prAccessFixtureResponse = `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`
+
+func isPRAccessFixtureRead(r *http.Request) bool {
+	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { hasPullRequestsEnabled pullRequestCreationPolicy } }`)
+}
+func servePRAccessFixtureRead(w http.ResponseWriter, r *http.Request) bool {
+	if !isPRAccessFixtureRead(r) {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, prAccessFixtureResponse)
+	return true
 }

@@ -25,7 +25,7 @@ func TestPlanRequestsDiscussionsField(t *testing.T) {
 			if repo.Owner != "owner" || repo.Name != "current" || !reflect.DeepEqual(paths, []string{"repository.has_discussions"}) {
 				t.Fatalf("target=%+v fields=%v", repo, paths)
 			}
-			return settings.NewRepositoryObservation(&settings.RepositoryState{HasDiscussions: true}, nil), nil
+			return settings.NewRepositoryObservation(&settings.RepositoryState{HasDiscussions: true}, nil, nil), nil
 		}})
 	if err != nil || calls != 1 || got.Comparison.Managed != 1 || len(got.Comparison.Changes) != 1 || got.Comparison.Changes[0].Field().Path() != "repository.has_discussions" || comparisonAfterBool(t, got.Comparison.Changes[0]) != false {
 		t.Fatalf("plan=%+v calls=%d error=%v", got, calls, err)

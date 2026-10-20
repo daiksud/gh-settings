@@ -149,14 +149,14 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if validated.runErr != nil || validated.stdout.Len() != 0 || validated.stderr.Len() != 0 || fixture.reads.Load() != 4 {
+	if validated.runErr != nil || validated.stdout.Len() != 0 || validated.stderr.Len() != 0 || fixture.reads.Load() != 5 {
 		t.Fatalf("validate: %v stdout=%q stderr=%q reads=%d", validated.runErr, validated.stdout.String(), validated.stderr.String(), fixture.reads.Load())
 	}
 	planned, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if planned.runErr != nil || planned.stdout.String() != "settings.repository.has_issues: true → false\n" || planned.stderr.Len() != 0 || fixture.reads.Load() != 8 {
+	if planned.runErr != nil || planned.stdout.String() != "settings.repository.has_issues: true → false\n" || planned.stderr.Len() != 0 || fixture.reads.Load() != 10 {
 		t.Fatalf("plan: %v stdout=%q stderr=%q reads=%d", planned.runErr, planned.stdout.String(), planned.stderr.String(), fixture.reads.Load())
 	}
 	if err := fixture.checkRequests(false); err != nil {

@@ -37,6 +37,9 @@ func TestRulesetsExistingPolicyLifecycle(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
+		if servePRAccessFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
 			return
@@ -305,6 +308,9 @@ func TestRulesetsOptedExportFailurePreservesFile(t *testing.T) {
 	binary := acceptanceBinary(t)
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if servePRAccessFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
 			return
