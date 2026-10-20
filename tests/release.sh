@@ -195,6 +195,47 @@ cmp "$fixture/expected-checksums" "$RELEASE_DIR/SHA256SUMS"
 expected_manifest="{\"version\":\"v1.2.3\",\"commit\":\"$SOURCE_SHA\",\"macos_sha256\":\"69e398f9f4479aba0fcc353dc9acb6819c0a7d260f6e104ca65aae7ac2c21b85\",\"linux_sha256\":\"8e05650e3597d536838387f4fb4f08fbd95624760f1ce44bbff4e35de8a353e8\",\"checksums_sha256\":\"98f9ece90dea10c02544983c6f8bc3e3ccef162fa20869eecebe1df30b297abe\"}"
 IFS= read -r actual_marker < "$fixture/body"
 [[ "$actual_marker" == "<!-- gh-settings-release: $expected_manifest -->" ]]
+# Compare the complete body with the former shell template, including long notes.
+(
+  cd "$fixture/source"
+  go run ./scripts/release-notes/main.go "$GITHUB_REPOSITORY" "$VERSION" "$SOURCE_SHA" "$fixture/catalog.json"
+) > "$fixture/expected-changes"
+marker="<!-- gh-settings-release: $expected_manifest -->"
+repo="$GITHUB_REPOSITORY"
+macos=gh-settings-darwin-arm64
+linux=gh-settings-linux-amd64
+checksums=SHA256SUMS
+cat > "$fixture/expected-notes" <<EOF
+$marker
+
+$(cat "$fixture/expected-changes")
+
+---
+
+## 📦 Installation
+
+\`\`\`sh
+gh extension install $repo
+\`\`\`
+
+Already installed? Run \`gh extension upgrade ${repo##*/}\`.
+
+Or download \`$macos\` (macOS Apple Silicon) or \`$linux\` (Linux x86_64) below and verify it with \`SHA256SUMS\`.
+
+<details>
+<summary>🔐 SHA-256 checksums</summary>
+
+\`\`\`text
+$(cat "$RELEASE_DIR/$checksums")
+\`\`\`
+
+</details>
+
+Built from main commit [\`${SOURCE_SHA:0:7}\`](https://github.com/$repo/commit/$SOURCE_SHA).
+EOF
+# The local gh stand-in writes decoded body with jq -r, adding one newline.
+printf '\n' >> "$fixture/expected-notes"
+cmp "$fixture/expected-notes" "$fixture/body"
 [[ "$(cat "$fixture/draft")" == false ]]
 [[ "$(find "$fixture/assets" -type f | wc -l | tr -d ' ')" == 3 ]]
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 3 ]]
