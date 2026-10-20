@@ -46,11 +46,29 @@ settings: {actions: {allowed_actions: selected, selected_actions: {github_owned_
 	if err != nil || strings.Contains(content, "<blocked>") || !strings.Contains(html.UnescapeString(content), "(unavailable while policy is not selected) → false") {
 		t.Fatal(content, err)
 	}
+	for _, before := range []any{true, false} {
+		forged := report
+		forged.Actions = append([]actions.PlanChange{}, report.Actions...)
+		forged.Actions[1].Before = before
+		if _, err := actions.RenderSummary(forged, summaryMetadata()); err == nil {
+			t.Fatal("inactive selected value presented as observed", before)
+		}
+	}
+	forged := report
+	forged.Actions = append([]actions.PlanChange{}, report.Actions...)
+	forged.Actions[1].Before = true
+	forged.Actions[2].Before = true
+	forged.Actions[3].Before = []any{"invented/*"}
+	if _, err := actions.RenderSummary(forged, summaryMetadata()); err == nil {
+		t.Fatal("all inactive selected values presented as observed")
+	}
 	for _, invalid := range []actions.PlanReport{
 		{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Actions: report.Actions[1:2]},
 		{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: "actions.enabled", Before: nil, After: false}}},
 		{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: "actions.allowed_actions", Before: "all", After: "unknown"}}},
 		{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: "actions.selected_actions.patterns_allowed", Before: []any{}, After: []any{false}}}},
+		{Outcome: "changed", Target: "owner/current", Managed: 2, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: "actions.allowed_actions", Before: "selected", After: "all"}, {Field: "actions.selected_actions.verified_allowed", Before: true, After: false}}},
+		{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: "actions.allowed_actions", Before: "all", After: "selected"}}},
 	} {
 		if _, err := actions.RenderSummary(invalid, summaryMetadata()); err == nil {
 			t.Fatal("invalid native/unknown report accepted", invalid)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 )
 
 const ActionsPolicyFieldCount = 6
@@ -210,6 +211,8 @@ func ValidateActionsPolicyChanges(changes []ActionsPolicyChange) error {
 	seen := map[string]bool{}
 	unknown := 0
 	transition := false
+	selectedChanges := 0
+	leavingSelected := false
 	for _, c := range changes {
 		if seen[c.field] {
 			return fmt.Errorf("duplicate Actions change")
@@ -221,12 +224,18 @@ func ValidateActionsPolicyChanges(changes []ActionsPolicyChange) error {
 		if c.before == nil {
 			unknown++
 		}
+		if strings.HasPrefix(c.field, "actions.selected_actions.") {
+			selectedChanges++
+		}
 		if c.field == "actions.allowed_actions" && c.before != "selected" && c.after == "selected" {
 			transition = true
 		}
+		if c.field == "actions.allowed_actions" && c.after != "selected" {
+			leavingSelected = true
+		}
 	}
-	if unknown > 0 && (unknown != 3 || !transition) {
-		return fmt.Errorf("unobservable selected values require a complete transition to selected")
+	if (unknown > 0 && !transition) || (transition && unknown != 3) || (leavingSelected && selectedChanges > 0) {
+		return fmt.Errorf("invalid Actions policy/selection transition: inactive values must be unavailable and selected writes require selected policy")
 	}
 	return nil
 }
