@@ -14,7 +14,7 @@ import (
 func TestWebCommitSignoffReadRequiresBoolean(t *testing.T) {
 	for _, value := range []string{"true", "false", "null", `"false"`, "0", "[]", "{}", "missing"} {
 		t.Run(value, func(t *testing.T) {
-			body := `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false`
+			body := `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"is_template":false`
 			if value != "missing" {
 				body += `,"web_commit_signoff_required":` + value
 			}

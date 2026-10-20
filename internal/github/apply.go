@@ -34,6 +34,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		HasWiki                  *bool   `json:"has_wiki,omitempty"`
 		HasDiscussions           *bool   `json:"has_discussions,omitempty"`
 		WebCommitSignoffRequired *bool   `json:"web_commit_signoff_required,omitempty"`
+		IsTemplate               *bool   `json:"is_template,omitempty"`
 		AllowMergeCommit         *bool   `json:"allow_merge_commit,omitempty"`
 		AllowSquashMerge         *bool   `json:"allow_squash_merge,omitempty"`
 		AllowRebaseMerge         *bool   `json:"allow_rebase_merge,omitempty"`
@@ -46,7 +47,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		MergeCommitMessage       *string `json:"merge_commit_message,omitempty"`
 	}{
 		Description: desired.Description, Homepage: desired.Homepage,
-		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki, HasDiscussions: desired.HasDiscussions, WebCommitSignoffRequired: desired.WebCommitSignoffRequired,
+		HasIssues: desired.HasIssues, HasProjects: desired.HasProjects, HasWiki: desired.HasWiki, HasDiscussions: desired.HasDiscussions, WebCommitSignoffRequired: desired.WebCommitSignoffRequired, IsTemplate: desired.IsTemplate,
 		AllowMergeCommit: desired.AllowMergeCommit, AllowSquashMerge: desired.AllowSquashMerge, AllowRebaseMerge: desired.AllowRebaseMerge, DeleteBranchOnMerge: desired.DeleteBranchOnMerge, AllowAutoMerge: desired.AllowAutoMerge, AllowUpdateBranch: desired.AllowUpdateBranch,
 		SquashMergeCommitTitle: desired.SquashMergeCommitTitle, SquashMergeCommitMessage: desired.SquashMergeCommitMessage,
 		MergeCommitTitle: desired.MergeCommitTitle, MergeCommitMessage: desired.MergeCommitMessage,

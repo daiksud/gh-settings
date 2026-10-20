@@ -29,3 +29,5 @@ The v0.14.0 [normal merge commit defaults](merge-commit-defaults.feature.md) add
 v0.15.0 adds the optional [`has_discussions` setting](discussions.feature.md) through the repository REST read/write path with a verified PATCH response.
 
 Current source adds the unreleased [web commit sign-off requirement](web-commit-signoff.feature.md) through the existing repository REST read/write path.
+
+Current source also adds the unreleased [template repository setting](template-repository.feature.md) through the existing repository REST read/write path.

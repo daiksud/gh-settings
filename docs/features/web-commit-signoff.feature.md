@@ -11,7 +11,7 @@ Implemented in current source, unreleased. Published v0.15.1 and older CLI/Actio
 - Export includes the observed boolean only after all required reads succeed. A failed read preserves the destination. Exported false remains an explicit declaration.
 - Plan is read-only, compares declared values only, and places this field after `has_discussions` and before merge-related fields. This field alone needs no GraphQL request.
 - Apply sends only declared fields through one repository PATCH, with no preliminary GET. An explicit false is sent as native JSON false; omission does not add the key or alter other fields. Existing API errors stop later resources and do not imply rollback.
-- CLI output and Actions report/Summary use `settings.repository.web_commit_signoff_required` with native boolean values. The source report maximum becomes nineteen: seventeen repository fields, topics and labels.
+- CLI output and Actions report/Summary use `settings.repository.web_commit_signoff_required` with native boolean values. The source report maximum is twenty: eighteen repository fields, topics and labels.
 - The setting applies to web-based commit sign-off. It does not require cryptographic signatures, install a DCO check, rewrite commits or change protections.
 
 ## API and evidence boundaries
