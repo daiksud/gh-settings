@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/daiksud/gh-settings/internal/settings"
 	"go.yaml.in/yaml/v4"
@@ -62,6 +63,15 @@ func rulesetYAMLValue(node *yaml.Node, context string, depth int) (any, error) {
 			if k == "bypass_actors" {
 				next = "actor"
 			}
+			if k == "required_status_checks" {
+				next = "status_check"
+			}
+			if k == "required_reviewers" {
+				next = "required_reviewer"
+			}
+			if k == "allowed_actors" {
+				next = "review_actor"
+			}
 			value, err := rulesetYAMLValue(&v, next, depth+1)
 			if err != nil {
 				return nil, err
@@ -90,10 +100,10 @@ func rulesetYAMLValue(node *yaml.Node, context string, depth int) (any, error) {
 			}
 			return i, nil
 		case "!!bool":
-			if n.Value != "true" && n.Value != "false" {
+			if !strings.EqualFold(n.Value, "true") && !strings.EqualFold(n.Value, "false") {
 				return nil, fmt.Errorf("ruleset boolean must be true or false")
 			}
-			return n.Value == "true", nil
+			return strings.EqualFold(n.Value, "true"), nil
 		}
 	}
 	return nil, fmt.Errorf("null or unsupported ruleset YAML value")
@@ -110,6 +120,16 @@ func rulesetYAMLKey(context, key string) bool {
 		allowed = []string{"include", "exclude"}
 	case "rule":
 		allowed = []string{"type", "parameters"}
+	case "parameters":
+		allowed = []string{"allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create"}
+	case "dismissal_restriction":
+		allowed = []string{"enabled", "allowed_actors"}
+	case "review_actor", "reviewer":
+		allowed = []string{"id", "type"}
+	case "required_reviewer":
+		allowed = []string{"reviewer", "minimum_approvals", "file_patterns"}
+	case "status_check":
+		allowed = []string{"context", "integration_id"}
 	case "actor":
 		allowed = []string{"actor_type", "actor_id", "bypass_mode"}
 	}

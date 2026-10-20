@@ -31,8 +31,8 @@ type BypassActor struct {
 	BypassMode *string `json:"bypass_mode,omitempty" yaml:"bypass_mode,omitempty"`
 }
 type RulesetRule struct {
-	Type       string    `json:"type" yaml:"type"`
-	Parameters *struct{} `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Type       string          `json:"type" yaml:"type"`
+	Parameters *RuleParameters `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 }
 
 // RulesetState contains a complete supported writable policy and its transport ID.
@@ -58,7 +58,7 @@ func validRulesetText(value string) bool {
 	return true
 }
 func supportedRule(kind string) bool {
-	return slices.Contains([]string{"deletion", "non_fast_forward", "required_linear_history", "required_signatures"}, kind)
+	return slices.Contains([]string{"deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if !validRulesetText(d.Name) {
@@ -94,6 +94,12 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 				return fmt.Errorf("unsupported or duplicate ruleset rule %q", r.Type)
 			}
 			seen[r.Type] = true
+			if r.Type == "pull_request" && d.Target != nil && *d.Target != "branch" {
+				return fmt.Errorf("pull_request rule requires branch target")
+			}
+			if err := validateRule(r, complete); err != nil {
+				return err
+			}
 		}
 	}
 	if d.BypassActors != nil {
@@ -198,7 +204,7 @@ func cloneRuleset(d RulesetDeclaration) RulesetDeclaration {
 	if d.Rules != nil {
 		r := append([]RulesetRule{}, (*d.Rules)...)
 		for i := range r {
-			r[i].Parameters = nil
+			r[i] = cloneRulesetRule(r[i])
 		}
 		slices.SortFunc(r, func(a, b RulesetRule) int { return strings.Compare(a.Type, b.Type) })
 		d.Rules = &r
@@ -378,6 +384,16 @@ func mergeRuleset(before, desired RulesetDeclaration) RulesetDeclaration {
 		out.Enforcement = d.Enforcement
 	}
 	if d.Rules != nil {
+		old := map[string]RulesetRule{}
+		for _, r := range *before.Rules {
+			old[r.Type] = r
+		}
+		for i := range *d.Rules {
+			r := &(*d.Rules)[i]
+			if prior, ok := old[r.Type]; ok {
+				r.Parameters = mergeRuleParameters(prior.Parameters, r.Parameters)
+			}
+		}
 		out.Rules = d.Rules
 	}
 	if d.Conditions != nil && d.Conditions.RefName != nil {

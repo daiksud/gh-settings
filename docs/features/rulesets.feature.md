@@ -6,13 +6,13 @@ description: Planned ownership, round-trip, reconciliation, and acceptance contr
 
 ## Status and goal
 
-The basic subset from #336 is implemented in current source and **unreleased**; published v0.16.0 and older CLI/Action packages reject it. [ADR 0025](../adr/0025-declarative-repository-rulesets.md) records the accepted design. The [user contract](../settings.md#rulesets-unreleased) owns usage and scope. PR/check identities, parameters and acceptance requirements below remain future #337 work, not current support.
+The basic subset from #336 and PR/check extension from #337 are implemented in current source and **unreleased**; published v0.16.0 and older CLI/Action packages reject it. [ADR 0025](../adr/0025-declarative-repository-rulesets.md) records the accepted design. The [user contract](../settings.md#rulesets-unreleased) owns usage and scope. The PR/check extension uses the same declaration contract and preserves ordered reviewer patterns.
 
 The adoption path is: export existing repository configuration, validate it, plan without changes and obtain zero Rulesets differences, edit the desired state, then reconcile creates/updates/deletes. The [labels contract](labels.feature.md) supplies collection membership and retained-attribute semantics; it does not establish Rulesets API identity or PUT behavior.
 
 ## Ownership and identity
 
-| Object | Ownership and matching (PR/check rows are future work) |
+| Object | Ownership and matching |
 | --- | --- |
 | Repository-owned branch/tag Ruleset | Member of `settings.rulesets`, identified by exact `name`; ID is observed transport identity, not YAML configuration. |
 | Organization/enterprise/inherited Ruleset | Outside the managed collection; never exported as repository-owned, matched by name, updated, or deleted. |
@@ -47,7 +47,7 @@ settings:
         - type: required_linear_history
 ```
 
-This illustrative basic-only declaration is not an export of this repository's active protection. Removing PR/check rules from an authoritative `rules` list would remove those rules after that type is supported; do not use this example to replace existing policy.
+This illustrative basic-only declaration is not an export of this repository's active protection. Removing PR/check rules from an authoritative `rules` list removes those rules; do not use this example to replace existing policy.
 
 | Declaration | Meaning |
 | --- | --- |
@@ -74,7 +74,7 @@ Bypass declarations use API actor types and IDs, not name lookup. A new actor mu
 - Validate every required value, complete supported writable rule parameters and nested collections, unique identity, and ownership. Do not follow arbitrary response links for authenticated requests. An exact full page requires another page; later failure invalidates the observation.
 - Missing `bypass_actors` means an incomplete observation, even if other fields are present. It never means no actors. Reject before saving or issuing Rulesets writes, including a declared empty outer list.
 - Explicitly classify response-only metadata (`id`, `node_id`, source ownership, links, timestamps, `current_user_can_bypass` and other documented read-only fields); do not serialize it as desired state. [GitHub documents bypass-status metadata](https://github.blog/changelog/2023-06-27-repository-rules-public-beta-updates/) as caller context, not desired policy or evidence of complete bypass-actor visibility. Unknown content that might affect writable policy, unknown rules or parameters, and unrecognized enforcement/actor values fail the complete owned observation. Do not drop or blindly replay them.
-- Export every supported owned branch/tag member and all its writable attributes, including explicit empty lists, booleans and numbers. Canonical ordering is by the identity keys above (numeric IDs numerically, absent optional IDs first); ref include/exclude, allowed merge methods and reviewer file patterns use exact string sorting for serialization and set equality, with duplicates rejected. Do not treat an arbitrary new API array as a set without verifying its contract. Mapping order has no semantic effect.
+- Export every supported owned branch/tag member and all its writable attributes, including explicit empty lists, booleans and numbers. Canonical ordering is by the identity keys above (numeric IDs numerically, absent optional IDs first); ref include/exclude and allowed merge methods use exact string sorting for serialization and set equality, with duplicates rejected. Reviewer `file_patterns` are ordered sequences: preserve order and repeated patterns exactly, including negations; reordering is a real policy difference. [GitHub documents ordered matching](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#required-reviewers), so these patterns must never be normalized as a set. Do not treat an arbitrary new API array as a set without verifying its contract. Mapping order has no semantic effect.
 - Rules and actor/check lists compare by identity, not array position. Preserve meaningful parameter values and API defaults observed in complete reads; never normalize distinct policies into equality. API nullable identifiers, such as an any-source check integration, map to an absent optional YAML ID only after that equivalence is verified; missing required response fields remain errors.
 - Finish all existing resource reads, Rulesets reads and serialization before opening the destination. Failure preserves the old configuration, with no partial export. Excluded push/inherited policy is outside the zero-difference guarantee, which concerns owned branch/tag desired state, not effective protection.
 
@@ -100,9 +100,9 @@ Push/file restrictions, merge queues, deployments, code-scanning/licensing rules
 
 [#335](https://github.com/daiksud/gh-settings/issues/335) completes this design only. No live policy, permission, workflow or release changes are part of it. Any future live API write verification needs separately authorized targets; local fixtures and read-only evidence do not prove write compatibility.
 
-[#336](https://github.com/daiksud/gh-settings/issues/336) implements one complete basic vertical feature: declaration/codec, complete reads, explicit export opt-in, comparison/CRUD and CLI/Action presentation. The initial supported rule types are `deletion`, `non_fast_forward`, `required_linear_history` and `required_signatures`. It must reject owned observations containing PR/check or other unsupported rules, including during empty-list reconciliation, and cannot claim to codify those repositories yet.
+[#336](https://github.com/daiksud/gh-settings/issues/336) implements one complete basic vertical feature: declaration/codec, complete reads, explicit export opt-in, comparison/CRUD and CLI/Action presentation. The initial supported rule types are `deletion`, `non_fast_forward`, `required_linear_history` and `required_signatures`. That initial implementation rejected PR/check observations; #337 extends the supported subset while continuing to reject other unsupported rules.
 
-[#337](https://github.com/daiksud/gh-settings/issues/337) adds `pull_request` and `required_status_checks`, including complete writable parameter coverage required for existing configuration. Cover review counts, dismissal/owner/last-push/thread settings, allowed merge methods, reviewer restrictions, required reviewers, check context/integration, strictness and creation behavior when exposed by the selected API. Newly returned parameters such as `require_extra_approval_for_unattributed_changes` require explicit writable/read-only classification and preservation evidence; do not silently drop them or claim a lossless round trip before resolving them. If the API cannot preserve a parameter, report that concrete limitation rather than declaring adoption complete.
+[#337](https://github.com/daiksud/gh-settings/issues/337) adds `pull_request` and `required_status_checks`, including complete writable parameter coverage required for existing configuration. Cover review counts, dismissal/owner/last-push/thread settings, allowed merge methods, reviewer restrictions, required reviewers, check context/integration, strictness and creation behavior when exposed by the selected API. Newly returned parameters such as `require_extra_approval_for_unattributed_changes` require explicit writable/read-only classification and preservation evidence; do not silently drop them or claim a lossless round trip before resolving them. The extra-approval flag is treated as an explicit optional boolean based on the documented preview control and observed REST shape. PR/check write responses must retain the complete requested policy; a mismatch stops subsequent operations and reports that writes may already have applied. This verifies the returned policy without claiming live write compatibility or rollback.
 
 | Boundary | Required fixtures and outcomes |
 | --- | --- |
@@ -113,7 +113,7 @@ Push/file restrictions, merge queues, deployments, code-scanning/licensing rules
 | CLI / Action | Explicit export opt-in, default export compatibility, managed count and escaped nested diffs/protection deletion, coherent private report/Summary validation and output on failures. |
 | Built-product acceptance | Isolated existing-policy export → zero plan → edit/add/remove → exact CRUD → zero plan and no-write repeat apply; inherited/push/legacy objects untouched; mixed-resource partial failure and read-permission failure. |
 
-Use local HTTP/files/Git fixtures with dummy credentials. Under #337, include a fixture shaped like an existing default-branch policy with bypass `[]`, three basic rules, PR approvals, and two integration-bound required checks, including every observed policy parameter. This must not install or modify the active repository Ruleset. Test mappings are added only when the corresponding tests exist; this design document itself is not executed by CI.
+Use local HTTP/files/Git fixtures with dummy credentials. The #337 tests include a fixture shaped like an existing default-branch policy with bypass `[]`, three basic rules, PR approvals, and two integration-bound required checks, including every observed policy parameter. This must not install or modify the active repository Ruleset. Test mappings are added only when the corresponding tests exist; this design document itself is not executed by CI.
 
 ## Existing test mapping and evidence limits
 
@@ -127,3 +127,5 @@ Use local HTTP/files/Git fixtures with dummy credentials. Under #337, include a 
 | Built CLI export/zero-plan/edit/CRUD/repeat, unsupported policy, redirects and preserved export | [Rulesets process acceptance](../../tests/acceptance/rulesets_test.go) |
 
 Tests use isolated Git/files and a local API with dummy credentials, not live policy writes. They do not establish actual write grants or published-package support. The API adapter pins `2026-03-10`; GitHub can still return additional unsupported content, which is rejected.
+
+PR/check coverage additionally lives in [parameter model tests](../../internal/settings/ruleset_parameters_test.go), [codec tests](../../internal/workspace/ruleset_parameters_test.go), [API tests](../../internal/github/ruleset_parameters_test.go), [Action tests](../../internal/actions/ruleset_parameters_test.go), and [built-product acceptance](../../tests/acceptance/ruleset_parameters_test.go). These cover ordered/repeated patterns, retained attributes, false/zero/empty, any-source versus App identity, exact full-policy writes and response mismatch stopping later deletes.

@@ -8,7 +8,7 @@ Current source also supports the unreleased [`is_template` setting](settings.md#
 
 The unreleased [`default_branch` setting](settings.md#default-branch-unreleased) uses the same Administration-write repository PATCH and validates its returned name. Published v0.15.1 and older packages reject the key; no Action input or permission expansion is introduced.
 
-Current source additionally supports [basic Rulesets declarations](settings.md#rulesets-unreleased) in validate/plan/apply and native before/after policy Summary entries. This is unreleased: published v0.16.0 and older packages reject the group. Complete Rulesets plan reads need bypass visibility (write access to the Ruleset); hidden or unsupported policy fails instead of becoming empty. Existing Action inputs and caller grants are unchanged; there is no Action export command.
+Current source additionally supports [Rulesets declarations with basic, PR review and required check rules](settings.md#rulesets-unreleased) in validate/plan/apply and native before/after policy Summary entries. This is unreleased: published v0.16.0 and older packages reject the group. Complete Rulesets plan reads need bypass visibility (write access to the Ruleset); hidden or unsupported policy fails instead of becoming empty. Existing Action inputs and caller grants are unchanged; there is no Action export command.
 
 ## Public Action and supported checkout
 

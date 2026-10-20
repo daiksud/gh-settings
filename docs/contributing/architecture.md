@@ -6,7 +6,7 @@ This page explains the design for contributors. The [settings reference](../sett
 
 gh-settings lets repository maintainers record intended settings in version control, review differences, and apply declared values. It is inspired by [babarot/gh-infra](https://github.com/babarot/gh-infra), [noirbizarre/gh-settings](https://github.com/noirbizarre/gh-settings), and [the GitHub Terraform provider](https://github.com/integrations/terraform-provider-github), rather than being a fork of those implementations.
 
-Configuration lives at the current checkout's root `.github/settings.yml` and targets only that checkout's GitHub.com repository. Current resources are repository fields, topics, labels, and the unreleased basic repository-owned branch/tag Rulesets subset. The [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) owns supported-version and adoption guidance. Organization settings, inherited organization rulesets, and management of multiple repositories are outside this product boundary.
+Configuration lives at the current checkout's root `.github/settings.yml` and targets only that checkout's GitHub.com repository. Current resources are repository fields, topics, labels, and the unreleased repository-owned branch/tag Rulesets subset. The [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) owns supported-version and adoption guidance. Organization settings, inherited organization rulesets, and management of multiple repositories are outside this product boundary.
 
 Written fields are managed and authoritative; omitted fields remain unmanaged. Declaring a labels list additionally owns its collection membership, while omitted attributes of retained labels stay unmanaged. Configuration keys and value types follow the corresponding update request schema, within the explicit versioned resource grouping. A repository GET response does not define the writable configuration schema. The [settings reference](../settings.md#configuration-semantics) owns exact field, omission, null, and grouping behavior.
 
@@ -117,7 +117,7 @@ Prefer the Go standard library where sufficient; no command framework is mandate
 
 ## Future direction
 
-Pages and Actions settings remain outside current support. Rulesets basic lifecycle is implemented in current source, unreleased; PR/check rule support remains future work. Label definitions are implemented in current source; individual issue/PR assignment management, renaming, and archive settings are not part of that feature.
+Pages and Actions settings remain outside current support. Rulesets lifecycle and PR/check rules are implemented in current source, unreleased. Label definitions are implemented in current source; individual issue/PR assignment management, renaming, and archive settings are not part of that feature.
 
 [ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. The [Rulesets specification](../features/rulesets.feature.md) owns exact-name-to-ID matching, nested identity, deletion, complete observations, export opt-in and staged acceptance criteria. Inherited/push Rulesets and legacy branch protection remain outside that managed collection; legacy protection implementation is deferred. Published v0.16.0 and older CLI/Action packages do not support this source-only feature.
 

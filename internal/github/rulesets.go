@@ -174,7 +174,8 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 		return settings.RulesetDeclaration{}, err
 	}
 	policy["bypass_actors"] = encoded
-	// Null parameters are not the empty mapping of these parameter-free rules.
+	// Nullable integration_id is GitHub's any-source check identity. YAML retains omission,
+	// never null. Reject null containers/parameters; do not synthesize policy defaults.
 	var rules []map[string]json.RawMessage
 	if err := requiredRuleJSON(policy, "rules", &rules); err != nil {
 		return settings.RulesetDeclaration{}, err
@@ -183,7 +184,50 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 		if v, ok := r["parameters"]; ok && bytes.Equal(bytes.TrimSpace(v), []byte("null")) {
 			return settings.RulesetDeclaration{}, fmt.Errorf("null rule parameters")
 		}
+		var kind string
+		if err := requiredRuleJSON(r, "type", &kind); err != nil {
+			return settings.RulesetDeclaration{}, err
+		}
+		if kind != "required_status_checks" {
+			continue
+		}
+		if raw, ok := r["parameters"]; ok {
+			var params map[string]json.RawMessage
+			if err := json.Unmarshal(raw, &params); err != nil {
+				return settings.RulesetDeclaration{}, err
+			}
+			if raw, ok := params["required_status_checks"]; ok {
+				var checks []map[string]json.RawMessage
+				if err := json.Unmarshal(raw, &checks); err != nil {
+					return settings.RulesetDeclaration{}, err
+				}
+				if checks == nil {
+					return settings.RulesetDeclaration{}, fmt.Errorf("null required status checks")
+				}
+				for _, c := range checks {
+					if raw, ok := c["integration_id"]; ok && bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+						delete(c, "integration_id")
+					}
+				}
+				encoded, err := json.Marshal(checks)
+				if err != nil {
+					return settings.RulesetDeclaration{}, err
+				}
+				params["required_status_checks"] = encoded
+			}
+			encoded, err := json.Marshal(params)
+			if err != nil {
+				return settings.RulesetDeclaration{}, err
+			}
+			r["parameters"] = encoded
+		}
 	}
+	encodedRules, err := json.Marshal(rules)
+	if err != nil {
+		return settings.RulesetDeclaration{}, err
+	}
+	policy["rules"] = encodedRules
+
 	data, err := json.Marshal(policy)
 	if err != nil {
 		return settings.RulesetDeclaration{}, err
@@ -247,19 +291,68 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err != nil {
 		return err
 	}
+	var response map[string]json.RawMessage
+	var output any
+	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
+		if policy == nil {
+			continue
+		}
+		for _, rule := range *policy.Rules {
+			if rule.Type == "pull_request" || rule.Type == "required_status_checks" {
+				output = &response
+				break
+			}
+		}
+	}
 	switch change.Operation() {
 	case "create":
-		return client.rest.Post(path, bytes.NewReader(data), nil)
+		err = client.rest.Post(path, bytes.NewReader(data), output)
 	case "update":
-		return client.rest.Put(path+"/"+strconv.FormatInt(change.ID(), 10), bytes.NewReader(data), nil)
+		err = client.rest.Put(path+"/"+strconv.FormatInt(change.ID(), 10), bytes.NewReader(data), output)
 	default:
 		return fmt.Errorf("invalid Ruleset operation")
 	}
+	if err != nil {
+		return err
+	}
+	if output != nil {
+		if err := verifyReviewRulesetResponse(*after, response); err != nil {
+			return fmt.Errorf("verify Ruleset response (repository writes may already have applied): %w", err)
+		}
+	}
+	return nil
+}
+
+// Verify parameterized response values without an extra GET or rollback. A new
+// optional default remains unmanaged when omitted from the requested policy.
+func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[string]json.RawMessage) error {
+	policy, err := decodeRulesetPolicy(raw)
+	if err != nil {
+		return err
+	}
+	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 1, Policy: policy}}, 0)
+	if err != nil {
+		return err
+	}
+	declaration, err := settings.NewRulesetDeclarations([]settings.RulesetDeclaration{desired})
+	if err != nil {
+		return err
+	}
+	changes, err := settings.ReconcileRulesets(observed, &declaration)
+	if err != nil {
+		return err
+	}
+	if len(changes) != 0 {
+		return fmt.Errorf("GitHub response did not retain the requested Ruleset policy")
+	}
+	return nil
 }
 
 // Check exact JSON keys before Go's case-insensitive struct-field decoder.
 func checkRulesetResponseKeys(value any, context string) error {
 	switch node := value.(type) {
+	case nil:
+		return fmt.Errorf("null Ruleset response value")
 	case []any:
 		for _, v := range node {
 			if err := checkRulesetResponseKeys(v, context); err != nil {
@@ -279,6 +372,16 @@ func checkRulesetResponseKeys(value any, context string) error {
 			allowed = []string{"actor_type", "actor_id", "bypass_mode"}
 		case "rule":
 			allowed = []string{"type", "parameters"}
+		case "parameters":
+			allowed = []string{"allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create"}
+		case "dismissal_restriction":
+			allowed = []string{"enabled", "allowed_actors"}
+		case "review_actor", "reviewer":
+			allowed = []string{"id", "type"}
+		case "required_reviewer":
+			allowed = []string{"reviewer", "minimum_approvals", "file_patterns"}
+		case "status_check":
+			allowed = []string{"context", "integration_id"}
 		}
 		for key, v := range node {
 			known := false
@@ -297,6 +400,15 @@ func checkRulesetResponseKeys(value any, context string) error {
 			}
 			if key == "rules" {
 				next = "rule"
+			}
+			if key == "required_status_checks" {
+				next = "status_check"
+			}
+			if key == "required_reviewers" {
+				next = "required_reviewer"
+			}
+			if key == "allowed_actors" {
+				next = "review_actor"
 			}
 			if err := checkRulesetResponseKeys(v, next); err != nil {
 				return err

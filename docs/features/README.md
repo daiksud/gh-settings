@@ -36,4 +36,4 @@ Current source adds the unreleased [default branch setting](default-branch.featu
 
 These three current-source features are planned for v0.16.0 and remain unreleased until the separate release workflow publishes and verifies the matching package.
 
-The [Rulesets design](rulesets.feature.md) records the accepted declaration/reconciliation contract and its current-source, unreleased basic implementation. PR/check support remains future work; published v0.16.0 and older CLI/Action packages reject Rulesets.
+The [Rulesets design](rulesets.feature.md) records the accepted declaration/reconciliation contract and its current-source, unreleased implementation, including PR/check rules; published v0.16.0 and older CLI/Action packages reject Rulesets.

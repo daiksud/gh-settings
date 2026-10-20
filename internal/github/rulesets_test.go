@@ -72,7 +72,7 @@ func TestRulesetsRejectIncompleteAndUnknownPolicy(t *testing.T) {
 			}
 		})
 	}
-	for _, body := range []string{strings.Replace(basicRulesetJSON, `"bypass_actors":[],`, "", 1), strings.Replace(basicRulesetJSON, `"bypass_actors":[]`, `"bypass_actors":null`, 1), strings.Replace(basicRulesetJSON, `"exclude":[]`, `"exclude":null`, 1), strings.Replace(basicRulesetJSON, `"exclude":[],`, "", 1), strings.Replace(basicRulesetJSON, `"type":"deletion"`, `"type":"pull_request"`, 1), strings.Replace(basicRulesetJSON, `"type":"deletion"`, `"type":"deletion","parameters":null`, 1), strings.Replace(basicRulesetJSON, `"target":"branch"`, `"target":null`, 1), strings.Replace(basicRulesetJSON, `"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]`, `"rules":null`, 1)} {
+	for _, body := range []string{strings.Replace(basicRulesetJSON, `"bypass_actors":[],`, "", 1), strings.Replace(basicRulesetJSON, `"bypass_actors":[]`, `"bypass_actors":null`, 1), strings.Replace(basicRulesetJSON, `"exclude":[]`, `"exclude":null`, 1), strings.Replace(basicRulesetJSON, `"exclude":[],`, "", 1), strings.Replace(basicRulesetJSON, `"type":"deletion"`, `"type":"merge_queue"`, 1), strings.Replace(basicRulesetJSON, `"type":"deletion"`, `"type":"deletion","parameters":null`, 1), strings.Replace(basicRulesetJSON, `"target":"branch"`, `"target":null`, 1), strings.Replace(basicRulesetJSON, `"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]`, `"rules":null`, 1)} {
 		if body == basicRulesetJSON {
 			continue
 		}

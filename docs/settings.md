@@ -285,7 +285,7 @@ This response normalization does not make explicit YAML null valid input. The pu
 
 ## Rulesets (unreleased)
 
-Current source adds `settings.rulesets` for repository-owned branch/tag Rulesets with only `deletion`, `non_fast_forward`, `required_linear_history` and `required_signatures` rules. Published v0.16.0 and older CLI/Action packages reject this group and the new export option. Use a source-built CLI for these capabilities until a supporting package is published; checking out newer Action source still installs its selected published CLI.
+Current source adds `settings.rulesets` for repository-owned branch/tag Rulesets with `deletion`, `non_fast_forward`, `required_linear_history`, `required_signatures`, `pull_request` and `required_status_checks` rules. Published v0.16.0 and older CLI/Action packages reject this group and the new export option. Use a source-built CLI for these capabilities until a supporting package is published; checking out newer Action source still installs its selected published CLI.
 
 ```yaml
 schemaVersion: 1
@@ -319,17 +319,56 @@ Ruleset identity uses exact names without trimming, case folding or rename infer
 
 New Rulesets require explicit name, branch/tag target, enforcement (`active`, `disabled`, or `evaluate`), both ref condition lists, bypass actor list and rule list. Existing members may declare only a name. A newly added bypass actor requires `bypass_mode`; omission preserves the mode of a retained actor. Modes are `always`, `pull_request` (branch, non-DeployKey actors only) and `exempt`. Actor types are `Integration`, `RepositoryRole`, `Team`, `User`, `OrganizationAdmin` and `DeployKey`; the first four require a positive `actor_id`, while the latter two omit it in YAML. `OrganizationAdmin` is unavailable for personal repositories. The adapter explicitly maps DeployKey IDs to API null. GitHub validates plan/account prerequisites; errors do not trigger bypass expansion, defaults or workarounds.
 
-Opted-in export reads all pages and each owned Ruleset detail, saving complete writable branch/tag state in canonical order. Empty collections remain explicit. Push Rulesets are excluded with a diagnostic; inherited organization/enterprise Rulesets and legacy branch protection remain outside ownership and are never changed. These policies can still affect effective protection. Missing bypass visibility, unsupported rules (including PR approval and required checks), unknown writable fields, null/incomplete values, failed pages or unreadable details stop export/plan/apply rather than producing partial or empty state. Failed export preserves the previous file. Explicitly clearing a collection still requires a complete supported observation.
+### PR review and required check parameters
+
+`pull_request` rules require a branch target; required status checks can also target tags. A retained rule may omit `parameters` or declare only changed attributes; omitted siblings retain fresh observed values. Explicit `false`, `0` and valid empty lists are managed values. Declared reviewer, dismissal-actor and status-check lists own membership, so omitted members are removed. Null is invalid at every YAML depth.
+
+| Rule | Parameters |
+| --- | --- |
+| `pull_request` | Required for a new rule: `dismiss_stale_reviews_on_push`, `require_code_owner_review`, `require_last_push_approval`, `required_approving_review_count` (nonnegative integer), and `required_review_thread_resolution`. Boolean values are explicit; no companion defaults are invented. |
+| `pull_request` optional attributes | `allowed_merge_methods` (nonempty unique list of `merge`, `squash`, `rebase`), `dismissal_restriction`, `required_reviewers`, and boolean `require_extra_approval_for_unattributed_changes`. |
+| `required_status_checks` | Required for a new rule: `required_status_checks` and boolean `strict_required_status_checks_policy`. Optional boolean `do_not_enforce_on_create` preserves omission. |
+
+`dismissal_restriction` contains boolean `enabled` and `allowed_actors`, required when introducing the restriction. Each actor has a positive numeric `id` and `type` of `User`, `Team`, `IntegrationInstallation` or `RepositoryRole`. Its identity is `(type, id)`; retained restriction attributes may be omitted independently.
+
+Each `required_reviewers` entry identifies `reviewer: {type: Team, id: 123}`. New entries require integer `minimum_approvals` from 0 through 10 and `file_patterns`; retained entries preserve either omitted attribute. At most 15 teams are accepted. Patterns preserve exact order and repetitions, including negations: changing order changes policy. Other independent collections are canonicalized by identity; allowed merge methods are a set. GitHub enforces account and team prerequisites.
+
+Each required check has a nonempty `context` and optional positive `integration_id`. Identity is the pair `(context, integration_id)`: an absent ID selects any source and differs from a particular App. Replacing a check list with an entry lacking the previous ID changes that identity; it does not preserve the previous binding. API null integration IDs export as omitted YAML IDs, while YAML null remains invalid. `required_status_checks: []` clears the check list; `required_reviewers: []` clears required teams.
+
+For example, this partial declaration preserves other attributes of the retained `default` Ruleset and PR/check rules, but owns rule membership and the whole required-check list. Include every rule type you intend to retain:
+
+```yaml
+settings:
+  rulesets:
+    - name: default
+      rules:
+        - type: deletion
+        - type: non_fast_forward
+        - type: required_linear_history
+        - type: pull_request
+          parameters:
+            required_approving_review_count: 1
+        - type: required_status_checks
+          parameters:
+            required_status_checks:
+              - context: test
+                integration_id: 123
+            strict_required_status_checks_policy: true
+```
+
+The extra-approval flag is a known explicit boolean from [GitHub's documented public-preview control](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#additional-approval-for-unattributed-copilot-pull-requests) and observed REST policy, although the published REST schema does not yet list it. The adapter preserves an observed value and sends an explicit declaration without inventing an absent default. Local fixtures and read-only observations do not establish live write compatibility. POST/PUT responses involving PR/check rules in either the old or new policy are checked against the complete sent policy, including removal of both rule types: missing, ignored or reset values fail with a warning that repository writes may already have applied, and later operations stop. Optional attributes omitted from the request may acquire API defaults. This is response verification, not rollback, an additional GET, or a guarantee against subsequent drift.
+
+Opted-in export reads all pages and each owned Ruleset detail, saving complete writable branch/tag state in canonical order. Empty collections remain explicit. Push Rulesets are excluded with a diagnostic; inherited organization/enterprise Rulesets and legacy branch protection remain outside ownership and are never changed. These policies can still affect effective protection. Missing bypass visibility, unsupported rules, unknown writable fields, null/incomplete values, failed pages or unreadable details stop export/plan/apply rather than producing partial or empty state. Failed export preserves the previous file. Explicitly clearing a collection still requires a complete supported observation.
 
 Plan is read-only and shows complete before/after policies, operation names and protection-removal warnings. The collection counts once as managed. Apply runs after repository/topics/labels, reads fresh Rulesets with the apply credential, prepares all operations before the first Rulesets mutation, and preserves omitted siblings in complete PUT bodies. Creates/updates run in name order, then deletes in name order. An unchanged policy causes no Rulesets write; a repeat apply after successful reconciliation also causes no Rulesets write absent concurrent changes. Earlier resources retain their own direct-write behavior.
 
 The first API failure stops later operations; earlier writes can remain applied, failed writes have uncertain effect, and there is no transaction, rollback, automatic retry or saved-plan execution. Review plan, including nested removals, before authorizing apply. Concurrent edits can change the fresh apply result.
 
-[Rulesets REST](https://docs.github.com/en/rest/repos/rules) lists Metadata read for GET and Administration write for mutations, but complete detail GET also needs write visibility to return bypass actors. Missing actors are an error, not an empty list. No token grant or App permission is expanded automatically. Branch/tag Rulesets are available for public repositories on Free and applicable public/private repositories on Pro/Team/Enterprise; evaluate requires Enterprise. [GitHub availability and layering](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) and [available rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) apply. PR/check rules and other rule types remain unsupported until a separate extension; the [feature contract](features/rulesets.feature.md) distinguishes the initial implementation from that future work.
+[Rulesets REST](https://docs.github.com/en/rest/repos/rules) lists Metadata read for GET and Administration write for mutations, but complete detail GET also needs write visibility to return bypass actors. Missing actors are an error, not an empty list. No token grant or App permission is expanded automatically. Branch/tag Rulesets are available for public repositories on Free and applicable public/private repositories on Pro/Team/Enterprise; evaluate requires Enterprise. [GitHub availability and layering](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) and [available rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) apply. Other rule types remain unsupported; the [feature contract](features/rulesets.feature.md) records implementation scope and test evidence.
 
 ## Unsupported settings
 
-Pages and Actions settings are not supported. Rulesets support is limited to the current-source subset above; PR/check rules, push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
+Pages and Actions settings are not supported. Rulesets support is limited to the current-source subset above; push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five body parameters and their request body placement. This reference does not expand the supported scope.
 

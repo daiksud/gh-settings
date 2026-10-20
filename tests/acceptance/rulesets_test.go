@@ -242,7 +242,7 @@ func TestRulesetsFailureBoundaries(t *testing.T) {
 	for _, tt := range []struct {
 		name, command, detail, config string
 		status                        int
-	}{{"hidden bypass", "apply", strings.Replace(acceptanceRuleset, `"bypass_actors":[],`, "", 1), "[]", 200}, {"unsupported rule", "apply", strings.Replace(acceptanceRuleset, `"type":"deletion"`, `"type":"pull_request"`, 1), "[]", 200}, {"unknown condition", "plan", strings.Replace(acceptanceRuleset, `"exclude":[]`, `"exclude":[],"future":true`, 1), "[]", 200}, {"get redirect", "apply", acceptanceRuleset, "[]", 302}, {"put failure stops delete", "apply", acceptanceRuleset, `[{name: basic, enforcement: disabled}]`, 403}, {"invalid before reads", "apply", "", "null", 200}} {
+	}{{"hidden bypass", "apply", strings.Replace(acceptanceRuleset, `"bypass_actors":[],`, "", 1), "[]", 200}, {"unsupported rule", "apply", strings.Replace(acceptanceRuleset, `"type":"deletion"`, `"type":"merge_queue"`, 1), "[]", 200}, {"unknown condition", "plan", strings.Replace(acceptanceRuleset, `"exclude":[]`, `"exclude":[],"future":true`, 1), "[]", 200}, {"get redirect", "apply", acceptanceRuleset, "[]", 302}, {"put failure stops delete", "apply", acceptanceRuleset, `[{name: basic, enforcement: disabled}]`, 403}, {"invalid before reads", "apply", "", "null", 200}} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string
