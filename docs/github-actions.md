@@ -14,6 +14,8 @@ Current source also supports unreleased [PR access settings](settings.md#pull-re
 
 The unreleased [`issue_creation_policy` setting](settings.md#issue-creation-policy-unreleased) adds a native enum to current-source plan reports and Summary. It shares PR access's validated repository mutation and preserves `has_issues` when omitted. Complete authenticated reads and an authorized repository-update credential are required; existing inputs, outputs and caller grants are unchanged. Published v0.16.0 and older CLI/Action packages reject the key.
 
+Current source adds unreleased [Actions execution policy](settings.md#actions-execution-policy-unreleased) in the same shared validate/plan/apply operations and native Summary. Plan needs Administration read and apply needs Administration write for this resource; ordinary read tokens may be insufficient. Inputs, outputs and installed CLI pins are unchanged, and the Action does not offer export. Published v0.16.0 and older packages reject the group.
+
 ## Public Action and supported checkout
 
 `daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.15.0 package for repository fields, topics and [labels](#labels-and-permissions).

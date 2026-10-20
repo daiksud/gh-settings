@@ -93,3 +93,7 @@ Test mapping: [TestTopicsSetComparison](../../internal/settings/topics_test.go),
 ### Rule: Show label collection operations
 
 Current source reads a declared label collection and reports typed create/update/delete operations. An explicit empty list counts as one managed resource, and omitted label attributes remain unmanaged. The [Labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation) owns label comparison scenarios and test mappings. Published v0.8.0 does not include labels.
+
+### Rule: Actions execution policy comparison
+
+Current source compares six independent managed fields and explicitly marks inactive selected before values unavailable. The [Actions policy specification](actions-execution-policy.feature.md#rule-plan-inactive-values-honestly) owns native comparisons, Summary validation and error boundaries.

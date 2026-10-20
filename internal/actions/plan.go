@@ -23,6 +23,7 @@ type PlanReport struct {
 	Changes    []PlanChange        `json:"changes"`
 	Diagnostic string              `json:"diagnostic,omitempty"`
 	Labels     []LabelPlanChange   `json:"labels,omitempty"`
+	Actions    []PlanChange        `json:"actions,omitempty"`
 	Rulesets   []RulesetPlanChange `json:"rulesets,omitempty"`
 }
 
@@ -59,7 +60,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	if result.Comparison.Managed > 0 {
 		report.Target = result.Target.Owner + "/" + result.Target.Name
 		report.Outcome = "changed"
-		if len(result.Comparison.Changes) == 0 && result.Comparison.Labels.Len() == 0 && len(result.Comparison.Rulesets) == 0 {
+		if len(result.Comparison.Changes) == 0 && result.Comparison.Labels.Len() == 0 && len(result.Comparison.Rulesets) == 0 && len(result.Comparison.Actions) == 0 {
 			report.Outcome = "no-difference"
 		}
 	}
@@ -77,6 +78,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, change := range result.Comparison.Rulesets {
 		report.Rulesets = append(report.Rulesets, RulesetPlanChange{Operation: change.Operation(), Before: change.Before(), After: change.After()})
+	}
+	for _, change := range result.Comparison.Actions {
+		before, after := change.Values()
+		report.Actions = append(report.Actions, PlanChange{Field: change.Field(), Before: before, After: after})
 	}
 	data, err := json.Marshal(report)
 	if err != nil {

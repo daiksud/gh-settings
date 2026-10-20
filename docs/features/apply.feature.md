@@ -63,3 +63,7 @@ Test mapping: [TestTopicsApplyOrderAndPartialFailures](../../internal/app/topics
 ### Rule: Reconcile labels against fresh state
 
 Current source applies declared labels after repository/topics writes: it reads fresh state, performs needed creates/updates in identity order, then deletes undeclared labels in identity order. A read or write failure leaves earlier updates applied. The [Labels specification](labels.feature.md#rule-reconcile-fresh-state-during-apply) owns these scenarios and test mappings, including association loss on deletion. Published v0.8.0 does not include labels.
+
+### Rule: Actions execution policy sequencing
+
+Current source applies repository Actions policy after existing resources. The [Actions policy specification](actions-execution-policy.feature.md#rule-preflight-and-preserve-companions-before-ordered-writes) owns fresh reads, companion preservation, staged enabling, readback and partial failure.

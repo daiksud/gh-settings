@@ -18,6 +18,46 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Actions execution policy (unreleased)
+
+Current source adds optional `settings.actions`. Published v0.16.0 and older CLI/Action packages reject this group and `export --actions`; use a source-built CLI. This manages repository execution policy, not workflow files, individual runs, token grants, default `GITHUB_TOKEN` permissions or organization policy.
+
+```yaml
+schemaVersion: 1
+settings:
+  actions:
+    enabled: false
+    allowed_actions: selected
+    sha_pinning_required: true
+    selected_actions:
+      github_owned_allowed: true
+      verified_allowed: false
+      patterns_allowed:
+        - 'my-org/*'
+        - '!my-org/blocked@*'
+```
+
+| Field | Type and meaning |
+| --- | --- |
+| `enabled` | Boolean; whether repository Actions execution is enabled. |
+| `allowed_actions` | Exact string `all`, `local_only` or `selected`. |
+| `sha_pinning_required` | Boolean requiring actions to use full commit SHAs; reusable workflows can still use tags. |
+| `selected_actions.github_owned_allowed` | Boolean allowing GitHub-owned actions under selected policy. |
+| `selected_actions.verified_allowed` | Boolean allowing Marketplace actions from verified creators under selected policy. |
+| `selected_actions.patterns_allowed` | Ordered array of at most 1000 nonempty strings, passed to GitHub unchanged. |
+
+Every field is optional and omission is unmanaged. Empty mappings manage nothing. Explicit false and `patterns_allowed: []` are retained; null, unknown keys, wrong types and unknown policy enums fail validation before remote work. A declared patterns list replaces the entire sequence; omitted entries are removed. Removing a negative block pattern can permit additional actions. The tool preserves case, order, duplicates, wildcards and negative `!` entries; it does not sort, expand, deduplicate or emulate GitHub matching. GitHub's [selected-policy API](https://docs.github.com/en/rest/actions/permissions#set-allowed-actions-and-reusable-workflows-for-a-repository) documents `patterns_allowed` as applying only to public repositories; configuring it does not establish enforcement on private repositories. See [GitHub's matching and policy guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#allowing-select-actions-and-reusable-workflows-to-run).
+
+Selected fields can accompany `allowed_actions: selected` or an omitted policy. They cannot accompany `all` or `local_only`. With the policy omitted, current policy must already be selected. Switching from a nonselected policy to selected requires all three selected fields explicitly, because GitHub does not expose inactive selected values. Plan shows each such before value as unavailable, not false or empty. An incomplete transition fails before any Actions write. Existing selected policies permit partial declarations; omitted companions retain values acquired in a complete fresh read.
+
+Normal export does not read this resource or require Administration read. Explicit `export --actions` includes the complete base policy and, only when selected, the complete selected policy. Inactive selected settings remain omitted, even if GitHub remembers them. An unchanged export has zero differences for exported values. Missing/null/invalid policy fields, hidden selected data and API errors fail before file replacement; disabled Actions do not justify inventing absent values. Options compose as `export --rulesets --actions` in either order.
+
+Plan is read-only and reads this resource only when managed fields exist. Apply reads a fresh complete base policy and any needed active selected policy, then preflights the whole resource. The policy PUT requires `enabled`; if omitted, its freshly observed value is echoed without implicitly enabling Actions. Other base payload values are declared only. Selected PUT sends declared values merged with freshly read companions; no inactive companion is initialized implicitly. Policy changes precede selected writes because that endpoint requires selected policy. When enabling a currently disabled repository together with selected values, enabling runs last. Apply verifies requested values and the selected companions it sent with a fresh read. Repeated direct apply still writes declared values.
+
+These endpoints are not transactional. An enabled repository can temporarily use remembered/default selected settings between the policy and selected-list writes. Failure can leave an earlier policy change applied, and a failed write or readback has an uncertain remote effect. There is no automatic rollback, saved-plan apply, concurrency lock or guarantee that organization/enterprise restrictions permit the desired change. Repository/organization restrictions and GitHub-controlled disabled states remain authoritative. Policy changes can prevent later workflows from running.
+
+Read/export/plan require target Administration read; apply requires Administration write, including its preflight/readback. The default `GITHUB_TOKEN` generally does not supply this permission. Callers must provide an appropriately scoped existing credential; this feature neither creates nor broadens grants. Official [repository policy endpoints](https://docs.github.com/en/rest/actions/permissions#get-github-actions-permissions-for-a-repository) and the [behavior specification](features/actions-execution-policy.feature.md) describe the API and evidence boundaries. Local fixture success does not prove live write compatibility or actual token permissions.
+
 ## Issue creation policy (unreleased)
 
 Current source adds optional `settings.repository.issue_creation_policy`, mapped to GraphQL `issueCreationPolicy`. Published v0.16.0 and older CLI/Action packages reject this key. Use a source-built CLI until a supporting package is published; newer Action source still installs its selected published CLI.
@@ -279,7 +319,7 @@ The [command reference](commands.md#apply-behavior) explains fresh reads, create
 
 ## Configuration semantics
 
-The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus an optional `labels` sequence. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic migration or compatibility parsing.
+The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus an optional `labels` sequence. Current source additionally accepts `rulesets` and the optional `actions` mapping described above. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic migration or compatibility parsing.
 
 Declared values are managed, and YAML is authoritative for them. Omitting a resource leaves it unmanaged; declared topics and labels collections own their complete membership. Omitted repository fields and omitted label attributes remain unmanaged. No defaults are injected by the tool. For example:
 
@@ -313,7 +353,7 @@ A version-only document manages nothing:
 schemaVersion: 1
 ```
 
-Empty `settings`, `repository` or `topics` mappings are also valid. When no resources are managed, plan and apply succeed locally without an origin, authentication or API requests. An explicit `names: []` still manages topics; `labels: []` still manages all label membership. These declarations require a comparison or update rather than a local no-op.
+Empty `settings`, `repository` or `topics` mappings are also valid. Current source also accepts empty `actions` and `actions.selected_actions` mappings as unmanaged. When no resources are managed, plan and apply succeed locally without an origin, authentication or API requests. An explicit `names: []` still manages topics; `labels: []` still manages all label membership. These declarations require a comparison or update rather than a local no-op.
 
 Validation rejects unknown or duplicate keys, non-string keys, wrong types, malformed YAML and multiple documents. YAML aliases and merge keys are resolved before supported values are checked. Partial declarations are accepted; unsupported root-level field names are rejected. See [validate behavior](commands.md#validate-behavior) for output and failure handling.
 

@@ -19,10 +19,11 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	var document struct {
 		SchemaVersion int `yaml:"schemaVersion"`
 		Settings      struct {
-			Repository yaml.Node                      `yaml:"repository"`
-			Topics     *topicsDocument                `yaml:"topics,omitempty"`
-			Labels     *[]labelDocument               `yaml:"labels,omitempty"`
-			Rulesets   *[]settings.RulesetDeclaration `yaml:"rulesets,omitempty"`
+			Repository yaml.Node                          `yaml:"repository"`
+			Topics     *topicsDocument                    `yaml:"topics,omitempty"`
+			Labels     *[]labelDocument                   `yaml:"labels,omitempty"`
+			Rulesets   *[]settings.RulesetDeclaration     `yaml:"rulesets,omitempty"`
+			Actions    *settings.ActionsPolicyDeclaration `yaml:"actions,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
@@ -51,6 +52,12 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	if declaration.Rulesets != nil {
 		values := declaration.Rulesets.Values()
 		document.Settings.Rulesets = &values
+	}
+	if !declaration.Actions.Empty() {
+		if err := declaration.Actions.Validate(); err != nil {
+			return nil, err
+		}
+		document.Settings.Actions = &declaration.Actions
 	}
 	return yaml.Marshal(document)
 }
@@ -103,6 +110,14 @@ func DecodeConfig(data []byte) (settings.Declaration, error) {
 			return settings.Declaration{}, err
 		}
 		for group, value := range groups {
+			if group == "actions" {
+				policy, err := parseActionsPolicy(&value)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				declaration.Actions = policy
+				continue
+			}
 			if group == "rulesets" {
 				rulesets, err := parseRulesets(&value)
 				if err != nil {

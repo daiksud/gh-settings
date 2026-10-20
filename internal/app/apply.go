@@ -90,6 +90,16 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if !desired.Actions.Empty() {
+		index := len(result.Operations)
+		result.Operations = append(result.Operations, ApplyOperation{Kind: ActionsPolicyUpdate})
+		if err := write.Actions(repo, desired.Actions); err != nil {
+			result.failOperation(index, OperationFailedUnknown)
+			return result, fmt.Errorf("apply Actions policy (earlier resource writes remain applied): %w", err)
+		}
+		result.Operations[index].Status = OperationCompleted
+		hasWrites = true
+	}
 	result.Outcome = ApplyCompleted
 	if !hasWrites {
 		result.Outcome = ApplyMatchingLabels

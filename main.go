@@ -18,18 +18,15 @@ var version = "dev"
 
 func main() {
 	checkout := workspace.NewCheckout(".")
-	reader := app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets}
+	reader := app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy}
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
-		Export: func() error {
-			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave}, reader)
-		},
-		ExportRulesets: func() error {
-			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: true, ExcludedRulesets: func(count int) {
+		Export: func(includeRulesets, includeActions bool) error {
+			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: includeRulesets, IncludeActions: includeActions, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -38,7 +35,7 @@ func main() {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset})
+			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy})
 		},
 	}))
 }
@@ -138,4 +135,19 @@ func writeRuleset(repo repository.Repository, change settings.RulesetChange) err
 		return err
 	}
 	return client.ApplyRuleset(repo, change)
+}
+
+func readActionsPolicy(repo repository.Repository, selected bool) (settings.ActionsPolicyState, error) {
+	client, err := github.NewActionsPolicyClient(repo.Host)
+	if err != nil {
+		return settings.ActionsPolicyState{}, err
+	}
+	return client.ReadActionsPolicy(repo, selected)
+}
+func writeActionsPolicy(repo repository.Repository, desired settings.ActionsPolicyDeclaration) error {
+	client, err := github.NewActionsPolicyClient(repo.Host)
+	if err != nil {
+		return err
+	}
+	return client.ApplyActionsPolicy(repo, desired)
 }
