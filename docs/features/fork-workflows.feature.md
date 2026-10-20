@@ -6,7 +6,7 @@ description: Explicit contributor approval and private fork execution and creden
 
 ## Status and scope
 
-Implemented in current source, **unreleased**, for [#342](https://github.com/daiksud/gh-settings/issues/342). Published v0.16.0 and older CLI/Action packages reject the new declarations/options. The [configuration contract](../settings.md#fork-pr-workflow-policies-unreleased) owns values, usage and security consequences. No release, live policy, workflow dispatch or grant change is part of this implementation.
+Implemented in current source, **unreleased, planned for v0.17.0**, for [#342](https://github.com/daiksud/gh-settings/issues/342). Published v0.16.0 and older CLI/Action packages reject the new declarations/options. The [configuration contract](../settings.md#fork-pr-workflow-policies-unreleased) owns values, usage and security consequences. No release, live policy, workflow dispatch or grant change is part of this implementation.
 
 Public contributor approval uses the three exact API enums under `actions.fork_pr_approval_policy`. Private repositories use four independent booleans under `actions.private_fork_workflows`. `pull_request_target` is outside the public contributor approval gate. Internal repositories are unsupported by this adopted scope; 404/403 never mean disabled. These are distinct from execution enablement, default workflow token permissions and approving PR reviews. Repository settings cannot override organization policy.
 

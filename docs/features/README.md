@@ -51,3 +51,5 @@ The [Security design](security.feature.md) defines proposed feature-family selec
 Current source adds unreleased [repository retention policy](retention.feature.md), with complete configured/maximum observations, explicit export opt-in, native integer differences and fresh upper-limit verification. Published v0.16.0 and older packages reject the key and option.
 
 Current source adds unreleased [fork workflow policies](fork-workflows.feature.md): public contributor approval and private fork execution/token/secrets/approval choices, with explicit export selections, declared-only updates and fresh visibility/readback boundaries. Published v0.16.0 and older packages reject the keys and options.
+
+The implemented current-source features added since v0.16.0 are planned for **v0.17.0**. They remain unreleased until the matching release workflow verifies publication; unimplemented/gated candidates remain outside that package. See the [release boundary](../settings.md#v0170-release-preparation).

@@ -1,5 +1,9 @@
 # Repository settings
 
+## v0.17.0 release preparation
+
+Current-source additions since v0.16.0 are planned for **v0.17.0** and remain **unreleased until its release workflow publishes and verifies the package**. This boundary includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Dependabot, paid-product candidates and immutable-release policy remain unsupported. Published v0.16.0 already includes web commit sign-off, template repository status and default branch settings. Existing v0.15.0 consumer pins retain their original capabilities; a version-file update alone does not upgrade those pins or change live settings.
+
 ## Scope and status
 
 Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.15.0 supports sixteen repository fields, topics and labels, using the same file-format version. v0.14.0 supports fifteen repository fields, excluding Discussions. v0.13.0 supports thirteen repository fields, excluding normal merge commit defaults. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.

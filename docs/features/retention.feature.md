@@ -6,7 +6,7 @@ description: Configured days, complete read-only upper bounds, native comparison
 
 ## Status and scope
 
-Implemented in current source, **unreleased**, for [#341](https://github.com/daiksud/gh-settings/issues/341). Published v0.16.0 and older CLI/Action packages reject the key and `--retention`. The [public configuration contract](../settings.md#check-run-status-artifact-and-log-retention-unreleased) owns usage. No version, pin, grant or live setting changes with this feature.
+Implemented in current source, **unreleased, planned for v0.17.0**, for [#341](https://github.com/daiksud/gh-settings/issues/341). Published v0.16.0 and older CLI/Action packages reject the key and `--retention`. The [public configuration contract](../settings.md#check-run-status-artifact-and-log-retention-unreleased) owns usage. No version, pin, grant or live setting changes with this feature.
 
 The repository policy applies to new checks (suites/runs/annotations), workflow runs, third-party commit statuses, artifacts and logs. It is independent of Actions execution and does not enable it. Individual data deletion, workflow `retention-days`, managing organization/enterprise configuration and retroactive cleanup are outside scope. The [official API](https://docs.github.com/en/rest/actions/permissions#set-artifact-and-log-retention-settings-for-a-repository) specifies only `days` in PUT; GET additionally requires `maximum_allowed_days`. The [repository guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository) documents public/private ranges, upper policy, the October 2026 expansion and new-object-only application.
 

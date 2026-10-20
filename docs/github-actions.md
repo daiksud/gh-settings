@@ -1,5 +1,9 @@
 # Use the public settings Action
 
+## v0.17.0 release preparation
+
+Current-source additions since v0.16.0 are planned for **v0.17.0** and remain **unreleased until its release workflow publishes and verifies the package**. This boundary includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Dependabot, paid-product candidates and immutable-release policy remain unsupported. Published v0.16.0 already includes web commit sign-off, template repository status and default branch settings. Existing v0.15.0 consumer pins retain their original capabilities; a version-file update alone does not upgrade those pins or change live settings.
+
 The pinned v0.15.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
 
 The source-only [`web_commit_signoff_required` setting](settings.md#web-commit-sign-off-unreleased) is unreleased and planned for v0.16.0. Published v0.15.1 and older CLI/Action packages reject it, including the pinned examples. Its candidate plan report and Summary use native booleans; apply uses the existing Administration-write repository PATCH. No Action input or permission expansion is added.

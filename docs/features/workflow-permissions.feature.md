@@ -1,6 +1,6 @@
 # Default workflow token and approval permissions
 
-Status: implemented in current source, unreleased. Published v0.16.0 and older CLI/Action packages reject the fields and export option. The [configuration contract](../settings.md#default-workflow-permissions-unreleased) is authoritative.
+Status: implemented in current source, unreleased, planned for v0.17.0. Published v0.16.0 and older CLI/Action packages reject the fields and export option. The [configuration contract](../settings.md#default-workflow-permissions-unreleased) is authoritative.
 
 ## Rule: Declare independent optional native values
 
