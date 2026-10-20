@@ -24,7 +24,7 @@ func TestPlanRequestsMergeMethodFields(t *testing.T) {
 		if repo != target || !reflect.DeepEqual(paths, []string{"repository.allow_merge_commit", "repository.allow_squash_merge"}) {
 			t.Fatalf("target=%+v fields=%v", repo, paths)
 		}
-		return settings.NewRepositoryObservation(nil, &settings.MergeMethodsState{AllowMergeCommit: true}), nil
+		return settings.NewRepositoryObservation(nil, &settings.MergeMethodsState{AllowMergeCommit: true}, nil), nil
 	}})
 	want := []settings.Change{comparisonChange(t, "repository.allow_merge_commit", true, false), comparisonChange(t, "repository.allow_squash_merge", false, true)}
 	if err != nil || calls != 1 || result.Comparison.Managed != 2 || !reflect.DeepEqual(result.Comparison.Changes, want) {
@@ -50,7 +50,7 @@ func TestPlanMixedRepositoryObservationFailureDiscardsComparison(t *testing.T) {
 				if repo != target || !reflect.DeepEqual(paths, []string{"repository.has_issues", "repository.allow_merge_commit"}) {
 					t.Fatalf("target=%+v fields=%v", repo, paths)
 				}
-				observed := settings.NewRepositoryObservation(&settings.RepositoryState{HasIssues: true}, nil)
+				observed := settings.NewRepositoryObservation(&settings.RepositoryState{HasIssues: true}, nil, nil)
 				if missing {
 					return observed, nil
 				}

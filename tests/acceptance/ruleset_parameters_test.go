@@ -41,6 +41,9 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
+		if servePRAccessFixtureRead(w, r) {
+			return
+		}
 		if isMergeMethodsFixtureRead(r) {
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
 			return

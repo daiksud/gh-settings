@@ -25,25 +25,27 @@ func (state RepositoryState) Declaration() RepositoryDeclaration {
 
 // RepositoryDeclaration leaves nil fields unmanaged; false and empty strings are declared values.
 type RepositoryDeclaration struct {
-	Description              *string
-	Homepage                 *string
-	DefaultBranch            *string
-	HasIssues                *bool
-	HasProjects              *bool
-	HasWiki                  *bool
-	HasDiscussions           *bool
-	WebCommitSignoffRequired *bool
-	IsTemplate               *bool
-	AllowMergeCommit         *bool
-	AllowSquashMerge         *bool
-	AllowRebaseMerge         *bool
-	DeleteBranchOnMerge      *bool
-	AllowAutoMerge           *bool
-	AllowUpdateBranch        *bool
-	SquashMergeCommitTitle   *string
-	SquashMergeCommitMessage *string
-	MergeCommitTitle         *string
-	MergeCommitMessage       *string
+	Description               *string
+	Homepage                  *string
+	DefaultBranch             *string
+	HasIssues                 *bool
+	HasProjects               *bool
+	HasWiki                   *bool
+	HasDiscussions            *bool
+	WebCommitSignoffRequired  *bool
+	IsTemplate                *bool
+	AllowMergeCommit          *bool
+	AllowSquashMerge          *bool
+	AllowRebaseMerge          *bool
+	DeleteBranchOnMerge       *bool
+	AllowAutoMerge            *bool
+	AllowUpdateBranch         *bool
+	SquashMergeCommitTitle    *string
+	SquashMergeCommitMessage  *string
+	MergeCommitTitle          *string
+	MergeCommitMessage        *string
+	HasPullRequests           *bool
+	PullRequestCreationPolicy *string
 }
 
 // Empty reports whether every field is unmanaged, regardless of declared values.
@@ -109,4 +111,22 @@ func ValidMergeCommitTitle(value string) bool { return value == "PR_TITLE" || va
 // ValidMergeCommitMessage recognizes the GitHub API's exact merge body enum.
 func ValidMergeCommitMessage(value string) bool {
 	return value == "PR_TITLE" || value == "PR_BODY" || value == "BLANK"
+}
+
+// PRAccessState is the complete observation of repository pull request access.
+type PRAccessState struct {
+	HasPullRequests           bool
+	PullRequestCreationPolicy string
+}
+
+func ValidPullRequestCreationPolicy(value string) bool {
+	return value == "ALL" || value == "COLLABORATORS_ONLY"
+}
+func (d RepositoryDeclaration) PRAccessEmpty() bool {
+	return d.HasPullRequests == nil && d.PullRequestCreationPolicy == nil
+}
+func (d RepositoryDeclaration) WithPRAccess(state PRAccessState) RepositoryDeclaration {
+	declareRepositoryFields(prAccessBoolFields[:], state, &d)
+	declareRepositoryFields(prAccessStringFields[:], state, &d)
+	return d
 }

@@ -32,6 +32,11 @@ func RepositoryBoolSetter(name string) (func(*RepositoryDeclaration, bool), bool
 			return field.setDesired, true
 		}
 	}
+	for _, field := range prAccessBoolFields {
+		if field.name == name {
+			return field.setDesired, true
+		}
+	}
 	return nil, false
 }
 
@@ -45,6 +50,11 @@ func RepositoryStringSetter(name string) (set func(*RepositoryDeclaration, strin
 	for _, field := range mergeMethodsStringFields {
 		if field.name == name {
 			return validatedStringSetter(field), field.valueDescription != "", true
+		}
+	}
+	for _, field := range prAccessStringFields {
+		if field.name == name {
+			return validatedStringSetter(field), true, true
 		}
 	}
 	return nil, false, false
@@ -71,7 +81,13 @@ func VisitDeclaredRepositoryFields(declaration RepositoryDeclaration, visitStrin
 	if err := visitDeclaredRepositoryFields(mergeMethodsBoolFields[:], declaration, visitBool); err != nil {
 		return err
 	}
-	return visitDeclaredRepositoryFields(mergeMethodsStringFields[:], declaration, visitString)
+	if err := visitDeclaredRepositoryFields(mergeMethodsStringFields[:], declaration, visitString); err != nil {
+		return err
+	}
+	if err := visitDeclaredRepositoryFields(prAccessBoolFields[:], declaration, visitBool); err != nil {
+		return err
+	}
+	return visitDeclaredRepositoryFields(prAccessStringFields[:], declaration, visitString)
 }
 
 func visitDeclaredRepositoryFields[S any, V bool | string](fields []repositoryField[S, V], declaration RepositoryDeclaration, visit func(string, V) error) error {
@@ -87,16 +103,16 @@ func visitDeclaredRepositoryFields[S any, V bool | string](fields []repositoryFi
 
 // RepositoryFieldCount counts the supported scalar repository fields.
 func RepositoryFieldCount() int {
-	return len(repositoryStringFields) + len(repositoryBoolFields) + len(mergeMethodsBoolFields) + len(mergeMethodsStringFields)
+	return len(repositoryStringFields) + len(repositoryBoolFields) + len(mergeMethodsBoolFields) + len(mergeMethodsStringFields) + len(prAccessBoolFields) + len(prAccessStringFields)
 }
 
 // ValidRepositoryFieldValue checks a field's native type and existing value policy.
 func ValidRepositoryFieldValue(name string, value any) bool {
 	switch value := value.(type) {
 	case bool:
-		return validRepositoryFieldValue(repositoryBoolFields[:], name, value) || validRepositoryFieldValue(mergeMethodsBoolFields[:], name, value)
+		return validRepositoryFieldValue(repositoryBoolFields[:], name, value) || validRepositoryFieldValue(mergeMethodsBoolFields[:], name, value) || validRepositoryFieldValue(prAccessBoolFields[:], name, value)
 	case string:
-		return validRepositoryFieldValue(repositoryStringFields[:], name, value) || validRepositoryFieldValue(mergeMethodsStringFields[:], name, value)
+		return validRepositoryFieldValue(repositoryStringFields[:], name, value) || validRepositoryFieldValue(mergeMethodsStringFields[:], name, value) || validRepositoryFieldValue(prAccessStringFields[:], name, value)
 	default:
 		return false
 	}
@@ -247,4 +263,11 @@ var mergeMethodsStringFields = [...]repositoryField[MergeMethodsState, string]{
 		valid:            ValidMergeCommitMessage,
 		valueDescription: "PR_BODY, PR_TITLE or BLANK",
 	},
+}
+
+var prAccessBoolFields = [...]repositoryField[PRAccessState, bool]{
+	{name: "repository.has_pull_requests", current: func(s PRAccessState) bool { return s.HasPullRequests }, desired: func(d RepositoryDeclaration) *bool { return d.HasPullRequests }, setDesired: func(d *RepositoryDeclaration, v bool) { d.HasPullRequests = &v }},
+}
+var prAccessStringFields = [...]repositoryField[PRAccessState, string]{
+	{name: "repository.pull_request_creation_policy", current: func(s PRAccessState) string { return s.PullRequestCreationPolicy }, desired: func(d RepositoryDeclaration) *string { return d.PullRequestCreationPolicy }, setDesired: func(d *RepositoryDeclaration, v string) { d.PullRequestCreationPolicy = &v }, valid: ValidPullRequestCreationPolicy, valueDescription: "ALL or COLLABORATORS_ONLY"},
 }

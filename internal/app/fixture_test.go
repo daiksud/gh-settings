@@ -47,7 +47,7 @@ func observeBaseFixture(read func(repository.Repository) (settings.RepositorySta
 		if err != nil {
 			return settings.RepositoryObservation{}, err
 		}
-		return settings.NewRepositoryObservation(&state, nil), nil
+		return settings.NewRepositoryObservation(&state, nil, nil), nil
 	}
 }
 
@@ -57,6 +57,6 @@ func observeMergeFixture(read func(repository.Repository) (settings.MergeMethods
 		if err != nil {
 			return settings.RepositoryObservation{}, err
 		}
-		return settings.NewRepositoryObservation(nil, &state), nil
+		return settings.NewRepositoryObservation(nil, &state, nil), nil
 	}
 }

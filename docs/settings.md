@@ -6,7 +6,7 @@ Configuration lives in `.github/settings.yml` at the Git checkout root and manag
 
 ## Supported fields
 
-The keys inside `settings.repository` follow GitHub's repository update request body parameters.[^github-update-repository] Discussions additionally uses the parameter sent by GitHub's official CLI, as explained below.
+The keys inside `settings.repository` follow GitHub's repository update request body parameters.[^github-update-repository] Discussions additionally uses the parameter sent by GitHub's official CLI. The unreleased PR-access fields use the explicit GraphQL-to-YAML mapping below.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -18,9 +18,34 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Pull request access (unreleased)
+
+Current source adds two independent `settings.repository` values. Published v0.16.0 and older CLI/Action packages reject them; use a source-built CLI until a supporting package is published. Checking out newer Action source still installs its selected published CLI.
+
+| YAML field | Type / accepted values | GraphQL update input |
+| --- | --- | --- |
+| `has_pull_requests` | boolean | `hasPullRequestsEnabled` |
+| `pull_request_creation_policy` | `ALL`, `COLLABORATORS_ONLY` | `pullRequestCreationPolicy` |
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    has_pull_requests: true
+    pull_request_creation_policy: COLLABORATORS_ONLY
+```
+
+Omission leaves each value unmanaged. Explicit false disables PR access; GitHub hides the PR tab and existing PRs in the web interface and prevents new PR creation. GitHub's announcement notes a Mobile exception: the tab may remain visible while new PR creation is blocked. `COLLABORATORS_ONLY` restricts creation to collaborators with write access, while existing PRs remain visible and commentable when PR access is enabled. These effects follow [GitHub's access controls](https://github.blog/changelog/2026-02-13-new-repository-settings-for-configuring-pull-request-access/). No individual PR is edited. Null, quoted booleans, empty strings, case variants and unknown policies are invalid. Declaring one setting never adds the other to a request, including when disabling PRs.
+
+Plan reads a narrow authenticated GraphQL query only when either value is declared. Policy reads and ID lookup explicitly disable rename following; a stale checkout origin fails instead of adopting the renamed repository. Export includes both values after complete reads. Missing/null/wrong-type values, unsupported policies and any GraphQL errors reject the entire observation rather than inventing false or `ALL`. A disabled PR feature can still have an observed policy; it is preserved as an independent value. Hidden or unavailable data remains an error. Read failures preserve the prior export file.
+
+Direct apply performs existing repository REST updates first, then resolves the checkout repository's opaque GraphQL ID and sends only declared PR values through `updateRepository`, before topics/labels/Rulesets. The ID is transport identity, never YAML configuration. A PR-only declaration performs no REST PATCH and does not read current policy for comparison. Repeated scalar apply still sends declared values even when already matching. The mutation response must retain the requested values and identify the same repository; failure can occur after writes have applied. Earlier successful REST writes remain applied if a later lookup or mutation fails; later resources stop without retry or rollback.
+
+Reads require complete policy visibility; writes require a credential authorized to update the target repository. Authentication and caller grants are unchanged, and no permission is expanded automatically. Local fixtures and read-only observations do not prove live write compatibility, token permissions or published-package support. See the [feature specification](features/pull-request-access.feature.md) for test mappings and evidence limits.
+
 ## Default branch (unreleased)
 
-Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes nineteen repository fields, topics and labels.
+Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-one repository fields, topics and labels.
 
 ```yaml
 schemaVersion: 1
@@ -54,7 +79,7 @@ Apply sends only declared fields through the existing Administration-write repos
 
 ## Web commit sign-off (unreleased)
 
-Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes nineteen repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Current source (planned for v0.16.0, not yet published) adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes twenty-one repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1

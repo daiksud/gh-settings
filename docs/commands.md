@@ -18,9 +18,11 @@ v0.14.0 adds [merge commit title/body defaults](features/merge-commit-defaults.f
 
 v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a sixteenth exported repository field; published v0.14.0 rejects it. Apply verifies the returned boolean when this field is declared; verification errors can occur after repository writes.
 
-Current source (planned for v0.16.0, not yet published) also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased). It also supports the unreleased [`default_branch` setting](settings.md#default-branch-unreleased). Source export includes nineteen repository fields; published v0.15.1 and older packages reject the new key.
+Current source (planned for v0.16.0, not yet published) also supports the unreleased [`is_template` setting](settings.md#template-repository-unreleased). It also supports the unreleased [`default_branch` setting](settings.md#default-branch-unreleased). Source export includes twenty-one repository fields; published v0.15.1 and older packages reject the new key.
 
 Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets-unreleased), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
+
+Current source also adds unreleased [PR access controls](settings.md#pull-request-access-unreleased): `has_pull_requests` and `pull_request_creation_policy`. Published v0.16.0 and older packages reject them. Plan uses a separate complete GraphQL query; apply resolves repository identity and sends only declared PR values through `updateRepository`, after any existing REST update. No current-policy comparison is added to direct apply.
 
 ## Interface and implementation status
 
@@ -95,7 +97,7 @@ Plan validates the configuration before resolving origin, configuring authentica
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, default_branch (unreleased source), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (unreleased source), is_template (unreleased source), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+Changed repository fields appear in this order: description, homepage, default_branch (unreleased source), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (unreleased source), is_template (unreleased source), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests and pull_request_creation_policy (unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
 
 ```text
 settings.repository.has_issues: true → false
@@ -126,13 +128,13 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 
 | Resource | Request |
 | --- | --- |
-| `settings.repository` | `PATCH /repos/{owner}/{repo}` with only declared repository fields.[^github-update-repository] |
+| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] Unreleased PR access fields then use ID lookup and declared-only GraphQL `updateRepository`; a PR-only declaration skips PATCH. |
 | `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
 | `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform required label POST/PATCH/DELETE operations.[^github-labels] |
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields and label attributes remain outside update requests. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
-Repository fields and topics are sent without a preliminary read, even when the YAML values already match GitHub. Declared labels use a fresh read: creates/updates run in identity order, then deletes in identity order. Create sends the name and only declared attributes; update sends only changed declared attributes; delete removes each undeclared remote label. Names are escaped as individual URL path segments, and no rename or archive fields are sent.
+Repository fields and topics are sent without a preliminary comparison read, even when the YAML values already match GitHub. Unreleased PR access apply adds only the required repository-ID lookup; it does not infer companion values. A later GraphQL failure leaves earlier REST writes applied. Declared labels use a fresh read: creates/updates run in identity order, then deletes in identity order. Create sends the name and only declared attributes; update sends only changed declared attributes; delete removes each undeclared remote label. Names are escaped as individual URL path segments, and no rename or archive fields are sent.
 
 Apply never consumes a saved plan. Remote changes after review can alter label operations and be overwritten for managed values or membership. Label deletion removes issue/PR associations, which are not restored by recreating the name. Review these semantics before applying.
 

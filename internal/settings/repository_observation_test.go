@@ -88,8 +88,9 @@ func TestCombinedRepositoryObservationDeclaration(t *testing.T) {
 			if !reflect.DeepEqual(got, want) {
 				t.Fatalf("declaration=%+v, want %+v", got, want)
 			}
-			complete, err := NewRepositoryObservation(&base, &test.state).Declaration()
-			if err != nil || !reflect.DeepEqual(complete, want) {
+			access := PRAccessState{PullRequestCreationPolicy: "ALL"}
+			complete, err := NewRepositoryObservation(&base, &test.state, &access).Declaration()
+			if err != nil || !reflect.DeepEqual(complete, want.WithPRAccess(access)) {
 				t.Fatalf("complete declaration=%+v error=%v, want %+v", complete, err, want)
 			}
 			if !reflect.DeepEqual(before, base.Declaration()) {
