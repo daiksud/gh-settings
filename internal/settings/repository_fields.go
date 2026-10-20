@@ -39,7 +39,7 @@ func RepositoryBoolSetter(name string) (func(*RepositoryDeclaration, bool), bool
 func RepositoryStringSetter(name string) (set func(*RepositoryDeclaration, string) error, enum, ok bool) {
 	for _, field := range repositoryStringFields {
 		if field.name == name {
-			return validatedStringSetter(field), field.valueDescription != "", true
+			return validatedStringSetter(field), false, true
 		}
 	}
 	for _, field := range mergeMethodsStringFields {
@@ -203,6 +203,14 @@ var repositoryStringFields = [...]repositoryField[RepositoryState, string]{
 		desired:    func(declaration RepositoryDeclaration) *string { return declaration.Homepage },
 		setDesired: func(declaration *RepositoryDeclaration, value string) { declaration.Homepage = &value },
 		valid:      func(string) bool { return true },
+	},
+	{
+		name:             "repository.default_branch",
+		current:          func(state RepositoryState) string { return state.DefaultBranch },
+		desired:          func(declaration RepositoryDeclaration) *string { return declaration.DefaultBranch },
+		setDesired:       func(declaration *RepositoryDeclaration, value string) { declaration.DefaultBranch = &value },
+		valid:            ValidDefaultBranch,
+		valueDescription: "a valid literal branch name",
 	},
 }
 

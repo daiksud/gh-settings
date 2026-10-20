@@ -13,7 +13,7 @@ import (
 
 func TestDiscussionsReadRequiresBoolean(t *testing.T) {
 	for _, value := range []string{"true", "false", "null", `"false"`, "0", "[]", "missing"} {
-		body := `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"web_commit_signoff_required":false,"is_template":false`
+		body := `{"default_branch":"main","description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"web_commit_signoff_required":false,"is_template":false`
 		if value != "missing" {
 			body += `,"has_discussions":` + value
 		}

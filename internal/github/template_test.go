@@ -14,7 +14,7 @@ import (
 func TestTemplateReadRequiresBoolean(t *testing.T) {
 	for _, value := range []string{"true", "false", "null", `"false"`, "0", "[]", "{}", "missing"} {
 		t.Run(value, func(t *testing.T) {
-			body := `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false`
+			body := `{"default_branch":"main","description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false`
 			if value != "missing" {
 				body += `,"is_template":` + value
 			}

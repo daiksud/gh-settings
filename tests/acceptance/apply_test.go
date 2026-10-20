@@ -24,6 +24,13 @@ func TestApplyAcceptance(t *testing.T) {
 		noAPI, noOrigin, noAuth, nested, outputFailure, globalOrigin bool
 		gitSetup                                                     func(string, []string) error
 	}{
+		{name: "default-branch-change", input: repositoryInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, response: `{"default_branch":"release/v2"}`},
+		{name: "default-branch-mixed", input: repositoryInput("default_branch: release/v2\nhas_issues: false\n"), payload: `{"default_branch":"release/v2","has_issues":false}`, response: `{"default_branch":"release/v2"}`},
+		{name: "default-branch-missing-response", input: repositoryInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, wantError: "lacks valid default_branch"},
+		{name: "default-branch-ignored-stops-topics", input: "schemaVersion: 1\nsettings:\n  repository:\n    default_branch: release/v2\n  topics:\n    names: []\n", payload: `{"default_branch":"release/v2"}`, response: `{"default_branch":"main"}`, wantError: "expected"},
+		{name: "default-branch-not-found", input: repositoryInput("default_branch: missing-branch\n"), payload: `{"default_branch":"missing-branch"}`, status: 422, wantError: "422"},
+		{name: "default-branch-forbidden", input: repositoryInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, status: 403, wantError: "403"},
+		{name: "default-branch-null-before-origin", input: repositoryInput("default_branch: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a string"},
 		{name: "template-disable", input: repositoryInput("is_template: false\n"), payload: `{"is_template":false}`},
 		{name: "web-signoff-disable", input: repositoryInput("web_commit_signoff_required: false\n"), payload: `{"web_commit_signoff_required":false}`},
 		{name: "template-enable", input: repositoryInput("is_template: true\n"), payload: `{"is_template":true}`},
@@ -180,7 +187,7 @@ func TestApplyAcceptance(t *testing.T) {
 func TestExportEditValidatePlanApply(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
-	remote := map[string]any{"description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}
+	remote := map[string]any{"default_branch": "main", "description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}
 	var methods []string
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -264,7 +271,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

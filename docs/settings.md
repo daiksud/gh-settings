@@ -18,6 +18,25 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Default branch (unreleased)
+
+Current source adds optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes nineteen repository fields, topics and labels.
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    default_branch: release/v2
+```
+
+Omission leaves the setting unmanaged. Empty strings, null, wrong types and invalid literal branch names fail local validation. Names follow Git branch naming rules, including slash-separated names; they are neither trimmed nor normalized. Revision expressions such as `@{-1}` are rejected, and no local branch or revision is resolved. Validation remains local without requiring an origin or authentication. GitHub handles branch existence and authorization when the update is requested; a missing branch or policy restriction remains an API error rather than causing branch creation.
+
+The existing repository REST GET must contain a valid non-null branch name. Export includes the observed string after all reads succeed; missing or invalid data fails instead of becoming an empty string or an inferred `main`. Plan is read-only and compares declared values only, placing this string after homepage and before repository booleans. CLI and Actions display quoted string differences.
+
+Apply sends only declared repository fields in one Administration-write PATCH, without a preliminary read. When `default_branch` is declared, the response must contain a valid string equal to the requested name. A missing, malformed or unequal response fails after the PATCH; repository writes may already have applied, later resources stop, and no rollback is attempted. Omission keeps existing PATCH behavior without requiring this response field.
+
+This feature does not create or rename branches, change the local checkout/origin, retarget individual PRs, or edit protections. Existing policies targeting the default branch, including Rulesets using `~DEFAULT_BRANCH`, can follow the newly selected branch, so review those effects before applying. GitHub's [default-branch guidance](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/changing-the-default-branch) and [repository update API](https://docs.github.com/en/rest/repos/repos#update-a-repository) apply. The [feature contract](features/default-branch.feature.md) maps validation, requests and post-write verification to tests.
+
 ## Template repository (unreleased)
 
 Current source adds optional `settings.repository.is_template`, a boolean controlling whether the repository can be used as a template. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group; no repository-generation command is added.
@@ -35,7 +54,7 @@ Apply sends only declared fields through the existing Administration-write repos
 
 ## Web commit sign-off (unreleased)
 
-Current source adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes eighteen repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Current source adds optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; use a source build to exercise it until a supporting package is released. Source export includes nineteen repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1

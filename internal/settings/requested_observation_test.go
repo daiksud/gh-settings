@@ -55,7 +55,7 @@ func TestRepositoryObservationFields(t *testing.T) {
 	for _, field := range observed.Fields() {
 		paths = append(paths, field.Path())
 	}
-	want := []string{"repository.description", "repository.homepage", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.is_template"}
+	want := []string{"repository.description", "repository.homepage", "repository.default_branch", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.is_template"}
 	if !reflect.DeepEqual(paths, want) {
 		t.Fatalf("acquired=%v, want %v", paths, want)
 	}

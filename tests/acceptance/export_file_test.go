@@ -19,7 +19,7 @@ import (
 )
 
 func TestExportSavesAtCheckoutRoot(t *testing.T) {
-	fixture, err := startAPIFixture(`{"description":"Example repository","homepage":"","has_issues":true,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, 200)
+	fixture, err := startAPIFixture(`{"default_branch":"main","description":"Example repository","homepage":"","has_issues":true,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`, 200)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestExportSavesAtCheckoutRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
-		"description": "Example repository", "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false, "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE",
+		"description": "Example repository", "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false, "default_branch": "main", "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "merge_commit_title": "MERGE_MESSAGE", "merge_commit_message": "PR_TITLE",
 	}}}
 	if !reflect.DeepEqual(actual, want) || result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
 		t.Fatalf("YAML=%#v execution=%v stdout=%q stderr=%q", actual, result.runErr, result.stdout.String(), result.stderr.String())
@@ -147,7 +147,7 @@ func TestExportRejectsUnsafeDestination(t *testing.T) {
 }
 
 func TestExportReportsWriteFailure(t *testing.T) {
-	body, err := json.Marshal(map[string]any{"description": strings.Repeat("x", 8192), "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false})
+	body, err := json.Marshal(map[string]any{"default_branch": "main", "description": strings.Repeat("x", 8192), "homepage": "", "has_issues": true, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,7 +11,7 @@ Implemented in current source, unreleased. Published v0.15.1 and older CLI/Actio
 - The complete repository REST GET requires a non-null boolean `is_template`. Missing or invalid data fails instead of becoming false, including when another REST field requested the observation.
 - Export includes the observed boolean only after all required reads complete. Plan compares declared values only, renders native booleans after web commit sign-off and before merge-related values, and performs no mutation or extra GraphQL query for this field.
 - Direct apply sends only declared repository fields in one PATCH, including native false. It makes no preliminary read. Forbidden or rejected updates stop later resources without implying rollback or that earlier writes were undone.
-- CLI and Actions report/Summary retain the exact `settings.repository.is_template` path and native boolean values. The source maximum is twenty managed items: eighteen repository fields, topics and labels.
+- CLI and Actions report/Summary retain the exact `settings.repository.is_template` path and native boolean values. The source maximum is twenty-one managed items: nineteen repository fields, topics and labels.
 - This feature does not generate a repository from a template, copy files, change source-template provenance, or modify Git LFS settings.
 
 ## API and evidence boundaries

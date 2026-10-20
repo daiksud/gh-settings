@@ -38,7 +38,7 @@ func decodeRepositoryResponse(response map[string]json.RawMessage) (settings.Rep
 		name   string
 		target any
 	}{
-		{"description", &result.Description}, {"homepage", &result.Homepage},
+		{"description", &result.Description}, {"homepage", &result.Homepage}, {"default_branch", &result.DefaultBranch},
 		{"has_issues", &result.HasIssues}, {"has_projects", &result.HasProjects}, {"has_wiki", &result.HasWiki}, {"has_discussions", &result.HasDiscussions}, {"web_commit_signoff_required", &result.WebCommitSignoffRequired}, {"is_template", &result.IsTemplate},
 	}
 	for _, field := range fields {
@@ -56,6 +56,9 @@ func decodeRepositoryResponse(response map[string]json.RawMessage) (settings.Rep
 		if err := json.Unmarshal(value, field.target); err != nil {
 			return settings.RepositoryState{}, fmt.Errorf("decode %s: %w", field.name, err)
 		}
+	}
+	if !settings.ValidDefaultBranch(result.DefaultBranch) {
+		return settings.RepositoryState{}, fmt.Errorf("GitHub returned invalid default_branch")
 	}
 	return result, nil
 }
