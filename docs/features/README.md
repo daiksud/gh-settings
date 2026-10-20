@@ -49,3 +49,5 @@ Current source adds unreleased [default workflow permissions](workflow-permissio
 The [Security design](security.feature.md) defines proposed feature-family selection, complete observations, dependency ordering, and adoption gates for #344–#347. Secret scanning and private vulnerability reporting for public repositories are implemented in current source, unreleased; other families remain planned/gated. Published v0.16.0 and older packages reject all proposed security keys/options.
 
 Current source adds unreleased [repository retention policy](retention.feature.md), with complete configured/maximum observations, explicit export opt-in, native integer differences and fresh upper-limit verification. Published v0.16.0 and older packages reject the key and option.
+
+Current source adds unreleased [fork workflow policies](fork-workflows.feature.md): public contributor approval and private fork execution/token/secrets/approval choices, with explicit export selections, declared-only updates and fresh visibility/readback boundaries. Published v0.16.0 and older packages reject the keys and options.

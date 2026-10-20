@@ -41,6 +41,18 @@ func parseActionsPolicy(node *yaml.Node) (settings.ActionsPolicyDeclaration, err
 				return d, fmt.Errorf("invalid actions.artifact_and_log_retention_days: %w", err)
 			}
 			d.RetentionDays = &days
+		case "fork_pr_approval_policy":
+			if n.Kind != yaml.ScalarNode || n.Tag != "!!str" {
+				return d, fmt.Errorf("actions.fork_pr_approval_policy must be a string")
+			}
+			v := n.Value
+			d.ForkApprovalPolicy = &v
+		case "private_fork_workflows":
+			v, err := parsePrivateFork(n)
+			if err != nil {
+				return d, err
+			}
+			d.PrivateFork = v
 		case "default_workflow_permissions":
 			if n.Kind != yaml.ScalarNode || n.Tag != "!!str" {
 				return d, fmt.Errorf("actions.default_workflow_permissions must be a string")
@@ -106,4 +118,35 @@ func actionsYAMLBool(n *yaml.Node) (bool, error) {
 		return false, fmt.Errorf("Actions boolean values must be spelled true or false")
 	}
 	return strings.EqualFold(n.Value, "true"), nil
+}
+
+func parsePrivateFork(n *yaml.Node) (settings.PrivateForkDeclaration, error) {
+	var d settings.PrivateForkDeclaration
+	fields, err := loadMapping(n, "actions.private_fork_workflows")
+	if err != nil {
+		return d, err
+	}
+	for key, node := range fields {
+		n, err := resolveAlias(&node)
+		if err != nil {
+			return d, err
+		}
+		v, err := actionsYAMLBool(n)
+		if err != nil {
+			return d, err
+		}
+		switch key {
+		case "run_workflows_from_fork_pull_requests":
+			d.Run = &v
+		case "send_write_tokens_to_workflows":
+			d.WriteTokens = &v
+		case "send_secrets_and_variables":
+			d.Secrets = &v
+		case "require_approval_for_fork_pr_workflows":
+			d.Approval = &v
+		default:
+			return d, fmt.Errorf("unknown actions.private_fork_workflows key %q", key)
+		}
+	}
+	return d, nil
 }
