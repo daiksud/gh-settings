@@ -7,10 +7,11 @@ import (
 	"strings"
 )
 
-const ActionsPolicyFieldCount = 8
+const ActionsPolicyFieldCount = 9
 
 // ActionsPolicyDeclaration contains only explicitly managed repository policy values.
 type ActionsPolicyDeclaration struct {
+	RetentionDays                *int                       `yaml:"artifact_and_log_retention_days,omitempty" json:"artifact_and_log_retention_days,omitempty"`
 	DefaultWorkflowPermissions   *string                    `yaml:"default_workflow_permissions,omitempty" json:"default_workflow_permissions,omitempty"`
 	CanApprovePullRequestReviews *bool                      `yaml:"can_approve_pull_request_reviews,omitempty" json:"can_approve_pull_request_reviews,omitempty"`
 	Enabled                      *bool                      `yaml:"enabled,omitempty" json:"enabled,omitempty"`
@@ -68,6 +69,11 @@ func ValidateActionPatterns(values []string) error {
 }
 
 func (d ActionsPolicyDeclaration) Validate() error {
+	if d.RetentionDays != nil {
+		if err := ValidateRetentionDays(*d.RetentionDays); err != nil {
+			return err
+		}
+	}
 	if d.DefaultWorkflowPermissions != nil && !ValidDefaultWorkflowPermissions(*d.DefaultWorkflowPermissions) {
 		return fmt.Errorf("actions.default_workflow_permissions must be read or write")
 	}
@@ -161,6 +167,13 @@ func (c ActionsPolicyChange) Values() (any, any) {
 
 func actionValue(field string, value any) (any, error) {
 	switch field {
+	case "actions.artifact_and_log_retention_days":
+		if v, ok := value.(int); ok && ValidateRetentionDays(v) == nil {
+			return v, nil
+		}
+		if v, ok := value.(float64); ok && v >= 1 && v <= 400 && v == float64(int(v)) {
+			return int(v), nil
+		}
 	case "actions.enabled", "actions.sha_pinning_required", "actions.selected_actions.github_owned_allowed", "actions.selected_actions.verified_allowed", "actions.can_approve_pull_request_reviews":
 		if v, ok := value.(bool); ok {
 			return v, nil

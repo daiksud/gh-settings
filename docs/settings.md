@@ -81,6 +81,27 @@ Plan reads the complete workflow policy only when at least one of its fields is 
 
 The [dedicated workflow-permission endpoint](https://docs.github.com/en/rest/actions/permissions#set-default-workflow-permissions-for-a-repository) requires target Administration read for observation and Administration write for update. These grants must already exist; the feature neither creates nor broadens them. Organization conflicts, unsupported access and redirects fail visibly. Local fixtures verify the transport and failure contract; read-only live observations do not establish actual mutation compatibility, organization policy or token permissions. No workflow, token, grant or live setting is changed by building this feature. See the [behavior specification](features/workflow-permissions.feature.md).
 
+## Check, run, status, artifact and log retention (unreleased)
+
+Current source supports optional integer `settings.actions.artifact_and_log_retention_days`. Published v0.16.0 and older CLI/Action packages reject this key and `export --retention`; use a source-built CLI. Installed CLI pins are unchanged.
+
+```yaml
+schemaVersion: 1
+settings:
+  actions:
+    artifact_and_log_retention_days: 30
+```
+
+Omission is unmanaged; an empty actions mapping manages nothing. The supported integer range is 1–400, further limited by the freshly observed repository `maximum_allowed_days`. Public repositories allow at most 90 days; private repositories allow at most 400, and a managing organization/enterprise may set a lower maximum. Zero, negatives, null, floats, strings and other types are invalid locally. The API's `maximum_allowed_days` is read-only metadata, not a YAML field or desired value. No value is defaulted or clamped.
+
+This repository policy covers checks (suites, runs and annotations), workflow runs, commit statuses including third-party integrations, artifacts and logs. GitHub expanded the policy to checks/runs/statuses on October 1, 2026. Changes apply to newly created objects and do not retroactively change existing objects. Shorter retention can remove future diagnostic/history data sooner. This feature does not call individual artifact/run/status deletion APIs or edit workflow YAML `retention-days`. See [GitHub's repository retention guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#configuring-the-retention-period-for-checks-workflow-runs-commit-statuses-artifacts-and-logs-in-your-repository).
+
+Explicit `export --retention` includes only the configured days in the actions mapping. It composes with the existing export choices in any argument order; ordinary export, `--actions` and `--workflow-permissions` retain their existing scope. Both integers must be acquired completely before saving, and an observed current setting above the current maximum cannot be exported as a valid declaration. Missing/null/invalid fields and access failures preserve the destination. An unchanged supported export produces zero differences for its values.
+
+Plan reads the dedicated policy only when this field is declared and shows native integers without mutation. Apply runs after workflow permissions and before security families, rereads the complete policy, checks the current maximum, and PUTs only `days` when different. Matching state skips the write. A known current policy above its maximum can be corrected by declaring an allowed lower value; it is never silently normalized. Readback must retain desired days within the then-current maximum. The unowned maximum may change independently without causing failure if the desired value remains allowed. Initial read/preflight failure confirms no retention PUT; PUT/readback failures retain uncertain effects and earlier confirmed operations. There is no transaction, lock, automatic retry or rollback.
+
+Retention is independent of Actions execution, selected Actions and workflow-token permissions, including while execution is disabled. No enabling or unrelated policy write is inferred. The [repository endpoint](https://docs.github.com/en/rest/actions/permissions#get-artifact-and-log-retention-settings-for-a-repository) documents Administration read/write for existing credentials (classic tokens need `repo`); the feature does not expand grants or read organization/enterprise policy endpoints. Local fixtures and a harmless GET establish modeled behavior and response shape, not live PUT compatibility, actual grants or cleanup timing. See the [behavior specification](features/retention.feature.md).
+
 ## Actions execution policy (unreleased)
 
 Current source adds optional `settings.actions`. Published v0.16.0 and older CLI/Action packages reject this group and `export --actions`; use a source-built CLI. The six execution-policy fields below manage repository execution policy, not workflow files, individual runs, token grants or organization policy. [Default workflow permissions](#default-workflow-permissions-unreleased) use separate fields and transport.

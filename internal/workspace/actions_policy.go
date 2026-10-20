@@ -32,6 +32,15 @@ func parseActionsPolicy(node *yaml.Node) (settings.ActionsPolicyDeclaration, err
 			} else {
 				d.SHAPinningRequired = &v
 			}
+		case "artifact_and_log_retention_days":
+			if n.Kind != yaml.ScalarNode || n.Tag != "!!int" {
+				return d, fmt.Errorf("actions.artifact_and_log_retention_days must be an integer")
+			}
+			var days int
+			if err := n.Decode(&days); err != nil {
+				return d, fmt.Errorf("invalid actions.artifact_and_log_retention_days: %w", err)
+			}
+			d.RetentionDays = &days
 		case "default_workflow_permissions":
 			if n.Kind != yaml.ScalarNode || n.Tag != "!!str" {
 				return d, fmt.Errorf("actions.default_workflow_permissions must be a string")

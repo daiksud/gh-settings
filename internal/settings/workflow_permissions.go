@@ -12,7 +12,7 @@ func (d ActionsPolicyDeclaration) WorkflowPermissionsEmpty() bool {
 	return d.DefaultWorkflowPermissions == nil && d.CanApprovePullRequestReviews == nil
 }
 func (d ActionsPolicyDeclaration) Empty() bool {
-	return d.ExecutionEmpty() && d.WorkflowPermissionsEmpty()
+	return d.ExecutionEmpty() && d.WorkflowPermissionsEmpty() && d.RetentionEmpty()
 }
 
 // WithWorkflowPermissions adds an independently acquired complete policy.

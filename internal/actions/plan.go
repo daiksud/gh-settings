@@ -28,7 +28,7 @@ type PlanReport struct {
 	Rulesets   []RulesetPlanChange `json:"rulesets,omitempty"`
 }
 
-// PlanChange retains the native string, boolean or string-list comparison values.
+// PlanChange retains the native string, boolean, integer or string-list comparison values.
 type PlanChange struct {
 	Field  string `json:"field"`
 	Before any    `json:"before"`
