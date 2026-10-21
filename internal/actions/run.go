@@ -16,13 +16,27 @@ import (
 // Run writes nonsecret machine output and maps failures to diagnostics and status.
 func Run(args []string, stdout, stderr io.Writer, version string, plan func() (app.PlanResult, error)) int {
 	if err := execute(args, stdout, version, plan); err != nil {
-		fmt.Fprintf(stderr, "gh settings action: %v\n", err)
+		if privateInvocation(args) {
+			fmt.Fprintln(stderr, "gh settings action: private plan reporting failed")
+		} else {
+			fmt.Fprintf(stderr, "gh settings action: %v\n", err)
+		}
 		return 1
 	}
 	return 0
 }
 
 func execute(args []string, stdout io.Writer, version string, plan func() (app.PlanResult, error)) error {
+	if len(args) == 1 && args[0] == "private-reporting" {
+		_, err := fmt.Fprintln(stdout, "status-only-v1")
+		return err
+	}
+	if len(args) == 4 && args[0] == "summary" && args[3] == "status-only" {
+		return writeSummaryMode(args[1], args[2], args[3], stdout)
+	}
+	if len(args) == 3 && args[0] == "plan" && args[2] == "status-only" {
+		return writePlanReport(args[1], plan)
+	}
 	if len(args) == 3 && args[0] == "summary" {
 		return writeSummary(args[1], args[2])
 	}
@@ -30,7 +44,7 @@ func execute(args []string, stdout io.Writer, version string, plan func() (app.P
 		return writePlanReport(args[1], plan)
 	}
 	if len(args) != 1 || args[0] != "metadata" {
-		return fmt.Errorf("usage: gh settings action <metadata|plan REPORT_PATH|summary REPORT_PATH SUMMARY_PATH>")
+		return fmt.Errorf("usage: gh settings action <metadata|private-reporting|plan REPORT_PATH [status-only]|summary REPORT_PATH SUMMARY_PATH [status-only]>")
 	}
 	repo, err := workspace.CurrentRepository()
 	if err != nil {
@@ -61,4 +75,10 @@ func execute(args []string, stdout io.Writer, version string, plan func() (app.P
 		return fmt.Errorf("write metadata: %w", err)
 	}
 	return nil
+}
+
+// A path named status-only does not select private reporting.
+func privateInvocation(args []string) bool {
+	return (len(args) == 3 && args[0] == "plan" && args[2] == "status-only") ||
+		(len(args) == 4 && args[0] == "summary" && args[3] == "status-only")
 }

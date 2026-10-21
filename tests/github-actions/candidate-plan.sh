@@ -28,7 +28,15 @@ case "${1:-}" in
     [[ $# -le 2 && -S "$PLAN_FIXTURE/api.sock" ]]
     [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} && -z ${GH_HOST:-} && -z ${GH_REPO:-} ]]
     rm -f "$PLAN_FIXTURE/read403" "$PLAN_FIXTURE/write403"
-    case "${2:-normal}" in
+    scenario="${2:-normal}"
+    private=false
+    if [[ "$scenario" == private* ]]; then
+      private=true
+      scenario="${scenario#private}"
+      scenario="${scenario#-}"
+      scenario="${scenario:-normal}"
+    fi
+    case "$scenario" in
       normal|invalid-config|apply|apply-invalid|apply-empty) ;;
       read-failure) touch "$PLAN_FIXTURE/read403" ;;
       apply-write-failure) touch "$PLAN_FIXTURE/write403" ;;
@@ -43,13 +51,13 @@ settings:
       line
     has_issues: false
 YAML
-    if [[ "${2:-normal}" == apply* ]]; then
+    if [[ "$scenario" == apply* ]]; then
       printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: ""\n    has_issues: false\n' > .github/settings.yml
     fi
-    if [[ "${2:-normal}" == invalid-config || "${2:-normal}" == apply-invalid ]]; then
+    if [[ "$scenario" == invalid-config || "$scenario" == apply-invalid ]]; then
       printf 'schemaVersion: 1\nsettings:\n  repository:\n    has_issues: "invalid"\n' > .github/settings.yml
     fi
-    if [[ "${2:-normal}" == apply-empty ]]; then
+    if [[ "$scenario" == apply-empty ]]; then
       printf 'schemaVersion: 1\nsettings: {}\n' > .github/settings.yml
     fi
     git add .github/settings.yml
@@ -76,7 +84,15 @@ YAML
     sha256sum --check "$PLAN_FIXTURE/config-checksum"
     consumer_sha=$(cat "$PLAN_FIXTURE/config-sha")
     [[ "$consumer_sha" != "$ACTION_SHA" ]]
-    case "${2:-normal}" in
+    scenario="${2:-normal}"
+    private=false
+    if [[ "$scenario" == private* ]]; then
+      private=true
+      scenario="${scenario#private}"
+      scenario="${scenario#-}"
+      scenario="${scenario:-normal}"
+    fi
+    case "$scenario" in
       normal|apply|apply-empty)
         [[ "$PLAN_OUTCOME" == success && "$CONFIG_SHA" == "$consumer_sha" ]]
         [[ "$TARGET" == example-owner/settings-fixture ]]
@@ -88,9 +104,9 @@ YAML
         ;;
       *) exit 1 ;;
     esac
-    if [[ "${2:-normal}" == invalid-config || "${2:-normal}" == apply-invalid || "${2:-normal}" == apply-empty ]]; then
+    if [[ "$scenario" == invalid-config || "$scenario" == apply-invalid || "$scenario" == apply-empty ]]; then
       [[ ! -s "$PLAN_FIXTURE/requests" && ! -e "$PLAN_FIXTURE/patch.json" ]]
-    elif [[ "${2:-normal}" == apply* ]]; then
+    elif [[ "$scenario" == apply* ]]; then
       [[ "$(cat "$PLAN_FIXTURE/requests")" == 'PATCH /repos/example-owner/settings-fixture' ]]
       [[ "$(jq -cS . "$PLAN_FIXTURE/patch.json")" == '{"description":"","has_issues":false}' ]]
     else
@@ -101,12 +117,12 @@ YAML
     for summary in "${GITHUB_STEP_SUMMARY%/*}"/step_summary_*; do
       [[ "$summary" != *-scrubbed && -s "$summary" ]] || continue
       if grep -Fxq "$summary" "$PLAN_FIXTURE/summaries-before"; then continue; fi
-      if grep -Fq '## Settings review' "$summary"; then
+      if grep -Eq '^## Settings (review|plan)$' "$summary"; then
         matches=$((matches + 1))
         cp "$summary" "$PLAN_FIXTURE/summary"
       fi
     done
-    if [[ "${2:-normal}" == apply* ]]; then
+    if [[ "$scenario" == apply* ]]; then
       [[ "$matches" == 0 ]]
       apply_case=${2#apply}
       apply_case=${apply_case#-}
@@ -125,11 +141,27 @@ YAML
     fi
     [[ "$matches" == 1 ]]
     summary="$PLAN_FIXTURE/summary"
+    if [[ "$private" == true ]]; then
+      grep -Fq '## Settings plan' "$summary"
+      if [[ "$scenario" == normal ]]; then
+        [[ "$PRIVATE_PLAN_OUTCOME" == changed ]]
+        grep -Fq 'Outcome: changed' "$summary"
+      else
+        [[ -z "$PRIVATE_PLAN_OUTCOME" ]]
+        grep -Fq "Outcome: $scenario" "$summary"
+      fi
+      if grep -Eq 'settings\.|description|before|desired|script|bold' "$summary"; then exit 1; fi
+      shopt -s nullglob
+      reports=("$RUNNER_TEMP"/gh-settings-cli.*/plan.json)
+      [[ ${#reports[@]} == 0 ]]
+      printf 'Private plan result, read-only API requests and report cleanup verified.\n'
+      exit 0
+    fi
     grep -Fq "$consumer_sha" "$summary"
     grep -Fq "$EXPECTED_CLI_SHA256" "$summary"
     grep -Fq "$EXPECTED_CLI_VERSION" "$summary"
     grep -Fq 'example-owner/settings-fixture' "$summary"
-    if [[ "${2:-normal}" == normal ]]; then
+    if [[ "$scenario" == normal ]]; then
       grep -Fq 'Observed before → desired after.' "$summary"
       grep -Fq 'settings.repository.has_issues: true → false' "$summary"
       grep -Fq '&lt;b&gt;bold&lt;/b&gt;\nline' "$summary"

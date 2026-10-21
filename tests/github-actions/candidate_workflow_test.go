@@ -140,6 +140,9 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 		{id: "write-failure", command: "apply", token: "apply-fixture-write", assertion: "assert apply-write-failure", failure: true},
 		{id: "apply-invalid", command: "apply", token: "apply-fixture-write", assertion: "assert apply-invalid", failure: true},
 		{id: "apply-empty", command: "apply", token: "apply-fixture-write", assertion: "assert apply-empty"},
+		{id: "private", command: "plan", token: "plan-fixture-read", assertion: "assert private"},
+		{id: "private-read-failure", command: "plan", token: "plan-fixture-read", assertion: "assert private-read-failure", failure: true},
+		{id: "private-invalid-config", command: "plan", token: "plan-fixture-read", assertion: "assert private-invalid-config", failure: true},
 	} {
 		covered[test.id] = true
 		t.Run(test.id, func(t *testing.T) {
@@ -157,6 +160,9 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 			}
 			scenario, assertion := steps[index], steps[index+1]
 			wantInputs := map[string]string{"command": test.command}
+			if strings.HasPrefix(test.id, "private") {
+				wantInputs["plan-reporting"] = "status-only"
+			}
 			if test.token != "" {
 				wantInputs["token"] = test.token
 			}
@@ -174,6 +180,9 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 				if assertion.Run != "bash .action/tests/github-actions/candidate-plan.sh "+test.assertion {
 					t.Fatalf("scenario %s is missing its result/Summary assertion: %+v", test.id, assertion)
 				}
+			}
+			if strings.HasPrefix(test.id, "private") {
+				wantEnv["PRIVATE_PLAN_OUTCOME"] = "${{ steps." + test.id + ".outputs.plan-outcome }}"
 			}
 			if !reflect.DeepEqual(assertion.Env, wantEnv) {
 				t.Fatalf("scenario %s must verify all four outputs and producer identity: %+v", test.id, assertion)

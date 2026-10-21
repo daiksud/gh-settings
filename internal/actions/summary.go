@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io"
 	"net/url"
 	"os"
 	"reflect"
@@ -299,6 +300,10 @@ func summaryLink(path, label string) string {
 }
 
 func writeSummary(reportPath, summaryPath string) error {
+	return writeSummaryMode(reportPath, summaryPath, "detailed", nil)
+}
+
+func writeSummaryMode(reportPath, summaryPath, mode string, output io.Writer) error {
 	data, err := os.ReadFile(reportPath)
 	if err != nil {
 		return fmt.Errorf("read plan report: %w", err)
@@ -315,7 +320,15 @@ func writeSummary(reportPath, summaryPath string) error {
 	}
 	report := decoded.PlanReport
 	report.Managed = *decoded.Managed
-	content, err := RenderSummary(report, runMetadataFromEnv())
+	var content string
+	if mode == "status-only" {
+		// Validate the complete report before reducing it. Never include identities,
+		// diagnostics or policy values supplied by the report in private output.
+		_, err = validatePlanReport(report, os.Getenv("SETTINGS_TARGET"))
+		content = fmt.Sprintf("\n\n## Settings plan\n\nOutcome: %s\n\nManaged values/resources: %d\n", report.Outcome, report.Managed)
+	} else {
+		content, err = RenderSummary(report, runMetadataFromEnv())
+	}
 	if err != nil {
 		return err
 	}
@@ -333,6 +346,11 @@ func writeSummary(reportPath, summaryPath string) error {
 	}
 	if _, failed := summaryOutcome(report.Outcome); failed {
 		return fmt.Errorf("plan failed")
+	}
+	if output != nil {
+		if _, err := fmt.Fprintf(output, "plan-outcome=%s\n", report.Outcome); err != nil {
+			return fmt.Errorf("write plan outcome: %w", err)
+		}
 	}
 	return nil
 }

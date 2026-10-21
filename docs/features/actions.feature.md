@@ -202,6 +202,16 @@ Changed values retain native string/bool/topic-list meaning. No-difference, unma
 - And a failed plan remains failed even after diagnostic rendering
 - And report, metadata, render, write or status-handoff failure prevents successful public outputs
 
+### Rule: Unreleased private plan reporting does not publish observed values
+
+Current source adds opt-in `plan-reporting: status-only`. Published v0.17.0 does not implement it. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts.
+
+#### Scenario: A private plan reports status without hidden policy
+
+Given observed before values, Ruleset actors or errors contain confidential canaries, when a private plan succeeds or fails, then public stdout/stderr/Summary contain no policy values or raw diagnostics. Successful changed, no-difference and unmanaged outcomes expose `plan-outcome` only after Summary writing succeeds. Ordinary failure removes ephemeral reports and retains a failing status; forced termination cleanup is not guaranteed.
+
+Verified by `TestPrivatePlanHidesErrors`, `TestPrivateSummaryHidesCompleteRulesetPolicy`, `TestPrivateSummaryRejectsUnusableReportsWithoutDisclosure`, `TestPrivateCompositeOutcomesAndCleanup`, `TestPrivateCompositeFailures`, `TestPrivateCompositeInputBoundary` and the real candidate private scenarios. These tests do not prove a published release or safe arbitrary caller code.
+
 ### Public contract verification boundary
 
 The [testing guide](../contributing/testing.md#ci-validation) owns fixture setup, the hosted candidate case matrix, and the evidence produced by each CI stage. The checks associated with this specification are:
