@@ -44,6 +44,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | --- | --- |
 | `command` | Required, no default; exactly `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
+| `plan-reporting` | Current source, unreleased: `detailed` by default, or `status-only` for plan only. Requires a separately published compatible CLI for status-only; v0.17.0 does not support it. |
 
 Validate checks local configuration without credentials. Plan validates first, then reads settings with an explicit read-only token, such as `token: ${{ github.token }}` in the example PR job. For the supported repository fields and topics, apply uses a caller-created, target-scoped App installation token with Administration write. The Action neither creates the token nor verifies its actual grants.
 
@@ -55,10 +56,19 @@ There are no inputs for export, arbitrary arguments, configuration path, target,
 | `target` | Configuration checkout's resolved GitHub `origin`, in `OWNER/REPO` form. |
 | `cli-version` | Verified installed CLI release selected by the Action package. |
 | `cli-sha256` | SHA-256 of the verified installed binary. |
+| `plan-outcome` | Current source, unreleased: `changed`, `no-difference` or `unmanaged` after a successful status-only plan and Summary write; empty for detailed/validate/apply calls. |
 
 Use `steps.<id>.outputs.<name>` only after successful completion. Outputs are published after the command and, for plan, successful Summary rendering and writing. Differences, no differences and no managed fields are successful plan outcomes.
 
 Missing command/token, unsupported prerequisites, install/metadata/output failures and CLI/configuration/API errors fail the Action. A nonzero plan status is preserved; otherwise Summary status determines success. Failed calls have no successful output contract. Plan Summary displays escaped settings values and categorical failure diagnostics, and distinguishes workflow, configuration, Action and CLI identities. Validate/apply report through the Action step's outcome and logs; they do not render a plan Summary.
+
+### Private plan reporting (unreleased)
+
+Current source adds `plan-reporting: status-only` for plan. It displays only a validated outcome and bounded managed count; it omits policy values, names, actors and raw diagnostics. Setup checks the installed binary's private-reporting capability before authenticated work and reports a fixed error for an unsupported package. The maintained v0.17.0 pins continue to use detailed mode; selecting newer Action source does not publish or upgrade its binary.
+
+Status-only failures use fixed diagnostics and preserve failure status. Detailed reports stay in the installer's private temporary directory with mode 0600 and are removed by an `always()` cleanup step, including after ordinary failures. No report is uploaded or cached. Forced runner termination can prevent cleanup; use a fresh supported hosted runner, and never arrange for other steps to cache/upload its temporary data. Metadata success outputs still identify the caller's checkout and installed package; the caller must supply a trusted target/revision and must not inject confidential data into public identities or caller logs.
+
+This mode does not make a write-capable token read-only or protect it from other code in the shared job. Use trusted workflow/Action code, handle candidate configuration strictly as data, and keep credential acquisition and lifecycle under the caller's approved boundary. A no-difference result is an observation, not a lock or authority for a later apply.
 
 ## Published package and consumer pins
 

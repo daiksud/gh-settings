@@ -225,6 +225,77 @@ runs:
         EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert apply-empty
+    - name: Prepare private plan
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare private
+    - name: Run private through private reporting
+      id: private
+      uses: ./.action
+      with:
+        command: plan
+        plan-reporting: status-only
+        token: plan-fixture-read
+    - name: Verify private privacy and cleanup
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.private.outcome }}
+        PRIVATE_PLAN_OUTCOME: ${{ steps.private.outputs.plan-outcome }}
+        CONFIG_SHA: ${{ steps.private.outputs.config-sha }}
+        TARGET: ${{ steps.private.outputs.target }}
+        CLI_VERSION: ${{ steps.private.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.private.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert private
+    - name: Prepare private-read-failure plan
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare private-read-failure
+    - name: Run private-read-failure through private reporting
+      id: private-read-failure
+      continue-on-error: true
+      uses: ./.action
+      with:
+        command: plan
+        plan-reporting: status-only
+        token: plan-fixture-read
+    - name: Verify private-read-failure privacy and cleanup
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.private-read-failure.outcome }}
+        PRIVATE_PLAN_OUTCOME: ${{ steps.private-read-failure.outputs.plan-outcome }}
+        CONFIG_SHA: ${{ steps.private-read-failure.outputs.config-sha }}
+        TARGET: ${{ steps.private-read-failure.outputs.target }}
+        CLI_VERSION: ${{ steps.private-read-failure.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.private-read-failure.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert private-read-failure
+    - name: Prepare private-invalid-config plan
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare private-invalid-config
+    - name: Run private-invalid-config through private reporting
+      id: private-invalid-config
+      continue-on-error: true
+      uses: ./.action
+      with:
+        command: plan
+        plan-reporting: status-only
+        token: plan-fixture-read
+    - name: Verify private-invalid-config privacy and cleanup
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.private-invalid-config.outcome }}
+        PRIVATE_PLAN_OUTCOME: ${{ steps.private-invalid-config.outputs.plan-outcome }}
+        CONFIG_SHA: ${{ steps.private-invalid-config.outputs.config-sha }}
+        TARGET: ${{ steps.private-invalid-config.outputs.target }}
+        CLI_VERSION: ${{ steps.private-invalid-config.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.private-invalid-config.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert private-invalid-config
     - name: Stop the owned local repository API
       if: always()
       shell: bash

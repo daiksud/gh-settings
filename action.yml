@@ -2,6 +2,10 @@ name: GitHub repository settings
 author: Daiki Sudo
 description: Validate, plan or directly apply checkout-root settings with its verified release CLI on GitHub-hosted Ubuntu 24.04 x64.
 inputs:
+  plan-reporting:
+    description: Plan reporting, detailed or status-only; status-only hides settings values and raw diagnostics. Only supported for plan.
+    required: false
+    default: detailed
   command:
     description: Required command, exactly validate, plan or apply.
     required: true
@@ -13,6 +17,9 @@ inputs:
       owns approval and token lifecycle.
     required: false
 outputs:
+  plan-outcome:
+    description: Successful status-only plan outcome, changed, no-difference or unmanaged; empty for detailed plans and validate/apply.
+    value: ${{ steps.result.outputs.plan-outcome }}
   config-sha:
     description: Full checked-out configuration commit SHA.
     value: ${{ steps.result.outputs.config-sha }}
@@ -33,10 +40,16 @@ runs:
       env:
         SETTINGS_COMMAND: ${{ inputs.command }}
         HAS_TOKEN: ${{ inputs.token != '' }}
+        PLAN_REPORTING: ${{ inputs.plan-reporting }}
       run: |
         case "$SETTINGS_COMMAND" in
           validate|plan|apply) ;;
           *) echo 'command must be validate, plan or apply' >&2; exit 1 ;;
+        esac
+        case "$PLAN_REPORTING" in
+          detailed) ;;
+          status-only) [[ "$SETTINGS_COMMAND" == plan ]] || { echo 'status-only reporting requires plan' >&2; exit 1; } ;;
+          *) echo 'invalid plan reporting mode' >&2; exit 1 ;;
         esac
         if [[ "$SETTINGS_COMMAND" != validate && "$HAS_TOKEN" != true ]]; then
           echo 'plan and apply require an explicit token input' >&2
@@ -48,10 +61,22 @@ runs:
       env:
         ACTION_PATH: ${{ github.action_path }}
         SETTINGS_ACTION_REF: ${{ github.action_ref }}
+        PLAN_REPORTING: ${{ inputs.plan-reporting }}
       run: |
         unset GH_TOKEN GITHUB_TOKEN
         binary=$(bash "$ACTION_PATH/action/install-cli.sh")
-        "$binary" action metadata >> "$GITHUB_OUTPUT"
+        if [[ "$PLAN_REPORTING" == status-only ]]; then
+          if ! capability=$("$binary" action private-reporting 2>/dev/null) || [[ "$capability" != status-only-v1 ]]; then
+            echo 'installed CLI does not support private plan reporting' >&2
+            exit 1
+          fi
+          if ! "$binary" action metadata >> "$GITHUB_OUTPUT" 2>/dev/null; then
+            echo 'checkout metadata failed' >&2
+            exit 1
+          fi
+        else
+          "$binary" action metadata >> "$GITHUB_OUTPUT"
+        fi
         printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
     - name: Validate checkout settings without authentication
       if: inputs.command == 'validate'
@@ -68,12 +93,18 @@ runs:
       env:
         SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
         SETTINGS_COMMAND: ${{ inputs.command }}
+        PLAN_REPORTING: ${{ inputs.plan-reporting }}
         GH_TOKEN: ${{ inputs.token }}
       run: |
         unset GITHUB_TOKEN
         status=0
+        umask 077
         if [[ "$SETTINGS_COMMAND" == plan ]]; then
-          "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" || status=$?
+          if [[ "$PLAN_REPORTING" == status-only ]]; then
+            "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" status-only || status=$?
+          else
+            "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" || status=$?
+          fi
         else
           "$SETTINGS_CLI" apply || status=$?
         fi
@@ -83,10 +114,12 @@ runs:
           exit "$status"
         fi
     - name: Render plan Summary and return the plan status
+      id: review
       if: inputs.command == 'plan'
       shell: bash
       env:
         SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+        PLAN_REPORTING: ${{ inputs.plan-reporting }}
         PLAN_STATUS: ${{ steps.execute.outputs.exit-status }}
         SETTINGS_ACTOR: ${{ github.actor }}
         SETTINGS_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
@@ -104,7 +137,11 @@ runs:
       run: |
         unset GH_TOKEN GITHUB_TOKEN
         summary_status=0
-        "$SETTINGS_CLI" action summary "${SETTINGS_CLI%/*}/plan.json" "$GITHUB_STEP_SUMMARY" || summary_status=$?
+        if [[ "$PLAN_REPORTING" == status-only ]]; then
+          "$SETTINGS_CLI" action summary "${SETTINGS_CLI%/*}/plan.json" "$GITHUB_STEP_SUMMARY" status-only >> "$GITHUB_OUTPUT" || summary_status=$?
+        else
+          "$SETTINGS_CLI" action summary "${SETTINGS_CLI%/*}/plan.json" "$GITHUB_STEP_SUMMARY" || summary_status=$?
+        fi
         [[ "$PLAN_STATUS" == 0 ]] || exit "${PLAN_STATUS:-1}"
         exit "$summary_status"
     - name: Publish successful result
@@ -115,6 +152,23 @@ runs:
         TARGET: ${{ steps.setup.outputs.target }}
         CLI_VERSION: ${{ steps.setup.outputs.cli-version }}
         CLI_SHA256: ${{ steps.setup.outputs.cli-sha256 }}
+        PLAN_OUTCOME: ${{ steps.review.outputs.plan-outcome }}
       run: |
         printf 'config-sha=%s\ntarget=%s\ncli-version=%s\ncli-sha256=%s\n' \
           "$CONFIG_SHA" "$TARGET" "$CLI_VERSION" "$CLI_SHA256" >> "$GITHUB_OUTPUT"
+        if [[ -n "$PLAN_OUTCOME" ]]; then
+          printf 'plan-outcome=%s\n' "$PLAN_OUTCOME" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Remove ephemeral plan data
+      if: always() && inputs.command == 'plan'
+      shell: bash
+      env:
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+      run: |
+        unset GH_TOKEN GITHUB_TOKEN
+        if [[ -n "$SETTINGS_CLI" ]]; then
+          if ! rm -f -- "${SETTINGS_CLI%/*}/plan.json" 2>/dev/null; then
+            echo 'plan cleanup failed' >&2
+            exit 1
+          fi
+        fi

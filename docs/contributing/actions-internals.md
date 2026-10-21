@@ -1,5 +1,9 @@
 # Internal GitHub Actions interfaces
 
+Current source adds unreleased status-only reporting. The internal capability entry `action private-reporting` returns `status-only-v1`; the composite checks it without credentials before using the optional `status-only` argument on `action plan` and `action summary`. Older packages retain detailed-mode invocation without these new arguments. Private plan failures replace raw error text with a fixed diagnostic. Private Summary validates the complete report, then publishes only its closed outcome and bounded managed count, without values, actor context or raw diagnostics. After a successful private Summary write, stdout carries only `plan-outcome=OUTCOME` for the step output. Detailed Summary keeps its existing silent interface and output.
+
+The Action removes ephemeral reports in an `always()` step after success or ordinary failure. File/report failures remain failures, and a nonzero original plan status takes precedence over presentation errors. Tests cover hidden Ruleset policy, canary diagnostics, malformed reports, output/storage failures, old-package refusal before authentication, all three successful outcomes and cleanup. Hosted candidate scenarios exercise private changed, read-failure and invalid-config paths through the real same-source composite. This is not publication or live credential evidence.
+
 ## Scope
 
 This page is for contributors changing the composite Action or its Go adapters. Consumers should use the [public Action guide](../github-actions.md) and the four [settings commands](../commands.md); the internal interfaces below are same-version wiring, not an independent compatibility API.

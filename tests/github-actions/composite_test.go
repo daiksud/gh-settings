@@ -308,6 +308,7 @@ type compositeResult struct {
 	status                                                                  int
 	downloaded, injected                                                    bool
 	outputs                                                                 map[string]string
+	remainingReports                                                        []string
 	log, calls, metadataCalls, presentationCalls, summary, sha, digest, api string
 }
 
@@ -347,10 +348,10 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 	if action.Name == "" || action.Description == "" || action.Runs.Using != "composite" {
 		t.Fatal("missing composite metadata")
 	}
-	if len(action.Inputs) != 2 || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
+	if len(action.Inputs) != 3 || action.Inputs["plan-reporting"].Default == nil || *action.Inputs["plan-reporting"].Default != "detailed" || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
 		t.Fatal("input contract changed")
 	}
-	if len(action.Outputs) != 4 {
+	if len(action.Outputs) != 5 {
 		t.Fatal("public output contract changed")
 	}
 	fixture := t.TempDir()
@@ -381,6 +382,10 @@ case "$1" in
   --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo "gh-settings $MOCK_CLI_VERSION"; exit ;;
   action)
     case "${2:-}" in
+      private-reporting)
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
+        [[ ${MOCK_OLD_CLI:-0} != 1 ]] || exit 1
+        echo status-only-v1; exit ;;
       metadata)
         [[ $# == 2 && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
         printf 'action metadata\n' >> "$MOCK_METADATA_CALLS"
@@ -390,7 +395,7 @@ case "$1" in
         printf 'config-sha=%s\ntarget=owner/config\ncli-version=%s\ncli-sha256=%s\n' "$MOCK_CONFIG_SHA" "$MOCK_CLI_VERSION" "$MOCK_CLI_SHA256"
         exit "${MOCK_METADATA_STATUS:-0}" ;;
       plan)
-        [[ $# == 3 && (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
+        [[ ($# == 3 || $# == 4) && (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
         printf 'action plan\n' >> "$MOCK_PRESENTATION_CALLS"
         printf 'plan\n' >> "$MOCK_CALLS"
         case "${MOCK_REPORT_MODE:-}" in
@@ -400,12 +405,14 @@ case "$1" in
         esac
         status=${MOCK_VALIDATE_STATUS:-0}
         [[ $status != 0 ]] || status=${MOCK_REMOTE_STATUS:-0}
-        if [[ $status != 0 ]]; then echo 'fixture command error' >&2; fi
+        if [[ $status != 0 ]]; then
+          if [[ ${4:-} == status-only ]]; then echo 'private plan failed' >&2; else echo "${MOCK_ERROR:-fixture command error}" >&2; fi
+        fi
         exit "$status" ;;
       summary)
-        [[ $# == 4 && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
+        [[ ($# == 4 || $# == 5) && -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
         printf 'action summary\n' >> "$MOCK_PRESENTATION_CALLS"
-        GH_SETTINGS_SUMMARY_HELPER=1 exec "$MOCK_TEST_BINARY" "$3" "$4" ;;
+        GH_SETTINGS_SUMMARY_HELPER=1 exec "$MOCK_TEST_BINARY" "${@:3}" ;;
       *) exit 99 ;;
     esac ;;
   validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
@@ -499,10 +506,10 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	}
 	base["MOCK_CONFIG_SHA"], base["MOCK_CLI_SHA256"] = sha, digest
 	outputDirectory := t.TempDir()
-	values := map[string]string{"inputs.command": command, "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
+	values := map[string]string{"inputs.command": command, "inputs.plan-reporting": "detailed", "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
 		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": "approved-action-ref"}
 	for key, value := range extra {
-		if _, known := values[key]; known && strings.HasPrefix(key, "github.") {
+		if _, known := values[key]; known && (strings.HasPrefix(key, "github.") || key == "inputs.plan-reporting") {
 			values[key] = value
 		} else {
 			base[key] = value
@@ -543,14 +550,26 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 		base["GITHUB_STEP_SUMMARY"] = caller
 	}
 	resolve := func(value string) string { return fixtureValue(t, value, values) }
+	for _, step := range action.Runs.Steps {
+		for _, name := range []string{"binary-path", "config-sha", "target", "cli-version", "cli-sha256", "exit-status", "plan-outcome"} {
+			values["steps."+step.ID+".outputs."+name] = ""
+		}
+	}
 
 	result := compositeResult{outputs: map[string]string{}, sha: sha, digest: digest}
 	for i, step := range action.Runs.Steps {
+		if result.status != 0 && !strings.HasPrefix(step.If, "always()") {
+			continue
+		}
 		if step.Shell != "bash" || step.Run == "" || strings.Contains(step.Run, "${{") {
 			t.Fatal("composite command must use explicit Bash and env-bound contexts")
 		}
 		switch step.If {
 		case "":
+		case "always() && inputs.command == 'plan'":
+			if command != "plan" {
+				continue
+			}
 		case "inputs.command == 'validate'":
 			if command != "validate" {
 				continue
@@ -594,12 +613,12 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 		output, err := cmd.CombinedOutput()
 		result.log += string(output)
 		if err != nil {
-			if exit, ok := err.(*exec.ExitError); ok {
+			if exit, ok := err.(*exec.ExitError); ok && result.status == 0 {
 				result.status = exit.ExitCode()
-			} else {
+			} else if !ok {
 				t.Fatal(err)
 			}
-			break
+			continue
 		}
 		fields, _ := os.ReadFile(outputPath)
 		for _, line := range strings.Split(strings.TrimSpace(string(fields)), "\n") {
@@ -623,6 +642,12 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	metadataCalls, _ := os.ReadFile(base["MOCK_METADATA_CALLS"])
 	result.metadataCalls = string(metadataCalls)
 	presentationCalls, _ := os.ReadFile(base["MOCK_PRESENTATION_CALLS"])
+	_ = filepath.WalkDir(base["RUNNER_TEMP"], func(path string, entry os.DirEntry, err error) error {
+		if err == nil && entry.Name() == "plan.json" {
+			result.remainingReports = append(result.remainingReports, path)
+		}
+		return err
+	})
 	result.presentationCalls = string(presentationCalls)
 	summary, _ := os.ReadFile(base["GITHUB_STEP_SUMMARY"])
 	result.summary = string(summary)
