@@ -101,7 +101,11 @@ runs:
         umask 077
         if [[ "$SETTINGS_COMMAND" == plan ]]; then
           if [[ "$PLAN_REPORTING" == status-only ]]; then
-            "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" status-only || status=$?
+            unset GH_DEBUG
+            "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" status-only >/dev/null 2>&1 || status=$?
+            if [[ "$status" != 0 ]]; then
+              echo 'private plan failed' >&2
+            fi
           else
             "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" || status=$?
           fi

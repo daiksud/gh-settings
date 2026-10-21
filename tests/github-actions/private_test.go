@@ -9,7 +9,7 @@ import (
 func TestPrivateCompositeOutcomesAndCleanup(t *testing.T) {
 	for _, outcome := range []string{"changed", "no-difference", "unmanaged"} {
 		t.Run(outcome, func(t *testing.T) {
-			r := runComposite(t, "plan", "fixture-token", map[string]string{"inputs.plan-reporting": "status-only", "MOCK_PLAN_OUTCOME": outcome, "MOCK_DESCRIPTION_BEFORE": "CANARY-hidden-value\n::error::injection", "github.actor": "CANARY-private-actor"})
+			r := runComposite(t, "plan", "fixture-token", map[string]string{"inputs.plan-reporting": "status-only", "MOCK_PLAN_OUTCOME": outcome, "MOCK_DESCRIPTION_BEFORE": "CANARY-hidden-value\n::error::injection", "github.actor": "CANARY-private-actor", "MOCK_DEBUG_NOISE": "1", "GH_DEBUG": "api"})
 			if r.status != 0 || r.outputs["plan-outcome"] != outcome || len(r.outputs) != 5 || r.api != "" || len(r.remainingReports) != 0 || r.injected {
 				t.Fatalf("private result: %+v", r)
 			}
@@ -41,6 +41,7 @@ func TestPrivateCompositeFailures(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			test.extra["inputs.plan-reporting"] = "status-only"
+			test.extra["MOCK_DEBUG_NOISE"] = "1"
 			r := runComposite(t, "plan", "fixture-token", test.extra)
 			if r.status == 0 || len(r.outputs) != 0 || len(r.remainingReports) != 0 || r.api != "" {
 				t.Fatalf("private failure: %+v", r)
