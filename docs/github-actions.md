@@ -58,7 +58,7 @@ There are no inputs for export, arbitrary arguments, configuration path, target,
 | `cli-sha256` | SHA-256 of the verified installed binary. |
 | `plan-outcome` | Current source, unreleased: `changed`, `no-difference` or `unmanaged` after a successful status-only plan and Summary write; empty for detailed/validate/apply calls. |
 
-Use `steps.<id>.outputs.<name>` only after successful completion. Outputs are published after the command and, for plan, successful Summary rendering and writing. Differences, no differences and no managed fields are successful plan outcomes.
+Use `steps.<id>.outputs.<name>` only after successful completion. Outputs are published after the command and, for plan, successful Summary rendering, writing and ephemeral report cleanup. Differences, no differences and no managed fields are successful plan outcomes.
 
 Missing command/token, unsupported prerequisites, install/metadata/output failures and CLI/configuration/API errors fail the Action. A nonzero plan status is preserved; otherwise Summary status determines success. Failed calls have no successful output contract. Plan Summary displays escaped settings values and categorical failure diagnostics, and distinguishes workflow, configuration, Action and CLI identities. Validate/apply report through the Action step's outcome and logs; they do not render a plan Summary.
 

@@ -74,3 +74,12 @@ func TestPrivateCompositeInputBoundary(t *testing.T) {
 		t.Fatalf("metadata leaked: %+v", r)
 	}
 }
+
+func TestCompositeCleanupMustSucceedBeforePublishing(t *testing.T) {
+	for _, mode := range []string{"detailed", "status-only"} {
+		r := runComposite(t, "plan", "fixture-token", map[string]string{"inputs.plan-reporting": mode, "MOCK_CLEANUP_FAILURE": "1"})
+		if r.status == 0 || len(r.outputs) != 0 || len(r.remainingReports) != 1 || strings.Contains(r.log, "CANARY") {
+			t.Fatalf("cleanup failed to gate public success: %+v", r)
+		}
+	}
+}

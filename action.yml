@@ -148,6 +148,19 @@ runs:
         fi
         [[ "$PLAN_STATUS" == 0 ]] || exit "${PLAN_STATUS:-1}"
         exit "$summary_status"
+    - name: Remove ephemeral plan data
+      if: always() && inputs.command == 'plan'
+      shell: bash
+      env:
+        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+      run: |
+        unset GH_TOKEN GITHUB_TOKEN
+        if [[ -n "$SETTINGS_CLI" ]]; then
+          if ! rm -f -- "${SETTINGS_CLI%/*}/plan.json" 2>/dev/null; then
+            echo 'plan cleanup failed' >&2
+            exit 1
+          fi
+        fi
     - name: Publish successful result
       id: result
       shell: bash
@@ -162,17 +175,4 @@ runs:
           "$CONFIG_SHA" "$TARGET" "$CLI_VERSION" "$CLI_SHA256" >> "$GITHUB_OUTPUT"
         if [[ -n "$PLAN_OUTCOME" ]]; then
           printf 'plan-outcome=%s\n' "$PLAN_OUTCOME" >> "$GITHUB_OUTPUT"
-        fi
-    - name: Remove ephemeral plan data
-      if: always() && inputs.command == 'plan'
-      shell: bash
-      env:
-        SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
-      run: |
-        unset GH_TOKEN GITHUB_TOKEN
-        if [[ -n "$SETTINGS_CLI" ]]; then
-          if ! rm -f -- "${SETTINGS_CLI%/*}/plan.json" 2>/dev/null; then
-            echo 'plan cleanup failed' >&2
-            exit 1
-          fi
         fi

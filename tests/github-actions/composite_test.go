@@ -451,6 +451,13 @@ done
 exit 1
 `)
 	write(filepath.Join(bin, "sha256sum"), "#!/usr/bin/env bash\nexec shasum -a 256 \"$@\"\n")
+	write(filepath.Join(bin, "rm"), `#!/usr/bin/env bash
+if [[ ${MOCK_CLEANUP_FAILURE:-0} == 1 ]]; then
+  echo CANARY-cleanup-diagnostic >&2
+  exit 1
+fi
+exec /bin/rm "$@"
+`)
 	files, err := os.ReadDir(filepath.Join(root(), "action"))
 	if err != nil {
 		t.Fatal(err)

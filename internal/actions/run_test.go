@@ -94,7 +94,7 @@ func TestUnsupportedActionArguments(t *testing.T) {
 	for _, args := range [][]string{nil, {"unknown"}, {"metadata", "extra"}, {"plan"}, {"summary", "report.json"}} {
 		var stdout, stderr bytes.Buffer
 		status := actions.Run(args, &stdout, &stderr, "fixture-version", nil)
-		if status != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "usage: gh settings action <metadata|plan REPORT_PATH|summary REPORT_PATH SUMMARY_PATH>") {
+		if status != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "usage: gh settings action <metadata|private-reporting|plan REPORT_PATH [status-only]|summary REPORT_PATH SUMMARY_PATH [status-only]>") {
 			t.Fatalf("args=%v status=%d stdout=%q stderr=%q", args, status, stdout.String(), stderr.String())
 		}
 	}

@@ -41,6 +41,22 @@ func TestPrivatePlanHidesErrors(t *testing.T) {
 	}
 }
 
+func TestDetailedPathNamedStatusOnlyKeepsDiagnostics(t *testing.T) {
+	t.Chdir(t.TempDir())
+	var output, diagnostic bytes.Buffer
+	status := actions.Run([]string{"plan", "status-only"}, &output, &diagnostic, "dev", func() (app.PlanResult, error) {
+		return app.PlanResult{}, errors.New("detailed diagnostic retained")
+	})
+	if status != 1 || !strings.Contains(diagnostic.String(), "detailed diagnostic retained") {
+		t.Fatal(status, diagnostic.String())
+	}
+	diagnostic.Reset()
+	status = actions.Run([]string{"summary", "missing.json", "status-only"}, &output, &diagnostic, "dev", nil)
+	if status != 1 || !strings.Contains(diagnostic.String(), "read plan report") {
+		t.Fatal(status, diagnostic.String())
+	}
+}
+
 func TestPrivateSummaryHidesCompleteRulesetPolicy(t *testing.T) {
 	d, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
 settings: {rulesets: [{name: 'CANARY-hidden-policy', target: branch, enforcement: active, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, bypass_actors: [{actor_type: Integration, actor_id: 987654321, bypass_mode: always}], rules: [{type: deletion}]}]}`))

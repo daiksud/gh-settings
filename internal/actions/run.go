@@ -16,7 +16,7 @@ import (
 // Run writes nonsecret machine output and maps failures to diagnostics and status.
 func Run(args []string, stdout, stderr io.Writer, version string, plan func() (app.PlanResult, error)) int {
 	if err := execute(args, stdout, version, plan); err != nil {
-		if len(args) > 0 && args[len(args)-1] == "status-only" {
+		if privateInvocation(args) {
 			fmt.Fprintln(stderr, "gh settings action: private plan reporting failed")
 		} else {
 			fmt.Fprintf(stderr, "gh settings action: %v\n", err)
@@ -44,7 +44,7 @@ func execute(args []string, stdout io.Writer, version string, plan func() (app.P
 		return writePlanReport(args[1], plan)
 	}
 	if len(args) != 1 || args[0] != "metadata" {
-		return fmt.Errorf("usage: gh settings action <metadata|plan REPORT_PATH|summary REPORT_PATH SUMMARY_PATH>")
+		return fmt.Errorf("usage: gh settings action <metadata|private-reporting|plan REPORT_PATH [status-only]|summary REPORT_PATH SUMMARY_PATH [status-only]>")
 	}
 	repo, err := workspace.CurrentRepository()
 	if err != nil {
@@ -75,4 +75,10 @@ func execute(args []string, stdout io.Writer, version string, plan func() (app.P
 		return fmt.Errorf("write metadata: %w", err)
 	}
 	return nil
+}
+
+// A path named status-only does not select private reporting.
+func privateInvocation(args []string) bool {
+	return (len(args) == 3 && args[0] == "plan" && args[2] == "status-only") ||
+		(len(args) == 4 && args[0] == "summary" && args[3] == "status-only")
 }
