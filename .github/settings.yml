@@ -103,21 +103,3 @@ settings:
       description: This will not be worked on
   security:
     private_vulnerability_reporting: true
-  # Own the complete verified Ruleset/rule membership. Before adding a remote
-  # Ruleset, declare its name here too. Omitted attributes preserve fresh state.
-  rulesets:
-    - name: default
-      rules:
-        - type: deletion
-        - type: non_fast_forward
-        - type: required_linear_history
-        - type: pull_request
-        - type: required_status_checks
-          parameters:
-            required_status_checks:
-              - context: pass
-                integration_id: 15368
-              - context: gh-settings
-                integration_id: 15368
-              - context: pr-message
-                integration_id: 15368
