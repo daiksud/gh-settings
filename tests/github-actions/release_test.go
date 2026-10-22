@@ -63,7 +63,7 @@ func TestReleaseCandidateGate(t *testing.T) {
 	fixture := findStep(t, job{Steps: candidate.Steps}, "download-fixture")
 	if !strings.Contains(fixture.Run, "bash .action/tests/github-actions/prepare-candidate-download.sh") || !reflect.DeepEqual(fixture.Env, map[string]string{
 		"BINARY_PATH": "${{ runner.temp }}/product/gh-settings-linux-amd64", "EXPECTED_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
-		"SOURCE_SHA": "${{ needs.resolve.outputs.source-sha }}", "CLI_VERSION": "${{ inputs.version }}",
+		"SOURCE_SHA": "${{ needs.resolve.outputs.source-sha }}", "CLI_VERSION": "${{ needs.resolve.outputs.version }}",
 	}) {
 		t.Fatalf("candidate fixture source/version/binary identity mapping changed: %+v", fixture)
 	}
@@ -75,7 +75,7 @@ func TestReleaseCandidateGate(t *testing.T) {
 	if identity.If != "" || !reflect.DeepEqual(identity.Env, map[string]string{
 		"ACTION_SHA": "${{ needs.resolve.outputs.source-sha }}", "CONFIG_SHA": "${{ steps.validate.outputs.config-sha }}", "TARGET": "${{ steps.validate.outputs.target }}",
 		"CLI_VERSION": "${{ steps.validate.outputs.cli-version }}", "CLI_SHA256": "${{ steps.validate.outputs.cli-sha256 }}",
-		"EXPECTED_CLI_VERSION": "${{ inputs.version }}", "EXPECTED_CLI_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
+		"EXPECTED_CLI_VERSION": "${{ needs.resolve.outputs.version }}", "EXPECTED_CLI_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
 	}) {
 		t.Fatalf("mandatory candidate public-output identity bindings changed: %+v", identity)
 	}
@@ -115,9 +115,10 @@ func TestReleaseCandidateGate(t *testing.T) {
 		}
 	}
 	if publisher.If != "" || publisher.Continue || !reflect.DeepEqual(publisher.Env, map[string]string{
-		"GH_TOKEN": "${{ github.token }}", "VERSION": "${{ inputs.version }}",
+		"GH_TOKEN": "${{ github.token }}", "VERSION": "${{ needs.resolve.outputs.version }}",
 		"SOURCE_SHA": "${{ needs.resolve.outputs.source-sha }}", "LINUX_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
 		"MACOS_SHA256": "${{ needs.build-macos.outputs.binary-sha256 }}", "RELEASE_DIR": "${{ runner.temp }}/release",
+		"PREVIOUS_TAG": "${{ needs.resolve.outputs.previous-tag }}", "PREVIOUS_SHA": "${{ needs.resolve.outputs.previous-sha }}",
 	}) {
 		t.Fatalf("publisher must use the frozen accepted artifact identities: %+v", publisher)
 	}
@@ -216,8 +217,8 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 	if err := dispatchNode.Decode(&dispatch); err != nil {
 		t.Fatal(err)
 	}
-	if !dispatch.Inputs["version"].Required || dispatch.Inputs["source_sha"].Required || dispatch.Inputs["source_sha"].Type != "string" {
-		t.Fatal("release must retain mandatory version and optional full source SHA")
+	if len(dispatch.Inputs) != 1 || dispatch.Inputs["source_sha"].Required || dispatch.Inputs["source_sha"].Type != "string" {
+		t.Fatal("release must calculate its version and retain only an optional full source SHA")
 	}
 	resolveNode := workflow.Jobs["resolve"]
 	var resolve struct {
@@ -301,9 +302,9 @@ exit "$GH_STATUS"
 			cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", source.Run)
 			cmd.Dir = dir
 			cmd.Env = fixtureEnvironment(map[string]string{
-				"PATH":    bin + string(os.PathListSeparator) + os.Getenv("PATH"),
-				"VERSION": "v1.2.3", "EXPECTED_SOURCE_SHA": test.requested,
-				"GITHUB_REPOSITORY": "fixture-owner/fixture-repo", "GITHUB_OUTPUT": output,
+				"PATH":                bin + string(os.PathListSeparator) + os.Getenv("PATH"),
+				"EXPECTED_SOURCE_SHA": test.requested,
+				"GITHUB_REPOSITORY":   "fixture-owner/fixture-repo", "GITHUB_OUTPUT": output,
 				"GH_CALLS": calls, "GH_RESPONSE": test.response, "GH_STATUS": test.apiStatus,
 			})
 			var stdout, stderr bytes.Buffer

@@ -15,7 +15,7 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Composite and caller wiring | [Composite](../../tests/github-actions/composite_test.go), [consumer](../../tests/github-actions/consumer_test.go), [operational caller](../../tests/github-actions/operational_test.go) | Actual YAML composition, token exposure, output/status ordering, and caller-owned boundaries |
 | Independent PR gates | [Message workflow tests](../../tests/github-actions/pr_message_test.go), [code-result tests](../../tests/github-actions/pr_code_gate_test.go) | Metadata/code event separation, required-message activation, failed/skipped/cancelled jobs, stale revisions, API failures, and status publication |
 | Installed process behavior | [Acceptance tests](../../tests/acceptance/) | The actual supplied binary, isolated Git/files, local API requests, stdout/stderr and exit codes |
-| Release notes | [Release-notes helper tests](../../scripts/release-notes/main_test.go) | Temporary Git history, published predecessor selection, exact frozen ranges, classification, and Markdown rendering |
+| Release metadata | [Metadata helper tests](../../scripts/release-metadata/main_test.go) | Temporary Git history, version precedence/preparation, fixed published boundaries, exact native-note requests, migration details, and retry identity |
 | Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go) | Mock publication/recovery, note generation before remote changes, stored-note preservation, and declared source/version/artifact/gate relationships |
 
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
@@ -69,7 +69,7 @@ The [PR code](../../.github/workflows/ci-pr.yml) and [main](../../.github/workfl
 | Composite smoke | Use the same artifact with the producer's exact Action source and a separate configuration-only consumer |
 | `pass` | Require successful source, acceptance, and composite validation; PR message validation is required separately. Metadata-only edits do not publish a new code result; failed, cancelled, or skipped code prerequisites cannot produce success |
 
-[Commit stage](../../.github/actions/commit-stage/action.yml) exposes its actual checkout SHA, committed CLI version, and binary SHA-256. PR validation builds the merge source, and downstream jobs check out that exact producer SHA. Ordinary CI uses [`action/cli-version`](../../action/cli-version); a release supplies its explicit version and checks equality separately.
+[Commit stage](../../.github/actions/commit-stage/action.yml) exposes its actual checkout SHA, committed CLI version, and binary SHA-256. PR validation builds the merge source, and downstream jobs check out that exact producer SHA. Ordinary CI uses [`action/cli-version`](../../action/cli-version); a release supplies its calculated version and checks committed equality separately.
 
 Both downstream jobs download the same run's artifact with digest mismatch treated as an error. [Acceptance stage](../../.github/actions/acceptance-stage/action.yml) verifies SHA-256 and the embedded version before launch. It compiles the acceptance harness separately with test-result caching disabled; it neither rebuilds the product nor reruns the ordinary Go suite.
 
@@ -117,9 +117,9 @@ Examples and active main callers use the same single-job apply pattern: three `u
 
 ## Release and publication evidence
 
-The [release-notes helper tests](../../scripts/release-notes/main_test.go) run with the ordinary Go suite and pinned Go toolchain. They use local Git repositories and release-list fixtures to verify publication-order selection, full-history requirements, the exact previous-release-to-frozen-source range, and categorized rendering from complete commit messages. The [publisher fixtures](../../tests/release.sh) separately check generation before a new remote tag or release and preservation of existing notes during retries. Neither test layer publishes a release.
+The [release-metadata tests](../../scripts/release-metadata/main_test.go) run with the ordinary Go suite and pinned Go toolchain. They use temporary Git history and an injected API boundary to verify version precedence, preparation, publication-order selection, complete frozen ranges, retry identity, native-note request parameters, and retained migration footers. The [publisher fixtures](../../tests/release.sh) check generation failures before remote state and preservation of existing notes and artifacts during retries. These tests neither publish a release nor claim to execute GitHub's native renderer.
 
-The [release runbook](releases.md) owns dispatch and recovery. Its pre-publication candidate job reuses the bounded fixture with the frozen source, requested/committed version, and existing Linux release artifact. Actual token-free validate must succeed before publication; source/helper tests inspect that required gate without dispatching a release.
+The [release runbook](releases.md) owns dispatch and recovery. Its pre-publication candidate job reuses the bounded fixture with the frozen source, calculated/committed version, and existing Linux release artifact. Actual token-free validate must succeed before publication; source/helper tests inspect that required gate without dispatching a release.
 
 | Evidence | What it establishes | Limit |
 | --- | --- | --- |
