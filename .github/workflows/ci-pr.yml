@@ -148,7 +148,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           RESULTS: ${{ toJSON(needs) }}
-          WAS_CANCELLED: ${{ cancelled() }}
+          WAS_CANCELLED: ${{ job.status == 'cancelled' }}
         run: |
           set -euo pipefail
           current="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
