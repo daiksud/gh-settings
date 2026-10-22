@@ -32,3 +32,4 @@ Keep decision numbers and paths stable. Record a superseding decision and update
 | 0024 | [Require focused PRs and explicit breaking-change reviews](0024-code-review-policy.md) |
 | 0025 | [Reconcile repository Rulesets as declarative collections](0025-declarative-repository-rulesets.md) |
 | 0026 | [Require explicit, complete security observations](0026-explicit-security-observations.md) |
+| 0027 | [Isolate repository lifecycle transitions](0027-repository-lifecycle.md) |
