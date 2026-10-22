@@ -1,0 +1,19 @@
+# Suggest only a category that covers every changed file.
+# One brace-union glob lets different paths in the same category match together.
+# Branch names, PR titles, and public Action source are not classification inputs.
+docs:
+  - changed-files:
+      - any-glob-to-all-files:
+          - "{README.md,CONTRIBUTING.md,AGENTS.md,docs/**,.agents/skills/code-review/SKILL.md}"
+test:
+  - changed-files:
+      - any-glob-to-all-files:
+          - "{tests/**,**/*_test.go}"
+build:
+  - changed-files:
+      - any-glob-to-all-files:
+          - "{go.mod,go.sum,mise.toml}"
+ci:
+  - changed-files:
+      - any-glob-to-all-files:
+          - "{.github/workflows/**,.github/actions/**,.github/scripts/**,.github/labeler.yml}"
