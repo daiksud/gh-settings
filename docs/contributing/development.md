@@ -14,7 +14,7 @@ mise install
 
 ## Pull request messages
 
-PR titles and bodies are validated by the [PR CI workflow](../../.github/workflows/ci-pr.yml) as one squash commit message: the title is the subject, followed by a blank line and the optional PR body. The message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
+PR titles and bodies are validated by the [independent message workflow](../../.github/workflows/pr-message.yml) as one squash commit message: the title is the subject, followed by a blank line and the optional PR body. The message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
 
 ```text
 <type>[optional scope][!]: <description>
@@ -46,7 +46,7 @@ printf '%s\n\n%s\n' 'feat(settings): manage repository topics' 'Describe why thi
   mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
 ```
 
-Keep the PR body consistent with [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). The repository's PR CI rechecks when the title or body changes. Local `git commit` messages are not validated; the final squash message must still be confirmed at merge time.
+Keep the PR body consistent with [Write PR bodies for the Git history](../../CONTRIBUTING.md#write-pr-bodies-for-the-git-history). Message validation rechecks title/body edits independently of product builds; the [PR validation guide](pr-validation.md) explains required-check activation and code/base events. Local `git commit` messages are not validated; the final squash message must still be confirmed at merge time.
 
 ## Build and run from source
 
@@ -99,7 +99,7 @@ Update user references and behavior specifications with the implementation. The 
 
 Topics demonstrates a direct resource extension: [`settings.Declaration`](../../internal/settings/settings.go) holds concrete resource declarations, [`app.Reader` and `app.Writer`](../../internal/app/resources.go) defer resource operations, and [the topics adapter](../../internal/github/topics.go) owns GET/PUT mapping.
 
-Labels demonstrates a collection extension with [typed declaration/state/operation comparisons](../../internal/settings/labels.go), a strict [YAML boundary](../../internal/workspace/labels.go), and [paged read/CRUD mapping](../../internal/github/labels.go). Its `Writer.ReadLabels` dependency obtains fresh state after the direct repository/topics writes; the shared model determines operations before `Writer.Labels` sends them. CLI and Actions own their escaped operation presentation. The [labels specification and tests](../features/labels.feature.md) cover authoritative membership, attribute omission, pagination/completeness, permission needs, and partial failures.
+Labels demonstrates a collection extension with [typed declaration/state/operation comparisons](../../internal/settings/labels.go), a strict [YAML boundary](../../internal/workspace/labels.go), and [paged read/CRUD mapping](../../internal/github/labels.go). Its `Writer.ReadLabels` dependency obtains fresh state after the direct repository/topics writes; the shared model determines operations before `Writer.Labels` sends them. CLI/Actions own their escaped operation presentation. The [labels specification and tests](../features/labels.feature.md) cover authoritative membership, attribute omission, pagination/completeness, permission needs, and partial failures.
 
 For another resource, agree its semantics first. Put declaration/state/comparison at the settings owner, YAML grouping at the workspace boundary, endpoint mapping at the GitHub boundary, and operation sequencing in the application. Adapt CLI/Actions presentation to those shared results. The current codec also accepts the adopted Rulesets, Actions and security subsets; introducing another group requires an explicit contract change.
 
