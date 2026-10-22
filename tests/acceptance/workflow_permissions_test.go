@@ -77,7 +77,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 			}
 			return
 		}
-		if servePRAccessFixtureRead(w, r) || serveIssueCreationPolicyFixtureRead(w, r) {
+		if servePRAccessFixtureRead(w, r) || serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 			return
 		}
 		if isMergeMethodsFixtureRead(r) {

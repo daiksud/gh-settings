@@ -55,9 +55,9 @@ func TestMergeCommitReportAndSummary(t *testing.T) {
 			}
 		}
 	}
-	for _, count := range []int{42, 43} {
+	for _, count := range []int{43, 44} {
 		_, err := actions.RenderSummary(actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: count, Changes: []actions.PlanChange{}}, summaryMetadata())
-		if (err == nil) != (count == 42) {
+		if (err == nil) != (count == 43) {
 			t.Fatalf("count=%d err=%v", count, err)
 		}
 	}

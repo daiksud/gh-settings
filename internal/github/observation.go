@@ -37,11 +37,18 @@ func ObserveRepository(repo repository.Repository, fields []settings.FieldID) (s
 			}
 			return client.ReadIssueCreationPolicy(repo)
 		},
+		func(repo repository.Repository) (settings.SponsorshipsState, error) {
+			client, err := NewRepositoryAccessClient(repo.Host)
+			if err != nil {
+				return settings.SponsorshipsState{}, err
+			}
+			return client.ReadSponsorships(repo)
+		},
 	)
 }
 
-func observeRepository(repo repository.Repository, fields []settings.FieldID, readBase func(repository.Repository) (settings.RepositoryState, error), readMerge func(repository.Repository) (settings.MergeMethodsState, error), readPR func(repository.Repository) (settings.PRAccessState, error), readIssue func(repository.Repository) (settings.IssueCreationPolicyState, error)) (settings.RepositoryObservation, error) {
-	baseNeeded, mergeNeeded, prNeeded, issueNeeded, err := settings.RepositoryObservationGroups(fields)
+func observeRepository(repo repository.Repository, fields []settings.FieldID, readBase func(repository.Repository) (settings.RepositoryState, error), readMerge func(repository.Repository) (settings.MergeMethodsState, error), readPR func(repository.Repository) (settings.PRAccessState, error), readIssue func(repository.Repository) (settings.IssueCreationPolicyState, error), readSponsorships func(repository.Repository) (settings.SponsorshipsState, error)) (settings.RepositoryObservation, error) {
+	baseNeeded, mergeNeeded, prNeeded, issueNeeded, sponsorshipNeeded, err := settings.RepositoryObservationGroups(fields)
 	if err != nil {
 		return settings.RepositoryObservation{}, err
 	}
@@ -76,6 +83,13 @@ func observeRepository(repo repository.Repository, fields []settings.FieldID, re
 			return settings.RepositoryObservation{}, err
 		}
 		observed = observed.WithIssueCreationPolicy(state)
+	}
+	if sponsorshipNeeded {
+		state, err := readSponsorships(repo)
+		if err != nil {
+			return settings.RepositoryObservation{}, err
+		}
+		observed = observed.WithSponsorships(state)
 	}
 	return observed, nil
 }

@@ -44,7 +44,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		if servePRAccessFixtureRead(w, r) {
 			return
 		}
-		if serveIssueCreationPolicyFixtureRead(w, r) {
+		if serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 			return
 		}
 		if isMergeMethodsFixtureRead(r) {

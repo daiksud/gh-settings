@@ -47,6 +47,7 @@ type RepositoryDeclaration struct {
 	HasPullRequests           *bool
 	PullRequestCreationPolicy *string
 	IssueCreationPolicy       *string
+	HasSponsorships           *bool
 }
 
 // Empty reports whether every field is unmanaged, regardless of declared values.
@@ -139,5 +140,5 @@ func ValidIssueCreationPolicy(value string) bool {
 	return value == "ALL" || value == "COLLABORATORS_ONLY"
 }
 func (d RepositoryDeclaration) RepositoryAccessEmpty() bool {
-	return d.PRAccessEmpty() && d.IssueCreationPolicy == nil
+	return d.PRAccessEmpty() && d.IssueCreationPolicy == nil && d.HasSponsorships == nil
 }

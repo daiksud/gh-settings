@@ -40,7 +40,7 @@ func DeclaredRepositoryFields(desired RepositoryDeclaration) []FieldID {
 
 // RepositoryObservationGroups identifies the complete model observations needed
 // for a field request. The adapter selects the API for each observation group.
-func RepositoryObservationGroups(fields []FieldID) (base, merge, pr, issue bool, err error) {
+func RepositoryObservationGroups(fields []FieldID) (base, merge, pr, issue, sponsorship bool, err error) {
 	for _, field := range fields {
 		switch {
 		case containsRepositoryField(repositoryStringFields[:], field), containsRepositoryField(repositoryBoolFields[:], field):
@@ -51,11 +51,13 @@ func RepositoryObservationGroups(fields []FieldID) (base, merge, pr, issue bool,
 			pr = true
 		case containsRepositoryField(issuePolicyStringFields[:], field):
 			issue = true
+		case containsRepositoryField(sponsorshipBoolFields[:], field):
+			sponsorship = true
 		default:
-			return false, false, false, false, fmt.Errorf("field %q is not a supported repository observation", field.path)
+			return false, false, false, false, false, fmt.Errorf("field %q is not a supported repository observation", field.path)
 		}
 	}
-	return base, merge, pr, issue, nil
+	return base, merge, pr, issue, sponsorship, nil
 }
 
 func containsRepositoryField[S any, V bool | string](fields []repositoryField[S, V], identity FieldID) bool {
@@ -92,6 +94,9 @@ func CompareRepositoryObservation(observed RepositoryObservation, desired Reposi
 	if err := compareObservedFields(&result, issuePolicyStringFields[:], observed.values, desired, stringChange); err != nil {
 		return Comparison{}, err
 	}
+	if err := compareObservedFields(&result, sponsorshipBoolFields[:], observed.values, desired, boolChange); err != nil {
+		return Comparison{}, err
+	}
 	return result, nil
 }
 
@@ -122,7 +127,8 @@ func AllRepositoryFields() []FieldID {
 	fields = appendRepositoryFieldIDs(fields, mergeMethodsStringFields[:])
 	fields = appendRepositoryFieldIDs(fields, prAccessBoolFields[:])
 	fields = appendRepositoryFieldIDs(fields, prAccessStringFields[:])
-	return appendRepositoryFieldIDs(fields, issuePolicyStringFields[:])
+	fields = appendRepositoryFieldIDs(fields, issuePolicyStringFields[:])
+	return appendRepositoryFieldIDs(fields, sponsorshipBoolFields[:])
 }
 
 func appendRepositoryFieldIDs[S any, V bool | string](identities []FieldID, fields []repositoryField[S, V]) []FieldID {
@@ -155,6 +161,9 @@ func (observation RepositoryObservation) Declaration() (RepositoryDeclaration, e
 		return RepositoryDeclaration{}, err
 	}
 	if err := copyObservedFields(&result, issuePolicyStringFields[:], observation.values); err != nil {
+		return RepositoryDeclaration{}, err
+	}
+	if err := copyObservedFields(&result, sponsorshipBoolFields[:], observation.values); err != nil {
 		return RepositoryDeclaration{}, err
 	}
 	return result, nil

@@ -53,3 +53,5 @@ Published v0.17.0 adds [repository retention policy](retention.feature.md), with
 Published v0.17.0 adds [fork workflow policies](fork-workflows.feature.md): public contributor approval and private fork execution/token/secrets/approval choices, with explicit export selections, declared-only updates and fresh visibility/readback boundaries. Published v0.16.0 and older packages reject the keys and options.
 
 The implemented features added since v0.16.0 are published in [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0). The native acceptance, immutable assets and published Action smoke checks passed. Unimplemented/gated candidates remain outside this package. See the [package boundary](../settings.md#v0170-package).
+
+Current source additionally implements unreleased [Sponsor button visibility](sponsorships.feature.md), with an independent complete boolean read and declared-only shared repository mutation. It does not manage funding destinations or payments; published v0.17.0 and older packages reject the key.

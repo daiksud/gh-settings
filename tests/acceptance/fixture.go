@@ -29,7 +29,7 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 		if servePRAccessFixtureRead(w, r) {
 			return
 		}
-		if serveIssueCreationPolicyFixtureRead(w, r) {
+		if serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 			return
 		}
 		if isMergeMethodsFixtureRead(r) {
@@ -82,7 +82,7 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, err
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
-		if readOnly && !isMergeMethodsFixtureRead(r) && !isPRAccessFixtureRead(r) && !isIssueCreationPolicyFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
+		if readOnly && !isMergeMethodsFixtureRead(r) && !isPRAccessFixtureRead(r) && !isIssueCreationPolicyFixtureRead(r) && !isSponsorshipsFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
 			fixture.invalid.Store(true)
 			http.Error(w, "unexpected fixture request", 400)
 			return
@@ -169,5 +169,19 @@ func serveIssueCreationPolicyFixtureRead(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, issueCreationPolicyFixtureResponse)
+	return true
+}
+
+const sponsorshipsFixtureResponse = `{"data":{"repository":{"hasSponsorshipsEnabled":false}}}`
+
+func isSponsorshipsFixtureRead(r *http.Request) bool {
+	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { hasSponsorshipsEnabled } }`)
+}
+func serveSponsorshipsFixtureRead(w http.ResponseWriter, r *http.Request) bool {
+	if !isSponsorshipsFixtureRead(r) {
+		return false
+	}
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(w, sponsorshipsFixtureResponse)
 	return true
 }

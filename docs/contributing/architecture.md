@@ -117,13 +117,13 @@ Prefer the Go standard library where sufficient; no command framework is mandate
 
 ## Pull request access transport
 
-The v0.17.0 [PR access feature](../features/pull-request-access.feature.md) adds a third complete scalar observation group in `internal/settings`, alongside base REST and merge-related GraphQL values. Existing field IDs, requested observation routing and native report presentation retain omission and stable order. Export requests all twenty-two scalar fields; selective plan skips clients for unrelated groups.
+The v0.17.0 [PR access feature](../features/pull-request-access.feature.md) adds a third complete scalar observation group in `internal/settings`, alongside base REST and merge-related GraphQL values. Existing field IDs, requested observation routing and native report presentation retain omission and stable order. Current-source export requests all twenty-three scalar fields; selective plan skips clients for unrelated groups.
 
 The [PR access adapter](../../internal/github/repository_access.go) uses GraphQL query variables for complete policy reads and an independently validated repository-ID lookup before a declared-only `updateRepository` mutation. The root composition retains existing REST writes, skips an empty PATCH for PR-only input, and then invokes PR access before later resources. Mutation response values and identity are verified; mixed-resource errors preserve evidence of earlier writes. This does not add a generic backend registry, saved plans, retries, or permission expansion.
 
 ## Issue creation policy
 
-The v0.17.0 [Issue creation policy](../features/issue-creation-policy.feature.md) has its own complete observation group and query, so PR-only reads do not acquire unrelated Issue data. `RepositoryObservation.WithIssueCreationPolicy` adds the independently acquired enum without mutating an earlier observation. The static field definitions retain order, native values and omission; full source export acquires twenty-two scalars.
+The v0.17.0 [Issue creation policy](../features/issue-creation-policy.feature.md) has its own complete observation group and query, so PR-only reads do not acquire unrelated Issue data. `RepositoryObservation.WithIssueCreationPolicy` adds the independently acquired enum without mutating an earlier observation. The static field definitions retain order, native values and omission; full source export now acquires twenty-three scalars.
 
 The shared [repository access adapter](../../internal/github/repository_access.go) retains the narrow PR query and adds a separate Issue query. Both use `followRenames: false`. Its closed mutation selects only declared Issue/PR fields and performs one validated ID lookup and mutation for combined input. The root composition excludes these fields from REST payloads and preserves existing REST-first partial-failure behavior. `has_issues` keeps its existing REST ownership and is never synthesized by an Issue policy declaration.
 
@@ -160,3 +160,9 @@ The v0.17.0 retention policy is an independent actions observation with acquired
 ## Fork workflow policies
 
 The v0.17.0 contributor and private fork families have independent acquired observations and declarations within Actions. Settings owns enum/boolean comparisons and state-dependent explicit-parameter/enable prerequisites; workspace owns strict nested YAML. The dedicated client shares Actions REST construction, checks family-specific visibility and complete responses, sends declared-only PUT keys and verifies requested plus unowned companions. App scopes readers/export selections separately and records fresh read, no-write and confirmed/uncertain update progress after retention, before security. Whole Actions emptiness includes both new families; execution/workflow/retention emptiness remains independent. Five closed native report fields reuse existing presentation. See the [fork workflow specification](../features/fork-workflows.feature.md).
+
+## Sponsorship visibility
+
+The unreleased [Sponsor button setting](../features/sponsorships.feature.md) has an independent complete boolean observation, while its declaration remains in `settings.repository`. The existing static field definitions own YAML setters, stable comparison order, native reports and the increased scalar count. Only requested observations construct the shared GraphQL client. Full export includes the acquired value; missing reads never become false.
+
+The existing repository mutation includes `hasSponsorshipsEnabled` only when declared, sharing the ID lookup with PR/Issue policies and checking the response identity/value. Root composition excludes the field from REST payloads and preserves REST-first failure reporting. Funding files, recipients and payments are outside the model and all request paths. The source feature is not in published v0.17.0.

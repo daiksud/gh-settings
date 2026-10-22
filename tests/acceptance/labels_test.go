@@ -113,7 +113,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 				if servePRAccessFixtureRead(w, r) {
 					return
 				}
-				if serveIssueCreationPolicyFixtureRead(w, r) {
+				if serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 					return
 				}
 				if isMergeMethodsFixtureRead(r) {
@@ -198,7 +198,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			want := []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2"}
+			want := []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2"}
 			if !reflect.DeepEqual(paths, want) {
 				t.Fatalf("paths=%v", paths)
 			}

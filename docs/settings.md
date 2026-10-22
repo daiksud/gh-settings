@@ -189,6 +189,25 @@ These endpoints are not transactional. An enabled repository can temporarily use
 
 Read/export/plan require target Administration read; apply requires Administration write, including its preflight/readback. The default `GITHUB_TOKEN` generally does not supply this permission. Callers must provide an appropriately scoped existing credential; this feature neither creates nor broadens grants. Official [repository policy endpoints](https://docs.github.com/en/rest/actions/permissions#get-github-actions-permissions-for-a-repository) and the [behavior specification](features/actions-execution-policy.feature.md) describe the API and evidence boundaries. Local fixture success does not prove live write compatibility or actual token permissions.
 
+## Sponsor button visibility (unreleased)
+
+Current source supports optional `settings.repository.has_sponsorships`, mapped to GraphQL `hasSponsorshipsEnabled`. Published v0.17.0 and older CLI/Action packages reject this key. This source-only addition does not update the committed Action version or existing consumer pins.
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    has_sponsorships: false
+```
+
+`true` enables the repository's Sponsorships setting and `false` disables it. Omission is unmanaged; null, strings, numbers, sequences and mappings are rejected before remote work. The [GraphQL repository and update-input contract](https://docs.github.com/en/graphql/reference/repos#updaterepositoryinput) defines this boolean separately from funding links. GitHub's [Sponsor button setup](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository) requires admin access and describes funding configuration, including inherited defaults. This tool does not read, create, replace or remove `FUNDING.yml`, select recipients, change inherited funding links, subscribe to sponsorships, or make payments. An accepted boolean alone is not evidence that a button with usable links is rendered when funding configuration is missing.
+
+Plan reads only this complete authenticated GraphQL boolean when declared; unrelated field-only plans retain their existing requests. Source export now includes twenty-three repository fields and requires this observation as well. Missing/null/wrong-type values, unavailable repositories and partial GraphQL errors fail rather than becoming false; a failed export preserves the existing file. Read queries and the update's identity lookup disable rename following.
+
+Apply uses the existing validated repository-ID lookup and shared `updateRepository` mutation, sending only declared GraphQL fields and verifying returned identity and values. A sponsorship-only declaration sends no REST PATCH. Combined PR, Issue-policy and Sponsorships declarations share one lookup and mutation; explicitly declared REST fields run first. Repeated direct scalar apply still writes. Failures stop later resources and can leave earlier writes applied; no saved-plan apply, rollback or automatic retry is introduced.
+
+Use a credential with complete read visibility and authorization to update this repository setting; no credential grants are broadened automatically. Source and isolated process tests do not prove actual token permissions, missing-funding UI behavior or live mutation success. The [behavior specification](features/sponsorships.feature.md) owns verification cases and limits.
+
 ## Issue creation policy
 
 Current source adds optional `settings.repository.issue_creation_policy`, mapped to GraphQL `issueCreationPolicy`. Published v0.16.0 and older CLI/Action packages reject this key. Use v0.17.0 or newer; newer Action source still installs its selected published CLI.
@@ -235,7 +254,7 @@ Reads require complete policy visibility; writes require a credential authorized
 
 ## Default branch
 
-Published v0.16.0 and current source support optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-two repository fields, topics and labels.
+Published v0.16.0 and current source support optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-three repository fields, topics and labels.
 
 ```yaml
 schemaVersion: 1
@@ -269,7 +288,7 @@ Apply sends only declared fields through the existing Administration-write repos
 
 ## Web commit sign-off
 
-Published v0.16.0 and current source support optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; adopt v0.16.0 or newer before using it. Source export includes twenty-two repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Published v0.16.0 and current source support optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; adopt v0.16.0 or newer before using it. Source export includes twenty-three repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1

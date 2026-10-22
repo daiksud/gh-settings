@@ -22,19 +22,21 @@ v0.14.0 adds [merge commit title/body defaults](features/merge-commit-defaults.f
 
 v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a sixteenth exported repository field; published v0.14.0 rejects it. Apply verifies the returned boolean when this field is declared; verification errors can occur after repository writes.
 
-Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Source export includes twenty-two repository fields; published v0.15.1 and older packages reject the new key.
+Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Source export includes twenty-three repository fields; published v0.15.1 and older packages reject the new key.
 
 Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
 
 Published v0.17.0 also adds [PR access controls](settings.md#pull-request-access): `has_pull_requests` and `pull_request_creation_policy`. Published v0.16.0 and older packages reject them. Plan uses a separate complete GraphQL query; apply resolves repository identity and sends only declared PR values through `updateRepository`, after any existing REST update. No current-policy comparison is added to direct apply.
 
-Published v0.17.0 also adds [`issue_creation_policy`](settings.md#issue-creation-policy). It has an independent narrow GraphQL plan read and shares declared-only repository mutations with PR access; it never enables Issues implicitly. Source export now includes twenty-two repository fields. Published v0.16.0 and older packages reject the new key.
+Published v0.17.0 also adds [`issue_creation_policy`](settings.md#issue-creation-policy). It has an independent narrow GraphQL plan read and shares declared-only repository mutations with PR access; it never enables Issues implicitly. That published package exports twenty-two repository fields. Published v0.16.0 and older packages reject the new key.
 
 Published v0.17.0 also adds [Actions execution policy](settings.md#actions-execution-policy) and explicit `export --actions`. Normal export keeps its existing permissions; selected policy reads require Administration read. Published v0.16.0 and older packages reject this group and option.
 
 Published v0.17.0 adds [default workflow permissions](settings.md#default-workflow-permissions). Its two fields are independent of execution policy; explicit `export --workflow-permissions` acquires them without expanding normal export or `--actions`. Published v0.16.0 and older packages reject the keys/option.
 
 ## Interface and implementation status
+
+Current source additionally supports unreleased [`has_sponsorships`](settings.md#sponsor-button-visibility-unreleased), increasing full source export to twenty-three repository fields. Plan reads its independent GraphQL boolean only when declared; apply shares the declared-only repository mutation and never edits funding destinations. Published v0.17.0 and older packages reject the key.
 
 Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
@@ -115,7 +117,7 @@ Plan validates the configuration before resolving origin, configuring authentica
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (v0.17.0), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (v0.17.0), then has_sponsorships (unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
 
 ```text
 settings.repository.has_issues: true → false
@@ -150,7 +152,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 
 | Resource | Request |
 | --- | --- |
-| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] v0.17.0 PR access and Issue creation policy then use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
+| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] PR access, Issue creation policy, and unreleased Sponsorships then use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
 | `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
 | `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform required label POST/PATCH/DELETE operations.[^github-labels] |
 

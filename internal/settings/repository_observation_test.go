@@ -89,10 +89,12 @@ func TestCombinedRepositoryObservationDeclaration(t *testing.T) {
 				t.Fatalf("declaration=%+v, want %+v", got, want)
 			}
 			access := PRAccessState{PullRequestCreationPolicy: "ALL"}
-			complete, err := NewRepositoryObservation(&base, &test.state, &access).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"}).Declaration()
+			complete, err := NewRepositoryObservation(&base, &test.state, &access).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(SponsorshipsState{Enabled: false}).Declaration()
 			completeWant := want.WithPRAccess(access)
 			issuePolicy := "ALL"
 			completeWant.IssueCreationPolicy = &issuePolicy
+			noSponsorships := false
+			completeWant.HasSponsorships = &noSponsorships
 			if err != nil || !reflect.DeepEqual(complete, completeWant) {
 				t.Fatalf("complete declaration=%+v error=%v, want %+v", complete, err, want)
 			}

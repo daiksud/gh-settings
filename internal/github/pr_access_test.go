@@ -139,14 +139,14 @@ func TestPRAccessReadSelectionAndPartialDiscard(t *testing.T) {
 	observed, err := observeRepository(repository.Repository{}, fields, nil, nil, func(repository.Repository) (settings.PRAccessState, error) {
 		calls++
 		return settings.PRAccessState{PullRequestCreationPolicy: "ALL"}, nil
-	}, nil)
+	}, nil, nil)
 	if err != nil || calls != 1 || len(observed.Fields()) != 2 {
 		t.Fatal(observed, calls, err)
 	}
 	cause := errors.New("PR read denied")
 	observed, err = observeRepository(repository.Repository{}, observationFields(t, "repository.has_issues", "repository.pull_request_creation_policy"), func(repository.Repository) (settings.RepositoryState, error) {
 		return settings.RepositoryState{HasIssues: true}, nil
-	}, nil, func(repository.Repository) (settings.PRAccessState, error) { return settings.PRAccessState{}, cause }, nil)
+	}, nil, func(repository.Repository) (settings.PRAccessState, error) { return settings.PRAccessState{}, cause }, nil, nil)
 	if err != cause || len(observed.Fields()) != 0 {
 		t.Fatal("earlier comparison leaked", observed, err)
 	}

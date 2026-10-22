@@ -117,6 +117,10 @@ func (client *RepositoryAccessClient) ApplyRepositoryAccess(repo repository.Repo
 		input["issueCreationPolicy"] = *desired.IssueCreationPolicy
 		selected += " issueCreationPolicy"
 	}
+	if desired.HasSponsorships != nil {
+		input["hasSponsorshipsEnabled"] = *desired.HasSponsorships
+		selected += " hasSponsorshipsEnabled"
+	}
 	query := `mutation($input: UpdateRepositoryInput!) { updateRepository(input:$input) { repository { ` + selected + ` } } }`
 	var response map[string]json.RawMessage
 	if err := client.graphql.Do(query, map[string]any{"input": input}, &response); err != nil {
@@ -168,10 +172,22 @@ func verifyAccessMutation(response map[string]json.RawMessage, repo repository.R
 			return fmt.Errorf("GitHub did not retain requested issueCreationPolicy")
 		}
 	}
+	if desired.HasSponsorships != nil {
+		var enabled *bool
+		if json.Unmarshal(fields["hasSponsorshipsEnabled"], &enabled) != nil || enabled == nil || *enabled != *desired.HasSponsorships {
+			return fmt.Errorf("GitHub did not retain requested hasSponsorshipsEnabled")
+		}
+	}
 	return nil
 }
 
 func repositoryAccessLabel(d settings.RepositoryDeclaration) string {
+	if d.HasSponsorships != nil {
+		if d.PRAccessEmpty() && d.IssueCreationPolicy == nil {
+			return "sponsorships"
+		}
+		return "repository access"
+	}
 	if d.IssueCreationPolicy == nil {
 		return "PR access"
 	}

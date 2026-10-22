@@ -53,7 +53,7 @@ func TestExportStoredSettings(t *testing.T) {
 			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "bug", Color: &color, Description: &description})
 			want := settings.Declaration{
 				Repository: settings.RepositoryDeclaration{
-					HasPullRequests: &no, PullRequestCreationPolicy: &policy, IssueCreationPolicy: &issuePolicy,
+					HasPullRequests: &no, PullRequestCreationPolicy: &policy, IssueCreationPolicy: &issuePolicy, HasSponsorships: &no,
 					Description: &test.state.Description, Homepage: &test.state.Homepage, DefaultBranch: &test.state.DefaultBranch,
 					HasIssues: &test.state.HasIssues, HasProjects: &test.state.HasProjects, HasWiki: &test.state.HasWiki, HasDiscussions: &test.state.HasDiscussions, WebCommitSignoffRequired: &test.state.WebCommitSignoffRequired, IsTemplate: &test.state.IsTemplate,
 					AllowMergeCommit: &yes, AllowSquashMerge: &no, AllowRebaseMerge: &yes, DeleteBranchOnMerge: &no, AllowAutoMerge: &no, AllowUpdateBranch: &yes,
@@ -161,12 +161,12 @@ func exportFixtureReader(t *testing.T, state settings.RepositoryState, step func
 			for _, field := range fields {
 				paths = append(paths, field.Path())
 			}
-			want := []string{"repository.description", "repository.homepage", "repository.default_branch", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.is_template", "repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge", "repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message", "repository.has_pull_requests", "repository.pull_request_creation_policy", "repository.issue_creation_policy"}
+			want := []string{"repository.description", "repository.homepage", "repository.default_branch", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.is_template", "repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge", "repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message", "repository.has_pull_requests", "repository.pull_request_creation_policy", "repository.issue_creation_policy", "repository.has_sponsorships"}
 			if !reflect.DeepEqual(paths, want) {
 				t.Fatalf("export fields=%v, want %v", paths, want)
 			}
 			methods := settings.MergeMethodsState{AllowMergeCommit: true, AllowRebaseMerge: true, AllowUpdateBranch: true, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}
-			return settings.NewRepositoryObservation(&state, &methods, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}), step("repository", repo)
+			return settings.NewRepositoryObservation(&state, &methods, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(settings.SponsorshipsState{Enabled: false}), step("repository", repo)
 		},
 		Topics: func(repo repository.Repository) ([]string, error) { return []string{"b", "a"}, step("topics", repo) },
 		Labels: func(repo repository.Repository) (settings.LabelObservation, error) {
@@ -188,6 +188,7 @@ func TestExportMissingRepositoryObservationPreventsSave(t *testing.T) {
 		{"missing merge", settings.NewRepositoryObservation(&settings.RepositoryState{}, nil, nil), "repository.allow_merge_commit"},
 		{"missing PR access", settings.NewRepositoryObservation(&settings.RepositoryState{}, &settings.MergeMethodsState{}, nil), "repository.has_pull_requests"},
 		{"missing Issue policy", settings.NewRepositoryObservation(&settings.RepositoryState{}, &settings.MergeMethodsState{}, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}), "repository.issue_creation_policy"},
+		{"missing sponsorships", settings.NewRepositoryObservation(&settings.RepositoryState{}, &settings.MergeMethodsState{}, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}), "repository.has_sponsorships"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var calls []string

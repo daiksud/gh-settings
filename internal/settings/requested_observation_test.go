@@ -97,7 +97,7 @@ func TestRepositoryObservationDeclarationRequiresCompleteValues(t *testing.T) {
 }
 
 func TestCompleteDeclarationCopiesObservedValues(t *testing.T) {
-	observed := NewRepositoryObservation(&RepositoryState{Description: "before"}, &MergeMethodsState{SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "BLANK"}, &PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"})
+	observed := NewRepositoryObservation(&RepositoryState{Description: "before"}, &MergeMethodsState{SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "BLANK"}, &PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(SponsorshipsState{Enabled: false})
 	declaration, err := observed.Declaration()
 	if err != nil {
 		t.Fatal(err)
