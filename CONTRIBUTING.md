@@ -22,6 +22,16 @@ When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose
 
 Blank issues remain available for questions or work that does not fit these forms. Use the same information structure when submitting through the web, CLI, or API. Add constraints or references to the relevant answer only when they affect the work.
 
+### Branch names and change classification
+
+Use topic branches and PRs targeting `main`. Branch names identify work, not its semantic type. A name may contain `feat/` or `fix/`, but no classification depends on that prefix. Correct a mistaken PR title or label directly; do not rename the branch or open a replacement PR just to change its classification.
+
+Authors propose the PR's Conventional Commits type and labels, and reviewers check them against the actual effect on CLI and public Action users. An Issue's initial label does not determine its eventual implementation PR's type. Tests, documentation, and necessary wiring for one product change belong to that same coherent PR, not separate changes merely because they touch different paths.
+
+Any path-based label automation must be limited to unambiguous file categories. A source path alone cannot decide whether a change is a feature, fix, performance improvement, refactor, or compatibility break. Reviewers correct semantic labels and remove stale path suggestions when the diff changes; automatic message validation checks syntax, not that judgment.
+
+Before merging, reconcile the final title, labels, body, and compatibility information with the final diff. Retain the single-purpose PR policy and both breaking-change signals required by the [code-review policy](.agents/skills/code-review/SKILL.md). Editing a PR after merge does not rewrite its existing squash commit.
+
 ### Write PR bodies for the Git history
 
 The PR body is intended to become the squash commit message. Use the [PR template](.github/pull_request_template.md) to leave a durable explanation that is understandable from `git log` alone:
@@ -88,4 +98,6 @@ The existing Markdown check validates relative files and heading fragments. When
 
 ## Releases
 
-Merging a PR does not publish a release. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers explicit version selection, tested binary identity, and immutable release recovery.
+Merging a PR does not publish a release or authorize one. Without an explicit release request, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers explicit version selection, tested binary identity, and immutable release recovery.
+
+Automatic version selection and GitHub-generated release notes are a separate follow-up in [#385](https://github.com/daiksud/gh-settings/issues/385), not prerequisites for the branch and labeling improvements in [#386](https://github.com/daiksud/gh-settings/issues/386). Until that follow-up is implemented, keep the explicit version input, committed Action/CLI version, and existing Git-log-based note generator.
