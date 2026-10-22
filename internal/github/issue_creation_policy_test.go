@@ -117,7 +117,7 @@ func TestIssuePolicyMutationRequiresMatchingResponse(t *testing.T) {
 func TestIssuePolicyObservationRoutingAndPartialDiscard(t *testing.T) {
 	observed, err := observeRepository(repository.Repository{}, observationFields(t, "repository.issue_creation_policy"), nil, nil, nil, func(repository.Repository) (settings.IssueCreationPolicyState, error) {
 		return settings.IssueCreationPolicyState{Policy: "ALL"}, nil
-	})
+	}, nil)
 	if err != nil || len(observed.Fields()) != 1 {
 		t.Fatal(observed, err)
 	}
@@ -126,7 +126,7 @@ func TestIssuePolicyObservationRoutingAndPartialDiscard(t *testing.T) {
 		return settings.RepositoryState{HasIssues: true}, nil
 	}, nil, nil, func(repository.Repository) (settings.IssueCreationPolicyState, error) {
 		return settings.IssueCreationPolicyState{}, cause
-	})
+	}, nil)
 	if err != cause || len(observed.Fields()) != 0 {
 		t.Fatal("partial comparison escaped", observed, err)
 	}

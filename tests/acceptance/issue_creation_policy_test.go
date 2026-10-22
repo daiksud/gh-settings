@@ -35,7 +35,7 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 			fmt.Fprint(w, mergeMethodsFixtureResponse)
 			return
 		}
-		if servePRAccessFixtureRead(w, r) {
+		if servePRAccessFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 			return
 		}
 		if r.Method == "GET" {
@@ -229,7 +229,7 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 					fmt.Fprint(w, mergeMethodsFixtureResponse)
 					return
 				}
-				if servePRAccessFixtureRead(w, r) {
+				if servePRAccessFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 					return
 				}
 				if r.Method == "GET" && r.URL.Path == "/repos/owner/current" {

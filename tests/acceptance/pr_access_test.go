@@ -28,7 +28,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 		mu.Lock()
 		defer mu.Unlock()
 		w.Header().Set("Content-Type", "application/json")
-		if serveIssueCreationPolicyFixtureRead(w, r) {
+		if serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 			return
 		}
 		if isMergeMethodsFixtureRead(r) {
@@ -211,7 +211,7 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 				defer mu.Unlock()
 				methods = append(methods, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
-				if serveIssueCreationPolicyFixtureRead(w, r) {
+				if serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 					return
 				}
 				if isMergeMethodsFixtureRead(r) {

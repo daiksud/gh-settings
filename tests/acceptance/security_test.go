@@ -31,7 +31,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 			fmt.Fprint(w, `{}`)
 			return
 		}
-		if servePRAccessFixtureRead(w, r) || serveIssueCreationPolicyFixtureRead(w, r) {
+		if servePRAccessFixtureRead(w, r) || serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 			return
 		}
 		if isMergeMethodsFixtureRead(r) {
