@@ -29,7 +29,48 @@ settings:
     names:
       - github-cli
       - settings-as-code
+  # See docs/contributing/labels.md. Membership is authoritative: retain the
+  # three legacy names until all existing Issue/PR assignments are migrated.
   labels:
+    - name: BREAKING CHANGE
+      color: b60205
+      description: Incompatible CLI or public Action change; review migration guidance
+    - name: DEPRECATED
+      color: fbca04
+      description: Supported CLI or public Action behavior marked for future removal
+    - name: feat
+      color: 0e8a16
+      description: New capability for CLI or public Action users
+    - name: fix
+      color: 0052cc
+      description: Correction to user-observable CLI or public Action behavior
+    - name: perf
+      color: 7fd18a
+      description: Runtime performance improvement experienced by product users
+    - name: revert
+      color: 79b8ff
+      description: Reverts a previous change; review the resulting product impact
+    - name: docs
+      color: c4b5e0
+      description: Documentation or contributor and reviewer guidance
+    - name: refactor
+      color: 8ec9cc
+      description: Implementation restructuring without user-observable behavior changes
+    - name: style
+      color: b5dcde
+      description: Formatting changes without a behavior change
+    - name: test
+      color: d8ecec
+      description: Test-only additions or corrections
+    - name: build
+      color: a8aeb4
+      description: Internal build, packaging, release tooling, or dependencies
+    - name: ci
+      color: cfd3d7
+      description: Internal CI checks or repository development automation
+    - name: chore
+      color: ededed
+      description: Maintenance that does not fit a more specific change type
     - name: accessibility
       color: f143ab
       description: Barrier affecting people with disabilities

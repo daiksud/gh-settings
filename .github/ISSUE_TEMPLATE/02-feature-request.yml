@@ -1,6 +1,6 @@
 name: Feature or improvement
 description: Propose a new capability or an improvement to existing behavior.
-labels: [enhancement]
+labels: [feat]
 body:
   - type: markdown
     attributes:
