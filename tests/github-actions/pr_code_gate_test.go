@@ -71,8 +71,8 @@ func TestCodeGatePreservesResultsAcrossMetadataEdits(t *testing.T) {
 	if !reflect.DeepEqual(result.Needs, []string{"code-start", "draft", "commit-stage", "ready", "acceptance-stage", "composite-smoke"}) || result.If != "always() && ("+codeEventCondition+")" || !reflect.DeepEqual(result.Permissions, map[string]string{"statuses": "write", "pull-requests": "read"}) || len(result.Steps) != 1 {
 		t.Fatal("code result must aggregate every prerequisite only for code/base events")
 	}
-	if result.Steps[0].Uses != "" || result.Steps[0].Continue || result.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" || result.Steps[0].Env["WAS_CANCELLED"] != "${{ cancelled() }}" {
-		t.Fatal("API-only reporter must consume actual prerequisite results and cancellation")
+	if result.Steps[0].Uses != "" || result.Steps[0].Continue || result.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" || result.Steps[0].Env["WAS_CANCELLED"] != "${{ job.status == 'cancelled' }}" {
+		t.Fatal("API-only reporter must consume actual prerequisite results and a supported cancellation context")
 	}
 }
 
