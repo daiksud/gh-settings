@@ -1,0 +1,51 @@
+name: temporary offline workspace
+on:
+  push:
+    branches: [sponsorship-329]
+    paths: [.github/workflows/workspace-snapshot.yml]
+permissions: {contents: read}
+jobs:
+  workspace-snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Read the exact reviewed public baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 9069ce6dba6c74a30fa38693139e3eda02673b4f
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install the repository's pinned public validation tools
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          install_args: go rumdl actionlint shellcheck jq
+          cache: false
+      - name: Package only public source, dependencies, and tools
+        shell: bash
+        env:
+          GOTOOLCHAIN: local
+        run: |
+          set -euo pipefail
+          snapshot="$RUNNER_TEMP/offline-workspace"
+          mkdir -p "$snapshot/bin"
+          git bundle create "$snapshot/source.bundle" HEAD --tags
+          git rev-parse HEAD > "$snapshot/SOURCE_SHA"
+          git ls-tree -r HEAD > "$snapshot/SOURCE_TREE"
+          go mod vendor
+          tar -czf "$snapshot/vendor.tar.gz" vendor
+          tar -czf "$snapshot/go.tar.gz" -C "$(go env GOROOT)" .
+          for tool in rumdl actionlint shellcheck jq; do
+            cp "$(command -v "$tool")" "$snapshot/bin/$tool"
+          done
+          tar -czf "$snapshot/bin.tar.gz" -C "$snapshot" bin
+          rm -r "$snapshot/bin"
+          cd "$snapshot"
+          sha256sum source.bundle vendor.tar.gz go.tar.gz bin.tar.gz > SHA256SUMS
+      - name: Transfer the offline development workspace
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: public-offline-workspace-329
+          path: ${{ runner.temp }}/offline-workspace
+          if-no-files-found: error
+          retention-days: 1
