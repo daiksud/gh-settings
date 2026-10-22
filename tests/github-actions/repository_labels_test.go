@@ -42,6 +42,11 @@ func TestRepositoryLabelVocabulary(t *testing.T) {
 			t.Errorf("missing change or independent triage label %q", name)
 		}
 	}
+	for _, legacy := range []string{"bug", "enhancement", "documentation"} {
+		if names[legacy] {
+			t.Errorf("retired label %q must not be recreated after assignment migration", legacy)
+		}
+	}
 	for _, form := range []struct{ path, label string }{
 		{"../../.github/ISSUE_TEMPLATE/01-bug-report.yml", "fix"},
 		{"../../.github/ISSUE_TEMPLATE/02-feature-request.yml", "feat"},
