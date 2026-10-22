@@ -19,9 +19,10 @@ jobs:
       - name: Install reviewed source changes, delete this transient workflow, and push
         env:
           GH_TOKEN: ${{ github.token }}
+          EXPECTED_RUN_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          [[ "$(git rev-parse HEAD)" == "c01d6309a955b3007e0db9b85d9176d866a58d6b" ]] || { echo 'Unexpected topic revision' >&2; exit 1; }
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_RUN_SHA" ]] || { echo 'Unexpected topic revision' >&2; exit 1; }
           gh api "repos/$GITHUB_REPOSITORY/git/blobs/2f6d76247df019c7b3e7079b8c49940b90bbbb2b" --jq '.content' | base64 --decode > "$RUNNER_TEMP/archive332.patch.xz"
           printf '%s  %s\n' b450fdb02df701f5dbfb21f6a887b6b75a52495aefdd5dbf0528ef514611567d "$RUNNER_TEMP/archive332.patch.xz" | sha256sum -c -
           xz -dc "$RUNNER_TEMP/archive332.patch.xz" > "$RUNNER_TEMP/archive332.patch"
