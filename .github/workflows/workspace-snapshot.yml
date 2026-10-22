@@ -1,51 +1,78 @@
-name: temporary offline workspace
+name: temporary source object transfer
 on:
   push:
     branches: [sponsorship-329]
     paths: [.github/workflows/workspace-snapshot.yml]
-permissions: {contents: read}
+permissions: {}
 jobs:
-  workspace-snapshot:
+  stage-reviewed-objects:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions: {contents: write}
     steps:
-      - name: Read the exact reviewed public baseline
+      - name: Read the fixed public baseline without persisted credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: 9069ce6dba6c74a30fa38693139e3eda02673b4f
-          fetch-depth: 0
           persist-credentials: false
-      - name: Install the repository's pinned public validation tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.10.8
-          install_args: go rumdl actionlint shellcheck jq
-          cache: false
-      - name: Package only public source, dependencies, and tools
-        shell: bash
+      - name: Verify the reviewed patch and stage immutable Git objects only
+        shell: python
         env:
-          GOTOOLCHAIN: local
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          snapshot="$RUNNER_TEMP/offline-workspace"
-          mkdir -p "$snapshot/bin"
-          git bundle create "$snapshot/source.bundle" HEAD --tags
-          git rev-parse HEAD > "$snapshot/SOURCE_SHA"
-          git ls-tree -r HEAD > "$snapshot/SOURCE_TREE"
-          go mod vendor
-          tar -czf "$snapshot/vendor.tar.gz" vendor
-          tar -czf "$snapshot/go.tar.gz" -C "$(go env GOROOT)" .
-          for tool in rumdl actionlint shellcheck jq; do
-            cp "$(command -v "$tool")" "$snapshot/bin/$tool"
-          done
-          tar -czf "$snapshot/bin.tar.gz" -C "$snapshot" bin
-          rm -r "$snapshot/bin"
-          cd "$snapshot"
-          sha256sum source.bundle vendor.tar.gz go.tar.gz bin.tar.gz > SHA256SUMS
-      - name: Transfer the offline development workspace
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: public-offline-workspace-329
-          path: ${{ runner.temp }}/offline-workspace
-          if-no-files-found: error
-          retention-days: 1
+          import base64
+          import gzip
+          import hashlib
+          import json
+          import os
+          import subprocess
+
+          repository = "daiksud/gh-settings"
+          assert os.environ["GITHUB_REPOSITORY"] == repository
+          baseline = "9069ce6dba6c74a30fa38693139e3eda02673b4f"
+          expected_tree = "87e0746ccdea04b403e09912f0b3adc79d78026d"
+          base_tree = "dac96ec41a1e678a86f56a8c16815c7428878ea1"
+          parts = ["f345da7af75b9360d1e65668a4c9671263c5770a", "bbd07d25d8cc53d883f99b75c51ffa09c549fed4", "00756a0aa07d3797c4e3f21576aa4bf070a079d2"]
+
+          def git(*args, data=None):
+              return subprocess.check_output(["git", *args], input=data)
+
+          def api(path, data=None):
+              args = ["gh", "api", "repos/" + repository + path]
+              payload = None
+              if data is not None:
+                  args += ["--method", "POST", "--input", "-"]
+                  payload = json.dumps(data).encode()
+              return json.loads(subprocess.check_output(args, input=payload))
+
+          assert git("rev-parse", "HEAD").decode().strip() == baseline
+          compressed = bytearray()
+          for sha in parts:
+              blob = api("/git/blobs/" + sha)
+              assert blob["sha"] == sha and blob["encoding"] == "base64"
+              content = base64.b64decode(blob["content"])
+              assert len(content) == blob["size"]
+              assert hashlib.sha1(b"blob " + str(len(content)).encode() + b"\0" + content).hexdigest() == sha
+              compressed.extend(content)
+          patch = gzip.decompress(compressed)
+          assert hashlib.sha256(patch).hexdigest() == "3e310652b7da9ea80996084d449b8d16a4b65fc68561a1e928dd2fa1d8f48c17"
+          git("apply", "--index", "--check", "-", data=patch)
+          git("apply", "--index", "-", data=patch)
+          assert git("write-tree").decode().strip() == expected_tree
+          git("diff", "--cached", "--check")
+          paths = git("diff", "--cached", "--name-only", "-z").decode().strip("\0").split("\0")
+          assert len(paths) == 50
+          assert all(p.startswith(("docs/", "internal/", "tests/")) or p == "main.go" for p in paths)
+          entries = []
+          for path in paths:
+              entry = git("ls-files", "--stage", "--", path).decode().split()
+              assert entry[0] == "100644" and entry[2] == "0"
+              sha = entry[1]
+              content = git("show", ":" + path)
+              stored = api("/git/blobs", {"encoding": "base64", "content": base64.b64encode(content).decode()})
+              assert stored["sha"] == sha
+              entries.append({"path": path, "mode": "100644", "type": "blob", "sha": sha})
+          tree = api("/git/trees", {"base_tree": base_tree, "tree": entries})
+          assert tree["sha"] == expected_tree
+          print("Verified immutable tree:", tree["sha"])
+          print("No commit, ref, tag, release, repository setting, or credential was changed by this job.")
