@@ -16,7 +16,7 @@ func TestCandidateCompositeCallers(t *testing.T) {
 		needs, passNeeds []string
 		failureCondition string
 	}{
-		{workflow: "ci-pr.yml", needs: []string{"commit-stage", "ready"}, passNeeds: []string{"commitlint", "acceptance-stage", "composite-smoke"}, failureCondition: "cancelled() || needs.commitlint.result != 'success' || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'"},
+		{workflow: "ci-pr.yml", needs: []string{"commit-stage", "ready"}},
 		{workflow: "ci-push.yml", needs: []string{"commit-stage"}, passNeeds: []string{"acceptance-stage", "composite-smoke"}, failureCondition: "cancelled() || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'"},
 	} {
 		t.Run(test.workflow, func(t *testing.T) {
@@ -74,6 +74,10 @@ func TestCandidateCompositeCallers(t *testing.T) {
 				if s.If != "" || s.Continue || s.Run != "" || len(s.Env) != 0 {
 					t.Fatalf("candidate caller bypasses its success gate or adds execution/token bindings: %+v", s)
 				}
+			}
+			if test.workflow == "ci-pr.yml" {
+				// PR result publication and failure cases are executed by pr_code_gate_test.go.
+				return
 			}
 			var pass struct {
 				Needs []string `yaml:"needs"`
