@@ -17,6 +17,8 @@ const (
 	settingsEnvironment       = "gh-settings"
 	settingsGuardWorkflowPath = ".github/workflows/settings-environment-guard.yml"
 	settingsGuardCheckName    = "gh-settings"
+	// Both outcomes are literal and cannot impersonate the reserved guard.
+	prCodeGateName = "${{ github.event.action == 'edited' && !github.event.changes.base && 'metadata-only' || 'pass' }}"
 )
 
 // The existing required CI pass check runs this test with the rest of the Go suite.
@@ -90,7 +92,11 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			// without an independently enforceable required check.
 			checkName := jobName
 			if node, exists := job["name"]; exists {
-				if node.Kind != yaml.ScalarNode || strings.Contains(node.Value, "${{") {
+				// A metadata-only run must not overwrite the required code check with
+				// a skipped success. Allow this one two-literal name, not arbitrary
+				// expressions, and only at the code gate's exact path and job ID.
+				boundedCodeGate := path == ".github/workflows/ci-pr.yml" && jobName == "pass" && node.Value == prCodeGateName
+				if node.Kind != yaml.ScalarNode || (strings.Contains(node.Value, "${{") && !boundedCodeGate) {
 					return fmt.Errorf("%s: jobs.%s.name: dynamic or non-scalar job names are not permitted", path, jobName)
 				}
 				checkName = node.Value
