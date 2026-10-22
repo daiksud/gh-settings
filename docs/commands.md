@@ -36,12 +36,14 @@ Published v0.17.0 adds [default workflow permissions](settings.md#default-workfl
 
 ## Interface and implementation status
 
+Current source also supports [`archived`](settings.md#repository-archive-lifecycle-unreleased-source) as an explicitly managed lifecycle boolean. Ordinary export excludes it; use `export --archive` to opt in. Unarchive precedes other writes and archive follows them, with identity and state verification. Published v0.17.0 and older packages reject the key and option.
+
 Current source additionally supports unreleased [`has_sponsorships`](settings.md#sponsor-button-visibility-unreleased), increasing full source export to twenty-three repository fields. Plan reads its independent GraphQL boolean only when declared; apply shares the declared-only repository mutation and never edits funding destinations. Published v0.17.0 and older packages reject the key.
 
 Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
-gh settings export [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
+gh settings export [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply
@@ -117,7 +119,7 @@ Plan validates the configuration before resolving origin, configuring authentica
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (v0.17.0), then has_sponsorships (unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (v0.17.0), then has_sponsorships and archived (both unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
 
 ```text
 settings.repository.has_issues: true → false
@@ -158,7 +160,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields and label attributes remain outside update requests. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
-Repository fields and topics are sent without a preliminary comparison read, even when the YAML values already match GitHub. v0.17.0 PR access and Issue creation policy apply add only the required repository-ID lookup; it does not infer companion values. A later GraphQL failure leaves earlier REST writes applied. Declared labels use a fresh read: creates/updates run in identity order, then deletes in identity order. Create sends the name and only declared attributes; update sends only changed declared attributes; delete removes each undeclared remote label. Names are escaped as individual URL path segments, and no rename or archive fields are sent.
+Repository fields and topics are sent without a preliminary comparison read, even when the YAML values already match GitHub. v0.17.0 PR access and Issue creation policy apply add only the required repository-ID lookup; it does not infer companion values. A later GraphQL failure leaves earlier REST writes applied. Declared labels use a fresh read: creates/updates run in identity order, then deletes in identity order. Create sends the name and only declared attributes; update sends only changed declared attributes; delete removes each undeclared remote label. Names are escaped as individual URL path segments, and no rename field is sent. The separately declared `archived` control is written in an isolated verified lifecycle PATCH, never merged into the ordinary repository update.
 
 Apply never consumes a saved plan. Remote changes after review can alter label operations and be overwritten for managed values or membership. Label deletion removes issue/PR associations, which are not restored by recreating the name. Review these semantics before applying.
 

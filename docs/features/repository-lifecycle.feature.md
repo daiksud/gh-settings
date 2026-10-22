@@ -6,11 +6,11 @@ description: Define archival sequencing and the boundary for deferred identity a
 
 ## Status and scope
 
-Design accepted by [ADR 0027](../adr/0027-repository-lifecycle.md); implementation is pending in #332. `repository.archived`, `repository.visibility`, `repository.private`, and `repository.name` are not supported by this design-only change. #333 and #334 remain deferred. No workflow or live setting is changed.
+Archive/unarchive is implemented in current source according to [ADR 0027](../adr/0027-repository-lifecycle.md). Published v0.17.0 and older packages reject `repository.archived`; #333 and #334 remain deferred, and `repository.visibility`, `repository.private`, and `repository.name` are unsupported. No real repository lifecycle operation, token permission, consumer pin, or release was changed.
 
 The target stays the checkout's GitHub.com origin. There is no repository creation, deletion, transfer, fork migration, organization policy update, local-origin rewrite, saved-plan execution, or automatic rollback.
 
-## Proposed archive declaration and observation
+## Archive declaration and observation
 
 `settings.repository.archived` is an optional strict boolean. Omission acquires no new lifecycle read and performs no lifecycle work; explicit null, strings, and numbers are rejected locally. False requests an active repository; true requests an archived repository. This is not a declaration of individual issue, release, or collaborator states.
 
@@ -51,7 +51,7 @@ Permission loss or an inaccessible repository after a transition is an unknown r
 
 ## Examples of the intended interface
 
-These are proposed examples for #332, not commands supported by this documentation-only change.
+These examples are supported by current source; the published v0.17.0 Action/CLI does not yet support them.
 
 ```yaml
 schemaVersion: 1
@@ -71,13 +71,13 @@ Visibility and rename remain unsupported, including same-value requests. No `pri
 
 Future visibility design must select one enum, specify applicability and the effects of public/private/internal transitions, avoid changing visibility before other writes, and define failures after access loss. Future rename design must specify exact same-name behavior, reject empty/invalid destinations, detect conflicts, bind stable identity, and explicitly hand off the origin and dependent references. Neither operation may be a fallback from a failed read or be combined with automatic rollback.
 
-## Implementation acceptance for #332
+## Implementation verification and remaining operational evidence
 
-Owning model/codec tests must cover omission, true/false, null/type rejection, acquired versus missing state, and the complete transition table. API tests must check exact narrow requests, typed identity/state, denied/incomplete/redirected reads, ignored updates, changed targets, and readback failures. Application tests must assert ordered reads/writes, matching no-ops, rejection before writes, skipped archive after earlier failure, and retained confirmed/uncertain progress.
+Model and codec tests cover omission, true/false, null/type rejection, and retained scalar identity. The [archive API tests](../../internal/github/archive_test.go) exercise complete identity/state, narrow PATCHes, permission and response failures, redirects, rejected updates, and post-write readback. The [application tests](../../internal/app/archive_test.go) verify selective plan, opt-in export, ordering, matching no-ops, early rejection, and retained confirmed or uncertain progress.
 
-Representative built-CLI and actual composite fixtures must cover ordinary and opted-in export, preserved output files, plan without writes, unarchive-before-update, archive-after-update, repeated matching archive, an already archived mixed declaration, partial failure, credential-free Summary, and status-only confidentiality. Existing commands, unrelated resource omission, public Action inputs, and published-version boundaries must remain compatible. Tests use local fixtures and dummy credentials, not this repository's real archive setting.
+The [built-CLI acceptance fixture](../../tests/acceptance/archive_test.go) covers ordinary and opt-in export, preserved output files on incomplete reads, read-only plan, separate Action plan/Summary, archive after other writes, unarchive before them, and repeated matching archive. Existing composite checks cover the same-source Action interface and the status-only reporting boundary; they do not simulate an actual repository archive or prove remote permission. All mutation tests use local fixtures and dummy credentials, not this repository's real archive setting.
 
-Before claiming operational archival support, an explicitly authorized disposable-repository experiment must separately verify actual permissions, transition/readback behavior, and a documented recovery route. Do not archive a production or development repository merely to make a fixture claim stronger. No such experiment has been authorized or performed by this design.
+Before claiming operational archival support, an explicitly authorized disposable-repository experiment must separately verify actual permissions, transition/readback behavior, and a documented recovery route. Do not archive a production or development repository merely to make a fixture claim stronger. No such experiment has been authorized or performed by this implementation.
 
 ## Official contracts
 

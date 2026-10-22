@@ -39,15 +39,34 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		return PlanResult{}, &PlanError{Stage: "target-failure", Err: err}
 	}
 	var comparison settings.Comparison
-	if fields := settings.DeclaredRepositoryFields(desired.Repository); len(fields) > 0 {
+	if desired.Repository.Archived != nil {
+		state, err := read.Archive(repo)
+		if err == nil {
+			err = state.Validate(repo)
+		}
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed++
+		if state.Archived != *desired.Repository.Archived {
+			field, _ := settings.ParseFieldID("repository.archived")
+			change, _ := settings.NewBoolChange(field, state.Archived, *desired.Repository.Archived)
+			comparison.Changes = append(comparison.Changes, change)
+		}
+	}
+	other := desired.Repository
+	other.Archived = nil
+	if fields := settings.DeclaredRepositoryFields(other); len(fields) > 0 {
 		observed, err := read.ObserveRepository(repo, fields)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
-		comparison, err = settings.CompareRepositoryObservation(observed, desired.Repository)
+		otherComparison, err := settings.CompareRepositoryObservation(observed, other)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
+		comparison.Managed += otherComparison.Managed
+		comparison.Changes = append(otherComparison.Changes, comparison.Changes...)
 	}
 	if desired.Topics.Names != nil {
 		current, err := read.Topics(repo)

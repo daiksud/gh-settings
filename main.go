@@ -18,7 +18,7 @@ var version = "dev"
 
 func main() {
 	checkout := workspace.NewCheckout(".")
-	reader := app.Reader{ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, PrivateReporting: readPrivateReporting, Retention: readRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
+	reader := app.Reader{Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, PrivateReporting: readPrivateReporting, Retention: readRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
@@ -26,7 +26,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
+			return app.Export(app.ExportCheckout{IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -35,13 +35,14 @@ func main() {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		},
 		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: readSecretScanning, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadForkApproval: readForkApproval, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
+			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: readSecretScanning, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadForkApproval: readForkApproval, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
 		},
 	}))
 }
 
 func writeRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
 	restDesired := desired
+	restDesired.Archived = nil
 	restDesired.HasPullRequests = nil
 	restDesired.PullRequestCreationPolicy = nil
 	restDesired.IssueCreationPolicy = nil
@@ -240,4 +241,22 @@ func writePrivateFork(repo repository.Repository, d settings.PrivateForkDeclarat
 		return false, err
 	}
 	return c.UpdatePrivate(repo, d)
+}
+
+func readArchive(repo repository.Repository) (settings.ArchiveState, error) {
+	client, err := github.NewWriteClient(repo.Host) // Reject redirects even for lifecycle reads.
+	if err != nil {
+		return settings.ArchiveState{}, err
+	}
+	return client.ReadArchive(repo)
+}
+func readArchiveForApply(repo repository.Repository) (settings.ArchiveState, error) {
+	return readArchive(repo)
+}
+func writeArchive(repo repository.Repository, previous settings.ArchiveState, archived bool) error {
+	client, err := github.NewWriteClient(repo.Host)
+	if err != nil {
+		return err
+	}
+	return client.UpdateArchive(repo, previous, archived)
 }

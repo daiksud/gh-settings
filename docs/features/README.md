@@ -56,4 +56,4 @@ The implemented features added since v0.16.0 are published in [v0.17.0](https://
 
 Current source additionally implements unreleased [Sponsor button visibility](sponsorships.feature.md), with an independent complete boolean read and declared-only shared repository mutation. It does not manage funding destinations or payments; published v0.17.0 and older packages reject the key.
 
-The [repository lifecycle design](repository-lifecycle.feature.md) adopts explicit archive/unarchive sequencing for future #332 implementation and defers visibility and name changes. This design alone adds no supported configuration key or export option.
+Current source implements [repository archive/unarchive](repository-lifecycle.feature.md), with explicit sequencing, identity/readback verification, and opt-in `export --archive`. The published v0.17.0 package rejects this field and option. Visibility and rename remain deferred; no live repository has been archived.

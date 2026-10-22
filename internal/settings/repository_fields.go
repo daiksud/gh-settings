@@ -42,6 +42,11 @@ func RepositoryBoolSetter(name string) (func(*RepositoryDeclaration, bool), bool
 			return field.setDesired, true
 		}
 	}
+	for _, field := range archiveBoolFields {
+		if field.name == name {
+			return field.setDesired, true
+		}
+	}
 	return nil, false
 }
 
@@ -103,7 +108,10 @@ func VisitDeclaredRepositoryFields(declaration RepositoryDeclaration, visitStrin
 	if err := visitDeclaredRepositoryFields(issuePolicyStringFields[:], declaration, visitString); err != nil {
 		return err
 	}
-	return visitDeclaredRepositoryFields(sponsorshipBoolFields[:], declaration, visitBool)
+	if err := visitDeclaredRepositoryFields(sponsorshipBoolFields[:], declaration, visitBool); err != nil {
+		return err
+	}
+	return visitDeclaredRepositoryFields(archiveBoolFields[:], declaration, visitBool)
 }
 
 func visitDeclaredRepositoryFields[S any, V bool | string](fields []repositoryField[S, V], declaration RepositoryDeclaration, visit func(string, V) error) error {
@@ -119,14 +127,14 @@ func visitDeclaredRepositoryFields[S any, V bool | string](fields []repositoryFi
 
 // RepositoryFieldCount counts the supported scalar repository fields.
 func RepositoryFieldCount() int {
-	return len(repositoryStringFields) + len(repositoryBoolFields) + len(mergeMethodsBoolFields) + len(mergeMethodsStringFields) + len(prAccessBoolFields) + len(prAccessStringFields) + len(issuePolicyStringFields) + len(sponsorshipBoolFields)
+	return len(repositoryStringFields) + len(repositoryBoolFields) + len(mergeMethodsBoolFields) + len(mergeMethodsStringFields) + len(prAccessBoolFields) + len(prAccessStringFields) + len(issuePolicyStringFields) + len(sponsorshipBoolFields) + len(archiveBoolFields)
 }
 
 // ValidRepositoryFieldValue checks a field's native type and existing value policy.
 func ValidRepositoryFieldValue(name string, value any) bool {
 	switch value := value.(type) {
 	case bool:
-		return validRepositoryFieldValue(repositoryBoolFields[:], name, value) || validRepositoryFieldValue(mergeMethodsBoolFields[:], name, value) || validRepositoryFieldValue(prAccessBoolFields[:], name, value) || validRepositoryFieldValue(sponsorshipBoolFields[:], name, value)
+		return validRepositoryFieldValue(repositoryBoolFields[:], name, value) || validRepositoryFieldValue(mergeMethodsBoolFields[:], name, value) || validRepositoryFieldValue(prAccessBoolFields[:], name, value) || validRepositoryFieldValue(sponsorshipBoolFields[:], name, value) || validRepositoryFieldValue(archiveBoolFields[:], name, value)
 	case string:
 		return validRepositoryFieldValue(repositoryStringFields[:], name, value) || validRepositoryFieldValue(mergeMethodsStringFields[:], name, value) || validRepositoryFieldValue(prAccessStringFields[:], name, value) || validRepositoryFieldValue(issuePolicyStringFields[:], name, value)
 	default:

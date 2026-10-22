@@ -5,6 +5,7 @@ import "github.com/daiksud/gh-settings/internal/settings"
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludeArchive             bool
 	IncludeForkApproval        bool
 	IncludePrivateFork         bool
 	Repository                 TargetResolver
@@ -156,6 +157,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Security.PrivateVulnerabilityReporting = &enabled
+	}
+	if checkout.IncludeArchive {
+		state, err := read.Archive(repo)
+		if err == nil {
+			err = state.Validate(repo)
+		}
+		if err != nil {
+			return err
+		}
+		desired := state.Archived
+		declaration.Repository.Archived = &desired
 	}
 	return save(declaration)
 }
