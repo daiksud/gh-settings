@@ -1,29 +1,36 @@
-name: temporary source snapshot
+name: temporary archive implementation transfer
 on:
   push:
     branches: [archive-lifecycle-332]
     paths: [.github/workflows/workspace-snapshot.yml]
-permissions: {contents: read}
+permissions: {}
 jobs:
-  snapshot:
+  apply-reviewed-patch:
+    if: github.repository == 'daiksud/gh-settings' && github.ref == 'refs/heads/archive-lifecycle-332'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions: {contents: write}
     steps:
-      - name: Checkout immutable public main
+      - name: Checkout the exact owned topic revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: 11dd81f2018cd652f0b132652458c8a2d97c2eba
-          fetch-depth: 0
-          persist-credentials: false
-      - name: Bundle public repository history for local tests
+          ref: archive-lifecycle-332
+          persist-credentials: true
+      - name: Install reviewed source changes, delete this transient workflow, and push
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p "$RUNNER_TEMP/snapshot"
-          git bundle create "$RUNNER_TEMP/snapshot/source.bundle" HEAD --tags
-          git rev-parse HEAD > "$RUNNER_TEMP/snapshot/SOURCE_SHA"
-      - name: Upload snapshot
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: archive-332-public-source
-          path: ${{ runner.temp }}/snapshot/
-          retention-days: 1
-          if-no-files-found: error
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "c01d6309a955b3007e0db9b85d9176d866a58d6b" ]] || { echo 'Unexpected topic revision' >&2; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/git/blobs/2f6d76247df019c7b3e7079b8c49940b90bbbb2b" --jq '.content' | base64 --decode > "$RUNNER_TEMP/archive332.patch.xz"
+          printf '%s  %s\n' b450fdb02df701f5dbfb21f6a887b6b75a52495aefdd5dbf0528ef514611567d "$RUNNER_TEMP/archive332.patch.xz" | sha256sum -c -
+          xz -dc "$RUNNER_TEMP/archive332.patch.xz" > "$RUNNER_TEMP/archive332.patch"
+          git apply --check "$RUNNER_TEMP/archive332.patch"
+          git apply "$RUNNER_TEMP/archive332.patch"
+          rm .github/workflows/workspace-snapshot.yml
+          git diff --check
+          git add -A
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(settings): manage repository archive lifecycle'
+          git push origin HEAD:refs/heads/archive-lifecycle-332
