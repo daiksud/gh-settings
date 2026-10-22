@@ -30,6 +30,8 @@ Treat the PR title as the header and the PR body as the body/footers of **one** 
 
 Require `type: description` or `type(scope): description`, adding `!` immediately before `:` for a breaking change. Select the type by the **result for gh-settings users**, not by whether the implementation added code or fixed a problem somewhere in the repository.
 
+Branch names are identifiers, not classification evidence. Do not require type prefixes or request a branch rename or replacement PR to correct a type. Authors and reviewers edit the PR title and labels instead. Check labels against the actual diff, independently of an associated Issue's initial classification; remove stale path suggestions when the PR changes scope. File paths alone do not determine feature, fix, performance, refactoring, or compatibility intent. Reconcile the final title, labels, body, and squash message before merging.
+
 For `feat` and `fix`, **users** are people consuming the gh-settings CLI or public GitHub Action in their own repositories, not contributors maintaining this repository. Compare the observable product behavior before and after: supported commands, configuration, output/errors, Action inputs/outputs, installation, and execution. Product features intended for an upcoming release count even before publication. Build scripts, CI, release tooling, and test harnesses used only to maintain this repository are not themselves gh-settings product features.
 
 Decide in order:
@@ -125,3 +127,4 @@ Use the linked contract as the source of detail; do not infer supported release 
 - Mark unmet mandatory type/scope, body, or breaking-change requirements as blocking even if CI passes. Distinguish these from product bugs and optional improvements. Keep personal style preferences and speculative generalization nonblocking; do not manufacture findings to fill a quota.
 - Summarize what was actually reviewed and verified, remaining limitations, and whether changes are required. If no actionable issue was found, say so without claiming unavailable checks passed. Do not make unrelated pre-existing problems blockers for this change.
 - Before reporting merge readiness, confirm current required checks, unresolved findings, and actual reviews for the intended revision. A prior bot completion marker, reaction, or successful approval workflow alone does not establish a current approval; follow [the approval-control guidance](../../../docs/contributing/repository-automation.md#codex-approval-control).
+- Do not treat a successful merge as release authorization. Create release tags, dispatch the release workflow, or publish only after an explicit user request, following the release guide without bypassing validation or replacing published artifacts.

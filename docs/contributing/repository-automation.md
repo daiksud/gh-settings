@@ -11,6 +11,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR creation, push, reopening, and base edits run code validation; metadata-only edits do not alter the reported `pass` result |
 | [`pr-message.yml`](../../.github/workflows/pr-message.yml) | PR creation, push, reopening, and edits validate the current title/body through `pr-message` |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
+| [`labeler.yml`](../../.github/workflows/labeler.yml) | PR-target events suggest add-only labels for unambiguous all-files path categories without executing candidate code |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
 | [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `gh-settings` |
@@ -29,13 +30,13 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The inspected [default-branch ruleset](https://github.com/daiksud/gh-settings/rules/24911852) requires one approving review, dismisses stale approvals when new commits are pushed, requires CODEOWNER review and resolved review threads, and requires strict `pass` and `gh-settings` checks from the GitHub Actions App. No bypass actors are configured. The split CI additionally requires activating `pr-message` from that same App before the code reporter can succeed. Recheck the live ruleset when assessing enforcement: these are GitHub settings, not properties created by the workflow files.
+The inspected [default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) requires one approving review, dismisses stale approvals when new commits are pushed, requires CODEOWNER review and resolved review threads, and requires strict `pass`, `gh-settings`, and `pr-message` checks from the GitHub Actions app. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
 | `pass` | [PR code CI](../../.github/workflows/ci-pr.yml) reports source, acceptance, and composite results; metadata-only edits do not overwrite it | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
-| `pr-message` | The [independent message workflow](../../.github/workflows/pr-message.yml) checks the current title/body; activate this requirement before splitting code CI | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
-| `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's App/name does not identify a unique workflow |
+| `pr-message` | The [independent message workflow](../../.github/workflows/pr-message.yml) checks the current title/body separately from code validation | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
+| `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's app/name does not identify a unique workflow |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
 
@@ -67,7 +68,7 @@ The guard does not inspect the allowed apply job's step bodies, approve Action r
 
 The dedicated check name is **`gh-settings`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `pass`.
 
-These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). Selecting GitHub Actions as the required check provider identifies the App, not this guard's workflow file. Another Actions job can report the same name, so a green `gh-settings` result alone is not proof that the trusted guard ran. The name-reservation test prevents collisions only when the trusted policy actually executes.
+These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). Selecting GitHub Actions as the required check provider identifies the app, not this guard's workflow file. Another Actions job can report the same name, so a green `gh-settings` result alone is not proof that the trusted guard ran. The name-reservation test prevents collisions only when the trusted policy actually executes.
 
 When evaluating enforcement, inspect the applicable required checks and allowed check providers, actual guard run, Environment deployment branches/reviewers, and [`pull_request_target` event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target). The repository YAML does not establish those external settings or enforce policy across other repositories. This guide records the guard's behavior and limits without prescribing a change to external approval configuration.
 
