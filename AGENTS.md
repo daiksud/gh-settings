@@ -13,6 +13,8 @@ Follow [CONTRIBUTING](CONTRIBUTING.md) for development, verification, and docume
 
 Read and apply [.agents/skills/code-review/SKILL.md](.agents/skills/code-review/SKILL.md) for every code or PR review, including self-review and reassessment after fixes. It owns this repository's review policy, including PR scope, squash messages, breaking changes, and implementation review criteria.
 
+When both Copilot and Codex are unavailable because their code-review quotas are exhausted, use the owner's authorized administrator-bypass squash merge after self-review, resolving actionable findings, and passing required checks for the intended head. Record the quota evidence or owner's report and the bypass in the PR or tracking Issue. This exception waives unavailable review approval, not correctness checks, unresolved findings, or release authorization. Use existing bypass permission; do not weaken protection rules or fabricate reviews or check results. When either service is available, use the normal review process.
+
 ## Communication language
 
 Write GitHub Issue and pull request titles, bodies, and comments in English. Communicate with the user in Japanese.
