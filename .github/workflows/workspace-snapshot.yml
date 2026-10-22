@@ -1,0 +1,29 @@
+name: temporary source snapshot
+on:
+  push:
+    branches: [archive-lifecycle-332]
+    paths: [.github/workflows/workspace-snapshot.yml]
+permissions: {contents: read}
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout immutable public main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 11dd81f2018cd652f0b132652458c8a2d97c2eba
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Bundle public repository history for local tests
+        run: |
+          mkdir -p "$RUNNER_TEMP/snapshot"
+          git bundle create "$RUNNER_TEMP/snapshot/source.bundle" HEAD --tags
+          git rev-parse HEAD > "$RUNNER_TEMP/snapshot/SOURCE_SHA"
+      - name: Upload snapshot
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: archive-332-public-source
+          path: ${{ runner.temp }}/snapshot/
+          retention-days: 1
+          if-no-files-found: error
