@@ -55,3 +55,5 @@ Published v0.17.0 adds [fork workflow policies](fork-workflows.feature.md): publ
 The implemented features added since v0.16.0 are published in [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0). The native acceptance, immutable assets and published Action smoke checks passed. Unimplemented/gated candidates remain outside this package. See the [package boundary](../settings.md#v0170-package).
 
 Current source additionally implements unreleased [Sponsor button visibility](sponsorships.feature.md), with an independent complete boolean read and declared-only shared repository mutation. It does not manage funding destinations or payments; published v0.17.0 and older packages reject the key.
+
+The [repository lifecycle design](repository-lifecycle.feature.md) adopts explicit archive/unarchive sequencing for future #332 implementation and defers visibility and name changes. This design alone adds no supported configuration key or export option.
