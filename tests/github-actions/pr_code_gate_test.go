@@ -68,8 +68,8 @@ func TestCodeGatePreservesResultsAcrossMetadataEdits(t *testing.T) {
 	if err := node.Decode(&result); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(result.Needs, []string{"code-start", "draft", "commit-stage", "ready", "acceptance-stage", "composite-smoke"}) || result.If != "always() && ("+codeEventCondition+")" || !reflect.DeepEqual(result.Permissions, map[string]string{"statuses": "write", "pull-requests": "read"}) || len(result.Steps) != 1 {
-		t.Fatal("code result must aggregate every prerequisite only for code/base events")
+	if !reflect.DeepEqual(result.Needs, []string{"code-start", "draft", "commit-stage", "ready", "acceptance-stage", "composite-smoke"}) || result.If != "always() && !cancelled() && ("+codeEventCondition+")" || !reflect.DeepEqual(result.Permissions, map[string]string{"statuses": "write", "pull-requests": "read"}) || len(result.Steps) != 1 {
+		t.Fatal("code result must aggregate every prerequisite only for non-cancelled code/base events")
 	}
 	if result.Steps[0].Uses != "" || result.Steps[0].Continue || result.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" || result.Steps[0].Env["WAS_CANCELLED"] != "${{ job.status == 'cancelled' }}" {
 		t.Fatal("API-only reporter must consume actual prerequisite results and a supported cancellation context")
@@ -95,7 +95,7 @@ func TestCodeResultPublication(t *testing.T) {
 		{name: "failed code", outcome: "failure", wantState: "failure"},
 		{name: "skipped code", outcome: "skipped", wantState: "failure"},
 		{name: "cancelled code", outcome: "cancelled", wantState: "failure"},
-		{name: "cancelled workflow", cancelled: "true", wantState: "failure"},
+		{name: "cancelled reporter", cancelled: "true", wantState: "failure"},
 		{name: "independent check not required", rules: "[[]]", wantState: "failure"},
 		{name: "wrong required provider", rules: strings.ReplaceAll(rules, "15368", "42"), wantState: "failure"},
 		{name: "head changed", pr: strings.ReplaceAll(pr, head, strings.Repeat("c", 40))},

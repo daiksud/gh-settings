@@ -133,7 +133,8 @@ jobs:
           binary-path: ${{ runner.temp }}/product/gh-settings
   code-result:
     needs: [code-start, draft, commit-stage, ready, acceptance-stage, composite-smoke]
-    if: always() && (github.event.action != 'edited' || github.event.changes.base != null)
+    # Do not let always() continue reporting success after workflow cancellation.
+    if: always() && !cancelled() && (github.event.action != 'edited' || github.event.changes.base != null)
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {statuses: write, pull-requests: read}
