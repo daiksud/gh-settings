@@ -16,7 +16,7 @@ The target stays the checkout's GitHub.com origin. There is no repository creati
 
 A declared archive plan/apply and `export --archive` require a complete fresh repository identity: positive numeric ID, canonical owner/name matching the selected target, and a present boolean `archived`. Missing/null/incorrect types, 401/403/404, redirects, wrong IDs, and unavailable canonical names fail. Absence is never interpreted as active, archived, or a missing repository to create.
 
-Plan adds one native boolean comparison and preserves current nonzero error behavior. It never unarchives to read other resources or treats a partial observation as a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export omits archive; opted-in export writes it only after all selected reads complete and preserves the previous file on failure.
+Plan adds one native boolean comparison and preserves current nonzero error behavior. When the transition changes state, both CLI and Action Summary explicitly state unarchive-before-other-settings or archive-after-other-settings ordering. An already archived target with `archived: true` plus any other managed resource fails planning as well as apply, before reading those other resources. It never unarchives to read other resources or treats a partial observation as a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export omits archive; opted-in export writes it only after all selected reads complete and preserves the previous file on failure.
 
 ## Transition and operation order
 
@@ -41,10 +41,10 @@ A concurrent state change is not an authorization to undo it blindly. Re-read at
 | --- | --- |
 | Invalid local declaration or initial identity/state read | Nonzero; no update has started |
 | Unarchive request/response or its readback | Stop; report attempted transition as uncertain unless complete requested state was observed; no ordinary updates |
-| Ordinary update after a confirmed unarchive | Preserve/report unarchive and earlier confirmed updates; do not rearchive to simulate rollback |
+| Ordinary update after a confirmed unarchive | Preserve/report unarchive and earlier confirmed updates, including in the returned error if a caller discards the detailed progress; do not rearchive to simulate rollback |
 | Ordinary update before requested final archive | Preserve/report earlier updates; final archive is not attempted |
 | Fresh pre-archive read | Stop; preserve earlier writes and report archive as not attempted |
-| Archive request or verification | Nonzero; report possible archive/earlier effects honestly; do not write further settings |
+| Archive request, transport failure or verification | Nonzero; report that a dispatched PATCH may have applied even if no response was received; do not write further settings |
 | Output/Summary failure after verified changes | Retain failure and known remote progress; never repeat or undo writes to repair presentation |
 
 Permission loss or an inaccessible repository after a transition is an unknown result, not proof that it is deleted or that the transition failed remotely. Operators inspect and recover deliberately. Do not promise the repository's own workflow can later unarchive it; a trusted external checkout or GitHub's administrator interface may be needed. No additional credential is requested or provisioned automatically.

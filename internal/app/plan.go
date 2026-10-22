@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -47,6 +49,9 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
+		if state.Archived && *desired.Repository.Archived && archiveConflictsWithOtherManaged(desired) {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: fmt.Errorf("archived repository cannot update other managed resources without explicit archived: false")}
+		}
 		comparison.Managed++
 		if state.Archived != *desired.Repository.Archived {
 			field, _ := settings.ParseFieldID("repository.archived")
@@ -66,7 +71,12 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
 		comparison.Managed += otherComparison.Managed
-		comparison.Changes = append(otherComparison.Changes, comparison.Changes...)
+		// An explicit unarchive precedes normal writes; archive is always last.
+		if desired.Repository.Archived != nil && !*desired.Repository.Archived {
+			comparison.Changes = append(comparison.Changes, otherComparison.Changes...)
+		} else {
+			comparison.Changes = append(otherComparison.Changes, comparison.Changes...)
+		}
 	}
 	if desired.Topics.Names != nil {
 		current, err := read.Topics(repo)

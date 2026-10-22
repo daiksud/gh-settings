@@ -52,7 +52,7 @@ func (client *Client) UpdateArchive(repo repository.Repository, initial settings
 	}{Archived: archived})
 	var response map[string]json.RawMessage
 	if err := client.rest.Patch("repos/"+repo.Owner+"/"+repo.Name, bytes.NewReader(body), &response); err != nil {
-		return fmt.Errorf("update repository archived: %w", err)
+		return fmt.Errorf("update repository archived (write may have applied): %w", err)
 	}
 	updated, err := decodeArchive(response, repo)
 	if err != nil || updated.ID != initial.ID || updated.FullName != initial.FullName || updated.Archived != archived {

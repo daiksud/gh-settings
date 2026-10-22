@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -123,4 +124,19 @@ func labelSequence(t *testing.T, changes ...settings.LabelChange) settings.Label
 		t.Fatal(err)
 	}
 	return result
+}
+
+func TestArchiveOrderIsExplicitInCLIPlan(t *testing.T) {
+	for _, tc := range []struct {
+		before, after bool
+		want          string
+	}{
+		{true, false, "Lifecycle order: unarchive before other settings."},
+		{false, true, "Lifecycle order: archive after other settings."},
+	} {
+		content := string(RenderComparison(settings.Comparison{Managed: 1, Changes: []settings.Change{comparisonChange(t, "repository.archived", tc.before, tc.after)}}))
+		if !strings.Contains(content, tc.want) {
+			t.Fatal(content, tc.want)
+		}
+	}
 }

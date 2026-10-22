@@ -134,6 +134,9 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 				line(string(beforeJSON), string(afterJSON))
 			},
 		)
+		if note := presentation.ArchiveOrder(change); note != "" {
+			fmt.Fprintf(&content, "%s\n", quoteHTML(note))
+		}
 	}
 	for _, change := range report.comparison.Labels.Values() {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))

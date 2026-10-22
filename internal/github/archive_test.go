@@ -123,3 +123,21 @@ func TestArchiveUpdateRejectsWrongResponseAndUnconfirmedReadback(t *testing.T) {
 		})
 	}
 }
+
+// A PATCH transport error cannot establish that the server did not mutate state.
+func TestArchivePatchTransportFailureIsUncertain(t *testing.T) {
+	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	base := settings.ArchiveState{ID: 42, FullName: "owner/current", Archived: false}
+	calls := 0
+	client := writeTestClient(t, func(req *http.Request) (*http.Response, error) {
+		calls++
+		if req.Method != "PATCH" {
+			t.Fatalf("unexpected readback after transport failure: %s", req.Method)
+		}
+		return nil, fmt.Errorf("fixture lost response")
+	})
+	err := client.UpdateArchive(repo, base, true)
+	if err == nil || calls != 1 || !strings.Contains(err.Error(), "write may have applied") || !strings.Contains(err.Error(), "fixture lost response") {
+		t.Fatal(err, calls)
+	}
+}

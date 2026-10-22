@@ -238,3 +238,95 @@ func TestArchiveExportExplicitlyOptInAndFailClosed(t *testing.T) {
 		t.Fatal("failed read mutated export", err, archiveCalls, saveCalls)
 	}
 }
+
+// Plan must not advertise an impossible direct apply for an already archived target.
+func TestArchivePlanRejectsArchivedMixedDeclaration(t *testing.T) {
+	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	archived := true
+	desc := "other"
+	for _, extra := range []settings.Declaration{
+		{Repository: settings.RepositoryDeclaration{Archived: &archived, Description: &desc}},
+		{Repository: settings.RepositoryDeclaration{Archived: &archived}, Topics: settings.TopicsDeclaration{Names: &[]string{"x"}}},
+	} {
+		calls := 0
+		result, err := Plan(func() (settings.Declaration, error) { return extra, nil }, func() (repository.Repository, error) { return repo, nil }, Reader{
+			Archive: func(repository.Repository) (settings.ArchiveState, error) {
+				calls++
+				return settings.ArchiveState{ID: 1, FullName: "owner/current", Archived: true}, nil
+			},
+			ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
+				t.Fatal("unappliable plan read later resources")
+				return settings.RepositoryObservation{}, nil
+			},
+			Topics: func(repository.Repository) ([]string, error) {
+				t.Fatal("unappliable plan read topics")
+				return nil, nil
+			},
+		})
+		var planErr *PlanError
+		if calls != 1 || !errors.As(err, &planErr) || planErr.Stage != "read-failure" || !strings.Contains(err.Error(), "without explicit archived: false") || result.Comparison.Managed != 0 {
+			t.Fatal(result, err, calls)
+		}
+	}
+}
+
+func TestArchivePlanTransitionsRespectApplyOrder(t *testing.T) {
+	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	desc := "after"
+	for _, tc := range []struct {
+		from, to  bool
+		wantFirst string
+	}{
+		{true, false, "repository.archived"},
+		{false, true, "repository.description"},
+	} {
+		d := settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &tc.to, Description: &desc}}
+		result, err := Plan(func() (settings.Declaration, error) { return d, nil }, func() (repository.Repository, error) { return repo, nil }, Reader{
+			Archive: func(repository.Repository) (settings.ArchiveState, error) {
+				return settings.ArchiveState{ID: 7, FullName: "owner/current", Archived: tc.from}, nil
+			},
+			ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
+				return settings.NewRepositoryObservation(&settings.RepositoryState{Description: "before"}, nil, nil), nil
+			},
+		})
+		if err != nil || len(result.Comparison.Changes) != 2 || result.Comparison.Changes[0].Field().Path() != tc.wantFirst {
+			t.Fatal(tc, result, err)
+		}
+	}
+}
+
+// CLI error presentation discards ApplyResult. The diagnostic must therefore
+// preserve confirmed unarchive progress even when a later write fails.
+func TestArchiveUnarchiveProgressSurvivesSubsequentFailures(t *testing.T) {
+	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	for _, variant := range []string{"repository", "topics"} {
+		active := false
+		desired := settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &active}}
+		if variant == "repository" {
+			value := "new"
+			desired.Repository.Description = &value
+		}
+		if variant == "topics" {
+			values := []string{"new"}
+			desired.Topics.Names = &values
+		}
+		result, err := Apply(func() (settings.Declaration, error) { return desired, nil }, func() (repository.Repository, error) { return repo, nil }, Writer{
+			ReadArchive: func(repository.Repository) (settings.ArchiveState, error) {
+				return settings.ArchiveState{ID: 2, FullName: "owner/current", Archived: true}, nil
+			},
+			Archive: func(repository.Repository, settings.ArchiveState, bool) error { return nil },
+			Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+				return errors.New("repository write denied")
+			},
+			Topics: func(repository.Repository, settings.TopicsDeclaration) error {
+				return errors.New("topics write denied")
+			},
+		})
+		if err == nil || result.Outcome != ApplyPartialFailure || !strings.Contains(err.Error(), "repository was unarchived") || !strings.Contains(err.Error(), "earlier changes remain applied") || !strings.Contains(err.Error(), variant+" write denied") {
+			t.Fatal(variant, result, err)
+		}
+		if len(result.Operations) != 3 || result.Operations[1].Kind != ArchiveUnarchive || result.Operations[1].Status != OperationCompleted || result.Operations[2].Status != OperationFailedUnknown {
+			t.Fatal(variant, result.Operations)
+		}
+	}
+}

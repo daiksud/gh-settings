@@ -7,7 +7,13 @@ import (
 )
 
 // Apply keeps direct repository/topics writes; labels read their current collection before CRUD.
-func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyResult, error) {
+func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result ApplyResult, err error) {
+	unarchived := false
+	defer func() {
+		if err != nil && unarchived {
+			err = fmt.Errorf("repository was unarchived before subsequent settings failed; earlier changes remain applied: %w", err)
+		}
+	}()
 	desired, err := Validate(load)
 	if err != nil {
 		return ApplyResult{Outcome: ApplyFailed}, err
@@ -19,7 +25,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 	if err != nil {
 		return ApplyResult{Outcome: ApplyFailed}, err
 	}
-	result := ApplyResult{Outcome: ApplyFailed, Target: repo}
+	result = ApplyResult{Outcome: ApplyFailed, Target: repo}
 	archiveManaged := desired.Repository.Archived != nil
 	other := desired.Repository
 	other.Archived = nil
@@ -36,7 +42,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 			return result, fmt.Errorf("read archive state before apply: %w", err)
 		}
 		result.Operations[0].Status = OperationCompleted
-		if archiveState.Archived && *desired.Repository.Archived && (repositoryManaged || topicsManaged || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty()) {
+		if archiveState.Archived && *desired.Repository.Archived && archiveConflictsWithOtherManaged(desired) {
 			result.failOperation(0, OperationFailedRead)
 			return result, fmt.Errorf("archived repository cannot update other managed resources without explicit archived: false")
 		}
@@ -48,6 +54,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 				return result, fmt.Errorf("unarchive before other settings: %w", err)
 			}
 			result.Operations[i].Status = OperationCompleted
+			unarchived = true
 		}
 	}
 	firstOrdinary := len(result.Operations)
@@ -223,4 +230,11 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 	default:
 		panic("unknown typed label operation")
 	}
+}
+
+// Archive does not make other declared resources writable on an already archived target.
+func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
+	other := desired.Repository
+	other.Archived = nil
+	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty()
 }
