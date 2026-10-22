@@ -1,142 +1,122 @@
 ---
 type: Feature
-title: Manual release
-description: Specify versioned, tested, and recoverable GitHub CLI extension releases.
+title: Manual release with calculated metadata
+description: Specify automatically numbered, tested, and recoverable GitHub CLI extension releases.
 ---
 
-## Feature: Publish a manually selected version
+## Feature: Publish a manually authorized release
 
-A maintainer can start a release from `main` with an explicit version. The workflow publishes exactly the binaries accepted for macOS arm64 and Linux amd64.
+A maintainer explicitly starts publication from `main`. The version is calculated from reviewed, committed changes and prepared in source before validation. The workflow publishes exactly the binaries accepted for macOS arm64 and Linux amd64.
+
+### Rule: Derive one version from durable reviewed changes
+
+#### Scenario: Select the strongest signal in the complete interval
+
+- Given a published stable baseline and a fixed descendant source
+- When all committed messages in the interval are classified
+- Then any breaking header or breaking-change footer selects MAJOR, even during `0.x`
+- Otherwise `feat`, `perf`, or `DEPRECATED:` selects MINOR
+- Otherwise fixes, reverts, maintenance, and legacy messages select PATCH
+- And later main commits and mutable branch names or labels do not affect that calculation
+- And a revert does not subtract another included commit's signal
+
+#### Scenario: Prepare a shared Action and CLI version
+
+- Given a clean tracked checkout with complete history and a stable release baseline
+- When the preparation command computes the next version
+- Then it updates only `action/cli-version` for a reviewed preparation PR
+- And it does not create a commit, branch, tag, draft, or release
+- And a preparation-only commit does not create another version increment
+- And an interval containing no other changes is rejected
+
+#### Scenario: Prepared source no longer agrees
+
+- Given the frozen source records a different version from the calculated result
+- When the release resolver validates that source
+- Then it stops before building or creating a tag or release
+- And it does not silently rewrite source or publish an Action that installs another CLI
 
 ### Rule: Freeze the source and prove binary identity
 
 #### Scenario: Release two validated native binaries
 
-- Given the maintainer dispatches the workflow from `main` with version `v1.2.3`
-- And latest `main` resolves to commit A at workflow start
-- And commit A records CLI version `v1.2.3` in `action/cli-version`
-- When `main` advances to commit B while the workflow runs
-- Then both release binaries are built once from commit A with embedded version `v1.2.3`
-- And commit checks pass before native acceptance checks run
-- And each acceptance runner executes its own target binary after SHA-256 verification
-- And a read-only supported Ubuntu job validates a configuration-only consumer through commit A's actual root Action using the already-built Linux artifact
-- And its four outputs match the frozen Action source, consumer commit/target and accepted CLI version/digest before publication
-- And the release job verifies both accepted binary hashes before creating a tag
-- And tag `v1.2.3` points to commit A
-- And the GitHub Release contains exactly the two raw binaries and `SHA256SUMS`
-- And the release notes identify commit A and present grouped changes before installation, upgrade, and checksum guidance
-- And a supported Ubuntu runner checks out the published tag and verifies it is commit A before executing its root Action
-- And credential-free validate reports the requested CLI version and accepted Linux binary digest for a separate configuration-only checkout
+- Given the maintainer manually dispatches the workflow from main
+- And source A contains the correctly prepared calculated version
+- When main advances to B during validation
+- Then both binaries are built once from A with that shared embedded version
+- And native acceptance executes each verified target binary
+- And supported Ubuntu candidate smoke uses A's actual root Action and the already-built Linux artifact for a separate consumer
+- And all four consumer/CLI identities match before publication
+- And the tag points to A with only the two raw binaries and `SHA256SUMS` attached
+- And post-publication smoke verifies A's tag/source/version before real release downloads
 
-#### Scenario: Source version differs from the requested tag
+#### Scenario: Validation fails before remote state
 
-- Given the frozen source records CLI version `v1.2.3`
-- When the maintainer requests release `v1.2.4`
-- Then the workflow fails before building or creating a tag or release
-- And it does not silently publish an Action that installs the older CLI
-
-#### Scenario: Validation fails before the tag
-
-- Given a target binary fails commit checks, acceptance, or hash verification
-- When the workflow stops
+- Given preparation, commit checks, native acceptance, candidate smoke, or hash verification fails
+- Or a publication prerequisite is skipped or cancelled
+- When the workflow evaluates the publication gate
 - Then no tag or release is created by that run
-
-#### Scenario: Candidate validation does not succeed
-
-- Given the mandatory pre-publication candidate job fails, is skipped or is cancelled
-- When the workflow evaluates the publication prerequisites
-- Then publish does not run and this run creates no tag or release
-- And no override treats the missing candidate validation as successful
+- And no override converts the missing validation into success
 
 ### Rule: Preserve release identity across retries
 
 #### Scenario: Resume an incomplete matching draft
 
-- Given tag `v1.2.3` already points to the frozen commit
-- And a draft release records the same version, commit, and tested binary hashes
+- Given a draft marker, tag, committed version, and frozen source identify the same release
 - And one required asset is absent while the others match their expected bytes
-- And another release has since been published
-- When the release job resumes with the same verified inputs
-- Then it uploads only the missing asset
-- And it preserves the existing notes and their original comparison range without regenerating them
-- And it publishes after all required assets and notes are verified
+- When the release run is retried
+- Then it retains that version rather than recalculating another increment
+- And the publisher uploads only the missing asset after checking the tested inputs
+- And it preserves the existing notes and comparison range even if another release was published
 
 #### Scenario: Complete release is retried
 
-- Given the published release, tag, manifest, and all assets match the tested inputs
+- Given the published release, tag, marker, and every asset match the tested inputs
 - When the release job is retried
-- Then it succeeds without replacing an asset or moving the tag
-- And it preserves the published notes without regenerating them
+- Then it succeeds without replacing assets, moving the tag, or regenerating notes
 
-#### Scenario: Identity conflict stops publication
+#### Scenario: A conflicting existing identity is not a retry
 
-- Given the existing tag, draft manifest, or asset bytes disagree with the tested inputs
-- When the release job inspects existing state
-- Then it fails without moving the tag, replacing an asset, or publishing the draft
+- Given a tag, manifest, source, checksum, or asset differs
+- When the workflow inspects existing state
+- Then it fails without repairing an immutable release or fabricating a match
+- And missing/malformed release metadata is not interpreted as an empty catalog
 
-#### Scenario: Invalid version is rejected
+### Rule: Generate native release notes at a fixed boundary
 
-- Given a version does not match `vMAJOR.MINOR.PATCH` with numeric components
-- When the maintainer dispatches the workflow
-- Then the resolve job fails before any tag or release is created
+#### Scenario: Select the previous published stable release
 
-### Rule: Generate release notes from the frozen Git history
+- Given stable numeric-tag releases, drafts, prereleases, and unpublished tags
+- When preparing a new release
+- Then the latest stable publication timestamp selects the predecessor, with ID breaking ties
+- And its tag and resolved commit are frozen before validation
+- And a shallow checkout, missing tag, unrelated predecessor, or changed boundary stops publication
 
-#### Scenario: Select the previous published release
+#### Scenario: Generate GitHub categories and preserve migration guidance
 
-- Given the repository has published stable releases with numeric `vMAJOR.MINOR.PATCH` tags
-- And it also has unpublished tags, draft releases, and prereleases
-- When notes are prepared for a new release
-- Then the previous release is the qualifying release with the latest publication timestamp, excluding the requested version
-- And version-number ordering, unpublished tags, drafts, and prereleases do not select the boundary
+- Given reviewed labels on the merged PRs included by GitHub
+- When the publisher requests native notes with the version, frozen target SHA, previous tag, and `.github/release.yml`
+- Then breaking labels take precedence over feature/performance/deprecation and fix/revert labels
+- And the Chore catch-all retains uncategorized PRs
+- And a minimal supplement preserves committed breaking migration footers as escaped text
+- And an immutable comparison covers the complete source interval, including direct commits
+- And native notes are not claimed to contain every PR body or every Git commit as an entry
 
-#### Scenario: Include only the released commit range
+#### Scenario: Generation fails before tag creation
 
-- Given the previous published release resolves to commit P
-- And the current release freezes descendant commit S
-- And `main` or `HEAD` later points to a newer commit
-- When notes are generated
-- Then they contain the commits selected by `git log P..S`
-- And each entry links to its commit
-- And the comparison link uses P and S as immutable commit SHAs
-
-#### Scenario: Generate the first release's notes
-
-- Given there is no qualifying previous published release
-- When notes are generated for frozen commit S
-- Then they include all history reachable from S
-- And an unpublished tag does not truncate that history
-
-#### Scenario: Unverifiable history stops publication
-
-- Given the checkout is shallow, the selected predecessor tag is missing locally, or its commit is not an ancestor of the frozen source
-- When notes are prepared for a new release
-- Then generation fails before creating a remote tag or release
-- And it does not silently select an older predecessor or treat the release as the first release
-
-#### Scenario: Classify complete Conventional Commits messages
-
-- Given the released range contains Conventional Commits and legacy messages
-- When the notes are rendered
-- Then headers with `!` or uppercase `BREAKING CHANGE:` or `BREAKING-CHANGE:` footers go under `## 🚨 BREAKING CHANGE`
-- And breaking entries retain their footer's impact and migration description without a duplicate entry in another section
-- And nonbreaking `feat` and `perf` commits go under `## ✨ New Feature`
-- And nonbreaking `fix` commits go under `## 🐛 Bug Fix`
-- And other types and unclassified legacy messages go under `## 🧹 Chore`
-- And empty sections are omitted
+- Given the note API fails or returns missing, malformed, or empty content
+- When new notes are prepared
+- Then the publisher stops before creating a remote tag or draft
+- And it does not silently use a second local categorized renderer
 
 ### Test mapping
 
-The [release-notes helper tests](../../scripts/release-notes/main_test.go) use temporary Git repositories to exercise published predecessor selection, frozen ranges, first releases, invalid history, breaking-footer handling, type classification, and Markdown rendering. The [release mock tests](../../tests/release.sh) exercise first publication, note-generation failure before remote changes, preservation of existing notes, complete and incomplete retries, version rejection, tag conflict, manifest conflict, and asset mismatch without contacting GitHub.
+The [release-metadata tests](../../scripts/release-metadata/main_test.go) use temporary Git repositories and an injected API boundary to exercise version precedence, complete frozen ranges, preparation writes, immutable retries, invalid catalogs/history, exact native generation arguments, preserved migration details, and failures. They do not execute GitHub's renderer or mutate GitHub. The repository already has published stable releases; automatic first-release baseline selection is deliberately unsupported.
 
-The [CLI Go test](../../internal/cli/run_test.go) checks the explicit version command. The [candidate gate tests](../../tests/github-actions/release_test.go) inspect the actual workflow's frozen-source/artifact/version/output mappings and ordinary prerequisite-success dependency. They also execute the unchanged candidate helper with matching identities and separate source/version/checksum mismatches, checking exact local asset/manifest/version bytes and rejection before PATH publication without downloads. Regular PR/main CI executes the same-source candidate composite; these source/fixture checks do not dispatch the manual release or prove published downloads. The native runner and job ordering contracts are declared in the [workflow](../../.github/workflows/release.yml) and require a real Actions run to confirm operationally. That run must only use a release version the maintainer authorizes.
+The [release fixtures](../../tests/release.sh) invoke the real publisher with a local `gh` stand-in. They retain first publication, failed generation before remote state, complete/incomplete retries, note preservation, source/version conflicts, missing or altered assets, annotated tags, and final tag rechecks. The full expected body combines independently supplied native fixture content, migration details, and the unchanged installation/checksum/identity template, including long content. No fixture creates a GitHub tag or release.
 
-`TestReleaseOptionalSourcePin` also executes the actual resolve step with bash and a local `gh` stub. Omitted or matching pins publish only the resolved SHA; mismatched or invalid pins, invalid responses, and API failures publish no source output and fail. The stub verifies any lookup targets main in the specified repository; structural checks retain the input, environment, and job-output bindings. The execution fixture requires Bash 5 or newer, matching the hosted Ubuntu runner; structural bindings are checked on older local shells too, while hosted CI fails rather than skipping if its shell is too old. No fixture contacts GitHub or starts a release.
+The [workflow gate tests](../../tests/github-actions/release_test.go) protect frozen source/version/artifact/output mappings and ordinary prerequisite-success dependencies. `TestReleaseOptionalSourcePin` executes the actual source step with Bash and an owned `gh` stub: omitted/matching pins succeed, while invalid/mismatched pins, invalid responses, and API failures emit no source output. The fixture requires Bash 5 like hosted Ubuntu; structural checks remain available on older local shells. [Metadata wiring tests](../../tests/github-actions/release_metadata_test.go) protect the manual-only trigger, read-only resolver, frozen predecessor outputs, and native category precedence/catch-all.
 
-The [publisher preflight tests](../../scripts/release-publisher/main_test.go) own input validation, binary hash agreement, validation order, and explicit checksum/manifest/marker bytes. The shell release fixtures invoke that Go command and verify that preflight failures perform zero GitHub reads or writes while the existing publication/recovery sequence remains unchanged.
+The existing [publisher preflight](../../scripts/release-publisher/main_test.go), [lookup/tag](../../scripts/release-publisher/lookup_test.go), [state](../../scripts/release-publisher/state_test.go), [asset](../../scripts/release-publisher/assets_test.go), and [controller](../../scripts/release-publisher/publish_test.go) tests retain validation order, exact checksum/manifest bytes, duplicate/unknown assets, downloaded hashes, missing-only uploads, immutable published no-ops, and fresh confirmation. The [CLI test](../../internal/cli/run_test.go) still owns the explicit version command.
 
-The [release lookup/tag tests](../../scripts/release-publisher/lookup_test.go) cover duplicate releases, identity conflicts, exact lookup arguments, optional 404 versus lookup failures, lightweight/annotated targets, and a fresh publication-time tag read. [State tests](../../scripts/release-publisher/state_test.go) cover each original validation checkpoint and its error order. Shell fixtures additionally verify that a missing tag wins over an invalid draft state, state failure precedes asset reads, lookup failures cause no mutations, and reviewed notes remain unchanged.
-
-The [asset verification tests](../../scripts/release-publisher/assets_test.go) own duplicate-before-unexpected name checks, exact download arguments/order, downloaded-byte hashes, explicit verified/missing results, and failure propagation. Shell fixtures verify immutable published releases with missing assets, missing-only draft uploads, name/download failures before mutation, post-upload missing or mismatched bytes before publication, and rejection of conflicting bytes on retry.
-
-The [publication flow tests](../../scripts/release-publisher/publish_test.go) exercise the completed Go controller's post-upload asset/state/marker/tag order, transport failures, publication confirmation, and success output. The release fixtures exercise the shell entry point through initial publication, published no-op, and draft recovery, comparing the complete notes with the former shell template, including notes larger than 256 KiB. Incomplete history stops before any remote mutation; existing notes remain unchanged on retry.
+PR/main CI establishes current-source integration, not real published downloads or live native-note rendering. Only an explicitly authorized manual release run establishes operational publication evidence. No version preparation or successful merge alone authorizes that run.

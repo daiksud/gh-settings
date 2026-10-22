@@ -2,10 +2,6 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: Release version (vMAJOR.MINOR.PATCH)
-        required: true
-        type: string
       source_sha:
         description: Optional immutable main commit to require (for reviewed dispatch)
         required: false
@@ -23,19 +19,22 @@ jobs:
   resolve:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-slim
-    timeout-minutes: 3
+    timeout-minutes: 5
     permissions: {contents: read}
+    env:
+      GOTOOLCHAIN: local
     outputs:
       source-sha: ${{ steps.source.outputs.source-sha }}
+      version: ${{ steps.metadata.outputs.version }}
+      previous-tag: ${{ steps.metadata.outputs.previous-tag }}
+      previous-sha: ${{ steps.metadata.outputs.previous-sha }}
     steps:
-      - name: Validate version and freeze latest main
+      - name: Freeze latest main
         id: source
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
           EXPECTED_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
-          [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
           [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
           if [[ -n "$EXPECTED_SOURCE_SHA" ]]; then
@@ -47,6 +46,24 @@ jobs:
             }
           fi
           printf 'source-sha=%s\n' "$sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout frozen main and complete release history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.source.outputs.source-sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install pinned metadata tools
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          install_args: go
+          cache: false
+      - name: Compute and verify the prepared release version
+        id: metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.source.outputs.source-sha }}
+        run: go run ./scripts/release-metadata/main.go resolve "$GITHUB_REPOSITORY" "$SOURCE_SHA" >> "$GITHUB_OUTPUT"
   commit-stage:
     needs: resolve
     runs-on: ubuntu-slim
@@ -64,7 +81,7 @@ jobs:
           persist-credentials: false
       - name: Require the committed CLI version to match the release tag
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           [[ "$(cat action/cli-version)" == "$VERSION" ]] || {
             echo 'release version differs from committed CLI version' >&2; exit 1
@@ -74,7 +91,7 @@ jobs:
         uses: ./.github/actions/commit-stage
         with:
           binary-name: gh-settings-linux-amd64
-          version: ${{ inputs.version }}
+          version: ${{ needs.resolve.outputs.version }}
       - name: Transfer Linux binary
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -106,7 +123,7 @@ jobs:
       - name: Build macOS binary once
         id: build
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           [[ "$(go env GOOS GOARCH)" == $'darwin\narm64' ]]
           go build -trimpath -ldflags "-X main.version=$VERSION" -o "$RUNNER_TEMP/gh-settings-darwin-arm64" .
@@ -142,7 +159,7 @@ jobs:
         with:
           binary-path: ${{ runner.temp }}/product/gh-settings-linux-amd64
           binary-sha256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-          version: ${{ inputs.version }}
+          version: ${{ needs.resolve.outputs.version }}
   acceptance-macos:
     needs: [resolve, build-macos]
     runs-on: macos-15
@@ -167,7 +184,7 @@ jobs:
         with:
           binary-path: ${{ runner.temp }}/product/gh-settings-darwin-arm64
           binary-sha256: ${{ needs.build-macos.outputs.binary-sha256 }}
-          version: ${{ inputs.version }}
+          version: ${{ needs.resolve.outputs.version }}
   candidate-action-smoke:
     needs: [resolve, commit-stage]
     # Validate the frozen candidate on the public Action's supported runner before publication.
@@ -193,7 +210,7 @@ jobs:
           BINARY_PATH: ${{ runner.temp }}/product/gh-settings-linux-amd64
           EXPECTED_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
           SOURCE_SHA: ${{ needs.resolve.outputs.source-sha }}
-          CLI_VERSION: ${{ inputs.version }}
+          CLI_VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
           bash .action/tests/github-actions/prepare-candidate-download.sh \
@@ -222,7 +239,7 @@ jobs:
           TARGET: ${{ steps.validate.outputs.target }}
           CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
           CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
-          EXPECTED_CLI_VERSION: ${{ inputs.version }}
+          EXPECTED_CLI_VERSION: ${{ needs.resolve.outputs.version }}
           EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
         run: |
           [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
@@ -272,11 +289,13 @@ jobs:
       - name: Verify, stage, and publish tested assets
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ needs.resolve.outputs.version }}
           SOURCE_SHA: ${{ needs.resolve.outputs.source-sha }}
           LINUX_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
           MACOS_SHA256: ${{ needs.build-macos.outputs.binary-sha256 }}
           RELEASE_DIR: ${{ runner.temp }}/release
+          PREVIOUS_TAG: ${{ needs.resolve.outputs.previous-tag }}
+          PREVIOUS_SHA: ${{ needs.resolve.outputs.previous-sha }}
         run: bash scripts/publish-release.sh
   published-action-smoke:
     needs: [resolve, commit-stage, publish]
@@ -288,13 +307,13 @@ jobs:
       - name: Checkout the published Action tag separately
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: refs/tags/${{ inputs.version }}
+          ref: refs/tags/${{ needs.resolve.outputs.version }}
           path: .action
           persist-credentials: false
       - name: Verify the published tag matches the accepted source
         env:
           SOURCE_SHA: ${{ needs.resolve.outputs.source-sha }}
-          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_VERSION: ${{ needs.resolve.outputs.version }}
         run: |
           [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
           [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]] || {
@@ -324,7 +343,7 @@ jobs:
           ACTION_SHA: ${{ needs.resolve.outputs.source-sha }}
           CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
           TARGET: ${{ steps.validate.outputs.target }}
-          EXPECTED_VERSION: ${{ inputs.version }}
+          EXPECTED_VERSION: ${{ needs.resolve.outputs.version }}
           EXPECTED_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
           CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
           CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}

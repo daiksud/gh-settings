@@ -98,6 +98,6 @@ The existing Markdown check validates relative files and heading fragments. When
 
 ## Releases
 
-Merging a PR does not publish a release or authorize one. Without an explicit release request, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers explicit version selection, tested binary identity, and immutable release recovery.
+Merging a PR does not publish a release or authorize one. Without an explicit release request, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers automatic version preparation, tested binary identity, and immutable release recovery.
 
-Automatic version selection and GitHub-generated release notes are a separate follow-up in [#385](https://github.com/daiksud/gh-settings/issues/385), not prerequisites for the branch and labeling improvements in [#386](https://github.com/daiksud/gh-settings/issues/386). Until that follow-up is implemented, keep the explicit version input, committed Action/CLI version, and existing Git-log-based note generator.
+Version preparation derives the next version from durable squash messages and updates `action/cli-version` through a reviewed PR. Manual publication verifies that prepared version before testing; no version input or automatic release on merge is used. New notes use GitHub generation configured by `.github/release.yml`, with committed migration guidance preserved. The release guide owns the full policy and retry behavior.

@@ -111,7 +111,7 @@ ADRs record the context and consequences of individual decisions. Read their sta
 | Managed settings | [Declared-field ownership](../adr/0002-managed-fields.md), [update request schema](../adr/0006-update-api-schema.md), [explicit null](../adr/0019-reject-explicit-null.md), [resource grouping](../adr/0020-group-settings-by-resource.md), [schema version](../adr/0021-require-schema-version.md) |
 | Mutation | [Direct apply](../adr/0003-direct-apply.md), [strict validation](../adr/0004-strict-validation.md), [no automatic rollback](../adr/0005-no-automatic-rollback.md) |
 | Actions | [Caller approval and credential ownership](../adr/0022-owner-approved-actions.md), [public composite Action](../adr/0023-public-composite-action.md) |
-| Distribution | [Release decisions and future versioning](releases.md#release-decisions) |
+| Distribution | [Release decisions and automatic versioning](releases.md#release-decisions) |
 
 Prefer the Go standard library where sufficient; no command framework is mandated. The selected YAML implementation is maintained by the YAML organization, not the Go team. Its release-candidate dependency is an explicit choice recorded in ADR 0009; current dependency versions belong in [go.mod](../../go.mod).
 
@@ -141,7 +141,7 @@ Pages and unadopted Actions endpoints remain outside current support. Rulesets l
 
 [ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. The [Rulesets specification](../features/rulesets.feature.md) owns exact-name-to-ID matching, nested identity, deletion, complete observations, export opt-in and staged acceptance criteria. Inherited/push Rulesets and legacy branch protection remain outside that managed collection; legacy protection implementation is deferred. Published v0.16.0 and older CLI/Action packages do not support this v0.17.0 feature.
 
-Other future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version selection](releases.md#future-automatic-versioning) is also future work.
+Other future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version preparation](releases.md#version-preparation) is implemented separately from manually authorized publication.
 
 [ADR 0026](../adr/0026-explicit-security-observations.md) accepts explicit per-family security observations and export selection. The [Security specification](../features/security.feature.md) records planned boolean declarations, permissions/availability, dependencies, failure semantics, and gates for #344–#347. Published v0.17.0 implements Secret scanning and private vulnerability reporting for public repositories; ambiguous Dependabot disabled reads and distinct paid-product adoption still require the documented evidence before implementation.
 

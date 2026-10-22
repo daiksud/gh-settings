@@ -185,7 +185,7 @@ func mutateRelease(path, method, endpoint string, request any, gh ghAPI) ([]byte
 }
 
 func prepareNotes(identity releaseIdentity, root, work string) (string, error) {
-	command := exec.Command("go", "run", "./scripts/release-notes/main.go", identity.Repository, identity.Version, identity.Commit, work+"/releases.json")
+	command := exec.Command("go", "run", "./scripts/release-metadata/main.go", identity.Repository, identity.Version, identity.Commit, work+"/releases.json")
 	command.Dir = root
 	var changes, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &changes, &stderr

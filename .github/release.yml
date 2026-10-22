@@ -1,0 +1,14 @@
+changelog:
+  categories:
+    - title: "🚨 BREAKING CHANGE"
+      labels: [BREAKING CHANGE]
+    - title: "✨ New Feature"
+      labels: [feat, perf, DEPRECATED]
+      exclude:
+        labels: [BREAKING CHANGE]
+    - title: "🐛 Bug Fix"
+      labels: [fix, revert]
+      exclude:
+        labels: [BREAKING CHANGE, feat, perf, DEPRECATED]
+    - title: "🧹 Chore"
+      labels: ["*"]
