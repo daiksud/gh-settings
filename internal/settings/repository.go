@@ -48,6 +48,7 @@ type RepositoryDeclaration struct {
 	PullRequestCreationPolicy *string
 	IssueCreationPolicy       *string
 	HasSponsorships           *bool
+	Archived                  *bool
 }
 
 // Empty reports whether every field is unmanaged, regardless of declared values.

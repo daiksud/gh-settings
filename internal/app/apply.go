@@ -7,7 +7,13 @@ import (
 )
 
 // Apply keeps direct repository/topics writes; labels read their current collection before CRUD.
-func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyResult, error) {
+func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result ApplyResult, err error) {
+	unarchived := false
+	defer func() {
+		if err != nil && unarchived {
+			err = fmt.Errorf("repository was unarchived before subsequent settings failed; earlier changes remain applied: %w", err)
+		}
+	}()
 	desired, err := Validate(load)
 	if err != nil {
 		return ApplyResult{Outcome: ApplyFailed}, err
@@ -19,8 +25,39 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 	if err != nil {
 		return ApplyResult{Outcome: ApplyFailed}, err
 	}
-	result := ApplyResult{Outcome: ApplyFailed, Target: repo}
-	repositoryManaged, topicsManaged := !desired.Repository.Empty(), desired.Topics.Names != nil
+	result = ApplyResult{Outcome: ApplyFailed, Target: repo}
+	archiveManaged := desired.Repository.Archived != nil
+	other := desired.Repository
+	other.Archived = nil
+	repositoryManaged, topicsManaged := !other.Empty(), desired.Topics.Names != nil
+	var archiveState settings.ArchiveState
+	if archiveManaged {
+		result.Operations = append(result.Operations, ApplyOperation{Kind: ArchiveRead})
+		archiveState, err = write.ReadArchive(repo)
+		if err == nil {
+			err = archiveState.Validate(repo)
+		}
+		if err != nil {
+			result.failOperation(0, OperationFailedRead)
+			return result, fmt.Errorf("read archive state before apply: %w", err)
+		}
+		result.Operations[0].Status = OperationCompleted
+		if archiveState.Archived && *desired.Repository.Archived && archiveConflictsWithOtherManaged(desired) {
+			result.failOperation(0, OperationFailedRead)
+			return result, fmt.Errorf("archived repository cannot update other managed resources without explicit archived: false")
+		}
+		if archiveState.Archived && !*desired.Repository.Archived {
+			i := len(result.Operations)
+			result.Operations = append(result.Operations, ApplyOperation{Kind: ArchiveUnarchive})
+			if err := write.Archive(repo, archiveState, false); err != nil {
+				result.failOperation(i, OperationFailedUnknown)
+				return result, fmt.Errorf("unarchive before other settings: %w", err)
+			}
+			result.Operations[i].Status = OperationCompleted
+			unarchived = true
+		}
+	}
+	firstOrdinary := len(result.Operations)
 	if repositoryManaged {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: RepositoryUpdate})
 	}
@@ -30,9 +67,9 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 	if desired.Labels != nil {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: LabelsRead})
 	}
-	index := 0
+	index := firstOrdinary
 	if repositoryManaged {
-		if err := write.Repository(repo, desired.Repository); err != nil {
+		if err := write.Repository(repo, other); err != nil {
 			result.failOperation(index, OperationFailedUnknown)
 			return result, err
 		}
@@ -47,7 +84,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		result.Operations[index].Status = OperationCompleted
 		index++
 	}
-	hasWrites := repositoryManaged || topicsManaged
+	hasWrites := repositoryManaged || topicsManaged || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
 	if desired.Labels != nil {
 		current, err := write.ReadLabels(repo)
 		if err != nil {
@@ -151,6 +188,30 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (ApplyR
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if archiveManaged && *desired.Repository.Archived && !archiveState.Archived {
+		i := len(result.Operations)
+		result.Operations = append(result.Operations, ApplyOperation{Kind: ArchiveRead})
+		fresh, err := write.ReadArchive(repo)
+		if err == nil {
+			err = fresh.Validate(repo)
+		}
+		if err == nil && (fresh.ID != archiveState.ID || fresh.FullName != archiveState.FullName || fresh.Archived != archiveState.Archived) {
+			err = fmt.Errorf("repository identity or archive state changed during apply")
+		}
+		if err != nil {
+			result.failOperation(i, OperationFailedRead)
+			return result, fmt.Errorf("read archive state before final transition: %w", err)
+		}
+		result.Operations[i].Status = OperationCompleted
+		i = len(result.Operations)
+		result.Operations = append(result.Operations, ApplyOperation{Kind: ArchiveUpdate})
+		if err := write.Archive(repo, fresh, true); err != nil {
+			result.failOperation(i, OperationFailedUnknown)
+			return result, fmt.Errorf("archive after other settings: %w", err)
+		}
+		result.Operations[i].Status = OperationCompleted
+		hasWrites = true
+	}
 	result.Outcome = ApplyCompleted
 	if !hasWrites {
 		result.Outcome = ApplyMatchingLabels
@@ -169,4 +230,11 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 	default:
 		panic("unknown typed label operation")
 	}
+}
+
+// Archive does not make other declared resources writable on an already archived target.
+func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
+	other := desired.Repository
+	other.Archived = nil
+	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty()
 }

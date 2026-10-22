@@ -26,6 +26,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 				func(before, after string) { line(strconv.Quote(before), strconv.Quote(after)) },
 				func(before, after []string) { line(topicsValue(before), topicsValue(after)) },
 			)
+			if note := presentation.ArchiveOrder(change); note != "" {
+				fmt.Fprintln(&output, note)
+			}
 		}
 		for _, change := range comparison.Labels.Values() {
 			fmt.Fprintln(&output, presentation.LabelLine(change))

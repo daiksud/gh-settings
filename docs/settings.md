@@ -22,6 +22,26 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Repository archive lifecycle (unreleased source)
+
+Current source supports the optional `settings.repository.archived` boolean. Published v0.17.0 and older CLI/Action packages reject it; the maintained Action still installs its pinned released CLI. The field manages the selected checkout repository's archive state, not repository renaming, visibility, or individual issues/releases.
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    archived: false
+    description: Active maintenance
+```
+
+Omitting `archived` leaves the lifecycle unmanaged and adds no archive-specific API read. `false` means explicitly unarchive and `true` means explicitly archive. Null, quoted strings, numbers and other YAML types are invalid. Ordinary `gh settings export` does not add the field: use `gh settings export --archive` to include its currently observed value after all requested reads succeed. A failed read leaves any existing configuration file untouched.
+
+Plan reads only the declared archive state and validates the repository's positive ID, canonical owner/name and boolean; it does not mutate the repository. With other settings, comparisons remain typed and read-only, with an explicit unarchive-before-other-settings or archive-after-other-settings note for a changed lifecycle field. An already archived target with `archived: true` and any other managed resource is rejected during plan, not represented as an approvable change. Apply validates a complete current identity before any write. An explicit unarchive runs first, then existing resource writes; a final archive runs only after every other update succeeds, with a fresh state/identity check. Archive PATCH requests contain **only** `archived`, and each response and readback must confirm the target ID, name, and requested state. Matching values cause no lifecycle write.
+
+On an already archived repository, an `archived: true` declaration combined with other managed settings fails **before all writes**; use an explicit separate `archived: false` declaration to resume updates. A failed unarchive prevents subsequent writes. A confirmed unarchive remains applied if a later settings update fails; that fact appears in the error even when the CLI discards the detailed result. A failure during final archive may leave prior settings updates applied, and a failed archive PATCH, transport error, or readback can leave the remote lifecycle state uncertain. There is no rollback, automatic retry, transactional identity lock or implicit temporary unarchive. Running a repository's own Action against its archived source may not be a viable way to recover it; keep an external admin recovery route.
+
+The [repository REST API](https://docs.github.com/en/rest/repos/repos#update-a-repository) requires appropriate repository Administration write permission for lifecycle changes, and read access for observation. These grants must already exist. Tests use local simulated HTTP responses; **no live archive/unarchive is performed or verified**. See the [lifecycle behavior specification](features/repository-lifecycle.feature.md) and [ADR 0027](adr/0027-repository-lifecycle.md).
+
 ## Secret scanning and push protection
 
 Current source supports two optional booleans under `settings.security`. Published v0.16.0 and older CLI/Action packages reject this group and `export --security secret-scanning`; use v0.17.0 or newer. The Action still installs its selected published CLI.

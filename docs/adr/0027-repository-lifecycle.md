@@ -6,7 +6,7 @@ description: Adopt explicit archival sequencing and defer visibility and rename 
 
 ## Status
 
-Accepted design for #331. Archive implementation belongs to #332 and is not provided by this decision. Visibility (#333) and rename (#334) remain deferred, not silently adopted as ordinary PATCH fields. Current packages reject all three proposed keys.
+Accepted in #331; archive/unarchive implemented in current source by #332. Visibility (#333) and rename (#334) remain deferred, not silently adopted as ordinary PATCH fields. Published v0.17.0 and older packages reject `archived` and the deferred keys.
 
 ## Context
 
@@ -32,4 +32,4 @@ Defer name management. Renaming can invalidate the origin-derived next-run targe
 
 Archive adds a bounded lifecycle concern with explicit ordering, acquired state, opt-in export, and independently reported reads/transitions. All existing unmanaged-resource behavior and ordinary update order remain. Failure after successful unarchive or ordinary writes leaves those effects in place; failure around archive may leave it archived and must be reported as uncertain until observed. Existing public Action source/version and reporting contracts still apply.
 
-No implementation, release, repository archival, visibility/name change, permission expansion, or credential operation is performed by this documentation change. The [specification](../features/repository-lifecycle.feature.md) is the acceptance contract for #332, not evidence that its future tests or live mutations have run. Deferred candidates remain visible in the roadmap for a later adoption decision.
+The [specification](../features/repository-lifecycle.feature.md) now maps the implemented source behavior to local tests. No release, real repository archive, visibility/name change, permission expansion, or credential operation was performed. Fixture results do not establish live mutation success. Deferred candidates remain visible in the roadmap for a later adoption decision.
