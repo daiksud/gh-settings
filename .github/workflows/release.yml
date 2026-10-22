@@ -15,7 +15,9 @@ defaults:
   run:
     shell: bash
 concurrency:
-  group: release-${{ inputs.version }}
+  # All versions share the publication lane. Do not interrupt an active publish.
+  # This limits concurrency; it does not promise FIFO delivery of queued requests.
+  group: release-${{ github.repository }}
   cancel-in-progress: false
 jobs:
   resolve:
