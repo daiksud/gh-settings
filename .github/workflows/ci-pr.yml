@@ -7,10 +7,27 @@ defaults:
   run:
     shell: bash
 concurrency:
-  group: ci-pr-${{ github.event.pull_request.number }}
+  # Metadata edits must not cancel an in-flight validation of the code.
+  group: ci-pr-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && github.event.changes.base == null && 'metadata' || 'code' }}
   cancel-in-progress: true
 jobs:
+  code-start:
+    if: github.event.action != 'edited' || github.event.changes.base != null
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    permissions: {statuses: write}
+    steps:
+      - name: Mark this code revision pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state=pending -f context=pass \
+            -f description='Code validation is running' \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
   draft:
+    needs: code-start
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {contents: write, pull-requests: write}
@@ -20,30 +37,6 @@ jobs:
     steps:
       - name: Set draft state
         run: gh pr ready "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --undo
-  commitlint:
-    runs-on: ubuntu-slim
-    timeout-minutes: 5
-    permissions: {contents: read}
-    steps:
-      - name: Checkout validation source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install message validation tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.10.8
-          install_args: bun npm:@commitlint/cli
-          cache: false
-      - name: Test PR message policy
-        run: bash tests/github-actions/commitlint.sh
-      - name: Validate PR title and body
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: |
-          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" |
-            mise exec -- bun run --bun --no-install "$(mise which commitlint)" --strict
   commit-stage:
     needs: draft
     runs-on: ubuntu-slim
@@ -138,13 +131,46 @@ jobs:
           cli-version: ${{ needs.commit-stage.outputs.cli-version }}
           binary-sha256: ${{ needs.commit-stage.outputs.binary-sha256 }}
           binary-path: ${{ runner.temp }}/product/gh-settings
-  pass:
-    needs: [commitlint, acceptance-stage, composite-smoke]
-    if: always()
+  code-result:
+    needs: [code-start, draft, commit-stage, ready, acceptance-stage, composite-smoke]
+    if: always() && (github.event.action != 'edited' || github.event.changes.base != null)
     runs-on: ubuntu-slim
     timeout-minutes: 3
-    permissions: {}
+    permissions: {statuses: write, pull-requests: read}
     steps:
-      - name: Reject failed or cancelled validation
-        if: cancelled() || needs.commitlint.result != 'success' || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'
-        run: exit 1
+      # No checkout or candidate artifact: publish only the actual prerequisite results.
+      # A skipped metadata-only run never emits a new required pass status.
+      - name: Publish the code result without replacing newer revisions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          RESULTS: ${{ toJSON(needs) }}
+          WAS_CANCELLED: ${{ cancelled() }}
+        run: |
+          set -euo pipefail
+          current="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
+          if ! jq -e --arg head "$HEAD_SHA" --arg base "$BASE_SHA" --arg ref "$BASE_REF" \
+            '.head.sha == $head and .base.sha == $base and .base.ref == $ref' <<< "$current" > /dev/null; then
+            echo 'The PR revision or base changed; do not overwrite its newer code result.' >&2
+            exit 1
+          fi
+          state=failure
+          description='Code validation did not succeed'
+          if [[ "$WAS_CANCELLED" == false ]] && jq -e 'length == 6 and all(.[]; .result == "success")' <<< "$RESULTS" > /dev/null; then
+            encoded_base="$(jq -rn --arg ref "$BASE_REF" '$ref | @uri')"
+            rules="$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/rules/branches/$encoded_base")"
+            if jq -e 'add | any(.[]; .type == "required_status_checks" and any(.parameters.required_status_checks[]?; .context == "pr-message" and .integration_id == 15368))' <<< "$rules" > /dev/null; then
+              state=success
+              description='Code validation passed; message validation is required separately'
+            else
+              description='Require pr-message from GitHub Actions before activating split CI'
+              echo "$description" >&2
+            fi
+          fi
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$HEAD_SHA" \
+            -f state="$state" -f context=pass -f description="$description" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          [[ "$state" == success ]]

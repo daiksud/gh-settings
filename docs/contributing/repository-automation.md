@@ -8,7 +8,8 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 
 | Workflow | Trigger and responsibility |
 | --- | --- |
-| [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | Opened, synchronized, reopened, or edited PRs; Draft/Ready transitions and validation ending in `pass` |
+| [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR creation, push, reopening, and base edits run code validation; metadata-only edits do not alter the reported `pass` result |
+| [`pr-message.yml`](../../.github/workflows/pr-message.yml) | PR creation, push, reopening, and edits validate the current title/body through `pr-message` |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
@@ -18,22 +19,25 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 
 ## PR lifecycle
 
-The PR CI workflow sets Draft, runs commit-stage, then marks the PR Ready before acceptance-stage and composite-smoke. A separate `commitlint` job checks the PR title and body together as the proposed squash message, including on title/body edits. The final `pass` job rejects failed, cancelled, or skipped validation, including commitlint.
+A code-changing PR event marks `pass` pending, sets Draft, runs commit-stage, then marks the PR Ready before acceptance-stage and composite-smoke. The final API-only reporter publishes the actual code result only while the PR head/base still match and every required code job succeeded. A title/body-only edit skips this path without writing a new `pass` status or repeating Draft/Ready changes. Metadata edits use a different concurrency group so they do not cancel code validation.
 
-Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready jobs have write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state changes; the workflow does not bypass them.
+The independent `pr-message` job checks the current title and body together as the proposed squash message. Both code and message validation must be required independently; the code reporter refuses success until the effective base-branch rules require `pr-message` from GitHub Actions. See [PR validation](pr-validation.md) for the activation sequence, status semantics, and failure behavior.
+
+Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready and code-status jobs have narrowly scoped write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state/status changes; the workflow does not bypass them.
 
 This validation pipeline does not merge, publish, or deploy. Use [testing](testing.md#ci-validation) to interpret its results. GitHub's protected-main and Environment configuration determine whether a reviewed change can reach apply; a passing source test does not configure those controls.
 
 ## Protected main and required checks
 
-The active [default-branch ruleset](https://github.com/daiksud/gh-settings/rules/24911852) requires one approving review, dismisses stale approvals when new commits are pushed, requires CODEOWNER review and resolved review threads, and requires strict `pass` and `gh-settings` checks from the GitHub Actions App. No bypass actors are configured. Recheck the live ruleset when assessing enforcement: these are GitHub settings, not properties created by the workflow files.
+The inspected [default-branch ruleset](https://github.com/daiksud/gh-settings/rules/24911852) requires one approving review, dismisses stale approvals when new commits are pushed, requires CODEOWNER review and resolved review threads, and requires strict `pass` and `gh-settings` checks from the GitHub Actions App. No bypass actors are configured. The split CI additionally requires activating `pr-message` from that same App before the code reporter can succeed. Recheck the live ruleset when assessing enforcement: these are GitHub settings, not properties created by the workflow files.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
-| `pass` | [PR CI](../../.github/workflows/ci-pr.yml) aggregates commitlint, acceptance, and composite smoke; the ordinary suite also includes the Environment scope assertion | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `pass` | [PR code CI](../../.github/workflows/ci-pr.yml) reports source, acceptance, and composite results; metadata-only edits do not overwrite it | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `pr-message` | The [independent message workflow](../../.github/workflows/pr-message.yml) checks the current title/body; activate this requirement before splitting code CI | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
 | `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's App/name does not identify a unique workflow |
 
-See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring both names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
+See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
 
 After a permitted merge, a matching main push starts the settings workflow. Whether the selected Environment adds a separate deployment approval depends on its live reviewer configuration. If PR review is intended to be the only manual approval, apply the [documented conditions for that mode](../github-actions.md#when-pr-review-is-the-only-manual-approval) and [verify the protection](../github-actions.md#verify-the-protection-before-use), including check-source identity. Neither a source comment nor `environment: gh-settings` establishes whether a reviewer gate is currently enabled.
 

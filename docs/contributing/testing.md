@@ -13,6 +13,7 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Application sequencing | [Application tests](../../internal/app/), [labels cases](../../internal/app/labels_test.go) | Validation/failure order, empty local no-ops, selective resource access, export composition, fresh labels reads, and partial writes |
 | CLI and Actions presentation | [CLI tests](../../internal/cli/), [Actions tests](../../internal/actions/), [label reports](../../internal/actions/labels_test.go) | Dispatch, diagnostics/status, typed field/label reports, metadata, escaped rendering, and Summary storage |
 | Composite and caller wiring | [Composite](../../tests/github-actions/composite_test.go), [consumer](../../tests/github-actions/consumer_test.go), [operational caller](../../tests/github-actions/operational_test.go) | Actual YAML composition, token exposure, output/status ordering, and caller-owned boundaries |
+| Independent PR gates | [Message workflow tests](../../tests/github-actions/pr_message_test.go), [code-result tests](../../tests/github-actions/pr_code_gate_test.go) | Metadata/code event separation, required-message activation, failed/skipped/cancelled jobs, stale revisions, API failures, and status publication |
 | Installed process behavior | [Acceptance tests](../../tests/acceptance/) | The actual supplied binary, isolated Git/files, local API requests, stdout/stderr and exit codes |
 | Release notes | [Release-notes helper tests](../../scripts/release-notes/main_test.go) | Temporary Git history, published predecessor selection, exact frozen ranges, classification, and Markdown rendering |
 | Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go) | Mock publication/recovery, note generation before remote changes, stored-note preservation, and declared source/version/artifact/gate relationships |
@@ -58,15 +59,15 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_
 
 ## CI validation
 
-The [PR](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows use the following validation stages. Only the PR workflow validates PR message metadata. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle).
+The [PR code](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows retain the product stages below. The separate [PR message workflow](../../.github/workflows/pr-message.yml) validates title/body edits without repeating product work. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle); [PR validation](pr-validation.md) owns the independent-check activation sequence.
 
 | Stage | Work and handoff |
 | --- | --- |
-| Commitlint (PR only) | Validate the PR title and optional body together as the squash message; run [policy regression cases](../../tests/github-actions/commitlint.sh) and reject invalid Conventional Commits |
+| `pr-message` (PR only) | Validate the current title and optional body together as the squash message; run [policy regression cases](../../tests/github-actions/commitlint.sh) and reject invalid Conventional Commits |
 | Commit stage | Formatting, modules, vet, race tests, workflow/shell checks, release/installer fixtures, Markdown/local links, and one product build |
 | Acceptance stage | Download that run's product artifact, verify digest and embedded version, then execute the tagged process suite |
 | Composite smoke | Use the same artifact with the producer's exact Action source and a separate configuration-only consumer |
-| `pass` | Require commitlint, acceptance, and composite smoke for PRs; require acceptance and composite smoke for main. Failures, cancellation, or skipped validation do not become success |
+| `pass` | Require successful source, acceptance, and composite validation; PR message validation is required separately. Metadata-only edits do not publish a new code result; failed, cancelled, or skipped code prerequisites cannot produce success |
 
 [Commit stage](../../.github/actions/commit-stage/action.yml) exposes its actual checkout SHA, committed CLI version, and binary SHA-256. PR validation builds the merge source, and downstream jobs check out that exact producer SHA. Ordinary CI uses [`action/cli-version`](../../action/cli-version); a release supplies its explicit version and checks equality separately.
 
