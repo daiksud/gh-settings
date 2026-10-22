@@ -27,6 +27,8 @@ The [labeler workflow](../../.github/workflows/labeler.yml) runs on PR-target ev
 
 ## Migrate legacy names without losing assignments
 
+Historical assignments of `bug`, `enhancement`, and `documentation` have been migrated to `fix`, `feat`, and `docs` before retiring the old definitions. This preserves past classifications rather than reassessing old changes. The inventory and verification are recorded in [#386](https://github.com/daiksud/gh-settings/issues/386). Classify new work under the current review policy.
+
 The settings workflow automatically reconciles the declared label collection after a relevant main push. Removing a name from the declaration can delete the live label and its assignments, so migration must be staged:
 
 1. Declare the new labels while retaining `bug`, `enhancement`, and `documentation`. Update Issue forms to use the new names and verify the settings apply created them.
