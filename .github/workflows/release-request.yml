@@ -18,7 +18,8 @@ jobs:
       !github.event.issue.pull_request &&
       github.event.issue.state == 'open' &&
       github.event.comment.user.id == github.event.repository.owner.id &&
-      github.actor == github.repository_owner
+      github.actor == github.repository_owner &&
+      github.triggering_actor == github.repository_owner
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {contents: read}

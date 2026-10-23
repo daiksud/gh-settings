@@ -44,7 +44,8 @@ func TestReleaseRequestWorkflowTrustBoundary(t *testing.T) {
 		"!github.event.issue.pull_request && " +
 		"github.event.issue.state == 'open' && " +
 		"github.event.comment.user.id == github.event.repository.owner.id && " +
-		"github.actor == github.repository_owner"
+		"github.actor == github.repository_owner && " +
+		"github.triggering_actor == github.repository_owner"
 	if gate != want || authorize.Needs != "" || authorize.Timeout != 3 || authorize.Runner != "ubuntu-slim" ||
 		!reflect.DeepEqual(authorize.Permissions, map[string]string{"contents": "read"}) ||
 		!reflect.DeepEqual(authorize.Outputs, map[string]string{"source-sha": "${{ steps.command.outputs.source-sha }}"}) ||

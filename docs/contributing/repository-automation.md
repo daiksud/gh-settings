@@ -21,7 +21,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 
 ## Connector-friendly release requests
 
-An owner-authored comment consisting of exactly `/release FULL_40_CHARACTER_MAIN_SHA` on the [release-command Issue #410](https://github.com/daiksud/gh-settings/issues/410) can initiate the existing manual release workflow through the connected GitHub app. The [dispatcher](../../.github/workflows/release-request.yml) checks the fixed repository, main/default-branch event, open non-PR Issue number, actual repository-owner identity, strict lowercase full SHA and current main HEAD. Edited comments or text elsewhere do not authorize publication.
+An owner-authored comment consisting of exactly `/release FULL_40_CHARACTER_MAIN_SHA` on the [release-command Issue #410](https://github.com/daiksud/gh-settings/issues/410) can initiate the existing manual release workflow through the connected GitHub app. The [dispatcher](../../.github/workflows/release-request.yml) checks the fixed repository, main/default-branch event, open non-PR Issue number, actual repository-owner and rerun identity, strict lowercase full SHA and current main HEAD. Edited comments or text elsewhere do not authorize publication.
 
 A read-only authorization job runs before the only `actions: write` job. That job uses its built-in `GITHUB_TOKEN` solely to request `release.yml` through `workflow_dispatch` with the fixed main SHA. It does not grant the workflow permission to apply settings or create tags itself; the existing release's native validation and immutable publisher still own those operations. The request must be made **after** the source containing this dispatcher has been merged, so a previously prepared commit may be too old to use as the fixed main SHA.
 
