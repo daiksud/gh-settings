@@ -1,7 +1,9 @@
 package githubactions
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -80,8 +82,13 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		!strings.Contains(prepare.Run, "prepare \"$PR_NUMBER\" \"$EXPECTED_HEAD\"") {
 		t.Fatal("candidate preparation must validate exact identifiers before credential issuance")
 	}
-	if validate.Uses != planAction || validate.With["command"] != "validate" || len(validate.With) != 1 {
-		t.Fatal("published configuration validation must precede App token issuance")
+	if validate.Uses != "" || len(validate.With) != 0 || validate.Shell != "bash" ||
+		!strings.Contains(validate.Run, "action/install-cli.sh") ||
+		!strings.Contains(validate.Run, "gh-settings v0.18.0") ||
+		!strings.Contains(validate.Run, `validate >/dev/null 2>&1`) ||
+		!strings.Contains(validate.Run, "unset GH_TOKEN GITHUB_TOKEN GH_DEBUG") ||
+		!strings.Contains(validate.Run, "trap 'rm -rf") {
+		t.Fatal("checksum-verified published CLI must validate privately before App token issuance")
 	}
 	if token.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || token.ID != "app" ||
 		token.With["owner"] != "${{ github.repository_owner }}" || token.With["repositories"] != "${{ github.event.repository.name }}" ||
@@ -131,6 +138,77 @@ func TestProtectedPlanGuardRejectsUnexpectedPlacement(t *testing.T) {
 			files[tc.path] = []byte(tc.content)
 			if err := checkSettingsEnvironmentScope(files); err == nil {
 				t.Fatal("expected trusted guard to reject unsafe environment or trigger")
+			}
+		})
+	}
+}
+
+
+func TestProtectedPlanValidationDoesNotLogUntrustedDiagnostics(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var w workflow
+	if err := yaml.Unmarshal(data, &w); err != nil {
+		t.Fatal(err)
+	}
+	step := w.Jobs["plan"].Steps[4]
+	for _, tc := range []struct {
+		name, status string
+		wantSuccess  bool
+	}{
+		{"valid candidate", "0", true},
+		{"invalid candidate", "3", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			installDir := filepath.Join(root, ".trusted", "action")
+			binDir := filepath.Join(root, "gh-settings-cli.fake")
+			if err := os.MkdirAll(installDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(binDir, 0700); err != nil {
+				t.Fatal(err)
+			}
+			bin := filepath.Join(binDir, "gh-settings")
+			installed := `#!/bin/bash
+if [[ "$1" == --version ]]; then
+  echo 'gh-settings v0.18.0'
+elif [[ "$1" == validate ]]; then
+  echo 'SENSITIVE_CANDIDATE_VALUE' >&2
+  exit "$VALIDATE_STATUS"
+else
+  exit 44
+fi
+`
+			installer := `#!/bin/bash
+echo 'INSTALLER_SENSITIVE_ERROR' >&2
+printf '%s\n' "$RUNNER_TEMP/gh-settings-cli.fake/gh-settings"
+`
+			if err := os.WriteFile(bin, []byte(installed), 0700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(installDir, "install-cli.sh"), []byte(installer), 0700); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", step.Run)
+			cmd.Env = append(os.Environ(), "GITHUB_WORKSPACE="+root, "RUNNER_TEMP="+root, "VALIDATE_STATUS="+tc.status)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err := cmd.Run()
+			if (err == nil) != tc.wantSuccess {
+				t.Fatalf("unexpected validation status: %v", err)
+			}
+			text := stdout.String() + stderr.String()
+			if strings.Contains(text, "SENSITIVE_CANDIDATE_VALUE") || strings.Contains(text, "INSTALLER_SENSITIVE_ERROR") {
+				t.Fatalf("candidate data or installer diagnostics leaked: %q", text)
+			}
+			if tc.wantSuccess && text != "" {
+				t.Fatalf("private success must not log candidate content: %q", text)
+			}
+			if !tc.wantSuccess && !strings.Contains(text, "candidate settings validation failed") {
+				t.Fatalf("expected only generic validation failure: %q", text)
 			}
 		})
 	}
