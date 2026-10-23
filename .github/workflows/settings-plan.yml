@@ -1,0 +1,101 @@
+name: Settings protected plan
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Existing same-repository PR number to inspect
+        required: true
+        type: string
+      head_sha:
+        description: Expected full immutable lowercase PR head SHA
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: settings-plan-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  activation-gate:
+    name: settings-plan-activation
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Reject missing activation, wrong repository or wrong branch
+        env:
+          ENABLED: ${{ vars.GH_SETTINGS_PLAN_ENABLED }}
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+        run: |
+          if [[ "$ENABLED" != true || "$REPOSITORY" != daiksud/gh-settings || "$REF" != refs/heads/main ]]; then
+            echo 'Protected settings plan is not activated for this main revision' >&2
+            exit 1
+          fi
+  plan:
+    needs: activation-gate
+    name: settings-plan
+    # Activation is a separate, approved operation. No active repo variable = no job.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && vars.GH_SETTINGS_PLAN_ENABLED == 'true'
+    environment: gh-settings-plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions: {contents: read, pull-requests: read}
+    steps:
+      - name: Checkout trusted main policy and preparation code only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .trusted
+          persist-credentials: false
+      - name: Install pinned Go for trusted preparation only
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          working_directory: .trusted
+          install_args: go
+          cache: false
+      - name: Build the trusted metadata-only preparation helper
+        working-directory: .trusted
+        env:
+          GOTOOLCHAIN: local
+        run: go build -trimpath -o "$RUNNER_TEMP/pr-settings" ./scripts/pr-settings
+      - name: Prepare only the pinned candidate settings blob
+        id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          EXPECTED_HEAD: ${{ inputs.head_sha }}
+        run: |
+          "$RUNNER_TEMP/pr-settings" prepare "$PR_NUMBER" "$EXPECTED_HEAD" >> "$GITHUB_OUTPUT"
+      - name: Validate candidate data with the published package before minting App credentials
+        uses: daiksud/gh-settings@e6fa6d6e344a491f921683d4ca9576fbe9375793 # v0.18.0 (requires approved publication)
+        with:
+          command: validate
+      - name: Mint one repository-scoped App token after validation
+        id: app
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.ANSWER26_CLIENT_ID }}
+          private-key: ${{ secrets.ANSWER26_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-administration: write
+      - name: Run published private status-only plan without executing candidate code
+        id: review
+        uses: daiksud/gh-settings@e6fa6d6e344a491f921683d4ca9576fbe9375793 # v0.18.0 (requires approved publication)
+        with:
+          command: plan
+          plan-reporting: status-only
+          token: ${{ steps.app.outputs.token }}
+      - name: Verify that PR, merge revision and settings bytes are still current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          EXPECTED_HEAD: ${{ inputs.head_sha }}
+        run: |
+          "$RUNNER_TEMP/pr-settings" verify "$PR_NUMBER" "$EXPECTED_HEAD" > /dev/null
+      - name: Remove private candidate data on ordinary success or failure
+        if: always()
+        run: |
+          rm -f -- "$RUNNER_TEMP/pr-settings"
+          rm -rf -- "$GITHUB_WORKSPACE/.git" "$GITHUB_WORKSPACE/.github"

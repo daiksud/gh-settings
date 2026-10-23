@@ -17,6 +17,9 @@ const (
 	settingsEnvironment       = "gh-settings"
 	settingsGuardWorkflowPath = ".github/workflows/settings-environment-guard.yml"
 	settingsGuardCheckName    = "gh-settings"
+	settingsPlanWorkflowPath  = ".github/workflows/settings-plan.yml"
+	settingsPlanEnvironment   = "gh-settings-plan"
+	settingsPlanCheckName     = "settings-plan"
 )
 
 // The existing required CI pass check runs this test with the rest of the Go suite.
@@ -49,6 +52,9 @@ func TestSettingsEnvironmentScope(t *testing.T) {
 func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	found := 0
 	guardChecks := 0
+	planChecks := 0
+	planEnvironments := 0
+	_, planPresent := workflows[settingsPlanWorkflowPath]
 	for path, content := range workflows {
 		decoder := yaml.NewDecoder(bytes.NewReader(content))
 		var document yaml.Node
@@ -68,6 +74,11 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 		}
 		if path == settingsWorkflowPath {
 			if err := checkSettingsMainTrigger(workflow["on"]); err != nil {
+				return fmt.Errorf("%s: on: %w", path, err)
+			}
+		}
+		if path == settingsPlanWorkflowPath {
+			if err := checkSettingsPlanTrigger(workflow["on"]); err != nil {
 				return fmt.Errorf("%s: on: %w", path, err)
 			}
 		}
@@ -95,6 +106,12 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				}
 				checkName = node.Value
 			}
+			if jobName == settingsPlanCheckName || checkName == settingsPlanCheckName {
+				if path != settingsPlanWorkflowPath || jobName != "plan" || checkName != settingsPlanCheckName {
+					return fmt.Errorf("%s: jobs.%s: check name %q is reserved", path, jobName, settingsPlanCheckName)
+				}
+				planChecks++
+			}
 			if jobName == settingsGuardCheckName || checkName == settingsGuardCheckName {
 				if path != settingsGuardWorkflowPath || jobName != settingsGuardCheckName || checkName != settingsGuardCheckName {
 					return fmt.Errorf("%s: jobs.%s: check name %q is reserved for %s", path, jobName, settingsGuardCheckName, settingsGuardWorkflowPath)
@@ -114,6 +131,17 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if err != nil {
 				return fmt.Errorf("%s: jobs.%s.environment: %w", path, jobName, err)
 			}
+			if strings.EqualFold(strings.TrimSpace(name), settingsPlanEnvironment) {
+				if path != settingsPlanWorkflowPath || jobName != "plan" || name != settingsPlanEnvironment {
+					return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only in %s jobs.plan", path, jobName, name, settingsPlanWorkflowPath)
+				}
+				condition := job["if"]
+				if condition == nil || condition.Kind != yaml.ScalarNode || condition.Value != "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && vars.GH_SETTINGS_PLAN_ENABLED == 'true'" {
+					return fmt.Errorf("%s: jobs.plan: missing required main-only activation gate", path)
+				}
+				planEnvironments++
+				continue
+			}
 			if !strings.EqualFold(strings.TrimSpace(name), settingsEnvironment) {
 				continue
 			}
@@ -128,6 +156,39 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	}
 	if guardChecks != 1 {
 		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
+	}
+	if planPresent && (planChecks != 1 || planEnvironments != 1) {
+		return fmt.Errorf("expected one protected plan and status in %s; found jobs=%d environments=%d", settingsPlanWorkflowPath, planChecks, planEnvironments)
+	}
+	return nil
+}
+
+// A protected observer is never triggered by a PR, a push or a tag.
+func checkSettingsPlanTrigger(node *yaml.Node) error {
+	if node == nil {
+		return fmt.Errorf("expected workflow_dispatch only")
+	}
+	events, err := settingsYAMLMap(node)
+	if err != nil {
+		return err
+	}
+	dispatch, ok := events["workflow_dispatch"]
+	if !ok || len(events) != 1 {
+		return fmt.Errorf("expected workflow_dispatch only")
+	}
+	fields, err := settingsYAMLMap(dispatch)
+	if err != nil {
+		return err
+	}
+	if len(fields) != 1 || fields["inputs"] == nil {
+		return fmt.Errorf("expected pinned PR and head inputs")
+	}
+	inputs, err := settingsYAMLMap(fields["inputs"])
+	if err != nil {
+		return err
+	}
+	if len(inputs) != 2 || inputs["pr_number"] == nil || inputs["head_sha"] == nil {
+		return fmt.Errorf("expected only PR number and expected head SHA")
 	}
 	return nil
 }
