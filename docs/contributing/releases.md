@@ -40,6 +40,20 @@ Optionally add `-f source_sha=FULL_40_CHARACTER_SHA` to require an already revie
 
 The read-only resolver checks out complete history at the frozen SHA, computes the version, and requires the committed Action version to match before product builds begin. It freezes the previous release's tag and resolved SHA as well. Only numeric `vMAJOR.MINOR.PATCH` versions without leading zeros or prerelease/build suffixes are supported.
 
+### Request publication from the connected GitHub app
+
+The connected GitHub tool can post an Issue comment but cannot invoke `workflow_dispatch` directly. Use the dedicated [release-command Issue #410](https://github.com/daiksud/gh-settings/issues/410) as an alternate **manual** request surface. After reviewing the intended source and latest main CI, post a **new** owner-authored top-level comment consisting of exactly:
+
+```text
+/release FULL_40_CHARACTER_MAIN_SHA
+```
+
+Use the **current main SHA** obtained after every preparatory or dispatcher PR is merged, not an earlier source pin. A comment on another Issue, a pull request, an edited comment, or one by anyone other than the repository owner is not authorized. Rerunning the request workflow must also be initiated by the repository owner. Merely creating the control Issue, merging code, or writing the command in an Issue body does not publish a release.
+
+The [release-request dispatcher](../../.github/workflows/release-request.yml) runs from default-branch trusted code. Its unprivileged authorization job checks the exact Issue, owner identity, event type and command shape. Only on success does a separate job with `actions: write` read current main, verify the requested full SHA, and invoke `workflow_dispatch` for the existing `release.yml` on `main` with that same `source_sha`. It checks out no candidate code, takes no caller-selected workflow name or ref, and uses no App secrets. GitHub [documents both the issue-comment event](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#issue_comment) and the [special `GITHUB_TOKEN` workflow-dispatch exception](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow).
+
+**Dispatch accepted is not release published.** Follow both the dispatcher and the separate release workflow runs. The release resolver rechecks current main and the committed version, so a movement after the request fails closed; all normal build, native acceptance, candidate Action, publisher identity and post-publication smoke gates still apply. A repeated owner command is a new explicit request and must rely on the existing serialized, immutable retry contract rather than silently overwriting tags or assets. The CLI/API `workflow_dispatch` method above remains available and unchanged.
+
 ## Release assets and validation
 
 | Platform | Go target | Raw executable |
