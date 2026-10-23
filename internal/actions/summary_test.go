@@ -108,7 +108,7 @@ func TestSummaryRequiresValidReportState(t *testing.T) {
 		{"unknown outcome", actions.PlanReport{Outcome: "unknown", Changes: empty}},
 		{"missing changes", actions.PlanReport{Outcome: "unmanaged"}},
 		{"negative count", actions.PlanReport{Outcome: "unmanaged", Managed: -1, Changes: empty}},
-		{"excess count", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 50, Changes: empty}},
+		{"excess count", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 51, Changes: empty}},
 		{"changed without changes", actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: empty}},
 		{"no difference with changes", actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: 1, Changes: change}},
 		{"unmanaged positive count", actions.PlanReport{Outcome: "unmanaged", Managed: 1, Changes: empty}},

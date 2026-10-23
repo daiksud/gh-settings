@@ -7,6 +7,7 @@ import "github.com/daiksud/gh-settings/internal/settings"
 type ExportCheckout struct {
 	IncludeArchive             bool
 	IncludePages               bool
+	IncludeProperties          bool
 	IncludeForkApproval        bool
 	IncludePrivateFork         bool
 	Repository                 TargetResolver
@@ -176,6 +177,16 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Pages, err = o.Declaration()
+		if err != nil {
+			return err
+		}
+	}
+	if checkout.IncludeProperties {
+		o, err := read.Properties(repo)
+		if err != nil {
+			return err
+		}
+		declaration.Properties, err = o.Declaration()
 		if err != nil {
 			return err
 		}

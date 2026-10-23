@@ -659,3 +659,27 @@ Plan is read-only and shows native string/boolean/null differences. Workflow sou
 Configuration convergence does not establish DNS, certificate or deployment readiness. Pending operational metadata does not create a configuration difference; a server refusal (including HTTPS not yet ready) fails the operation. GitHub may publish or create a CNAME-file commit as a consequence of settings changes; gh-settings neither triggers a build/deployment nor edits DNS/content itself.
 
 Pages GET requires Pages read (public resources may be readable without authentication); mutations require Pages write plus Administration write and the applicable actor authorization. Public GET success does not prove write grants. A private repository can have a public site; observed `public` is preserved, never used as a write key. Site creation/deletion, visibility/access changes, unknown lifecycle keys and permission expansion remain unsupported. See the [Pages contract and evidence limits](features/pages.feature.md).
+
+## Custom property values (unreleased source)
+
+Current source accepts `settings.custom_properties` for the adopted organization-owned property subset. Published v0.17.0 rejects this group and `export --custom-properties`.
+
+```yaml
+schemaVersion: 1
+settings:
+  custom_properties:
+    service: "payments"
+    regions: ["east", "west"]
+    retired: "false"
+    previous_owner: null
+```
+
+Omission leaves a property unmanaged; `{}` manages nothing. Null explicitly unsets a named property, including an empty YAML scalar. Empty string and empty array retain those values. An array is a unique set of strings; order does not cause drift. Boolean property values must be quoted `"true"` or `"false"`. YAML booleans, numbers, objects, duplicates and unsupported value shapes fail local validation. Names are case-sensitive ASCII letters/digits or `_`, `-`, `$`, `#`, with length 1–75. Strings and array members are printable ASCII excluding double quotes, at most 75 characters. Property existence, schema type and allowed selections are validated during remote operations.
+
+Only organization-sourced properties editable by organization and repository actors are adopted. Complete schema must establish `required: false`, `require_explicit_values: false`, a null default and, for strings, no regex constraint. Supported types are string, single-select, multi-select and true/false. Unknown names, unavailable constraints and invalid selections fail. Required/default-backed, explicitly required, enterprise-sourced, organization-only, URL and regex-constrained properties remain unsupported. Schema definitions are never created or changed.
+
+Use `export --custom-properties` to read the full organization schema and repository values. It declares every supported observed schema name, including null for unset values; remove names you want unmanaged before applying. An unsupported property or incomplete read fails the whole opted-in export and preserves the old file. Ordinary export does not request properties. The complete schema/value arrays and authenticated GraphQL string-constraint reads must be accessible; unavailable data and 404 are errors, not empty state.
+
+Plan remains read-only and displays JSON-native string/array/null differences. Apply reads fresh state, skips a match, rereads before mutation, PATCHes only declared names, and verifies selected schemas, values, retained unowned values and repository/organization identity. It follows other resource writes and precedes final archive; explicit unarchive comes first. Earlier writes remain applied after failure; an attempted property update can have uncertain outcome. There is no retry, rollback or atomic concurrency guarantee.
+
+Value reads require repository Metadata read; schema reads require organization Custom properties read plus authenticated access to the GraphQL schema fields. Value updates require repository Custom properties write and the schema's actor authorization. A successful read does not prove write grants. No schema administration permission is requested. See the [behavior and evidence limits](features/custom-properties.feature.md).
