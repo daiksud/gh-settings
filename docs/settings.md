@@ -631,3 +631,7 @@ Pages and Actions settings are not supported. Rulesets support is limited to the
 [^github-labels]: [GitHub Labels REST API](https://docs.github.com/en/rest/issues/labels), including listing and mutation permissions.
 
 [^github-repository-openapi]: [GitHub official OpenAPI schema](https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json), checked on 2026-10-12 for nullable full-repository description/homepage values and optional string parameters in `PATCH /repos/{owner}/{repo}`.
+
+## Planned Pages configuration
+
+The accepted [Pages design](features/pages.feature.md) describes optional existing-site configuration and a cname-only null exception; site creation/deletion and visibility changes remain gated. These are planned keys, not supported settings. Current source and published v0.17.0 reject `settings.pages`; no export option, permission expansion or deployment behavior is added by the design.
