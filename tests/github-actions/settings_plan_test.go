@@ -143,7 +143,6 @@ func TestProtectedPlanGuardRejectsUnexpectedPlacement(t *testing.T) {
 	}
 }
 
-
 func TestProtectedPlanValidationDoesNotLogUntrustedDiagnostics(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
 	if err != nil {
