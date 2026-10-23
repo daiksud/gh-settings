@@ -1,0 +1,60 @@
+name: Release request
+on:
+  issue_comment:
+    types: [created]
+permissions: {}
+concurrency:
+  # A comment is one explicit request. Publication itself has a shared lock.
+  group: release-request-${{ github.repository }}-${{ github.event.comment.id }}
+  cancel-in-progress: false
+jobs:
+  authorize:
+    # Only a new owner comment on the dedicated Issue can request publication.
+    # This job has no permission to dispatch another workflow.
+    if: >-
+      github.repository == 'daiksud/gh-settings' &&
+      github.ref == 'refs/heads/main' &&
+      github.event.issue.number == 410 &&
+      !github.event.issue.pull_request &&
+      github.event.issue.state == 'open' &&
+      github.event.comment.user.id == github.event.repository.owner.id &&
+      github.actor == github.repository_owner
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    permissions: {contents: read}
+    outputs:
+      source-sha: ${{ steps.command.outputs.source-sha }}
+    steps:
+      - name: Parse exact owner release command
+        id: command
+        shell: bash
+        env:
+          RELEASE_COMMENT: ${{ github.event.comment.body }}
+        run: |
+          if [[ ! "$RELEASE_COMMENT" =~ ^/release\ ([0-9a-f]{40})$ ]]; then
+            echo 'invalid release command: expected /release FULL_40_CHARACTER_SHA' >&2
+            exit 1
+          fi
+          printf 'source-sha=%s\n' "${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+  dispatch:
+    needs: authorize
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Verify main and dispatch the existing manual release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.authorize.outputs.source-sha }}
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo 'invalid authorized source SHA' >&2; exit 1
+          }
+          current="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$current" =~ ^[0-9a-f]{40}$ && "$current" == "$SOURCE_SHA" ]] || {
+            echo 'main moved since the release request; refusing a different source' >&2; exit 1
+          }
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f "source_sha=$SOURCE_SHA"
