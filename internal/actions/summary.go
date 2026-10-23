@@ -153,6 +153,9 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	for _, c := range report.comparison.Pages {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.PagesLine(c)))
 	}
+	for _, c := range report.comparison.Properties {
+		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.PropertyLine(c)))
+	}
 	content.WriteString("</pre>\n\nDirect apply uses the declaration and can overwrite intervening remote changes to managed fields. Review this Summary before authorizing a separate direct apply; successful rendering alone does not prove publication.\n")
 	return content.String()
 }
@@ -164,7 +167,7 @@ type validatedPlanReport struct {
 }
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
-	maxManaged := settings.RepositoryFieldCount() + 3 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
+	maxManaged := settings.RepositoryFieldCount() + 4 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
 	if report.Changes == nil || report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security)+len(report.Pages) || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}
@@ -186,10 +189,13 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if len(rulesets) > 0 {
 		collections++
 	}
+	if len(report.Properties) > 0 {
+		collections++
+	}
 	if report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security)+len(report.Pages)+collections {
 		return validatedPlanReport{}, fmt.Errorf("invalid collection managed count")
 	}
-	hasChanges := len(report.Changes) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(report.Actions) > 0 || len(report.Security) > 0 || len(report.Pages) > 0
+	hasChanges := len(report.Changes) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(report.Actions) > 0 || len(report.Security) > 0 || len(report.Pages) > 0 || len(report.Properties) > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
@@ -234,6 +240,11 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 		return validatedPlanReport{}, err
 	}
 	comparison.Pages = pages
+	properties, err := validatePropertyReport(report.Properties)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	comparison.Properties = properties
 	seen := make(map[settings.FieldID]bool, len(report.Changes))
 	for _, raw := range report.Changes {
 		change, err := parseReportChange(raw)

@@ -14,6 +14,7 @@ type PreWriteReadFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	Properties          func(repository.Repository) (settings.PropertyObservation, error)
 	Pages               func(repository.Repository) (settings.PagesObservation, error)
 	Archive             func(repository.Repository) (settings.ArchiveState, error)
 	ForkApproval        func(repository.Repository) (settings.ForkApprovalObservation, error)
@@ -31,6 +32,8 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadProperties       func(repository.Repository) (settings.PropertyObservation, error)
+	Properties           func(repository.Repository, settings.PropertyDeclarations) (bool, error)
 	ReadPages            func(repository.Repository) (settings.PagesObservation, error)
 	Pages                func(repository.Repository, settings.PagesDeclaration) (bool, error)
 	ReadArchive          func(repository.Repository) (settings.ArchiveState, error)

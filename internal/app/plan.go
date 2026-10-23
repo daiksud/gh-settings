@@ -212,5 +212,17 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.Pages = changes
 	}
+	if len(desired.Properties) > 0 {
+		o, err := read.Properties(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		changes, err := settings.CompareProperties(o, desired.Properties)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.Properties = changes
+	}
 	return PlanResult{Target: repo, Comparison: comparison}, nil
 }

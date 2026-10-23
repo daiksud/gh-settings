@@ -26,6 +26,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 			Actions    *settings.ActionsPolicyDeclaration `yaml:"actions,omitempty"`
 			Security   *settings.SecurityDeclaration      `yaml:"security,omitempty"`
 			Pages      map[string]any                     `yaml:"pages,omitempty"`
+			Properties settings.PropertyDeclarations      `yaml:"custom_properties,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
@@ -73,6 +74,10 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 		}
 		document.Settings.Pages = pagesDocument(declaration.Pages)
 	}
+	if err := declaration.Properties.Validate(); err != nil {
+		return nil, err
+	}
+	document.Settings.Properties = declaration.Properties
 	return yaml.Marshal(document)
 }
 
@@ -124,6 +129,14 @@ func DecodeConfig(data []byte) (settings.Declaration, error) {
 			return settings.Declaration{}, err
 		}
 		for group, value := range groups {
+			if group == "custom_properties" {
+				d, err := parseProperties(&value)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				declaration.Properties = d
+				continue
+			}
 			if group == "pages" {
 				d, err := parsePages(&value)
 				if err != nil {

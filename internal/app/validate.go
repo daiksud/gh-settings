@@ -17,5 +17,8 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 	if err := d.Pages.Validate(); err != nil {
 		return settings.Declaration{}, err
 	}
+	if err := d.Properties.Validate(); err != nil {
+		return settings.Declaration{}, err
+	}
 	return d, nil
 }

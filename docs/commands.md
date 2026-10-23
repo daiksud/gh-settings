@@ -43,7 +43,7 @@ Current source additionally supports unreleased [`has_sponsorships`](settings.md
 Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
-gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
+gh settings export [--custom-properties] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply
@@ -185,3 +185,11 @@ Current-source `gh settings export --fork-approval` adds the public-repository c
 Plan and the credential-free Action Summary show native credential-exposure booleans and the exact approval enum. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 
 Current unreleased source adds `export --pages` for [existing Pages configuration](settings.md#existing-pages-configuration-unreleased-source). It is explicit, composable and rejects duplicate selection. Ordinary export adds no Pages requests. Complete Pages read access is required; a 404 or incomplete response fails without replacing the output. Published v0.17.0 rejects the option.
+
+## Custom property commands (unreleased source)
+
+`export --custom-properties` explicitly selects the [bounded property-value contract](settings.md#custom-property-values-unreleased-source). It composes with existing export choices; duplicates and use on other commands fail. Published v0.17.0 rejects the option and YAML group. Ordinary export retains its existing reads and permissions.
+
+Local validation checks value syntax without API access. Plan/apply additionally require complete organization schema and repository values, including authenticated GraphQL string constraints. Values use Metadata read; organization schema uses Custom properties read. Updates need repository Custom properties write plus schema editability. Incomplete or unsupported observations fail instead of producing partial output. No grants or organization schemas are changed.
+
+Differences use `settings.custom_properties.NAME: CURRENT → DESIRED`, sorted by name, with JSON strings/arrays/null. A nonempty map counts as one managed collection. Apply uses fresh state rather than a saved plan, sends only declared names, and checks readback. Failed export preserves the destination; failed apply preserves earlier successful writes and reports an uncertain attempted update without rollback.

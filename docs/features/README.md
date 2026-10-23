@@ -61,3 +61,5 @@ Current source implements [repository archive/unarchive](repository-lifecycle.fe
 Current unreleased source implements the [existing-site Pages contract](pages.feature.md) from #350, including cname-only null clearing and explicit export. Creation/deletion and visibility changes remain deferred until their observation and exposure gates are resolved; #350 retains that lifecycle work. Published v0.17.0 rejects all Pages keys/options.
 
 The [Environment design](environments.feature.md) for #351 separates selected names from authoritative membership, protection reductions from omission, and typed reviewer identity from display names. All Environment syntax remains unimplemented. #352/#353 require the documented observation, preservation and transition evidence before adoption; lifecycle and undocumented administrator-bypass mutations remain deferred.
+
+Current source adds the bounded [custom property values](custom-properties.feature.md) contract, with explicit export selection, schema-bound validation and null unset. Published v0.17.0 rejects it; default-backed and other unadopted constraints remain gated.
