@@ -18,6 +18,15 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `gh-settings` |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; [versioned release procedure](releases.md) |
+| [`release-request.yml`](../../.github/workflows/release-request.yml) | Created comments on dedicated Issue #410 only; owner-authenticated SHA pin dispatches the unchanged manual release workflow |
+
+## Connector-friendly release requests
+
+An owner-authored comment consisting of exactly `/release FULL_40_CHARACTER_MAIN_SHA` on the [release-command Issue #410](https://github.com/daiksud/gh-settings/issues/410) can initiate the existing manual release workflow through the connected GitHub app. The [dispatcher](../../.github/workflows/release-request.yml) checks the fixed repository, main/default-branch event, open non-PR Issue number, actual repository-owner and rerun identity, strict lowercase full SHA and current main HEAD. Edited comments or text elsewhere do not authorize publication.
+
+A read-only authorization job runs before the only `actions: write` job. That job uses its built-in `GITHUB_TOKEN` solely to request `release.yml` through `workflow_dispatch` with the fixed main SHA. It does not grant the workflow permission to apply settings or create tags itself; the existing release's native validation and immutable publisher still own those operations. The request must be made **after** the source containing this dispatcher has been merged, so a previously prepared commit may be too old to use as the fixed main SHA.
+
+The command Issue stays open as a reusable human approval surface; each release still requires a new explicit owner command. Do not infer successful publication from a successful request run. See the [maintainer release procedure](releases.md#request-publication-from-the-connected-github-app) for verification and alternative CLI/API dispatch. The new trigger needs no Environment or App private key and does not modify the existing main apply, PR plan, required checks or automatic release policy.
 
 ## PR lifecycle
 
@@ -95,7 +104,7 @@ Preparation checks PR/main state again before returning. Verification checks reg
 
 The [protected manual plan](../../.github/workflows/settings-plan.yml) is a proposed main-only observer for [Issue #380](https://github.com/daiksud/gh-settings/issues/380). It does **not** reuse the existing apply Environment, introduce a required check, automatically change settings, or run candidate PR scripts or workflows. The repository variable GH_SETTINGS_PLAN_ENABLED must be separately set to the literal true to enable execution. Until then, the unprivileged activation gate fails and the protected job is skipped; a no-op run is not a successful observation.
 
-Before activation, publish the reviewed v0.18.0 CLI/Action with the existing [manual release procedure](releases.md) and verify its immutable tag and artifacts. The new observer pins the exact Action source [e6fa6d6](https://github.com/daiksud/gh-settings/commit/e6fa6d6e344a491f921683d4ca9576fbe9375793). Merely merging the version-preparation commit does not make this package available.
+The reviewed [v0.18.0 release](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0) was published successfully from immutable commit [`6d3146b`](https://github.com/daiksud/gh-settings/commit/6d3146b30860692f84dc54e32d746e6fbbb55c66), after native acceptance and published Action smoke. The new observer pins that exact released Action source. Publication alone does **not** activate the observer; the dedicated Environment, credential placement, repository variable and first privileged run still require separate explicit operational approval.
 
 Create a **separate** literal Environment named gh-settings-plan, restrict it to main, and explicitly approve its reviewer and credential policies. Provisioning the existing GitHub App client ID and private key in that Environment requires separate authorization. Do not reuse gh-settings, move the private key into repository-wide secrets, change existing App grants, or assume that referencing an Environment in YAML creates protection. Inspect live branch rules, Environment restrictions, App installation and secret placement before permitting token issuance.
 

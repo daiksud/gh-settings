@@ -68,7 +68,7 @@ jobs:
         run: |
           "$RUNNER_TEMP/pr-settings" prepare "$PR_NUMBER" "$EXPECTED_HEAD" >> "$GITHUB_OUTPUT"
       - name: Validate candidate data with the published package before minting App credentials
-        uses: daiksud/gh-settings@e6fa6d6e344a491f921683d4ca9576fbe9375793 # v0.18.0 (requires approved publication)
+        uses: daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66 # v0.18.0 (published, SHA-pinned)
         with:
           command: validate
       - name: Mint one repository-scoped App token after validation
@@ -82,7 +82,7 @@ jobs:
           permission-administration: write
       - name: Run published private status-only plan without executing candidate code
         id: review
-        uses: daiksud/gh-settings@e6fa6d6e344a491f921683d4ca9576fbe9375793 # v0.18.0 (requires approved publication)
+        uses: daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66 # v0.18.0 (published, SHA-pinned)
         with:
           command: plan
           plan-reporting: status-only

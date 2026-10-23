@@ -10,7 +10,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const planAction = "daiksud/gh-settings@e6fa6d6e344a491f921683d4ca9576fbe9375793"
+const planAction = "daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66"
 
 func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
