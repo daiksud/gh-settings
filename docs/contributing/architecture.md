@@ -184,3 +184,7 @@ Workspace encoding retains null/empty distinctions; application selection preser
 ## Repository access design boundary
 
 [ADR0031](../adr/0031-repository-access-ownership.md) and the [access specification](../features/repository-access.feature.md) separate direct collaborator/team grants, inherited effective access and pending invitations. This is design only: no access declaration, export selection, API adapter or executable test exists yet. #356/#357 must establish complete provenance, exact roles, invitation intent and operator/recovery evidence before adopting a mutation subset. A design merge does not authorize live grants, invitations, revocations, organization changes or credentials.
+
+## Private repository forking
+
+[ADR0032](../adr/0032-private-forking-applicability.md) keeps the opt-in repository boolean outside ordinary repository observations and bulk writes. The model retains acquired state and target identity, the adapter proves applicability and organization policy, and the application sequences the separate write after other resources. Workspace presence and native CLI/Action field handling reuse scalar definitions. Lifecycle composition is rejected locally; source-only behavior and fixture limitations are documented in the [user contract](../settings.md#private-repository-forking-unreleased-source).

@@ -65,3 +65,5 @@ The [Environment design](environments.feature.md) for #351 separates selected na
 Current source adds the bounded [custom property values](custom-properties.feature.md) contract, with explicit export selection, schema-bound validation and null unset. Published v0.17.0 rejects it; default-backed and other unadopted constraints remain gated.
 
 The [repository access design](repository-access.feature.md) reserves collaborator/team ownership, pending invitation outcomes and revocation gates for #356/#357. It is unimplemented; current source and published packages reject access declarations and export options.
+
+Current unreleased source implements the bounded [private repository forking policy](private-forking.feature.md), with complete organization-policy observation and explicit export selection. Published v0.17.0 rejects it; public/internal/personal/fork/archive targets and lifecycle composition remain unadopted.

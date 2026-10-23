@@ -1,10 +1,15 @@
 package app
 
-import "github.com/daiksud/gh-settings/internal/settings"
+import (
+	"fmt"
+
+	"github.com/daiksud/gh-settings/internal/settings"
+)
 
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludeForking             bool
 	IncludeArchive             bool
 	IncludePages               bool
 	IncludeProperties          bool
@@ -23,6 +28,9 @@ type ExportCheckout struct {
 
 // Export saves all observed fields only after a complete read.
 func Export(checkout ExportCheckout, read Reader) error {
+	if checkout.IncludeForking && checkout.IncludeArchive {
+		return fmt.Errorf("forking export cannot be combined with archive export")
+	}
 	repo, err := checkout.Repository()
 	if err != nil {
 		return err
@@ -190,6 +198,20 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
+	}
+	if checkout.IncludeForking {
+		o, err := read.Forking(repo)
+		if err == nil {
+			err = o.Validate(repo)
+		}
+		if err != nil {
+			return err
+		}
+		value, _ := o.Value()
+		declaration.Repository.AllowForking = &value
+	}
+	if err := declaration.Repository.ValidateForkingComposition(); err != nil {
+		return err
 	}
 	return save(declaration)
 }
