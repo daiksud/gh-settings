@@ -622,6 +622,8 @@ The first API failure stops later operations; earlier writes can remain applied,
 
 ## Unsupported settings
 
+Collaborator grants, repository invitations and team access remain unsupported in source and published packages. The [access design](features/repository-access.feature.md) describes proposed ownership and adoption gates; its examples are not accepted configuration.
+
 Environment configuration, lifecycle, deployment protections and branch/tag policies remain unsupported in source and published packages. The contributor [Environment design](features/environments.feature.md) reserves possible syntax and records adoption gates; it does not extend the accepted YAML schema or export options.
 
 Pages lifecycle and visibility changes, and unadopted Actions settings, are not supported. Rulesets support is limited to the current-source subset above; push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
