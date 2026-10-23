@@ -6,7 +6,7 @@ description: Separate Pages configuration from site creation, deletion, visibili
 
 ## Status
 
-Accepted design for #349; implementation remains #350. No Pages YAML or export option is implemented or published by this decision. Site creation/deletion and site visibility mutation remain deferred pending the gates below.
+Accepted design for #349. The existing-site subset of #350 is implemented in current source but unreleased; published v0.17.0 rejects Pages keys/options. Site creation/deletion and site visibility mutation remain deferred pending the gates below, and #350 retains those unresolved lifecycle criteria.
 
 ## Context
 

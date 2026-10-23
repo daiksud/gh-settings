@@ -1,6 +1,6 @@
 # Feature: Declarative Pages configuration
 
-Status: accepted design in [ADR 0028](../adr/0028-declarative-pages-settings.md), Issue #349. Implementation is #350. All keys/options below are planned and remain rejected by current source and published v0.17.0. No deployment or live setting is changed by this design.
+Status: accepted design in [ADR 0028](../adr/0028-declarative-pages-settings.md), Issue #349. The existing-site subset of #350 is implemented in current unreleased source. Published v0.17.0 rejects these keys/options. Creation/deletion and visibility mutation remain deferred and #350 remains open for those criteria. No live deployment or setting was changed by implementation.
 
 ## Official contracts
 
@@ -23,7 +23,7 @@ GitHub Free supports public repositories; private repository eligibility require
 
 Private publication requires an eligible Enterprise Cloud organization project site from a private/internal repository; organization sites do not support that access-control choice. Enterprise Managed Users impose additional private-only restrictions. Treat these as applicability constraints, not proof of the target site's visibility. Read the site's own `public` boolean and preserve it, including for a private repository whose site is public. The documented write schemas here do not expose `public` as a writable parameter.
 
-## Planned declaration and ownership
+## Declaration and ownership
 
 ```yaml
 schemaVersion: 1
@@ -37,7 +37,7 @@ settings:
     https_enforced: true
 ```
 
-This example is a planned contract, not a currently executable settings file.
+This example requires unreleased source; it is not supported by the published v0.17.0 package.
 
 | Input | Meaning |
 | --- | --- |
@@ -49,7 +49,7 @@ This example is a planned contract, not a currently executable settings file.
 | Omitted `source` | Preserve an existing legacy source; inactive workflow source is not managed |
 | Empty/partial/null `source` | Invalid locally; no guessed tuple companion or source removal |
 | `cname: null` (including an explicit empty YAML scalar) | Manage removal of the custom domain; distinct from omission |
-| String `cname` | Nonempty ASCII DNS hostname, compared case-insensitively and exported lowercase; no URL, port, slash, wildcard, whitespace or automatic IDNA conversion |
+| String `cname` | ASCII DNS hostname with at least two nonempty labels, compared case-insensitively and exported lowercase; no URL, port, slash, wildcard, whitespace or automatic IDNA conversion |
 | `cname: ""`, quoted `"null"`, wrong type | Invalid domain; empty string is not a second clearing syntax |
 | `https_enforced: false` | Explicit request to disable HTTPS enforcement; never equivalent to omission |
 | `public`, `enabled`, `state`, unknown keys | Unsupported; no visibility mutation or implicit lifecycle operation |
@@ -91,9 +91,9 @@ Initial implementation manages existing sites only. Every GET 404 remains unknow
 
 For #350, implement the accepted existing-site slice in one coherent PR, with the contracts above; keep creation/deletion visibly unresolved and do not close or describe the full lifecycle work as complete. If splitting implementation tracking, retain links and explicit held lifecycle acceptance criteria. A lifecycle gate must not block model/codec/report/API-update tests or other independent issues. No release or actual Pages operation is authorized by this design.
 
-## Acceptance plan for #350
+## Acceptance criteria and test mappings
 
-These are planned tests, not executed coverage:
+The existing-site implementation verifies these criteria with local fixtures. Lifecycle mutations remain prohibited and unimplemented:
 
 | Layer | Required cases |
 | --- | --- |
@@ -105,3 +105,14 @@ These are planned tests, not executed coverage:
 | Reports/process | Actual built CLI against local HTTP fixtures with dummy credentials; export-to-zero plan, edit/apply/idempotence; native null/bool/string CLI and credential-free Summary; private redaction; earlier successful writes retained on failure |
 
 Use the existing CI and representative actual-binary acceptance harness; record executed commands/results, per-request timeout and any unexecuted/live cases in the implementation PR. Fixtures prove client behavior against modeled responses, not live permissions, billing, DNS, certificates or deployment. This design was checked against documentation, not a live successful Pages read or mutation. No live Pages mutation, domain change, token issuance or release was used as a probe.
+
+### Executed existing-site test mappings
+
+- Model ownership, defensive copies, nullable-domain comparison, mode/source transitions and inactive-source validation: `TestPagesOwnershipTransitionsAndCopies` in [model tests](../../internal/settings/pages_test.go).
+- YAML omission/empty mapping, null-only domain clearing, false preservation, complete source and strict unknown/duplicate/type checks: `TestPagesYAMLNullableDomainAndStrictSource` in [workspace tests](../../internal/workspace/pages_test.go).
+- Complete reads, denied/ambiguous404 responses, declared-only PUT, repository identity, preserved companions/public visibility, no retries, matching state and uncertain writes: [API tests](../../internal/github/pages_test.go).
+- Independent plan, honest earlier-write progress, no unmanaged reads, explicit unarchive/Pages/final-archive order: [application tests](../../internal/app/pages_test.go).
+- Closed native null/boolean/string report handling, missing-versus-null JSON fields and inactive-source structure: [Summary tests](../../internal/actions/pages_test.go); explicit composable export: [CLI tests](../../internal/cli/pages_test.go).
+- The supplied actual CLI binary exercises ordinary/opted-in export, export-to-zero-plan, clearing/false, idempotent apply, both publishing-mode transitions, private status-only Summary without credentials, failed-export preservation, redirects and partial writes: `TestPagesExistingSiteExportPlanApplyAndPrivateSummary` in [acceptance tests](../../tests/acceptance/pages_test.go).
+
+These checks use local modeled responses and dummy credentials. They do not establish live Pages permissions, token grants, entitlement, API mutation compatibility, DNS or certificate readiness. No POST/DELETE, build/deployment request, live mutation or release was performed.

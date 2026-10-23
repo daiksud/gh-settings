@@ -12,7 +12,7 @@ import (
 var errUnsupportedCommand = errors.New("unsupported command or arguments; usage: gh settings <export|validate|plan|apply>")
 
 // ExportOptions selects independently acquired opt-in resources.
-type ExportOptions struct{ Rulesets, Actions, WorkflowPermissions, SecretScanning, PrivateReporting, Retention, ForkApproval, PrivateFork, Archive bool }
+type ExportOptions struct{ Rulesets, Actions, WorkflowPermissions, SecretScanning, PrivateReporting, Retention, ForkApproval, PrivateFork, Archive, Pages bool }
 
 // Operations binds shared application operations to their real dependencies.
 type Operations struct {
@@ -67,6 +67,11 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 					return errUnsupportedCommand
 				}
 				options.PrivateFork = true
+			case "--pages":
+				if options.Pages {
+					return errUnsupportedCommand
+				}
+				options.Pages = true
 			case "--archive":
 				if options.Archive {
 					return errUnsupportedCommand
@@ -109,7 +114,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security <secret-scanning|private-vulnerability-reporting>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nUse --private-fork-workflows for private fork execution/token/secrets/approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security <secret-scanning|private-vulnerability-reporting>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --pages to include existing Pages configuration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nUse --private-fork-workflows for private fork execution/token/secrets/approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 		return nil

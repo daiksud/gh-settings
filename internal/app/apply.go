@@ -188,6 +188,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if !desired.Pages.Empty() {
+		wrote, err := applyPages(&result, repo, desired.Pages, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if archiveManaged && *desired.Repository.Archived && !archiveState.Archived {
 		i := len(result.Operations)
 		result.Operations = append(result.Operations, ApplyOperation{Kind: ArchiveRead})
@@ -236,5 +243,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty()
+	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }

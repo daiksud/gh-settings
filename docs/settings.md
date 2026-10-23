@@ -622,7 +622,7 @@ The first API failure stops later operations; earlier writes can remain applied,
 
 ## Unsupported settings
 
-Pages and Actions settings are not supported. Rulesets support is limited to the current-source subset above; push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
+Pages lifecycle and visibility changes, and unadopted Actions settings, are not supported. Rulesets support is limited to the current-source subset above; push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five body parameters and their request body placement. This reference does not expand the supported scope.
 
@@ -632,6 +632,28 @@ Pages and Actions settings are not supported. Rulesets support is limited to the
 
 [^github-repository-openapi]: [GitHub official OpenAPI schema](https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json), checked on 2026-10-12 for nullable full-repository description/homepage values and optional string parameters in `PATCH /repos/{owner}/{repo}`.
 
-## Planned Pages configuration
+## Existing Pages configuration (unreleased source)
 
-The accepted [Pages design](features/pages.feature.md) describes optional existing-site configuration and a cname-only null exception; site creation/deletion and visibility changes remain gated. These are planned keys, not supported settings. Current source and published v0.17.0 reject `settings.pages`; no export option, permission expansion or deployment behavior is added by the design.
+Current source supports `settings.pages` for a positively observed existing site. Published v0.17.0 rejects this group and `export --pages`; no release is implied by source support.
+
+```yaml
+schemaVersion: 1
+settings:
+  pages:
+    build_type: legacy
+    source: {branch: main, path: /docs}
+    cname: null
+    https_enforced: true
+```
+
+Omitting `pages` or using `{}` manages nothing and makes no Pages request. Omitted members stay unmanaged. `build_type` accepts `legacy` or `workflow`. A declared `source` requires both a literal branch and path (`/` or `/docs`); partial/empty/null tuples are invalid. Switching from workflow to legacy requires an explicit complete source, while workflow mode rejects a source declaration. No branch, content or workflow is created.
+
+Only `cname` accepts YAML null (including a bare empty scalar), explicitly removing the custom domain. Omission preserves it; an empty string and quoted `"null"` are invalid. Domain strings must be ASCII DNS hostnames with at least two nonempty labels, normal hostname/label length limits, and no trailing dot, URL, wildcard, port or whitespace. Comparison/export use lowercase; no IDNA conversion or DNS verification occurs. `https_enforced: false` explicitly disables enforcement; null is invalid for booleans and other Pages fields.
+
+Use `export --pages` to opt in without changing ordinary export permissions. Export writes mode, active legacy source, nullable domain and HTTPS enforcement only after a complete read. It excludes site visibility and readiness metadata. Any missing/invalid configured field or 404 fails instead of becoming an absent/disabled site; a failed export preserves the destination.
+
+Plan is read-only and shows native string/boolean/null differences. Workflow source activation is shown as `inactive` before the declared tuple. Apply reads fresh state, skips a match, sends only declared PUT fields, then verifies the requested values, omitted applicable companions, site visibility and repository identity. Explicit unarchive precedes Pages; final archive follows it. Failure can leave prior writes or an uncertain Pages update applied; no retry, fallback write or rollback occurs.
+
+Configuration convergence does not establish DNS, certificate or deployment readiness. Pending operational metadata does not create a configuration difference; a server refusal (including HTTPS not yet ready) fails the operation. GitHub may publish or create a CNAME-file commit as a consequence of settings changes; gh-settings neither triggers a build/deployment nor edits DNS/content itself.
+
+Pages GET requires Pages read (public resources may be readable without authentication); mutations require Pages write plus Administration write and the applicable actor authorization. Public GET success does not prove write grants. A private repository can have a public site; observed `public` is preserved, never used as a write key. Site creation/deletion, visibility/access changes, unknown lifecycle keys and permission expansion remain unsupported. See the [Pages contract and evidence limits](features/pages.feature.md).

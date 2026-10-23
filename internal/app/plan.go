@@ -200,5 +200,17 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Security = append(comparison.Security, changes...)
 	}
 
+	if !desired.Pages.Empty() {
+		o, err := read.Pages(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.ComparePages(o, desired.Pages)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Pages = changes
+	}
 	return PlanResult{Target: repo, Comparison: comparison}, nil
 }
