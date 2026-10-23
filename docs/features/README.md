@@ -63,3 +63,5 @@ Current unreleased source implements the [existing-site Pages contract](pages.fe
 The [Environment design](environments.feature.md) for #351 separates selected names from authoritative membership, protection reductions from omission, and typed reviewer identity from display names. All Environment syntax remains unimplemented. #352/#353 require the documented observation, preservation and transition evidence before adoption; lifecycle and undocumented administrator-bypass mutations remain deferred.
 
 Current source adds the bounded [custom property values](custom-properties.feature.md) contract, with explicit export selection, schema-bound validation and null unset. Published v0.17.0 rejects it; default-backed and other unadopted constraints remain gated.
+
+The [repository access design](repository-access.feature.md) reserves collaborator/team ownership, pending invitation outcomes and revocation gates for #356/#357. It is unimplemented; current source and published packages reject access declarations and export options.
