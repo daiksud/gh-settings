@@ -37,3 +37,4 @@ Keep decision numbers and paths stable. Record a superseding decision and update
 | 0029 | [Separate Environment protection ownership from lifecycle](0029-environment-ownership-and-protection.md) |
 | 0030 | [Manage custom property values with complete schema evidence](0030-schema-bound-custom-property-values.md) |
 | 0031 | [Separate direct repository grants from effective access](0031-repository-access-ownership.md) |
+| 0032 | [Observe organization policy before managing private repository forks](0032-private-forking-applicability.md) |

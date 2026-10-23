@@ -22,6 +22,25 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
+## Private repository forking (unreleased source)
+
+Current source supports `settings.repository.allow_forking` for active, non-fork, private repositories owned by organizations. Published v0.17.0 and older packages reject this key and `export --forking`; the maintained Action still installs its pinned released CLI.
+
+```yaml
+schemaVersion: 1
+settings:
+  repository:
+    allow_forking: false
+```
+
+Omission is unmanaged. `true` permits private forking at the repository setting; `false` prohibits it there. Null, quoted values and other types are invalid. Public, internal, personal-owned, fork and archived repositories are outside this adopted subset. The matching organization must explicitly report that private repository forks are allowed, even to manage false. Hidden, missing, denied or disabled organization policy is an error, never a default or observed false. This setting does not delete existing forks, change organization/enterprise policy, or configure fork PR workflows and credentials.
+
+Ordinary export omits the field and adds no organization-policy read. `gh settings export --forking` includes the current value after complete applicability checks; a failed read preserves the existing file. It composes with other applicable export selections except `--archive`. Declaring `allow_forking` together with any `archived` value is rejected locally; manage lifecycle separately.
+
+Plan performs only reads and displays a native boolean difference. Apply processes this setting after other declared resources, checks complete current target/policy state, skips a match, then rechecks before a PATCH containing only `allow_forking`. The response and an independent readback must confirm the same repository/organization identities and desired value. A pre-write failure makes no forking-policy write; a failed PATCH or readback leaves its effects uncertain. Earlier successful resource writes remain applied. There is no automatic retry, rollback, fork creation/deletion or atomic lock against concurrent changes. Success verifies the repository setting, not every actor's ability to fork under higher-level restrictions.
+
+Private repository Metadata read and existing visibility of the organization policy are required for plan/export; apply additionally requires Administration write and an eligible repository administrator. [Organization GET](https://docs.github.com/en/rest/orgs/orgs#get-an-organization) exposes full details to organization owners; classic credentials need `admin:org` for those details. Endpoint success alone does not establish visibility. The tool never expands grants or issues credentials. The [repository policy guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/managing-the-forking-policy-for-your-repository) explains applicability; [fixture coverage](features/private-forking.feature.md) does not establish live token capabilities or policy mutation behavior.
+
 ## Repository archive lifecycle (unreleased source)
 
 Current source supports the optional `settings.repository.archived` boolean. Published v0.17.0 and older CLI/Action packages reject it; the maintained Action still installs its pinned released CLI. The field manages the selected checkout repository's archive state, not repository renaming, visibility, or individual issues/releases.

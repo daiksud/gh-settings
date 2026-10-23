@@ -61,6 +61,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 	}
 	other := desired.Repository
 	other.Archived = nil
+	other.AllowForking = nil
 	if fields := settings.DeclaredRepositoryFields(other); len(fields) > 0 {
 		observed, err := read.ObserveRepository(repo, fields)
 		if err != nil {
@@ -76,6 +77,22 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 			comparison.Changes = append(comparison.Changes, otherComparison.Changes...)
 		} else {
 			comparison.Changes = append(otherComparison.Changes, comparison.Changes...)
+		}
+	}
+	if desired.Repository.AllowForking != nil {
+		o, err := read.Forking(repo)
+		if err == nil {
+			err = o.Validate(repo)
+		}
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		before, _ := o.Value()
+		comparison.Managed++
+		if before != *desired.Repository.AllowForking {
+			field, _ := settings.ParseFieldID("repository.allow_forking")
+			change, _ := settings.NewBoolChange(field, before, *desired.Repository.AllowForking)
+			comparison.Changes = append(comparison.Changes, change)
 		}
 	}
 	if desired.Topics.Names != nil {

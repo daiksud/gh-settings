@@ -44,6 +44,7 @@ const (
 	PagesUpdate
 	PropertiesRead
 	PropertiesUpdate
+	ForkingUpdate
 )
 
 type ApplyOperationStatus uint8
