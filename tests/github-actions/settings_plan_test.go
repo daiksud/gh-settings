@@ -58,8 +58,8 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		!reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read", "pull-requests": "read"}) || j.Continue || len(j.Env) != 0 {
 		t.Fatal("plan job must be protected, main-only, inactive by default and read-only")
 	}
-	if len(j.Steps) != 9 {
-		t.Fatalf("expected nine controlled steps, got %d", len(j.Steps))
+	if len(j.Steps) != 10 {
+		t.Fatalf("expected ten controlled steps, got %d", len(j.Steps))
 	}
 	for i, s := range j.Steps {
 		if s.Continue || strings.Contains(s.Run, "gh settings apply") || strings.Contains(s.Run, "workflow_dispatch") ||
@@ -71,11 +71,18 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 			t.Fatalf("step %d has an unsafe shell credential or candidate code path", i)
 		}
 	}
-	checkout, build, prepare, validate, token, plan, verify, cleanup := j.Steps[0], j.Steps[2], j.Steps[3], j.Steps[4], j.Steps[5], j.Steps[6], j.Steps[7], j.Steps[8]
+	checkout, published, build, prepare, validate, token, plan, verify, cleanup := j.Steps[0], j.Steps[1], j.Steps[3], j.Steps[4], j.Steps[5], j.Steps[6], j.Steps[7], j.Steps[8], j.Steps[9]
 	if checkout.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
 		checkout.With["ref"] != "${{ github.sha }}" || checkout.With["path"] != ".trusted" ||
 		checkout.With["persist-credentials"] != "false" || !strings.Contains(build.Run, "./scripts/pr-settings") {
 		t.Fatal("preparation must build and use reviewed main code, never candidate code")
+	}
+	if published.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
+		published.With["repository"] != "daiksud/gh-settings" ||
+		published.With["ref"] != "6d3146b30860692f84dc54e32d746e6fbbb55c66" ||
+		published.With["path"] != ".published" ||
+		published.With["persist-credentials"] != "false" {
+		t.Fatal("private validation installer must come from the exact published release revision")
 	}
 	if prepare.ID != "candidate" || prepare.Env["GH_TOKEN"] != "${{ github.token }}" ||
 		prepare.Env["PR_NUMBER"] != "${{ inputs.pr_number }}" || prepare.Env["EXPECTED_HEAD"] != "${{ inputs.head_sha }}" ||
@@ -83,7 +90,7 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		t.Fatal("candidate preparation must validate exact identifiers before credential issuance")
 	}
 	if validate.Uses != "" || len(validate.With) != 0 || validate.Shell != "bash" ||
-		!strings.Contains(validate.Run, "action/install-cli.sh") ||
+		!strings.Contains(validate.Run, ".published/action/install-cli.sh") ||
 		!strings.Contains(validate.Run, "gh-settings v0.18.0") ||
 		!strings.Contains(validate.Run, `validate >/dev/null 2>&1`) ||
 		!strings.Contains(validate.Run, "unset GH_TOKEN GITHUB_TOKEN GH_DEBUG") ||
@@ -152,7 +159,7 @@ func TestProtectedPlanValidationDoesNotLogUntrustedDiagnostics(t *testing.T) {
 	if err := yaml.Unmarshal(data, &w); err != nil {
 		t.Fatal(err)
 	}
-	step := w.Jobs["plan"].Steps[4]
+	step := w.Jobs["plan"].Steps[5]
 	for _, tc := range []struct {
 		name, status string
 		wantSuccess  bool

@@ -47,6 +47,13 @@ jobs:
           ref: ${{ github.sha }}
           path: .trusted
           persist-credentials: false
+      - name: Checkout the immutable published Action installer for validation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: daiksud/gh-settings
+          ref: 6d3146b30860692f84dc54e32d746e6fbbb55c66
+          path: .published
+          persist-credentials: false
       - name: Install pinned Go for trusted preparation only
         uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
@@ -73,7 +80,7 @@ jobs:
           # The public Action's validate command can print parser diagnostics.
           # Never put untrusted configuration values or errors in public logs.
           unset GH_TOKEN GITHUB_TOKEN GH_DEBUG
-          if ! binary=$(bash "$GITHUB_WORKSPACE/.trusted/action/install-cli.sh" 2>/dev/null); then
+          if ! binary=$(bash "$GITHUB_WORKSPACE/.published/action/install-cli.sh" 2>/dev/null); then
             echo 'published validation binary unavailable' >&2
             exit 1
           fi
