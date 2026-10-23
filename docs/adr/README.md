@@ -34,3 +34,4 @@ Keep decision numbers and paths stable. Record a superseding decision and update
 | 0026 | [Require explicit, complete security observations](0026-explicit-security-observations.md) |
 | 0027 | [Isolate repository lifecycle transitions](0027-repository-lifecycle.md) |
 | 0028 | [Manage existing Pages configuration with explicit lifecycle boundaries](0028-declarative-pages-settings.md) |
+| 0029 | [Separate Environment protection ownership from lifecycle](0029-environment-ownership-and-protection.md) |

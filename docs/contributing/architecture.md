@@ -137,6 +137,8 @@ The v0.17.0 [workflow-permission feature](../features/workflow-permissions.featu
 
 ## Future direction
 
+[ADR 0029](../adr/0029-environment-ownership-and-protection.md) and the [Environment specification](../features/environments.feature.md) define a documentation-only ownership and protection contract. Named selection never owns repository-wide Environment membership. Later implementations need acquired protection/identity observations, typed pinned reviewers, complete companion preservation and native reports in the existing layers. All Environment keys/options remain unimplemented; lifecycle, administrator bypass and custom-mode transitions retain explicit evidence gates. This design does not authorize changes to this repository's live Environment controls.
+
 Pages lifecycle/visibility and unadopted Actions endpoints remain outside current support. Rulesets lifecycle, PR/check rules and the adopted Actions/security subsets are published in v0.17.0. Label definitions are implemented in current source; individual issue/PR assignment management, renaming, and archive settings are not part of that feature.
 
 [ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. The [Rulesets specification](../features/rulesets.feature.md) owns exact-name-to-ID matching, nested identity, deletion, complete observations, export opt-in and staged acceptance criteria. Inherited/push Rulesets and legacy branch protection remain outside that managed collection; legacy protection implementation is deferred. Published v0.16.0 and older CLI/Action packages do not support this v0.17.0 feature.
