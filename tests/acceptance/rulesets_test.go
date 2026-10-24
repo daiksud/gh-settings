@@ -5,6 +5,7 @@ package acceptance
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -167,6 +168,47 @@ func TestRulesetsExistingPolicyLifecycle(t *testing.T) {
 	if out := run("plan"); out != "No differences for managed repository settings.\n" {
 		t.Fatal("export did not roundtrip", out)
 	}
+	// Presentation follows declaration presence even though apply must preserve
+	// the complete observed policy in its PUT payload.
+	if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{name: basic, enforcement: disabled}]}\n"); err != nil {
+		t.Fatal(err)
+	}
+	plan := run("plan")
+	if !strings.Contains(plan, `{"name":"basic","enforcement":"active"} → {"name":"basic","enforcement":"disabled"}`) {
+		t.Fatal("managed enforcement missing", plan)
+	}
+	for _, hidden := range []string{`"conditions"`, `"bypass_actors"`, `"rules"`, `"target"`} {
+		if strings.Contains(plan, hidden) {
+			t.Fatal("CLI plan leaked unmanaged Ruleset value", hidden, plan)
+		}
+	}
+	projectedReport := filepath.Join(fixture.root, "rulesets-projected-plan.json")
+	run("action", "plan", projectedReport)
+	projectedData, err := os.ReadFile(projectedReport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, hidden := range []string{`"conditions"`, `"bypass_actors"`, `"rules"`} {
+		if strings.Contains(string(projectedData), hidden) {
+			t.Fatal("Action report leaked unmanaged Ruleset value", hidden, string(projectedData))
+		}
+	}
+	summaryPath := filepath.Join(fixture.root, "rulesets-projected-summary.md")
+	summaryEnv := append(fixtureEnv(fixture.cfg), "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=push", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_TARGET=owner/current", "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
+	result, err := executeCLI(binary, fixture.work, fixture.root, summaryEnv, []string{"action", "summary", projectedReport, summaryPath}, false)
+	if err != nil || result.runErr != nil {
+		t.Fatal("summary", err, result.runErr, result.stderr.String())
+	}
+	summaryData, err := os.ReadFile(summaryPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	visibleSummary := html.UnescapeString(string(summaryData))
+	for _, hidden := range []string{`"conditions"`, `"bypass_actors"`, `"rules"`} {
+		if strings.Contains(visibleSummary, hidden) {
+			t.Fatal("Summary leaked unmanaged Ruleset value", hidden, visibleSummary)
+		}
+	}
 	// Edit only Rulesets; other exported resources become unmanaged for this apply.
 	desired := `schemaVersion: 1
 settings:
@@ -185,7 +227,7 @@ settings:
 	if err := writeSettingsFile(fixture.work, desired); err != nil {
 		t.Fatal(err)
 	}
-	plan := run("plan")
+	plan = run("plan")
 	for _, want := range []string{`update "basic"`, `create "new"`, `delete "old"`, `removes repository protection`} {
 		if !strings.Contains(plan, want) {
 			t.Fatal("missing", want, plan)
@@ -225,7 +267,7 @@ settings:
 		t.Fatal(err)
 	}
 	out := run("plan")
-	if strings.Count(out, "removes repository protection") != 2 || strings.Contains(out, `"push"`) {
+	if strings.Count(out, "removes repository protection") != 2 || strings.Contains(out, `"push"`) || strings.Contains(out, "{") {
 		t.Fatal(out)
 	}
 	var saved map[string]any

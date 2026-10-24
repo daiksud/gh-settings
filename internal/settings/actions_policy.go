@@ -96,7 +96,7 @@ func (d ActionsPolicyDeclaration) Validate() error {
 
 func (s ActionsPolicyState) Validate() error {
 	if !ValidAllowedActions(s.AllowedActions) {
-		return fmt.Errorf("unsupported observed actions.allowed_actions %q", s.AllowedActions)
+		return fmt.Errorf("unsupported observed actions.allowed_actions value")
 	}
 	if s.Selected != nil {
 		if s.AllowedActions != "selected" || s.Selected.PatternsAllowed == nil {
@@ -128,7 +128,7 @@ func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 		return nil
 	}
 	if d.AllowedActions == nil || *d.AllowedActions != "selected" {
-		return fmt.Errorf("selected Actions values are not observable while allowed_actions is %q; declare selected and all three selected_actions values", s.AllowedActions)
+		return fmt.Errorf("selected Actions values are not observable under the current unmanaged allowed_actions policy; declare allowed_actions: selected and all three selected_actions values")
 	}
 	if !d.SelectedActions.Complete() {
 		return fmt.Errorf("transition to selected requires all three selected_actions values; inactive values cannot be read")

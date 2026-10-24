@@ -63,6 +63,10 @@ func TestRulesetsMembershipAndPresence(t *testing.T) {
 	if len(*after.Rules) != 0 || *(*after.BypassActors)[0].BypassMode != "always" || !reflect.DeepEqual(*after.Conditions.RefName.Include, []string{"~DEFAULT_BRANCH"}) || *after.Enforcement != "active" {
 		t.Fatal(after)
 	}
+	display := changes[0].Display()
+	if display.Before().Rules == nil || display.Before().Conditions == nil || display.Before().Enforcement != nil || display.After().Rules == nil || display.After().Conditions == nil || display.After().Enforcement != nil {
+		t.Fatal("display did not follow declaration presence", display.Before(), display.After())
+	}
 	repeated, err := ReconcileRulesets(rsObserved(t, RulesetState{7, *after}), rsDesired(t, d))
 	if err != nil || len(repeated) != 0 {
 		t.Fatalf("not idempotent: %v %v", repeated, err)
@@ -70,6 +74,43 @@ func TestRulesetsMembershipAndPresence(t *testing.T) {
 	*after.Enforcement = "disabled"
 	if *changes[0].After().Enforcement != "active" {
 		t.Fatal("operation exposed pointer")
+	}
+}
+
+func TestRulesetDisplayProjectionSeparatesMutationPreservation(t *testing.T) {
+	before := reviewPolicy()
+	disabled := "disabled"
+	changes, err := ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, RulesetDeclaration{Name: "default", Enforcement: &disabled}))
+	if err != nil || len(changes) != 1 {
+		t.Fatal(changes, err)
+	}
+	mutation := changes[0].After()
+	if mutation.Conditions == nil || mutation.BypassActors == nil || mutation.Rules == nil || len(*mutation.Rules) == 0 {
+		t.Fatal("mutation lost unmanaged policy", mutation)
+	}
+	display := changes[0].Display()
+	wantBefore := RulesetDeclaration{Name: "default", Enforcement: rsText("active")}
+	wantAfter := RulesetDeclaration{Name: "default", Enforcement: rsText("disabled")}
+	if !reflect.DeepEqual(display.Before(), &wantBefore) || !reflect.DeepEqual(display.After(), &wantAfter) {
+		t.Fatalf("display leaked unmanaged policy: before=%+v after=%+v", display.Before(), display.After())
+	}
+
+	desired := RulesetDeclaration{Name: "default", Rules: &[]RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{RequireCodeOwnerReview: paramBool(false), RequiredReviewers: &[]RequiredReviewer{}}}}}
+	changes, err = ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, desired))
+	if err != nil || len(changes) != 1 {
+		t.Fatal(changes, err)
+	}
+	display = changes[0].Display()
+	if display.Before().Target != nil || display.Before().Conditions != nil || display.Before().BypassActors != nil {
+		t.Fatal("top-level omission leaked", display.Before())
+	}
+	beforePR := ruleOf(t, *display.Before(), "pull_request")
+	afterPR := ruleOf(t, *display.After(), "pull_request")
+	if beforePR.RequireCodeOwnerReview == nil || !*beforePR.RequireCodeOwnerReview || afterPR.RequireCodeOwnerReview == nil || *afterPR.RequireCodeOwnerReview || len(*afterPR.RequiredReviewers) != 0 {
+		t.Fatal("false or empty declaration lost", display.Before(), display.After())
+	}
+	if beforePR.RequiredApprovingReviewCount != nil || beforePR.AllowedMergeMethods != nil {
+		t.Fatal("omitted nested values leaked", beforePR)
 	}
 }
 func TestRulesetsCreationValidationAndOrdering(t *testing.T) {
