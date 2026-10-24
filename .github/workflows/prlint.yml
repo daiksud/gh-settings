@@ -1,4 +1,4 @@
-name: PR message
+name: PRLint
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]

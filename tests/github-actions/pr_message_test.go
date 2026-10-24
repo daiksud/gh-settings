@@ -8,8 +8,8 @@ import (
 )
 
 func TestIndependentPRMessageValidation(t *testing.T) {
-	w, source := readWorkflow(t, "../../.github/workflows/pr-message.yml")
-	if len(w.On) != 1 || w.On["pull_request"].Kind == 0 || len(w.Jobs) != 1 || len(w.Permissions) != 0 {
+	w, source := readWorkflow(t, "../../.github/workflows/prlint.yml")
+	if w.Name != "PRLint" || len(w.On) != 1 || w.On["pull_request"].Kind == 0 || len(w.Jobs) != 1 || len(w.Permissions) != 0 {
 		t.Fatal("message validation must remain a separate read-only PR workflow")
 	}
 	var event struct {
