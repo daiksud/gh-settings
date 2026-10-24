@@ -1,0 +1,94 @@
+name: Publish accepted release
+description: Reverify accepted manifests and publish exactly those products with immutable recovery.
+inputs:
+  source-sha:
+    description: Exact frozen main commit.
+    required: true
+  version:
+    description: Prepared release version.
+    required: true
+  previous-tag:
+    description: Previous published stable tag, empty only for an immutable retry.
+    required: false
+    default: ''
+  previous-sha:
+    description: Previous published stable source, empty only for an immutable retry.
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Validate frozen publication identity
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        PREVIOUS_TAG: ${{ inputs.previous-tag }}
+        PREVIOUS_SHA: ${{ inputs.previous-sha }}
+      run: |
+        [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid publication version' >&2; exit 1; }
+        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid publication source' >&2; exit 1; }
+        [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'publication checkout differs from frozen source' >&2; exit 1; }
+        [[ "$(cat action/cli-version)" == "$VERSION" ]] || { echo 'published CLI version differs from release' >&2; exit 1; }
+        if [[ -n "$PREVIOUS_TAG" || -n "$PREVIOUS_SHA" ]]; then
+          [[ "$PREVIOUS_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid predecessor tag' >&2; exit 1; }
+          [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid predecessor source' >&2; exit 1; }
+        fi
+    - name: Retrieve the accepted Linux artifact
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-linux-amd64
+        path: ${{ runner.temp }}/publish-linux-amd64
+        digest-mismatch: error
+    - name: Retrieve the accepted macOS artifact
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-darwin-arm64
+        path: ${{ runner.temp }}/publish-darwin-arm64
+        digest-mismatch: error
+    - name: Verify the Linux manifest and product bytes
+      id: linux
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: bash .github/scripts/release-artifact.sh verify linux-amd64 "$VERSION" "$SOURCE_SHA" "$RUNNER_TEMP/publish-linux-amd64" "$GITHUB_OUTPUT"
+    - name: Verify the macOS manifest and product bytes
+      id: macos
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: bash .github/scripts/release-artifact.sh verify darwin-arm64 "$VERSION" "$SOURCE_SHA" "$RUNNER_TEMP/publish-darwin-arm64" "$GITHUB_OUTPUT"
+    - name: Stage only accepted product bytes
+      id: stage
+      shell: bash
+      env:
+        LINUX_PATH: ${{ steps.linux.outputs.asset-path }}
+        MACOS_PATH: ${{ steps.macos.outputs.asset-path }}
+      run: |
+        release_dir="$RUNNER_TEMP/release-products"
+        [[ ! -e "$release_dir" ]]
+        mkdir "$release_dir"
+        cp "$LINUX_PATH" "$release_dir/gh-settings-linux-amd64"
+        cp "$MACOS_PATH" "$release_dir/gh-settings-darwin-arm64"
+        chmod 0755 "$release_dir/gh-settings-linux-amd64" "$release_dir/gh-settings-darwin-arm64"
+        [[ "$(find "$release_dir" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" == 2 ]] || { echo 'publication inventory changed' >&2; exit 1; }
+        printf 'release-dir=%s\n' "$release_dir" >> "$GITHUB_OUTPUT"
+    - name: Install pinned publication tools
+      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.10.8
+        install_args: go
+        cache: false
+    - name: Verify, stage, and publish accepted products
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        LINUX_SHA256: ${{ steps.linux.outputs.sha256 }}
+        MACOS_SHA256: ${{ steps.macos.outputs.sha256 }}
+        RELEASE_DIR: ${{ steps.stage.outputs.release-dir }}
+        PREVIOUS_TAG: ${{ inputs.previous-tag }}
+        PREVIOUS_SHA: ${{ inputs.previous-sha }}
+      run: bash scripts/publish-release.sh

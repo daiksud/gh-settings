@@ -40,17 +40,34 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 ### Rule: Freeze the source and prove binary identity
 
+#### Scenario: Dispatch is not from main
+
+- Given the release workflow was manually dispatched from another ref
+- When source resolution begins
+- Then the run fails explicitly before an API lookup, checkout, build, tag, or release creation
+- And the run is not reported as a successful set of skipped jobs
+
+#### Scenario: Main moves before source resolution
+
+- Given the workflow was dispatched for main source A
+- When current main is already source B during resolution
+- Then resolution stops before checkout, build, tag, or release creation
+- And it does not replace the dispatched source with B
+- And an optional reviewed source pin is checked separately without a token
+
 #### Scenario: Release two validated native binaries
 
 - Given the maintainer manually dispatches the workflow from main
 - And source A contains the correctly prepared calculated version
 - When main advances to B during validation
 - Then both binaries are built once from A with that shared embedded version
+- And each product is transferred with a manifest binding A, version, target, asset name, and SHA-256
 - And native acceptance executes each verified target binary
 - And supported Ubuntu candidate smoke uses A's actual root Action and the already-built Linux artifact for a separate consumer
 - And all four consumer/CLI identities match before publication
 - And the tag points to A with only the two raw binaries and `SHA256SUMS` attached
-- And post-publication smoke verifies A's tag/source/version before real release downloads
+- And post-publication verification compares real public downloads byte-for-byte with both accepted manifests
+- And the published root Action performs real release downloads for a separate consumer and reports all four identities
 
 #### Scenario: Validation fails before remote state
 
@@ -59,6 +76,16 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - When the workflow evaluates the publication gate
 - Then no tag or release is created by that run
 - And no override converts the missing validation into success
+
+#### Scenario: Orchestration delegates deterministic product work
+
+- Given the shared workflow freezes one source and resolves allowlisted build and acceptance matrices from that source
+- When commit, acceptance, publication, and verification run
+- Then the byte-identical workflow delegates each product-specific operation to its local Action
+- And the wrappers own pinned artifact upload/download with digest mismatch rejection and exact inventory checks
+- And publication obtains binary hashes only from manifests reverified in its own job
+- And no build, acceptance, or verification step receives a token environment
+- And only publication requests Contents write
 
 ### Rule: Preserve release identity across retries
 

@@ -16,7 +16,7 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Independent PR gates | [Message workflow tests](../../tests/github-actions/pr_message_test.go), [code-result tests](../../tests/github-actions/pr_code_gate_test.go) | Metadata/code event separation, required-message activation, failed/skipped/cancelled jobs, stale revisions, API failures, and status publication |
 | Installed process behavior | [Acceptance tests](../../tests/acceptance/) | The actual supplied binary, isolated Git/files, local API requests, stdout/stderr and exit codes |
 | Release metadata | [Metadata helper tests](../../scripts/release-metadata/main_test.go) | Temporary Git history, version precedence/preparation, fixed published boundaries, exact native-note requests, migration details, and retry identity |
-| Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go) | Mock publication/recovery, note generation before remote changes, stored-note preservation, and declared source/version/artifact/gate relationships |
+| Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go), [local Action tests](../../tests/github-actions/release_actions_test.go) | Mock publication/recovery, canonical orchestration, manifested artifact identity/tamper rejection, stored-note preservation, and declared source/version/gate relationships |
 
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
 
@@ -121,14 +121,14 @@ Examples and active main callers use the same single-job apply pattern: three `u
 
 The [release-metadata tests](../../scripts/release-metadata/main_test.go) run with the ordinary Go suite and pinned Go toolchain. They use temporary Git history and an injected API boundary to verify version precedence, preparation, publication-order selection, complete frozen ranges, retry identity, native-note request parameters, and retained migration footers. The [publisher fixtures](../../tests/release.sh) check generation failures before remote state and preservation of existing notes and artifacts during retries. These tests neither publish a release nor claim to execute GitHub's native renderer.
 
-The [release runbook](releases.md) owns dispatch and recovery. Its pre-publication candidate job reuses the bounded fixture with the frozen source, calculated/committed version, and existing Linux release artifact. Actual token-free validate must succeed before publication; source/helper tests inspect that required gate without dispatching a release.
+The [release runbook](releases.md) owns dispatch and recovery. Its build matrix transfers each native product with a manifest; the acceptance matrix reuses the bounded public Action fixture with the frozen source, calculated/committed version, and manifested Linux product. Actual token-free validate must succeed before publication. Source/helper tests inspect orchestration and wrapper behavior without dispatching a release, and therefore are not hosted release evidence.
 
 | Evidence | What it establishes | Limit |
 | --- | --- | --- |
 | Owner and composed tests | Local behavior, actual YAML wiring, and defined failure/status boundaries | Mocks do not establish platform enforcement or installed released bytes |
 | Built-product acceptance | The supplied executable runs real entries against isolated files/Git and a local API | Dummy credentials/responses do not prove live GitHub behavior |
 | Hosted candidate composite | Actual `uses` expansion, same-source/artifact integration, outputs, Summary bytes and representative direct PATCH behavior | Candidate fixture downloads are not published assets |
-| Release candidate gate | An authorized release run passed actual candidate validate alongside native acceptance | Source/fixture tests alone do not prove that a release ran |
-| Post-publication smoke | The published tag source/version and real downloaded CLI match the accepted release identities | Failure after publication does not permit changing immutable tags/assets |
+| Release acceptance gate | An authorized release run passed both native targets and actual candidate validate using the manifested products | Source/fixture tests alone do not prove that a release ran |
+| Post-publication verification | The published tag and actual downloaded assets match both accepted manifests, and the published root Action reports all four identities | Failure after publication does not permit changing immutable tags/assets |
 
 Inspect the relevant workflow run for hosted or publication evidence. A successful local fixture, Summary file, or workflow source check cannot establish actual Environment approval, branch policy, token revocation, or GitHub Summary publication.
