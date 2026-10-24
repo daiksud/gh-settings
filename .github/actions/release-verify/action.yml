@@ -1,0 +1,122 @@
+name: Verify published release
+description: Compare immutable public downloads with accepted manifests and exercise the published root Action.
+inputs:
+  source-sha:
+    description: Exact accepted and published source commit.
+    required: true
+  version:
+    description: Published release version.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Validate frozen verification identity
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'verification must not receive a token environment' >&2; exit 1; }
+        [[ "$GITHUB_REPOSITORY" == daiksud/gh-settings ]] || { echo 'unexpected verification repository' >&2; exit 1; }
+        [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid verification version' >&2; exit 1; }
+        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid verification source' >&2; exit 1; }
+        [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'verification checkout differs from frozen source' >&2; exit 1; }
+    - name: Retrieve the accepted Linux artifact
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-linux-amd64
+        path: ${{ runner.temp }}/verify-linux-amd64
+        digest-mismatch: error
+    - name: Retrieve the accepted macOS artifact
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: release-darwin-arm64
+        path: ${{ runner.temp }}/verify-darwin-arm64
+        digest-mismatch: error
+    - name: Verify the accepted Linux manifest and bytes
+      id: linux
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'accepted Linux verification received a token environment' >&2; exit 1; }
+        bash .action/.github/scripts/release-artifact.sh verify linux-amd64 "$VERSION" "$SOURCE_SHA" "$RUNNER_TEMP/verify-linux-amd64" "$GITHUB_OUTPUT"
+    - name: Verify the accepted macOS manifest and bytes
+      id: macos
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'accepted macOS verification received a token environment' >&2; exit 1; }
+        bash .action/.github/scripts/release-artifact.sh verify darwin-arm64 "$VERSION" "$SOURCE_SHA" "$RUNNER_TEMP/verify-darwin-arm64" "$GITHUB_OUTPUT"
+    - name: Checkout the published tag separately from the consumer
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        ref: refs/tags/${{ inputs.version }}
+        path: .published
+        persist-credentials: false
+    - name: Download and compare immutable public assets
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        ACCEPTED_LINUX: ${{ steps.linux.outputs.asset-path }}
+        ACCEPTED_LINUX_SHA256: ${{ steps.linux.outputs.sha256 }}
+        ACCEPTED_MACOS: ${{ steps.macos.outputs.asset-path }}
+        ACCEPTED_MACOS_SHA256: ${{ steps.macos.outputs.sha256 }}
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'public download verification received a token environment' >&2; exit 1; }
+        [[ "$(git -C .published rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'published tag differs from accepted source' >&2; exit 1; }
+        [[ "$(cat .published/action/cli-version)" == "$VERSION" ]] || { echo 'published Action version differs from release' >&2; exit 1; }
+        published="$RUNNER_TEMP/published-release"
+        [[ ! -e "$published" ]]
+        mkdir "$published"
+        base="https://github.com/daiksud/gh-settings/releases/download/$VERSION"
+        for asset in gh-settings-linux-amd64 gh-settings-darwin-arm64 SHA256SUMS; do
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+            "$base/$asset" --output "$published/$asset"
+        done
+        [[ "$(find "$published" -mindepth 1 -maxdepth 1 -type f | wc -l | tr -d ' ')" == 3 ]] || { echo 'published asset inventory changed' >&2; exit 1; }
+        [[ "$(grep -c "^$ACCEPTED_LINUX_SHA256  gh-settings-linux-amd64$" "$published/SHA256SUMS")" == 1 ]] || { echo 'published Linux checksum differs from accepted manifest' >&2; exit 1; }
+        [[ "$(grep -c "^$ACCEPTED_MACOS_SHA256  gh-settings-darwin-arm64$" "$published/SHA256SUMS")" == 1 ]] || { echo 'published macOS checksum differs from accepted manifest' >&2; exit 1; }
+        [[ "$(wc -l < "$published/SHA256SUMS" | tr -d ' ')" == 2 ]] || { echo 'published checksum inventory changed' >&2; exit 1; }
+        cmp "$ACCEPTED_LINUX" "$published/gh-settings-linux-amd64"
+        cmp "$ACCEPTED_MACOS" "$published/gh-settings-darwin-arm64"
+    - name: Create a configuration-only consumer checkout
+      shell: bash
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'published Action consumer received a token environment' >&2; exit 1; }
+        [[ ! -e .git && ! -e action.yml && ! -e action ]] || { echo 'published Action consumer is not isolated' >&2; exit 1; }
+        mkdir -p .github
+        printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: Hosted composite fixture\n' > .github/settings.yml
+        git init --quiet
+        git remote add origin https://github.com/example-owner/settings-fixture.git
+        git add .github/settings.yml
+        git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: initialize consumer fixture'
+        [[ "$(git rev-parse --show-toplevel)" != "$(git -C .published rev-parse --show-toplevel)" ]] || { echo 'published Action and consumer checkouts overlap' >&2; exit 1; }
+    - name: Validate through the actual published root Action
+      id: validate
+      uses: ./.published
+      with:
+        command: validate
+    - name: Assert published consumer identity and all public outputs
+      shell: bash
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
+        TARGET: ${{ steps.validate.outputs.target }}
+        CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
+        EXPECTED_VERSION: ${{ inputs.version }}
+        EXPECTED_SHA256: ${{ steps.linux.outputs.sha256 }}
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'published Action output check received a token environment' >&2; exit 1; }
+        [[ ! -e action.yml && ! -e action ]] || { echo 'published package files leaked into consumer root' >&2; exit 1; }
+        [[ "$(git ls-files)" == .github/settings.yml ]] || { echo 'consumer checkout contains unexpected files' >&2; exit 1; }
+        [[ "$(git -C .published rev-parse HEAD)" == "$ACTION_SHA" ]] || { echo 'published Action source changed' >&2; exit 1; }
+        [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]] || { echo 'published config identity mismatch' >&2; exit 1; }
+        [[ "$TARGET" == example-owner/settings-fixture ]] || { echo 'published target identity mismatch' >&2; exit 1; }
+        [[ "$CLI_VERSION" == "$EXPECTED_VERSION" ]] || { echo 'published CLI version output mismatch' >&2; exit 1; }
+        [[ "$CLI_SHA256" == "$EXPECTED_SHA256" ]] || { echo 'published CLI digest output mismatch' >&2; exit 1; }

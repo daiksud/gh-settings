@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,7 +13,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func TestReleaseCandidateGate(t *testing.T) {
+func TestReleaseWorkflowDelegatesThreeStages(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -23,104 +22,94 @@ func TestReleaseCandidateGate(t *testing.T) {
 	if err := yaml.Unmarshal(data, &release); err != nil {
 		t.Fatal(err)
 	}
-	node, ok := release.Jobs["candidate-action-smoke"]
-	if !ok {
-		t.Fatal("release has no required pre-publication candidate Action gate")
+	wantJobs := []string{"resolve", "commit-stage", "acceptance-stage", "release", "verify-release"}
+	if len(release.Jobs) != len(wantJobs) {
+		t.Fatalf("release job inventory changed: %v", release.Jobs)
+	}
+	for _, name := range wantJobs {
+		if _, ok := release.Jobs[name]; !ok {
+			t.Fatalf("release is missing %s", name)
+		}
 	}
 	type releaseJob struct {
-		Needs       []string          `yaml:"needs"`
+		Needs       yaml.Node         `yaml:"needs"`
 		Runner      string            `yaml:"runs-on"`
 		Permissions map[string]string `yaml:"permissions"`
 		If          string            `yaml:"if"`
 		Continue    bool              `yaml:"continue-on-error"`
-		Steps       []step            `yaml:"steps"`
+		Strategy    struct {
+			FailFast bool   `yaml:"fail-fast"`
+			Matrix   string `yaml:"matrix"`
+		} `yaml:"strategy"`
+		Steps []step `yaml:"steps"`
 	}
-	var candidate releaseJob
-	if err := node.Decode(&candidate); err != nil {
+	needs := func(t *testing.T, node yaml.Node) []string {
+		t.Helper()
+		if node.Kind == yaml.ScalarNode {
+			return []string{node.Value}
+		}
+		var result []string
+		if err := node.Decode(&result); err != nil {
+			t.Fatal(err)
+		}
+		return result
+	}
+	var build releaseJob
+	buildNode := release.Jobs["commit-stage"]
+	if err := buildNode.Decode(&build); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(candidate.Needs, []string{"resolve", "commit-stage"}) || candidate.Runner != "ubuntu-24.04" || !reflect.DeepEqual(candidate.Permissions, map[string]string{"contents": "read"}) || candidate.If != "" || candidate.Continue {
-		t.Fatalf("candidate source/build prerequisites, supported runner or read-only success gate changed: %+v", candidate)
+	if !reflect.DeepEqual(needs(t, build.Needs), []string{"resolve"}) || build.Runner != "${{ matrix.runner }}" || !reflect.DeepEqual(build.Permissions, map[string]string{"contents": "read"}) || build.If != "" || build.Continue || build.Strategy.FailFast || build.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.build-matrix) }}" {
+		t.Fatalf("matrix build gate changed: %+v", build)
 	}
-	var checkout, download step
-	for _, s := range candidate.Steps {
-		if s.Continue || s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" {
-			t.Fatalf("candidate step bypasses failure or supplies credentials: %+v", s)
-		}
-		if strings.HasPrefix(s.Uses, "actions/checkout@") {
-			checkout = s
-		}
-		if strings.HasPrefix(s.Uses, "actions/download-artifact@") {
-			download = s
-		}
-	}
-	if checkout.With["ref"] != "${{ needs.resolve.outputs.source-sha }}" || checkout.With["path"] != ".action" || checkout.With["persist-credentials"] != "false" {
-		t.Fatalf("candidate does not use the frozen isolated Action source: %+v", checkout)
-	}
-	if download.With["name"] != "release-linux-amd64" || download.With["path"] != "${{ runner.temp }}/product" || download.With["digest-mismatch"] != "error" {
-		t.Fatalf("candidate does not consume the existing Linux artifact: %+v", download)
-	}
-	fixture := findStep(t, job{Steps: candidate.Steps}, "download-fixture")
-	if !strings.Contains(fixture.Run, "bash .action/tests/github-actions/prepare-candidate-download.sh") || !reflect.DeepEqual(fixture.Env, map[string]string{
-		"BINARY_PATH": "${{ runner.temp }}/product/gh-settings-linux-amd64", "EXPECTED_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
-		"SOURCE_SHA": "${{ needs.resolve.outputs.source-sha }}", "CLI_VERSION": "${{ needs.resolve.outputs.version }}",
+	buildAction := build.Steps[len(build.Steps)-1]
+	if buildAction.Uses != "./.github/actions/release-build" || !reflect.DeepEqual(buildAction.With, map[string]string{
+		"target": "${{ matrix.target }}", "version": "${{ needs.resolve.outputs.version }}", "source-sha": "${{ github.sha }}",
 	}) {
-		t.Fatalf("candidate fixture source/version/binary identity mapping changed: %+v", fixture)
+		t.Fatalf("build does not delegate the frozen target identity: %+v", buildAction)
 	}
-	validate := findStep(t, job{Steps: candidate.Steps}, "validate")
-	if validate.Uses != "./.action" || !reflect.DeepEqual(validate.With, map[string]string{"command": "validate"}) {
-		t.Fatalf("candidate must invoke actual token-free composite validate: %+v", validate)
+	var acceptance releaseJob
+	acceptanceNode := release.Jobs["acceptance-stage"]
+	if err := acceptanceNode.Decode(&acceptance); err != nil {
+		t.Fatal(err)
 	}
-	identity := findStep(t, job{Steps: candidate.Steps}, "identity")
-	if identity.If != "" || !reflect.DeepEqual(identity.Env, map[string]string{
-		"ACTION_SHA": "${{ needs.resolve.outputs.source-sha }}", "CONFIG_SHA": "${{ steps.validate.outputs.config-sha }}", "TARGET": "${{ steps.validate.outputs.target }}",
-		"CLI_VERSION": "${{ steps.validate.outputs.cli-version }}", "CLI_SHA256": "${{ steps.validate.outputs.cli-sha256 }}",
-		"EXPECTED_CLI_VERSION": "${{ needs.resolve.outputs.version }}", "EXPECTED_CLI_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
+	if !reflect.DeepEqual(needs(t, acceptance.Needs), []string{"resolve", "commit-stage"}) || acceptance.Runner != "${{ matrix.runner }}" || acceptance.Strategy.FailFast || acceptance.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.acceptance-matrix) }}" || !reflect.DeepEqual(acceptance.Permissions, map[string]string{"contents": "read"}) || acceptance.If != "" || acceptance.Continue {
+		t.Fatalf("matrix acceptance gate changed: %+v", acceptance)
+	}
+	acceptAction := acceptance.Steps[len(acceptance.Steps)-1]
+	if acceptAction.Uses != "./.action/.github/actions/release-acceptance" || !reflect.DeepEqual(acceptAction.With, map[string]string{
+		"target": "${{ matrix.target }}", "version": "${{ needs.resolve.outputs.version }}", "source-sha": "${{ github.sha }}",
 	}) {
-		t.Fatalf("mandatory candidate public-output identity bindings changed: %+v", identity)
+		t.Fatalf("acceptance does not delegate the frozen target identity: %+v", acceptAction)
 	}
 	var publish releaseJob
-	publishNode := release.Jobs["publish"]
+	publishNode := release.Jobs["release"]
 	if err := publishNode.Decode(&publish); err != nil {
 		t.Fatal(err)
 	}
-	for _, prerequisite := range []string{"resolve", "commit-stage", "build-macos", "acceptance-linux", "acceptance-macos", "candidate-action-smoke"} {
-		if !slices.Contains(publish.Needs, prerequisite) {
-			t.Fatalf("publish is missing successful prerequisite %q", prerequisite)
-		}
+	if !reflect.DeepEqual(needs(t, publish.Needs), []string{"resolve", "commit-stage", "acceptance-stage"}) || !reflect.DeepEqual(publish.Permissions, map[string]string{"contents": "write"}) || publish.If != "" || publish.Continue {
+		t.Fatalf("publication overrides the ordinary accepted-product gate: %+v", publish)
 	}
-	// needs and the default success condition block failed, skipped or cancelled validation.
-	if publish.If != "" || publish.Continue {
-		t.Fatal("publish overrides the ordinary prerequisite-success gate")
-	}
-	var publishCheckout, releaseTools step
-	for _, s := range publish.Steps {
-		if strings.HasPrefix(s.Uses, "actions/checkout@") {
-			publishCheckout = s
-		}
-		if strings.HasPrefix(s.Uses, "jdx/mise-action@") {
-			releaseTools = s
-		}
-	}
-	if publishCheckout.With["ref"] != "${{ needs.resolve.outputs.source-sha }}" || publishCheckout.With["fetch-depth"] != "0" || publishCheckout.With["persist-credentials"] != "false" {
-		t.Fatalf("release notes require complete history at the frozen source: %+v", publishCheckout)
-	}
-	if !slices.Contains(strings.Fields(releaseTools.With["install_args"]), "go") {
-		t.Fatal("release notes and the publisher require pinned Go")
-	}
-	var publisher step
-	for _, s := range publish.Steps {
-		if s.Run == "bash scripts/publish-release.sh" {
-			publisher = s
-		}
-	}
-	if publisher.If != "" || publisher.Continue || !reflect.DeepEqual(publisher.Env, map[string]string{
-		"GH_TOKEN": "${{ github.token }}", "VERSION": "${{ needs.resolve.outputs.version }}",
-		"SOURCE_SHA": "${{ needs.resolve.outputs.source-sha }}", "LINUX_SHA256": "${{ needs.commit-stage.outputs.binary-sha256 }}",
-		"MACOS_SHA256": "${{ needs.build-macos.outputs.binary-sha256 }}", "RELEASE_DIR": "${{ runner.temp }}/release",
-		"PREVIOUS_TAG": "${{ needs.resolve.outputs.previous-tag }}", "PREVIOUS_SHA": "${{ needs.resolve.outputs.previous-sha }}",
+	publishAction := publish.Steps[len(publish.Steps)-1]
+	if publishAction.Uses != "./.github/actions/release-publish" || publishAction.Env["GH_TOKEN"] != "${{ github.token }}" || !reflect.DeepEqual(publishAction.With, map[string]string{
+		"source-sha": "${{ github.sha }}", "version": "${{ needs.resolve.outputs.version }}",
+		"previous-tag": "${{ needs.resolve.outputs.previous-tag }}", "previous-sha": "${{ needs.resolve.outputs.previous-sha }}",
 	}) {
-		t.Fatalf("publisher must use the frozen accepted artifact identities: %+v", publisher)
+		t.Fatalf("publication does not delegate the accepted immutable identity: %+v", publishAction)
+	}
+	var verify releaseJob
+	verifyNode := release.Jobs["verify-release"]
+	if err := verifyNode.Decode(&verify); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(needs(t, verify.Needs), []string{"resolve", "release"}) || !reflect.DeepEqual(verify.Permissions, map[string]string{"contents": "read"}) || verify.If != "" || verify.Continue {
+		t.Fatalf("published verification gate changed: %+v", verify)
+	}
+	verifyAction := verify.Steps[len(verify.Steps)-1]
+	if verifyAction.Uses != "./.action/.github/actions/release-verify" || len(verifyAction.Env) != 0 || !reflect.DeepEqual(verifyAction.With, map[string]string{
+		"source-sha": "${{ github.sha }}", "version": "${{ needs.resolve.outputs.version }}",
+	}) {
+		t.Fatalf("published verification does not remain token-free and source-bound: %+v", verifyAction)
 	}
 }
 
@@ -224,14 +213,30 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 	var resolve struct {
 		Outputs map[string]string `yaml:"outputs"`
 		Steps   []step            `yaml:"steps"`
+		If      string            `yaml:"if"`
 	}
 	if err := resolveNode.Decode(&resolve); err != nil {
 		t.Fatal(err)
 	}
-	source := findStep(t, job{Steps: resolve.Steps}, "source")
-	if source.Env["EXPECTED_SOURCE_SHA"] != "${{ inputs.source_sha }}" ||
-		resolve.Outputs["source-sha"] != "${{ steps.source.outputs.source-sha }}" {
-		t.Fatal("release resolve must bind the requested source and publish the source step's output")
+	var branch, current, pin step
+	for _, candidate := range resolve.Steps {
+		switch candidate.Name {
+		case "Require a main-branch dispatch":
+			branch = candidate
+		case "Require the dispatched main commit to remain current":
+			current = candidate
+		case "Validate the optional reviewed source pin":
+			pin = candidate
+		}
+	}
+	if resolve.If != "" || resolve.Outputs["source-sha"] != "${{ github.sha }}" ||
+		branch.Env["SOURCE_REF"] != "${{ github.ref }}" || len(branch.Env) != 1 ||
+		current.Env["SOURCE_SHA"] != "${{ github.sha }}" ||
+		current.Env["GH_TOKEN"] != "${{ github.token }}" ||
+		pin.Env["SOURCE_SHA"] != "${{ github.sha }}" ||
+		pin.Env["EXPECTED_SOURCE_SHA"] != "${{ inputs.source_sha }}" ||
+		len(pin.Env) != 2 || strings.Contains(current.Run, "GITHUB_OUTPUT") || strings.Contains(pin.Run, "GITHUB_OUTPUT") {
+		t.Fatal("release resolve must report non-main dispatches, publish trusted github.sha, and keep the reviewed pin separate from the token and shell outputs")
 	}
 
 	// The hosted Ubuntu workflow uses modern Bash. macOS's system Bash 3.2
@@ -251,15 +256,32 @@ func TestReleaseOptionalSourcePin(t *testing.T) {
 		t.Skip("resolve-step execution requires Bash 5 or newer, matching the hosted Ubuntu runner; structural bindings were checked")
 	}
 
+	for _, test := range []struct {
+		name, ref string
+		success   bool
+	}{
+		{name: "main", ref: "refs/heads/main", success: true},
+		{name: "non-main", ref: "refs/heads/release-test"},
+	} {
+		t.Run(test.name+" dispatch", func(t *testing.T) {
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", branch.Run)
+			cmd.Env = fixtureEnvironment(map[string]string{"SOURCE_REF": test.ref})
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err := cmd.Run()
+			if test.success != (err == nil) || stdout.Len() != 0 || (test.success && stderr.Len() != 0) {
+				t.Fatalf("branch check: err=%v stdout=%q stderr=%q", err, stdout.String(), stderr.String())
+			}
+		})
+	}
+
 	sha := strings.Repeat("a", 40)
 	for _, test := range []struct {
-		name, requested, response, apiStatus string
-		success, allowNoLookup               bool
+		name, response, apiStatus string
+		success                   bool
 	}{
-		{name: "omitted pin", response: sha, apiStatus: "0", success: true},
-		{name: "matching pin", requested: sha, response: sha, apiStatus: "0", success: true},
-		{name: "mismatched pin", requested: strings.Repeat("b", 40), response: sha, apiStatus: "0"},
-		{name: "invalid requested pin", requested: "main", response: sha, apiStatus: "0", allowNoLookup: true},
+		{name: "current main", response: sha, apiStatus: "0", success: true},
+		{name: "main moved", response: strings.Repeat("b", 40), apiStatus: "0"},
 		{name: "invalid API response", response: "not-a-sha", apiStatus: "0"},
 		{name: "API failure with valid stdout", response: sha, apiStatus: "7"},
 	} {
@@ -282,51 +304,59 @@ while [[ $# -gt 0 ]]; do
 done
 [[ "$endpoint" == "repos/$GITHUB_REPOSITORY/git/ref/heads/main" ]] || exit 91
 printf '%s\n' "$endpoint" >> "$GH_CALLS"
-if [[ -n "$query" ]]; then
-  [[ "$query" == .object.sha ]] || exit 92
-  printf '%s\n' "$GH_RESPONSE"
-else
-  printf '{"object":{"sha":"%s"}}\n' "$GH_RESPONSE"
-fi
+[[ "$query" == .object.sha ]] || exit 92
+printf '%s\n' "$GH_RESPONSE"
 exit "$GH_STATUS"
 `
 			if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(stub), 0700); err != nil {
 				t.Fatal(err)
 			}
-			output, calls := filepath.Join(dir, "output"), filepath.Join(dir, "calls")
-			for _, path := range []string{output, calls} {
-				if err := os.WriteFile(path, nil, 0600); err != nil {
-					t.Fatal(err)
-				}
+			calls := filepath.Join(dir, "calls")
+			if err := os.WriteFile(calls, nil, 0600); err != nil {
+				t.Fatal(err)
 			}
-			cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", source.Run)
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", current.Run)
 			cmd.Dir = dir
 			cmd.Env = fixtureEnvironment(map[string]string{
-				"PATH":                bin + string(os.PathListSeparator) + os.Getenv("PATH"),
+				"PATH": bin + string(os.PathListSeparator) + os.Getenv("PATH"), "SOURCE_SHA": sha,
+				"GITHUB_REPOSITORY": "fixture-owner/fixture-repo", "GH_CALLS": calls,
+				"GH_RESPONSE": test.response, "GH_STATUS": test.apiStatus,
+			})
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			err := cmd.Run()
+			if test.success != (err == nil) || stdout.Len() != 0 || (test.success && stderr.Len() != 0) {
+				t.Fatalf("current-main check: err=%v stdout=%q stderr=%q", err, stdout.String(), stderr.String())
+			}
+			requested, err := os.ReadFile(calls)
+			if err != nil || string(requested) != "repos/fixture-owner/fixture-repo/git/ref/heads/main\n" {
+				t.Fatalf("main API request=%q err=%v", requested, err)
+			}
+		})
+	}
+
+	for _, test := range []struct {
+		name, requested string
+		success         bool
+	}{
+		{name: "omitted pin", success: true},
+		{name: "matching pin", requested: sha, success: true},
+		{name: "mismatched pin", requested: strings.Repeat("b", 40)},
+		{name: "invalid requested pin", requested: "main"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", pin.Run)
+			cmd.Dir = dir
+			cmd.Env = fixtureEnvironment(map[string]string{
 				"EXPECTED_SOURCE_SHA": test.requested,
-				"GITHUB_REPOSITORY":   "fixture-owner/fixture-repo", "GITHUB_OUTPUT": output,
-				"GH_CALLS": calls, "GH_RESPONSE": test.response, "GH_STATUS": test.apiStatus,
+				"SOURCE_SHA":          sha,
 			})
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			err := cmd.Run()
 			if test.success != (err == nil) || stdout.Len() != 0 || (test.success && stderr.Len() != 0) {
 				t.Fatalf("source resolution: err=%v stdout=%q stderr=%q", err, stdout.String(), stderr.String())
-			}
-			actual, err := os.ReadFile(output)
-			if err != nil {
-				t.Fatal(err)
-			}
-			want := ""
-			if test.success {
-				want = "source-sha=" + sha + "\n"
-			}
-			if string(actual) != want {
-				t.Fatalf("source output=%q, want %q", actual, want)
-			}
-			requested, err := os.ReadFile(calls)
-			if err != nil || (string(requested) != "repos/fixture-owner/fixture-repo/git/ref/heads/main\n" && !(test.allowNoLookup && len(requested) == 0)) {
-				t.Fatalf("main API request=%q err=%v", requested, err)
 			}
 		})
 	}

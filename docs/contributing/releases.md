@@ -53,16 +53,15 @@ Each release contains those two raw executables, `SHA256SUMS`, and notes with so
 
 | Stage | Required behavior |
 | --- | --- |
-| Resolve | Freeze main, derive the version or recognize an exact retry, verify committed version, and freeze the predecessor for a new release |
-| Commit/build | Check frozen source/version equality, build Linux once, and then build macOS once on its native runner |
-| Native acceptance | Download each run's binary, verify SHA-256 and embedded version, and execute that exact binary against the local API fixture |
-| Candidate Action smoke | Use frozen Action source and the already-built Linux artifact; actual credential-free validate reports all four expected identities for a separate consumer |
-| Publish | Verify accepted hashes, generate new notes, create/validate the tag and draft, upload only missing matching assets, recheck identity, and publish |
-| Published Action smoke | Verify the published tag/source/version, run its unchanged root Action with real release downloads, and compare outputs with the accepted Linux digest |
+| Resolve | Require the dispatched main commit to remain current, check an optional reviewed source pin, derive the version or recognize an exact retry, verify the committed version, freeze the predecessor, and emit allowlisted build/acceptance matrices from that trusted source |
+| Commit stage | Run source checks in the Linux lane, build Linux and macOS once on their native runners, and upload each executable with a source/version/asset/SHA-256 manifest |
+| Acceptance stage | Download only this run's manifested products, verify exact inventory and bytes, run both native harnesses, and exercise the candidate root Action against a separate consumer |
+| Release | Redownload and reverify both accepted manifests, generate new notes, create/validate the tag and draft, upload only missing matching assets, recheck identity, and publish |
+| Verify release | Check out the published tag separately, compare actual public downloads byte-for-byte with accepted manifests, and run the published root Action with real downloads for a separate consumer |
 
-Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The shared [acceptance-stage](../../.github/actions/acceptance-stage/action.yml) compiles its harness separately, without rebuilding the accepted product. All manual versions share one non-cancelling concurrency group; this does not promise FIFO queue delivery.
+Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The release workflow delegates product-specific work to five local Actions while retaining one byte-identical orchestration contract shared with gh-qw: metadata, build, acceptance, publish, and verify. Those wrappers own the pinned artifact transfer and manifest checks; no matrix job output supplies a product hash to publication. The shared [acceptance-stage](../../.github/actions/acceptance-stage/action.yml) compiles its harness separately, without rebuilding the accepted product. All manual versions share one non-cancelling concurrency group; this does not promise FIFO queue delivery.
 
-Both native acceptance jobs and `candidate-action-smoke` must succeed before publication. Failure, skipping, or cancellation cannot be overridden. The candidate's bounded download fixture establishes pre-publication integration, not published-download identity. [Release gate tests](../../tests/github-actions/release_test.go) protect the source/version/artifact and dependency bindings.
+Both native acceptance lanes and the `candidate-action` lane must succeed before publication. Failure, skipping, or cancellation cannot be overridden. The candidate's bounded download fixture establishes pre-publication integration, not published-download identity. Post-publication verification independently establishes the tag and public-download identity. [Release gate tests](../../tests/github-actions/release_test.go) and [local Action tests](../../tests/github-actions/release_actions_test.go) protect orchestration bytes, source/version/manifests, dependency bindings, and tamper rejection. Fixture and PR validation do not execute a hosted release.
 
 ## GitHub-generated release notes
 
@@ -97,7 +96,7 @@ For a new release, the complete notes are prepared before creating any missing t
 | Conflicting tag/manifest, altered or unexpected assets, duplicate names, or missing tag for an existing release | Stop without retagging, replacing assets, or recreating the missing tag |
 | Post-publication smoke failed | Diagnose the same immutable release and rerun verification; do not replace published bytes |
 
-The resolver recognizes a retry only when the committed version, release identity marker, and tag identify the exact frozen source; the publisher still verifies every checksum and asset. It does not recalculate a new version or regenerate stored notes for that release. An unrelated release with the same version is not a retry.
+The resolver recognizes a retry only when the committed version, release identity marker, and tag identify the exact frozen source; the publisher still verifies every checksum and asset. It does not recalculate a new version or regenerate stored notes for that release. An unrelated release with the same version is not a retry. Publication consumes only products downloaded from this run's build artifacts and verified against their per-target manifests; it never rebuilds an accepted executable.
 
 A new workflow run resolves current main again. Existing tags remain immutable, so changed source cannot reuse a conflicting tag. Before tag creation, a fresh run may validate a newly reviewed source. The original SHA remains in run logs; artifacts are retained for one day. Keep incomplete drafts for inspection instead of automatically deleting them.
 

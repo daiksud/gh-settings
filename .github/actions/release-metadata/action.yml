@@ -1,0 +1,61 @@
+name: Resolve release metadata
+description: Resolve the prepared release identity and fixed product matrices.
+inputs:
+  source-sha:
+    description: Exact frozen main commit.
+    required: true
+outputs:
+  version:
+    description: Prepared release version.
+    value: ${{ steps.resolve.outputs.version }}
+  previous-tag:
+    description: Previous published stable tag, empty only for an immutable retry.
+    value: ${{ steps.resolve.outputs.previous-tag }}
+  previous-sha:
+    description: Previous published stable source, empty only for an immutable retry.
+    value: ${{ steps.resolve.outputs.previous-sha }}
+  build-matrix:
+    description: Validated product build targets and runners.
+    value: ${{ steps.resolve.outputs.build-matrix }}
+  acceptance-matrix:
+    description: Validated native and public Action acceptance targets and runners.
+    value: ${{ steps.resolve.outputs.acceptance-matrix }}
+runs:
+  using: composite
+  steps:
+    - name: Install pinned metadata tools
+      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.10.8
+        install_args: go
+        cache: false
+    - name: Resolve and validate release metadata
+      id: resolve
+      shell: bash
+      env:
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: |
+        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid metadata source' >&2; exit 1; }
+        [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'metadata checkout differs from frozen source' >&2; exit 1; }
+        metadata="$RUNNER_TEMP/release-metadata"
+        [[ ! -e "$metadata" ]]
+        go run ./scripts/release-metadata/main.go resolve "$GITHUB_REPOSITORY" "$SOURCE_SHA" > "$metadata"
+        [[ "$(wc -l < "$metadata" | tr -d ' ')" == 4 ]] || { echo 'metadata output line count changed' >&2; exit 1; }
+        for key in version previous-tag previous-sha source-sha; do
+          [[ "$(grep -c "^$key=" "$metadata")" == 1 ]] || { echo "metadata output lacks $key" >&2; exit 1; }
+        done
+        [[ -z "$(grep -Ev '^(version|previous-tag|previous-sha|source-sha)=' "$metadata")" ]] || { echo 'metadata output contains an unexpected key' >&2; exit 1; }
+        version="$(sed -n 's/^version=//p' "$metadata")"
+        previous_tag="$(sed -n 's/^previous-tag=//p' "$metadata")"
+        previous_sha="$(sed -n 's/^previous-sha=//p' "$metadata")"
+        resolved_source="$(sed -n 's/^source-sha=//p' "$metadata")"
+        [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'metadata returned an invalid version' >&2; exit 1; }
+        [[ "$resolved_source" == "$SOURCE_SHA" ]] || { echo 'metadata returned another source' >&2; exit 1; }
+        if [[ -n "$previous_tag" || -n "$previous_sha" ]]; then
+          [[ "$previous_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'metadata returned an invalid predecessor tag' >&2; exit 1; }
+          [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || { echo 'metadata returned an invalid predecessor source' >&2; exit 1; }
+        fi
+        build_matrix='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"},{"target":"darwin-arm64","runner":"macos-15"}]}'
+        acceptance_matrix='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"},{"target":"darwin-arm64","runner":"macos-15"},{"target":"candidate-action","runner":"ubuntu-24.04"}]}'
+        printf 'version=%s\nprevious-tag=%s\nprevious-sha=%s\n' "$version" "$previous_tag" "$previous_sha" >> "$GITHUB_OUTPUT"
+        printf 'build-matrix=%s\nacceptance-matrix=%s\n' "$build_matrix" "$acceptance_matrix" >> "$GITHUB_OUTPUT"

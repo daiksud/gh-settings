@@ -11,6 +11,10 @@ inputs:
     description: Expected candidate or release CLI version; empty skips the check.
     required: false
     default: ''
+  source-directory:
+    description: Checked-out source root containing the acceptance harness.
+    required: false
+    default: '.'
 runs:
   using: composite
   steps:
@@ -19,6 +23,7 @@ runs:
       with:
         version: 2026.10.8
         install_args: go
+        working_directory: ${{ inputs.source-directory }}
         cache: false
     - name: Verify the same product binary
       shell: bash
@@ -26,13 +31,17 @@ runs:
         BINARY_PATH: ${{ inputs.binary-path }}
         EXPECTED_SHA256: ${{ inputs.binary-sha256 }}
       run: |
-        [[ "$EXPECTED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+        [[ "$EXPECTED_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+          echo 'invalid expected binary digest' >&2; exit 1
+        }
         if command -v sha256sum > /dev/null; then
           actual="$(sha256sum "$BINARY_PATH" | cut -d ' ' -f 1)"
         else
           actual="$(shasum -a 256 "$BINARY_PATH" | cut -d ' ' -f 1)"
         fi
-        [[ "$actual" == "$EXPECTED_SHA256" ]]
+        [[ "$actual" == "$EXPECTED_SHA256" ]] || {
+          echo 'accepted binary digest mismatch' >&2; exit 1
+        }
         chmod +x "$BINARY_PATH"
     - name: Verify embedded CLI version
       if: inputs.version != ''
@@ -41,9 +50,12 @@ runs:
         BINARY_PATH: ${{ inputs.binary-path }}
         EXPECTED_VERSION: ${{ inputs.version }}
       run: |
-        [[ "$("$BINARY_PATH" --version)" == "gh-settings $EXPECTED_VERSION" ]]
+        [[ "$("$BINARY_PATH" --version)" == "gh-settings $EXPECTED_VERSION" ]] || {
+          echo 'accepted binary version mismatch' >&2; exit 1
+        }
     - name: Run process-level acceptance checks
       shell: bash
+      working-directory: ${{ inputs.source-directory }}
       env:
         BINARY_PATH: ${{ inputs.binary-path }}
       run: go test -tags=acceptance -count=1 ./tests/acceptance -args -binary "$BINARY_PATH"
