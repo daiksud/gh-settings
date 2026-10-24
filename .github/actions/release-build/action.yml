@@ -1,0 +1,78 @@
+name: Build release artifact
+description: Check frozen source, build one native product, and transfer its identity manifest.
+inputs:
+  target:
+    description: Allowlisted native target.
+    required: true
+  version:
+    description: Prepared release version.
+    required: true
+  source-sha:
+    description: Exact frozen main commit.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Validate frozen build identity
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: |
+        [[ "$TARGET" == linux-amd64 || "$TARGET" == darwin-arm64 ]] || { echo 'invalid build target' >&2; exit 1; }
+        [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid build version' >&2; exit 1; }
+        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid build source' >&2; exit 1; }
+        [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'build checkout differs from frozen source' >&2; exit 1; }
+        [[ "$(cat action/cli-version)" == "$VERSION" ]] || { echo 'prepared CLI version differs from release' >&2; exit 1; }
+    - name: Check source and build Linux product
+      if: inputs.target == 'linux-amd64'
+      id: linux
+      uses: ./.github/actions/commit-stage
+      with:
+        binary-name: gh-settings-linux-amd64
+        version: ${{ inputs.version }}
+    - name: Install pinned macOS build tools
+      if: inputs.target == 'darwin-arm64'
+      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.10.8
+        install_args: go
+        cache: false
+    - name: Build native macOS product
+      if: inputs.target == 'darwin-arm64'
+      shell: bash
+      env:
+        GOTOOLCHAIN: local
+        VERSION: ${{ inputs.version }}
+      run: |
+        [[ "$(go env GOOS GOARCH)" == $'darwin\narm64' ]] || {
+          echo 'macOS release build requires native darwin/arm64' >&2; exit 1
+        }
+        go build -trimpath -ldflags "-X main.version=$VERSION" -o "$RUNNER_TEMP/gh-settings-darwin-arm64" .
+    - name: Stage product and identity manifest
+      id: artifact
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        VERSION: ${{ inputs.version }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        LINUX_PATH: ${{ steps.linux.outputs.binary-path }}
+      run: |
+        case "$TARGET" in
+          linux-amd64) product=$LINUX_PATH ;;
+          darwin-arm64) product=$RUNNER_TEMP/gh-settings-darwin-arm64 ;;
+          *) exit 1 ;;
+        esac
+        destination="$RUNNER_TEMP/release-$TARGET"
+        bash .github/scripts/release-artifact.sh write "$TARGET" "$VERSION" "$SOURCE_SHA" "$product" "$destination"
+        printf 'artifact-dir=%s\n' "$destination" >> "$GITHUB_OUTPUT"
+    - name: Transfer the exact product inventory
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: release-${{ inputs.target }}
+        path: ${{ steps.artifact.outputs.artifact-dir }}
+        if-no-files-found: error
+        include-hidden-files: false
+        compression-level: 0
+        retention-days: 1

@@ -31,16 +31,17 @@ func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
 	}
 	resolve := workflow.Jobs["resolve"]
 	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read"}) || !reflect.DeepEqual(resolve.Outputs, map[string]string{
-		"source-sha": "${{ steps.source.outputs.source-sha }}", "version": "${{ steps.metadata.outputs.version }}",
+		"source-sha": "${{ github.sha }}", "version": "${{ steps.metadata.outputs.version }}",
 		"previous-tag": "${{ steps.metadata.outputs.previous-tag }}", "previous-sha": "${{ steps.metadata.outputs.previous-sha }}",
+		"build-matrix": "${{ steps.metadata.outputs.build-matrix }}", "acceptance-matrix": "${{ steps.metadata.outputs.acceptance-matrix }}",
 	}) {
-		t.Fatal("metadata resolution must be read-only and publish one fixed source/version/baseline tuple")
+		t.Fatal("metadata resolution must be read-only and publish one fixed source/version/baseline/matrix tuple")
 	}
 	metadata := findStep(t, job{Steps: resolve.Steps}, "metadata")
-	if metadata.Run != `go run ./scripts/release-metadata/main.go resolve "$GITHUB_REPOSITORY" "$SOURCE_SHA" >> "$GITHUB_OUTPUT"` || metadata.If != "" || metadata.Continue || !reflect.DeepEqual(metadata.Env, map[string]string{
-		"GH_TOKEN": "${{ github.token }}", "SOURCE_SHA": "${{ steps.source.outputs.source-sha }}",
-	}) {
-		t.Fatal("resolve must execute the read-only helper against the frozen source without success overrides")
+	if metadata.Uses != "./.github/actions/release-metadata" || metadata.Run != "" || metadata.If != "" || metadata.Continue || !reflect.DeepEqual(metadata.Env, map[string]string{
+		"GH_TOKEN": "${{ github.token }}",
+	}) || !reflect.DeepEqual(metadata.With, map[string]string{"source-sha": "${{ github.sha }}"}) {
+		t.Fatal("resolve must delegate validated metadata and matrices from the frozen source without success overrides")
 	}
 	var checkout step
 	for _, s := range resolve.Steps {
@@ -48,7 +49,7 @@ func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
 			checkout = s
 		}
 	}
-	if checkout.With["ref"] != "${{ steps.source.outputs.source-sha }}" || checkout.With["fetch-depth"] != "0" || checkout.With["persist-credentials"] != "false" {
+	if checkout.With["ref"] != "${{ github.sha }}" || checkout.With["fetch-depth"] != "0" || checkout.With["persist-credentials"] != "false" {
 		t.Fatal("version calculation requires complete frozen history without persisted credentials")
 	}
 }

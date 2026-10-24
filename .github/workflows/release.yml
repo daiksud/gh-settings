@@ -11,352 +11,142 @@ defaults:
   run:
     shell: bash
 concurrency:
-  # All versions share the publication lane. Do not interrupt an active publish.
-  # This limits concurrency; it does not promise FIFO delivery of queued requests.
+  # Serialize publication without cancelling an active release; ordering is not FIFO.
   group: release-${{ github.repository }}
   cancel-in-progress: false
 jobs:
   resolve:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-slim
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions: {contents: read}
-    env:
-      GOTOOLCHAIN: local
     outputs:
-      source-sha: ${{ steps.source.outputs.source-sha }}
+      source-sha: ${{ github.sha }}
       version: ${{ steps.metadata.outputs.version }}
       previous-tag: ${{ steps.metadata.outputs.previous-tag }}
       previous-sha: ${{ steps.metadata.outputs.previous-sha }}
+      build-matrix: ${{ steps.metadata.outputs.build-matrix }}
+      acceptance-matrix: ${{ steps.metadata.outputs.acceptance-matrix }}
     steps:
-      - name: Freeze latest main
-        id: source
+      - name: Require a main-branch dispatch
+        env:
+          SOURCE_REF: ${{ github.ref }}
+        run: |
+          [[ "$SOURCE_REF" == 'refs/heads/main' ]] || {
+            echo 'release must be dispatched from main' >&2; exit 1
+          }
+      - name: Require the dispatched main commit to remain current
         env:
           GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$current_main" == "$SOURCE_SHA" ]] || {
+            echo 'main moved since dispatch; start a new release workflow' >&2; exit 1
+          }
+      - name: Validate the optional reviewed source pin
+        env:
+          SOURCE_SHA: ${{ github.sha }}
           EXPECTED_SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
-          sha="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
-          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
           if [[ -n "$EXPECTED_SOURCE_SHA" ]]; then
             [[ "$EXPECTED_SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
               echo 'invalid source_sha (expected full 40-character SHA)' >&2; exit 1
             }
-            [[ "$sha" == "$EXPECTED_SOURCE_SHA" ]] || {
-              echo 'main moved since approved source_sha; refusing a different release source' >&2; exit 1
+            [[ "$SOURCE_SHA" == "$EXPECTED_SOURCE_SHA" ]] || {
+              echo 'dispatched main differs from approved source_sha; refusing a different release source' >&2; exit 1
             }
           fi
-          printf 'source-sha=%s\n' "$sha" >> "$GITHUB_OUTPUT"
       - name: Checkout frozen main and complete release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ steps.source.outputs.source-sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Install pinned metadata tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.10.8
-          install_args: go
-          cache: false
-      - name: Compute and verify the prepared release version
+      - name: Resolve release metadata and validated target matrices
         id: metadata
+        uses: ./.github/actions/release-metadata
+        with:
+          source-sha: ${{ github.sha }}
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ steps.source.outputs.source-sha }}
-        run: go run ./scripts/release-metadata/main.go resolve "$GITHUB_REPOSITORY" "$SOURCE_SHA" >> "$GITHUB_OUTPUT"
   commit-stage:
     needs: resolve
-    runs-on: ubuntu-slim
-    timeout-minutes: 12
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     permissions: {contents: read}
-    env:
-      GOTOOLCHAIN: local
-    outputs:
-      binary-sha256: ${{ steps.validation.outputs.binary-sha256 }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.resolve.outputs.build-matrix) }}
     steps:
       - name: Checkout frozen main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.resolve.outputs.source-sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Require the committed CLI version to match the release tag
-        env:
-          VERSION: ${{ needs.resolve.outputs.version }}
-        run: |
-          [[ "$(cat action/cli-version)" == "$VERSION" ]] || {
-            echo 'release version differs from committed CLI version' >&2; exit 1
-          }
-      - name: Commit stage and Linux release build
-        id: validation
-        uses: ./.github/actions/commit-stage
+      - name: Check source and build release artifact
+        uses: ./.github/actions/release-build
         with:
-          binary-name: gh-settings-linux-amd64
+          target: ${{ matrix.target }}
           version: ${{ needs.resolve.outputs.version }}
-      - name: Transfer Linux binary
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-linux-amd64
-          path: ${{ steps.validation.outputs.binary-path }}
-          if-no-files-found: error
-          retention-days: 1
-  build-macos:
+          source-sha: ${{ github.sha }}
+  acceptance-stage:
     needs: [resolve, commit-stage]
-    runs-on: macos-15
-    timeout-minutes: 12
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     permissions: {contents: read}
-    env:
-      GOTOOLCHAIN: local
-    outputs:
-      binary-sha256: ${{ steps.build.outputs.binary-sha256 }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.resolve.outputs.acceptance-matrix) }}
     steps:
-      - name: Checkout frozen main
+      - name: Checkout frozen source separately from the consumer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.resolve.outputs.source-sha }}
-          persist-credentials: false
-      - name: Install Go
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.10.8
-          install_args: go
-          cache: false
-      - name: Build macOS binary once
-        id: build
-        env:
-          VERSION: ${{ needs.resolve.outputs.version }}
-        run: |
-          [[ "$(go env GOOS GOARCH)" == $'darwin\narm64' ]]
-          go build -trimpath -ldflags "-X main.version=$VERSION" -o "$RUNNER_TEMP/gh-settings-darwin-arm64" .
-          printf 'binary-sha256=%s\n' "$(shasum -a 256 "$RUNNER_TEMP/gh-settings-darwin-arm64" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
-      - name: Transfer macOS binary
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-darwin-arm64
-          path: ${{ runner.temp }}/gh-settings-darwin-arm64
-          if-no-files-found: error
-          retention-days: 1
-  acceptance-linux:
-    needs: [resolve, commit-stage]
-    runs-on: ubuntu-slim
-    timeout-minutes: 10
-    permissions: {contents: read}
-    env:
-      GOTOOLCHAIN: local
-    steps:
-      - name: Checkout frozen main
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.resolve.outputs.source-sha }}
-          persist-credentials: false
-      - name: Retrieve Linux binary
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: release-linux-amd64
-          path: ${{ runner.temp }}/product
-          digest-mismatch: error
-      - name: Acceptance stage
-        uses: ./.github/actions/acceptance-stage
-        with:
-          binary-path: ${{ runner.temp }}/product/gh-settings-linux-amd64
-          binary-sha256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-          version: ${{ needs.resolve.outputs.version }}
-  acceptance-macos:
-    needs: [resolve, build-macos]
-    runs-on: macos-15
-    timeout-minutes: 10
-    permissions: {contents: read}
-    env:
-      GOTOOLCHAIN: local
-    steps:
-      - name: Checkout frozen main
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.resolve.outputs.source-sha }}
-          persist-credentials: false
-      - name: Retrieve macOS binary
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: release-darwin-arm64
-          path: ${{ runner.temp }}/product
-          digest-mismatch: error
-      - name: Acceptance stage
-        uses: ./.github/actions/acceptance-stage
-        with:
-          binary-path: ${{ runner.temp }}/product/gh-settings-darwin-arm64
-          binary-sha256: ${{ needs.build-macos.outputs.binary-sha256 }}
-          version: ${{ needs.resolve.outputs.version }}
-  candidate-action-smoke:
-    needs: [resolve, commit-stage]
-    # Validate the frozen candidate on the public Action's supported runner before publication.
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions: {contents: read}
-    steps:
-      - name: Checkout the Action under test separately
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.resolve.outputs.source-sha }}
+          ref: ${{ github.sha }}
           path: .action
           persist-credentials: false
-      - name: Retrieve this run's candidate binary
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Accept the transferred release artifact
+        uses: ./.action/.github/actions/release-acceptance
         with:
-          name: release-linux-amd64
-          path: ${{ runner.temp }}/product
-          digest-mismatch: error
-      - name: Prepare the bounded candidate download fixture
-        id: download-fixture
-        env:
-          BINARY_PATH: ${{ runner.temp }}/product/gh-settings-linux-amd64
-          EXPECTED_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-          SOURCE_SHA: ${{ needs.resolve.outputs.source-sha }}
-          CLI_VERSION: ${{ needs.resolve.outputs.version }}
-        run: |
-          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
-          bash .action/tests/github-actions/prepare-candidate-download.sh \
-            "$BINARY_PATH" "$EXPECTED_SHA256" "$SOURCE_SHA" "$CLI_VERSION"
-      - name: Create a configuration-only consumer checkout
-        run: |
-          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
-          [[ ! -e .git && ! -e action.yml && ! -e action ]]
-          mkdir -p .github
-          printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: Hosted composite fixture\n' > .github/settings.yml
-          git init --quiet
-          git remote add origin https://github.com/example-owner/settings-fixture.git
-          git add .github/settings.yml
-          git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: initialize consumer fixture'
-          [[ "$(git rev-parse --show-toplevel)" != "$(git -C .action rev-parse --show-toplevel)" ]]
-      - name: Validate through the actual root composite
-        id: validate
-        uses: ./.action
-        with:
-          command: validate
-      - name: Assert consumer identity and all public outputs
-        id: identity
-        env:
-          ACTION_SHA: ${{ needs.resolve.outputs.source-sha }}
-          CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
-          TARGET: ${{ steps.validate.outputs.target }}
-          CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
-          CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
-          EXPECTED_CLI_VERSION: ${{ needs.resolve.outputs.version }}
-          EXPECTED_CLI_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-        run: |
-          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
-          [[ ! -e action.yml && ! -e action ]]
-          [[ "$(git ls-files)" == .github/settings.yml ]]
-          [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
-          [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
-          [[ "$TARGET" == example-owner/settings-fixture ]]
-          [[ "$CLI_VERSION" == "$EXPECTED_CLI_VERSION" ]]
-          [[ "$CLI_SHA256" == "$EXPECTED_CLI_SHA256" ]]
-          printf 'Action checkout: %s at %s\nConsumer checkout: %s at %s\n' \
-            "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
-            "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
-          printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
-  publish:
-    needs: [resolve, commit-stage, build-macos, acceptance-linux, acceptance-macos, candidate-action-smoke]
+          target: ${{ matrix.target }}
+          version: ${{ needs.resolve.outputs.version }}
+          source-sha: ${{ github.sha }}
+  release:
+    needs: [resolve, commit-stage, acceptance-stage]
     runs-on: ubuntu-slim
     timeout-minutes: 15
     permissions: {contents: write}
-    env:
-      GOTOOLCHAIN: local
     steps:
-      - name: Checkout frozen main
+      - name: Checkout frozen main and complete release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.resolve.outputs.source-sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Retrieve Linux binary
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - name: Publish accepted release artifacts
+        uses: ./.github/actions/release-publish
         with:
-          name: release-linux-amd64
-          path: ${{ runner.temp }}/release
-          digest-mismatch: error
-      - name: Retrieve macOS binary
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: release-darwin-arm64
-          path: ${{ runner.temp }}/release
-          digest-mismatch: error
-      - name: Install pinned release tools
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.10.8
-          install_args: go
-          cache: false
-      - name: Verify, stage, and publish tested assets
+          source-sha: ${{ github.sha }}
+          version: ${{ needs.resolve.outputs.version }}
+          previous-tag: ${{ needs.resolve.outputs.previous-tag }}
+          previous-sha: ${{ needs.resolve.outputs.previous-sha }}
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.resolve.outputs.version }}
-          SOURCE_SHA: ${{ needs.resolve.outputs.source-sha }}
-          LINUX_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-          MACOS_SHA256: ${{ needs.build-macos.outputs.binary-sha256 }}
-          RELEASE_DIR: ${{ runner.temp }}/release
-          PREVIOUS_TAG: ${{ needs.resolve.outputs.previous-tag }}
-          PREVIOUS_SHA: ${{ needs.resolve.outputs.previous-sha }}
-        run: bash scripts/publish-release.sh
-  published-action-smoke:
-    needs: [resolve, commit-stage, publish]
-    # Validate the published Action on its supported runner after immutable publication.
+  verify-release:
+    needs: [resolve, release]
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions: {contents: read}
     steps:
-      - name: Checkout the published Action tag separately
+      - name: Checkout frozen verification source separately from the consumer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: refs/tags/${{ needs.resolve.outputs.version }}
+          ref: ${{ github.sha }}
           path: .action
           persist-credentials: false
-      - name: Verify the published tag matches the accepted source
-        env:
-          SOURCE_SHA: ${{ needs.resolve.outputs.source-sha }}
-          RELEASE_VERSION: ${{ needs.resolve.outputs.version }}
-        run: |
-          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
-          [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]] || {
-            echo 'published tag differs from accepted source' >&2; exit 1
-          }
-          [[ "$(cat .action/action/cli-version)" == "$RELEASE_VERSION" ]] || {
-            echo 'published Action version differs from release' >&2; exit 1
-          }
-      - name: Create a configuration-only consumer checkout
-        run: |
-          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
-          [[ ! -e .git && ! -e action.yml && ! -e action ]]
-          mkdir -p .github
-          printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: Hosted composite fixture\n' > .github/settings.yml
-          git init --quiet
-          git remote add origin https://github.com/example-owner/settings-fixture.git
-          git add .github/settings.yml
-          git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: initialize consumer fixture'
-          [[ "$(git rev-parse --show-toplevel)" != "$(git -C .action rev-parse --show-toplevel)" ]]
-      - name: Validate through the published root composite
-        id: validate
-        uses: ./.action
+      - name: Verify immutable published release
+        uses: ./.action/.github/actions/release-verify
         with:
-          command: validate
-      - name: Assert consumer identity and all public outputs
-        env:
-          ACTION_SHA: ${{ needs.resolve.outputs.source-sha }}
-          CONFIG_SHA: ${{ steps.validate.outputs.config-sha }}
-          TARGET: ${{ steps.validate.outputs.target }}
-          EXPECTED_VERSION: ${{ needs.resolve.outputs.version }}
-          EXPECTED_SHA256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-          CLI_VERSION: ${{ steps.validate.outputs.cli-version }}
-          CLI_SHA256: ${{ steps.validate.outputs.cli-sha256 }}
-        run: |
-          [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
-          [[ ! -e action.yml && ! -e action ]]
-          [[ "$(git ls-files)" == .github/settings.yml ]]
-          [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
-          [[ "$CONFIG_SHA" == "$(git rev-parse HEAD)" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
-          [[ "$TARGET" == example-owner/settings-fixture ]]
-          [[ "$CLI_VERSION" == "$EXPECTED_VERSION" ]]
-          [[ "$CLI_SHA256" == "$EXPECTED_SHA256" ]]
-          printf 'Action checkout: %s at %s\nConsumer checkout: %s at %s\n' \
-            "$(git -C .action rev-parse --show-toplevel)" "$ACTION_SHA" \
-            "$(git rev-parse --show-toplevel)" "$CONFIG_SHA"
-          printf 'target=%s\ncli-version=%s\ncli-sha256=%s\n' "$TARGET" "$CLI_VERSION" "$CLI_SHA256"
+          source-sha: ${{ github.sha }}
+          version: ${{ needs.resolve.outputs.version }}
