@@ -109,9 +109,10 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		plan.Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" ||
 		!strings.Contains(plan.Run, `action plan "${SETTINGS_CLI%/*}/plan.json" status-only >/dev/null 2>&1`) ||
 		!strings.Contains(plan.Run, "unset GITHUB_TOKEN GH_DEBUG") ||
+		strings.Contains(plan.Run, "protected settings plan failed") ||
 		strings.Contains(plan.Run, "GITHUB_STEP_SUMMARY") || strings.Contains(plan.Run, "GITHUB_OUTPUT") ||
 		strings.Contains(plan.Run, "action summary") {
-		t.Fatal("private plan must not emit an outcome/count or an Action Summary")
+		t.Fatal("private plan must not emit or propagate an outcome, error, count or Action Summary")
 	}
 	if verify.Env["GH_TOKEN"] != "${{ github.token }}" || !strings.Contains(verify.Run, "verify \"$PR_NUMBER\" \"$EXPECTED_HEAD\"") ||
 		cleanup.If != "always()" || cleanup.Env["VALIDATION_CLI"] != "${{ steps.validation.outputs.binary-path }}" ||
@@ -231,7 +232,7 @@ printf '%s\n' "$RUNNER_TEMP/gh-settings-cli.fake/gh-settings"
 	}
 }
 
-func TestProtectedPlanHidesPolicyEqualityFromPublicSurfaces(t *testing.T) {
+func TestProtectedPlanHidesPolicyResultFromPublicSurfaces(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
 	if err != nil {
 		t.Fatal(err)
@@ -245,17 +246,26 @@ func TestProtectedPlanHidesPolicyEqualityFromPublicSurfaces(t *testing.T) {
 		t.Fatal("protected plan must use the published binary with narrowly scoped credentials")
 	}
 	var public []string
-	for _, remote := range []string{"changed", "no-difference"} {
-		t.Run(remote, func(t *testing.T) {
+	for _, tc := range []struct {
+		name, remote, status string
+	}{
+		{name: "changed", remote: "changed", status: "0"},
+		{name: "no-difference", remote: "no-difference", status: "0"},
+		{name: "state-dependent read failure", remote: "secret-scanning-disabled", status: "17"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			bin := filepath.Join(dir, "gh-settings")
 			script := `#!/bin/bash
 if [[ "$1" != action || "$2" != plan || "$4" != status-only ]]; then
   exit 79
 fi
-printf '%s\n' "$REMOTE_OUTCOME" > "$3"
 printf 'sensitive policy equals %s\n' "$REMOTE_OUTCOME" >&2
 printf 'sensitive policy is %s\n' "$REMOTE_OUTCOME"
+if [[ "$PLAN_STATUS" != 0 ]]; then
+  exit "$PLAN_STATUS"
+fi
+printf '%s\n' "$REMOTE_OUTCOME" > "$3"
 `
 			if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
 				t.Fatal(err)
@@ -264,22 +274,27 @@ printf 'sensitive policy is %s\n' "$REMOTE_OUTCOME"
 			output := filepath.Join(dir, "output")
 			cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", step.Run)
 			cmd.Env = append(os.Environ(),
-				"SETTINGS_CLI="+bin, "GH_TOKEN=local-fixture", "REMOTE_OUTCOME="+remote,
+				"SETTINGS_CLI="+bin, "GH_TOKEN=local-fixture", "REMOTE_OUTCOME="+tc.remote, "PLAN_STATUS="+tc.status,
 				"GITHUB_STEP_SUMMARY="+summary, "GITHUB_OUTPUT="+output,
 			)
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			if err := cmd.Run(); err != nil {
-				t.Fatalf("both managed outcomes must succeed: %v", err)
+				t.Fatalf("private comparison result must not affect the public step status: %v", err)
 			}
 			public = append(public, stdout.String()+stderr.String())
-			report, err := os.ReadFile(filepath.Join(dir, "plan.json"))
-			if err != nil || string(report) != remote+"\n" {
-				t.Fatalf("comparison did not execute privately: report=%q, err=%v", report, err)
-			}
-			info, err := os.Stat(filepath.Join(dir, "plan.json"))
-			if err != nil || info.Mode().Perm() != 0600 {
-				t.Fatalf("private comparison must remain owner-readable: %v, %v", info, err)
+			reportPath := filepath.Join(dir, "plan.json")
+			if tc.status == "0" {
+				report, err := os.ReadFile(reportPath)
+				if err != nil || string(report) != tc.remote+"\n" {
+					t.Fatalf("comparison did not execute privately: report=%q, err=%v", report, err)
+				}
+				info, err := os.Stat(reportPath)
+				if err != nil || info.Mode().Perm() != 0600 {
+					t.Fatalf("private comparison must remain owner-readable: %v, %v", info, err)
+				}
+			} else if _, err := os.Stat(reportPath); !os.IsNotExist(err) {
+				t.Fatalf("failed comparison unexpectedly produced a report: %v", err)
 			}
 			if _, err := os.Stat(summary); !os.IsNotExist(err) {
 				t.Fatal("protected plan must not publish an Action Summary")
@@ -289,7 +304,7 @@ printf 'sensitive policy is %s\n' "$REMOTE_OUTCOME"
 			}
 		})
 	}
-	if len(public) != 2 || public[0] != "" || public[1] != "" {
-		t.Fatalf("private policy equality leaked into public diagnostics: %q", public)
+	if len(public) != 3 || public[0] != "" || public[1] != "" || public[2] != "" {
+		t.Fatalf("private policy result leaked into public diagnostics: %q", public)
 	}
 }

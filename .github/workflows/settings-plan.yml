@@ -106,7 +106,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-administration: write
-      - name: Read and compare privately without a public outcome or Summary
+      - name: Read and compare privately without a public result
         shell: bash
         env:
           SETTINGS_CLI: ${{ steps.validation.outputs.binary-path }}
@@ -118,11 +118,13 @@ jobs:
             echo 'published plan binary unavailable' >&2
             exit 1
           fi
-          # Both changed and no-difference succeed without a public signal.
-          # Do not run the Action Summary renderer or emit plan-outcome.
+          # Changed, no-difference and state-dependent read failures must all
+          # be publicly indistinguishable. Do not run the Action Summary
+          # renderer, emit plan-outcome or propagate the private exit status.
+          # A separately approved access-controlled channel is required before
+          # this observer can provide an actionable success/failure result.
           if ! "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" status-only >/dev/null 2>&1; then
-            echo 'protected settings plan failed' >&2
-            exit 1
+            :
           fi
       - name: Verify that PR, merge revision and settings bytes are still current
         env:
