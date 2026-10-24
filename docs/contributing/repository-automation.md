@@ -18,15 +18,8 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `gh-settings` |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; [versioned release procedure](releases.md) |
-| [`release-request.yml`](../../.github/workflows/release-request.yml) | Created comments on dedicated Issue #410 only; owner-authenticated SHA pin dispatches the unchanged manual release workflow |
 
-## Connector-friendly release requests
-
-An owner-authored comment consisting of exactly `/release FULL_40_CHARACTER_MAIN_SHA` on the [release-command Issue #410](https://github.com/daiksud/gh-settings/issues/410) can initiate the existing manual release workflow through the connected GitHub app. The [dispatcher](../../.github/workflows/release-request.yml) checks the fixed repository, main/default-branch event, open non-PR Issue number, actual repository-owner and rerun identity, strict lowercase full SHA and current main HEAD. Edited comments or text elsewhere do not authorize publication.
-
-A read-only authorization job runs before the only `actions: write` job. That job uses its built-in `GITHUB_TOKEN` solely to request `release.yml` through `workflow_dispatch` with the fixed main SHA. It does not grant the workflow permission to apply settings or create tags itself; the existing release's native validation and immutable publisher still own those operations. The request must be made **after** the source containing this dispatcher has been merged, so a previously prepared commit may be too old to use as the fixed main SHA.
-
-The command Issue stays open as a reusable human approval surface; each release still requires a new explicit owner command. Do not infer successful publication from a successful request run. See the [maintainer release procedure](releases.md#request-publication-from-the-connected-github-app) for verification and alternative CLI/API dispatch. The new trigger needs no Environment or App private key and does not modify the existing main apply, PR plan, required checks or automatic release policy.
+Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after version preparation and main verification. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
 
 ## PR lifecycle
 
