@@ -239,34 +239,61 @@ func TestArchiveExportExplicitlyOptInAndFailClosed(t *testing.T) {
 	}
 }
 
-// Plan must not advertise an impossible direct apply for an already archived target.
-func TestArchivePlanRejectsArchivedMixedDeclaration(t *testing.T) {
+func TestArchivePlanEvaluatesArchivedMixedDeclaration(t *testing.T) {
 	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	archived := true
-	desc := "other"
-	for _, extra := range []settings.Declaration{
-		{Repository: settings.RepositoryDeclaration{Archived: &archived, Description: &desc}},
-		{Repository: settings.RepositoryDeclaration{Archived: &archived}, Topics: settings.TopicsDeclaration{Names: &[]string{"x"}}},
+	current, other := "current", "other"
+	for _, tt := range []struct {
+		name        string
+		desired     settings.Declaration
+		wantRead    string
+		wantChanges int
+	}{
+		{name: "matching repository", desired: settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &archived, Description: &current}}, wantRead: "repository"},
+		{name: "different repository", desired: settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &archived, Description: &other}}, wantRead: "repository", wantChanges: 1},
+		{name: "matching topics", desired: settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &archived}, Topics: settings.TopicsDeclaration{Names: &[]string{"current"}}}, wantRead: "topics"},
+		{name: "different topics", desired: settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &archived}, Topics: settings.TopicsDeclaration{Names: &[]string{"other"}}}, wantRead: "topics", wantChanges: 1},
 	} {
-		calls := 0
-		result, err := Plan(func() (settings.Declaration, error) { return extra, nil }, func() (repository.Repository, error) { return repo, nil }, Reader{
-			Archive: func(repository.Repository) (settings.ArchiveState, error) {
-				calls++
-				return settings.ArchiveState{ID: 1, FullName: "owner/current", Archived: true}, nil
-			},
-			ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
-				t.Fatal("unappliable plan read later resources")
-				return settings.RepositoryObservation{}, nil
-			},
-			Topics: func(repository.Repository) ([]string, error) {
-				t.Fatal("unappliable plan read topics")
-				return nil, nil
-			},
+		t.Run(tt.name, func(t *testing.T) {
+			calls := []string{}
+			result, err := Plan(func() (settings.Declaration, error) { return tt.desired, nil }, func() (repository.Repository, error) { return repo, nil }, Reader{
+				Archive: func(repository.Repository) (settings.ArchiveState, error) {
+					calls = append(calls, "archive")
+					return settings.ArchiveState{ID: 1, FullName: "owner/current", Archived: true}, nil
+				},
+				ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
+					calls = append(calls, "repository")
+					return settings.NewRepositoryObservation(&settings.RepositoryState{Description: "current"}, nil, nil), nil
+				},
+				Topics: func(repository.Repository) ([]string, error) {
+					calls = append(calls, "topics")
+					return []string{"current"}, nil
+				},
+			})
+			if err != nil || result.Comparison.Managed != 2 || len(result.Comparison.Changes) != tt.wantChanges || !reflect.DeepEqual(calls, []string{"archive", tt.wantRead}) {
+				t.Fatal(result, err, calls)
+			}
 		})
-		var planErr *PlanError
-		if calls != 1 || !errors.As(err, &planErr) || planErr.Stage != "read-failure" || !strings.Contains(err.Error(), "without explicit archived: false") || result.Comparison.Managed != 0 {
-			t.Fatal(result, err, calls)
-		}
+	}
+}
+
+func TestArchivePlanFailsClosedOnMixedObservationFailure(t *testing.T) {
+	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	archived := true
+	description := "current"
+	result, err := Plan(func() (settings.Declaration, error) {
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &archived, Description: &description}}, nil
+	}, func() (repository.Repository, error) { return repo, nil }, Reader{
+		Archive: func(repository.Repository) (settings.ArchiveState, error) {
+			return settings.ArchiveState{ID: 1, FullName: "owner/current", Archived: true}, nil
+		},
+		ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
+			return settings.RepositoryObservation{}, errors.New("fixture incomplete observation")
+		},
+	})
+	var planErr *PlanError
+	if !errors.As(err, &planErr) || planErr.Stage != "read-failure" || !strings.Contains(err.Error(), "incomplete observation") || result.Comparison.Managed != 0 {
+		t.Fatal(result, err)
 	}
 }
 

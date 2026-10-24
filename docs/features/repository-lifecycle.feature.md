@@ -16,7 +16,7 @@ The target stays the checkout's GitHub.com origin. There is no repository creati
 
 A declared archive plan/apply and `export --archive` require a complete fresh repository identity: positive numeric ID, canonical owner/name matching the selected target, and a present boolean `archived`. Missing/null/incorrect types, 401/403/404, redirects, wrong IDs, and unavailable canonical names fail. Absence is never interpreted as active, archived, or a missing repository to create.
 
-Plan adds one native boolean comparison and preserves current nonzero error behavior. When the transition changes state, both CLI and Action Summary explicitly state unarchive-before-other-settings or archive-after-other-settings ordering. An already archived target with `archived: true` plus any other managed resource fails planning as well as apply, before reading those other resources. It never unarchives to read other resources or treats a partial observation as a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export omits archive; opted-in export writes it only after all selected reads complete and preserves the previous file on failure.
+Plan adds one native boolean comparison and preserves current nonzero error behavior. When the transition changes state, both CLI and Action Summary explicitly state unarchive-before-other-settings or archive-after-other-settings ordering. An already archived target with `archived: true` plus other managed resources remains readable: plan completely observes those resources and reports an honest matching, changed, or failed result without attempting to make them writable. Apply still rejects that combination before any write because changing an archived repository requires explicit `archived: false`. A failed or partial observation never becomes a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export omits archive; opted-in export writes it only after all selected reads complete and preserves the previous file on failure.
 
 ## Transition and operation order
 
@@ -28,7 +28,7 @@ Plan adds one native boolean comparison and preserves current nonzero error beha
 | Active | true | None | Archive and verify |
 | Active | true | Present | Perform ordinary updates; then freshly verify target/state, archive and verify |
 | Archived | true | None | Matching read; no lifecycle write |
-| Archived | true | Present | Reject before any write; do not implicitly unarchive and rearchive |
+| Archived | true | Present | Plan completely observes and compares; apply rejects before any write; do not implicitly unarchive and rearchive |
 | Unknown or mismatched | Either | Any | Fail before starting writes |
 
 Ordinary resource order is unchanged between lifecycle boundaries. Unarchive uses a separate body containing only `archived: false`; final archive uses only `archived: true`. Do not combine either with unrelated fields. A fresh pre-archive observation is required after earlier resource work, and response/readback ID and canonical name must match the initial identity.
@@ -61,7 +61,7 @@ settings:
     description: Active maintenance has resumed
 ```
 
-A plan for an archived target shows `repository.archived: true -> false` and identifies that unarchive precedes the description update. Applying it performs the isolated unarchive first. With `archived: true` on an active target, the description update precedes archival. With both fields on an already archived target, the unchanged boolean does not imply that the description is writable: reject and request explicit unarchive intent.
+A plan for an archived target shows `repository.archived: true -> false` and identifies that unarchive precedes the description update. Applying it performs the isolated unarchive first. With `archived: true` on an active target, the description update precedes archival. With both fields on an already archived target, plan reads and reports whether the description matches or differs, but the unchanged boolean does not imply that the description is writable: apply rejects and requires explicit unarchive intent.
 
 A source CLI/Action failure identifies `repository.archive` progress without inventing success for later operations. Status-only reporting must retain its existing bounded outcomes and confidentiality: do not expose hidden values merely to explain a lifecycle failure.
 
@@ -75,7 +75,7 @@ Future visibility design must select one enum, specify applicability and the eff
 
 Model and codec tests cover omission, true/false, null/type rejection, and retained scalar identity. The [archive API tests](../../internal/github/archive_test.go) exercise complete identity/state, narrow PATCHes, permission and response failures, redirects, rejected updates, and post-write readback. The [application tests](../../internal/app/archive_test.go) verify selective plan, opt-in export, ordering, matching no-ops, early rejection, and retained confirmed or uncertain progress.
 
-The [built-CLI acceptance fixture](../../tests/acceptance/archive_test.go) covers ordinary and opt-in export, preserved output files on incomplete reads, read-only plan, separate Action plan/Summary, archive after other writes, unarchive before them, and repeated matching archive. Existing composite checks cover the same-source Action interface and the status-only reporting boundary; they do not simulate an actual repository archive or prove remote permission. All mutation tests use local fixtures and dummy credentials, not this repository's real archive setting.
+The [built-CLI acceptance fixture](../../tests/acceptance/archive_test.go) covers ordinary and opt-in export, preserved output files on incomplete reads, read-only matching/different evaluation while archived, apply rejection without writes, separate Action plan/Summary, archive after other writes, unarchive before them, and repeated matching archive. Existing composite checks cover the same-source Action interface and the status-only reporting boundary; they do not simulate an actual repository archive or prove remote permission. All mutation tests use local fixtures and dummy credentials, not this repository's real archive setting.
 
 Before claiming operational archival support, an explicitly authorized disposable-repository experiment must separately verify actual permissions, transition/readback behavior, and a documented recovery route. Do not archive a production or development repository merely to make a fixture claim stronger. No such experiment has been authorized or performed by this implementation.
 
