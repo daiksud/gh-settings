@@ -6,7 +6,7 @@ description: Adopt explicit archival sequencing and defer visibility and rename 
 
 ## Status
 
-Accepted in #331; archive/unarchive implemented in current source by #332. Visibility (#333) and rename (#334) remain deferred, not silently adopted as ordinary PATCH fields. Published v0.17.0 and older packages reject `archived` and the deferred keys.
+Accepted in #331; archive/unarchive was implemented by #332 and published in v0.18.0. Visibility (#333) and rename (#334) remain deferred, not silently adopted as ordinary PATCH fields. Published v0.17.0 and older packages reject `archived` and the deferred keys.
 
 ## Context
 

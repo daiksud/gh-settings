@@ -52,18 +52,18 @@ Published v0.17.0 adds [repository retention policy](retention.feature.md), with
 
 Published v0.17.0 adds [fork workflow policies](fork-workflows.feature.md): public contributor approval and private fork execution/token/secrets/approval choices, with explicit export selections, declared-only updates and fresh visibility/readback boundaries. Published v0.16.0 and older packages reject the keys and options.
 
-The implemented features added since v0.16.0 are published in [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0). The native acceptance, immutable assets and published Action smoke checks passed. Unimplemented/gated candidates remain outside this package. See the [package boundary](../settings.md#v0170-package).
+The v0.17.0 feature set and the bounded additions below are published in [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0) from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`. Native acceptance, immutable assets and published Action smoke checks passed. Unimplemented/gated candidates remain outside this package. See the [package boundary](../settings.md#v0180-package).
 
-Current source additionally implements unreleased [Sponsor button visibility](sponsorships.feature.md), with an independent complete boolean read and declared-only shared repository mutation. It does not manage funding destinations or payments; published v0.17.0 and older packages reject the key.
+Published v0.18.0 adds [Sponsor button visibility](sponsorships.feature.md), with an independent complete boolean read and declared-only shared repository mutation. It does not manage funding destinations or payments; published v0.17.0 and older packages reject the key.
 
-Current source implements [repository archive/unarchive](repository-lifecycle.feature.md), with explicit sequencing, identity/readback verification, and opt-in `export --archive`. The published v0.17.0 package rejects this field and option. Visibility and rename remain deferred; no live repository has been archived.
+Published v0.18.0 adds [repository archive/unarchive](repository-lifecycle.feature.md), with explicit sequencing, identity/readback verification, and opt-in `export --archive`. Published v0.17.0 and older packages reject this field and option. Visibility and rename remain deferred; no live repository has been archived.
 
-Current unreleased source implements the [existing-site Pages contract](pages.feature.md) from #350, including cname-only null clearing and explicit export. Creation/deletion and visibility changes remain deferred until their observation and exposure gates are resolved; #350 retains that lifecycle work. Published v0.17.0 rejects all Pages keys/options.
+Published v0.18.0 adds the [existing-site Pages contract](pages.feature.md) from #350, including cname-only null clearing and explicit export. Creation/deletion and visibility changes remain deferred until their observation and exposure gates are resolved; #350 retains that lifecycle work. Published v0.17.0 and older packages reject all Pages keys/options.
 
 The [Environment design](environments.feature.md) for #351 separates selected names from authoritative membership, protection reductions from omission, and typed reviewer identity from display names. All Environment syntax remains unimplemented. #352/#353 require the documented observation, preservation and transition evidence before adoption; lifecycle and undocumented administrator-bypass mutations remain deferred.
 
-Current source adds the bounded [custom property values](custom-properties.feature.md) contract, with explicit export selection, schema-bound validation and null unset. Published v0.17.0 rejects it; default-backed and other unadopted constraints remain gated.
+Published v0.18.0 adds the bounded [custom property values](custom-properties.feature.md) contract, with explicit export selection, schema-bound validation and null unset. Published v0.17.0 and older packages reject it; default-backed and other unadopted constraints remain gated in #354.
 
 The [repository access design](repository-access.feature.md) reserves collaborator/team ownership, pending invitation outcomes and revocation gates for #356/#357. It is unimplemented; current source and published packages reject access declarations and export options.
 
-Current unreleased source implements the bounded [private repository forking policy](private-forking.feature.md), with complete organization-policy observation and explicit export selection. Published v0.17.0 rejects it; public/internal/personal/fork/archive targets and lifecycle composition remain unadopted.
+Published v0.18.0 adds the bounded [private repository forking policy](private-forking.feature.md), with complete organization-policy observation and explicit export selection. Published v0.17.0 and older packages reject it; public/internal/personal/fork/archive targets and lifecycle composition remain unadopted.

@@ -82,7 +82,10 @@ func findStep(t *testing.T, j job, id string) step {
 	return step{}
 }
 
-const exampleAction = "daiksud/gh-settings@cccd06a151c2dce3b9eb71520d3c01b4c73ac92f"
+const (
+	exampleAction         = "daiksud/gh-settings@cccd06a151c2dce3b9eb71520d3c01b4c73ac92f"
+	exampleConsumerAction = "daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66"
+)
 
 func TestWorkflowCredentialBoundaries(t *testing.T) {
 	pr, prText := readWorkflow(t, "settings-pr.yml")
@@ -191,7 +194,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 			}
 		}
 	}
-	if plan.Steps[1].Uses != exampleAction || !reflect.DeepEqual(plan.Steps[1].With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
+	if plan.Steps[1].Uses != exampleConsumerAction || !reflect.DeepEqual(plan.Steps[1].With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
 		t.Fatal("PR public Action/read-token binding changed")
 	}
 	app := apply.Steps[1]
@@ -201,7 +204,7 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	}) {
 		t.Fatal("caller App scope, credential binding or default revocation changed")
 	}
-	if apply.Steps[2].Uses != exampleAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{"command": "apply", "token": "${{ steps.app.outputs.token }}"}) || strings.Count(mainText, "steps.app.outputs.token") != 1 {
+	if apply.Steps[2].Uses != exampleConsumerAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{"command": "apply", "token": "${{ steps.app.outputs.token }}"}) || strings.Count(mainText, "steps.app.outputs.token") != 1 {
 		t.Fatal("App token escaped the apply step")
 	}
 }

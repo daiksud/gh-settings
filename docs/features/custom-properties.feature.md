@@ -1,6 +1,6 @@
 # Custom property values
 
-Current source implements the bounded value contract in [ADR0030](../adr/0030-schema-bound-custom-property-values.md). Published v0.17.0 rejects `settings.custom_properties` and `export --custom-properties`; no new release is implied. See the [configuration reference](../settings.md#custom-property-values-unreleased-source) for syntax.
+Published v0.18.0 implements the bounded value contract in [ADR0030](../adr/0030-schema-bound-custom-property-values.md). Published v0.17.0 and older packages reject `settings.custom_properties` and `export --custom-properties`. Required/default-backed/explicitly-required properties and the other unadopted constraints remain tracked in #354. See the [configuration reference](../settings.md#custom-property-values) for syntax.
 
 ## Ownership and constraints
 

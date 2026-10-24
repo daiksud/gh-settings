@@ -1,6 +1,6 @@
 # Private repository forking policy
 
-Current unreleased source implements [ADR0032](../adr/0032-private-forking-applicability.md) and the [user contract](../settings.md#private-repository-forking-unreleased-source). Published v0.17.0 rejects the field and option. Tests below use local HTTP fixtures and dummy credentials, not live GitHub changes.
+Published v0.18.0 implements [ADR0032](../adr/0032-private-forking-applicability.md) and the [user contract](../settings.md#private-repository-forking). Published v0.17.0 and older packages reject the field and option. Tests below use local HTTP fixtures and dummy credentials, not live GitHub changes.
 
 ## Behavior and acceptance evidence
 

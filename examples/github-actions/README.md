@@ -4,7 +4,7 @@ Copy these workflows into the repository whose settings you want to manage. The 
 
 Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
-The selected v0.17.0 package supports twenty-two repository fields, topics and labels, plus the opt-in Rulesets, Actions and security families described in the [published package guide](../../docs/github-actions.md#published-package-and-consumer-pins). Label collections are authoritative; review their [deletion consequences and permission requirements](../../docs/github-actions.md#labels-and-permissions) before adoption.
+The selected v0.18.0 package supports the published resource set described in the [package guide](../../docs/github-actions.md#published-package-and-consumer-pins), including private plan reporting and the bounded Pages and custom-property subsets. Label and Ruleset collections are authoritative; review their deletion consequences and resource-specific permissions before adoption.
 
 ## Copy the workflows
 

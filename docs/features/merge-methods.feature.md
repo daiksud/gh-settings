@@ -6,7 +6,7 @@ description: Read three merge-method booleans through GraphQL and apply declared
 
 ## Feature: Manage repository merge-method settings
 
-CLI and Action v0.10.0 add three optional booleans under the existing `settings.repository` group and retain `schemaVersion: 1`. Published v0.9.0 does not support these keys; the pinned v0.17.0 consumer workflows do. No new resource group, auto-merge, merge queue, or commit-message policy is introduced.
+CLI and Action v0.10.0 add three optional booleans under the existing `settings.repository` group and retain `schemaVersion: 1`. Published v0.9.0 does not support these keys; the pinned v0.18.0 consumer workflows do. No new resource group, auto-merge, merge queue, or commit-message policy is introduced.
 
 ```yaml
 schemaVersion: 1
@@ -50,7 +50,7 @@ Apply uses the existing `PATCH /repos/{owner}/{repo}` and [Administration write 
 
 Existing target resolution, write timeout, redirect rejection, failure propagation and partial-failure behavior remain unchanged. This feature does not change root managed configuration, live merge policy, App grants, PR token permissions, consumer pins, or release selection. GitHub may reject combinations that pass local boolean validation; no additional merge policy is inferred locally.
 
-CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. The maximum current-source managed count is forty-two: twenty-two repository fields, topics, labels, Rulesets, fourteen Actions policy fields and three security fields. Published v0.14.0 retains seventeen. Published v0.10.0 retains its ten-item limit. Reports remain presentation data, never apply input.
+CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. The maximum current-source managed count is fifty-one across the complete adopted resource set. Published v0.14.0 retains seventeen and v0.10.0 retains ten. Reports remain presentation data, never apply input.
 
 ### Test mapping
 

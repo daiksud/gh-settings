@@ -202,9 +202,9 @@ Changed values retain native string/bool/topic-list meaning. No-difference, unma
 - And a failed plan remains failed even after diagnostic rendering
 - And report, metadata, render, write or status-handoff failure prevents successful public outputs
 
-### Rule: Unreleased private plan reporting does not publish observed values
+### Rule: Private plan reporting does not publish observed values
 
-Current source adds opt-in `plan-reporting: status-only`. Published v0.17.0 does not implement it. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts.
+Published v0.18.0 adds opt-in `plan-reporting: status-only`. Published v0.17.0 and older packages do not implement it. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts. Package availability does not activate the protected observer tracked by #380.
 
 #### Scenario: A private plan reports status without hidden policy
 
@@ -239,4 +239,4 @@ Test mapping: [TestTopicsSummaryNativeAndJSONLists](../../internal/actions/summa
 
 ### Rule: Present typed label operations
 
-The current source's same-version report/Summary adds typed label create/update/delete operations and explains association loss for deletions. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The committed installer selects published v0.17.0, whose native binaries and published Action passed the release workflow. It includes repository Rulesets, PR/Issue access, Actions execution/workflow/fork policies, Secret scanning/push protection, public private-vulnerability reporting and retention, in addition to v0.16.0 web commit sign-off, template status and default branch support. Verify publication of the matching release before adopting a current-source Action pin; version preparation and source tests do not publish assets. Pinned consumer workflows select published v0.17.0, including Discussions, labels, merge methods, automatic branch deletion, squash/normal merge commit defaults, auto-merge and branch-update options. Source protocol tests and published-package verification remain separate evidence.
+The same-version report/Summary presents typed label operations and explains association loss for deletions. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The committed installer and maintained examples select published v0.18.0 from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`; source protocol tests and published-package verification remain separate evidence. The #412 Ruleset projection correction exists only after that immutable source and must not be attributed to the v0.18.0 package.

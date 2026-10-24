@@ -6,7 +6,7 @@ description: Separate Pages configuration from site creation, deletion, visibili
 
 ## Status
 
-Accepted design for #349. The existing-site subset of #350 is implemented in current source but unreleased; published v0.17.0 rejects Pages keys/options. Site creation/deletion and site visibility mutation remain deferred pending the gates below, and #350 retains those unresolved lifecycle criteria.
+Accepted design for #349. The existing-site subset of #350 is published in v0.18.0; published v0.17.0 and older packages reject Pages keys/options. Site creation/deletion and site visibility mutation remain deferred pending the gates below, and #350 retains those unresolved lifecycle criteria.
 
 ## Context
 

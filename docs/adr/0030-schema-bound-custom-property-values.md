@@ -6,7 +6,7 @@ description: Separate declared repository values from organization schema and in
 
 ## Status
 
-Accepted for the bounded current-source implementation of #354. Published v0.17.0 rejects the group and export option. Default-backed, required, explicitly required, enterprise-sourced, URL and regex-constrained properties remain unadopted; #354 remains open for those decisions.
+Accepted for the bounded implementation of #354, published in v0.18.0. Published v0.17.0 and older packages reject the group and export option. Default-backed, required, explicitly required, enterprise-sourced, URL and regex-constrained properties remain unadopted; #354 remains open for those decisions.
 
 ## Context
 
@@ -26,4 +26,4 @@ Use explicit export opt-in. Export every observed schema name, including null fo
 
 Repositories whose requested constraints cannot be established fail safely. Ordinary export and declarations without this resource retain their permissions. A full opt-in export can fail on an unsupported organization property even when only other properties would be editable. Selected supported names can be managed without owning other names, but complete value reads and string-constraint visibility are still required.
 
-The [configuration reference](../settings.md#custom-property-values-unreleased-source) owns the public syntax; the [behavior specification](../features/custom-properties.feature.md) maps tests and official contracts. Local fixtures prove request, failure and presentation behavior only. No live property/schema changes, credentials, grants or release are part of this implementation.
+The [configuration reference](../settings.md#custom-property-values) owns the public syntax; the [behavior specification](../features/custom-properties.feature.md) maps tests and official contracts. Local fixtures prove request, failure and presentation behavior only. Publication does not establish live property/schema changes, credentials or grants.

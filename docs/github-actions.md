@@ -1,10 +1,10 @@
 # Use the public settings Action
 
-## v0.17.0 package
+## v0.18.0 package
 
-Published [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0) includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39508410269). Dependabot, paid-product candidates and immutable-release policy remain unsupported. v0.16.0 already includes web commit sign-off, template repository status and default branch settings. The maintained examples select v0.17.0; adopting its pin does not expand caller grants or change settings by itself.
+Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). It also includes the v0.17.0 Rulesets, PR/Issue access, Actions, security, retention and fork-workflow features. The maintained examples select v0.18.0; adopting its pin does not expand caller grants, activate this repository's protected observer, or change settings by itself.
 
-The pinned v0.17.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
+The pinned v0.18.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
 
 Published v0.16.0 includes the [`web_commit_signoff_required` setting](settings.md#web-commit-sign-off). Published v0.15.1 and older CLI/Action packages reject it, while the current v0.17.0 examples support it. Its candidate plan report and Summary use native booleans; apply uses the existing Administration-write repository PATCH. No Action input or permission expansion is added.
 
@@ -12,15 +12,15 @@ Published v0.16.0 and current source also support the [`is_template` setting](se
 
 The [`default_branch` setting](settings.md#default-branch), published in v0.16.0, uses the same Administration-write repository PATCH and validates its returned name. Published v0.15.1 and older packages reject the key; no Action input or permission expansion is introduced.
 
-Current source additionally supports [Rulesets declarations with basic, PR review and required check rules](settings.md#rulesets) in validate/plan/apply and native before/after Summary entries projected to declaration-owned values. Omitted retained attributes and deleted-member policy details stay out of the report/Summary while complete reads still preserve them for mutation. This is supported in v0.17.0; published v0.16.0 and older packages reject the group. Complete Rulesets plan reads need bypass visibility (write access to the Ruleset); hidden or unsupported policy fails instead of becoming empty. Existing Action inputs and caller grants are unchanged; there is no Action export command.
+[Rulesets declarations](settings.md#rulesets) with basic, PR review and required check rules are published in v0.17.0 and later. The current source projects plan/Summary Before and After values to declaration-owned fields while preserving complete remote state for mutation. That #412 correction is newer than immutable v0.18.0: the published v0.18.0 detailed report can include retained undeclared Ruleset attributes, bypass actors and conditions. Complete reads need bypass visibility (write access to the Ruleset); hidden or unsupported policy fails instead of becoming empty. Existing Action inputs and caller grants are unchanged; there is no Action export command.
 
 Published v0.17.0 also supports [PR access settings](settings.md#pull-request-access), with native boolean/enum report and Summary values. Published v0.16.0 and older CLI/Action packages reject them. Complete authenticated GraphQL reads and an authorized repository-update credential are required; no new Action input, token discovery or caller grant is added. PR access writes follow existing repository REST writes and precede later resources, so a later failure can leave earlier writes applied.
 
 The [`issue_creation_policy` setting](settings.md#issue-creation-policy), introduced in v0.17.0, adds a native enum to current-source plan reports and Summary. It shares PR access's validated repository mutation and preserves `has_issues` when omitted. Complete authenticated reads and an authorized repository-update credential are required; existing inputs, outputs and caller grants are unchanged. Published v0.16.0 and older CLI/Action packages reject the key.
 
-Current source supports opt-in [`repository.archived`](settings.md#repository-archive-lifecycle-unreleased-source) in the same validate/plan/apply and native boolean Summary path. Applying requires repository Administration write and checks exact repository identity and post-write lifecycle state; archive is always last, unarchive first. There is no new Action input or automatic token grant. Published v0.17.0 and older consumer pins reject the key; **do not archive the repository running the workflow as a fixture**.
+Published v0.18.0 supports opt-in [`repository.archived`](settings.md#repository-archive-lifecycle) in the same validate/plan/apply and native boolean Summary path. Applying requires repository Administration write and checks exact repository identity and post-write lifecycle state; archive is always last, unarchive first. There is no new Action input or automatic token grant. Published v0.17.0 and older consumer pins reject the key; **do not archive the repository running the workflow as a fixture**.
 
-Current source additionally supports unreleased [`has_sponsorships`](settings.md#sponsor-button-visibility-unreleased) in shared validate/plan/apply and native boolean Summary output. It needs a complete authenticated GraphQL read and an authorized repository-update credential for apply; there is no new Action input, grant, or funding-file write. Published v0.17.0 and older CLI/Action packages reject the key. A newer Action source pin alone still selects its committed published CLI; source fixture success does not establish release availability.
+Published v0.18.0 supports [`has_sponsorships`](settings.md#sponsor-button-visibility) in shared validate/plan/apply and native boolean Summary output. It needs a complete authenticated GraphQL read and an authorized repository-update credential for apply; there is no new Action input, grant, or funding-file write. Published v0.17.0 and older CLI/Action packages reject the key.
 
 Published v0.17.0 adds [Actions execution policy](settings.md#actions-execution-policy) in the same shared validate/plan/apply operations and native Summary. Plan needs Administration read and apply needs Administration write for this resource; ordinary read tokens may be insufficient. Inputs, outputs and caller grants are unchanged, and the Action does not offer export. Published v0.16.0 and older packages reject the group.
 
@@ -34,7 +34,7 @@ Published v0.17.0 adds [repository retention policy](settings.md#check-run-statu
 
 ## Public Action and supported checkout
 
-`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.17.0 package for repository fields, topics and [labels](#labels-and-permissions).
+`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.18.0 package.
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and commit `.github/settings.yml` at its root.
 
@@ -48,7 +48,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | --- | --- |
 | `command` | Required, no default; exactly `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
-| `plan-reporting` | Current source, unreleased: `detailed` by default, or `status-only` for plan only. Requires a separately published compatible CLI for status-only; v0.17.0 does not support it. |
+| `plan-reporting` | `detailed` by default, or `status-only` for plan only. Status-only is published in v0.18.0; v0.17.0 does not support it. |
 
 Validate checks local configuration without credentials. Plan validates first, then reads settings with an explicit read-only token, such as `token: ${{ github.token }}` in the example PR job. For the supported repository fields and topics, apply uses a caller-created, target-scoped App installation token with Administration write. The Action neither creates the token nor verifies its actual grants.
 
@@ -60,15 +60,15 @@ There are no inputs for export, arbitrary arguments, configuration path, target,
 | `target` | Configuration checkout's resolved GitHub `origin`, in `OWNER/REPO` form. |
 | `cli-version` | Verified installed CLI release selected by the Action package. |
 | `cli-sha256` | SHA-256 of the verified installed binary. |
-| `plan-outcome` | Current source, unreleased: `changed`, `no-difference` or `unmanaged` after a successful status-only plan and Summary write; empty for detailed/validate/apply calls. |
+| `plan-outcome` | `changed`, `no-difference` or `unmanaged` after a successful status-only plan and Summary write; empty for detailed/validate/apply calls. Published in v0.18.0. |
 
 Use `steps.<id>.outputs.<name>` only after successful completion. Outputs are published after the command and, for plan, successful Summary rendering, writing and ephemeral report cleanup. Differences, no differences and no managed fields are successful plan outcomes.
 
 Missing command/token, unsupported prerequisites, install/metadata/output failures and CLI/configuration/API errors fail the Action. A nonzero plan status is preserved; otherwise Summary status determines success. Failed calls have no successful output contract. Plan Summary displays escaped settings values and categorical failure diagnostics, and distinguishes workflow, configuration, Action and CLI identities. Validate/apply report through the Action step's outcome and logs; they do not render a plan Summary.
 
-### Private plan reporting (unreleased)
+### Private plan reporting
 
-Current source adds `plan-reporting: status-only` for plan. It displays only a validated outcome and bounded managed count; it omits policy values, names, actors and raw diagnostics. Setup checks the installed binary's private-reporting capability before authenticated work and reports a fixed error for an unsupported package. The maintained v0.17.0 pins continue to use detailed mode; selecting newer Action source does not publish or upgrade its binary.
+Published v0.18.0 adds `plan-reporting: status-only` for plan. It displays only a validated outcome and bounded managed count; it omits policy values, names, actors and raw diagnostics. Setup checks the installed binary's private-reporting capability before authenticated work and reports a fixed error for an unsupported package. This package capability does not activate this repository's protected observer: #380 remains open for its dedicated Environment, credentials, activation and real nonmutating verification.
 
 Status-only failures use fixed diagnostics and preserve failure status. Detailed reports stay in the installer's private temporary directory with mode 0600 and are removed by an `always()` cleanup step, including after ordinary failures. No report is uploaded or cached. Forced runner termination can prevent cleanup; use a fresh supported hosted runner, and never arrange for other steps to cache/upload its temporary data. Metadata success outputs still identify the caller's checkout and installed package; the caller must supply a trusted target/revision and must not inject confidential data into public identities or caller logs.
 
@@ -76,7 +76,7 @@ This mode does not make a write-capable token read-only or protect it from other
 
 ## Published package and consumer pins
 
-The examples use the published [v0.17.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0), pinned to the full Action SHA `cccd06a151c2dce3b9eb71520d3c01b4c73ac92f`. Its selected CLI version is fixed by that package; use a reviewed full SHA when adopting or updating the workflows. Release assets and `SHA256SUMS` are available on the release page.
+The examples use the published [v0.18.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), pinned to the full immutable source SHA `6d3146b30860692f84dc54e32d746e6fbbb55c66`. Its selected CLI version is fixed by that package; use a reviewed full SHA when adopting or updating the workflows. Release assets and `SHA256SUMS` are available on the release page.
 
 Installation downloads the selected `gh-settings-linux-amd64` asset and `SHA256SUMS` from fixed upstream HTTPS release paths. It requires one valid checksum for the exact asset, verifies before execution and checks exact `gh-settings <version>` output. There is no latest fallback or caller version/URL override. The binary and checksum come from the same GitHub release; the Action SHA fixes the selected version, not an independent binary digest.
 
@@ -86,7 +86,7 @@ Older pins retain their released behavior. Maintainers document immutable packag
 
 [Labels support](settings.md#labels) is published in v0.9.0 and included in the pinned package. Older v0.8.0 packages reject `settings.labels`. Checking out newer Action source does not build that source; the selected release determines CLI capabilities.
 
-Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Do not assume installing or pinning v0.17.0 grants access.
+Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Do not assume installing or pinning v0.18.0 grants access.
 
 Labels apply reads fresh membership and performs only needed CRUD operations, with authoritative deletion of undeclared labels and their issue/PR associations. Review the [labels contract](settings.md#labels) before adoption.
 
@@ -231,14 +231,14 @@ Implementation protocols belong in [Action internals](contributing/actions-inter
 
 Current source adds [fork workflow policies](settings.md#fork-pr-workflow-policies), with public contributor approval separate from private fork execution/token/secrets/approval controls. Existing Administration read/write credentials are required; no Action input or grant is added. Summary shows exact enum and native boolean differences, including credentials passed to forks. It remains credential-free presentation; apply independently rereads state. Published v0.16.0 and older packages reject these declarations, so older pins must be updated before adopting them. Fixtures do not establish live mutation compatibility, workflow execution safety or organization-policy enforcement.
 
-Current unreleased source also supports [existing Pages configuration](settings.md#existing-pages-configuration-unreleased-source) through validate/plan/apply and typed native Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Existing caller grants and Action inputs are unchanged; no export input exists. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Published v0.17.0 rejects Pages declarations; checking out newer Action source still installs its selected published CLI.
+Published v0.18.0 supports [existing Pages configuration](settings.md#existing-pages-configuration) through validate/plan/apply and typed native Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Existing caller grants and Action inputs are unchanged; no export input exists. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Site creation/deletion and visibility changes remain unsupported under #350; v0.17.0 and older packages reject Pages declarations.
 
-## Custom property values (unreleased source)
+## Custom property values
 
-The current-source CLI/Action pair supports the [bounded custom property declaration](settings.md#custom-property-values-unreleased-source). Published v0.17.0 rejects it; use only a compatible source pair or a future separately published version. This change does not publish a release or update consumer pins.
+Published v0.18.0 supports the [bounded custom property declaration](settings.md#custom-property-values). Published v0.17.0 and older packages reject it. The remaining schema/provenance constraints stay unsupported under #354.
 
 Both plan and apply need complete organization schema visibility (organization Custom properties read), repository value reads (Metadata read), and authenticated GraphQL string-constraint visibility. Apply additionally needs repository Custom properties write and schema actor authorization. These grants are not added automatically. Organization schema mutation is outside the feature.
 
 Current-source reports and detailed Summary preserve null, empty string and empty arrays; private status-only reporting exposes categorical results without property values. The Summary step remains credential-free. Failed reads do not produce successful drift results; apply remains nontransactional and preserves earlier successful writes. Fixtures establish current-source behavior, not live grants or published package compatibility.
 
-Current source supports the opt-in [private repository forking boolean](settings.md#private-repository-forking-unreleased-source), with native plan/Summary values and categorical private reporting. Plan requires complete private repository and organization-policy observation; apply adds Administration write and repository administrator conditions. No new Action input, organization write or credential grant is introduced. Published v0.17.0 rejects it; source fixture results do not establish released-package support or live credentials.
+Published v0.18.0 supports the opt-in [private repository forking boolean](settings.md#private-repository-forking), with native plan/Summary values and categorical private reporting. Plan requires complete private repository and organization-policy observation; apply adds Administration write and repository administrator conditions. No new Action input, organization write or credential grant is introduced. Published v0.17.0 and older packages reject it; fixture results do not establish live credentials.

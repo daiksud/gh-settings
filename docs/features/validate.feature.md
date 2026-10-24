@@ -147,9 +147,9 @@ Test mapping: [TestDiscussionsDeclaration](../../internal/workspace/discussions_
 
 Current source accepts only the strict optional `actions` mapping. The [Actions policy specification](actions-execution-policy.feature.md#rule-validate-only-explicit-native-values) owns omission/false/empty/null semantics and zero-network failure cases.
 
-### Rule: Validate all adopted fields in the v0.17.0 package locally
+### Rule: Validate all adopted fields in the v0.18.0 package locally
 
-Validation accepts the twenty-two repository fields (including v0.16.0 branch/template/sign-off and the new PR/Issue policies), authoritative Rulesets, fourteen Actions policy fields and three adopted security booleans. Omission remains unmanaged; false and supported empty collections remain explicit; null and unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Dependabot/product/immutable-release candidates are not accepted.
+Validation accepts twenty-five repository fields, authoritative Rulesets, fourteen Actions policy fields, three adopted security booleans, five Pages fields and bounded custom-property declarations. Omission remains unmanaged; false and supported empty collections remain explicit; Pages cname null is the endpoint-specific clear operation; other nulls follow their resource contracts. Unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Pages lifecycle/visibility, unadopted custom-property constraints and other gated candidates are not accepted.
 
 | Subset | Existing owning tests and specification |
 | --- | --- |
@@ -159,5 +159,7 @@ Validation accepts the twenty-two repository fields (including v0.16.0 branch/te
 | Workflow permissions and retention | [Workflow codec](../../internal/workspace/workflow_permissions_test.go), [retention codec](../../internal/workspace/retention_test.go) |
 | Secret scanning and public reporting | [Security codec](../../internal/workspace/security_test.go), [security contract](security.feature.md) |
 | Fork workflow policies | [Fork codec](../../internal/workspace/fork_workflows_test.go), [fork contract](fork-workflows.feature.md) |
+| Archive, Sponsor and private forking | [Archive codec](../../internal/workspace/archive_test.go), [Sponsor codec](../../internal/workspace/sponsorships_test.go), [forking codec](../../internal/workspace/forking_test.go) |
+| Existing-site Pages and custom properties | [Pages codec](../../internal/workspace/pages_test.go), [property codec](../../internal/workspace/properties_test.go) |
 
 Dedicated process cases exercise the same supplied CLI through these interfaces; detailed type matrices remain with the codec/model owners. Validation success does not establish remote policy, grants, applicability or published availability.
