@@ -9,7 +9,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | Workflow | Trigger and responsibility |
 | --- | --- |
 | [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR creation, push, reopening, and base edits run code validation; metadata-only edits do not alter the reported `pass` result |
-| [`pr-message.yml`](../../.github/workflows/pr-message.yml) | PR creation, push, reopening, and edits validate the current title/body through `pr-message` |
+| [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate the current title/body through `pr-message` |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
 | [`labeler.yml`](../../.github/workflows/labeler.yml) | PR-target events suggest add-only labels for unambiguous all-files path categories without executing candidate code |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
@@ -38,7 +38,7 @@ The inspected [default-branch Ruleset](https://github.com/daiksud/gh-settings/ru
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
 | `pass` | [PR code CI](../../.github/workflows/ci-pr.yml) reports source, acceptance, and composite results; metadata-only edits do not overwrite it | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
-| `pr-message` | The [independent message workflow](../../.github/workflows/pr-message.yml) checks the current title/body separately from code validation | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
+| `pr-message` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body separately from code validation | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
 | `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's app/name does not identify a unique workflow |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
