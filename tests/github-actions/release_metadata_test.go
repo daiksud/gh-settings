@@ -53,6 +53,44 @@ func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
 	}
 }
 
+func TestReleaseHasNoIssueCommentDispatchBridge(t *testing.T) {
+	paths, err := filepath.Glob(filepath.Join(root(), ".github/workflows/*.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var w struct {
+			On   map[string]yaml.Node `yaml:"on"`
+			Jobs map[string]struct {
+				Permissions map[string]string `yaml:"permissions"`
+				Steps       []struct {
+					Run string `yaml:"run"`
+				} `yaml:"steps"`
+			} `yaml:"jobs"`
+		}
+		if err := yaml.Unmarshal(data, &w); err != nil {
+			t.Fatal(err)
+		}
+		if _, comments := w.On["issue_comment"]; !comments {
+			continue
+		}
+		for name, job := range w.Jobs {
+			if job.Permissions["actions"] == "write" {
+				t.Fatalf("%s job %s can dispatch workflows from an Issue comment", filepath.Base(path), name)
+			}
+			for _, step := range job.Steps {
+				if strings.Contains(step.Run, "release.yml") {
+					t.Fatalf("%s job %s retains an Issue-comment release bridge", filepath.Base(path), name)
+				}
+			}
+		}
+	}
+}
+
 func TestNativeReleaseNoteCategories(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/release.yml"))
 	if err != nil {
