@@ -10,13 +10,13 @@ The [release-metadata helper](../../scripts/release-metadata/main.go) calculates
 
 | Strongest change in the interval | Increment |
 | --- | --- |
-| A Conventional header with `!`, or a `BREAKING CHANGE:` / historical `BREAKING-CHANGE:` footer | MAJOR, including during `0.x` |
+| A Conventional header with `!`, or a `BREAKING CHANGE:` / historical `BREAKING-CHANGE:` footer | MINOR during `0.x`; MAJOR from `1.0.0` onward |
 | `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
 | Fixes, reverts, maintenance, or legacy messages without a stronger signal | PATCH |
 
-This implements [ADR 0017](../adr/0017-pr-based-semver.md), without importing gh-qw's pre-1.0 exception. A revert does not subtract the classification of another included commit. Fenced examples are not compatibility footers. New incompatible changes still require both signals under the [review policy](../../.agents/skills/code-review/SKILL.md#breaking-changes-require-both-signals).
+This implements [ADR 0017](../adr/0017-pr-based-semver.md). A pre-1.0 breaking signal never graduates the project automatically to `1.0.0`; that milestone remains an explicit project decision. A revert does not subtract the classification of another included commit. Fenced examples are not compatibility footers. New incompatible changes still require both signals under the [review policy](../../.agents/skills/code-review/SKILL.md#breaking-changes-require-both-signals).
 
-A nonbreaking `build(release)` or `chore(release)` commit changing only `action/cli-version` is preparation, not another product change. An interval containing nothing else is rejected. A repository with no published stable baseline requires a separately chosen initial release policy; this tool does not invent one.
+A nonbreaking `build(release)` or `chore(release)` commit changing only `action/cli-version` is preparation, not another substantive change. A similarly named commit that changes any other path remains substantive and permits a PATCH. An interval containing nothing else is rejected. A repository with no published stable baseline requires a separately chosen initial release policy; this tool does not invent one.
 
 On a clean topic branch based on current main, with complete history and tags:
 
