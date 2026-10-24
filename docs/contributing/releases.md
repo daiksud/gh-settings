@@ -70,10 +70,11 @@ New notes use GitHub's [generate-notes API](https://docs.github.com/en/rest/rele
 
 | Reviewed PR labels | Native heading |
 | --- | --- |
-| `BREAKING CHANGE` | `🚨 BREAKING CHANGE` |
-| `feat`, `perf`, `DEPRECATED`, without breaking | `✨ New Feature` |
-| `fix`, `revert`, without a stronger category | `🐛 Bug Fix` |
-| Everything not already categorized | `🧹 Chore` |
+| `BREAKING CHANGE` | `💥 BREAKING CHANGE` |
+| `DEPRECATED`, without breaking | `⚠️ DEPRECATED` |
+| `feat` or `perf`, without breaking or deprecation | `✨ New Feature` |
+| `fix`, without a stronger category | `🐛 Bug Fix` |
+| Everything not already categorized, including `revert` and unlabeled PRs | `🛠️ Maintenance` |
 
 The catch-all retains unlabeled PRs. Before the first release using this configuration, review labels on already-merged, unreleased PRs; do not infer their meaning from branch names. Later label edits affect a newly generated presentation, not the durable version calculation. Reconcile disagreements before publication rather than maintaining two version engines.
 
