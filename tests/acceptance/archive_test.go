@@ -163,6 +163,29 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	if !reflect.DeepEqual(gotWrites, []string{"description", "archive:true"}) {
 		t.Fatal(gotWrites)
 	}
+	input = repositoryInput("archived: true\ndescription: Closed for maintenance\n")
+	if err := writeSettingsFile(fixture.work, input); err != nil {
+		t.Fatal(err)
+	}
+	if got := run("plan"); got != "No differences for managed repository settings.\n" {
+		t.Fatal(got)
+	}
+	input = repositoryInput("archived: true\ndescription: Different\n")
+	if err := writeSettingsFile(fixture.work, input); err != nil {
+		t.Fatal(err)
+	}
+	if got := run("plan"); !strings.Contains(got, "settings.repository.description: \"Closed for maintenance\" → \"Different\"") {
+		t.Fatal(got)
+	}
+	failedApply, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
+	if err != nil || failedApply.runErr == nil || !strings.Contains(failedApply.stderr.String(), "without explicit archived: false") {
+		t.Fatal("archived mixed apply did not fail closed", err, failedApply.runErr, failedApply.stderr.String())
+	}
+	mu.Lock()
+	if len(writes) != 2 {
+		t.Fatal("failed apply wrote settings", writes)
+	}
+	mu.Unlock()
 	input = repositoryInput("archived: true\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)

@@ -1,8 +1,6 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -48,9 +46,6 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		}
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
-		}
-		if state.Archived && *desired.Repository.Archived && archiveConflictsWithOtherManaged(desired) {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: fmt.Errorf("archived repository cannot update other managed resources without explicit archived: false")}
 		}
 		comparison.Managed++
 		if state.Archived != *desired.Repository.Archived {
