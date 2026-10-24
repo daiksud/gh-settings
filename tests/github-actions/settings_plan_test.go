@@ -94,7 +94,8 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		!strings.Contains(validate.Run, "gh-settings v0.18.0") ||
 		!strings.Contains(validate.Run, `validate >/dev/null 2>&1`) ||
 		!strings.Contains(validate.Run, "unset GH_TOKEN GITHUB_TOKEN GH_DEBUG") ||
-		!strings.Contains(validate.Run, "trap 'rm -rf") {
+		validate.ID != "validation" ||
+		!strings.Contains(validate.Run, "printf 'binary-path=%s") {
 		t.Fatal("checksum-verified published CLI must validate privately before App token issuance")
 	}
 	if token.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || token.ID != "app" ||
@@ -103,12 +104,18 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		token.With["client-id"] != "${{ vars.ANSWER26_CLIENT_ID }}" || token.With["private-key"] != "${{ secrets.ANSWER26_PRIVATE_KEY }}" {
 		t.Fatal("plan token must be separately protected, repo-scoped and without unrelated grants")
 	}
-	if plan.Uses != planAction || plan.ID != "review" || plan.With["command"] != "plan" ||
-		plan.With["plan-reporting"] != "status-only" || plan.With["token"] != "${{ steps.app.outputs.token }}" {
-		t.Fatal("the minted token may only reach a fixed private, read-only plan")
+	if plan.Uses != "" || plan.ID != "" || len(plan.With) != 0 || plan.Shell != "bash" ||
+		plan.Env["SETTINGS_CLI"] != "${{ steps.validation.outputs.binary-path }}" ||
+		plan.Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" ||
+		!strings.Contains(plan.Run, `action plan "${SETTINGS_CLI%/*}/plan.json" status-only >/dev/null 2>&1`) ||
+		!strings.Contains(plan.Run, "unset GITHUB_TOKEN GH_DEBUG") ||
+		strings.Contains(plan.Run, "GITHUB_STEP_SUMMARY") || strings.Contains(plan.Run, "GITHUB_OUTPUT") ||
+		strings.Contains(plan.Run, "action summary") {
+		t.Fatal("private plan must not emit an outcome/count or an Action Summary")
 	}
 	if verify.Env["GH_TOKEN"] != "${{ github.token }}" || !strings.Contains(verify.Run, "verify \"$PR_NUMBER\" \"$EXPECTED_HEAD\"") ||
-		cleanup.If != "always()" || !strings.Contains(cleanup.Run, "GITHUB_WORKSPACE/.github") {
+		cleanup.If != "always()" || cleanup.Env["VALIDATION_CLI"] != "${{ steps.validation.outputs.binary-path }}" ||
+		!strings.Contains(cleanup.Run, "GITHUB_WORKSPACE/.github") || !strings.Contains(cleanup.Run, "gh-settings-cli.") {
 		t.Fatal("freshness verification and owned sensitive cleanup must remain mandatory")
 	}
 }
@@ -199,7 +206,7 @@ printf '%s\n' "$RUNNER_TEMP/gh-settings-cli.fake/gh-settings"
 				t.Fatal(err)
 			}
 			cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", step.Run)
-			cmd.Env = append(os.Environ(), "GITHUB_WORKSPACE="+root, "RUNNER_TEMP="+root, "VALIDATE_STATUS="+tc.status)
+			cmd.Env = append(os.Environ(), "GITHUB_WORKSPACE="+root, "RUNNER_TEMP="+root, "VALIDATE_STATUS="+tc.status, "GITHUB_OUTPUT="+filepath.Join(root, "validation-outputs"))
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			err := cmd.Run()
@@ -216,6 +223,73 @@ printf '%s\n' "$RUNNER_TEMP/gh-settings-cli.fake/gh-settings"
 			if !tc.wantSuccess && !strings.Contains(text, "candidate settings validation failed") {
 				t.Fatalf("expected only generic validation failure: %q", text)
 			}
+			output, err := os.ReadFile(filepath.Join(root, "validation-outputs"))
+			if err != nil || string(output) != "binary-path="+bin+"\n" {
+				t.Fatalf("published CLI path was not passed privately to the plan: %q, %v", output, err)
+			}
 		})
+	}
+}
+
+func TestProtectedPlanHidesPolicyEqualityFromPublicSurfaces(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var w workflow
+	if err := yaml.Unmarshal(data, &w); err != nil {
+		t.Fatal(err)
+	}
+	step := w.Jobs["plan"].Steps[7]
+	if step.Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" || step.Env["SETTINGS_CLI"] != "${{ steps.validation.outputs.binary-path }}" {
+		t.Fatal("protected plan must use the published binary with narrowly scoped credentials")
+	}
+	var public []string
+	for _, remote := range []string{"changed", "no-difference"} {
+		t.Run(remote, func(t *testing.T) {
+			dir := t.TempDir()
+			bin := filepath.Join(dir, "gh-settings")
+			script := `#!/bin/bash
+if [[ "$1" != action || "$2" != plan || "$4" != status-only ]]; then
+  exit 79
+fi
+printf '%s\n' "$REMOTE_OUTCOME" > "$3"
+printf 'sensitive policy equals %s\n' "$REMOTE_OUTCOME" >&2
+printf 'sensitive policy is %s\n' "$REMOTE_OUTCOME"
+`
+			if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
+				t.Fatal(err)
+			}
+			summary := filepath.Join(dir, "summary")
+			output := filepath.Join(dir, "output")
+			cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", step.Run)
+			cmd.Env = append(os.Environ(),
+				"SETTINGS_CLI="+bin, "GH_TOKEN=local-fixture", "REMOTE_OUTCOME="+remote,
+				"GITHUB_STEP_SUMMARY="+summary, "GITHUB_OUTPUT="+output,
+			)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			if err := cmd.Run(); err != nil {
+				t.Fatalf("both managed outcomes must succeed: %v", err)
+			}
+			public = append(public, stdout.String()+stderr.String())
+			report, err := os.ReadFile(filepath.Join(dir, "plan.json"))
+			if err != nil || string(report) != remote+"\n" {
+				t.Fatalf("comparison did not execute privately: report=%q, err=%v", report, err)
+			}
+			info, err := os.Stat(filepath.Join(dir, "plan.json"))
+			if err != nil || info.Mode().Perm() != 0600 {
+				t.Fatalf("private comparison must remain owner-readable: %v, %v", info, err)
+			}
+			if _, err := os.Stat(summary); !os.IsNotExist(err) {
+				t.Fatal("protected plan must not publish an Action Summary")
+			}
+			if _, err := os.Stat(output); !os.IsNotExist(err) {
+				t.Fatal("protected plan must not publish a result output")
+			}
+		})
+	}
+	if len(public) != 2 || public[0] != "" || public[1] != "" {
+		t.Fatalf("private policy equality leaked into public diagnostics: %q", public)
 	}
 }

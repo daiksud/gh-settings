@@ -74,18 +74,21 @@ jobs:
           EXPECTED_HEAD: ${{ inputs.head_sha }}
         run: |
           "$RUNNER_TEMP/pr-settings" prepare "$PR_NUMBER" "$EXPECTED_HEAD" >> "$GITHUB_OUTPUT"
-      - name: Validate candidate data privately with verified published CLI
+      - name: Privately validate candidate data with the checksum-verified published CLI
+        id: validation
         shell: bash
         run: |
-          # The public Action's validate command can print parser diagnostics.
-          # Never put untrusted configuration values or errors in public logs.
+          # Never publish untrusted YAML, parser errors, or hidden policy data.
           unset GH_TOKEN GITHUB_TOKEN GH_DEBUG
           if ! binary=$(bash "$GITHUB_WORKSPACE/.published/action/install-cli.sh" 2>/dev/null); then
             echo 'published validation binary unavailable' >&2
             exit 1
           fi
-          directory="${binary%/*}"
-          trap 'rm -rf -- "$directory"' EXIT
+          case "$binary" in
+            "$RUNNER_TEMP"/gh-settings-cli.*/gh-settings) ;;
+            *) echo 'invalid published binary path' >&2; exit 1 ;;
+          esac
+          printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
           if [[ "$("$binary" --version 2>/dev/null)" != 'gh-settings v0.18.0' ]]; then
             echo 'published validation binary version mismatch' >&2
             exit 1
@@ -103,13 +106,24 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-administration: write
-      - name: Run published private status-only plan without executing candidate code
-        id: review
-        uses: daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66 # v0.18.0 (published, SHA-pinned)
-        with:
-          command: plan
-          plan-reporting: status-only
-          token: ${{ steps.app.outputs.token }}
+      - name: Read and compare privately without a public outcome or Summary
+        shell: bash
+        env:
+          SETTINGS_CLI: ${{ steps.validation.outputs.binary-path }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          unset GITHUB_TOKEN GH_DEBUG
+          umask 077
+          if [[ ! -x "$SETTINGS_CLI" ]]; then
+            echo 'published plan binary unavailable' >&2
+            exit 1
+          fi
+          # Both changed and no-difference succeed without a public signal.
+          # Do not run the Action Summary renderer or emit plan-outcome.
+          if ! "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" status-only >/dev/null 2>&1; then
+            echo 'protected settings plan failed' >&2
+            exit 1
+          fi
       - name: Verify that PR, merge revision and settings bytes are still current
         env:
           GH_TOKEN: ${{ github.token }}
@@ -117,8 +131,16 @@ jobs:
           EXPECTED_HEAD: ${{ inputs.head_sha }}
         run: |
           "$RUNNER_TEMP/pr-settings" verify "$PR_NUMBER" "$EXPECTED_HEAD" > /dev/null
-      - name: Remove private candidate data on ordinary success or failure
+      - name: Remove private candidate, plan report, and CLI on ordinary exit
         if: always()
+        env:
+          VALIDATION_CLI: ${{ steps.validation.outputs.binary-path }}
         run: |
           rm -f -- "$RUNNER_TEMP/pr-settings"
           rm -rf -- "$GITHUB_WORKSPACE/.git" "$GITHUB_WORKSPACE/.github"
+          if [[ -n "$VALIDATION_CLI" ]]; then
+            case "$VALIDATION_CLI" in
+              "$RUNNER_TEMP"/gh-settings-cli.*/gh-settings) rm -rf -- "${VALIDATION_CLI%/*}" ;;
+              *) echo 'invalid private plan cleanup path' >&2; exit 1 ;;
+            esac
+          fi
