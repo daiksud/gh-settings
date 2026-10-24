@@ -2,6 +2,7 @@ package settings
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -48,6 +49,16 @@ func TestActionsPolicyObservationAndTransition(t *testing.T) {
 		t.Fatal("export aliases observed state")
 	}
 	if _, err := (ActionsPolicyState{AllowedActions: "all"}).Declaration(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPrepareActionsDoesNotReportUnmanagedAllowedActions(t *testing.T) {
+	patterns := []string{"org/*"}
+	state := ActionsPolicyState{AllowedActions: "local_only"}
+	declaration := ActionsPolicyDeclaration{SelectedActions: SelectedActionsDeclaration{PatternsAllowed: &patterns}}
+	err := PrepareActions(state, declaration)
+	if err == nil || strings.Contains(err.Error(), state.AllowedActions) || !strings.Contains(err.Error(), "declare allowed_actions: selected") {
 		t.Fatal(err)
 	}
 }

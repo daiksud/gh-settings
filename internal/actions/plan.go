@@ -80,7 +80,8 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		report.Labels = append(report.Labels, labelPlanChange(change))
 	}
 	for _, change := range result.Comparison.Rulesets {
-		report.Rulesets = append(report.Rulesets, RulesetPlanChange{Operation: change.Operation(), Before: change.Before(), After: change.After()})
+		display := change.Display()
+		report.Rulesets = append(report.Rulesets, RulesetPlanChange{Operation: display.Operation(), Before: display.Before(), After: display.After()})
 	}
 	for _, change := range result.Comparison.Actions {
 		before, after := change.Values()

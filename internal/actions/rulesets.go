@@ -9,7 +9,8 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// RulesetPlanChange carries full writable policies, never transport IDs or apply input.
+// RulesetPlanChange carries declaration-owned presentation values, never
+// transport IDs, preserved unmanaged values, or apply input.
 type RulesetPlanChange struct {
 	Operation string                       `json:"operation"`
 	Before    *settings.RulesetDeclaration `json:"before,omitempty"`
@@ -57,17 +58,13 @@ func invalidRulesetReportValue(v any) bool {
 	}
 	return false
 }
-func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetChange, error) {
-	out := make([]settings.RulesetChange, 0, len(entries))
+func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDisplayChange, error) {
+	out := make([]settings.RulesetDisplayChange, 0, len(entries))
 	seen := map[string]bool{}
 	last := ""
 	deleting := false
 	for _, e := range entries {
-		var id int64 = 1
-		if e.Operation == "create" {
-			id = 0
-		}
-		change, err := settings.NewRulesetChange(e.Operation, id, e.Before, e.After)
+		change, err := settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)
 		if err != nil {
 			return nil, err
 		}

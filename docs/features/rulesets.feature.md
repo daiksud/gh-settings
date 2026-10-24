@@ -80,7 +80,7 @@ Bypass declarations use API actor types and IDs, not name lookup. A new actor mu
 
 ## Plan, apply and idempotence
 
-Plan is read-only and reads Rulesets only when declared, completing observation before returning any comparison. Count the collection as one managed resource even when empty; render explicit create/update/delete identities, nested attribute/membership differences and protection-removal effects in the CLI and same-version Action report/Summary. Escape names and values; never present an inherited policy as a managed operation.
+Plan is read-only and reads Rulesets only when declared, completing observation before returning any comparison. Count the collection as one managed resource even when empty; render explicit create/update/delete identities, declaration-owned nested attribute/membership differences and protection-removal effects in the CLI and same-version Action report/Summary. Omitted retained attributes stay out of presentation while remaining available to mutation assembly; deletion renders only the managed identity. Escape names and values; never present an inherited policy as a managed operation.
 
 Apply retains repository → topics → labels behavior, then reconciles declared Rulesets using a new complete read with the apply credential. Precompute and validate the entire Rulesets operation sequence and all request bodies before its first mutation. Merge declared attributes into the fresh complete writable observation: omission preserves, declared inner membership removes absent members. PUT collections are assembled completely so that an omitted parameter or sibling cannot disappear accidentally. If preservation or a target change cannot be represented by the supported API, fail before Rulesets writes instead of recreating the object.
 
@@ -110,7 +110,7 @@ Push/file restrictions, merge queues, deployments, code-scanning/licensing rules
 | Read adapter | Multiple/exact pages, failed later page/detail, wrong owner/ID/target, same-name inheritance, equivalent-case repository ownership, list summaries without target followed by mixed branch/tag/push details, disabled/evaluate policy, missing bypass, null and wrong types. Inject unknown keys separately at every writable response mapping: Ruleset, conditions/ref_name, rule/parameters, bypass actor and nested PR/check objects; require rejection, while discarding only explicitly classified read-only metadata. No plausible partial observation. |
 | Export / comparison | Complete writable export → decode → unchanged Rulesets plan equals zero; remote list/map reordering equals zero; a removed outer/inner member yields the exact delete/removal; omitted attributes remain unchanged. Failed export preserves the old file. |
 | Apply adapter / sequencing | Exact POST/PUT/DELETE payloads/IDs, preserved siblings/required companion values, no injected false/empty defaults, all Rulesets requests validated before first write, fresh-state recomputation, sorted creates/updates before deletes, no mutation on zero diff, failure/redirect stops later operations. |
-| CLI / Action | Explicit export opt-in, default export compatibility, managed count and escaped nested diffs/protection deletion, coherent private report/Summary validation and output on failures. |
+| CLI / Action | Explicit export opt-in, default export compatibility, managed count, declared-only escaped nested diffs/minimal protection deletion, coherent private report/Summary validation and output on failures. |
 | Built-product acceptance | Isolated existing-policy export → zero plan → edit/add/remove → exact CRUD → zero plan and no-write repeat apply; inherited/push/legacy objects untouched; mixed-resource partial failure and read-permission failure. |
 
 Use local HTTP/files/Git fixtures with dummy credentials. The #337 tests include a fixture shaped like an existing default-branch policy with bypass `[]`, three basic rules, PR approvals, and two integration-bound required checks, including every observed policy parameter. This must not install or modify the active repository Ruleset. Test mappings are added only when the corresponding tests exist; this design document itself is not executed by CI.
@@ -123,8 +123,8 @@ Use local HTTP/files/Git fixtures with dummy credentials. The #337 tests include
 | Strict YAML/null/unknown rejection, aliases and encode/decode | [Rulesets codec](../../internal/workspace/rulesets_test.go) |
 | Inventory/detail pagination, owner/target isolation, unknown fields and exact CRUD/actor null | [Rulesets API](../../internal/github/rulesets_test.go) |
 | Export opt-in, selective reads, preflight, sequence and partial failures | [Rulesets application](../../internal/app/rulesets_test.go) |
-| Native policy report and escaped Summary | [Rulesets Action presentation](../../internal/actions/rulesets_test.go) |
-| Built CLI export/zero-plan/edit/CRUD/repeat, unsupported policy, redirects and preserved export | [Rulesets process acceptance](../../tests/acceptance/rulesets_test.go) |
+| Native declared-only policy report and escaped Summary | [Rulesets Action presentation](../../internal/actions/rulesets_test.go) |
+| Built CLI declared-only plan/report/Summary, export/zero-plan/edit/CRUD/repeat, unsupported policy, redirects and preserved export | [Rulesets process acceptance](../../tests/acceptance/rulesets_test.go) |
 
 Tests use isolated Git/files and a local API with dummy credentials, not live policy writes. They do not establish actual write grants or published-package support. The API adapter pins `2026-03-10`; GitHub can still return additional unsupported content, which is rejected.
 

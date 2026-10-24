@@ -271,6 +271,65 @@ type RulesetChange struct {
 	operation     string
 	id            int64
 	before, after *RulesetDeclaration
+	display       RulesetDisplayChange
+}
+
+// RulesetDisplayChange contains only values owned by a declaration. Mutation
+// state remains on RulesetChange so omitted values can still be preserved in PUTs.
+type RulesetDisplayChange struct {
+	operation     string
+	before, after *RulesetDeclaration
+}
+
+func (c RulesetDisplayChange) Operation() string { return c.operation }
+func (c RulesetDisplayChange) Name() string {
+	if c.before != nil {
+		return c.before.Name
+	}
+	if c.after != nil {
+		return c.after.Name
+	}
+	return ""
+}
+func (c RulesetDisplayChange) Before() *RulesetDeclaration {
+	if c.before == nil {
+		return nil
+	}
+	v := cloneRuleset(*c.before)
+	return &v
+}
+func (c RulesetDisplayChange) After() *RulesetDeclaration {
+	if c.after == nil {
+		return nil
+	}
+	v := cloneRuleset(*c.after)
+	return &v
+}
+
+func NewRulesetDisplayChange(operation string, before, after *RulesetDeclaration) (RulesetDisplayChange, error) {
+	for _, d := range []*RulesetDeclaration{before, after} {
+		if d != nil {
+			if err := ValidateRuleset(*d, operation == "create"); err != nil {
+				return RulesetDisplayChange{}, err
+			}
+		}
+	}
+	valid := (operation == "create" && before == nil && after != nil) ||
+		(operation == "delete" && before != nil && after == nil && reflect.DeepEqual(*before, RulesetDeclaration{Name: before.Name})) ||
+		(operation == "update" && before != nil && after != nil && before.Name == after.Name && !reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)))
+	if !valid {
+		return RulesetDisplayChange{}, fmt.Errorf("invalid ruleset display operation")
+	}
+	out := RulesetDisplayChange{operation: operation}
+	if before != nil {
+		v := cloneRuleset(*before)
+		out.before = &v
+	}
+	if after != nil {
+		v := cloneRuleset(*after)
+		out.after = &v
+	}
+	return out, nil
 }
 
 func (c RulesetChange) Operation() string { return c.operation }
@@ -298,6 +357,9 @@ func (c RulesetChange) After() *RulesetDeclaration {
 	v := cloneRuleset(*c.after)
 	return &v
 }
+func (c RulesetChange) Display() RulesetDisplayChange {
+	return RulesetDisplayChange{operation: c.display.operation, before: c.display.Before(), after: c.display.After()}
+}
 func NewRulesetChange(operation string, id int64, before, after *RulesetDeclaration) (RulesetChange, error) {
 	for _, d := range []*RulesetDeclaration{before, after} {
 		if d != nil {
@@ -319,6 +381,17 @@ func NewRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 		v := cloneRuleset(*after)
 		c.after = &v
 	}
+	var displayBefore, displayAfter *RulesetDeclaration
+	if operation == "delete" {
+		displayBefore = &RulesetDeclaration{Name: before.Name}
+	} else {
+		displayBefore, displayAfter = before, after
+	}
+	display, err := NewRulesetDisplayChange(operation, displayBefore, displayAfter)
+	if err != nil {
+		return RulesetChange{}, err
+	}
+	c.display = display
 	return c, nil
 }
 func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations) ([]RulesetChange, error) {
@@ -357,6 +430,14 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		if err != nil {
 			return nil, err
 		}
+		if op == "update" {
+			beforeDisplay := projectRuleset(before.Policy, d, true)
+			afterDisplay := projectRuleset(after, d, false)
+			c.display, err = NewRulesetDisplayChange(op, &beforeDisplay, &afterDisplay)
+			if err != nil {
+				return nil, err
+			}
+		}
 		out = append(out, c)
 	}
 	names := []string{}
@@ -373,6 +454,147 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		out = append(out, c)
 	}
 	return out, nil
+}
+
+func projectRuleset(state, declared RulesetDeclaration, includeRemoved bool) RulesetDeclaration {
+	out := RulesetDeclaration{Name: state.Name}
+	if declared.Target != nil {
+		out.Target = copyRuleValue(state.Target)
+	}
+	if declared.Enforcement != nil {
+		out.Enforcement = copyRuleValue(state.Enforcement)
+	}
+	if declared.Conditions != nil && declared.Conditions.RefName != nil && (declared.Conditions.RefName.Include != nil || declared.Conditions.RefName.Exclude != nil) {
+		out.Conditions = &RulesetConditions{}
+		out.Conditions.RefName = &RefNameCondition{}
+		if declared.Conditions.RefName.Include != nil {
+			out.Conditions.RefName.Include = copyRuleList(state.Conditions.RefName.Include)
+		}
+		if declared.Conditions.RefName.Exclude != nil {
+			out.Conditions.RefName.Exclude = copyRuleList(state.Conditions.RefName.Exclude)
+		}
+	}
+	if declared.BypassActors != nil {
+		out.BypassActors = projectBypassActors(*state.BypassActors, *declared.BypassActors, includeRemoved)
+	}
+	if declared.Rules != nil {
+		out.Rules = projectRules(*state.Rules, *declared.Rules, includeRemoved)
+	}
+	return cloneRuleset(out)
+}
+
+func projectBypassActors(state, declared []BypassActor, includeRemoved bool) *[]BypassActor {
+	shapes := map[string]BypassActor{}
+	for _, actor := range declared {
+		shapes[actorKey(actor)] = actor
+	}
+	out := []BypassActor{}
+	for _, actor := range state {
+		shape, present := shapes[actorKey(actor)]
+		if !present && !includeRemoved {
+			continue
+		}
+		item := BypassActor{ActorType: actor.ActorType, ActorID: copyRuleValue(actor.ActorID)}
+		if present && shape.BypassMode != nil {
+			item.BypassMode = copyRuleValue(actor.BypassMode)
+		}
+		out = append(out, item)
+	}
+	return &out
+}
+
+func projectRules(state, declared []RulesetRule, includeRemoved bool) *[]RulesetRule {
+	shapes := map[string]RulesetRule{}
+	for _, rule := range declared {
+		shapes[rule.Type] = rule
+	}
+	out := []RulesetRule{}
+	for _, rule := range state {
+		shape, present := shapes[rule.Type]
+		if !present && !includeRemoved {
+			continue
+		}
+		item := RulesetRule{Type: rule.Type}
+		if present && shape.Parameters != nil {
+			item.Parameters = projectRuleParameters(rule.Parameters, shape.Parameters, includeRemoved)
+		}
+		out = append(out, item)
+	}
+	return &out
+}
+
+func projectRuleParameters(state, declared *RuleParameters, includeRemoved bool) *RuleParameters {
+	out := &RuleParameters{}
+	if declared.AllowedMergeMethods != nil {
+		out.AllowedMergeMethods = copyRuleList(state.AllowedMergeMethods)
+	}
+	if declared.DismissStaleReviewsOnPush != nil {
+		out.DismissStaleReviewsOnPush = copyRuleValue(state.DismissStaleReviewsOnPush)
+	}
+	if declared.RequireCodeOwnerReview != nil {
+		out.RequireCodeOwnerReview = copyRuleValue(state.RequireCodeOwnerReview)
+	}
+	if declared.RequireExtraApprovalForUnattributedChanges != nil {
+		out.RequireExtraApprovalForUnattributedChanges = copyRuleValue(state.RequireExtraApprovalForUnattributedChanges)
+	}
+	if declared.RequireLastPushApproval != nil {
+		out.RequireLastPushApproval = copyRuleValue(state.RequireLastPushApproval)
+	}
+	if declared.RequiredApprovingReviewCount != nil {
+		out.RequiredApprovingReviewCount = copyRuleValue(state.RequiredApprovingReviewCount)
+	}
+	if declared.RequiredReviewThreadResolution != nil {
+		out.RequiredReviewThreadResolution = copyRuleValue(state.RequiredReviewThreadResolution)
+	}
+	if declared.DismissalRestriction != nil && (declared.DismissalRestriction.Enabled != nil || declared.DismissalRestriction.AllowedActors != nil) {
+		out.DismissalRestriction = &ReviewDismissalRestriction{}
+		if declared.DismissalRestriction.Enabled != nil && state.DismissalRestriction != nil {
+			out.DismissalRestriction.Enabled = copyRuleValue(state.DismissalRestriction.Enabled)
+		}
+		if declared.DismissalRestriction.AllowedActors != nil && state.DismissalRestriction != nil {
+			out.DismissalRestriction.AllowedActors = copyRuleList(state.DismissalRestriction.AllowedActors)
+		}
+	}
+	if declared.RequiredReviewers != nil {
+		var current []RequiredReviewer
+		if state.RequiredReviewers != nil {
+			current = *state.RequiredReviewers
+		}
+		out.RequiredReviewers = projectRequiredReviewers(current, *declared.RequiredReviewers, includeRemoved)
+	}
+	if declared.RequiredStatusChecks != nil {
+		out.RequiredStatusChecks = copyRuleList(state.RequiredStatusChecks)
+	}
+	if declared.StrictRequiredStatusChecksPolicy != nil {
+		out.StrictRequiredStatusChecksPolicy = copyRuleValue(state.StrictRequiredStatusChecksPolicy)
+	}
+	if declared.DoNotEnforceOnCreate != nil {
+		out.DoNotEnforceOnCreate = copyRuleValue(state.DoNotEnforceOnCreate)
+	}
+	return cloneRuleParameters(out)
+}
+
+func projectRequiredReviewers(state, declared []RequiredReviewer, includeRemoved bool) *[]RequiredReviewer {
+	shapes := map[string]RequiredReviewer{}
+	for _, reviewer := range declared {
+		shapes[reviewActorKey(reviewer.Reviewer)] = reviewer
+	}
+	out := []RequiredReviewer{}
+	for _, reviewer := range state {
+		shape, present := shapes[reviewActorKey(reviewer.Reviewer)]
+		if !present && !includeRemoved {
+			continue
+		}
+		item := RequiredReviewer{Reviewer: reviewer.Reviewer}
+		if present && shape.MinimumApprovals != nil {
+			item.MinimumApprovals = copyRuleValue(reviewer.MinimumApprovals)
+		}
+		if present && shape.FilePatterns != nil {
+			item.FilePatterns = copyRuleList(reviewer.FilePatterns)
+		}
+		out = append(out, item)
+	}
+	return &out
 }
 func mergeRuleset(before, desired RulesetDeclaration) RulesetDeclaration {
 	out := cloneRuleset(before)

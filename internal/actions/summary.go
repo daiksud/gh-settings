@@ -141,7 +141,7 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	for _, change := range report.comparison.Labels.Values() {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))
 	}
-	for _, change := range report.comparison.Rulesets {
+	for _, change := range report.rulesets {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.RulesetLine(change)))
 	}
 	for _, change := range report.comparison.Actions {
@@ -164,6 +164,7 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 type validatedPlanReport struct {
 	outcome, diagnostic string
 	comparison          settings.Comparison
+	rulesets            []settings.RulesetDisplayChange
 }
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
@@ -214,7 +215,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if !valid {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report state")
 	}
-	comparison := settings.Comparison{Managed: report.Managed, Labels: labels, Rulesets: rulesets}
+	comparison := settings.Comparison{Managed: report.Managed, Labels: labels}
 	for _, raw := range report.Actions {
 		change, err := settings.NewActionsPolicyChange(raw.Field, raw.Before, raw.After)
 		if err != nil {
@@ -257,7 +258,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 		seen[change.Field()] = true
 		comparison.Changes = append(comparison.Changes, change)
 	}
-	return validatedPlanReport{outcome: report.Outcome, diagnostic: report.Diagnostic, comparison: comparison}, nil
+	return validatedPlanReport{outcome: report.Outcome, diagnostic: report.Diagnostic, comparison: comparison, rulesets: rulesets}, nil
 }
 
 func parseReportChange(raw PlanChange) (settings.Change, error) {

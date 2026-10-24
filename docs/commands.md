@@ -138,6 +138,8 @@ settings.labels: delete "obsolete" (removes issue/PR associations)
 
 A declared label collection counts as one managed item, including an empty list. Label attributes omitted from an existing definition are not compared or updated.
 
+Ruleset operations likewise show only declaration-owned values. Retained attributes omitted from YAML do not appear even though apply preserves them in complete mutation payloads. Declared nested collection membership, explicit false/zero/empty values, creates and names of deleted Rulesets remain visible; deletion does not disclose the removed member's unmanaged policy.
+
 Successful comparison exits 0 whether differences exist or not. File, validation, origin, authentication, API, decoding and output errors exit 1 with a diagnostic on stderr. Failures before output leave stdout empty. Plan changes neither configuration nor GitHub settings. Its output is an observation, not a saved execution plan or drift protection for apply.
 
 The [public Action](github-actions.md#inputs-outputs-and-failures) separately requires target/commit metadata and explicit plan/apply tokens, including for empty declarations.
