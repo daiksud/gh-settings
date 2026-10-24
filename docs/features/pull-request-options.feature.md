@@ -21,7 +21,7 @@ The shared `MergeMethodsState`, fixed query and deferred read retain their names
 
 Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 
-Current-source export saves twenty-five repository fields, plus complete topics and all label pages after every read and serialization succeeds. Repository comparison retains registry order, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once; current-source report/Summary supports fifty-one managed units across all adopted resources. Older packages retain their documented lower limits. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
+Current-source ordinary export saves twenty-three repository fields, plus complete topics and all label pages after every read and serialization succeeds. Archive and private forking remain separate, mutually incompatible opt-in selections. Repository comparison retains registry order, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once; current-source report/Summary supports a fifty-one-unit validation bound across all adopted resources. Older packages retain their documented lower limits. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
 
 ## Hosted read evidence
 

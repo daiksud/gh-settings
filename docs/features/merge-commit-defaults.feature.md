@@ -19,7 +19,7 @@ The [GraphQL public schema](https://docs.github.com/en/graphql/overview/public-s
 
 Apply includes declared fields only in the existing Administration-write REST PATCH. It adds no preliminary read, inferred companion value, merge-method update or new permission. Existing redirect/timeout/target and direct-apply race/partial-failure behavior remains unchanged. No PR mutation or branch-protection change is introduced.
 
-Current-source complete export saves twenty-five repository fields plus complete topics/all label pages after all reads and serialization succeed. Stable comparison order appends normal merge title/message after squash title/message and before later repository fields and resources. Each declared scalar counts once and each managed collection once; current-source report/Summary supports fifty-one managed units across all adopted resources. Older packages retain their documented lower limits. CLI/Summary quote enum strings, typed reports retain strings, and unsupported report enum values/types are rejected.
+Current-source ordinary export saves twenty-three repository fields plus complete topics/all label pages after all reads and serialization succeed. Archive and private forking remain separate, mutually incompatible opt-in selections. Stable comparison order appends normal merge title/message after squash title/message and before later repository fields and resources. Each declared scalar counts once and each managed collection once; current-source report/Summary supports a fifty-one-unit validation bound across all adopted resources. Older packages retain their documented lower limits. CLI/Summary quote enum strings, typed reports retain strings, and unsupported report enum values/types are rejected.
 
 ## Read-only hosted evidence
 

@@ -25,7 +25,7 @@ Apply uses the existing repository REST PATCH with Administration write. It send
 
 ## Export, ordering and presentation
 
-Complete export saves twenty-five repository fields in current source, fifteen in v0.14.0, thirteen in v0.13.0, eleven in v0.12.0, complete topics and all label pages only after all reads and serialization succeed. Older v0.11.0 retains its nine-field shape.
+Ordinary export saves twenty-three repository fields in current source, fifteen in v0.14.0, thirteen in v0.13.0, eleven in v0.12.0, complete topics and all label pages only after all reads and serialization succeed. Archive and private forking remain separate, mutually incompatible opt-in selections. Older v0.11.0 retains its nine-field shape.
 
 Repository comparison retains registry order for repository scalars, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once. Current-source report/Summary accepts at most fifty-one managed units across all adopted resources; older packages retain their documented lower limits. Enum changes retain native JSON strings and quoted CLI/Summary values. Unknown, empty or wrong-typed enum report values are rejected. Reports remain presentation data, never apply input.
 

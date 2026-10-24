@@ -243,7 +243,7 @@ settings:
 
 `true` enables the repository's Sponsorships setting and `false` disables it. Omission is unmanaged; null, strings, numbers, sequences and mappings are rejected before remote work. The [GraphQL repository and update-input contract](https://docs.github.com/en/graphql/reference/repos#updaterepositoryinput) defines this boolean separately from funding links. GitHub's [Sponsor button setup](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository) requires admin access and describes funding configuration, including inherited defaults. This tool does not read, create, replace or remove `FUNDING.yml`, select recipients, change inherited funding links, subscribe to sponsorships, or make payments. An accepted boolean alone is not evidence that a button with usable links is rendered when funding configuration is missing.
 
-Plan reads only this complete authenticated GraphQL boolean when declared; unrelated field-only plans retain their existing requests. Source export includes twenty-five repository fields and requires this observation as well. Missing/null/wrong-type values, unavailable repositories and partial GraphQL errors fail rather than becoming false; a failed export preserves the existing file. Read queries and the update's identity lookup disable rename following.
+Plan reads only this complete authenticated GraphQL boolean when declared; unrelated field-only plans retain their existing requests. Ordinary export includes twenty-three repository fields and requires this observation as well; archive and private forking are separate explicit selections. Missing/null/wrong-type values, unavailable repositories and partial GraphQL errors fail rather than becoming false; a failed export preserves the existing file. Read queries and the update's identity lookup disable rename following.
 
 Apply uses the existing validated repository-ID lookup and shared `updateRepository` mutation, sending only declared GraphQL fields and verifying returned identity and values. A sponsorship-only declaration sends no REST PATCH. Combined PR, Issue-policy and Sponsorships declarations share one lookup and mutation; explicitly declared REST fields run first. Repeated direct scalar apply still writes. Failures stop later resources and can leave earlier writes applied; no saved-plan apply, rollback or automatic retry is introduced.
 
@@ -295,7 +295,7 @@ Reads require complete policy visibility; writes require a credential authorized
 
 ## Default branch
 
-Published v0.16.0 and current source support optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-five repository fields, topics and labels.
+Published v0.16.0 and current source support optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Ordinary export includes twenty-three repository fields, topics and labels; archive and private forking require their explicit options.
 
 ```yaml
 schemaVersion: 1
@@ -329,7 +329,7 @@ Apply sends only declared fields through the existing Administration-write repos
 
 ## Web commit sign-off
 
-Published v0.16.0 and current source support optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; adopt v0.16.0 or newer before using it. Source export includes twenty-five repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Published v0.16.0 and current source support optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; adopt v0.16.0 or newer before using it. Ordinary export includes twenty-three repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1

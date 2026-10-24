@@ -31,7 +31,7 @@ Published v0.18.0 supports `settings.repository.has_sponsorships` under `schemaV
 
 - Given a successful authenticated query returns false
 - When full export completes
-- Then the source file contains explicit false among twenty-five repository fields
+- Then the source file contains explicit false among twenty-three ordinarily exported repository fields
 - And validation followed by plan reports no differences for unchanged values
 - And an unread, null or malformed value is not substituted for false
 

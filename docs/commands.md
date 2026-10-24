@@ -22,7 +22,7 @@ v0.14.0 adds [merge commit title/body defaults](features/merge-commit-defaults.f
 
 v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a sixteenth exported repository field; published v0.14.0 rejects it. Apply verifies the returned boolean when this field is declared; verification errors can occur after repository writes.
 
-Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Source export includes twenty-five repository fields; published v0.15.1 and older packages reject the new key.
+Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Current ordinary export includes twenty-three repository fields; published v0.15.1 and older packages reject the new key.
 
 Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
 
@@ -38,7 +38,7 @@ Published v0.17.0 adds [default workflow permissions](settings.md#default-workfl
 
 Published v0.18.0 supports [`archived`](settings.md#repository-archive-lifecycle) as an explicitly managed lifecycle boolean. Ordinary export excludes it; use `export --archive` to opt in. Unarchive precedes other writes and archive follows them, with identity and state verification. Published v0.17.0 and older packages reject the key and option.
 
-Published v0.18.0 supports [`has_sponsorships`](settings.md#sponsor-button-visibility), increasing full export to twenty-five repository fields together with archive and private forking. Plan reads its independent GraphQL boolean only when declared; apply shares the declared-only repository mutation and never edits funding destinations. Published v0.17.0 and older packages reject the key.
+Published v0.18.0 supports [`has_sponsorships`](settings.md#sponsor-button-visibility), increasing ordinary export to twenty-three repository fields. Archive and private forking are separate explicit selections and cannot be combined. Plan reads the Sponsor setting's independent GraphQL boolean only when declared; apply shares the declared-only repository mutation and never edits funding destinations. Published v0.17.0 and older packages reject the key.
 
 Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
