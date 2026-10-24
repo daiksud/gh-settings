@@ -19,13 +19,13 @@ func TestManagedRepositoryMergePreferences(t *testing.T) {
 	var config struct {
 		Settings struct {
 			Repository struct {
-				AllowMergeCommit       *bool  `yaml:"allow_merge_commit"`
-				AllowSquashMerge       *bool  `yaml:"allow_squash_merge"`
-				AllowRebaseMerge       *bool  `yaml:"allow_rebase_merge"`
-				SquashMergeCommitTitle string `yaml:"squash_merge_commit_title"`
-				SquashMergeCommitBody  string `yaml:"squash_merge_commit_message"`
-				MergeCommitTitle       string `yaml:"merge_commit_title"`
-				MergeCommitBody        string `yaml:"merge_commit_message"`
+				AllowMergeCommit       *bool   `yaml:"allow_merge_commit"`
+				AllowSquashMerge       *bool   `yaml:"allow_squash_merge"`
+				AllowRebaseMerge       *bool   `yaml:"allow_rebase_merge"`
+				SquashMergeCommitTitle string  `yaml:"squash_merge_commit_title"`
+				SquashMergeCommitBody  string  `yaml:"squash_merge_commit_message"`
+				MergeCommitTitle       *string `yaml:"merge_commit_title"`
+				MergeCommitBody        *string `yaml:"merge_commit_message"`
 			} `yaml:"repository"`
 		} `yaml:"settings"`
 	}
@@ -33,11 +33,14 @@ func TestManagedRepositoryMergePreferences(t *testing.T) {
 		t.Fatal(err)
 	}
 	repository := config.Settings.Repository
-	if repository.AllowMergeCommit == nil || !*repository.AllowMergeCommit || repository.AllowSquashMerge == nil || !*repository.AllowSquashMerge || repository.AllowRebaseMerge == nil || *repository.AllowRebaseMerge {
-		t.Fatal("managed repository must allow normal and squash merging only")
+	if repository.AllowMergeCommit == nil || *repository.AllowMergeCommit || repository.AllowSquashMerge == nil || !*repository.AllowSquashMerge || repository.AllowRebaseMerge == nil || *repository.AllowRebaseMerge {
+		t.Fatal("managed repository must allow squash merging only")
 	}
-	if repository.SquashMergeCommitTitle != "PR_TITLE" || repository.SquashMergeCommitBody != "PR_BODY" || repository.MergeCommitTitle != "PR_TITLE" || repository.MergeCommitBody != "PR_BODY" {
-		t.Fatalf("managed merge messages are not PR title/body: %+v", repository)
+	if repository.SquashMergeCommitTitle != "PR_TITLE" || repository.SquashMergeCommitBody != "PR_BODY" {
+		t.Fatalf("managed squash messages are not PR title/body: %+v", repository)
+	}
+	if repository.MergeCommitTitle != nil || repository.MergeCommitBody != nil {
+		t.Fatalf("disabled normal-merge metadata must remain unmanaged: %+v", repository)
 	}
 }
 
