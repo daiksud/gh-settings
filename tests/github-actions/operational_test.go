@@ -2,10 +2,44 @@ package githubactions
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
+
+func TestManagedRepositoryMergePreferences(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config struct {
+		Settings struct {
+			Repository struct {
+				AllowMergeCommit       *bool  `yaml:"allow_merge_commit"`
+				AllowSquashMerge       *bool  `yaml:"allow_squash_merge"`
+				AllowRebaseMerge       *bool  `yaml:"allow_rebase_merge"`
+				SquashMergeCommitTitle string `yaml:"squash_merge_commit_title"`
+				SquashMergeCommitBody  string `yaml:"squash_merge_commit_message"`
+				MergeCommitTitle       string `yaml:"merge_commit_title"`
+				MergeCommitBody        string `yaml:"merge_commit_message"`
+			} `yaml:"repository"`
+		} `yaml:"settings"`
+	}
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		t.Fatal(err)
+	}
+	repository := config.Settings.Repository
+	if repository.AllowMergeCommit == nil || *repository.AllowMergeCommit || repository.AllowSquashMerge == nil || !*repository.AllowSquashMerge || repository.AllowRebaseMerge == nil || *repository.AllowRebaseMerge {
+		t.Fatal("managed repository must allow only squash merging")
+	}
+	if repository.SquashMergeCommitTitle != "PR_TITLE" || repository.SquashMergeCommitBody != "PR_BODY" || repository.MergeCommitTitle != "PR_TITLE" || repository.MergeCommitBody != "PR_BODY" {
+		t.Fatalf("managed merge messages are not PR title/body: %+v", repository)
+	}
+}
 
 func TestOperationalPRPlan(t *testing.T) {
 	w, text := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
