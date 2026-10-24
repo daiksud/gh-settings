@@ -38,24 +38,31 @@ type forkingRepository struct {
 	} `json:"owner"`
 }
 
-func (s forkingRepository) observation(repo repository.Repository) (settings.ForkingObservation, error) {
-	if s.Private == nil || !*s.Private || s.Visibility != "private" || s.Fork == nil || *s.Fork || s.Archived == nil || *s.Archived || s.Owner.Type != "Organization" || !strings.EqualFold(s.Owner.Login, repo.Owner) || s.Allowed == nil {
-		return settings.ForkingObservation{}, fmt.Errorf("private forking requires a completely observed active, non-fork, private organization repository")
+func (s forkingRepository) observation(repo repository.Repository, requireActive bool) (settings.ForkingObservation, error) {
+	if s.Private == nil || !*s.Private || s.Visibility != "private" || s.Fork == nil || *s.Fork || s.Archived == nil || (requireActive && *s.Archived) || s.Owner.Type != "Organization" || !strings.EqualFold(s.Owner.Login, repo.Owner) || s.Allowed == nil {
+		if requireActive {
+			return settings.ForkingObservation{}, fmt.Errorf("private forking updates require a completely observed active, non-fork, private organization repository")
+		}
+		return settings.ForkingObservation{}, fmt.Errorf("private forking requires a completely observed non-fork, private organization repository")
 	}
 	return settings.NewForkingObservation(repo, s.ID, s.Owner.ID, s.FullName, *s.Allowed)
 }
-func (c *ForkingClient) repository(repo repository.Repository) (forkingRepository, settings.ForkingObservation, error) {
+func (c *ForkingClient) repository(repo repository.Repository, requireActive bool) (forkingRepository, settings.ForkingObservation, error) {
 	var r forkingRepository
 	if err := c.rest.Get(securityRepositoryPath(repo), &r); err != nil {
 		return r, settings.ForkingObservation{}, fmt.Errorf("read private forking repository: %w", err)
 	}
-	o, err := r.observation(repo)
+	o, err := r.observation(repo, requireActive)
 	return r, o, err
 }
 
 // Read never infers a hidden organization policy from metadata access or admin flags.
 func (c *ForkingClient) Read(repo repository.Repository) (settings.ForkingObservation, error) {
-	r, before, err := c.repository(repo)
+	return c.read(repo, false)
+}
+
+func (c *ForkingClient) read(repo repository.Repository, requireActive bool) (settings.ForkingObservation, error) {
+	r, before, err := c.repository(repo, requireActive)
 	if err != nil {
 		return settings.ForkingObservation{}, err
 	}
@@ -70,11 +77,11 @@ func (c *ForkingClient) Read(repo repository.Repository) (settings.ForkingObserv
 	if org.ID != r.Owner.ID || !strings.EqualFold(org.Login, repo.Owner) || org.Allowed == nil || !*org.Allowed {
 		return settings.ForkingObservation{}, fmt.Errorf("organization private forking policy is hidden, disabled or belongs to another owner")
 	}
-	_, after, err := c.repository(repo)
+	fresh, after, err := c.repository(repo, requireActive)
 	if err != nil {
 		return settings.ForkingObservation{}, err
 	}
-	if before != after {
+	if before != after || *r.Archived != *fresh.Archived {
 		return settings.ForkingObservation{}, fmt.Errorf("private forking target changed during observation")
 	}
 	return before, nil
@@ -83,7 +90,7 @@ func (c *ForkingClient) Read(repo repository.Repository) (settings.ForkingObserv
 // Update re-observes target and policy, sends one scalar, then checks response and
 // independent readback. Name-addressed endpoints do not provide an atomic lock.
 func (c *ForkingClient) Update(repo repository.Repository, desired bool) (bool, error) {
-	before, err := c.Read(repo)
+	before, err := c.read(repo, true)
 	if err != nil {
 		return false, &forkingPreWriteFailure{err}
 	}
@@ -91,7 +98,7 @@ func (c *ForkingClient) Update(repo repository.Repository, desired bool) (bool, 
 	if value == desired {
 		return false, nil
 	}
-	fresh, err := c.Read(repo)
+	fresh, err := c.read(repo, true)
 	if err != nil {
 		return false, &forkingPreWriteFailure{err}
 	}
@@ -106,11 +113,11 @@ func (c *ForkingClient) Update(repo repository.Repository, desired bool) (bool, 
 		return false, fmt.Errorf("update private forking policy (write may have applied): %w", err)
 	}
 	expected := before.WithAllowed(desired)
-	actual, err := response.observation(repo)
+	actual, err := response.observation(repo, true)
 	if err != nil || actual != expected {
 		return false, fmt.Errorf("private forking PATCH response did not confirm target and state; write may have applied")
 	}
-	actual, err = c.Read(repo)
+	actual, err = c.read(repo, true)
 	if err != nil {
 		return false, fmt.Errorf("private forking readback failed (write may have applied): %w", err)
 	}

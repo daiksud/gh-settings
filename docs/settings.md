@@ -26,7 +26,7 @@ The booleans accept `true` or `false`; the string fields accept strings, includi
 
 ## Private repository forking
 
-Published v0.18.0 supports `settings.repository.allow_forking` for active, non-fork, private repositories owned by organizations. Published v0.17.0 and older packages reject this key and `export --forking`.
+Published v0.18.0 supports `settings.repository.allow_forking` for non-fork, private repositories owned by organizations. Current source permits explicit unarchive-first composition; published v0.18.0 and v0.18.1 reject that composition. Published v0.17.0 and older packages reject this key and `export --forking`.
 
 ```yaml
 schemaVersion: 1
@@ -35,9 +35,9 @@ settings:
     allow_forking: false
 ```
 
-Omission is unmanaged. `true` permits private forking at the repository setting; `false` prohibits it there. Null, quoted values and other types are invalid. Public, internal, personal-owned, fork and archived repositories are outside this adopted subset. The matching organization must explicitly report that private repository forks are allowed, even to manage false. Hidden, missing, denied or disabled organization policy is an error, never a default or observed false. This setting does not delete existing forks, change organization/enterprise policy, or configure fork PR workflows and credentials.
+Omission is unmanaged. `true` permits private forking at the repository setting; `false` prohibits it there. Null, quoted values and other types are invalid. Public, internal, personal-owned and fork repositories are outside this adopted subset. The matching organization must explicitly report that private repository forks are allowed, even to manage false; GitHub requires that allowance before either repository choice. Hidden, missing, denied or disabled organization policy is an error, never a default or observed false. This setting does not delete existing forks, change organization/enterprise policy, or configure fork PR workflows and credentials.
 
-Ordinary export omits the field and adds no organization-policy read. `gh settings export --forking` includes the current value after complete applicability checks; a failed read preserves the existing file. It composes with other applicable export selections except `--archive`. Declaring `allow_forking` together with any `archived` value is rejected locally; manage lifecycle separately.
+Ordinary export omits the field and adds no organization-policy read. `gh settings export --forking` includes the current value after complete applicability checks; a failed read preserves the existing file. It composes with other applicable export selections except `--archive`, which remains rejected because an archived export could not be safely reapplied. Current source accepts `allow_forking` with explicit `archived: false`: plan can compare both fields while archived, and apply performs the isolated unarchive before the fork-policy phase. `archived: true` remains invalid with this field. Without explicit unarchive intent, plan may report the observed fork setting of an archived target, but apply fails before a fork-setting write.
 
 Plan performs only reads and displays a native boolean difference. Apply processes this setting after other declared resources, checks complete current target/policy state, skips a match, then rechecks before a PATCH containing only `allow_forking`. The response and an independent readback must confirm the same repository/organization identities and desired value. A pre-write failure makes no forking-policy write; a failed PATCH or readback leaves its effects uncertain. Earlier successful resource writes remain applied. There is no automatic retry, rollback, fork creation/deletion or atomic lock against concurrent changes. Success verifies the repository setting, not every actor's ability to fork under higher-level restrictions.
 

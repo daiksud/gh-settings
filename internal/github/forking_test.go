@@ -32,7 +32,7 @@ func TestForkingRequiresPositiveApplicabilityAndOrganizationPolicy(t *testing.T)
 		{"internal", strings.Replace(forkingMetadata(false), `"visibility":"private"`, `"visibility":"internal"`, 1), forkingOrg, 200, false},
 		{"personal", strings.Replace(forkingMetadata(false), `"Organization"`, `"User"`, 1), forkingOrg, 200, false},
 		{"fork", strings.Replace(forkingMetadata(false), `"fork":false`, `"fork":true`, 1), forkingOrg, 200, false},
-		{"archived", strings.Replace(forkingMetadata(false), `"archived":false`, `"archived":true`, 1), forkingOrg, 200, false},
+		{"archived read", strings.Replace(forkingMetadata(false), `"archived":false`, `"archived":true`, 1), forkingOrg, 200, true},
 		{"missing allowed", strings.Replace(forkingMetadata(false), `"allow_forking":false,`, ``, 1), forkingOrg, 200, false},
 		{"null allowed", strings.Replace(forkingMetadata(false), `"allow_forking":false`, `"allow_forking":null`, 1), forkingOrg, 200, false},
 		{"wrong target", strings.Replace(forkingMetadata(false), `owner/current`, `owner/other`, 1), forkingOrg, 200, false},
@@ -87,6 +87,28 @@ func TestForkingRequiresPositiveApplicabilityAndOrganizationPolicy(t *testing.T)
 		})
 	}
 }
+
+func TestForkingUpdateRequiresActiveRepository(t *testing.T) {
+	writes := 0
+	rest := writeTestClient(t, func(r *http.Request) (*http.Response, error) {
+		if r.Method == "PATCH" {
+			writes++
+		}
+		body := strings.Replace(forkingMetadata(false), `"archived":false`, `"archived":true`, 1)
+		if r.URL.Path == "/orgs/owner" {
+			body = forkingOrg
+		}
+		return archiveHTTP(r, 200, body), nil
+	})
+	c := ForkingClient{rest.rest}
+	for _, desired := range []bool{false, true} {
+		wrote, err := c.Update(forkingRepo, desired)
+		var pre *forkingPreWriteFailure
+		if err == nil || wrote || !errors.As(err, &pre) || writes != 0 {
+			t.Fatal(desired, wrote, err, writes)
+		}
+	}
+}
 func TestForkingUpdateFreshNarrowIdempotentAndVerified(t *testing.T) {
 	for _, desired := range []bool{false, true} {
 		t.Run(fmt.Sprint(desired), func(t *testing.T) {
@@ -126,7 +148,7 @@ func TestForkingUpdateFreshNarrowIdempotentAndVerified(t *testing.T) {
 	}
 }
 func TestForkingStopsOnConcurrentOrUncertainState(t *testing.T) {
-	for _, mode := range []string{"identity during read", "policy before write", "state before write", "patch denied", "patch wrong identity", "patch ignored", "readback wrong state", "readback policy denied"} {
+	for _, mode := range []string{"identity during read", "archive during read", "policy before write", "state before write", "patch denied", "patch wrong identity", "patch ignored", "readback wrong state", "readback policy denied"} {
 		t.Run(mode, func(t *testing.T) {
 			reads, orgReads, writes := 0, 0, 0
 			rest := writeTestClient(t, func(r *http.Request) (*http.Response, error) {
@@ -154,6 +176,9 @@ func TestForkingStopsOnConcurrentOrUncertainState(t *testing.T) {
 					if mode == "identity during read" && reads == 2 {
 						body = strings.Replace(body, `"id":42`, `"id":43`, 1)
 					}
+					if mode == "archive during read" && reads == 2 {
+						body = strings.Replace(body, `"archived":false`, `"archived":true`, 1)
+					}
 					if mode == "state before write" && reads >= 3 {
 						body = forkingMetadata(true)
 					}
@@ -168,7 +193,7 @@ func TestForkingStopsOnConcurrentOrUncertainState(t *testing.T) {
 			if err == nil || wrote {
 				t.Fatal("unconfirmed success", wrote, err)
 			}
-			prewrite := strings.Contains(mode, "before write") || mode == "identity during read"
+			prewrite := strings.Contains(mode, "before write") || strings.Contains(mode, "during read")
 			var pre *forkingPreWriteFailure
 			if errors.As(err, &pre) != prewrite || (prewrite && writes != 0) || (!prewrite && writes != 1) {
 				t.Fatal(err, writes)
