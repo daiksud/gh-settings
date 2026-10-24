@@ -17,6 +17,7 @@ func TestForkingExportPlanApplyFailureAndPrivateReport(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
 	allowed := true
+	archived := false
 	mode := ""
 	orgReads, writes, redirects := 0, 0, 0
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
@@ -66,6 +67,8 @@ func TestForkingExportPlanApplyFailureAndPrivateReport(t *testing.T) {
 				}
 				if v, ok := payload["allow_forking"].(bool); ok {
 					allowed = v
+				} else if v, ok := payload["archived"].(bool); ok {
+					archived = v
 				} else if _, ok := payload["description"]; !ok {
 					t.Error(payload)
 					w.WriteHeader(400)
@@ -82,7 +85,7 @@ func TestForkingExportPlanApplyFailureAndPrivateReport(t *testing.T) {
 			base["private"] = true
 			base["visibility"] = "private"
 			base["fork"] = false
-			base["archived"] = false
+			base["archived"] = archived
 			base["allow_forking"] = allowed
 			base["owner"] = map[string]any{"id": 7, "login": "owner", "type": "Organization"}
 			if mode == "public" {
@@ -221,5 +224,26 @@ func TestForkingExportPlanApplyFailureAndPrivateReport(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, repositoryInput("allow_forking: false\narchived: false\n")); err != nil {
 		t.Fatal(err)
 	}
-	run(false, "validate")
+	run(true, "validate")
+	mu.Lock()
+	archived = true
+	allowed = true
+	count = writes
+	mu.Unlock()
+	plan = run(true, "plan")
+	archiveChange := "settings.repository.archived: true → false"
+	forkingChange := "settings.repository.allow_forking: true → false"
+	if !strings.Contains(plan, archiveChange) || !strings.Contains(plan, forkingChange) || strings.Index(plan, archiveChange) > strings.Index(plan, forkingChange) {
+		t.Fatal(plan)
+	}
+	run(true, "apply")
+	run(true, "apply")
+	mu.Lock()
+	afterWrites := writes
+	afterArchive := archived
+	afterForking := allowed
+	mu.Unlock()
+	if afterWrites != count+2 || afterArchive || afterForking {
+		t.Fatal("explicit unarchive-first composition", count, afterWrites, afterArchive, afterForking)
+	}
 }

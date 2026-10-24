@@ -26,10 +26,11 @@ func TestForkingBooleanRoundTripAndComposition(t *testing.T) {
 			t.Fatal(v)
 		}
 	}
-	for _, v := range []string{"true", "false"} {
-		if _, err := DecodeConfig([]byte("schemaVersion: 1\nsettings: {repository: {allow_forking: false, archived: " + v + "}}\n")); err == nil {
-			t.Fatal("accepted lifecycle composition", v)
-		}
+	if _, err := DecodeConfig([]byte("schemaVersion: 1\nsettings: {repository: {allow_forking: false, archived: true}}\n")); err == nil {
+		t.Fatal("accepted archive-after-forking composition")
+	}
+	if _, err := DecodeConfig([]byte("schemaVersion: 1\nsettings: {repository: {allow_forking: false, archived: false}}\n")); err != nil {
+		t.Fatal("rejected explicit unarchive-first composition", err)
 	}
 	d, err := DecodeConfig([]byte("schemaVersion: 1\nsettings: {repository: {has_issues: false}}\n"))
 	if err != nil || d.Repository.AllowForking != nil {

@@ -6,7 +6,7 @@ description: Adopt a bounded repository allow_forking boolean with explicit expo
 
 ## Status
 
-Accepted for the bounded #330 implementation, published in v0.18.0. Published v0.17.0 and older packages do not support this field or export option. Publication does not authorize live forking-policy changes, organization policy updates or broader credentials.
+Accepted for the bounded #330 implementation, published in v0.18.0. The #415 reassessment permits an explicit unarchive-first declaration in current source; published v0.18.0 and v0.18.1 retain the earlier lifecycle-composition rejection. Published v0.17.0 and older packages do not support this field or export option. Publication does not authorize live forking-policy changes, organization policy updates or broader credentials.
 
 ## Context
 
@@ -16,9 +16,9 @@ The [organization REST response](https://docs.github.com/en/rest/orgs/orgs#get-a
 
 ## Decision
 
-Adopt `settings.repository.allow_forking` only for completely observed active, non-fork, private organization repositories whose matching organization reports `members_can_fork_private_repositories: true`. Require positive repository/organization IDs, canonical target names, explicit visibility/private/fork/archive booleans and a present repository policy boolean. Missing/null/denied/redirected data or disabled organization policy fails both true and false declarations. Internal repositories, fork-network semantics and lifecycle composition remain unadopted.
+Adopt `settings.repository.allow_forking` only for completely observed non-fork, private organization repositories whose matching organization reports `members_can_fork_private_repositories: true`. GitHub's repository policy guide requires the organization allowance before an administrator can allow or disallow repository forks, so disabled, hidden, missing, denied or redirected organization policy fails both true and false declarations. Require positive repository/organization IDs, canonical target names, explicit visibility/private/fork/archive booleans and a present repository policy boolean. Internal repositories and fork-network semantics remain unadopted.
 
-Omission is unmanaged; false is explicit repository prohibition. Null and non-booleans are invalid. Ordinary export remains unchanged; `export --forking` opts into this additional observation. Reject composition with `archived` and `--archive` locally. Plan is read-only. Apply runs after other resources, reacquires target/policy before writing, skips matches, and sends only `allow_forking`. Complete PATCH response and independent readback must confirm target and requested state, including continuing organization applicability.
+Omission is unmanaged; false is explicit repository prohibition. Null and non-booleans are invalid. `archived: false` may be declared with `allow_forking`: plan observes both settings while the repository is archived, and apply performs the isolated verified unarchive before requiring an active repository and updating the fork setting. `archived: true` remains incompatible, and `allow_forking` without explicit unarchive intent cannot mutate an archived target. Ordinary export remains unchanged; `export --forking` opts into the additional policy observation, while combining it with `--archive` remains rejected because an archived export would produce an unappliable declaration. Apply runs after other resources, reacquires target/policy before writing, skips matches, and sends only `allow_forking`. Complete PATCH response and independent readback must confirm target and requested state, including continuing organization applicability.
 
 ## Consequences
 

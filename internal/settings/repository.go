@@ -146,8 +146,8 @@ func (d RepositoryDeclaration) RepositoryAccessEmpty() bool {
 }
 
 func (d RepositoryDeclaration) ValidateForkingComposition() error {
-	if d.AllowForking != nil && d.Archived != nil {
-		return errors.New("allow_forking cannot be combined with archived; manage lifecycle separately")
+	if d.AllowForking != nil && d.Archived != nil && *d.Archived {
+		return errors.New("allow_forking cannot be combined with archived: true; explicitly unarchive first")
 	}
 	return nil
 }

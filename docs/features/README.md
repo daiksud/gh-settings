@@ -66,4 +66,4 @@ Published v0.18.0 adds the bounded [custom property values](custom-properties.fe
 
 The [repository access design](repository-access.feature.md) reserves collaborator/team ownership, pending invitation outcomes and revocation gates for #356/#357. It is unimplemented; current source and published packages reject access declarations and export options.
 
-Published v0.18.0 adds the bounded [private repository forking policy](private-forking.feature.md), with complete organization-policy observation and explicit export selection. Published v0.17.0 and older packages reject it; public/internal/personal/fork/archive targets and lifecycle composition remain unadopted.
+Published v0.18.0 adds the bounded [private repository forking policy](private-forking.feature.md), with complete organization-policy observation and explicit export selection. Current source permits an archived target only with explicit `archived: false` unarchive-first intent; published v0.18.0 and v0.18.1 retain the earlier composition rejection. Published v0.17.0 and older packages reject the feature; public/internal/personal/fork targets remain unadopted.
