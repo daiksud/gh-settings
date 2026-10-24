@@ -98,8 +98,9 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 - Given reviewed labels on the merged PRs included by GitHub
 - When the publisher requests native notes with the version, frozen target SHA, previous tag, and `.github/release.yml`
-- Then breaking labels take precedence over feature/performance/deprecation and fix/revert labels
-- And the Chore catch-all retains uncategorized PRs
+- Then breaking labels take precedence over deprecation, feature/performance and fix labels
+- And deprecation takes precedence over feature/performance and fix labels
+- And the Maintenance catch-all retains every remaining PR, including revert and unlabeled PRs
 - And a minimal supplement preserves committed breaking migration footers as escaped text
 - And an immutable comparison covers the complete source interval, including direct commits
 - And native notes are not claimed to contain every PR body or every Git commit as an entry

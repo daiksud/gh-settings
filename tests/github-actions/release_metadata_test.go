@@ -105,21 +105,66 @@ func TestNativeReleaseNoteCategories(t *testing.T) {
 	}
 	var config struct {
 		Changelog struct {
+			Exclude struct {
+				Labels  []string `yaml:"labels"`
+				Authors []string `yaml:"authors"`
+			} `yaml:"exclude"`
 			Categories []category `yaml:"categories"`
 		} `yaml:"changelog"`
 	}
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		t.Fatal(err)
 	}
-	wantTitles := []string{"🚨 BREAKING CHANGE", "✨ New Feature", "🐛 Bug Fix", "🧹 Chore"}
-	wantLabels := [][]string{{"BREAKING CHANGE"}, {"feat", "perf", "DEPRECATED"}, {"fix", "revert"}, {"*"}}
-	wantExclusions := [][]string{nil, {"BREAKING CHANGE"}, {"BREAKING CHANGE", "feat", "perf", "DEPRECATED"}, nil}
+	wantTitles := []string{"💥 BREAKING CHANGE", "⚠️ DEPRECATED", "✨ New Feature", "🐛 Bug Fix", "🛠️ Maintenance"}
+	wantLabels := [][]string{{"BREAKING CHANGE"}, {"DEPRECATED"}, {"feat", "perf"}, {"fix"}, {"*"}}
+	wantExclusions := [][]string{nil, {"BREAKING CHANGE"}, {"BREAKING CHANGE", "DEPRECATED"}, {"BREAKING CHANGE", "DEPRECATED", "feat", "perf"}, nil}
 	if len(config.Changelog.Categories) != len(wantTitles) {
-		t.Fatal("native notes must retain the four ordered reader-facing categories")
+		t.Fatal("native notes must retain the five ordered reader-facing categories")
 	}
 	for i, c := range config.Changelog.Categories {
 		if c.Title != wantTitles[i] || !reflect.DeepEqual(c.Labels, wantLabels[i]) || !reflect.DeepEqual(c.Exclude.Labels, wantExclusions[i]) {
 			t.Fatalf("category %d loses compatibility precedence or uncategorized changes: %+v", i, c)
+		}
+	}
+	if len(config.Changelog.Exclude.Labels) != 0 || len(config.Changelog.Exclude.Authors) != 0 {
+		t.Fatal("native notes must not globally exclude pull requests")
+	}
+
+	categoryFor := func(labels ...string) string {
+		present := make(map[string]bool, len(labels))
+		for _, label := range labels {
+			present[label] = true
+		}
+		for _, c := range config.Changelog.Categories {
+			excluded := false
+			for _, label := range c.Exclude.Labels {
+				excluded = excluded || present[label]
+			}
+			if excluded {
+				continue
+			}
+			for _, label := range c.Labels {
+				if label == "*" || present[label] {
+					return c.Title
+				}
+			}
+		}
+		return ""
+	}
+	for _, tt := range []struct {
+		labels []string
+		want   string
+	}{
+		{[]string{"BREAKING CHANGE", "DEPRECATED", "feat", "fix"}, "💥 BREAKING CHANGE"},
+		{[]string{"DEPRECATED", "feat", "fix"}, "⚠️ DEPRECATED"},
+		{[]string{"feat", "perf", "fix"}, "✨ New Feature"},
+		{[]string{"fix", "revert"}, "🐛 Bug Fix"},
+		{[]string{"revert"}, "🛠️ Maintenance"},
+		{[]string{"docs", "refactor", "build", "ci", "test", "chore"}, "🛠️ Maintenance"},
+		{nil, "🛠️ Maintenance"},
+	} {
+		if got := categoryFor(tt.labels...); got != tt.want {
+			t.Fatalf("labels %v categorized as %q, want %q", tt.labels, got, tt.want)
 		}
 	}
 }
