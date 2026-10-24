@@ -6,13 +6,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v4"
 )
 
-const planAction = "daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66"
+const planAction = "daiksud/gh-settings@e4a90d281aff8eab3f057eadcdbf609330c014a0"
 
 func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
@@ -58,8 +59,8 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		!reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read", "pull-requests": "read"}) || j.Continue || len(j.Env) != 0 {
 		t.Fatal("plan job must be protected, main-only, inactive by default and read-only")
 	}
-	if len(j.Steps) != 10 {
-		t.Fatalf("expected ten controlled steps, got %d", len(j.Steps))
+	if len(j.Steps) != 11 {
+		t.Fatalf("expected eleven controlled steps, got %d", len(j.Steps))
 	}
 	for i, s := range j.Steps {
 		if s.Continue || strings.Contains(s.Run, "gh settings apply") || strings.Contains(s.Run, "workflow_dispatch") ||
@@ -71,7 +72,7 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 			t.Fatalf("step %d has an unsafe shell credential or candidate code path", i)
 		}
 	}
-	checkout, published, build, prepare, validate, token, plan, verify, cleanup := j.Steps[0], j.Steps[1], j.Steps[3], j.Steps[4], j.Steps[5], j.Steps[6], j.Steps[7], j.Steps[8], j.Steps[9]
+	checkout, published, build, prepare, validate, token, plan, verify, summary, cleanup := j.Steps[0], j.Steps[1], j.Steps[3], j.Steps[4], j.Steps[5], j.Steps[6], j.Steps[7], j.Steps[8], j.Steps[9], j.Steps[10]
 	if checkout.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
 		checkout.With["ref"] != "${{ github.sha }}" || checkout.With["path"] != ".trusted" ||
 		checkout.With["persist-credentials"] != "false" || !strings.Contains(build.Run, "./scripts/pr-settings") {
@@ -79,7 +80,7 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 	}
 	if published.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
 		published.With["repository"] != "daiksud/gh-settings" ||
-		published.With["ref"] != "6d3146b30860692f84dc54e32d746e6fbbb55c66" ||
+		published.With["ref"] != "e4a90d281aff8eab3f057eadcdbf609330c014a0" ||
 		published.With["path"] != ".published" ||
 		published.With["persist-credentials"] != "false" {
 		t.Fatal("private validation installer must come from the exact published release revision")
@@ -91,8 +92,9 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 	}
 	if validate.Uses != "" || len(validate.With) != 0 || validate.Shell != "bash" ||
 		!strings.Contains(validate.Run, ".published/action/install-cli.sh") ||
-		!strings.Contains(validate.Run, "gh-settings v0.18.0") ||
+		!strings.Contains(validate.Run, "gh-settings v0.18.1") ||
 		!strings.Contains(validate.Run, `validate >/dev/null 2>&1`) ||
+		!strings.Contains(validate.Run, `action metadata >> "$GITHUB_OUTPUT" 2>/dev/null`) ||
 		!strings.Contains(validate.Run, "unset GH_TOKEN GITHUB_TOKEN GH_DEBUG") ||
 		validate.ID != "validation" ||
 		!strings.Contains(validate.Run, "printf 'binary-path=%s") {
@@ -104,20 +106,30 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 		token.With["client-id"] != "${{ vars.ANSWER26_CLIENT_ID }}" || token.With["private-key"] != "${{ secrets.ANSWER26_PRIVATE_KEY }}" {
 		t.Fatal("plan token must be separately protected, repo-scoped and without unrelated grants")
 	}
-	if plan.Uses != "" || plan.ID != "" || len(plan.With) != 0 || plan.Shell != "bash" ||
+	if plan.Uses != "" || plan.ID != "observation" || len(plan.With) != 0 || plan.Shell != "bash" ||
 		plan.Env["SETTINGS_CLI"] != "${{ steps.validation.outputs.binary-path }}" ||
 		plan.Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" ||
-		!strings.Contains(plan.Run, `action plan "${SETTINGS_CLI%/*}/plan.json" status-only >/dev/null 2>&1`) ||
+		!strings.Contains(plan.Run, `action plan "${SETTINGS_CLI%/*}/plan.json" >/dev/null 2>&1`) ||
 		!strings.Contains(plan.Run, "unset GITHUB_TOKEN GH_DEBUG") ||
-		strings.Contains(plan.Run, "protected settings plan failed") ||
-		strings.Contains(plan.Run, "GITHUB_STEP_SUMMARY") || strings.Contains(plan.Run, "GITHUB_OUTPUT") ||
+		!strings.Contains(plan.Run, "settings observation failed") ||
+		!strings.Contains(plan.Run, `printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"`) ||
+		strings.Contains(plan.Run, "GITHUB_STEP_SUMMARY") ||
 		strings.Contains(plan.Run, "action summary") {
-		t.Fatal("private plan must not emit or propagate an outcome, error, count or Action Summary")
+		t.Fatal("plan must fail honestly without logging raw observation diagnostics")
 	}
 	if verify.Env["GH_TOKEN"] != "${{ github.token }}" || !strings.Contains(verify.Run, "verify \"$PR_NUMBER\" \"$EXPECTED_HEAD\"") ||
+		summary.Env["GH_TOKEN"] != "" || summary.Env["SETTINGS_CLI"] != "${{ steps.validation.outputs.binary-path }}" ||
+		summary.Env["SETTINGS_ACTION_REF"] != "e4a90d281aff8eab3f057eadcdbf609330c014a0" ||
+		summary.Env["PR_NUMBER"] != "${{ steps.candidate.outputs.pr-number }}" ||
+		summary.Env["HEAD_SHA"] != "${{ steps.candidate.outputs.head-sha }}" ||
+		summary.Env["BASE_SHA"] != "${{ steps.candidate.outputs.base-sha }}" ||
+		summary.Env["CONFIG_SHA256"] != "${{ steps.candidate.outputs.config-sha256 }}" ||
+		summary.Env["PLAN_STATUS"] != "${{ steps.observation.outputs.exit-status }}" ||
+		!strings.Contains(summary.Run, "Protected settings observation") ||
+		!strings.Contains(summary.Run, `action summary "${SETTINGS_CLI%/*}/plan.json" "$GITHUB_STEP_SUMMARY" >/dev/null 2>&1`) ||
 		cleanup.If != "always()" || cleanup.Env["VALIDATION_CLI"] != "${{ steps.validation.outputs.binary-path }}" ||
 		!strings.Contains(cleanup.Run, "GITHUB_WORKSPACE/.github") || !strings.Contains(cleanup.Run, "gh-settings-cli.") {
-		t.Fatal("freshness verification and owned sensitive cleanup must remain mandatory")
+		t.Fatal("freshness verification, declared-only Summary and owned sensitive cleanup must remain mandatory")
 	}
 }
 
@@ -188,10 +200,12 @@ func TestProtectedPlanValidationDoesNotLogUntrustedDiagnostics(t *testing.T) {
 			bin := filepath.Join(binDir, "gh-settings")
 			installed := `#!/bin/bash
 if [[ "$1" == --version ]]; then
-  echo 'gh-settings v0.18.0'
+  echo 'gh-settings v0.18.1'
 elif [[ "$1" == validate ]]; then
   echo 'SENSITIVE_CANDIDATE_VALUE' >&2
   exit "$VALIDATE_STATUS"
+elif [[ "$1 $2" == 'action metadata' ]]; then
+  printf 'config-sha=%040d\ntarget=daiksud/gh-settings\ncli-version=v0.18.1\ncli-sha256=%064d\n' 0 0
 else
   exit 44
 fi
@@ -225,14 +239,18 @@ printf '%s\n' "$RUNNER_TEMP/gh-settings-cli.fake/gh-settings"
 				t.Fatalf("expected only generic validation failure: %q", text)
 			}
 			output, err := os.ReadFile(filepath.Join(root, "validation-outputs"))
-			if err != nil || string(output) != "binary-path="+bin+"\n" {
+			wantOutput := "binary-path=" + bin + "\n"
+			if tc.wantSuccess {
+				wantOutput += "config-sha=" + strings.Repeat("0", 40) + "\ntarget=daiksud/gh-settings\ncli-version=v0.18.1\ncli-sha256=" + strings.Repeat("0", 64) + "\n"
+			}
+			if err != nil || string(output) != wantOutput {
 				t.Fatalf("published CLI path was not passed privately to the plan: %q, %v", output, err)
 			}
 		})
 	}
 }
 
-func TestProtectedPlanHidesPolicyResultFromPublicSurfaces(t *testing.T) {
+func TestProtectedPlanReportsHonestDeclaredOnlyOutcomes(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
 	if err != nil {
 		t.Fatal(err)
@@ -241,70 +259,117 @@ func TestProtectedPlanHidesPolicyResultFromPublicSurfaces(t *testing.T) {
 	if err := yaml.Unmarshal(data, &w); err != nil {
 		t.Fatal(err)
 	}
-	step := w.Jobs["plan"].Steps[7]
-	if step.Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" || step.Env["SETTINGS_CLI"] != "${{ steps.validation.outputs.binary-path }}" {
+	plan, verify, summary := w.Jobs["plan"].Steps[7], w.Jobs["plan"].Steps[8], w.Jobs["plan"].Steps[9]
+	if plan.Env["GH_TOKEN"] != "${{ steps.app.outputs.token }}" || plan.Env["SETTINGS_CLI"] != "${{ steps.validation.outputs.binary-path }}" {
 		t.Fatal("protected plan must use the published binary with narrowly scoped credentials")
 	}
-	var public []string
+	run := func(script string, env map[string]string) (string, error) {
+		cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", script)
+		cmd.Env = os.Environ()
+		for name, value := range env {
+			cmd.Env = append(cmd.Env, name+"="+value)
+		}
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		return stdout.String() + stderr.String(), err
+	}
 	for _, tc := range []struct {
-		name, remote, status string
+		name, outcome, summaryText              string
+		planStatus, verifyStatus, summaryStatus int
+		reportOnFailure                         bool
+		wantSummary, wantSuccess                bool
 	}{
-		{name: "changed", remote: "changed", status: "0"},
-		{name: "no-difference", remote: "no-difference", status: "0"},
-		{name: "state-dependent read failure", remote: "secret-scanning-disabled", status: "17"},
+		{name: "declared difference", outcome: "changed", summaryText: "settings.repository.has_issues: false → true", wantSummary: true, wantSuccess: true},
+		{name: "no difference", outcome: "no-difference", summaryText: "No differences for managed settings.", wantSummary: true, wantSuccess: true},
+		{name: "API command failure", planStatus: 17},
+		{name: "read failure report", outcome: "read-failure", summaryText: "Error — plan failed.", planStatus: 1, summaryStatus: 1, reportOnFailure: true, wantSummary: true},
+		{name: "partial observation", outcome: "read-failure", summaryText: "Error — plan failed: incomplete observation.", planStatus: 1, summaryStatus: 1, reportOnFailure: true, wantSummary: true},
+		{name: "stale candidate", outcome: "changed", verifyStatus: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			bin := filepath.Join(dir, "gh-settings")
 			script := `#!/bin/bash
-if [[ "$1" != action || "$2" != plan || "$4" != status-only ]]; then
-  exit 79
-fi
-printf 'sensitive policy equals %s\n' "$REMOTE_OUTCOME" >&2
-printf 'sensitive policy is %s\n' "$REMOTE_OUTCOME"
-if [[ "$PLAN_STATUS" != 0 ]]; then
-  exit "$PLAN_STATUS"
-fi
-printf '%s\n' "$REMOTE_OUTCOME" > "$3"
+case "$1 $2" in
+  'action plan')
+    printf 'CANARY-unmanaged-remote-value\n' >&2
+    printf 'CANARY-token=%s\n' "${GH_TOKEN-}"
+    if [[ "$PLAN_STATUS" != 0 && "$REPORT_ON_FAILURE" != true ]]; then exit "$PLAN_STATUS"; fi
+    printf '{"outcome":"%s"}\n' "$PLAN_OUTCOME" > "$3"
+    exit "$PLAN_STATUS"
+    ;;
+  'action summary')
+    printf 'CANARY-summary-internal\n' >&2
+    printf '%s\n' "$SUMMARY_TEXT" >> "$4"
+    exit "$SUMMARY_STATUS"
+    ;;
+  *) exit 79 ;;
+esac
 `
 			if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
 				t.Fatal(err)
 			}
-			summary := filepath.Join(dir, "summary")
-			output := filepath.Join(dir, "output")
-			cmd := exec.Command("bash", "-e", "-o", "pipefail", "-c", step.Run)
-			cmd.Env = append(os.Environ(),
-				"SETTINGS_CLI="+bin, "GH_TOKEN=local-fixture", "REMOTE_OUTCOME="+tc.remote, "PLAN_STATUS="+tc.status,
-				"GITHUB_STEP_SUMMARY="+summary, "GITHUB_OUTPUT="+output,
-			)
-			var stdout, stderr bytes.Buffer
-			cmd.Stdout, cmd.Stderr = &stdout, &stderr
-			if err := cmd.Run(); err != nil {
-				t.Fatalf("private comparison result must not affect the public step status: %v", err)
+			planOutput := filepath.Join(dir, "plan-output")
+			planPublic, planErr := run(plan.Run, map[string]string{
+				"SETTINGS_CLI": bin, "GH_TOKEN": "CANARY-credential", "PLAN_STATUS": strconv.Itoa(tc.planStatus), "PLAN_OUTCOME": tc.outcome,
+				"REPORT_ON_FAILURE": strconv.FormatBool(tc.reportOnFailure), "GITHUB_OUTPUT": planOutput,
+			})
+			if tc.planStatus != 0 && !tc.reportOnFailure {
+				if planErr == nil || !strings.Contains(planPublic, "settings observation failed") || strings.Contains(planPublic, "CANARY") {
+					t.Fatalf("API failure was not a generic failed outcome: %v, %q", planErr, planPublic)
+				}
+				return
 			}
-			public = append(public, stdout.String()+stderr.String())
+			if planErr != nil || planPublic != "" {
+				t.Fatalf("successful observation leaked diagnostics: %v, %q", planErr, planPublic)
+			}
+			output, err := os.ReadFile(planOutput)
+			if err != nil || string(output) != "exit-status="+strconv.Itoa(tc.planStatus)+"\n" {
+				t.Fatalf("plan status was not preserved for final reporting: %q, %v", output, err)
+			}
 			reportPath := filepath.Join(dir, "plan.json")
-			if tc.status == "0" {
-				report, err := os.ReadFile(reportPath)
-				if err != nil || string(report) != tc.remote+"\n" {
-					t.Fatalf("comparison did not execute privately: report=%q, err=%v", report, err)
-				}
-				info, err := os.Stat(reportPath)
-				if err != nil || info.Mode().Perm() != 0600 {
-					t.Fatalf("private comparison must remain owner-readable: %v, %v", info, err)
-				}
-			} else if _, err := os.Stat(reportPath); !os.IsNotExist(err) {
-				t.Fatalf("failed comparison unexpectedly produced a report: %v", err)
+			info, err := os.Stat(reportPath)
+			if err != nil || info.Mode().Perm() != 0600 {
+				t.Fatalf("plan report must remain owner-readable: %v, %v", info, err)
 			}
-			if _, err := os.Stat(summary); !os.IsNotExist(err) {
-				t.Fatal("protected plan must not publish an Action Summary")
+
+			helper := filepath.Join(dir, "pr-settings")
+			if err := os.WriteFile(helper, []byte("#!/bin/bash\nif [[ \"$VERIFY_STATUS\" != 0 ]]; then echo 'pr-settings: preparation or freshness verification failed' >&2; fi\nexit \"$VERIFY_STATUS\"\n"), 0700); err != nil {
+				t.Fatal(err)
 			}
-			if _, err := os.Stat(output); !os.IsNotExist(err) {
-				t.Fatal("protected plan must not publish a result output")
+			verifyPublic, verifyErr := run(verify.Run, map[string]string{
+				"RUNNER_TEMP": dir, "GH_TOKEN": "ordinary-token", "PR_NUMBER": "12", "EXPECTED_HEAD": strings.Repeat("a", 40), "VERIFY_STATUS": strconv.Itoa(tc.verifyStatus),
+			})
+			if tc.verifyStatus != 0 {
+				if verifyErr == nil || !strings.Contains(verifyPublic, "freshness verification failed") {
+					t.Fatalf("stale candidate did not fail freshness verification: %v, %q", verifyErr, verifyPublic)
+				}
+				return
+			}
+			if verifyErr != nil || verifyPublic != "" {
+				t.Fatalf("fresh candidate verification failed: %v, %q", verifyErr, verifyPublic)
+			}
+
+			summaryPath := filepath.Join(dir, "summary")
+			summaryPublic, summaryErr := run(summary.Run, map[string]string{
+				"SETTINGS_CLI": bin, "GITHUB_STEP_SUMMARY": summaryPath, "SUMMARY_STATUS": strconv.Itoa(tc.summaryStatus), "SUMMARY_TEXT": tc.summaryText,
+				"PLAN_STATUS": strconv.Itoa(tc.planStatus),
+				"PR_NUMBER":   "12", "HEAD_SHA": strings.Repeat("a", 40), "BASE_SHA": strings.Repeat("b", 40),
+				"SETTINGS_CONFIG_SHA": strings.Repeat("c", 40), "CONFIG_SHA256": strings.Repeat("d", 64),
+			})
+			if (summaryErr == nil) != tc.wantSuccess || strings.Contains(summaryPublic, "CANARY") {
+				t.Fatalf("unexpected Summary outcome or leaked diagnostic: %v, %q", summaryErr, summaryPublic)
+			}
+			if tc.summaryStatus != 0 && !strings.Contains(summaryPublic, "settings observation report failed") {
+				t.Fatalf("failed observation did not return a generic failure: %q", summaryPublic)
+			}
+			content, err := os.ReadFile(summaryPath)
+			if !tc.wantSummary || err != nil || !strings.Contains(string(content), "Pull request: #12") ||
+				!strings.Contains(string(content), strings.Repeat("a", 40)) || !strings.Contains(string(content), tc.summaryText) ||
+				strings.Contains(string(content), "CANARY-unmanaged") || strings.Contains(string(content), "CANARY-credential") {
+				t.Fatalf("Summary did not identify the fresh declared-only result: %q, %v", content, err)
 			}
 		})
-	}
-	if len(public) != 3 || public[0] != "" || public[1] != "" || public[2] != "" {
-		t.Fatalf("private policy result leaked into public diagnostics: %q", public)
 	}
 }

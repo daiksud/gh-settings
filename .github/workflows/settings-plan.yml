@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: daiksud/gh-settings
-          ref: 6d3146b30860692f84dc54e32d746e6fbbb55c66
+          ref: e4a90d281aff8eab3f057eadcdbf609330c014a0
           path: .published
           persist-credentials: false
       - name: Install pinned Go for trusted preparation only
@@ -89,12 +89,16 @@ jobs:
             *) echo 'invalid published binary path' >&2; exit 1 ;;
           esac
           printf 'binary-path=%s\n' "$binary" >> "$GITHUB_OUTPUT"
-          if [[ "$("$binary" --version 2>/dev/null)" != 'gh-settings v0.18.0' ]]; then
+          if [[ "$("$binary" --version 2>/dev/null)" != 'gh-settings v0.18.1' ]]; then
             echo 'published validation binary version mismatch' >&2
             exit 1
           fi
           if ! "$binary" validate >/dev/null 2>&1; then
             echo 'candidate settings validation failed' >&2
+            exit 1
+          fi
+          if ! "$binary" action metadata >> "$GITHUB_OUTPUT" 2>/dev/null; then
+            echo 'candidate settings metadata failed' >&2
             exit 1
           fi
       - name: Mint one repository-scoped App token after validation
@@ -106,7 +110,8 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
           permission-administration: write
-      - name: Read and compare privately without a public result
+      - name: Read and compare declared settings
+        id: observation
         shell: bash
         env:
           SETTINGS_CLI: ${{ steps.validation.outputs.binary-path }}
@@ -118,14 +123,16 @@ jobs:
             echo 'published plan binary unavailable' >&2
             exit 1
           fi
-          # Changed, no-difference and state-dependent read failures must all
-          # be publicly indistinguishable. Do not run the Action Summary
-          # renderer, emit plan-outcome or propagate the private exit status.
-          # A separately approved access-controlled channel is required before
-          # this observer can provide an actionable success/failure result.
-          if ! "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" status-only >/dev/null 2>&1; then
-            :
+          # Keep raw server diagnostics out of logs. A categorical failure may
+          # write a valid report before returning nonzero; preserve that status
+          # for the Summary step. An unexpected failure without a report stops.
+          status=0
+          "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" >/dev/null 2>&1 || status=$?
+          if [[ ! -f "${SETTINGS_CLI%/*}/plan.json" ]]; then
+            echo 'settings observation failed' >&2
+            exit 1
           fi
+          printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"
       - name: Verify that PR, merge revision and settings bytes are still current
         env:
           GH_TOKEN: ${{ github.token }}
@@ -133,6 +140,48 @@ jobs:
           EXPECTED_HEAD: ${{ inputs.head_sha }}
         run: |
           "$RUNNER_TEMP/pr-settings" verify "$PR_NUMBER" "$EXPECTED_HEAD" > /dev/null
+      - name: Publish the fresh declared-only result
+        shell: bash
+        env:
+          SETTINGS_CLI: ${{ steps.validation.outputs.binary-path }}
+          SETTINGS_ACTOR: ${{ github.actor }}
+          SETTINGS_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          SETTINGS_EVENT: ${{ github.event_name }}
+          SETTINGS_RUN_ID: ${{ github.run_id }}
+          SETTINGS_RUN_ATTEMPT: ${{ github.run_attempt }}
+          SETTINGS_WORKFLOW_REF: ${{ github.workflow_ref }}
+          SETTINGS_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          SETTINGS_ACTION_REPOSITORY: daiksud/gh-settings
+          SETTINGS_ACTION_REF: e4a90d281aff8eab3f057eadcdbf609330c014a0
+          SETTINGS_CONFIG_SHA: ${{ steps.validation.outputs.config-sha }}
+          SETTINGS_TARGET: ${{ steps.validation.outputs.target }}
+          SETTINGS_CLI_VERSION: ${{ steps.validation.outputs.cli-version }}
+          SETTINGS_CLI_SHA256: ${{ steps.validation.outputs.cli-sha256 }}
+          PLAN_STATUS: ${{ steps.observation.outputs.exit-status }}
+          PR_NUMBER: ${{ steps.candidate.outputs.pr-number }}
+          HEAD_SHA: ${{ steps.candidate.outputs.head-sha }}
+          BASE_SHA: ${{ steps.candidate.outputs.base-sha }}
+          CONFIG_SHA256: ${{ steps.candidate.outputs.config-sha256 }}
+        run: |
+          unset GH_TOKEN GITHUB_TOKEN GH_DEBUG
+          {
+            printf '\n\n## Protected settings observation\n\n'
+            printf 'Pull request: #%s  \n' "$PR_NUMBER"
+            printf 'Expected head: <code>%s</code>  \n' "$HEAD_SHA"
+            printf 'Observed base: <code>%s</code>  \n' "$BASE_SHA"
+            printf 'Prepared merge/configuration: <code>%s</code>  \n' "$SETTINGS_CONFIG_SHA"
+            printf 'Configuration SHA-256: <code>%s</code>\n' "$CONFIG_SHA256"
+          } >> "$GITHUB_STEP_SUMMARY"
+          summary_status=0
+          "$SETTINGS_CLI" action summary "${SETTINGS_CLI%/*}/plan.json" "$GITHUB_STEP_SUMMARY" >/dev/null 2>&1 || summary_status=$?
+          if [[ "$PLAN_STATUS" != 0 ]]; then
+            echo 'settings observation report failed' >&2
+            exit "${PLAN_STATUS:-1}"
+          fi
+          if [[ "$summary_status" != 0 ]]; then
+            echo 'settings observation report failed' >&2
+            exit "$summary_status"
+          fi
       - name: Remove private candidate, plan report, and CLI on ordinary exit
         if: always()
         env:
