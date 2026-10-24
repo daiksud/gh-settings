@@ -14,7 +14,8 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 - Given a published stable baseline and a fixed descendant source
 - When all committed messages in the interval are classified
-- Then any breaking header or breaking-change footer selects MAJOR, even during `0.x`
+- Then any breaking header or breaking-change footer selects MINOR during `0.x` and MAJOR from `1.0.0` onward
+- And a breaking signal does not automatically graduate `0.x` to `1.0.0`
 - Otherwise `feat`, `perf`, or `DEPRECATED:` selects MINOR
 - Otherwise fixes, reverts, maintenance, and legacy messages select PATCH
 - And later main commits and mutable branch names or labels do not affect that calculation
@@ -27,6 +28,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - Then it updates only `action/cli-version` for a reviewed preparation PR
 - And it does not create a commit, branch, tag, draft, or release
 - And a preparation-only commit does not create another version increment
+- But a preparation-named commit that changes another path remains a substantive PATCH signal
 - And an interval containing no other changes is rejected
 
 #### Scenario: Prepared source no longer agrees

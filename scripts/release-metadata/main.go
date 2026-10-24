@@ -312,6 +312,12 @@ func bump(version string, tier int) (string, error) {
 		}
 		parts[i] = v
 	}
+	// SemVer permits breaking changes before 1.0 without graduating to 1.0.
+	// Keep that explicit milestone manual by treating the strongest signal as
+	// a minor increment while the published baseline is still 0.x.
+	if tier == 2 && parts[0] == 0 {
+		tier = 1
+	}
 	index := 2 - tier
 	if index < 0 || index > 2 || parts[index] == ^uint64(0) {
 		return "", fmt.Errorf("invalid or overflowing version increment")

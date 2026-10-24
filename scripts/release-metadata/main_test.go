@@ -34,25 +34,40 @@ func write(t *testing.T, path, content string) {
 }
 
 func newFixture(t *testing.T, messages ...string) fixture {
+	return newFixtureVersion(t, "v1.2.3", messages...)
+}
+
+func newFixtureVersion(t *testing.T, version string, messages ...string) fixture {
 	t.Helper()
 	f := fixture{root: t.TempDir()}
+	for name, path := range map[string]string{
+		"HOME":            filepath.Join(f.root, "home"),
+		"XDG_CONFIG_HOME": filepath.Join(f.root, "xdg"),
+		"GH_CONFIG_DIR":   filepath.Join(f.root, "gh"),
+		"TMPDIR":          filepath.Join(f.root, "tmp"),
+	} {
+		if err := os.MkdirAll(path, 0700); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv(name, path)
+	}
 	mustGit(t, f.root, "init", "--quiet")
 	mustGit(t, f.root, "config", "user.name", "Fixture")
 	mustGit(t, f.root, "config", "user.email", "fixture@example.invalid")
 	mustGit(t, f.root, "config", "commit.gpgsign", "false")
-	write(t, filepath.Join(f.root, "action/cli-version"), "v1.2.3\n")
+	write(t, filepath.Join(f.root, "action/cli-version"), version+"\n")
 	write(t, filepath.Join(f.root, ".github/release.yml"), "changelog:\n  categories:\n    - title: Chore\n      labels: ['*']\n")
 	mustGit(t, f.root, "add", ".")
 	mustGit(t, f.root, "commit", "--quiet", "-m", "chore: baseline")
 	f.base = mustGit(t, f.root, "rev-parse", "HEAD")
-	mustGit(t, f.root, "-c", "tag.gpgsign=false", "tag", "v1.2.3")
+	mustGit(t, f.root, "-c", "tag.gpgsign=false", "tag", version)
 	for i, message := range messages {
 		write(t, filepath.Join(f.root, "change.txt"), fmt.Sprintf("change %d\n", i))
 		mustGit(t, f.root, "add", "change.txt")
 		mustGit(t, f.root, "commit", "--quiet", "-m", message)
 	}
 	f.source = mustGit(t, f.root, "rev-parse", "HEAD")
-	f.catalog = `[[{"id":1,"tag_name":"v1.2.3","draft":false,"prerelease":false,"published_at":"2026-10-01T00:00:00Z"}]]`
+	f.catalog = fmt.Sprintf(`[[{"id":1,"tag_name":%q,"draft":false,"prerelease":false,"published_at":"2026-10-01T00:00:00Z"}]]`, version)
 	return f
 }
 
@@ -91,7 +106,7 @@ func TestVersionTiersAndCompatibilityFooters(t *testing.T) {
 		tier    int
 		want    string
 	}{
-		{"v0.17.0", 2, "v1.0.0"}, {"v0.17.0", 1, "v0.18.0"}, {"v0.17.0", 0, "v0.17.1"},
+		{"v0.17.0", 2, "v0.18.0"}, {"v0.17.0", 1, "v0.18.0"}, {"v0.17.0", 0, "v0.17.1"},
 		{"v1.2.3", 2, "v2.0.0"}, {"v1.2.3", 1, "v1.3.0"}, {"v1.2.3", 0, "v1.2.4"},
 	} {
 		got, err := bump(tt.version, tt.tier)
@@ -127,16 +142,25 @@ func TestProposalUsesEntireFrozenPublishedInterval(t *testing.T) {
 
 func TestProposalPrecedenceAndVersionPreparation(t *testing.T) {
 	for _, tt := range []struct {
+		baseline string
 		messages []string
 		want     string
 	}{
-		{[]string{"fix: correct behavior", "perf: reduce work"}, "v1.3.0"},
-		{[]string{"feat: new behavior", "refactor!: incompatible behavior"}, "v2.0.0"},
-		{[]string{"ci: faster validation", "docs: explain usage"}, "v1.2.4"},
-		{[]string{"feat: add capability", "revert: revert capability"}, "v1.3.0"},
-		{[]string{"fix: maintenance\n\nDEPRECATED: Retire this API later."}, "v1.3.0"},
+		{"v0.18.1", []string{"refactor!: incompatible behavior"}, "v0.19.0"},
+		{"v0.18.1", []string{"fix: incompatible behavior\n\nBREAKING CHANGE: Update callers."}, "v0.19.0"},
+		{"v1.2.3", []string{"refactor!: incompatible behavior"}, "v2.0.0"},
+		{"v1.2.3", []string{"fix: incompatible behavior\n\nBREAKING-CHANGE: Historical marker."}, "v2.0.0"},
+		{"v1.2.3", []string{"feat: new behavior"}, "v1.3.0"},
+		{"v1.2.3", []string{"perf: reduce work"}, "v1.3.0"},
+		{"v1.2.3", []string{"fix: maintenance\n\nDEPRECATED: Retire this API later."}, "v1.3.0"},
+		{"v1.2.3", []string{"fix: correct behavior"}, "v1.2.4"},
+		{"v1.2.3", []string{"revert: restore prior behavior"}, "v1.2.4"},
+		{"v1.2.3", []string{"docs: explain usage", "ci: faster validation", "build: update tooling", "chore: maintain repository", "refactor: reorganize internals"}, "v1.2.4"},
+		{"v0.18.1", []string{"fix: correction", "feat: capability", "refactor!: incompatible behavior"}, "v0.19.0"},
+		{"v1.2.3", []string{"fix: correction", "feat: capability", "docs: replacement\n\nBREAKING CHANGE: Remove the old behavior."}, "v2.0.0"},
+		{"v1.2.3", []string{"feat: add capability", "revert: revert capability"}, "v1.3.0"},
 	} {
-		f := newFixture(t, tt.messages...)
+		f := newFixtureVersion(t, tt.baseline, tt.messages...)
 		p, err := propose(f.root, f.source, strings.NewReader(f.catalog), false)
 		if err != nil || p.version != tt.want {
 			t.Fatalf("%+v %v", p, err)
@@ -151,6 +175,29 @@ func TestProposalPrecedenceAndVersionPreparation(t *testing.T) {
 	}
 	if _, err := propose(f.root, f.base, strings.NewReader(f.catalog), false); err == nil {
 		t.Fatal("empty interval accepted")
+	}
+
+	f = newFixture(t)
+	write(t, filepath.Join(f.root, "action/cli-version"), "v1.2.4\n")
+	write(t, filepath.Join(f.root, "release-notes.md"), "substantive maintenance\n")
+	mustGit(t, f.root, "add", ".")
+	mustGit(t, f.root, "commit", "--quiet", "-m", "build(release): prepare next version")
+	p, err := propose(f.root, mustGit(t, f.root, "rev-parse", "HEAD"), strings.NewReader(f.catalog), false)
+	if err != nil || p.version != "v1.2.4" {
+		t.Fatalf("substantive preparation commit: %+v %v", p, err)
+	}
+}
+
+func TestProposalDoesNotUseReleaseNoteLabels(t *testing.T) {
+	f := newFixture(t, "fix: correct behavior")
+	p, err := propose(f.root, f.source, strings.NewReader(f.catalog), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(f.root, ".github/release.yml"), "changelog:\n  categories:\n    - title: Breaking\n      labels: ['BREAKING CHANGE', feat]\n")
+	after, err := propose(f.root, f.source, strings.NewReader(f.catalog), false)
+	if err != nil || after.version != p.version || after.version != "v1.2.4" {
+		t.Fatalf("labels changed calculated version: before=%+v after=%+v err=%v", p, after, err)
 	}
 }
 

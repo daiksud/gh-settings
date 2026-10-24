@@ -18,11 +18,11 @@ Use the complete previous-published-stable-to-frozen-source Git interval. Commit
 
 The strongest included change selects the increment:
 
-- Any breaking header or breaking-change footer selects MAJOR, including before 1.0.
+- Any breaking header or breaking-change footer selects MINOR while the previous stable version is `0.x`, and MAJOR from `1.0.0` onward. It never graduates the project automatically from `0.x` to `1.0.0`.
 - Otherwise `feat`, `perf`, or a `DEPRECATED:` footer selects MINOR.
-- Otherwise fixes, reverts, maintenance, and legacy messages select PATCH.
+- Otherwise fixes, reverts, maintenance, and legacy messages select PATCH when publication is explicitly requested.
 
-A revert does not automatically cancel another included change's signal. Ignore only nonbreaking `build(release)` or `chore(release)` commits whose entire file change is `action/cli-version`. Reject an empty remaining interval. Initial publication without an established stable baseline requires a separate policy decision.
+A revert does not automatically cancel another included change's signal. Ignore only nonbreaking `build(release)` or `chore(release)` commits whose entire file change is `action/cli-version`; a preparation-named commit with any other changed path remains substantive. Reject an empty remaining interval. Initial publication without an established stable baseline requires a separate policy decision.
 
 A local preparation command computes the version and updates the committed Action/CLI version through a reviewed PR. The manually dispatched workflow recomputes and verifies it at a fixed main SHA before builds; operators do not supply a version. Existing matching drafts/releases retain their original version, source, notes, and verified bytes on retry.
 
