@@ -50,7 +50,7 @@ func TestPRConsumerPlan(t *testing.T) {
 			if result.status != test.status || result.calls != calls || result.api != "" || !reflect.DeepEqual(result.outputs, want) {
 				t.Fatalf("PR plan boundary failed: %+v", result)
 			}
-			for _, value := range []string{test.review, f.sha, "pull_request", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", strings.TrimPrefix(exampleAction, "daiksud/gh-settings@")} {
+			for _, value := range []string{test.review, f.sha, "pull_request", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@")} {
 				if !strings.Contains(result.summary, value) {
 					t.Fatalf("PR Summary missing %q: %s", value, result.summary)
 				}
@@ -223,7 +223,7 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
 	// Model pinned caller wiring with candidate package bytes, not released tag bytes.
-	if ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") {
+	if ref != strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") {
 		t.Fatalf("unmodeled public Action revision %s", ref)
 	}
 	overrides := map[string]string{
