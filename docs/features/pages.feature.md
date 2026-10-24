@@ -1,6 +1,6 @@
 # Feature: Declarative Pages configuration
 
-Status: accepted design in [ADR 0028](../adr/0028-declarative-pages-settings.md), Issue #349. The existing-site subset of #350 is implemented in current unreleased source. Published v0.17.0 rejects these keys/options. Creation/deletion and visibility mutation remain deferred and #350 remains open for those criteria. No live deployment or setting was changed by implementation.
+Status: accepted design in [ADR 0028](../adr/0028-declarative-pages-settings.md), Issue #349. The existing-site subset of #350 is published in v0.18.0. Published v0.17.0 and older packages reject these keys/options. Creation/deletion and visibility mutation remain deferred and #350 remains open for those criteria. No live deployment or setting was used as release evidence.
 
 ## Official contracts
 
@@ -37,7 +37,7 @@ settings:
     https_enforced: true
 ```
 
-This example requires unreleased source; it is not supported by the published v0.17.0 package.
+This example requires published v0.18.0 or newer; v0.17.0 and older packages do not support it.
 
 | Input | Meaning |
 | --- | --- |

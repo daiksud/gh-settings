@@ -6,7 +6,7 @@ description: Adopt a bounded repository allow_forking boolean with explicit expo
 
 ## Status
 
-Accepted for the bounded #330 implementation in unreleased source. Published v0.17.0 does not support this field or export option. This decision does not authorize live forking-policy changes, organization policy updates, broader credentials or a release.
+Accepted for the bounded #330 implementation, published in v0.18.0. Published v0.17.0 and older packages do not support this field or export option. Publication does not authorize live forking-policy changes, organization policy updates or broader credentials.
 
 ## Context
 

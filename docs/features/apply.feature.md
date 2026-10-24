@@ -68,9 +68,9 @@ Current source applies declared labels after repository/topics writes: it reads 
 
 Current source applies repository Actions policy after existing resources. The [Actions policy specification](actions-execution-policy.feature.md#rule-preflight-and-preserve-companions-before-ordered-writes) owns fresh reads, companion preservation, staged enabling, readback and partial failure.
 
-### Rule: Preserve direct-apply ordering and partial effects across the v0.17.0 package
+### Rule: Preserve direct-apply ordering and partial effects across the v0.18.0 package
 
-Repository REST updates precede declared PR/Issue GraphQL updates, then topics, fresh label reconciliation, Rulesets, Actions execution policy, workflow permissions, retention, contributor approval, private fork policy, Secret scanning and public private-vulnerability reporting. An omitted resource has no request. Current direct repository/topics/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Collection reconciliation and the newer retention/fork/security paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
+Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then topics, fresh label reconciliation, Rulesets, Actions policies, security controls, existing-site Pages, custom properties and private forking; final archive runs last. An omitted resource has no request. Current direct repository/topics/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
 
 | Subset | Existing application and transport/process evidence |
 | --- | --- |

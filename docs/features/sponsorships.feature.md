@@ -6,7 +6,7 @@ description: Manage the Sponsorships boolean without managing funding destinatio
 
 ## Feature: Manage repository Sponsor button visibility
 
-Current source supports `settings.repository.has_sponsorships` under `schemaVersion: 1`. It maps to GraphQL `hasSponsorshipsEnabled`. Published v0.17.0 and older packages reject the key; this implementation changes neither the committed CLI version nor consumer pins.
+Published v0.18.0 supports `settings.repository.has_sponsorships` under `schemaVersion: 1`. It maps to GraphQL `hasSponsorshipsEnabled`. Published v0.17.0 and older packages reject the key.
 
 ### Rule: Preserve omission and native booleans
 
@@ -31,7 +31,7 @@ Current source supports `settings.repository.has_sponsorships` under `schemaVers
 
 - Given a successful authenticated query returns false
 - When full export completes
-- Then the source file contains explicit false among twenty-three repository fields
+- Then the source file contains explicit false among twenty-five repository fields
 - And validation followed by plan reports no differences for unchanged values
 - And an unread, null or malformed value is not substituted for false
 

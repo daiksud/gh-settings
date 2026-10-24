@@ -1,12 +1,14 @@
 # Repository settings
 
-## v0.17.0 package
+## v0.18.0 package
 
-Published [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0) includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39508410269). Dependabot, paid-product candidates and immutable-release policy remain unsupported. v0.16.0 already includes web commit sign-off, template repository status and default branch settings. The maintained examples select v0.17.0; adopting its pin does not expand caller grants or change settings by itself.
+Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). It also includes the v0.17.0 Rulesets, PR/Issue access, Actions, security, retention and fork-workflow features. The maintained examples select v0.18.0; adopting its pin does not expand caller grants, activate this repository's protected observer, or change settings by itself.
+
+The current source fixes Ruleset plan presentation so only declaration-owned values are shown while mutation still preserves complete remote state. That #412 correction is newer than the immutable v0.18.0 source and is not in the published package. v0.18.0 detailed Ruleset plans can display retained undeclared attributes; do not treat a newer source checkout as a published binary update.
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.17.0 supports twenty-two repository fields, topics, labels and the adopted Rulesets/Actions/security subsets, using the same file-format version. v0.16.0 supports nineteen repository fields, topics and labels; v0.15.0 supports sixteen. v0.14.0 supports fifteen repository fields, excluding Discussions. v0.13.0 supports thirteen repository fields, excluding normal merge commit defaults. v0.12.0 supports eleven repository fields, excluding auto-merge and branch-update options. v0.11.0 supports nine repository fields, excluding squash commit defaults. The v0.10.0 package supports eight repository fields, excluding automatic branch deletion. The v0.9.0 package supports the original five repository fields, topics and labels. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.18.0 supports twenty-five repository fields, topics, labels, the adopted Rulesets/Actions/security subsets, existing-site Pages and bounded custom-property values, using the same file-format version. v0.17.0 supports twenty-two repository fields and the earlier resource set. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -22,9 +24,9 @@ The keys inside `settings.repository` follow GitHub's repository update request 
 
 The booleans accept `true` or `false`; the string fields accept strings, including empty strings. Explicit null and other value types are invalid. All other repository fields and read-only response metadata are excluded, even when GitHub exposes them as writable parameters.
 
-## Private repository forking (unreleased source)
+## Private repository forking
 
-Current source supports `settings.repository.allow_forking` for active, non-fork, private repositories owned by organizations. Published v0.17.0 and older packages reject this key and `export --forking`; the maintained Action still installs its pinned released CLI.
+Published v0.18.0 supports `settings.repository.allow_forking` for active, non-fork, private repositories owned by organizations. Published v0.17.0 and older packages reject this key and `export --forking`.
 
 ```yaml
 schemaVersion: 1
@@ -41,9 +43,9 @@ Plan performs only reads and displays a native boolean difference. Apply process
 
 Private repository Metadata read and existing visibility of the organization policy are required for plan/export; apply additionally requires Administration write and an eligible repository administrator. [Organization GET](https://docs.github.com/en/rest/orgs/orgs#get-an-organization) exposes full details to organization owners; classic credentials need `admin:org` for those details. Endpoint success alone does not establish visibility. The tool never expands grants or issues credentials. The [repository policy guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/managing-the-forking-policy-for-your-repository) explains applicability; [fixture coverage](features/private-forking.feature.md) does not establish live token capabilities or policy mutation behavior.
 
-## Repository archive lifecycle (unreleased source)
+## Repository archive lifecycle
 
-Current source supports the optional `settings.repository.archived` boolean. Published v0.17.0 and older CLI/Action packages reject it; the maintained Action still installs its pinned released CLI. The field manages the selected checkout repository's archive state, not repository renaming, visibility, or individual issues/releases.
+Published v0.18.0 supports the optional `settings.repository.archived` boolean. Published v0.17.0 and older CLI/Action packages reject it. The field manages the selected checkout repository's archive state, not repository renaming, visibility, or individual issues/releases.
 
 ```yaml
 schemaVersion: 1
@@ -85,7 +87,7 @@ The [repository endpoint](https://docs.github.com/en/rest/repos/repos#update-a-r
 
 ## Private vulnerability reporting
 
-Current source supports optional boolean `settings.security.private_vulnerability_reporting`. Published v0.16.0 and older CLI/Action packages reject the key and `export --security private-vulnerability-reporting`; use v0.17.0 or newer. The maintained Action pin selects v0.17.0.
+Current source supports optional boolean `settings.security.private_vulnerability_reporting`. Published v0.16.0 and older CLI/Action packages reject the key and `export --security private-vulnerability-reporting`; use v0.17.0 or newer. The maintained Action pin selects v0.18.0.
 
 ```yaml
 schemaVersion: 1
@@ -169,7 +171,7 @@ The [contributor API](https://docs.github.com/en/rest/actions/permissions#set-fo
 
 ## Check, run, status, artifact and log retention
 
-Current source supports optional integer `settings.actions.artifact_and_log_retention_days`. Published v0.16.0 and older CLI/Action packages reject this key and `export --retention`; use v0.17.0 or newer. The maintained Action pin selects v0.17.0.
+Current source supports optional integer `settings.actions.artifact_and_log_retention_days`. Published v0.16.0 and older CLI/Action packages reject this key and `export --retention`; use v0.17.0 or newer. The maintained Action pin selects v0.18.0.
 
 ```yaml
 schemaVersion: 1
@@ -228,9 +230,9 @@ These endpoints are not transactional. An enabled repository can temporarily use
 
 Read/export/plan require target Administration read; apply requires Administration write, including its preflight/readback. The default `GITHUB_TOKEN` generally does not supply this permission. Callers must provide an appropriately scoped existing credential; this feature neither creates nor broadens grants. Official [repository policy endpoints](https://docs.github.com/en/rest/actions/permissions#get-github-actions-permissions-for-a-repository) and the [behavior specification](features/actions-execution-policy.feature.md) describe the API and evidence boundaries. Local fixture success does not prove live write compatibility or actual token permissions.
 
-## Sponsor button visibility (unreleased)
+## Sponsor button visibility
 
-Current source supports optional `settings.repository.has_sponsorships`, mapped to GraphQL `hasSponsorshipsEnabled`. Published v0.17.0 and older CLI/Action packages reject this key. This source-only addition does not update the committed Action version or existing consumer pins.
+Published v0.18.0 supports optional `settings.repository.has_sponsorships`, mapped to GraphQL `hasSponsorshipsEnabled`. Published v0.17.0 and older CLI/Action packages reject this key.
 
 ```yaml
 schemaVersion: 1
@@ -241,7 +243,7 @@ settings:
 
 `true` enables the repository's Sponsorships setting and `false` disables it. Omission is unmanaged; null, strings, numbers, sequences and mappings are rejected before remote work. The [GraphQL repository and update-input contract](https://docs.github.com/en/graphql/reference/repos#updaterepositoryinput) defines this boolean separately from funding links. GitHub's [Sponsor button setup](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository) requires admin access and describes funding configuration, including inherited defaults. This tool does not read, create, replace or remove `FUNDING.yml`, select recipients, change inherited funding links, subscribe to sponsorships, or make payments. An accepted boolean alone is not evidence that a button with usable links is rendered when funding configuration is missing.
 
-Plan reads only this complete authenticated GraphQL boolean when declared; unrelated field-only plans retain their existing requests. Source export now includes twenty-three repository fields and requires this observation as well. Missing/null/wrong-type values, unavailable repositories and partial GraphQL errors fail rather than becoming false; a failed export preserves the existing file. Read queries and the update's identity lookup disable rename following.
+Plan reads only this complete authenticated GraphQL boolean when declared; unrelated field-only plans retain their existing requests. Source export includes twenty-five repository fields and requires this observation as well. Missing/null/wrong-type values, unavailable repositories and partial GraphQL errors fail rather than becoming false; a failed export preserves the existing file. Read queries and the update's identity lookup disable rename following.
 
 Apply uses the existing validated repository-ID lookup and shared `updateRepository` mutation, sending only declared GraphQL fields and verifying returned identity and values. A sponsorship-only declaration sends no REST PATCH. Combined PR, Issue-policy and Sponsorships declarations share one lookup and mutation; explicitly declared REST fields run first. Repeated direct scalar apply still writes. Failures stop later resources and can leave earlier writes applied; no saved-plan apply, rollback or automatic retry is introduced.
 
@@ -293,7 +295,7 @@ Reads require complete policy visibility; writes require a credential authorized
 
 ## Default branch
 
-Published v0.16.0 and current source support optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-three repository fields, topics and labels.
+Published v0.16.0 and current source support optional `settings.repository.default_branch`, a string selecting an existing branch as the repository default. Published v0.15.1 and older CLI/Action packages reject this key. It uses the existing `schemaVersion: 1` repository group. Source export includes twenty-five repository fields, topics and labels.
 
 ```yaml
 schemaVersion: 1
@@ -327,7 +329,7 @@ Apply sends only declared fields through the existing Administration-write repos
 
 ## Web commit sign-off
 
-Published v0.16.0 and current source support optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; adopt v0.16.0 or newer before using it. Source export includes twenty-three repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
+Published v0.16.0 and current source support optional `settings.repository.web_commit_signoff_required`, a boolean requiring sign-off on commits made through GitHub's web interface. It extends the repository group under `schemaVersion: 1`. Published v0.15.1 and older CLI/Action packages reject this key; adopt v0.16.0 or newer before using it. Source export includes twenty-five repository fields, topics, and labels; published v0.15.x export retains sixteen repository fields.
 
 ```yaml
 schemaVersion: 1
@@ -342,7 +344,7 @@ Apply sends the field only when declared, in the existing repository PATCH with 
 
 ## Discussions (v0.15.0)
 
-v0.15.0 adds optional `settings.repository.has_discussions`, a boolean controlling GitHub Discussions. It extends the repository group; it does not manage discussion categories or individual discussions. Published v0.14.0 and older packages reject this key. The pinned v0.17.0 CLI/Action supports it; update older consumer pins before adopting the declaration.
+v0.15.0 adds optional `settings.repository.has_discussions`, a boolean controlling GitHub Discussions. It extends the repository group; it does not manage discussion categories or individual discussions. Published v0.14.0 and older packages reject this key. The pinned v0.18.0 CLI/Action supports it; update older consumer pins before adopting the declaration.
 
 ```yaml
 schemaVersion: 1
@@ -369,7 +371,7 @@ v0.11.0 adds optional `settings.repository.delete_branch_on_merge`, a boolean co
 
 v0.11.0 export includes the value after a complete read. Plan uses the same fixed GraphQL read as merge methods; apply sends only declared fields through the existing Administration-write REST PATCH, with no preliminary read. Missing/null/invalid data or any GraphQL error fails the read instead of becoming false. See the [feature contract and read-only Actions evidence](features/delete-branch-on-merge.feature.md).
 
-Published v0.10.0 does not accept this key. The pinned v0.17.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
+Published v0.10.0 does not accept this key. The pinned v0.18.0 CLI/Action includes it; older consumer pins must be updated before adopting this declaration.
 
 ## Squash commit defaults (v0.12.0)
 
@@ -394,7 +396,7 @@ Omission leaves each field unmanaged. Title-only declarations are valid; message
 
 Export includes both values only after a complete read. Plan uses the fixed merge-related GraphQL query, compares declared fields in title-then-message order after branch deletion, and presents string values. Apply includes only declared fields in the existing Administration-write repository PATCH, without a preliminary read or inferred companion values. Existing token permissions are sufficient for that PATCH; no additional resource family is introduced. The [feature contract](features/squash-commit-defaults.feature.md) records read validation, hosted evidence and test mappings.
 
-Published v0.11.0 rejects these keys. The pinned v0.17.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
+Published v0.11.0 rejects these keys. The pinned v0.18.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
 
 ## Auto-merge and branch updates (v0.13.0)
 
@@ -414,7 +416,7 @@ settings:
 
 Each field is independent: omission remains unmanaged, explicit `false` is retained, and null/wrong types fail local validation. Neither value is synthesized. Export includes both after a complete fixed GraphQL read; plan reads only when a merge-related field is declared and compares declared fields only. Missing/null/wrong-typed observations or partial GraphQL errors fail the complete read. Apply sends declared fields only through the existing Administration-write REST PATCH, with no preliminary read or additional permissions.
 
-Published v0.12.0 rejects these keys. The pinned v0.17.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
+Published v0.12.0 rejects these keys. The pinned v0.18.0 CLI/Action supports them; update older consumer pins before adopting these declarations. The [feature contract](features/pull-request-options.feature.md) records exact API mapping, hosted proof and test coverage.
 
 ## Merge commit defaults (v0.14.0)
 
@@ -439,7 +441,7 @@ Omission remains unmanaged; title-only is valid. Message requires an explicit `m
 
 Export reads both values in the fixed complete GraphQL observation. Plan compares declared fields only; missing/null/invalid data or partial GraphQL errors fail the whole read. Apply sends declared values only through the existing Administration-write repository PATCH, with no preliminary read or implicit companion values. See the [feature contract](features/merge-commit-defaults.feature.md) for exact API mapping, hosted evidence and tests.
 
-Published v0.13.0 rejects these keys. The pinned v0.17.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
+Published v0.13.0 rejects these keys. The pinned v0.18.0 CLI/Action supports them; update older consumer pins before adopting these declarations.
 
 ## Topics
 
@@ -469,7 +471,7 @@ Topic reads require Metadata read; public resources may be read without authenti
 
 ## Labels
 
-`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.17.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
+`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.18.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
 
 ```yaml
 schemaVersion: 1
@@ -655,9 +657,9 @@ Pages lifecycle and visibility changes, and unadopted Actions settings, are not 
 
 [^github-repository-openapi]: [GitHub official OpenAPI schema](https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json), checked on 2026-10-12 for nullable full-repository description/homepage values and optional string parameters in `PATCH /repos/{owner}/{repo}`.
 
-## Existing Pages configuration (unreleased source)
+## Existing Pages configuration
 
-Current source supports `settings.pages` for a positively observed existing site. Published v0.17.0 rejects this group and `export --pages`; no release is implied by source support.
+Published v0.18.0 supports `settings.pages` for a positively observed existing site. Published v0.17.0 and older packages reject this group and `export --pages`. Site creation, deletion and visibility changes remain unsupported and tracked in #350.
 
 ```yaml
 schemaVersion: 1
@@ -681,9 +683,9 @@ Configuration convergence does not establish DNS, certificate or deployment read
 
 Pages GET requires Pages read (public resources may be readable without authentication); mutations require Pages write plus Administration write and the applicable actor authorization. Public GET success does not prove write grants. A private repository can have a public site; observed `public` is preserved, never used as a write key. Site creation/deletion, visibility/access changes, unknown lifecycle keys and permission expansion remain unsupported. See the [Pages contract and evidence limits](features/pages.feature.md).
 
-## Custom property values (unreleased source)
+## Custom property values
 
-Current source accepts `settings.custom_properties` for the adopted organization-owned property subset. Published v0.17.0 rejects this group and `export --custom-properties`.
+Published v0.18.0 accepts `settings.custom_properties` for the adopted organization-owned property subset. Published v0.17.0 and older packages reject this group and `export --custom-properties`. Required/default-backed/explicitly-required properties, enterprise sources, organization-only editing, URL properties and regex-constrained strings remain outside the adopted subset and are tracked in #354.
 
 ```yaml
 schemaVersion: 1

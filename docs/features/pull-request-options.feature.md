@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-CLI and Action v0.13.0 support optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. Published v0.12.0 rejects these keys; the pinned v0.17.0 examples support them. This extends the existing repository group, with no new resource family or credential permissions.
+CLI and Action v0.13.0 support optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. Published v0.12.0 rejects these keys; the pinned v0.18.0 examples support them. This extends the existing repository group, with no new resource family or credential permissions.
 
 The [configuration reference](../settings.md#auto-merge-and-branch-updates-v0130) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
 
@@ -21,7 +21,7 @@ The shared `MergeMethodsState`, fixed query and deferred read retain their names
 
 Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 
-Current-source export saves twenty-two repository fields; v0.14.0 retains fifteen, and v0.13.0 saves thirteen, plus complete topics and all label pages after every read/serialization succeeds. v0.12.0 retains eleven fields. Repository comparison retains the registry order for nine current-source REST fields and ten merge-related fields, followed by requested PR/Issue access values. Topics, labels and opted-in policy resources retain their documented resource order. Each declared repository field counts once; current-source report/Summary supports forty-two managed units across all adopted resources; v0.14.0 retains seventeen, v0.13.0 retains fifteen, while v0.12.0 retains thirteen. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
+Current-source export saves twenty-five repository fields, plus complete topics and all label pages after every read and serialization succeeds. Repository comparison retains registry order, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once; current-source report/Summary supports fifty-one managed units across all adopted resources. Older packages retain their documented lower limits. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
 
 ## Hosted read evidence
 

@@ -6,7 +6,7 @@ description: Manage one optional repository boolean through the existing merge-r
 
 ## Feature: Manage automatic branch deletion
 
-CLI and Action v0.11.0 support `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Consumers using v0.10.0 reject the key; the pinned v0.17.0 examples support it. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
+CLI and Action v0.11.0 support `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Consumers using v0.10.0 reject the key; the pinned v0.18.0 examples support it. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
 
 ```yaml
 schemaVersion: 1
@@ -19,7 +19,7 @@ settings:
 
 Omitting the field leaves it unmanaged. Explicit false remains a declared value in encode, comparison, report and PATCH. Null, quoted booleans, numbers and collections fail local validation before API access; the existing strict boolean, duplicate-key, alias and merge rules apply.
 
-Repository comparison retains registry order for nine REST fields and ten merge-related fields (including branch deletion), followed by requested PR/Issue access values; collections and policy resources retain their documented order. Each declared repository field counts once. v0.11.0 Summary accepts up to eleven managed units: nine repository fields plus topics and labels; v0.12.0 adds two squash commit enums for a maximum of thirteen; v0.13.0 adds two more booleans for fifteen; v0.14.0 adds two normal merge enums for seventeen; v0.15.0 adds Discussions for eighteen; current source supports forty-two across all adopted resources; published v0.10.0 retains ten.
+Repository comparison retains registry order for repository fields, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once. Current source supports fifty-one managed units across all adopted resources; older packages retain their documented lower limits.
 
 ### Rule: Use the existing complete GraphQL read
 

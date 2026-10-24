@@ -1,14 +1,14 @@
 # Settings commands
 
-## v0.17.0 package
+## v0.18.0 package
 
-Published [v0.17.0](https://github.com/daiksud/gh-settings/releases/tag/v0.17.0) includes repository Rulesets (basic, PR review and required checks), PR/Issue access policies, Actions execution and default workflow permissions, Secret scanning/push protection, public private-vulnerability reporting, retention and fork workflow policies. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39508410269). Dependabot, paid-product candidates and immutable-release policy remain unsupported. v0.16.0 already includes web commit sign-off, template repository status and default branch settings. The maintained examples select v0.17.0; adopting its pin does not expand caller grants or change settings by itself.
+Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). The maintained examples select v0.18.0; adopting its pin does not expand caller grants or change settings by itself.
 
 ## Scope and status
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
-This reference describes v0.17.0 and current source, supporting repository fields, topics and labels. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.17.0; older v0.8.0 packages do not support labels.
+This reference describes v0.18.0 and current source. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.18.0; older v0.8.0 packages do not support labels.
 
 v0.10.0 adds [merge-method booleans](features/merge-methods.feature.md); published v0.9.0 does not accept those keys. Their GraphQL query runs only for declared fields during plan and always during export. Existing repository PATCH behavior is retained.
 
@@ -22,7 +22,7 @@ v0.14.0 adds [merge commit title/body defaults](features/merge-commit-defaults.f
 
 v0.15.0 adds [`has_discussions`](features/discussions.feature.md). It adds a sixteenth exported repository field; published v0.14.0 rejects it. Apply verifies the returned boolean when this field is declared; verification errors can occur after repository writes.
 
-Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Source export includes twenty-three repository fields; published v0.15.1 and older packages reject the new key.
+Published v0.16.0 and current source also support the [`is_template` setting](settings.md#template-repository) and [`default_branch` setting](settings.md#default-branch). Source export includes twenty-five repository fields; published v0.15.1 and older packages reject the new key.
 
 Current source also supports [Rulesets with basic, PR review and required check rules](settings.md#rulesets), including explicit `export --rulesets` opt-in. Published v0.16.0 and older packages reject the group and option. Incomplete or unsupported Rulesets are never partially exported or reconciled.
 
@@ -36,9 +36,9 @@ Published v0.17.0 adds [default workflow permissions](settings.md#default-workfl
 
 ## Interface and implementation status
 
-Current source also supports [`archived`](settings.md#repository-archive-lifecycle-unreleased-source) as an explicitly managed lifecycle boolean. Ordinary export excludes it; use `export --archive` to opt in. Unarchive precedes other writes and archive follows them, with identity and state verification. Published v0.17.0 and older packages reject the key and option.
+Published v0.18.0 supports [`archived`](settings.md#repository-archive-lifecycle) as an explicitly managed lifecycle boolean. Ordinary export excludes it; use `export --archive` to opt in. Unarchive precedes other writes and archive follows them, with identity and state verification. Published v0.17.0 and older packages reject the key and option.
 
-Current source additionally supports unreleased [`has_sponsorships`](settings.md#sponsor-button-visibility-unreleased), increasing full source export to twenty-three repository fields. Plan reads its independent GraphQL boolean only when declared; apply shares the declared-only repository mutation and never edits funding destinations. Published v0.17.0 and older packages reject the key.
+Published v0.18.0 supports [`has_sponsorships`](settings.md#sponsor-button-visibility), increasing full export to twenty-five repository fields together with archive and private forking. Plan reads its independent GraphQL boolean only when declared; apply shares the declared-only repository mutation and never edits funding destinations. Published v0.17.0 and older packages reject the key.
 
 Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
@@ -119,7 +119,7 @@ Plan validates the configuration before resolving origin, configuring authentica
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (v0.17.0), then has_sponsorships, archived and allow_forking (all unreleased source), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+Changed repository fields appear in this order: description, homepage, default_branch (v0.16.0), has_issues, has_projects, has_wiki, has_discussions (v0.15.0), web_commit_signoff_required (v0.16.0), is_template (v0.16.0), allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy (v0.17.0), then has_sponsorships, archived and allow_forking (v0.18.0), followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
 
 ```text
 settings.repository.has_issues: true → false
@@ -156,7 +156,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 
 | Resource | Request |
 | --- | --- |
-| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] PR access, Issue creation policy, and unreleased Sponsorships then use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
+| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] PR access, Issue creation policy and Sponsorships use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
 | `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
 | `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform required label POST/PATCH/DELETE operations.[^github-labels] |
 
@@ -186,14 +186,14 @@ Current-source `gh settings export --fork-approval` adds the public-repository c
 
 Plan and the credential-free Action Summary show native credential-exposure booleans and the exact approval enum. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 
-Current unreleased source adds `export --pages` for [existing Pages configuration](settings.md#existing-pages-configuration-unreleased-source). It is explicit, composable and rejects duplicate selection. Ordinary export adds no Pages requests. Complete Pages read access is required; a 404 or incomplete response fails without replacing the output. Published v0.17.0 rejects the option.
+Published v0.18.0 adds `export --pages` for [existing Pages configuration](settings.md#existing-pages-configuration). It is explicit, composable and rejects duplicate selection. Ordinary export adds no Pages requests. Complete Pages read access is required; a 404 or incomplete response fails without replacing the output. Site creation/deletion and visibility remain unsupported under #350. Published v0.17.0 and older packages reject the option.
 
-## Custom property commands (unreleased source)
+## Custom property commands
 
-`export --custom-properties` explicitly selects the [bounded property-value contract](settings.md#custom-property-values-unreleased-source). It composes with existing export choices; duplicates and use on other commands fail. Published v0.17.0 rejects the option and YAML group. Ordinary export retains its existing reads and permissions.
+Published v0.18.0 `export --custom-properties` explicitly selects the [bounded property-value contract](settings.md#custom-property-values). It composes with existing export choices; duplicates and use on other commands fail. Published v0.17.0 and older packages reject the option and YAML group. Ordinary export retains its existing reads and permissions; the unadopted constraints remain tracked in #354.
 
 Local validation checks value syntax without API access. Plan/apply additionally require complete organization schema and repository values, including authenticated GraphQL string constraints. Values use Metadata read; organization schema uses Custom properties read. Updates need repository Custom properties write plus schema editability. Incomplete or unsupported observations fail instead of producing partial output. No grants or organization schemas are changed.
 
 Differences use `settings.custom_properties.NAME: CURRENT → DESIRED`, sorted by name, with JSON strings/arrays/null. A nonempty map counts as one managed collection. Apply uses fresh state rather than a saved plan, sends only declared names, and checks readback. Failed export preserves the destination; failed apply preserves earlier successful writes and reports an uncertain attempted update without rollback.
 
-Current-source `gh settings export --forking` selects the [private repository forking policy](settings.md#private-repository-forking-unreleased-source). It requires complete matching organization-policy visibility in addition to private repository metadata. Ordinary export is unchanged; duplicate flags and composition with `--archive` fail locally. Published v0.17.0 rejects the option.
+Published v0.18.0 `gh settings export --forking` selects the [private repository forking policy](settings.md#private-repository-forking). It requires complete matching organization-policy visibility in addition to private repository metadata. Ordinary export is unchanged; duplicate flags and composition with `--archive` fail locally. Published v0.17.0 and older packages reject the option.
