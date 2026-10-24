@@ -14,7 +14,7 @@ mise install
 
 ## Pull request messages
 
-PR titles and bodies are validated by the [independent message workflow](../../.github/workflows/pr-message.yml) as one squash commit message: the title is the subject, followed by a blank line and the optional PR body. The message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
+PR titles and bodies are validated by the [independent PRLint workflow](../../.github/workflows/prlint.yml) as one squash commit message: the title is the subject, followed by a blank line and the optional PR body. The message follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
 
 ```text
 <type>[optional scope][!]: <description>

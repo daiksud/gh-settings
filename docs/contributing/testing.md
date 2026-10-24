@@ -61,7 +61,7 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_
 
 ## CI validation
 
-The [PR code](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows retain the product stages below. The separate [PR message workflow](../../.github/workflows/pr-message.yml) validates title/body edits without repeating product work. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle); [PR validation](pr-validation.md) owns the independent-check activation sequence.
+The [PR code](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows retain the product stages below. The separate [PRLint workflow](../../.github/workflows/prlint.yml) validates title/body edits without repeating product work. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle); [PR validation](pr-validation.md) owns the independent-check activation sequence.
 
 | Stage | Work and handoff |
 | --- | --- |
