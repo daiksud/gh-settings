@@ -169,7 +169,7 @@ func TestProtectedPlanValidationDoesNotLogUntrustedDiagnostics(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			installDir := filepath.Join(root, ".trusted", "action")
+			installDir := filepath.Join(root, ".published", "action")
 			binDir := filepath.Join(root, "gh-settings-cli.fake")
 			if err := os.MkdirAll(installDir, 0700); err != nil {
 				t.Fatal(err)
