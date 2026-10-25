@@ -168,6 +168,51 @@ func TestReleaseArtifactManifestBehavior(t *testing.T) {
 	}
 }
 
+func TestReleaseCandidateFixtureToolchain(t *testing.T) {
+	// The public Action itself consumes a binary, but its bounded API fixture is
+	// compiled from the frozen checkout. A runner's ambient Go may be too old.
+	action, _ := readReleaseAction(t, "release-acceptance")
+	ci, _ := readReleaseAction(t, "ci-acceptance")
+	var ciSetup step
+	for _, s := range ci.Runs.Steps {
+		if strings.HasPrefix(s.Uses, "jdx/mise-action@") {
+			ciSetup = s
+		}
+	}
+	setupIndex, candidateIndex := -1, -1
+	for i, s := range action.Runs.Steps {
+		if strings.HasPrefix(s.Uses, "jdx/mise-action@") {
+			setupIndex = i
+			if s.Uses != ciSetup.Uses || !reflect.DeepEqual(s.With, ciSetup.With) ||
+				s.With["working_directory"] != ".action" || s.With["install_args"] != "go" ||
+				s.If != "inputs.target == 'candidate-action'" {
+				t.Fatalf("release fixture must use the same pinned source toolchain as CI: %+v", s)
+			}
+		}
+		if s.Uses == "./.action/.github/actions/candidate-smoke" {
+			candidateIndex = i
+		}
+	}
+	if setupIndex < 0 || candidateIndex <= setupIndex {
+		t.Fatal("release candidate must install its fixture toolchain before public Action acceptance")
+	}
+
+	// Build and execute the actual fixture with automatic toolchain downloads
+	// disabled, just as candidate-smoke does. This does not rebuild the product
+	// or claim that a hosted mise installation has been exercised locally.
+	binary := filepath.Join(t.TempDir(), "plan-fixture")
+	command := exec.Command("go", "build", "-o", binary, "./tests/github-actions/plan-fixture")
+	command.Dir = root()
+	command.Env = append(os.Environ(), "GOTOOLCHAIN=local")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("build candidate API fixture with local toolchain: %v\n%s", err, output)
+	}
+	output, err := exec.Command(binary).CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "usage: plan-fixture STATE_DIRECTORY") {
+		t.Fatalf("built fixture did not execute its real entry point: err=%v output=%s", err, output)
+	}
+}
+
 func TestReleaseWorkflowCanonicalBytes(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
 	if err != nil {
