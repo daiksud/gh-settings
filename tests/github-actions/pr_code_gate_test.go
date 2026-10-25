@@ -79,7 +79,8 @@ func TestCodeGatePreservesResultsAcrossMetadataEdits(t *testing.T) {
 func TestCodeResultPublication(t *testing.T) {
 	jobs := readCodeGate(t)
 	var result struct{ Steps []step }
-	if err := jobs["code-result"].Decode(&result); err != nil {
+	resultNode := jobs["code-result"]
+	if err := resultNode.Decode(&result); err != nil {
 		t.Fatal(err)
 	}
 	head := strings.Repeat("a", 40)
