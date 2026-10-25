@@ -4,6 +4,8 @@ Manage a GitHub repository's settings as code, using a GitHub CLI extension or a
 
 The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged; declared collections control their complete membership.
 
+Current source removes organization-only custom-property values and private repository forking. These features were published before 1.0 in v0.18.x. See the [migration instructions](docs/settings.md#custom-property-values) before upgrading; existing remote settings are left unmanaged.
+
 ## Install
 
 Install [GitHub CLI](https://cli.github.com/) and Git. Authenticate with `gh auth login` if needed, then check your credentials with `gh auth status`.

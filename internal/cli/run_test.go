@@ -126,6 +126,19 @@ func TestRunSelectsOperation(t *testing.T) {
 	}
 }
 
+func TestRemovedOrganizationExportOptions(t *testing.T) {
+	for _, option := range []string{"--forking", "--custom-properties", "--custom-property"} {
+		var stdout, stderr bytes.Buffer
+		code := Run([]string{"export", option}, &stdout, &stderr, "fixture", Operations{Export: func(ExportOptions) error {
+			t.Fatal("removed option reached export")
+			return nil
+		}})
+		if code != 1 || stdout.Len() != 0 || stderr.Len() == 0 {
+			t.Fatalf("option=%s status=%d stderr=%q", option, code, stderr.String())
+		}
+	}
+}
+
 func TestUnsupportedCommand(t *testing.T) {
 	for _, args := range [][]string{nil, {"unknown"}, {"apply", "extra"}, {"plan", "--json"}, {"export", "--repo", "owner/other"}, {"validate", "--repo", "owner/other"}} {
 		var stdout, stderr bytes.Buffer

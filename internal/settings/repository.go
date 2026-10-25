@@ -49,7 +49,6 @@ type RepositoryDeclaration struct {
 	IssueCreationPolicy       *string
 	HasSponsorships           *bool
 	Archived                  *bool
-	AllowForking              *bool
 }
 
 // Empty reports whether every field is unmanaged, regardless of declared values.
@@ -153,11 +152,4 @@ func ValidIssueCreationPolicy(value string) bool {
 }
 func (d RepositoryDeclaration) RepositoryAccessEmpty() bool {
 	return d.PRAccessEmpty() && d.IssueCreationPolicy == nil && d.HasSponsorships == nil
-}
-
-func (d RepositoryDeclaration) ValidateForkingComposition() error {
-	if d.AllowForking != nil && d.Archived != nil && *d.Archived {
-		return errors.New("allow_forking cannot be combined with archived: true; explicitly unarchive first")
-	}
-	return nil
 }

@@ -1,5 +1,7 @@
 # Repository settings
 
+Current source removes organization-only custom-property values and private repository forking. These features were published before 1.0 in v0.18.x. See the [migration instructions](#custom-property-values) before upgrading; existing remote settings are left unmanaged.
+
 ## v0.18.0 package
 
 Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). It also includes the v0.17.0 Rulesets, PR/Issue access, Actions, security, retention and fork-workflow features. The maintained examples select v0.18.0; adopting its pin does not expand caller grants, activate this repository's protected observer, or change settings by itself.
@@ -8,7 +10,7 @@ The current source fixes Ruleset plan presentation so only declaration-owned val
 
 ## Scope and status
 
-Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. v0.18.0 supports twenty-five repository fields, topics, labels, the adopted Rulesets/Actions/security subsets, existing-site Pages and bounded custom-property values, using the same file-format version. v0.17.0 supports twenty-two repository fields and the earlier resource set. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
+Configuration lives in `.github/settings.yml` at the Git checkout root and manages only that checkout's GitHub.com repository. Current source supports twenty-four repository fields; v0.18.0 supports twenty-five repository fields, topics, labels, the adopted Rulesets/Actions/security subsets, existing-site Pages and bounded custom-property values, using the same file-format version. v0.17.0 supports twenty-two repository fields and the earlier resource set. See the [command reference](commands.md) for behavior and the [Action package boundary](github-actions.md#published-package-and-consumer-pins) before adopting a configuration.
 
 ## Supported fields
 
@@ -26,22 +28,7 @@ The booleans accept `true` or `false`; the string fields accept strings, includi
 
 ## Private repository forking
 
-Published v0.18.0 supports `settings.repository.allow_forking` for non-fork, private repositories owned by organizations. Current source permits explicit unarchive-first composition; published v0.18.0 and v0.18.1 reject that composition. Published v0.17.0 and older packages reject this key and `export --forking`.
-
-```yaml
-schemaVersion: 1
-settings:
-  repository:
-    allow_forking: false
-```
-
-Omission is unmanaged. `true` permits private forking at the repository setting; `false` prohibits it there. Null, quoted values and other types are invalid. Public, internal, personal-owned and fork repositories are outside this adopted subset. The matching organization must explicitly report that private repository forks are allowed, even to manage false; GitHub requires that allowance before either repository choice. Hidden, missing, denied or disabled organization policy is an error, never a default or observed false. This setting does not delete existing forks, change organization/enterprise policy, or configure fork PR workflows and credentials.
-
-Ordinary export omits the field and adds no organization-policy read. `gh settings export --forking` includes the current value after complete applicability checks; a failed read preserves the existing file. It composes with other applicable export selections except `--archive`, which remains rejected because an archived export could not be safely reapplied. Current source accepts `allow_forking` with explicit `archived: false`: plan can compare both fields while archived, and apply performs the isolated unarchive before the fork-policy phase. `archived: true` remains invalid with this field. Without explicit unarchive intent, plan may report the observed fork setting of an archived target, but apply fails before a fork-setting write.
-
-Plan performs only reads and displays a native boolean difference. Apply processes this setting after other declared resources, checks complete current target/policy state, skips a match, then rechecks before a PATCH containing only `allow_forking`. The response and an independent readback must confirm the same repository/organization identities and desired value. A pre-write failure makes no forking-policy write; a failed PATCH or readback leaves its effects uncertain. Earlier successful resource writes remain applied. There is no automatic retry, rollback, fork creation/deletion or atomic lock against concurrent changes. Success verifies the repository setting, not every actor's ability to fork under higher-level restrictions.
-
-Private repository Metadata read and existing visibility of the organization policy are required for plan/export; apply additionally requires Administration write and an eligible repository administrator. [Organization GET](https://docs.github.com/en/rest/orgs/orgs#get-an-organization) exposes full details to organization owners; classic credentials need `admin:org` for those details. Endpoint success alone does not establish visibility. The tool never expands grants or issues credentials. The [repository policy guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/managing-the-forking-policy-for-your-repository) explains applicability; [fixture coverage](features/private-forking.feature.md) does not establish live token capabilities or policy mutation behavior.
+Removed from current source because this setting is restricted to organization-owned repositories. Published v0.18.0 and v0.18.1 retain `settings.repository.allow_forking` and `export --forking`; current source rejects both. Remove the YAML key and export option before upgrading. Removing a declaration leaves the actual GitHub setting unmanaged; it does not reset it. Private fork PR workflow controls remain supported separately.
 
 ## Repository archive lifecycle
 
@@ -685,26 +672,6 @@ Pages GET requires Pages read (public resources may be readable without authenti
 
 ## Custom property values
 
-Published v0.18.0 accepts `settings.custom_properties` for the adopted organization-owned property subset. Published v0.17.0 and older packages reject this group and `export --custom-properties`. Required/default-backed/explicitly-required properties, enterprise sources, organization-only editing, URL properties and regex-constrained strings remain outside the adopted subset and are tracked in #354.
+Removed from current source because custom properties require organization-owned repositories. Published v0.18.0 and v0.18.1 retain `settings.custom_properties` and `export --custom-properties`. Named `export --custom-property NAME` existed only in unreleased source. Current source rejects the group (including empty/null values) and both export options.
 
-```yaml
-schemaVersion: 1
-settings:
-  custom_properties:
-    service: "payments"
-    regions: ["east", "west"]
-    retired: "false"
-    previous_owner: null
-```
-
-Omission leaves a property unmanaged; `{}` manages nothing. Null explicitly unsets a named property, including an empty YAML scalar. Empty string and empty array retain those values. An array is a unique set of strings; order does not cause drift. Boolean property values must be quoted `"true"` or `"false"`. YAML booleans, numbers, objects, duplicates and unsupported value shapes fail local validation. Names are case-sensitive ASCII letters/digits or `_`, `-`, `$`, `#`, with length 1–75. Strings and array members are printable ASCII excluding double quotes, at most 75 characters. Property existence, schema type and allowed selections are validated during remote operations.
-
-Only organization-sourced properties editable by organization and repository actors are adopted. Complete schema must establish `required: false`, `require_explicit_values: false`, a null default and, for strings, no regex constraint. Supported types are string, single-select, multi-select and true/false. Unknown names, unavailable constraints and invalid selections fail. Required/default-backed, explicitly required, enterprise-sourced, organization-only, URL and regex-constrained properties remain unsupported. Schema definitions are never created or changed.
-
-Use `export --custom-properties` to read the full organization schema and repository values. It declares every supported observed schema name, including null for unset values; remove names you want unmanaged before applying. Full export preserves its all-supported-or-error contract: an unsupported property or incomplete read fails the whole export and preserves the old file.
-
-Current source additionally supports repeatable `export --custom-property NAME` for a supported subset. It reads the same complete schema and value collections but declares only the selected names, so every other property remains unmanaged and absent from later diffs. Each selected name must exist and satisfy the adopted schema; an unsupported selected property or any incomplete/unreadable selected constraint fails without replacing the file. Unsupported unselected schemas and unreadable constraints do not block selected export, plan or apply. The singular and plural options cannot be combined. Ordinary export does not request properties. Complete selected string constraints must be accessible; unavailable data and 404 are errors, not empty state. Exported output validates and produces a zero-difference plan against the same observation.
-
-Plan remains read-only and displays JSON-native string/array/null differences. Apply reads fresh state, skips a match, rereads before mutation, PATCHes only declared names, and verifies selected schemas, values, retained unowned values and repository/organization identity. It follows other resource writes and precedes final archive; explicit unarchive comes first. Earlier writes remain applied after failure; an attempted property update can have uncertain outcome. There is no retry, rollback or atomic concurrency guarantee.
-
-Value reads require repository Metadata read; schema reads require organization Custom properties read plus authenticated access to the GraphQL schema fields. Value updates require repository Custom properties write and the schema's actor authorization. A successful read does not prove write grants. No schema administration permission is requested. See the [behavior and evidence limits](features/custom-properties.feature.md).
+Remove the group and export options before upgrading, or keep using an older compatible version for these settings. Existing remote schemas and values remain untouched and unmanaged. New CLI and Action Summary reject old custom-property reports; regenerate reports with the same package used for rendering. Required/default/regex and other custom-property expansion is outside the current product scope. Historical rationale remains in [ADR0030](adr/0030-schema-bound-custom-property-values.md).

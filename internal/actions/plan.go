@@ -17,17 +17,16 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
-	Outcome    string               `json:"outcome"`
-	Target     string               `json:"target,omitempty"`
-	Managed    int                  `json:"managed"`
-	Changes    []PlanChange         `json:"changes"`
-	Diagnostic string               `json:"diagnostic,omitempty"`
-	Labels     []LabelPlanChange    `json:"labels,omitempty"`
-	Actions    []PlanChange         `json:"actions,omitempty"`
-	Security   []PlanChange         `json:"security,omitempty"`
-	Rulesets   []RulesetPlanChange  `json:"rulesets,omitempty"`
-	Pages      []PagesPlanChange    `json:"pages,omitempty"`
-	Properties []PropertyPlanChange `json:"custom_properties,omitempty"`
+	Outcome    string              `json:"outcome"`
+	Target     string              `json:"target,omitempty"`
+	Managed    int                 `json:"managed"`
+	Changes    []PlanChange        `json:"changes"`
+	Diagnostic string              `json:"diagnostic,omitempty"`
+	Labels     []LabelPlanChange   `json:"labels,omitempty"`
+	Actions    []PlanChange        `json:"actions,omitempty"`
+	Security   []PlanChange        `json:"security,omitempty"`
+	Rulesets   []RulesetPlanChange `json:"rulesets,omitempty"`
+	Pages      []PagesPlanChange   `json:"pages,omitempty"`
 }
 
 // PlanChange retains the native string, boolean, integer or string-list comparison values.
@@ -63,7 +62,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	if result.Comparison.Managed > 0 {
 		report.Target = result.Target.Owner + "/" + result.Target.Name
 		report.Outcome = "changed"
-		if len(result.Comparison.Changes) == 0 && result.Comparison.Labels.Len() == 0 && len(result.Comparison.Rulesets) == 0 && len(result.Comparison.Actions) == 0 && len(result.Comparison.Security) == 0 && len(result.Comparison.Pages) == 0 && len(result.Comparison.Properties) == 0 {
+		if len(result.Comparison.Changes) == 0 && result.Comparison.Labels.Len() == 0 && len(result.Comparison.Rulesets) == 0 && len(result.Comparison.Actions) == 0 && len(result.Comparison.Security) == 0 && len(result.Comparison.Pages) == 0 {
 			report.Outcome = "no-difference"
 		}
 	}
@@ -90,10 +89,6 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.Security {
 		before, after := change.Values()
 		report.Security = append(report.Security, PlanChange{Field: change.Field(), Before: before, After: after})
-	}
-	for _, c := range result.Comparison.Properties {
-		b, a := c.Values()
-		report.Properties = append(report.Properties, PropertyPlanChange{Name: c.Name(), Type: c.Type(), Before: b, After: a})
 	}
 	for _, c := range result.Comparison.Pages {
 		b, a := c.Values()

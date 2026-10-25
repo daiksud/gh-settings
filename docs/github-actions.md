@@ -235,7 +235,7 @@ Published v0.18.0 supports [existing Pages configuration](settings.md#existing-p
 
 ## Custom property values
 
-Published v0.18.0 supports the [bounded custom property declaration](settings.md#custom-property-values). Published v0.17.0 and older packages reject it. The remaining schema/provenance constraints stay unsupported under #354.
+Published v0.18.0 supports the [bounded custom property declaration](settings.md#custom-property-values). Published v0.17.0 and older packages reject it. Current source removes this organization-only group and private repository forking; remove their declarations before upgrading. New Summary rejects old custom-property reports and removed forking fields. See the [migration instructions](settings.md#custom-property-values).
 
 Both plan and apply need complete organization schema visibility (organization Custom properties read), repository value reads (Metadata read), and authenticated GraphQL string-constraint visibility. Apply additionally needs repository Custom properties write and schema actor authorization. These grants are not added automatically. Organization schema mutation is outside the feature.
 

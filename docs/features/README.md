@@ -62,8 +62,8 @@ Published v0.18.0 adds the [existing-site Pages contract](pages.feature.md) from
 
 The [Environment design](environments.feature.md) for #351 separates selected names from authoritative membership, protection reductions from omission, and typed reviewer identity from display names. All Environment syntax remains unimplemented. #352/#353 require the documented observation, preservation and transition evidence before adoption; lifecycle and undocumented administrator-bypass mutations remain deferred.
 
-Published v0.18.0 adds the bounded [custom property values](custom-properties.feature.md) contract, with explicit export selection, schema-bound validation and null unset. Published v0.17.0 and older packages reject it; default-backed and other unadopted constraints remain gated in #354.
+Current source removes organization-only [custom property values](custom-properties.feature.md); published v0.18.x retains the feature.
 
 The [repository access design](repository-access.feature.md) reserves collaborator/team ownership, pending invitation outcomes and revocation gates for #356/#357. It is unimplemented; current source and published packages reject access declarations and export options.
 
-Published v0.18.0 adds the bounded [private repository forking policy](private-forking.feature.md), with complete organization-policy observation and explicit export selection. Current source permits an archived target only with explicit `archived: false` unarchive-first intent; published v0.18.0 and v0.18.1 retain the earlier composition rejection. Published v0.17.0 and older packages reject the feature; public/internal/personal/fork targets remain unadopted.
+Current source removes organization-only [private repository forking policy](private-forking.feature.md); published v0.18.x retains the feature.
