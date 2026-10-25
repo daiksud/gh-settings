@@ -24,6 +24,46 @@ func TestCandidateCompositeCallers(t *testing.T) {
 			if _, exists := w.Jobs["composite-smoke"]; exists {
 				t.Fatal("public Action acceptance must be a matrix leg, not a separate CI job")
 			}
+			resolveNode, buildNode := w.Jobs["resolve"], w.Jobs["commit-stage"]
+			var resolved, built job
+			if err := resolveNode.Decode(&resolved); err != nil {
+				t.Fatal(err)
+			}
+			if err := buildNode.Decode(&built); err != nil {
+				t.Fatal(err)
+			}
+			wantResolveDependency := ""
+			if name == "ci-pr.yml" {
+				wantResolveDependency = "draft"
+			}
+			if resolved.Needs != wantResolveDependency || built.Needs != "resolve" ||
+				built.Runner != "${{ matrix.runner }}" || len(built.Steps) != 3 {
+				t.Fatalf("stage dependency or build matrix changed: resolve=%+v build=%+v", resolved, built)
+			}
+			transfer := built.Steps[2]
+			if !strings.HasPrefix(transfer.Uses, "actions/upload-artifact@") ||
+				!reflect.DeepEqual(transfer.With, map[string]string{
+					"name": "ci-${{ matrix.target }}-${{ github.sha }}",
+					"path": "${{ steps.build.outputs.artifact-directory }}",
+					"if-no-files-found": "error", "overwrite": "true", "retention-days": "1",
+				}) {
+				t.Fatalf("commit must upload the manifested binary from this run: %+v", transfer)
+			}
+			if name == "ci-pr.yml" {
+				draftNode, readyNode := w.Jobs["draft"], w.Jobs["ready"]
+				var draft, ready job
+				if err := draftNode.Decode(&draft); err != nil {
+					t.Fatal(err)
+				}
+				if err := readyNode.Decode(&ready); err != nil {
+					t.Fatal(err)
+				}
+				if draft.Needs != "code-start" || ready.Needs != "commit-stage" {
+					t.Fatal("PR Draft and Ready transitions must bracket the commit stage")
+				}
+			} else if _, exists := w.Jobs["ready"]; exists {
+				t.Fatal("push validation must not change PR state")
+			}
 			var acceptance struct {
 				Needs       []string          `yaml:"needs"`
 				Runner      string            `yaml:"runs-on"`
