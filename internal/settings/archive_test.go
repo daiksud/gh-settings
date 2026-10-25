@@ -10,7 +10,7 @@ import (
 
 func TestArchiveFieldOmissionAndBooleanValidation(t *testing.T) {
 	repo := repository.Repository{Owner: "owner", Name: "current"}
-	if (RepositoryDeclaration{}).Archived != nil || len(AllRepositoryFields()) != RepositoryFieldCount()-2 {
+	if (RepositoryDeclaration{}).Archived != nil || len(AllRepositoryFields()) != RepositoryFieldCount()-1 {
 		t.Fatal("archive must be opt-in, not part of ordinary export")
 	}
 	for _, archived := range []bool{false, true} {

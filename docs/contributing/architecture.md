@@ -6,7 +6,7 @@ This page explains the design for contributors. The [settings reference](../sett
 
 gh-settings lets repository maintainers record intended settings in version control, review differences, and apply declared values. It is inspired by [babarot/gh-infra](https://github.com/babarot/gh-infra), [noirbizarre/gh-settings](https://github.com/noirbizarre/gh-settings), and [the GitHub Terraform provider](https://github.com/integrations/terraform-provider-github), rather than being a fork of those implementations.
 
-Configuration lives at the current checkout's root `.github/settings.yml` and targets only that checkout's GitHub.com repository. Current resources are repository fields, topics, labels, repository-owned branch/tag Rulesets, the adopted Actions/security subsets, existing-site Pages and bounded custom-property values. The [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) owns supported-version and adoption guidance. Organization settings, inherited organization rulesets, Pages lifecycle/visibility, unadopted custom-property constraints and management of multiple repositories are outside this product boundary.
+Configuration lives at the current checkout's root `.github/settings.yml` and targets only that checkout's GitHub.com repository. Current resources are repository fields, topics, labels, repository-owned branch/tag Rulesets, the adopted Actions/security subsets, existing-site Pages. The [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) owns supported-version and adoption guidance. Organization settings, inherited organization rulesets, Pages lifecycle/visibility, unadopted custom-property constraints and management of multiple repositories are outside this product boundary.
 
 Written fields are managed and authoritative; omitted fields remain unmanaged. Declaring a labels list additionally owns its collection membership, while omitted attributes of retained labels stay unmanaged. Configuration keys and value types follow the corresponding update request schema, within the explicit versioned resource grouping. A repository GET response does not define the writable configuration schema. The [settings reference](../settings.md#configuration-semantics) owns exact field, omission, null, and grouping behavior.
 
@@ -117,13 +117,13 @@ Prefer the Go standard library where sufficient; no command framework is mandate
 
 ## Pull request access transport
 
-The v0.17.0 [PR access feature](../features/pull-request-access.feature.md) adds a third complete scalar observation group in `internal/settings`, alongside base REST and merge-related GraphQL values. Existing field IDs, requested observation routing and native report presentation retain omission and stable order. Current-source ordinary export requests twenty-three scalar fields; archive and private forking have separate explicit selection paths. Selective plan skips clients for unrelated groups.
+The v0.17.0 [PR access feature](../features/pull-request-access.feature.md) adds a third complete scalar observation group in `internal/settings`, alongside base REST and merge-related GraphQL values. Existing field IDs, requested observation routing and native report presentation retain omission and stable order. Current-source ordinary export requests twenty-three scalar fields; archive has a separate explicit selection path. Selective plan skips clients for unrelated groups.
 
 The [PR access adapter](../../internal/github/repository_access.go) uses GraphQL query variables for complete policy reads and an independently validated repository-ID lookup before a declared-only `updateRepository` mutation. The root composition retains existing REST writes, skips an empty PATCH for PR-only input, and then invokes PR access before later resources. Mutation response values and identity are verified; mixed-resource errors preserve evidence of earlier writes. This does not add a generic backend registry, saved plans, retries, or permission expansion.
 
 ## Issue creation policy
 
-The v0.17.0 [Issue creation policy](../features/issue-creation-policy.feature.md) has its own complete observation group and query, so PR-only reads do not acquire unrelated Issue data. `RepositoryObservation.WithIssueCreationPolicy` adds the independently acquired enum without mutating an earlier observation. The static field definitions retain order, native values and omission; ordinary source export acquires twenty-three scalars, while archive and private forking remain explicit selections.
+The v0.17.0 [Issue creation policy](../features/issue-creation-policy.feature.md) has its own complete observation group and query, so PR-only reads do not acquire unrelated Issue data. `RepositoryObservation.WithIssueCreationPolicy` adds the independently acquired enum without mutating an earlier observation. The static field definitions retain order, native values and omission; ordinary source export acquires twenty-three scalars, while archive remains an explicit selection.
 
 The shared [repository access adapter](../../internal/github/repository_access.go) retains the narrow PR query and adds a separate Issue query. Both use `followRenames: false`. Its closed mutation selects only declared Issue/PR fields and performs one validated ID lookup and mutation for combined input. The root composition excludes these fields from REST payloads and preserves existing REST-first partial-failure behavior. `has_issues` keeps its existing REST ownership and is never synthesized by an Issue policy declaration.
 
@@ -177,9 +177,7 @@ The existing repository mutation includes `hasSponsorshipsEnabled` only when dec
 
 ## Schema-bound custom property values
 
-[ADR0030](../adr/0030-schema-bound-custom-property-values.md) defines the current-source bounded value subset. The settings model owns declared-name presence, null unset, canonical value unions and schema validation. The GitHub adapter combines complete REST schema/value collections with GraphQL string-constraint observation and pins repository/organization identity. It never writes organization schema. Apply uses fresh declared-only value PATCHes and readback without transaction or rollback machinery.
-
-Workspace encoding retains null/empty distinctions; application selection preserves ordinary export privileges. Typed Action reports and CLI/Summary rendering share native differences; the collection counts once. See [behavior/test mappings](../features/custom-properties.feature.md). This bounded subset is published in v0.18.0; default-backed and other unadopted constraints remain gated in #354.
+Removed from current source. [ADR0030](../adr/0030-schema-bound-custom-property-values.md) preserves the published v0.18.x design; the [migration reference](../settings.md#custom-property-values) explains rejection of removed declarations, commands and reports.
 
 ## Repository access design boundary
 
@@ -187,4 +185,4 @@ Workspace encoding retains null/empty distinctions; application selection preser
 
 ## Private repository forking
 
-[ADR0032](../adr/0032-private-forking-applicability.md) keeps the opt-in repository boolean outside ordinary repository observations and bulk writes. The model retains acquired state and target identity, the adapter proves applicability and organization policy, and the application sequences the separate write after other resources. Workspace presence and native CLI/Action field handling reuse scalar definitions. Lifecycle composition is rejected locally; published behavior and fixture limitations are documented in the [user contract](../settings.md#private-repository-forking).
+Removed from current source. [ADR0032](../adr/0032-private-forking-applicability.md) preserves the published v0.18.x design; the [migration reference](../settings.md#private-repository-forking) explains removal. Private fork PR workflow settings remain supported.

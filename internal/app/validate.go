@@ -11,9 +11,6 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 	if err != nil {
 		return settings.Declaration{}, err
 	}
-	if err := d.Repository.ValidateForkingComposition(); err != nil {
-		return settings.Declaration{}, err
-	}
 	if err := d.Repository.ValidateCommitDependencies(); err != nil {
 		return settings.Declaration{}, err
 	}
@@ -21,9 +18,6 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 		return settings.Declaration{}, err
 	}
 	if err := d.Pages.Validate(); err != nil {
-		return settings.Declaration{}, err
-	}
-	if err := d.Properties.Validate(); err != nil {
 		return settings.Declaration{}, err
 	}
 	return d, nil

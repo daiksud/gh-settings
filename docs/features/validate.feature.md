@@ -149,7 +149,7 @@ Current source accepts only the strict optional `actions` mapping. The [Actions 
 
 ### Rule: Validate all adopted fields in the v0.18.0 package locally
 
-Validation accepts twenty-five repository fields, authoritative Rulesets, fourteen Actions policy fields, three adopted security booleans, five Pages fields and bounded custom-property declarations. Omission remains unmanaged; false and supported empty collections remain explicit; Pages cname null is the endpoint-specific clear operation; other nulls follow their resource contracts. Unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Pages lifecycle/visibility, unadopted custom-property constraints and other gated candidates are not accepted.
+Validation accepts twenty-four repository fields, authoritative Rulesets, fourteen Actions policy fields, three adopted security booleans, five Pages fields. Omission remains unmanaged; false and supported empty collections remain explicit; Pages cname null is the endpoint-specific clear operation; other nulls follow their resource contracts. Unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Pages lifecycle/visibility, organization-only settings and other gated candidates are not accepted.
 
 | Subset | Existing owning tests and specification |
 | --- | --- |
@@ -159,7 +159,7 @@ Validation accepts twenty-five repository fields, authoritative Rulesets, fourte
 | Workflow permissions and retention | [Workflow codec](../../internal/workspace/workflow_permissions_test.go), [retention codec](../../internal/workspace/retention_test.go) |
 | Secret scanning and public reporting | [Security codec](../../internal/workspace/security_test.go), [security contract](security.feature.md) |
 | Fork workflow policies | [Fork codec](../../internal/workspace/fork_workflows_test.go), [fork contract](fork-workflows.feature.md) |
-| Archive, Sponsor and private forking | [Archive codec](../../internal/workspace/archive_test.go), [Sponsor codec](../../internal/workspace/sponsorships_test.go), [forking codec](../../internal/workspace/forking_test.go) |
-| Existing-site Pages and custom properties | [Pages codec](../../internal/workspace/pages_test.go), [property codec](../../internal/workspace/properties_test.go) |
+| Archive and Sponsor | [Archive codec](../../internal/workspace/archive_test.go), [Sponsor codec](../../internal/workspace/sponsorships_test.go) |
+| Existing-site Pages and removed settings | [Pages codec](../../internal/workspace/pages_test.go), [removed settings](../../internal/workspace/removed_settings_test.go) |
 
 Dedicated process cases exercise the same supplied CLI through these interfaces; detailed type matrices remain with the codec/model owners. Validation success does not establish remote policy, grants, applicability or published availability.

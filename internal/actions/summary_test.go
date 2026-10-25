@@ -31,6 +31,9 @@ func TestSummaryInputAndStorageFailures(t *testing.T) {
 	}{
 		{"missing report", "", false, false},
 		{"malformed JSON", "{", false, false},
+		{"removed properties", `{"outcome":"unmanaged","managed":0,"changes":[],"custom_properties":[]}`, false, false},
+		{"removed null properties", `{"outcome":"unmanaged","managed":0,"changes":[],"custom_properties":null}`, false, false},
+		{"removed forking", `{"outcome":"changed","target":"owner/current","managed":1,"changes":[{"field":"repository.allow_forking","before":false,"after":true}]}`, false, false},
 		{"missing count", `{"outcome":"unmanaged","changes":[]}`, false, false},
 		{"null count", `{"outcome":"unmanaged","managed":null,"changes":[]}`, false, false},
 		{"invalid state", `{"outcome":"unknown","managed":0,"changes":[]}`, false, false},

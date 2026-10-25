@@ -1,19 +1,14 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
-	IncludeForking             bool
 	IncludeArchive             bool
 	IncludePages               bool
-	IncludeProperties          bool
-	PropertyNames              []string
 	IncludeForkApproval        bool
 	IncludePrivateFork         bool
 	Repository                 TargetResolver
@@ -29,9 +24,6 @@ type ExportCheckout struct {
 
 // Export saves all observed fields only after a complete read.
 func Export(checkout ExportCheckout, read Reader) error {
-	if checkout.IncludeForking && checkout.IncludeArchive {
-		return fmt.Errorf("forking export cannot be combined with archive export")
-	}
 	repo, err := checkout.Repository()
 	if err != nil {
 		return err
@@ -189,39 +181,6 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
-	}
-	if checkout.IncludeProperties || len(checkout.PropertyNames) > 0 {
-		var o settings.PropertyObservation
-		if checkout.IncludeProperties {
-			o, err = read.Properties(repo)
-		} else {
-			o, err = read.SelectedProperties(repo, checkout.PropertyNames)
-		}
-		if err != nil {
-			return err
-		}
-		if checkout.IncludeProperties {
-			declaration.Properties, err = o.Declaration()
-		} else {
-			declaration.Properties, err = o.SelectedDeclaration(checkout.PropertyNames)
-		}
-		if err != nil {
-			return err
-		}
-	}
-	if checkout.IncludeForking {
-		o, err := read.Forking(repo)
-		if err == nil {
-			err = o.Validate(repo)
-		}
-		if err != nil {
-			return err
-		}
-		value, _ := o.Value()
-		declaration.Repository.AllowForking = &value
-	}
-	if err := declaration.Repository.ValidateForkingComposition(); err != nil {
-		return err
 	}
 	return save(declaration)
 }

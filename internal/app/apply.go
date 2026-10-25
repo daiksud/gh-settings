@@ -29,7 +29,6 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 	archiveManaged := desired.Repository.Archived != nil
 	other := desired.Repository
 	other.Archived = nil
-	other.AllowForking = nil
 	repositoryManaged, topicsManaged := !other.Empty(), desired.Topics.Names != nil
 	var archiveState settings.ArchiveState
 	if archiveManaged {
@@ -196,31 +195,6 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if len(desired.Properties) > 0 {
-		wrote, err := applyProperties(&result, repo, desired.Properties, write)
-		if err != nil {
-			return result, err
-		}
-		hasWrites = hasWrites || wrote
-	}
-	if desired.Repository.AllowForking != nil {
-		i := len(result.Operations)
-		result.Operations = append(result.Operations, ApplyOperation{Kind: ForkingUpdate})
-		wrote, err := write.Forking(repo, *desired.Repository.AllowForking)
-		if err != nil {
-			status := OperationFailedUnknown
-			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
-				status = OperationFailedRead
-			}
-			result.failOperation(i, status)
-			return result, fmt.Errorf("apply private forking policy (earlier successful writes remain applied): %w", err)
-		}
-		if wrote {
-			result.Operations[i].Status = OperationCompleted
-		}
-		hasWrites = hasWrites || wrote
-	}
 	if archiveManaged && *desired.Repository.Archived && !archiveState.Archived {
 		i := len(result.Operations)
 		result.Operations = append(result.Operations, ApplyOperation{Kind: ArchiveRead})
@@ -269,5 +243,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty() || len(desired.Properties) > 0
+	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }
