@@ -23,9 +23,9 @@ Release publication has no Issue-comment bridge. The owner starts [`release.yml`
 
 ## PR lifecycle
 
-A code-changing PR event marks `pass` pending, sets Draft, runs commit-stage, then marks the PR Ready before acceptance-stage and composite-smoke. The final API-only reporter publishes the actual code result only while the PR head/base still match and every required code job succeeded. A title/body-only edit skips this path without writing a new `pass` status or repeating Draft/Ready changes. Metadata edits use a different concurrency group so they do not cancel code validation.
+A code-changing PR event marks `pass` pending, sets Draft, resolves the static build and acceptance matrices, runs commit-stage, then marks the PR Ready before process and public-Action acceptance. Both acceptance legs verify the same manifested binary from commit-stage without rebuilding it. The final API-only reporter succeeds only when every prerequisite succeeded; GitHub triggers, concurrency, and protection own revision freshness and merge eligibility. A title/body-only edit skips this path without writing a new `pass` status or repeating Draft/Ready changes. Metadata edits use a different concurrency group so they do not cancel code validation.
 
-The independent `pr-message` job checks the current title and body together as the proposed squash message. Both code and message validation must be required independently; the code reporter refuses success until the effective base-branch rules require `pr-message` from GitHub Actions. See [PR validation](pr-validation.md) for the activation sequence, status semantics, and failure behavior.
+The independent `pr-message` job checks the current title and body together as the proposed squash message. GitHub's required-check settings enforce this separately from the code reporter; the reporter does not query or enforce rulesets. See [PR validation](pr-validation.md) for the independent checks, metadata separation, and failure behavior.
 
 Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready and code-status jobs have narrowly scoped write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state/status changes; the workflow does not bypass them.
 
@@ -37,7 +37,7 @@ The inspected [default-branch Ruleset](https://github.com/daiksud/gh-settings/ru
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
-| `pass` | [PR code CI](../../.github/workflows/ci-pr.yml) reports source, acceptance, and composite results; metadata-only edits do not overwrite it | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `pass` | [PR code CI](../../.github/workflows/ci-pr.yml) reports source, commit, and both acceptance matrix results; metadata-only edits do not overwrite it | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
 | `pr-message` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body separately from code validation | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
 | `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's app/name does not identify a unique workflow |
 
