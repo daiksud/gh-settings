@@ -179,10 +179,10 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 				t.Fatal(err)
 			}
 			manifest := map[string]string{
-				"source_sha": sourceSHA,
-				"target": "linux-amd64",
-				"binary_name": "gh-settings",
-				"binary_sha256": hex.EncodeToString(digest[:]),
+				"source_sha":      sourceSHA,
+				"target":          "linux-amd64",
+				"binary_name":     "gh-settings",
+				"binary_sha256":   hex.EncodeToString(digest[:]),
 				"product_version": "v0.18.1",
 			}
 			switch tc.mutate {
