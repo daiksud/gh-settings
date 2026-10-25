@@ -14,6 +14,9 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 	if err := d.Repository.ValidateForkingComposition(); err != nil {
 		return settings.Declaration{}, err
 	}
+	if err := d.Repository.ValidateCommitDependencies(); err != nil {
+		return settings.Declaration{}, err
+	}
 	if err := d.Security.Validate(); err != nil {
 		return settings.Declaration{}, err
 	}

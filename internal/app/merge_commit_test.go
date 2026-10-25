@@ -12,7 +12,7 @@ func TestMergeCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 		calls := 0
 		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{ObserveRepository: observeMergeFixture(func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
-			return settings.MergeMethodsState{MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
+			return settings.MergeMethodsState{AllowMergeCommit: true, MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}, nil
 		})})
 		if err != nil || calls != 1 || got.Comparison.Managed < 1 {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)

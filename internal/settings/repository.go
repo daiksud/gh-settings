@@ -65,6 +65,16 @@ func (d RepositoryDeclaration) ValidateCommitDependencies() error {
 	if d.MergeCommitMessage != nil && d.MergeCommitTitle == nil {
 		return errors.New("merge_commit_message requires merge_commit_title")
 	}
+	if d.AllowMergeCommit != nil && !*d.AllowMergeCommit {
+		return d.validateMergeCommitDefaults(false)
+	}
+	return nil
+}
+
+func (d RepositoryDeclaration) validateMergeCommitDefaults(allowed bool) error {
+	if !allowed && (d.MergeCommitTitle != nil || d.MergeCommitMessage != nil) {
+		return errors.New("merge_commit_title and merge_commit_message require allow_merge_commit: true when declared")
+	}
 	return nil
 }
 

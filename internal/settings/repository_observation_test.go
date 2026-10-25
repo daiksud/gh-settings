@@ -95,6 +95,10 @@ func TestCombinedRepositoryObservationDeclaration(t *testing.T) {
 			completeWant.IssueCreationPolicy = &issuePolicy
 			noSponsorships := false
 			completeWant.HasSponsorships = &noSponsorships
+			if !test.state.AllowMergeCommit {
+				completeWant.MergeCommitTitle = nil
+				completeWant.MergeCommitMessage = nil
+			}
 			if err != nil || !reflect.DeepEqual(complete, completeWant) {
 				t.Fatalf("complete declaration=%+v error=%v, want %+v", complete, err, want)
 			}

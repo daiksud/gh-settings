@@ -3,7 +3,7 @@ package settings
 import "testing"
 
 func TestCommitMessageDependencies(t *testing.T) {
-	squashTitle, mergeTitle, message := "COMMIT_OR_PR_TITLE", "MERGE_MESSAGE", "BLANK"
+	squashTitle, mergeTitle, message, disabled, enabled := "COMMIT_OR_PR_TITLE", "MERGE_MESSAGE", "BLANK", false, true
 	for _, test := range []struct {
 		name        string
 		declaration RepositoryDeclaration
@@ -11,7 +11,8 @@ func TestCommitMessageDependencies(t *testing.T) {
 	}{
 		{name: "unmanaged"},
 		{name: "squash title only", declaration: RepositoryDeclaration{SquashMergeCommitTitle: &squashTitle}},
-		{name: "merge title only", declaration: RepositoryDeclaration{MergeCommitTitle: &mergeTitle}},
+		{name: "merge title only with unmanaged method", declaration: RepositoryDeclaration{MergeCommitTitle: &mergeTitle}},
+		{name: "merge title with enabled method", declaration: RepositoryDeclaration{AllowMergeCommit: &enabled, MergeCommitTitle: &mergeTitle}},
 		{name: "squash pair", declaration: RepositoryDeclaration{SquashMergeCommitTitle: &squashTitle, SquashMergeCommitMessage: &message}},
 		{name: "merge pair", declaration: RepositoryDeclaration{MergeCommitTitle: &mergeTitle, MergeCommitMessage: &message}},
 		{name: "both pairs", declaration: RepositoryDeclaration{SquashMergeCommitTitle: &squashTitle, SquashMergeCommitMessage: &message, MergeCommitTitle: &mergeTitle, MergeCommitMessage: &message}},
@@ -34,6 +35,14 @@ func TestCommitMessageDependencies(t *testing.T) {
 		{
 			name: "squash dependency fails first", declaration: RepositoryDeclaration{SquashMergeCommitMessage: &message, MergeCommitMessage: &message},
 			wantError: "squash_merge_commit_message requires squash_merge_commit_title",
+		},
+		{
+			name: "disabled merge title", declaration: RepositoryDeclaration{AllowMergeCommit: &disabled, MergeCommitTitle: &mergeTitle},
+			wantError: "merge_commit_title and merge_commit_message require allow_merge_commit: true when declared",
+		},
+		{
+			name: "disabled merge pair", declaration: RepositoryDeclaration{AllowMergeCommit: &disabled, MergeCommitTitle: &mergeTitle, MergeCommitMessage: &message},
+			wantError: "merge_commit_title and merge_commit_message require allow_merge_commit: true when declared",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

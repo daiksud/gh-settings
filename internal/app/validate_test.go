@@ -36,3 +36,13 @@ func TestValidateLoadFailure(t *testing.T) {
 		t.Fatalf("declaration=%+v error=%v loads=%d", got, err, calls)
 	}
 }
+
+func TestValidateRejectsDisabledMergeDefaultsFromTypedLoader(t *testing.T) {
+	disabled, title := false, "PR_TITLE"
+	got, err := Validate(func() (settings.Declaration, error) {
+		return settings.Declaration{Repository: settings.RepositoryDeclaration{AllowMergeCommit: &disabled, MergeCommitTitle: &title}}, nil
+	})
+	if err == nil || !reflect.DeepEqual(got, settings.Declaration{}) {
+		t.Fatalf("declaration=%+v error=%v", got, err)
+	}
+}
