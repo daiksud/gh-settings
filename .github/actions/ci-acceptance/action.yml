@@ -26,11 +26,11 @@ runs:
         ARTIFACT_DIRECTORY: ${{ inputs.artifact-directory }}
       run: |
         set -euo pipefail
-        [[ "$TARGET" == linux-amd64 ]]
-        [[ "$KIND" == process || "$KIND" == public-action ]]
-        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
-        [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]]
-        [[ "$(find "$ARTIFACT_DIRECTORY" -maxdepth 1 -type f -print | wc -l | tr -d ' ')" == 2 ]]
+        [[ "$TARGET" == linux-amd64 ]] || { echo 'invalid artifact target' >&2; exit 1; }
+        [[ "$KIND" == process || "$KIND" == public-action ]] || { echo 'invalid acceptance kind' >&2; exit 1; }
+        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid artifact source' >&2; exit 1; }
+        [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'artifact checkout differs from source' >&2; exit 1; }
+        [[ "$(find "$ARTIFACT_DIRECTORY" -maxdepth 1 -type f -print | wc -l | tr -d ' ')" == 2 ]] || { echo 'artifact inventory differs' >&2; exit 1; }
         manifest="$ARTIFACT_DIRECTORY/manifest.json"
         binary="$ARTIFACT_DIRECTORY/gh-settings"
         jq -e --arg source_sha "$SOURCE_SHA" --arg target "$TARGET" \
@@ -38,7 +38,7 @@ runs:
           "$manifest" > /dev/null
         expected_sha256="$(jq -r .binary_sha256 "$manifest")"
         actual_sha256="$(sha256sum "$binary" | cut -d ' ' -f 1)"
-        [[ "$actual_sha256" == "$expected_sha256" ]]
+        [[ "$actual_sha256" == "$expected_sha256" ]] || { echo 'artifact bytes differ from manifest' >&2; exit 1; }
         chmod +x "$binary"
         printf 'binary-path=%s\nbinary-sha256=%s\nproduct-version=%s\n' \
           "$binary" "$expected_sha256" "$(jq -r .product_version "$manifest")" >> "$GITHUB_OUTPUT"
