@@ -226,17 +226,27 @@ func TestCustomPropertyExportPlanApplyUnsetAndPrivateSummary(t *testing.T) {
 	}
 	mu.Unlock()
 	mu.Lock()
-	mode = "unsupported-extra"
+	mode = "regex-error"
 	mu.Unlock()
-	run("export", "--custom-property", "text")
+	run("export", "--custom-property", "tags")
 	selected, _ := os.ReadFile(path)
-	if !strings.Contains(string(selected), "text: CANARY-value") || strings.Contains(string(selected), "tags:") || strings.Contains(string(selected), "blocked:") {
+	if !strings.Contains(string(selected), "tags:") || strings.Contains(string(selected), "text:") || strings.Contains(string(selected), "keep:") {
 		t.Fatal(string(selected))
 	}
 	run("validate")
 	if got := run("plan"); !strings.Contains(got, "No differences") {
 		t.Fatal(got)
 	}
+	write("{tags: [b]}")
+	run("apply")
+	mu.Lock()
+	if len(writes) != 1 || !reflect.DeepEqual(writes[0], map[string]any{"tags": []any{"b"}}) {
+		t.Fatal(writes)
+	}
+	state["tags"] = []string{"a"}
+	writes = nil
+	mode = "unsupported-extra"
+	mu.Unlock()
 	for _, name := range []string{"missing", "blocked"} {
 		original, _ := os.ReadFile(path)
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--custom-property", name}, false)
@@ -245,9 +255,21 @@ func TestCustomPropertyExportPlanApplyUnsetAndPrivateSummary(t *testing.T) {
 			t.Fatal(name, err, r.stderr.String())
 		}
 	}
+	mu.Lock()
+	mode = "regex-error"
+	mu.Unlock()
 	original, _ := os.ReadFile(path)
-	r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--custom-properties"}, false)
+	r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--custom-property", "text"}, false)
 	after, _ := os.ReadFile(path)
+	if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(original) != string(after) {
+		t.Fatal("selected unreadable constraint", err, r.stderr.String())
+	}
+	mu.Lock()
+	mode = "unsupported-extra"
+	mu.Unlock()
+	original, _ = os.ReadFile(path)
+	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--custom-properties"}, false)
+	after, _ = os.ReadFile(path)
 	if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(original) != string(after) {
 		t.Fatal("full export changed behavior", err, r.stderr.String())
 	}

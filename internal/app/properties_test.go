@@ -18,7 +18,12 @@ func TestPropertiesSelectivePlanAndPartialFailures(t *testing.T) {
 	o := appPropertyObservation()
 	d := settings.Declaration{Properties: settings.PropertyDeclarations{"text": nil}}
 	load := func() (settings.Declaration, error) { return d, nil }
-	p, err := Plan(load, checkoutRepository, Reader{Properties: func(repository.Repository) (settings.PropertyObservation, error) { return o, nil }})
+	p, err := Plan(load, checkoutRepository, Reader{SelectedProperties: func(_ repository.Repository, names []string) (settings.PropertyObservation, error) {
+		if !reflect.DeepEqual(names, []string{"text"}) {
+			t.Fatalf("names=%v", names)
+		}
+		return o, nil
+	}})
 	if err != nil || p.Comparison.Managed != 1 || len(p.Comparison.Properties) != 1 {
 		t.Fatal(p, err)
 	}
@@ -29,7 +34,10 @@ func TestPropertiesSelectivePlanAndPartialFailures(t *testing.T) {
 				v := "changed"
 				d.Repository.Description = &v
 			}
-			r, err := Apply(load, checkoutRepository, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil }, ReadProperties: func(repository.Repository) (settings.PropertyObservation, error) {
+			r, err := Apply(load, checkoutRepository, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil }, ReadProperties: func(_ repository.Repository, names []string) (settings.PropertyObservation, error) {
+				if !reflect.DeepEqual(names, []string{"text"}) {
+					t.Fatalf("names=%v", names)
+				}
 				if failure == "read" {
 					return settings.PropertyObservation{}, errors.New("unavailable")
 				}
@@ -105,7 +113,10 @@ func TestPropertiesArchiveOrdering(t *testing.T) {
 			}
 			state.Archived = v
 			return nil
-		}, ReadProperties: func(repository.Repository) (settings.PropertyObservation, error) {
+		}, ReadProperties: func(_ repository.Repository, names []string) (settings.PropertyObservation, error) {
+			if !reflect.DeepEqual(names, []string{"text"}) {
+				t.Fatalf("names=%v", names)
+			}
 			return appPropertyObservation(), nil
 		}, Properties: func(repository.Repository, settings.PropertyDeclarations) (bool, error) {
 			events = append(events, "properties")

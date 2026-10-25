@@ -35,7 +35,7 @@ type Reader struct {
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
 	Forking              func(repository.Repository, bool) (bool, error)
-	ReadProperties       func(repository.Repository) (settings.PropertyObservation, error)
+	ReadProperties       func(repository.Repository, []string) (settings.PropertyObservation, error)
 	Properties           func(repository.Repository, settings.PropertyDeclarations) (bool, error)
 	ReadPages            func(repository.Repository) (settings.PagesObservation, error)
 	Pages                func(repository.Repository, settings.PagesDeclaration) (bool, error)

@@ -225,7 +225,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Pages = changes
 	}
 	if len(desired.Properties) > 0 {
-		o, err := read.Properties(repo)
+		o, err := read.SelectedProperties(repo, propertyNames(desired.Properties))
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}

@@ -213,6 +213,42 @@ func TestPropertiesSelectedReadOnlyQueriesSelectedStringConstraints(t *testing.T
 	}
 }
 
+func TestPropertiesSelectedUpdateOnlyQueriesDeclaredStringConstraints(t *testing.T) {
+	writes := 0
+	tags := []string{"a"}
+	c := propertyTestClient(t, "regex-error", func(r *http.Request) (*http.Response, error) {
+		response := func(v any) *http.Response {
+			body, _ := json.Marshal(v)
+			return actionsResponse(r, http.StatusOK, string(body))
+		}
+		switch r.URL.Path {
+		case "/repos/owner/current":
+			return actionsResponse(r, http.StatusOK, `{"id":123,"full_name":"owner/current","archived":false,"owner":{"id":12,"login":"owner","type":"Organization"}}`), nil
+		case "/orgs/owner/properties/schema":
+			return response(propertySchemaFixture()), nil
+		case "/repos/owner/current/properties/values":
+			if r.Method == http.MethodPatch {
+				writes++
+				tags = []string{"b"}
+				return actionsResponse(r, http.StatusNoContent, ""), nil
+			}
+			return response([]map[string]any{
+				{"property_name": "text", "value": "unselected"},
+				{"property_name": "tags", "value": tags},
+				{"property_name": "flag", "value": "true"},
+				{"property_name": "keep", "value": "unselected"},
+			}), nil
+		default:
+			t.Fatal("unrelated request", r.Method, r.URL)
+			return nil, nil
+		}
+	})
+	wrote, err := c.Update(repository.Repository{Owner: "owner", Name: "current"}, settings.PropertyDeclarations{"tags": []string{"b"}})
+	if err != nil || !wrote || writes != 1 {
+		t.Fatalf("wrote=%v writes=%d error=%v", wrote, writes, err)
+	}
+}
+
 func propertyTestClient(t *testing.T, failure string, handle transportFunc) *PropertiesClient {
 	t.Helper()
 	reads := 0
@@ -248,7 +284,7 @@ func propertyTestClient(t *testing.T, failure string, handle transportFunc) *Pro
 		case "regex-type":
 			property["valueType"] = "URL"
 		case "fresh-regex":
-			if reads > 2 {
+			if reads > 1 {
 				property["regex"] = "changed"
 			}
 		}
