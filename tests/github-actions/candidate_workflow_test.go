@@ -43,8 +43,8 @@ func TestCandidateCompositeCallers(t *testing.T) {
 			transfer := built.Steps[2]
 			if !strings.HasPrefix(transfer.Uses, "actions/upload-artifact@") ||
 				!reflect.DeepEqual(transfer.With, map[string]string{
-					"name": "ci-${{ matrix.target }}-${{ github.sha }}",
-					"path": "${{ steps.build.outputs.artifact-directory }}",
+					"name":              "ci-${{ matrix.target }}-${{ github.sha }}",
+					"path":              "${{ steps.build.outputs.artifact-directory }}",
 					"if-no-files-found": "error", "overwrite": "true", "retention-days": "1",
 				}) {
 				t.Fatalf("commit must upload the manifested binary from this run: %+v", transfer)
