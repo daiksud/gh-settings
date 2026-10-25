@@ -60,6 +60,14 @@ runs:
         binary-sha256: ${{ steps.artifact.outputs.sha256 }}
         version: ${{ inputs.version }}
         source-directory: .action
+    - name: Install Go for the public Action fixture only
+      if: inputs.target == 'candidate-action'
+      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.10.8
+        working_directory: .action
+        install_args: go
+        cache: false
     - name: Validate the candidate public Action
       if: inputs.target == 'candidate-action'
       uses: ./.action/.github/actions/candidate-smoke
