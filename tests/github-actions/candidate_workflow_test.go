@@ -30,7 +30,8 @@ func TestCandidateCompositeCallers(t *testing.T) {
 				Permissions map[string]string `yaml:"permissions"`
 				Steps       []step            `yaml:"steps"`
 			}
-			if err := w.Jobs["acceptance-stage"].Decode(&acceptance); err != nil {
+			acceptanceNode := w.Jobs["acceptance-stage"]
+			if err := acceptanceNode.Decode(&acceptance); err != nil {
 				t.Fatal(err)
 			}
 			wantNeeds := []string{"resolve", "commit-stage"}
@@ -77,7 +78,8 @@ func TestCandidateCompositeCallers(t *testing.T) {
 				If    string   `yaml:"if"`
 				Steps []step   `yaml:"steps"`
 			}
-			if err := w.Jobs["pass"].Decode(&pass); err != nil {
+			passNode := w.Jobs["pass"]
+			if err := passNode.Decode(&pass); err != nil {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(pass.Needs, []string{"resolve", "commit-stage", "acceptance-stage"}) ||
