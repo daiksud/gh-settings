@@ -58,6 +58,10 @@ func TestCodeGatePreservesResultsAcrossMetadataEdits(t *testing.T) {
 	if start.Steps[0].Uses != "" || !strings.Contains(start.Steps[0].Run, "-f state=pending -f context=pass") {
 		t.Fatal("start must publish pending without checking out candidate code")
 	}
+	if start.Steps[0].Env["CANDIDATE_SHA"] != "${{ github.sha }}" || start.Steps[0].Env["HEAD_SHA"] != "" ||
+		!strings.Contains(start.Steps[0].Run, "/statuses/$CANDIDATE_SHA") {
+		t.Fatal("start must publish pending on the tested merge candidate")
+	}
 	var result struct {
 		Needs       []string          `yaml:"needs"`
 		If          string            `yaml:"if"`
@@ -73,6 +77,10 @@ func TestCodeGatePreservesResultsAcrossMetadataEdits(t *testing.T) {
 	}
 	if result.Steps[0].Uses != "" || result.Steps[0].Continue || result.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" || result.Steps[0].Env["WAS_CANCELLED"] != "" {
 		t.Fatal("API-only reporter must consume actual prerequisite results and a supported cancellation context")
+	}
+	if result.Steps[0].Env["CANDIDATE_SHA"] != "${{ github.sha }}" || result.Steps[0].Env["HEAD_SHA"] != "" ||
+		!strings.Contains(result.Steps[0].Run, "/statuses/$CANDIDATE_SHA") {
+		t.Fatal("code result must publish on the tested merge candidate")
 	}
 }
 
@@ -132,7 +140,7 @@ func TestCodeResultPublication(t *testing.T) {
 				"PATH="+dir+string(os.PathListSeparator)+os.Getenv("PATH"),
 				"GH_TOKEN=fixture", "GITHUB_REPOSITORY=example/gh-settings",
 				"GITHUB_SERVER_URL=https://github.com", "GITHUB_RUN_ID=123",
-				"HEAD_SHA="+head, "RESULTS="+string(encoded),
+				"CANDIDATE_SHA="+head, "RESULTS="+string(encoded),
 				"FAIL_API="+apiFailure, "CALL_LOG="+log)
 			output, runErr := cmd.CombinedOutput()
 			if (runErr == nil) != tc.wantSuccess {
