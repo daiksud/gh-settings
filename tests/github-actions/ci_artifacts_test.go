@@ -147,6 +147,8 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 		{name: "missing manifest", mutate: "missing"},
 		{name: "extra file", mutate: "extra"},
 		{name: "wrong checkout", mutate: "checkout"},
+		{name: "malformed source", mutate: "malformed-source"},
+		{name: "wrong requested target", mutate: "requested-target"},
 		{name: "wrong acceptance kind", mutate: "kind"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -166,7 +168,7 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 				return strings.TrimSpace(string(output))
 			}
 			git("init", "-q")
-			git("-c", "user.name=CI", "-c", "user.email=ci@example.invalid", "commit", "-q", "--allow-empty", "-m", "fixture")
+			git("-c", "user.name=CI", "-c", "user.email=ci@example.invalid", "-c", "commit.gpgsign=false", "commit", "-q", "--allow-empty", "-m", "fixture")
 			sourceSHA := git("rev-parse", "HEAD")
 			artifact := filepath.Join(dir, "product")
 			if err := os.Mkdir(artifact, 0755); err != nil {
@@ -214,9 +216,15 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			givenSHA, kind := sourceSHA, "process"
+			givenSHA, kind, target := sourceSHA, "process", "linux-amd64"
 			if tc.mutate == "checkout" {
 				givenSHA = strings.Repeat("c", 40)
+			}
+			if tc.mutate == "malformed-source" {
+				givenSHA = "invalid"
+			}
+			if tc.mutate == "requested-target" {
+				target = "linux-arm64"
 			}
 			if tc.mutate == "kind" {
 				kind = "invalid"
@@ -224,7 +232,7 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 			outputFile := filepath.Join(dir, "outputs")
 			cmd := exec.Command("bash", "-euo", "pipefail", "-c", verify)
 			cmd.Dir = dir
-			cmd.Env = append(os.Environ(), "TARGET=linux-amd64", "KIND="+kind,
+			cmd.Env = append(os.Environ(), "TARGET="+target, "KIND="+kind,
 				"SOURCE_SHA="+givenSHA, "ARTIFACT_DIRECTORY="+artifact,
 				"GITHUB_OUTPUT="+outputFile)
 			output, err := cmd.CombinedOutput()
@@ -240,6 +248,14 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 					if !strings.Contains(string(actual), expected) {
 						t.Fatalf("missing verified output %q: %s", expected, actual)
 					}
+				}
+			} else {
+				if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
+					t.Fatalf("rejected artifact published outputs: %v", err)
+				}
+				info, err := os.Stat(binary)
+				if err != nil || info.Mode().Perm()&0111 != 0 {
+					t.Fatalf("rejected artifact was made executable: info=%v err=%v", info, err)
 				}
 			}
 		})
