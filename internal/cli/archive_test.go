@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/cli"
@@ -23,7 +24,7 @@ func TestArchiveExportFlagIsOptInAndComposable(t *testing.T) {
 		var got cli.ExportOptions
 		var out, errOut bytes.Buffer
 		status := cli.Run(tc.args, &out, &errOut, "dev", cli.Operations{Export: func(o cli.ExportOptions) error { called = true; got = o; return nil }})
-		if (status == 0) != tc.valid || called != tc.valid || (tc.valid && got != tc.want) {
+		if (status == 0) != tc.valid || called != tc.valid || (tc.valid && !reflect.DeepEqual(got, tc.want)) {
 			t.Fatal(tc.args, status, called, got, errOut.String())
 		}
 	}

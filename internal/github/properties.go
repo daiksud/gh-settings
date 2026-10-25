@@ -133,7 +133,7 @@ func propertyRawValue(raw json.RawMessage) (any, error) {
 	}
 	return settings.PropertyValue(v)
 }
-func (c *PropertiesClient) read(repo repository.Repository) (settings.PropertyObservation, propertyIdentity, error) {
+func (c *PropertiesClient) read(repo repository.Repository, selected map[string]bool) (settings.PropertyObservation, propertyIdentity, error) {
 	id, err := c.identity(repo)
 	if err != nil {
 		return settings.PropertyObservation{}, id, err
@@ -171,7 +171,7 @@ func (c *PropertiesClient) read(repo repository.Repository) (settings.PropertyOb
 				return settings.PropertyObservation{}, id, fmt.Errorf("invalid allowed values")
 			}
 		}
-		if s.Type == "string" {
+		if s.Type == "string" && (selected == nil || selected[s.Name]) {
 			s.Regex, err = c.readRegex(id, s.Name)
 			if err != nil {
 				return settings.PropertyObservation{}, id, err
@@ -209,7 +209,30 @@ func (c *PropertiesClient) read(repo repository.Repository) (settings.PropertyOb
 	return o, id, nil
 }
 func (c *PropertiesClient) Read(repo repository.Repository) (settings.PropertyObservation, error) {
-	o, _, err := c.read(repo)
+	o, _, err := c.read(repo, nil)
+	return o, err
+}
+
+func selectedProperties(names []string) (map[string]bool, error) {
+	selected := make(map[string]bool, len(names))
+	for _, name := range names {
+		if !settings.ValidPropertyName(name) {
+			return nil, fmt.Errorf("invalid custom property name %q", name)
+		}
+		if selected[name] {
+			return nil, fmt.Errorf("duplicate custom property selection %q", name)
+		}
+		selected[name] = true
+	}
+	return selected, nil
+}
+
+func (c *PropertiesClient) ReadSelected(repo repository.Repository, names []string) (settings.PropertyObservation, error) {
+	selected, err := selectedProperties(names)
+	if err != nil {
+		return settings.PropertyObservation{}, err
+	}
+	o, _, err := c.read(repo, selected)
 	return o, err
 }
 func (c *PropertiesClient) Update(repo repository.Repository, d settings.PropertyDeclarations) (bool, error) {
@@ -220,7 +243,16 @@ func (c *PropertiesClient) Update(repo repository.Repository, d settings.Propert
 	if len(d) == 0 {
 		return false, nil
 	}
-	o, id, err := c.read(repo)
+	names := make([]string, 0, len(d))
+	for name := range d {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	selected, err := selectedProperties(names)
+	if err != nil {
+		return pre(err)
+	}
+	o, id, err := c.read(repo, selected)
 	if err != nil {
 		return pre(err)
 	}
@@ -235,11 +267,6 @@ func (c *PropertiesClient) Update(repo repository.Repository, d settings.Propert
 		return false, nil
 	}
 	expected, _ := o.Values()
-	names := make([]string, 0, len(d))
-	for name := range d {
-		names = append(names, name)
-	}
-	sort.Strings(names)
 	properties := []map[string]any{}
 	for _, name := range names {
 		v, _ := settings.PropertyValue(d[name])
@@ -254,7 +281,7 @@ func (c *PropertiesClient) Update(repo repository.Repository, d settings.Propert
 	if err != nil {
 		return pre(err)
 	}
-	fresh, freshID, err := c.read(repo)
+	fresh, freshID, err := c.read(repo, selected)
 	if err != nil {
 		return pre(err)
 	}
@@ -269,7 +296,7 @@ func (c *PropertiesClient) Update(repo repository.Repository, d settings.Propert
 	if resp.StatusCode != http.StatusNoContent {
 		return false, fmt.Errorf("unexpected custom property update status %d (write may have applied)", resp.StatusCode)
 	}
-	actual, actualID, err := c.read(repo)
+	actual, actualID, err := c.read(repo, selected)
 	if err != nil {
 		return false, fmt.Errorf("verify custom properties (write may have applied): %w", err)
 	}

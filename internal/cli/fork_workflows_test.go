@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/cli"
@@ -24,7 +25,7 @@ func TestForkExportOptInAndComposition(t *testing.T) {
 		var got cli.ExportOptions
 		var out, errOut bytes.Buffer
 		status := cli.Run(test.args, &out, &errOut, "dev", cli.Operations{Export: func(o cli.ExportOptions) error { called = true; got = o; return nil }})
-		if (status == 0) != test.valid || called != test.valid || test.valid && got != test.want {
+		if (status == 0) != test.valid || called != test.valid || test.valid && !reflect.DeepEqual(got, test.want) {
 			t.Fatal(test.args, status, got, test.want, errOut.String())
 		}
 	}

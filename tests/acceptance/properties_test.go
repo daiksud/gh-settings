@@ -122,6 +122,9 @@ func TestCustomPropertyExportPlanApplyUnsetAndPrivateSummary(t *testing.T) {
 				}
 				rows = append(rows, s)
 			}
+			if mode == "unsupported-extra" {
+				rows = append(rows, map[string]any{"property_name": "blocked", "value_type": "url", "source_type": "organization", "required": false, "require_explicit_values": false, "default_value": nil, "values_editable_by": "org_and_repo_actors", "allowed_values": []string{}})
+			}
 			json.NewEncoder(w).Encode(rows)
 		case "/repos/owner/current/properties/values":
 			if r.Method == "GET" {
@@ -222,6 +225,57 @@ func TestCustomPropertyExportPlanApplyUnsetAndPrivateSummary(t *testing.T) {
 		t.Fatal("ordinary export reads properties")
 	}
 	mu.Unlock()
+	mu.Lock()
+	mode = "regex-error"
+	mu.Unlock()
+	run("export", "--custom-property", "tags")
+	selected, _ := os.ReadFile(path)
+	if !strings.Contains(string(selected), "tags:") || strings.Contains(string(selected), "text:") || strings.Contains(string(selected), "keep:") {
+		t.Fatal(string(selected))
+	}
+	run("validate")
+	if got := run("plan"); !strings.Contains(got, "No differences") {
+		t.Fatal(got)
+	}
+	write("{tags: [b]}")
+	run("apply")
+	mu.Lock()
+	if len(writes) != 1 || !reflect.DeepEqual(writes[0], map[string]any{"tags": []any{"b"}}) {
+		t.Fatal(writes)
+	}
+	state["tags"] = []string{"a"}
+	writes = nil
+	mode = "unsupported-extra"
+	mu.Unlock()
+	for _, name := range []string{"missing", "blocked"} {
+		original, _ := os.ReadFile(path)
+		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--custom-property", name}, false)
+		after, _ := os.ReadFile(path)
+		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(original) != string(after) {
+			t.Fatal(name, err, r.stderr.String())
+		}
+	}
+	mu.Lock()
+	mode = "regex-error"
+	mu.Unlock()
+	original, _ := os.ReadFile(path)
+	r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--custom-property", "text"}, false)
+	after, _ := os.ReadFile(path)
+	if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(original) != string(after) {
+		t.Fatal("selected unreadable constraint", err, r.stderr.String())
+	}
+	mu.Lock()
+	mode = "unsupported-extra"
+	mu.Unlock()
+	original, _ = os.ReadFile(path)
+	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--custom-properties"}, false)
+	after, _ = os.ReadFile(path)
+	if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(original) != string(after) {
+		t.Fatal("full export changed behavior", err, r.stderr.String())
+	}
+	mu.Lock()
+	mode = ""
+	mu.Unlock()
 	run("export", "--custom-properties")
 	run("validate")
 	if got := run("plan"); !strings.Contains(got, "No differences") {
@@ -243,7 +297,7 @@ func TestCustomPropertyExportPlanApplyUnsetAndPrivateSummary(t *testing.T) {
 	summary := filepath.Join(fixture.root, "properties-summary.md")
 	summaryEnv := append(fixtureEnv(fixture.cfg), "SETTINGS_TARGET=owner/current", "GH_TOKEN=", "GITHUB_TOKEN=")
 	reads := fixture.reads.Load()
-	r, err := executeCLI(binary, fixture.root, fixture.root, summaryEnv, []string{"action", "summary", report, summary, "status-only"}, false)
+	r, err = executeCLI(binary, fixture.root, fixture.root, summaryEnv, []string{"action", "summary", report, summary, "status-only"}, false)
 	data, _ = os.ReadFile(summary)
 	if err != nil || r.runErr != nil || fixture.reads.Load() != reads || strings.Contains(string(data), "CANARY") || r.stdout.String() != "plan-outcome=changed\n" {
 		t.Fatal(err, r.stderr.String(), string(data))

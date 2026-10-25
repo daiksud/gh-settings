@@ -232,6 +232,34 @@ func (o PropertyObservation) Declaration() (PropertyDeclarations, error) {
 	return d, nil
 }
 
+// SelectedDeclaration exports only explicitly named property values.
+func (o PropertyObservation) SelectedDeclaration(names []string) (PropertyDeclarations, error) {
+	if !o.acquired {
+		return nil, fmt.Errorf("custom properties observation was not acquired")
+	}
+	selected := append([]string{}, names...)
+	sort.Strings(selected)
+	d := PropertyDeclarations{}
+	for i, name := range selected {
+		if !ValidPropertyName(name) {
+			return nil, fmt.Errorf("invalid custom property name %q", name)
+		}
+		if i > 0 && selected[i-1] == name {
+			return nil, fmt.Errorf("duplicate custom property selection %q", name)
+		}
+		s, err := o.Schema(name)
+		if err != nil {
+			return nil, err
+		}
+		v, err := s.ValidateValue(o.values[name])
+		if err != nil {
+			return nil, err
+		}
+		d[name] = v
+	}
+	return d, nil
+}
+
 type PropertyChange struct {
 	name, kind    string
 	before, after any

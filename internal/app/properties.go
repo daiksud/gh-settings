@@ -3,15 +3,25 @@ package app
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
+func propertyNames(d settings.PropertyDeclarations) []string {
+	names := make([]string, 0, len(d))
+	for name := range d {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 func applyProperties(result *ApplyResult, repo repository.Repository, d settings.PropertyDeclarations, write Writer) (bool, error) {
 	i := len(result.Operations)
 	result.Operations = append(result.Operations, ApplyOperation{Kind: PropertiesRead})
-	o, err := write.ReadProperties(repo)
+	o, err := write.ReadProperties(repo, propertyNames(d))
 	if err == nil {
 		_, err = settings.CompareProperties(o, d)
 	}

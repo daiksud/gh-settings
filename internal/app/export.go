@@ -13,6 +13,7 @@ type ExportCheckout struct {
 	IncludeArchive             bool
 	IncludePages               bool
 	IncludeProperties          bool
+	PropertyNames              []string
 	IncludeForkApproval        bool
 	IncludePrivateFork         bool
 	Repository                 TargetResolver
@@ -189,12 +190,21 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 	}
-	if checkout.IncludeProperties {
-		o, err := read.Properties(repo)
+	if checkout.IncludeProperties || len(checkout.PropertyNames) > 0 {
+		var o settings.PropertyObservation
+		if checkout.IncludeProperties {
+			o, err = read.Properties(repo)
+		} else {
+			o, err = read.SelectedProperties(repo, checkout.PropertyNames)
+		}
 		if err != nil {
 			return err
 		}
-		declaration.Properties, err = o.Declaration()
+		if checkout.IncludeProperties {
+			declaration.Properties, err = o.Declaration()
+		} else {
+			declaration.Properties, err = o.SelectedDeclaration(checkout.PropertyNames)
+		}
 		if err != nil {
 			return err
 		}
