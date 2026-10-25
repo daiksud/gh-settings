@@ -236,7 +236,7 @@ func TestCIManifestRejectsTampering(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				for _, expected := range []string{"binary-path="+binary, "binary-sha256="+manifest["binary_sha256"], "product-version=v0.18.1"} {
+				for _, expected := range []string{"binary-path=" + binary, "binary-sha256=" + manifest["binary_sha256"], "product-version=v0.18.1"} {
 					if !strings.Contains(string(actual), expected) {
 						t.Fatalf("missing verified output %q: %s", expected, actual)
 					}
