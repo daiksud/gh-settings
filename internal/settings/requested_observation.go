@@ -72,6 +72,15 @@ func containsRepositoryField[S any, V bool | string](fields []repositoryField[S,
 // CompareRepositoryObservation rejects a missing required value before exposing
 // any partial comparison, and preserves native values and canonical field order.
 func CompareRepositoryObservation(observed RepositoryObservation, desired RepositoryDeclaration) (Comparison, error) {
+	allowMergeCommit := desired.AllowMergeCommit
+	if allowMergeCommit == nil {
+		allowMergeCommit = observed.values.AllowMergeCommit
+	}
+	if allowMergeCommit != nil {
+		if err := desired.validateMergeCommitDefaults(*allowMergeCommit); err != nil {
+			return Comparison{}, err
+		}
+	}
 	var result Comparison
 	if err := compareObservedFields(&result, repositoryStringFields[:], observed.values, desired, stringChange); err != nil {
 		return Comparison{}, err
@@ -153,6 +162,10 @@ func (observation RepositoryObservation) Declaration() (RepositoryDeclaration, e
 	}
 	if err := copyObservedFields(&result, mergeMethodsStringFields[:], observation.values); err != nil {
 		return RepositoryDeclaration{}, err
+	}
+	if result.AllowMergeCommit != nil && !*result.AllowMergeCommit {
+		result.MergeCommitTitle = nil
+		result.MergeCommitMessage = nil
 	}
 	if err := copyObservedFields(&result, prAccessBoolFields[:], observation.values); err != nil {
 		return RepositoryDeclaration{}, err

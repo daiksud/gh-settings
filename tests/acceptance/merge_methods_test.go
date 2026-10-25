@@ -53,6 +53,10 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		{name: "PR options direct pair", command: "apply", input: "allow_auto_merge: true\nallow_update_branch: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": true, "allow_update_branch": false}},
 		{name: "PR update invalid local", command: "apply", input: "allow_update_branch: 'false'\n", errorText: "must be a boolean"},
 		{name: "merge title plan", command: "plan", input: "merge_commit_title: PR_TITLE\n", body: observedMergeMethods, want: "settings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\n", requests: []string{"POST /graphql"}},
+		{name: "disabled merge title rejected by validate", command: "validate", input: "allow_merge_commit: false\nmerge_commit_title: PR_TITLE\n", errorText: "require allow_merge_commit: true"},
+		{name: "disabled merge title rejected by plan", command: "plan", input: "allow_merge_commit: false\nmerge_commit_title: PR_TITLE\n", errorText: "require allow_merge_commit: true"},
+		{name: "observed disabled merge title rejected by plan", command: "plan", input: "merge_commit_title: PR_TITLE\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), errorText: "require allow_merge_commit: true", requests: []string{"POST /graphql"}},
+		{name: "explicit merge enable overrides observed disabled", command: "plan", input: "allow_merge_commit: true\nmerge_commit_title: PR_TITLE\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), want: "settings.repository.allow_merge_commit: false → true\nsettings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\n", requests: []string{"POST /graphql"}},
 		{name: "merge pair equality", command: "plan", input: "merge_commit_title: MERGE_MESSAGE\nmerge_commit_message: PR_TITLE\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "merge title direct", command: "apply", input: "merge_commit_title: PR_TITLE\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"merge_commit_title": "PR_TITLE"}},
 		{name: "merge pair direct", command: "apply", input: "merge_commit_title: PR_TITLE\nmerge_commit_message: BLANK\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"merge_commit_title": "PR_TITLE", "merge_commit_message": "BLANK"}},
@@ -200,7 +204,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || fields["squash_merge_commit_title"] != "COMMIT_OR_PR_TITLE" || fields["squash_merge_commit_message"] != "COMMIT_MESSAGES" || fields["allow_auto_merge"] != false || fields["allow_update_branch"] != false || fields["merge_commit_title"] != "MERGE_MESSAGE" || fields["merge_commit_message"] != "PR_TITLE" || fields["has_discussions"] != false || fields["web_commit_signoff_required"] != false || fields["is_template"] != false || fields["default_branch"] != "main" || fields["has_sponsorships"] != false || len(fields) != 23 {
 				t.Fatalf("fields=%v", fields)
 			}
-			input := repositoryInput("merge_commit_message: BLANK\nmerge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\nsquash_merge_commit_title: PR_TITLE\nallow_update_branch: true\nallow_auto_merge: true\ndelete_branch_on_merge: false\nallow_rebase_merge: false\nallow_squash_merge: true\nallow_merge_commit: false\nhas_discussions: true\nhas_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: https://example.com/new\ndescription: ''\n")
+			input := repositoryInput("merge_commit_message: BLANK\nmerge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\nsquash_merge_commit_title: PR_TITLE\nallow_update_branch: true\nallow_auto_merge: true\ndelete_branch_on_merge: false\nallow_rebase_merge: false\nallow_squash_merge: true\nallow_merge_commit: true\nhas_discussions: true\nhas_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: https://example.com/new\ndescription: ''\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -226,7 +230,6 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 					map[string]any{"field": "repository.has_projects", "before": true, "after": false},
 					map[string]any{"field": "repository.has_wiki", "before": true, "after": false},
 					map[string]any{"field": "repository.has_discussions", "before": false, "after": true},
-					map[string]any{"field": "repository.allow_merge_commit", "before": true, "after": false},
 					map[string]any{"field": "repository.allow_squash_merge", "before": false, "after": true},
 					map[string]any{"field": "repository.allow_rebase_merge", "before": true, "after": false},
 					map[string]any{"field": "repository.delete_branch_on_merge", "before": true, "after": false},
@@ -259,7 +262,6 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				"settings.repository.has_projects: true → false",
 				"settings.repository.has_wiki: true → false",
 				"settings.repository.has_discussions: false → true",
-				"settings.repository.allow_merge_commit: true → false",
 				"settings.repository.allow_squash_merge: false → true",
 				"settings.repository.allow_rebase_merge: true → false",
 				"settings.repository.delete_branch_on_merge: true → false",

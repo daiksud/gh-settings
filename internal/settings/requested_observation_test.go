@@ -62,9 +62,9 @@ func TestRepositoryObservationFields(t *testing.T) {
 }
 
 func TestCompareRepositoryObservationPreservesOrderAndNativeValues(t *testing.T) {
-	empty, disabled, title := "", false, "MERGE_MESSAGE"
-	observed := NewRepositoryObservation(&RepositoryState{Description: "old", HasIssues: true}, &MergeMethodsState{MergeCommitTitle: "PR_TITLE"}, nil)
-	desired := RepositoryDeclaration{Description: &empty, HasIssues: &disabled, AllowMergeCommit: &disabled, MergeCommitTitle: &title}
+	empty, disabled, enabled, title := "", false, true, "MERGE_MESSAGE"
+	observed := NewRepositoryObservation(&RepositoryState{Description: "old", HasIssues: true}, &MergeMethodsState{AllowMergeCommit: true, MergeCommitTitle: "PR_TITLE"}, nil)
+	desired := RepositoryDeclaration{Description: &empty, HasIssues: &disabled, AllowMergeCommit: &enabled, MergeCommitTitle: &title}
 	got, err := CompareRepositoryObservation(observed, desired)
 	want := Comparison{Managed: 4, Changes: []Change{
 		{field: FieldID{path: "repository.description"}, values: stringPair{before: "old", after: ""}},
@@ -73,6 +73,32 @@ func TestCompareRepositoryObservationPreservesOrderAndNativeValues(t *testing.T)
 	}}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("comparison=%+v error=%v, want %+v", got, err, want)
+	}
+}
+
+func TestCompareRepositoryObservationValidatesEffectiveMergeMethod(t *testing.T) {
+	title, enabled := "PR_TITLE", true
+	for _, test := range []struct {
+		name     string
+		observed bool
+		desired  RepositoryDeclaration
+		wantErr  bool
+	}{
+		{name: "omitted method observed disabled", desired: RepositoryDeclaration{MergeCommitTitle: &title}, wantErr: true},
+		{name: "omitted method observed enabled", observed: true, desired: RepositoryDeclaration{MergeCommitTitle: &title}},
+		{name: "explicit enabled overrides observed disabled", desired: RepositoryDeclaration{AllowMergeCommit: &enabled, MergeCommitTitle: &title}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			observed := NewRepositoryObservation(nil, &MergeMethodsState{AllowMergeCommit: test.observed, MergeCommitTitle: "MERGE_MESSAGE"}, nil)
+			got, err := CompareRepositoryObservation(observed, test.desired)
+			if test.wantErr {
+				if err == nil || !strings.Contains(err.Error(), "require allow_merge_commit: true") || !reflect.DeepEqual(got, Comparison{}) {
+					t.Fatalf("comparison=%+v error=%v", got, err)
+				}
+			} else if err != nil || got.Managed != len(DeclaredRepositoryFields(test.desired)) {
+				t.Fatalf("comparison=%+v error=%v", got, err)
+			}
+		})
 	}
 }
 
@@ -97,7 +123,7 @@ func TestRepositoryObservationDeclarationRequiresCompleteValues(t *testing.T) {
 }
 
 func TestCompleteDeclarationCopiesObservedValues(t *testing.T) {
-	observed := NewRepositoryObservation(&RepositoryState{Description: "before"}, &MergeMethodsState{SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "BLANK"}, &PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(SponsorshipsState{Enabled: false})
+	observed := NewRepositoryObservation(&RepositoryState{Description: "before"}, &MergeMethodsState{AllowMergeCommit: true, SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "BLANK", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "BLANK"}, &PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(SponsorshipsState{Enabled: false})
 	declaration, err := observed.Declaration()
 	if err != nil {
 		t.Fatal(err)
@@ -106,7 +132,15 @@ func TestCompleteDeclarationCopiesObservedValues(t *testing.T) {
 	*declaration.AllowMergeCommit = true
 	*declaration.MergeCommitTitle = "MERGE_MESSAGE"
 	again, err := observed.Declaration()
-	if err != nil || *again.Description != "before" || *again.AllowMergeCommit || *again.MergeCommitTitle != "PR_TITLE" {
+	if err != nil || *again.Description != "before" || !*again.AllowMergeCommit || *again.MergeCommitTitle != "PR_TITLE" {
 		t.Fatalf("observation changed through declaration: %+v error=%v", again, err)
+	}
+}
+
+func TestCompleteDeclarationOmitsDisabledMergeDefaults(t *testing.T) {
+	observed := NewRepositoryObservation(&RepositoryState{}, &MergeMethodsState{MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "PR_BODY"}, &PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(SponsorshipsState{Enabled: false})
+	declaration, err := observed.Declaration()
+	if err != nil || declaration.AllowMergeCommit == nil || *declaration.AllowMergeCommit || declaration.MergeCommitTitle != nil || declaration.MergeCommitMessage != nil {
+		t.Fatalf("declaration=%+v error=%v", declaration, err)
 	}
 }
