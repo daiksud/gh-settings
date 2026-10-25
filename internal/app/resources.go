@@ -16,6 +16,7 @@ type PreWriteReadFailure interface {
 type Reader struct {
 	Forking             func(repository.Repository) (settings.ForkingObservation, error)
 	Properties          func(repository.Repository) (settings.PropertyObservation, error)
+	SelectedProperties  func(repository.Repository, []string) (settings.PropertyObservation, error)
 	Pages               func(repository.Repository) (settings.PagesObservation, error)
 	Archive             func(repository.Repository) (settings.ArchiveState, error)
 	ForkApproval        func(repository.Repository) (settings.ForkApprovalObservation, error)

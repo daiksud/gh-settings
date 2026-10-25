@@ -61,6 +61,35 @@ func TestPropertiesSelectivePlanAndPartialFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestPropertiesSelectedExport(t *testing.T) {
+	f := false
+	supported := settings.PropertySchema{Name: "supported", Type: "string", Source: "organization", Editable: "org_and_repo_actors", Required: &f, Explicit: &f, RegexObserved: true, DefaultPresent: true}
+	unsupported := supported
+	unsupported.Name, unsupported.Type = "unsupported", "url"
+	o, err := settings.NewPropertyObservation([]settings.PropertySchema{supported, unsupported}, settings.PropertyDeclarations{"supported": "value", "unsupported": "https://example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
+	reader.SelectedProperties = func(_ repository.Repository, names []string) (settings.PropertyObservation, error) {
+		if !reflect.DeepEqual(names, []string{"supported"}) {
+			t.Fatalf("names=%v", names)
+		}
+		return o, nil
+	}
+	var saved settings.Declaration
+	err = Export(ExportCheckout{
+		PropertyNames: []string{"supported"}, Repository: checkoutRepository,
+		PrepareSave: func() (func(settings.Declaration) error, error) {
+			return func(d settings.Declaration) error { saved = d; return nil }, nil
+		},
+	}, reader)
+	if err != nil || !reflect.DeepEqual(saved.Properties, settings.PropertyDeclarations{"supported": "value"}) {
+		t.Fatalf("saved=%v error=%v", saved.Properties, err)
+	}
+}
+
 func TestPropertiesArchiveOrdering(t *testing.T) {
 	for _, archived := range []bool{false, true} {
 		d := settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &archived}, Properties: settings.PropertyDeclarations{"text": nil}}

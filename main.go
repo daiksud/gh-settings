@@ -18,7 +18,7 @@ var version = "dev"
 
 func main() {
 	checkout := workspace.NewCheckout(".")
-	reader := app.Reader{Forking: readForking, Properties: readProperties, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, PrivateReporting: readPrivateReporting, Retention: readRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
+	reader := app.Reader{Forking: readForking, Properties: readProperties, SelectedProperties: readSelectedProperties, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, PrivateReporting: readPrivateReporting, Retention: readRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
@@ -26,7 +26,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{IncludeForking: options.Forking, IncludeProperties: options.Properties, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
+			return app.Export(app.ExportCheckout{IncludeForking: options.Forking, IncludeProperties: options.Properties, PropertyNames: options.PropertyNames, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: checkout.PrepareSave, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -283,6 +283,14 @@ func readProperties(repo repository.Repository) (settings.PropertyObservation, e
 		return settings.PropertyObservation{}, err
 	}
 	return c.Read(repo)
+}
+
+func readSelectedProperties(repo repository.Repository, names []string) (settings.PropertyObservation, error) {
+	client, err := github.NewPropertiesClient(repo.Host)
+	if err != nil {
+		return settings.PropertyObservation{}, err
+	}
+	return client.ReadSelected(repo, names)
 }
 func writeProperties(repo repository.Repository, d settings.PropertyDeclarations) (bool, error) {
 	c, err := github.NewPropertiesClient(repo.Host)

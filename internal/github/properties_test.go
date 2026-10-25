@@ -174,6 +174,45 @@ func TestPropertiesReadRejectsMalformedCollections(t *testing.T) {
 	}
 }
 
+func TestPropertiesSelectedReadOnlyQueriesSelectedStringConstraints(t *testing.T) {
+	c := propertyTestClient(t, "regex-error", func(r *http.Request) (*http.Response, error) {
+		response := func(v any) *http.Response {
+			body, _ := json.Marshal(v)
+			return actionsResponse(r, http.StatusOK, string(body))
+		}
+		switch r.URL.Path {
+		case "/repos/owner/current":
+			return actionsResponse(r, http.StatusOK, `{"id":123,"full_name":"owner/current","archived":false,"owner":{"id":12,"login":"owner","type":"Organization"}}`), nil
+		case "/orgs/owner/properties/schema":
+			return response(propertySchemaFixture()), nil
+		case "/repos/owner/current/properties/values":
+			return response([]map[string]any{
+				{"property_name": "text", "value": "unselected"},
+				{"property_name": "tags", "value": []string{"a"}},
+				{"property_name": "flag", "value": "true"},
+				{"property_name": "keep", "value": "unselected"},
+			}), nil
+		default:
+			t.Fatal("unrelated request", r.Method, r.URL)
+			return nil, nil
+		}
+	})
+	// The helper would return a partial GraphQL error and fail if either unselected
+	// string property were queried. Selecting a non-string property must not
+	// require constraints for values that will remain unmanaged.
+	o, err := c.ReadSelected(repository.Repository{Owner: "owner", Name: "current"}, []string{"tags"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaration, err := o.SelectedDeclaration([]string{"tags"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(declaration, settings.PropertyDeclarations{"tags": []string{"a"}}) {
+		t.Fatal(declaration)
+	}
+}
+
 func propertyTestClient(t *testing.T, failure string, handle transportFunc) *PropertiesClient {
 	t.Helper()
 	reads := 0

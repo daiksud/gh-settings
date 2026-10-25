@@ -12,7 +12,7 @@ Required/default-backed values, explicit-value requirements, enterprise schemas,
 
 ## Observation and apply
 
-Read the repository identity, organization schema, string constraints and complete repository values, then recheck identity. Denied/404/redirected/malformed/incomplete collections fail; they do not mean no properties. Unknown names, duplicate schemas/values and values without a schema fail. Export validates every observed property before saving and preserves an existing file on read/validation failure.
+Read the repository identity, organization schema, string constraints and complete repository values, then recheck identity. Denied/404/redirected/malformed/incomplete collections fail; they do not mean no properties. Unknown names, duplicate schemas/values and values without a schema fail. Full export validates every observed property before saving. Repeatable `--custom-property NAME` validates and exports only named schemas, while still requiring complete collections; unsupported unselected schemas are not declared or validated. A missing or unsupported selected name fails. Both modes preserve an existing file on read/validation failure, and their successful output validates and plans with zero differences.
 
 Plan is read-only, waits for all required reads, and shows sorted native values; properties count as one managed collection. Apply follows existing resource writes and precedes final archive. Explicit unarchive occurs first. Fresh apply comparison skips a match, otherwise sends only declared property entries using actual JSON null or empty arrays. A second complete observation immediately before PATCH rejects changed schema, values or identity. Successful readback must preserve unowned values and confirm selected schemas, target identity and requested values.
 
@@ -25,8 +25,8 @@ Failure before the property mutation is reported separately from an attempted up
 | Declaration/model | Null versus empty values, canonical selections, unknown observation, schema/default/editability/type restrictions and defensive copies | [Model](../../internal/settings/properties_test.go), [codec](../../internal/workspace/properties_test.go) |
 | API | Declared-only PATCH, complete constraints, GraphQL partial/missing/identity failures, fresh schema/value checks, permissions/404, redirects, archive, readback and unowned preservation | [Adapter](../../internal/github/properties_test.go) |
 | Application | Selective reads, managed count, local empty map, lifecycle ordering and honest partial results | [Application](../../internal/app/properties_test.go) |
-| CLI/Action | Explicit composable export, typed null/array report and closed Summary validation | [CLI](../../internal/cli/properties_test.go), [Action](../../internal/actions/properties_test.go) |
-| Product binary | Export→validate→zero plan, explicit unset/empty apply, idempotence, failed-export preservation, uncertainty, earlier-write preservation and credential-free private Summary | [Acceptance](../../tests/acceptance/properties_test.go) |
+| CLI/Action | Full versus repeatable named export selection, invalid/duplicate/mixed selection rejection, typed null/array report and closed Summary validation | [CLI](../../internal/cli/properties_test.go), [Action](../../internal/actions/properties_test.go) |
+| Product binary | Full and selected export→validate→zero plan, unsupported-unselected isolation, selected missing/unsupported errors, explicit unset/empty apply, idempotence, failed-export preservation, uncertainty, earlier-write preservation and credential-free private Summary | [Acceptance](../../tests/acceptance/properties_test.go) |
 
 These tests use local fixtures and dummy credentials. They do not establish live permissions, actual GitHub schema completeness, live unset/empty-value behavior, organization policy or released package support. No real API mutation is performed.
 

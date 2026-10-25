@@ -73,3 +73,24 @@ func TestPropertiesExplicitUnsetSchemaAndCopies(t *testing.T) {
 		t.Fatal("noncanonical boolean string")
 	}
 }
+
+func TestSelectedPropertyDeclarationIsAllOrError(t *testing.T) {
+	supported := propertyTestSchema("supported", "string")
+	unsupported := propertyTestSchema("unsupported", "url")
+	o, err := NewPropertyObservation([]PropertySchema{supported, unsupported}, PropertyDeclarations{"supported": "value", "unsupported": "https://example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := o.SelectedDeclaration([]string{"supported"})
+	if err != nil || !reflect.DeepEqual(got, PropertyDeclarations{"supported": "value"}) {
+		t.Fatalf("declaration=%v error=%v", got, err)
+	}
+	for _, names := range [][]string{{"missing"}, {"unsupported"}, {"supported", "supported"}, {"bad.name"}} {
+		if got, err := o.SelectedDeclaration(names); err == nil || got != nil {
+			t.Fatalf("selection=%v declaration=%v error=%v", names, got, err)
+		}
+	}
+	if _, err := o.Declaration(); err == nil {
+		t.Fatal("full export silently skipped unsupported property")
+	}
+}

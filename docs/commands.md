@@ -43,7 +43,7 @@ Published v0.18.0 supports [`has_sponsorships`](settings.md#sponsor-button-visib
 Published v0.16.0 and current source additionally support [`web_commit_signoff_required`](settings.md#web-commit-sign-off), an optional repository boolean. Published v0.15.1 and older packages reject it. It uses the existing repository REST GET/PATCH and appears after `has_discussions` in source plan output; the remaining field order is unchanged.
 
 ```text
-gh settings export [--forking] [--custom-properties] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
+gh settings export [--forking] [--custom-properties | --custom-property NAME...] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply
@@ -190,9 +190,9 @@ Published v0.18.0 adds `export --pages` for [existing Pages configuration](setti
 
 ## Custom property commands
 
-Published v0.18.0 `export --custom-properties` explicitly selects the [bounded property-value contract](settings.md#custom-property-values). It composes with existing export choices; duplicates and use on other commands fail. Published v0.17.0 and older packages reject the option and YAML group. Ordinary export retains its existing reads and permissions; the unadopted constraints remain tracked in #354.
+Published v0.18.0 `export --custom-properties` explicitly selects the [bounded property-value contract](settings.md#custom-property-values). Current source also accepts repeatable `--custom-property NAME` to export only those named supported values. The singular and plural forms are mutually exclusive; duplicate names, invalid names and use on other commands fail locally. Both forms compose with the other export choices. Published v0.18.0 and older packages reject the singular option. Ordinary export retains its existing reads and permissions; the remaining unadopted constraints stay tracked in #354.
 
-Local validation checks value syntax without API access. Plan/apply additionally require complete organization schema and repository values, including authenticated GraphQL string constraints. Values use Metadata read; organization schema uses Custom properties read. Updates need repository Custom properties write plus schema editability. Incomplete or unsupported observations fail instead of producing partial output. No grants or organization schemas are changed.
+Local validation checks value syntax without API access. Selected export still requires complete organization schema and repository-value collections, including authenticated GraphQL string constraints for selected strings. Every selected name must exist and satisfy the supported schema contract; an unreadable collection, missing name or unsupported selected schema fails the whole export without replacing the destination. Unsupported unselected schemas do not block selected export. Full `--custom-properties` export keeps its all-supported-or-error behavior. Values use Metadata read; organization schema uses Custom properties read. Updates need repository Custom properties write plus schema editability. No grants or organization schemas are changed.
 
 Differences use `settings.custom_properties.NAME: CURRENT → DESIRED`, sorted by name, with JSON strings/arrays/null. A nonempty map counts as one managed collection. Apply uses fresh state rather than a saved plan, sends only declared names, and checks readback. Failed export preserves the destination; failed apply preserves earlier successful writes and reports an uncertain attempted update without rollback.
 
