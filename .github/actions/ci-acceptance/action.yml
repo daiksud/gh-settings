@@ -5,7 +5,7 @@ inputs:
     description: Static target selected by CI metadata.
     required: true
   kind:
-    description: Acceptance kind: process or public-action.
+    description: 'Acceptance kind: process or public-action.'
     required: true
   source-sha:
     description: Immutable workflow source commit.
