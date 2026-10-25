@@ -1,0 +1,68 @@
+name: CI acceptance stage
+description: Verify and accept the transferred candidate without rebuilding it.
+inputs:
+  target:
+    description: Static target selected by CI metadata.
+    required: true
+  kind:
+    description: Acceptance kind: process or public-action.
+    required: true
+  source-sha:
+    description: Immutable workflow source commit.
+    required: true
+  artifact-directory:
+    description: Downloaded artifact directory.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Verify candidate manifest and bytes
+      id: verify
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        KIND: ${{ inputs.kind }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        ARTIFACT_DIRECTORY: ${{ inputs.artifact-directory }}
+      run: |
+        set -euo pipefail
+        [[ "$TARGET" == linux-amd64 ]]
+        [[ "$KIND" == process || "$KIND" == public-action ]]
+        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+        [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]]
+        [[ "$(find "$ARTIFACT_DIRECTORY" -maxdepth 1 -type f -print | wc -l | tr -d ' ')" == 2 ]]
+        manifest="$ARTIFACT_DIRECTORY/manifest.json"
+        binary="$ARTIFACT_DIRECTORY/gh-settings"
+        jq -e --arg source_sha "$SOURCE_SHA" --arg target "$TARGET" \
+          '.source_sha == $source_sha and .target == $target and .binary_name == "gh-settings" and (.binary_sha256 | test("^[0-9a-f]{64}$")) and (.product_version | test("^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"))' \
+          "$manifest" > /dev/null
+        expected_sha256="$(jq -r .binary_sha256 "$manifest")"
+        actual_sha256="$(sha256sum "$binary" | cut -d ' ' -f 1)"
+        [[ "$actual_sha256" == "$expected_sha256" ]]
+        chmod +x "$binary"
+        printf 'binary-path=%s\nbinary-sha256=%s\nproduct-version=%s\n' \
+          "$binary" "$expected_sha256" "$(jq -r .product_version "$manifest")" >> "$GITHUB_OUTPUT"
+    - name: Run process acceptance without rebuilding
+      if: inputs.kind == 'process'
+      uses: ./.action/.github/actions/acceptance-stage
+      with:
+        binary-path: ${{ steps.verify.outputs.binary-path }}
+        binary-sha256: ${{ steps.verify.outputs.binary-sha256 }}
+        version: ${{ steps.verify.outputs.product-version }}
+        source-directory: .action
+    - name: Install Go for the public Action fixture only
+      if: inputs.kind == 'public-action'
+      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.10.8
+        working_directory: .action
+        install_args: go
+        cache: false
+    - name: Exercise the candidate public Action
+      if: inputs.kind == 'public-action'
+      uses: ./.action/.github/actions/candidate-smoke
+      with:
+        source-sha: ${{ inputs.source-sha }}
+        cli-version: ${{ steps.verify.outputs.product-version }}
+        binary-sha256: ${{ steps.verify.outputs.binary-sha256 }}
+        binary-path: ${{ steps.verify.outputs.binary-path }}

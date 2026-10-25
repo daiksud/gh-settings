@@ -1,0 +1,22 @@
+name: CI metadata
+description: Resolve the static build and acceptance target matrices.
+outputs:
+  build-matrix:
+    description: Validated CI build matrix.
+    value: ${{ steps.metadata.outputs.build-matrix }}
+  acceptance-matrix:
+    description: Validated CI acceptance matrix.
+    value: ${{ steps.metadata.outputs.acceptance-matrix }}
+runs:
+  using: composite
+  steps:
+    - name: Emit static target matrices
+      id: metadata
+      shell: bash
+      run: |
+        set -euo pipefail
+        build='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"}]}'
+        acceptance='{"include":[{"target":"linux-amd64","kind":"process","runner":"ubuntu-slim"},{"target":"linux-amd64","kind":"public-action","runner":"ubuntu-24.04"}]}'
+        jq -e '.include | length > 0' <<< "$build" > /dev/null
+        jq -e '.include | length > 0' <<< "$acceptance" > /dev/null
+        printf 'build-matrix=%s\nacceptance-matrix=%s\n' "$build" "$acceptance" >> "$GITHUB_OUTPUT"

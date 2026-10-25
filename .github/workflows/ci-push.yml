@@ -10,97 +10,88 @@ concurrency:
   group: ci-push-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  commit-stage:
+  resolve:
     runs-on: ubuntu-slim
-    timeout-minutes: 12
+    timeout-minutes: 5
     permissions: {contents: read}
-    env:
-      GOTOOLCHAIN: local
     outputs:
-      binary-sha256: ${{ steps.validation.outputs.binary-sha256 }}
-      source-sha: ${{ steps.validation.outputs.source-sha }}
-      cli-version: ${{ steps.validation.outputs.cli-version }}
+      build-matrix: ${{ steps.metadata.outputs.build-matrix }}
+      acceptance-matrix: ${{ steps.metadata.outputs.acceptance-matrix }}
     steps:
       - name: Checkout validation source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Commit stage
-        id: validation
-        uses: ./.github/actions/commit-stage
-      - name: Transfer the built binary
+      - name: Resolve CI target matrices
+        id: metadata
+        uses: ./.github/actions/ci-metadata
+  commit-stage:
+    needs: resolve
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions: {contents: read}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.resolve.outputs.build-matrix) }}
+    steps:
+      - name: Checkout validation source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Check source and build candidate
+        id: build
+        uses: ./.github/actions/ci-commit
+        with:
+          target: ${{ matrix.target }}
+          source-sha: ${{ github.sha }}
+      - name: Transfer candidate artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: gh-settings
-          path: ${{ steps.validation.outputs.binary-path }}
+          name: ci-${{ matrix.target }}-${{ github.sha }}
+          path: ${{ steps.build.outputs.artifact-directory }}
           if-no-files-found: error
           overwrite: true
           retention-days: 1
   acceptance-stage:
-    needs: commit-stage
-    runs-on: ubuntu-slim
-    timeout-minutes: 10
+    needs: [resolve, commit-stage]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     permissions: {contents: read}
-    env:
-      GOTOOLCHAIN: local
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.resolve.outputs.acceptance-matrix) }}
     steps:
-      - name: Checkout validation source
+      - name: Checkout candidate source separately from the consumer
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.commit-stage.outputs.source-sha }}
-          persist-credentials: false
-      - name: Retrieve this run's product binary
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: gh-settings
-          path: ${{ runner.temp }}/product
-          digest-mismatch: error
-      - name: Acceptance stage
-        uses: ./.github/actions/acceptance-stage
-        with:
-          binary-path: ${{ runner.temp }}/product/gh-settings
-          binary-sha256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-          version: ${{ needs.commit-stage.outputs.cli-version }}
-  composite-smoke:
-    needs: commit-stage
-    # Exercise the public Action's supported runner, independently of ubuntu-slim CI.
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions: {contents: read}
-    steps:
-      - name: Checkout the Action under test separately
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ needs.commit-stage.outputs.source-sha }}
+          ref: ${{ github.sha }}
           path: .action
           persist-credentials: false
-      - name: Install Go for the local API fixture only
-        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.10.8
-          working_directory: .action
-          install_args: go
-          cache: false
-      - name: Retrieve this run's candidate binary
+      - name: Retrieve this run's candidate artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: gh-settings
+          name: ci-${{ matrix.target }}-${{ github.sha }}
           path: ${{ runner.temp }}/product
           digest-mismatch: error
-      - name: Validate the producer candidate through the public Action
-        uses: ./.action/.github/actions/candidate-smoke
+      - name: Accept the transferred candidate
+        uses: ./.action/.github/actions/ci-acceptance
         with:
-          source-sha: ${{ needs.commit-stage.outputs.source-sha }}
-          cli-version: ${{ needs.commit-stage.outputs.cli-version }}
-          binary-sha256: ${{ needs.commit-stage.outputs.binary-sha256 }}
-          binary-path: ${{ runner.temp }}/product/gh-settings
+          target: ${{ matrix.target }}
+          kind: ${{ matrix.kind }}
+          source-sha: ${{ github.sha }}
+          artifact-directory: ${{ runner.temp }}/product
   pass:
-    needs: [acceptance-stage, composite-smoke]
-    if: always()
+    needs: [resolve, commit-stage, acceptance-stage]
+    if: always() && !cancelled()
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {}
     steps:
-      - name: Reject failed or cancelled validation
-        if: cancelled() || needs['acceptance-stage'].result != 'success' || needs['composite-smoke'].result != 'success'
-        run: exit 1
+      - name: Require every validation stage to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          jq -e 'length == 3 and all(.[]; .result == "success")' <<< "$RESULTS" > /dev/null

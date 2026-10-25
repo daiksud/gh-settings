@@ -1,0 +1,52 @@
+name: CI commit stage
+description: Run repository checks and package the single Linux candidate with its identity manifest.
+inputs:
+  target:
+    description: Static build target selected by CI metadata.
+    required: true
+  source-sha:
+    description: Immutable workflow source commit.
+    required: true
+outputs:
+  artifact-directory:
+    description: Directory containing the candidate and its identity manifest.
+    value: ${{ steps.package.outputs.artifact-directory }}
+runs:
+  using: composite
+  steps:
+    - name: Require the supported source and target
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+      run: |
+        set -euo pipefail
+        [[ "$TARGET" == linux-amd64 ]]
+        [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+        [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+    - name: Run existing commit checks and build once
+      id: build
+      uses: ./.github/actions/commit-stage
+    - name: Package candidate identity
+      id: package
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        BINARY_PATH: ${{ steps.build.outputs.binary-path }}
+        BINARY_SHA256: ${{ steps.build.outputs.binary-sha256 }}
+        PRODUCT_VERSION: ${{ steps.build.outputs.cli-version }}
+      run: |
+        set -euo pipefail
+        [[ "$SOURCE_SHA" == '${{ steps.build.outputs.source-sha }}' ]]
+        [[ "$BINARY_SHA256" =~ ^[0-9a-f]{64}$ ]]
+        artifact_directory="$RUNNER_TEMP/ci-$TARGET-$SOURCE_SHA"
+        mkdir -p "$artifact_directory"
+        cp "$BINARY_PATH" "$artifact_directory/gh-settings"
+        jq -n --arg source_sha "$SOURCE_SHA" --arg target "$TARGET" \
+          --arg binary_name gh-settings --arg binary_sha256 "$BINARY_SHA256" \
+          --arg product_version "$PRODUCT_VERSION" \
+          '{source_sha:$source_sha,target:$target,binary_name:$binary_name,binary_sha256:$binary_sha256,product_version:$product_version}' \
+          > "$artifact_directory/manifest.json"
+        [[ "$(find "$artifact_directory" -maxdepth 1 -type f -print | wc -l | tr -d ' ')" == 2 ]]
+        printf 'artifact-directory=%s\n' "$artifact_directory" >> "$GITHUB_OUTPUT"
