@@ -42,7 +42,8 @@ func TestPRWorkflowNamedAggregateCheck(t *testing.T) {
 		Needs string `yaml:"needs"`
 		If    string `yaml:"if"`
 	}
-	if err := w.Jobs["draft"].Decode(&draft); err != nil {
+	draftNode := w.Jobs["draft"]
+	if err := draftNode.Decode(&draft); err != nil {
 		t.Fatal(err)
 	}
 	if draft.Needs != "" || draft.If != "" {
@@ -54,7 +55,8 @@ func TestPRWorkflowNamedAggregateCheck(t *testing.T) {
 		Permissions map[string]string `yaml:"permissions"`
 		Steps       []step            `yaml:"steps"`
 	}
-	if err := w.Jobs["ci-pr"].Decode(&check); err != nil {
+	checkNode := w.Jobs["ci-pr"]
+	if err := checkNode.Decode(&check); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(check.Needs, []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}) ||
@@ -82,7 +84,8 @@ func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
 	var check struct {
 		Steps []step `yaml:"steps"`
 	}
-	if err := w.Jobs["ci-pr"].Decode(&check); err != nil {
+	checkNode := w.Jobs["ci-pr"]
+	if err := checkNode.Decode(&check); err != nil {
 		t.Fatal(err)
 	}
 	names := []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}
