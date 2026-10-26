@@ -88,7 +88,7 @@ Older pins retain their released behavior. Maintainers document immutable packag
 
 Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Do not assume installing or pinning v0.18.0 grants access.
 
-Labels apply reads fresh membership and performs only needed CRUD operations, with authoritative deletion of undeclared labels and their issue/PR associations. Review the [labels contract](settings.md#labels) before adoption.
+Current-source label apply is ID-based and never deletes unlisted labels. An ID-less collision fails with ID guidance. The CLI disables ID writeback whenever `GITHUB_ACTIONS=true`; created IDs remain available in output for manual adoption. Published v0.19.0 and earlier retain their old label contract and perform no ID writeback. Review the [labels contract](settings.md#labels) before adoption.
 
 ## Consumer files and compatibility
 

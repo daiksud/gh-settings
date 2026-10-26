@@ -1,50 +1,39 @@
 ---
 type: Feature
-title: Manage repository labels
-description: Reconcile declared label membership and selected attributes.
+title: Manage selected label objects by ID
+description: Create ID-less labels and reconcile whole supported ID-selected objects without deleting unlisted labels.
 ---
 
 ## Feature: Manage repository labels
 
-Labels support is published in v0.9.0 and included in the current pinned workflows, without changing `schemaVersion: 1`. Older v0.8.0 packages do not include it. [Settings](../settings.md#labels) defines the configuration contract. This feature manages repository label definitions, not individual issue/PR assignments.
+Current source adopts ID-based ownership; this is unreleased. Published v0.19.0 and earlier keep the legacy authoritative collection contract. The [settings reference](../settings.md#labels) owns the schema and migration instructions.
 
-### Rule: Declare authoritative membership explicitly
+### Rule: Select objects, never delete unlisted labels
 
-```yaml
-schemaVersion: 1
-settings:
-  labels:
-    - name: bug
-      color: d73a4a
-      description: Something is not working
-    - name: help wanted
-```
+- Omitted and empty collections select nothing and make no label calls.
+- A positive ID selects only an existing label in the target repository. Missing/wrong IDs fail before label mutation.
+- No ID means create-only. A colliding name is an error showing the existing ID, not auto-adoption.
+- Duplicate IDs and names under Unicode simple case folding fail. Case-only spelling is retained; a different noncolliding name with the same ID renames without deletion.
+- Name and color are required; description omission is the fixed empty-string default on both create and update. Null is invalid.
+- Complete selected object values are managed. Unlisted objects, assignments, archive state and server metadata are not removed or replayed.
 
-- Omitted `labels` leaves the collection unmanaged; plan/apply make no label request.
-- A provided list manages the entire membership: undeclared remote labels are deleted. `labels: []` deletes every remote label.
-- Deletion removes the label from issues and pull requests. Recreating the same name does not restore those associations. Review plan before applying.
-- `name` is required and identifies a label. Names must be strings that are neither empty nor whitespace-only, without control characters. Spaces, punctuation and emoji are allowed.
-- Identity uses Unicode simple case folding, without trimming or renaming. Duplicate/ambiguous identities in declarations or observations fail; case-only spelling changes retain the remote spelling.
-- `color` and `description` are optional strings. Omitted attributes preserve existing values; when creating a label, omission delegates those values to GitHub. No defaults are synthesized.
-- `color` is six hexadecimal characters without `#`, normalized to lowercase. `description` permits up to 100 Unicode characters; `description: ""` explicitly clears it.
-- Explicit null, wrong shapes/types, duplicate keys and unsupported attributes fail validation before API access. Aliases and merges use the existing YAML rules.
-- No rename inference or `new_name` is supported. Changing a name to a different identity creates the new label and deletes the old label, losing old associations. Archive settings and read-only metadata are not managed.
+### Rule: Observe complete identity and report honest failures
 
-### Rule: Complete reads before export or reconciliation
+- Follow every labels page and require positive unique IDs and complete supported values. Nullable response descriptions normalize to empty strings.
+- Export saves IDs and complete supported fields only after all selected reads/encoding succeed; failure preserves the output file.
+- Plan shows creates, ID-bound updates and default-derived changes. It never writes configuration.
+- Apply reads fresh labels after ordinary resources, preflights all label changes, and performs only creates/updates in stable identity order.
+- Resolve update paths from the observed ID/current name, check ID again before PATCH, and verify response identity and supported settings. This is not a lock against concurrent remote replacement.
+- Response mismatch, denial, redirect, unknown effect or later failure stops subsequent writes. Earlier writes remain applied, with no rollback/retry.
 
-- Export reads repository settings, topics, then every labels page. It saves all observed label names/colors/descriptions, sorted by identity, including `labels: []` when none exist.
-- Labels reads use `GET /repos/{owner}/{repo}/labels` with `per_page=100` and successive `page` values until a short page. Exactly 100 results require another request.
-- Missing required response values, malformed state, ambiguous names or a failed later page fail the whole operation. Nullable response descriptions become empty strings.
-- Export finishes all reads and serialization before opening the destination; a read failure preserves the previous file. Exporting makes the observed membership authoritative in the saved declaration.
-- Plan reads only declared resources and shows ordered create/update/delete operations. A Labels collection counts as one managed item, including an explicitly empty list.
+### Rule: Persist confirmed create IDs without committing configuration
 
-### Rule: Reconcile fresh state during apply
-
-- Repository PATCH and topics PUT retain their direct-write behavior, in that order. If Labels is declared, apply then reads all label pages using the apply credential and compares against the declaration.
-- Execute creates/updates in identity order, followed by deletes in identity order. Stop on the first failure, leaving earlier successful resource/label writes applied. There is no transaction, rollback or automatic retry.
-- Create uses POST with `name` and only declared attributes. Update uses PATCH with only changed declared attributes. Delete uses DELETE for each undeclared name. Names are escaped as individual URL path segments; rename/archive fields are never sent.
-- Apply rejects redirects for both its label reads and writes, preserves the configuration file, and never consumes a saved plan. Concurrent remote edits can change the operations after review; this is not drift protection.
-- CLI plan and the same-version Actions report/Summary show explicit operation names. Deletes state that issue/PR associations are removed. Names and attribute values remain escaped in terminal/HTML output.
+- Each verified creation reports its ID and is recorded before the next write.
+- Normal CLI apply adds only new IDs to the source snapshot; preserve existing IDs, unrelated values, file mode and comments as practicable.
+- Refuse changed snapshots, unsafe files/directories, and aliased/merged collection entries instead of overwriting unrelated work. Formatting may normalize.
+- Writeback failure after creation is a partial failure with the recoverable remote ID. Earlier saved IDs survive later failures.
+- `--no-writeback` or `GITHUB_ACTIONS=true` disables recording; display created IDs and leave YAML untouched. A repeat ID-less create then fails with ID guidance rather than adopting the object.
+- No Git commit/push, saved-plan mutation input, secret read or credential expansion is involved.
 
 ### API and permissions
 

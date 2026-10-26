@@ -156,7 +156,8 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if planned.runErr != nil || planned.stdout.String() != "settings.repository.has_issues: true → false\n" || planned.stderr.Len() != 0 || fixture.reads.Load() != 14 {
+	// The exported empty label selection needs no label read during plan.
+	if planned.runErr != nil || planned.stdout.String() != "settings.repository.has_issues: true → false\n" || planned.stderr.Len() != 0 || fixture.reads.Load() != 13 {
 		t.Fatalf("plan: %v stdout=%q stderr=%q reads=%d", planned.runErr, planned.stdout.String(), planned.stderr.String(), fixture.reads.Load())
 	}
 	if err := fixture.checkRequests(false); err != nil {

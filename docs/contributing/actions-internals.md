@@ -32,9 +32,9 @@ The [Actions-owned report](../../internal/actions/plan.go) has these fields:
 | --- | --- |
 | `outcome` | `changed`, `no-difference`, `unmanaged`, `invalid-config`, `target-failure` or `read-failure`. |
 | `target` | Available origin owner/repository; omitted for unmanaged, validation or target-resolution failure. |
-| `managed` | Number of managed fields/collections in a successful comparison; labels counts once, including an empty declared list. Zero on failure does not mean unmanaged. |
+| `managed` | Number of managed fields/collections in a successful comparison; nonempty label selections count once, empty labels count zero. Zero on failure does not mean unmanaged. |
 | `changes` | Ordered repository/topic field/before/after entries; values remain native strings, booleans or topic string arrays. Field paths are `repository.FIELD` or `topics.names`. Empty comparisons, failures and label-only changes use an empty array. |
-| `labels` | Optional typed create/update/delete entries with `operation`, `name` and applicable `before`/`after` attribute objects. Omitted when no label operations exist; available in v0.9.0. |
+| `labels` | Optional typed create/update entries with `operation`, identity name, update `id`, and complete supported `before`/`after` objects. Omitted when no label operations exist. The ID-based format is unreleased. |
 | `diagnostic` | Static categorical failure text; omitted on success. No raw error, token, environment dump or request header is serialized. |
 
 Validation precedes target resolution and API access. Valid unmanaged declarations succeed locally without origin or credentials. Read failures include the already-resolved target; ordinary stderr diagnostics retain their existing text. The report is ephemeral presentation data, never apply input. The composite calls this entry with its explicit read token, then passes the report to a separate credential-free Summary step. Shared planning owns validation; no separate CLI validation call, multi-version format or saved-plan execution is introduced. See the [report behavior](../features/actions.feature.md#rule-source-planning-writes-ephemeral-typed-presentation-data).
@@ -45,15 +45,14 @@ Current source adds optional `actions`, an ordered array of the eight closed `ac
 
 ### Label plan entries
 
-The [labels report adapter](../../internal/actions/labels.go) keeps operation identity separate from attribute objects. `before` contains both observed `color` and `description`; `after` includes only attributes represented by the operation. Omitted attributes remain absent rather than being converted to empty strings or defaults.
+The [labels report adapter](../../internal/actions/labels.go) keeps operation identity separate from attribute objects. Complete supported objects contain `name`, `color` and `description`, including the fixed empty description default. Only selected objects appear; unlisted objects remain unmanaged.
 
 | Operation | `before` | `after` |
 | --- | --- | --- |
-| `create` | Absent | Present, with only declared attributes; an empty object is valid. |
-| `update` | Present, with both observed attributes | Present, with at least one changed declared attribute. |
-| `delete` | Present, with both observed attributes | Absent |
+| `create` | Absent | Complete desired supported object; ID absent. |
+| `update` | Complete observed supported object | Complete desired supported object; positive matching ID required. |
 
-The application emits creates/updates in label identity order, then deletes in identity order. Report validation rejects unknown/null attributes, malformed operation fields, duplicate identities, incomplete before values, invalid colors/descriptions, no-op updates and rename attempts. Colors must be lowercase. When label operations exist, the managed count must be at least the number of repository/topic change entries plus one; the actual count includes all declared fields and collections. A changed outcome may contain label operations alone. This is ephemeral presentation data, never apply input.
+The application emits creates/updates in stable label identity order and never implicit deletes. Report validation rejects unknown/null attributes, malformed operation fields, duplicate names/IDs, incomplete objects, invalid colors/descriptions and no-op updates. ID-selected rename is supported; identity name refers to the prior name. Colors must be lowercase. When label operations exist, the managed count must be at least the number of repository/topic change entries plus one; the actual count includes all declared fields and collections. A changed outcome may contain label operations alone. This is ephemeral presentation data, never apply input.
 
 ## Source Actions Summary
 

@@ -458,48 +458,50 @@ Topic reads require Metadata read; public resources may be read without authenti
 
 ## Labels
 
-`settings.labels` manages repository label definitions, supported since v0.9.0 and included in the pinned v0.18.0 Action examples. Older v0.8.0 packages do not support Labels. It does not manage individual issue/PR assignments, although deleting a definition removes its assignments.
+Current source changes labels to ID-based, listed-object ownership. This is **unreleased**: published v0.19.0 and earlier retain authoritative-list deletion and omitted-attribute preservation. Do not use ID-bearing configuration with an older CLI/Action.
 
 ```yaml
 schemaVersion: 1
 settings:
   labels:
-    - name: bug
-      color: "d73a4a"
+    - id: 123
+      name: bug
+      color: d73a4a
       description: Something is not working
-    - name: help wanted
+    - name: new-label
+      color: abcdef
 ```
 
-A declared list owns the complete label membership:
-
-| Declaration | Meaning |
-| --- | --- |
-| Omitted `labels` | Labels unmanaged; plan/apply make no label request. |
-| A list of label mappings | Keep the declared identities, creating or updating as needed; delete every undeclared remote label. |
-| `labels: []` | Delete all labels and their issue/PR associations. |
-| `labels: null` or `labels: {}` | Invalid; neither represents omission or an empty collection. |
-
-Deleting a label removes it from issues and pull requests. Recreating the same name does not restore those associations.[^github-delete-labels] Review the create/update/delete plan before applying authoritative membership.
+Only listed label objects are managed. Omitted `labels` and `labels: []` select nothing, require no label API calls and delete nothing. Unlisted remote labels and their issue/PR assignments remain untouched. Removing an entry stops managing it; there is no label-deletion declaration.
 
 | Attribute | Contract |
 | --- | --- |
-| `name` | Required string that is neither empty nor whitespace-only, with no control characters. Spaces, punctuation and emoji are allowed. |
-| `color` | Optional string of six hexadecimal characters without `#`; normalized to lowercase. |
-| `description` | Optional string of at most 100 Unicode characters; `description: ""` clears an existing description. |
+| `id` | Optional positive REST integer ID. Present means update that existing label in the selected repository; an unknown ID is an error, never a create fallback. |
+| `name` | Required nonempty, non-whitespace string without control characters. Spaces, punctuation and emoji are allowed. |
+| `color` | Required six-character hexadecimal string without `#`, normalized to lowercase. There is no guessed color default. Quote numeric-only colors. |
+| `description` | Optional string of at most 100 Unicode characters; omission defaults to `""` on both create and update, clearing an existing description. |
 
-Names use Unicode simple case folding for identity, without trimming. Duplicate or ambiguous identities in either configuration or remote observations fail. Case-only spelling changes preserve the remote spelling. A name changed to a different identity creates a new label and deletes the old label; there is no rename inference or `new_name` field, so old associations are lost.
+An ID-less entry is create-only. If its name already exists, plan/apply fail and show the existing ID to add for an intentional update. Names retain Unicode simple case folding for duplicate/collision checks, without trimming. Duplicate IDs or ambiguous names fail. With a valid ID, a different noncolliding name renames that same label and preserves its assignments; case-only differences retain the remote spelling. Renames must not collide with an existing label, even if another entry also plans to rename that label. Apply is not a rename transaction.
 
-Omitting `color` or `description` preserves an existing label's value. For a new label, omitted attributes are left for GitHub to choose; the tool synthesizes no defaults. Null, wrong types, unsupported attributes and duplicate keys fail validation. Labels follow the existing YAML alias and merge rules. Archive settings and read-only label metadata are not managed.
+Plan compares complete supported object values, including default-derived description clearing, and displays IDs on updates. Export includes each observed ID and supported settings. Missing/invalid IDs, incomplete fields, duplicate identities and failed pages fail instead of becoming empty or successful state. Archive fields and read-only metadata remain unmanaged and are never sent.
 
-Listing labels needs Issues or Pull requests read, and mutations need either permission at write level for fine-grained or GitHub App tokens; public lists may be read unauthenticated.[^github-labels] Administration write alone is insufficient for label mutations. v0.9.0 export reads labels too. The existing example tokens and workflow permissions have not been expanded for label mutations. Public zero-difference adoption needs no label writes; later mutations require separately approved App/installation and token permissions.
+### Apply ID writeback and migration
 
-The [command reference](commands.md#apply-behavior) explains fresh reads, create/update/delete ordering and partial failures. Contributors can find API mapping and test evidence in the [labels feature specification](features/labels.feature.md).
+Normal CLI apply appends each confirmed new ID to the original `.github/settings.yml` immediately after creation, before proceeding to another write. Existing IDs and unrelated values are retained. YAML comments are preserved where supported, but formatting may be normalized. The file must remain a regular file under a regular `.github` directory and match the initial snapshot plus earlier ID additions. Aliased/merged collection entries are not rewritten; use explicit mappings or disable writeback.
+
+Use `gh settings apply --no-writeback` to disable this local change. With `GITHUB_ACTIONS=true`, writeback is always disabled, including through the public Action. Created IDs are printed for manual recovery/adoption; no Git commit or push is made. Plan never writes.
+
+Remote creation and local writeback are not a transaction. If creation succeeded but writeback fails, apply stops, reports the created ID and leaves the remote object in place. Add that ID before retrying. Earlier confirmed IDs remain recorded if a later operation fails. A failed response may leave an unknown remote effect; inspect/export current state before attempting another create. No automatic create retry, delete or rollback occurs. File replacement is guarded and atomic, not a concurrent-editor lock.
+
+For migration, first review an export made with the **new CLI**, which contains IDs. Add IDs to every existing label you intend to update, supply its color, and explicitly preserve any description you want retained. Review plan before apply. Older partial declarations may now fail for missing color or collide as create-only entries; omitted descriptions now clear. Removing entries and emptying the list no longer delete labels. Legacy deletion removed issue/PR assignments and recreating a label did not restore them.[^github-delete-labels] Published older versions do not gain this behavior merely by checking out newer Action source.
+
+Labels read and mutation credentials still need Issues or Pull requests read/write respectively; Administration write alone does not suffice.[^github-labels] No permissions are created or expanded. See the [command reference](commands.md#labels-command-behavior) and [behavior specification](features/labels.feature.md).
 
 ## Configuration semantics
 
 The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus an optional `labels` sequence. v0.17.0 additionally accepts `rulesets` and the optional `actions` and `security` mappings described above. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic migration or compatibility parsing.
 
-Declared values are managed, and YAML is authoritative for them. Omitting a resource leaves it unmanaged; declared topics and labels collections own their complete membership. Omitted repository fields and omitted label attributes remain unmanaged. No defaults are injected by the tool. For example:
+Declared values are managed, and YAML is authoritative for them. Omitted repository fields remain unmanaged. Topics and the currently implemented Rulesets collection retain authoritative membership. Current-source labels instead select whole ID-owned objects: unlisted objects are untouched, color is required and omitted description defaults to empty. These label semantics are unreleased; see the [labels migration](#apply-id-writeback-and-migration). For example:
 
 ```yaml
 schemaVersion: 1
@@ -531,13 +533,13 @@ A version-only document manages nothing:
 schemaVersion: 1
 ```
 
-Empty `settings`, `repository` or `topics` mappings are also valid. Current source also accepts empty `actions` and `actions.selected_actions` mappings as unmanaged. When no resources are managed, plan and apply succeed locally without an origin, authentication or API requests. An explicit `names: []` still manages topics; `labels: []` still manages all label membership. These declarations require a comparison or update rather than a local no-op.
+Empty `settings`, `repository` or `topics` mappings are also valid. Current source also accepts empty `actions` and `actions.selected_actions` mappings as unmanaged. When no resources are managed, plan and apply succeed locally without an origin, authentication or API requests. An explicit `names: []` still manages topics; current-source `labels: []` selects no objects. A managed topics clearing declaration requires comparison/update, unlike an empty label selection.
 
 Validation rejects unknown or duplicate keys, non-string keys, wrong types, malformed YAML and multiple documents. YAML aliases and merge keys are resolved before supported values are checked. Partial declarations are accepted; unsupported root-level field names are rejected. See [validate behavior](commands.md#validate-behavior) for output and failure handling.
 
 ## Exported values
 
-Export declares every supported observed repository field and the complete topic set. Export additionally reads all label pages and saves the complete label collection sorted by identity, with names, lowercase colors and descriptions, including `labels: []` when none exist. This makes the observed membership authoritative. Review the saved file and remove resources or attributes you want to leave unmanaged before applying it.
+Export declares every supported observed repository field and the complete topic set. It reads all label pages and writes each label's ID, name, lowercase color and description in stable order; no labels produces `labels: []`. Listed label objects are managed as a whole, not authoritative remote membership. Remove objects you do not want managed, and review default-derived changes before applying.
 
 GitHub can return null for an unset description or homepage. Export normalizes those response values to empty strings and writes quoted YAML strings (`""`); it preserves existing empty strings and false booleans. Missing response fields and null booleans are errors. Topic names must be present as a valid array; missing, null, invalid or unreadable names fail export instead of becoming an empty set.
 

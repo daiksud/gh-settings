@@ -102,13 +102,12 @@ func TestApplyWriteFailure(t *testing.T) {
 }
 
 func TestApplyManagedEmptyCollectionsResolveTarget(t *testing.T) {
-	topics, labels := []string{}, settings.LabelDeclarations{}
+	topics := []string{}
 	for _, test := range []struct {
 		name    string
 		desired settings.Declaration
 	}{
 		{"topics", settings.Declaration{Topics: settings.TopicsDeclaration{Names: &topics}}},
-		{"labels", settings.Declaration{Labels: &labels}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			cause := errors.New("origin unavailable")

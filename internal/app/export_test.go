@@ -49,8 +49,8 @@ func TestExportStoredSettings(t *testing.T) {
 			issuePolicy := "ALL"
 			squashTitle, squashMessage, mergeTitle, mergeMessage := "COMMIT_OR_PR_TITLE", "COMMIT_MESSAGES", "MERGE_MESSAGE", "PR_TITLE"
 			names := []string{"a", "b"}
-			color, description := "abcdef", "existing label"
-			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "bug", Color: &color, Description: &description})
+			id, color, description := int64(1), "abcdef", "existing label"
+			labels := appLabelDeclarations(t, settings.LabelDeclaration{ID: &id, Name: "bug", Color: &color, Description: &description})
 			want := settings.Declaration{
 				Repository: settings.RepositoryDeclaration{
 					HasPullRequests: &no, PullRequestCreationPolicy: &policy, IssueCreationPolicy: &issuePolicy, HasSponsorships: &no,
@@ -173,7 +173,7 @@ func exportFixtureReader(t *testing.T, state settings.RepositoryState, step func
 			if err := step("labels", repo); err != nil {
 				return settings.LabelObservation{}, err
 			}
-			return settings.NewLabelObservation([]settings.LabelState{{Name: "bug", Color: "abcdef", Description: "existing label"}})
+			return settings.NewLabelObservation([]settings.LabelState{{ID: 1, Name: "bug", Color: "abcdef", Description: "existing label"}})
 		},
 	}
 }

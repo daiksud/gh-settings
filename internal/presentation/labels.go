@@ -22,11 +22,15 @@ func LabelLine(change settings.LabelChange) string {
 			prefix += " " + strings.Join(attributes, " ")
 		}
 	}, func(before settings.LabelState, after settings.LabelDeclaration) {
+		prefix += fmt.Sprintf(" (id %d)", before.ID)
 		var attributes []string
-		if after.Color != nil {
+		if after.Name != before.Name {
+			attributes = append(attributes, fmt.Sprintf("name: %q → %q", before.Name, after.Name))
+		}
+		if after.Color != nil && *after.Color != before.Color {
 			attributes = append(attributes, fmt.Sprintf("color: %q → %q", before.Color, *after.Color))
 		}
-		if after.Description != nil {
+		if after.Description != nil && *after.Description != before.Description {
 			attributes = append(attributes, fmt.Sprintf("description: %q → %q", before.Description, *after.Description))
 		}
 		prefix += " " + strings.Join(attributes, ", ")

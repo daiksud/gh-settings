@@ -82,7 +82,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += topics.Managed
 		comparison.Changes = append(comparison.Changes, topics.Changes...)
 	}
-	if desired.Labels != nil {
+	if desired.Labels != nil && desired.Labels.Len() > 0 {
 		current, err := read.Labels(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}

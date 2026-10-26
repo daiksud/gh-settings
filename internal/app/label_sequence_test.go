@@ -2,87 +2,82 @@ package app
 
 import (
 	"errors"
-	"fmt"
-	"reflect"
-	"strings"
-	"testing"
-
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"reflect"
+	"testing"
 )
 
-func TestApplyLabelSequenceAndFailureStop(t *testing.T) {
-	for _, failAt := range []string{"", "create:a", "update:B", "delete:C"} {
-		t.Run(failAt, func(t *testing.T) {
-			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
-			cause := errors.New("fixture failure")
+func TestApplyLabelSequenceAndWritebackFailureStop(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		t.Run(map[bool]string{false: "complete", true: "writeback failure"}[fail], func(t *testing.T) {
+			color := "abcdef"
+			disabled := false
+			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "a", Color: &color}, settings.LabelDeclaration{Name: "b", Color: &color})
 			var calls []string
-			step := func(name string, repo repository.Repository) error {
-				if repo != target {
-					t.Fatalf("target=%+v", repo)
-				}
-				calls = append(calls, name)
-				if name == failAt {
-					return cause
-				}
-				return nil
-			}
-			labelWrite := func(kind string) func(repository.Repository, settings.LabelChange) error {
-				return func(repo repository.Repository, change settings.LabelChange) error {
-					if change.Operation() != kind {
-						t.Fatalf("wrong writer for %s", change.Operation())
-					}
-					return step(kind+":"+change.Name(), repo)
-				}
-			}
-			color, disabled, names := "000000", false, []string{}
-			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "b", Color: &color}, settings.LabelDeclaration{Name: "a"})
+			cause := errors.New("settings changed during apply")
 			result, err := Apply(func() (settings.Declaration, error) {
-				calls = append(calls, "load")
-				return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}, Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels}, nil
-			}, func() (repository.Repository, error) {
-				calls = append(calls, "target")
-				return target, nil
-			}, Writer{
-				Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
-					if desired.HasIssues == nil || *desired.HasIssues {
-						t.Fatalf("repository=%+v", desired)
-					}
-					return step("repository", repo)
+				return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}, Labels: &labels}, nil
+			}, checkoutRepository, Writer{
+				Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+					calls = append(calls, "repository")
+					return nil
 				},
-				Topics: func(repo repository.Repository, desired settings.TopicsDeclaration) error {
-					if desired.Names == nil || len(*desired.Names) != 0 {
-						t.Fatalf("topics=%+v", desired)
-					}
-					return step("topics", repo)
+				ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+					calls = append(calls, "read")
+					return settings.NewLabelObservation([]settings.LabelState{{ID: 9, Name: "unmanaged", Color: "abcdef"}})
 				},
-				ReadLabels: func(repo repository.Repository) (settings.LabelObservation, error) {
-					if err := step("labels-read", repo); err != nil {
-						return settings.LabelObservation{}, err
+				CreateLabel: func(_ repository.Repository, c settings.LabelChange) (int64, error) {
+					calls = append(calls, "create:"+c.Name())
+					if c.Name() == "a" {
+						return 17, nil
 					}
-					return settings.NewLabelObservation([]settings.LabelState{{Name: "C", Color: "abcdef"}, {Name: "B", Color: "abcdef", Description: "keep"}})
+					return 18, nil
 				},
-				CreateLabel: labelWrite("create"), UpdateLabel: labelWrite("update"), DeleteLabel: labelWrite("delete"),
+				CreatedID: func(kind, name string, id int64) error {
+					calls = append(calls, "save:"+name)
+					if kind != "labels" || id <= 0 {
+						t.Fatal(kind, name, id)
+					}
+					if fail {
+						return cause
+					}
+					return nil
+				},
+				DeleteLabel: func(repository.Repository, settings.LabelChange) error { t.Fatal("unmanaged deletion"); return nil },
 			})
-			want := []string{"load", "target", "repository", "topics", "labels-read", "create:a", "update:B", "delete:C"}
-			if failAt != "" {
-				for i, name := range want {
-					if name == failAt {
-						want = want[:i+1]
-						break
-					}
+			want := []string{"repository", "read", "create:a", "save:a", "create:b", "save:b"}
+			if fail {
+				want = want[:4]
+				if !errors.Is(err, cause) || result.Outcome != ApplyPartialFailure || len(result.CreatedIDs) != 1 || result.CreatedIDs[0].ID != 17 {
+					t.Fatal(result, err)
 				}
-				kind, name, _ := strings.Cut(failAt, ":")
-				message := fmt.Sprintf("%s label %q (earlier successful writes remain applied): fixture failure", kind, name)
-				if !errors.Is(err, cause) || err.Error() != message || result.Completed() {
-					t.Fatalf("result=%+v error=%v", result, err)
-				}
-			} else if err != nil || !result.Completed() {
-				t.Fatalf("result=%+v error=%v", result, err)
+			} else if err != nil || !result.Completed() || len(result.CreatedIDs) != 2 {
+				t.Fatal(result, err)
 			}
 			if !reflect.DeepEqual(calls, want) {
-				t.Fatalf("calls=%v want=%v", calls, want)
+				t.Fatal(calls, want)
 			}
 		})
+	}
+}
+
+func TestLabelIdentityReadFailureIsNotAnUnknownWrite(t *testing.T) {
+	color, id := "abcdef", int64(7)
+	labels := appLabelDeclarations(t, settings.LabelDeclaration{ID: &id, Name: "renamed", Color: &color})
+	cause := errors.New("label identity changed before update")
+	result, err := Apply(func() (settings.Declaration, error) {
+		return settings.Declaration{Labels: &labels}, nil
+	}, checkoutRepository, Writer{
+		ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+			return settings.NewLabelObservation([]settings.LabelState{{ID: 7, Name: "old", Color: "abcdef"}})
+		},
+		UpdateLabel: func(repository.Repository, settings.LabelChange) error {
+			return &workflowReadFailure{cause}
+		},
+	})
+	var readFailure *workflowReadFailure
+	if !errors.As(err, &readFailure) || readFailure.error != cause || result.Outcome != ApplyFailed || len(result.Operations) != 2 || result.Operations[1].Status != OperationFailedRead {
+		t.Fatalf("result=%+v error=%v", result, err)
 	}
 }

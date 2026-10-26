@@ -92,7 +92,7 @@ Test mapping: [TestTopicsSetComparison](../../internal/settings/topics_test.go),
 
 ### Rule: Show label collection operations
 
-Current source reads a declared label collection and reports typed create/update/delete operations. An explicit empty list counts as one managed resource, and omitted label attributes remain unmanaged. The [Labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation) owns label comparison scenarios and test mappings. Published v0.8.0 does not include labels.
+Current unreleased source reads nonempty label selections and reports typed creates and ID-selected whole-object updates, including default-derived changes. An empty list selects nothing and counts as unmanaged. The [Labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures) owns label comparison scenarios and test mappings. Published v0.19.0 and earlier retain the legacy label contract.
 
 ### Rule: Actions execution policy comparison
 

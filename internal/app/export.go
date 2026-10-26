@@ -57,8 +57,8 @@ func Export(checkout ExportCheckout, read Reader) error {
 	}
 	labelDeclarations := make([]settings.LabelDeclaration, 0, len(labels))
 	for _, label := range labels {
-		color, description := label.Color, label.Description
-		labelDeclarations = append(labelDeclarations, settings.LabelDeclaration{Name: label.Name, Color: &color, Description: &description})
+		id, color, description := label.ID, label.Color, label.Description
+		labelDeclarations = append(labelDeclarations, settings.LabelDeclaration{ID: &id, Name: label.Name, Color: &color, Description: &description})
 	}
 	validated, err := settings.NewLabelDeclarations(labelDeclarations)
 	if err != nil {

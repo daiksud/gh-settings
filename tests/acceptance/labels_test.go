@@ -20,30 +20,32 @@ import (
 
 func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 	binary := acceptanceBinary(t)
-	current := `[{"name":"keep","color":"abcdef","description":"external"},{"name":"old","color":"123456","description":null}]`
-	for _, test := range []struct {
+	current := `[{"id":7,"name":"keep","color":"abcdef","description":"external"},{"id":9,"name":"unmanaged","color":"123456","description":null}]`
+	for _, tc := range []struct {
 		name, command, declaration, body, want, errorText string
 		requests                                          []string
 		failMethod                                        string
 		status                                            int
 	}{
 		{name: "omitted", command: "apply", declaration: `{}`, want: "No managed repository settings.\n"},
-		{name: "empty clear plan", command: "plan", declaration: `{labels: []}`, body: current, want: "settings.labels: delete \"keep\" (removes issue/PR associations)\nsettings.labels: delete \"old\" (removes issue/PR associations)\n", requests: []string{"GET /repos/owner/current/labels "}},
-		{name: "name identity and omitted attrs", command: "apply", declaration: `{labels: [{name: KEEP}, {name: old}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels "}},
-		{name: "create update delete", command: "apply", declaration: `{labels: [{name: keep, description: ""}, {name: new}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", `PATCH /repos/owner/current/labels/keep {"description":""}`, `POST /repos/owner/current/labels {"name":"new"}`, "DELETE /repos/owner/current/labels/old "}},
-		{name: "name change creates and deletes", command: "apply", declaration: `{labels: [{name: replacement, color: AABBCC}]}`, body: `[{"name":"original","color":"abcdef","description":""}]`, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"replacement","color":"aabbcc"}`, "DELETE /repos/owner/current/labels/original "}},
-		{name: "clear all", command: "apply", declaration: `{labels: []}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "DELETE /repos/owner/current/labels/keep ", "DELETE /repos/owner/current/labels/old "}},
-		{name: "malformed state", command: "apply", declaration: `{labels: []}`, body: `[{"name":"old"}]`, errorText: "missing color", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "empty plan", command: "plan", declaration: `{labels: []}`, want: "No managed repository settings.\n"},
+		{name: "empty apply", command: "apply", declaration: `{labels: []}`, want: "No managed repository settings.\n"},
+		{name: "create plan leaves siblings", command: "plan", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, want: "settings.labels: create \"new\" color=\"abcdef\" description=\"\"\n", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "collision", command: "apply", declaration: `{labels: [{name: KEEP, color: abcdef}]}`, body: current, errorText: "specify id: 7", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "missing ID", command: "apply", declaration: `{labels: [{id: 99, name: new, color: abcdef}]}`, body: current, errorText: "refusing create fallback", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "defaults clear description", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: abcdef}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
+		{name: "same ID rename", command: "apply", declaration: `{labels: [{id: 7, name: renamed, color: abcdef}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"renamed","color":"abcdef","description":""}`}},
 		{name: "invalid null before API", command: "apply", declaration: `{labels: null}`, errorText: "array of label mappings"},
-		{name: "duplicate before API", command: "plan", declaration: `{labels: [{name: bug}, {name: BUG}]}`, errorText: "duplicate label"},
-		{name: "create failure stops delete", command: "apply", declaration: `{labels: [{name: new}]}`, body: current, failMethod: "POST", status: 403, errorText: "403", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new"}`}},
-		{name: "update failure stops delete", command: "apply", declaration: `{labels: [{name: keep, description: ""}]}`, body: current, failMethod: "PATCH", status: 422, errorText: "422", requests: []string{"GET /repos/owner/current/labels ", `PATCH /repos/owner/current/labels/keep {"description":""}`}},
-		{name: "post redirect", command: "apply", declaration: `{labels: [{name: new}]}`, body: current, failMethod: "POST", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new"}`}},
-		{name: "patch redirect", command: "apply", declaration: `{labels: [{name: keep, description: ""}]}`, body: current, failMethod: "PATCH", status: 307, errorText: "307", requests: []string{"GET /repos/owner/current/labels ", `PATCH /repos/owner/current/labels/keep {"description":""}`}},
-		{name: "delete redirect", command: "apply", declaration: `{labels: []}`, body: current, failMethod: "DELETE", status: 308, errorText: "308", requests: []string{"GET /repos/owner/current/labels ", "DELETE /repos/owner/current/labels/keep "}},
-		{name: "get redirect on apply", command: "apply", declaration: `{labels: []}`, body: current, failMethod: "GET", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "missing color before API", command: "apply", declaration: `{labels: [{name: new}]}`, errorText: "requires color"},
+		{name: "duplicate before API", command: "plan", declaration: `{labels: [{name: bug, color: abcdef}, {name: BUG, color: abcdef}]}`, errorText: "duplicate label"},
+		{name: "malformed ID before API", command: "apply", declaration: `{labels: [{id: null, name: new, color: abcdef}]}`, errorText: "positive integer"},
+		{name: "create denied", command: "apply", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, failMethod: "POST", status: 403, errorText: "403", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new","color":"abcdef","description":""}`}},
+		{name: "update denied", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: abcdef}]}`, body: current, failMethod: "PATCH", status: 422, errorText: "422", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
+		{name: "create redirect", command: "apply", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, failMethod: "POST", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new","color":"abcdef","description":""}`}},
+		{name: "read redirect", command: "apply", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, failMethod: "GET", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "missing observed ID", command: "plan", declaration: `{labels: [{name: new, color: abcdef}]}`, body: `[{"name":"x","color":"abcdef","description":""}]`, errorText: "positive id", requests: []string{"GET /repos/owner/current/labels "}},
 	} {
-		t.Run(test.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
@@ -52,16 +54,28 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 				body, _ := io.ReadAll(r.Body)
 				requests = append(requests, r.Method+" "+r.URL.EscapedPath()+" "+string(body))
 				w.Header().Set("Content-Type", "application/json")
-				if r.Method == test.failMethod {
+				if r.Method == tc.failMethod {
 					w.Header().Set("Location", "https://api.github.com/repos/other/wrong/labels")
-					w.WriteHeader(test.status)
+					w.WriteHeader(tc.status)
 					fmt.Fprint(w, `{"message":"fixture denied"}`)
 					return
 				}
-				if r.Method == "GET" {
-					fmt.Fprint(w, test.body)
-				} else {
-					w.WriteHeader(204)
+				switch r.Method {
+				case "GET":
+					if r.URL.Path == "/repos/owner/current/labels" {
+						fmt.Fprint(w, tc.body)
+					} else {
+						fmt.Fprint(w, `{"id":7}`)
+					}
+				case "PATCH":
+					var values map[string]any
+					if err := json.Unmarshal(body, &values); err != nil {
+						t.Error(err)
+					}
+					json.NewEncoder(w).Encode(map[string]any{"id": 7, "name": values["new_name"], "color": values["color"], "description": values["description"]})
+				default:
+					t.Error("unexpected mutation", r.Method)
+					w.WriteHeader(400)
 				}
 			}, false)
 			if err != nil {
@@ -72,25 +86,25 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "schemaVersion: 1\nsettings: " + test.declaration + "\n"
+			input := "schemaVersion: 1\nsettings: " + tc.declaration + "\n"
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
-			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{test.command}, false)
+			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{tc.command}, false)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if test.errorText != "" {
-				if result.runErr == nil || !strings.Contains(result.stderr.String(), test.errorText) || result.stdout.Len() != 0 {
-					t.Fatalf("result=%+v", result)
+			if tc.errorText != "" {
+				if result.runErr == nil || !strings.Contains(result.stderr.String(), tc.errorText) || result.stdout.Len() != 0 {
+					t.Fatalf("%+v", result)
 				}
-			} else if result.runErr != nil || result.stderr.Len() != 0 || result.stdout.String() != test.want {
-				t.Fatalf("result=%+v want=%q", result, test.want)
+			} else if result.runErr != nil || result.stderr.Len() != 0 || result.stdout.String() != tc.want {
+				t.Fatalf("%+v want=%q", result, tc.want)
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(requests, test.requests) {
-				t.Fatalf("requests=%q want=%q", requests, test.requests)
+			if !reflect.DeepEqual(requests, tc.requests) {
+				t.Fatalf("requests=%q want=%q", requests, tc.requests)
 			}
 			if err := checkSettingsUnchanged(fixture.work, input); err != nil {
 				t.Fatal(err)
@@ -134,7 +148,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 					if r.URL.Query().Get("page") == "1" {
 						labels := make([]map[string]any, 100)
 						for i := range labels {
-							labels[i] = map[string]any{"name": fmt.Sprintf("label-%03d", 99-i), "color": "ABCDEF", "description": nil, "id": i, "default": true}
+							labels[i] = map[string]any{"name": fmt.Sprintf("label-%03d", 99-i), "color": "ABCDEF", "description": nil, "id": i + 1, "default": true}
 						}
 						_ = json.NewEncoder(w).Encode(labels)
 					} else if fail {
@@ -191,7 +205,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 					t.Fatalf("labels=%d", len(document.Settings.Labels))
 				}
 				for i, label := range document.Settings.Labels {
-					if !reflect.DeepEqual(label, map[string]any{"name": fmt.Sprintf("label-%03d", i), "color": "abcdef", "description": ""}) {
+					if !reflect.DeepEqual(label, map[string]any{"id": 100 - i, "name": fmt.Sprintf("label-%03d", i), "color": "abcdef", "description": ""}) {
 						t.Fatalf("label=%v", label)
 					}
 				}
@@ -215,7 +229,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `[{"name":"old","color":"abcdef","description":null}]`)
+		fmt.Fprint(w, `[{"id":9,"name":"old","color":"abcdef","description":null}]`)
 	}, true)
 	if err != nil {
 		t.Fatal(err)
@@ -225,7 +239,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {labels: [{name: '<new>', description: ''}]}\n"); err != nil {
+	if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {labels: [{name: '<new>', color: abcdef, description: ''}]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	report := filepath.Join(fixture.root, "plan.json")
@@ -242,8 +256,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]any{"outcome": "changed", "target": "owner/current", "managed": float64(1), "changes": []any{}, "labels": []any{
-		map[string]any{"operation": "create", "name": "<new>", "after": map[string]any{"description": ""}},
-		map[string]any{"operation": "delete", "name": "old", "before": map[string]any{"color": "abcdef", "description": ""}},
+		map[string]any{"operation": "create", "name": "<new>", "after": map[string]any{"name": "<new>", "color": "abcdef", "description": ""}},
 	}}
 	if !reflect.DeepEqual(decoded, want) {
 		t.Fatalf("report=%s", data)
@@ -258,7 +271,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "<new>") || !strings.Contains(html.UnescapeString(string(data)), `settings.labels: create "<new>" description=""`) || !strings.Contains(string(data), "removes issue/PR associations") || fixture.reads.Load() != 1 {
+	if strings.Contains(string(data), "<new>") || !strings.Contains(html.UnescapeString(string(data)), `settings.labels: create "<new>" color="abcdef" description=""`) || strings.Contains(string(data), "removes issue/PR associations") || fixture.reads.Load() != 1 {
 		t.Fatalf("summary=%s requests=%d", data, fixture.reads.Load())
 	}
 }

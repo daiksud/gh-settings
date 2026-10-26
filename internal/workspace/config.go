@@ -47,7 +47,7 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	if declaration.Labels != nil {
 		labels := make([]labelDocument, 0, declaration.Labels.Len())
 		for _, label := range settings.SortedLabels(declaration.Labels.Values()) {
-			labels = append(labels, labelDocument{Name: label.Name, Color: label.Color, Description: label.Description})
+			labels = append(labels, labelDocument{ID: label.ID, Name: label.Name, Color: label.Color, Description: label.Description})
 		}
 		document.Settings.Labels = &labels
 	}

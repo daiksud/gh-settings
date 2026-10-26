@@ -7,7 +7,7 @@ import (
 )
 
 func TestLabelObservationOwnsCompleteValues(t *testing.T) {
-	input := []LabelState{{Name: "Bug", Color: "ABCDEF", Description: ""}}
+	input := []LabelState{{ID: 1, Name: "Bug", Color: "ABCDEF", Description: ""}}
 	observed, err := NewLabelObservation(input)
 	if err != nil {
 		t.Fatal(err)
@@ -17,7 +17,7 @@ func TestLabelObservationOwnsCompleteValues(t *testing.T) {
 	}
 	input[0] = LabelState{}
 	values, err := observed.Values()
-	want := []LabelState{{Name: "Bug", Color: "abcdef", Description: ""}}
+	want := []LabelState{{ID: 1, Name: "Bug", Color: "abcdef", Description: ""}}
 	if err != nil || !reflect.DeepEqual(values, want) {
 		t.Fatalf("values=%+v error=%v", values, err)
 	}
@@ -35,6 +35,9 @@ func TestLabelObservationRejectsInvalidValues(t *testing.T) {
 		{{Name: "bug", Color: "abcdef", Description: strings.Repeat("界", 101)}}, {{Name: "bug", Color: "abcdef", Description: "\xff"}},
 		{{Name: "bug", Color: "abcdef"}, {Name: "BUG", Color: "123456"}}, {{Name: "Σ", Color: "abcdef"}, {Name: "ς", Color: "123456"}},
 	} {
+		for i := range input {
+			input[i].ID = int64(i + 1)
+		}
 		observed, err := NewLabelObservation(input)
 		values, readErr := observed.Values()
 		if err == nil || readErr == nil || values != nil {
@@ -48,7 +51,7 @@ func TestLabelObservationDistinguishesMissingAndCompleteEmpty(t *testing.T) {
 	if values, err := missing.Values(); err == nil || values != nil {
 		t.Fatalf("missing observation became values=%+v error=%v", values, err)
 	}
-	if comparison, err := CompareLabels(missing, labelList(t)); err == nil || !reflect.DeepEqual(comparison, Comparison{}) {
+	if comparison, err := CompareLabels(missing, labelList(t, LabelDeclaration{Name: "new", Color: labelText("abcdef")})); err == nil || !reflect.DeepEqual(comparison, Comparison{}) {
 		t.Fatalf("missing observation became comparison=%+v error=%v", comparison, err)
 	}
 	for _, input := range [][]LabelState{nil, {}} {
@@ -61,7 +64,7 @@ func TestLabelObservationDistinguishesMissingAndCompleteEmpty(t *testing.T) {
 			t.Fatalf("complete empty observation=%+v error=%v", values, err)
 		}
 		comparison, err := CompareLabels(observed, labelList(t))
-		if err != nil || comparison.Managed != 1 || comparison.Labels.Len() != 0 {
+		if err != nil || comparison.Managed != 0 || comparison.Labels.Len() != 0 {
 			t.Fatalf("comparison=%+v error=%v", comparison, err)
 		}
 	}

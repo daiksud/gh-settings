@@ -41,6 +41,13 @@ func (op labelUpdate) visit(v labelOperationVisitor) {
 func (op labelDelete) visit(v labelOperationVisitor) { v.remove(op.before) }
 
 func NewLabelCreate(after LabelDeclaration) (LabelChange, error) {
+	if after.ID != nil {
+		return LabelChange{}, fmt.Errorf("label creation must omit id")
+	}
+	if after.Description == nil {
+		empty := ""
+		after.Description = &empty
+	}
 	if err := validateLabelAfter(after); err != nil {
 		return LabelChange{}, err
 	}
@@ -51,13 +58,13 @@ func NewLabelUpdate(before LabelState, after LabelDeclaration) (LabelChange, err
 	if err := validateLabelBefore(before); err != nil {
 		return LabelChange{}, err
 	}
-	if after.Name != before.Name {
-		return LabelChange{}, fmt.Errorf("label operation cannot rename")
+	if after.ID == nil || *after.ID != before.ID {
+		return LabelChange{}, fmt.Errorf("label update requires matching id")
 	}
 	if err := validateLabelAfter(after); err != nil {
 		return LabelChange{}, err
 	}
-	if (after.Color == nil && after.Description == nil) || (after.Color != nil && *after.Color == before.Color) || (after.Description != nil && *after.Description == before.Description) {
+	if after.Color == nil || after.Description == nil || (after.Name == before.Name && *after.Color == before.Color && *after.Description == before.Description) {
 		return LabelChange{}, fmt.Errorf("invalid %q label operation", "update")
 	}
 	return LabelChange{operation: labelUpdate{before: before, after: copyLabelDeclaration(after)}}, nil
@@ -71,6 +78,9 @@ func NewLabelDelete(before LabelState) (LabelChange, error) {
 }
 
 func validateLabelBefore(before LabelState) error {
+	if before.ID <= 0 {
+		return fmt.Errorf("label before value requires a positive id")
+	}
 	if err := ValidateLabelName(before.Name); err != nil {
 		return err
 	}
@@ -107,6 +117,7 @@ type LabelChanges struct{ entries []LabelChange }
 
 func NewLabelChanges(changes []LabelChange) (LabelChanges, error) {
 	seen := make(map[string]bool, len(changes))
+	seenIDs := make(map[int64]bool, len(changes))
 	for _, change := range changes {
 		if change.operation == nil {
 			return LabelChanges{}, fmt.Errorf("missing label operation")
@@ -116,6 +127,14 @@ func NewLabelChanges(changes []LabelChange) (LabelChanges, error) {
 			return LabelChanges{}, fmt.Errorf("duplicate label operation %q", change.Name())
 		}
 		seen[key] = true
+		var id int64
+		change.Visit(func(LabelDeclaration) {}, func(before LabelState, _ LabelDeclaration) { id = before.ID }, func(before LabelState) { id = before.ID })
+		if id != 0 {
+			if seenIDs[id] {
+				return LabelChanges{}, fmt.Errorf("duplicate label operation id %d", id)
+			}
+			seenIDs[id] = true
+		}
 	}
 	return LabelChanges{entries: slices.Clone(changes)}, nil
 }

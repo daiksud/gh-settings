@@ -211,7 +211,7 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | Standard output is unavailable | [TestExportDoesNotWriteStdout](../../internal/cli/run_test.go) | `TestExportExistingFile/replace` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 
-Export changes the local configuration but only reads GitHub settings; [apply](../commands.md#apply-behavior) owns GitHub mutation. For the repository response, only description/homepage nulls are normalized to empty strings; nullable label descriptions are covered by the [labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation). A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.
+Export changes the local configuration but only reads GitHub settings; [apply](../commands.md#apply-behavior) owns GitHub mutation. For the repository response, only description/homepage nulls are normalized to empty strings; nullable label descriptions are covered by the [labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures). A missing response key is an error, not an unset value. For the initial five input fields, [ADR 0019](../adr/0019-reject-explicit-null.md) rejects explicit YAML null under the update request schema.
 
 ### Rule: Export complete topics before writing
 
@@ -224,7 +224,7 @@ Test mapping: [TestExportReadFailure/topics](../../internal/app/export_test.go) 
 
 ### Rule: Read labels completely
 
-Current source reads every label page after repository settings and topics, before opening the output file. Export includes the complete authoritative label list; a failed read preserves the previous file. The [Labels specification](labels.feature.md#rule-complete-reads-before-export-or-reconciliation) owns these scenarios and test mappings. Published v0.8.0 does not include labels.
+Current source reads every label page after repository settings and topics before saving. Export includes IDs and complete supported settings for each observed object; a failed or incomplete read preserves the destination. Listed objects, not remote collection membership, are owned. The [Labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures) owns these scenarios.
 
 ### Rule: Actions execution policy export opt-in
 

@@ -62,7 +62,7 @@ Test mapping: [TestTopicsApplyOrderAndPartialFailures](../../internal/app/topics
 
 ### Rule: Reconcile labels against fresh state
 
-Current source applies declared labels after repository/topics writes: it reads fresh state, performs needed creates/updates in identity order, then deletes undeclared labels in identity order. A read or write failure leaves earlier updates applied. The [Labels specification](labels.feature.md#rule-reconcile-fresh-state-during-apply) owns these scenarios and test mappings, including association loss on deletion. Published v0.8.0 does not include labels.
+Current unreleased source applies nonempty label selections after repository/topics writes. It preflights ID-selected updates and ID-less creates against complete fresh state, never deleting unlisted objects. Whole supported values include fixed description defaults. Confirmed create IDs are written to the original YAML unless opt-out/Actions disables recording; failures preserve earlier remote writes and recoverable IDs. See the [Labels specification](labels.feature.md).
 
 ### Rule: Actions execution policy sequencing
 

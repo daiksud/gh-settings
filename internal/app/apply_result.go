@@ -69,6 +69,13 @@ type ApplyResult struct {
 	Outcome    ApplyOutcome
 	Target     repository.Repository
 	Operations []ApplyOperation
+	CreatedIDs []CreatedObject
+}
+
+type CreatedObject struct {
+	Collection string
+	Name       string
+	ID         int64
 }
 
 // Completed preserves the CLI's managed-success decision, including matching labels.
