@@ -20,7 +20,7 @@ description: Send declared repository fields directly after local validation.
 - Reject redirects, including those that would convert PATCH into GET.
 - Omit schemaVersion, outer YAML mappings, and every undeclared field.
 - Preserve false and empty strings as explicit values.
-- When current-source `has_discussions` is declared, verify the PATCH response contains the requested boolean. Missing, null, wrong-type or unequal values fail after the request, can leave repository writes applied, and stop later resources without rollback. Omission keeps the previous response handling. See the [Discussions contract](discussions.feature.md) for the v0.15.0 version boundary.
+- When current-source `has_discussions` is declared, verify the PATCH response contains the requested boolean. Missing, null, wrong-type or unequal values fail after the request, can leave repository writes applied, and stop later resources without rollback. Omission keeps the previous response handling.
 - For repository fields and topics, do not fetch current values or reconcile differences; apply never requires a saved plan.
 - Send declared values even if they already match or remote values changed after plan.
 - Preserve the configuration file and leave omitted remote fields unmanaged.
@@ -67,8 +67,6 @@ Current unreleased source applies nonempty label selections after repository/top
 ### Rule: Actions execution policy sequencing
 
 Current source applies repository Actions policy after existing resources. The [Actions policy specification](actions-execution-policy.feature.md#rule-preflight-and-preserve-companions-before-ordered-writes) owns fresh reads, companion preservation, staged enabling, readback and partial failure.
-
-### Rule: Preserve direct-apply ordering and partial effects across the v0.18.0 package
 
 Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then topics, fresh label reconciliation, Rulesets, Actions policies, security controls, existing-site Pages, custom properties and private forking; final archive runs last. An omitted resource has no request. Current direct repository/topics/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
 
