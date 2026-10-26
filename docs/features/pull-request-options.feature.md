@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-CLI and Action Current source supports optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. This extends the existing repository group, with no new resource family or credential permissions.
+CLI and Action support optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. This extends the existing repository group, with no new resource family or credential permissions.
 
-The [configuration reference](../settings.md#auto-merge-and-branch-updates-v0130) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
+The [configuration reference](../settings.md#auto-merge-and-branch-updates) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
 
 ## API and execution contract
 
