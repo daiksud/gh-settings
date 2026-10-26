@@ -226,6 +226,7 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 	}
 	overrides := map[string]string{
 		"github.action_repository": repository, "github.action_ref": ref,
+		"MOCK_PINNED_ACTION_SHA": ref,
 		"github.event_name": f.base["GITHUB_EVENT_NAME"], "github.workflow_ref": f.base["GITHUB_WORKFLOW_REF"], "github.workflow_sha": f.base["GITHUB_WORKFLOW_SHA"],
 	}
 	for key, value := range extra {
