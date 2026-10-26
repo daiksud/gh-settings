@@ -53,9 +53,10 @@ Current source manages selected labels and Rulesets by ID; see their
 [configuration contracts](docs/settings.md#labels) before declaring them.
 
 **Safety:** The currently pinned v0.19.0 published CLI and Action still treat a
-label list as authoritative: unlisted labels are deleted, and `labels: []`
-deletes all labels. Use the contract of the installed binary, not current
-unreleased source behavior. Installing or pinning an Action never upgrades its
+label and Ruleset lists as authoritative: omitting an existing label or
+repository Ruleset deletes it, and an explicitly empty list deletes all of
+that kind. Removing Rulesets may remove branch protections. Use the contract
+of the installed binary, not current-source ID-selected behavior. Installing or pinning an Action never upgrades its
 CLI automatically.
 
 ### 3. Validate and review differences
