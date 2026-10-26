@@ -2,7 +2,7 @@
 
 ## Status
 
-Published in v0.16.0 and implemented in current source. Published v0.15.1 and older CLI/Action packages reject `settings.repository.default_branch`. The [settings reference](../settings.md#default-branch) owns usage and adoption guidance.
+supported and implemented in current source. The [settings reference](../settings.md#default-branch) owns usage and adoption guidance.
 
 ## Behavior
 
