@@ -207,7 +207,7 @@ Changed values retain native string/bool/topic-list meaning. No-difference, unma
 
 ### Rule: Private plan reporting does not publish observed values
 
-Published v0.18.0 adds opt-in `plan-reporting: status-only`. Published v0.17.0 and older packages do not implement it. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts. Package availability does not activate the protected observer tracked by #380.
+Current source supports opt-in `plan-reporting: status-only`. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts. Package availability does not activate the protected observer tracked by #380.
 
 #### Scenario: A private plan reports status without hidden policy
 
@@ -242,4 +242,4 @@ Test mapping: [TestTopicsSummaryNativeAndJSONLists](../../internal/actions/summa
 
 ### Rule: Present typed label operations
 
-The same-version report/Summary presents typed label operations. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The installer and maintained examples select published v0.19.0 from immutable source `3785af9e73886565fe711e6b4428922055a2f687`; it includes #412's declared-only Ruleset projection correction. Unreleased ID-owned object contracts are not attributed to this package; source protocol tests and published-package verification remain separate evidence.
+The same-version report/Summary presents typed label operations. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. Unreleased ID-owned object contracts are not attributed to this package; source protocol tests and published-package verification remain separate evidence.
