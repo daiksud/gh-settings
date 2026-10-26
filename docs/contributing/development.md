@@ -24,18 +24,10 @@ PR titles and bodies are validated by the [independent PRLint workflow](../../.g
 [optional footers]
 ```
 
-Commitlint uses the conventional preset with only these additional style rules:
-
-- Types are restricted to `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, and `test`.
-- Types must be lowercase.
-- Scopes must be lowercase.
-- Subjects must not be sentence-case, start-case, PascalCase, or uppercase.
-- Subjects must not end in a period (`.`).
-- Titles must not start or end with whitespace.
-
-The preset already enforces all of these style rules except lowercase scopes. The local configuration only enables `scope-case` and disables the preset's three line-length checks; all other preset rules are inherited unchanged.
-
-The configuration intentionally has no header, body, or footer line-length limit. Commitlint permits an empty body and either breaking-change marker alone. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
+The [commitlint configuration](../../commitlint.config.mjs) only extends the
+`@commitlint/config-conventional` preset. Its defaults apply unchanged,
+including default ignores, style rules, and line-length limits. PRLint adds
+no rules or separate policy tests.
 
 Apply the [code-review policy](../../.agents/skills/code-review/SKILL.md) for PR scope and semantic impact. Either breaking marker is sufficient. PRLint itself only invokes commitlint on the title and body; it does not implement additional semantic review rules.
 
