@@ -1,0 +1,122 @@
+[
+  {
+    "color": "b60205",
+    "description": "Incompatible CLI or public Action change; review migration guidance",
+    "id": 12791426851,
+    "name": "BREAKING CHANGE"
+  },
+  {
+    "color": "fbca04",
+    "description": "Supported CLI or public Action behavior marked for future removal",
+    "id": 12791427001,
+    "name": "DEPRECATED"
+  },
+  {
+    "color": "f143ab",
+    "description": "Barrier affecting people with disabilities",
+    "id": 12636240708,
+    "name": "accessibility"
+  },
+  {
+    "color": "a8aeb4",
+    "description": "Internal build, packaging, release tooling, or dependencies",
+    "id": 12791426886,
+    "name": "build"
+  },
+  {
+    "color": "ededed",
+    "description": "Maintenance that does not fit a more specific change type",
+    "id": 12791426923,
+    "name": "chore"
+  },
+  {
+    "color": "cfd3d7",
+    "description": "Internal CI checks or repository development automation",
+    "id": 12791426962,
+    "name": "ci"
+  },
+  {
+    "color": "c4b5e0",
+    "description": "Documentation or contributor and reviewer guidance",
+    "id": 12791427042,
+    "name": "docs"
+  },
+  {
+    "color": "cfd3d7",
+    "description": "This issue or pull request already exists",
+    "id": 12636240741,
+    "name": "duplicate"
+  },
+  {
+    "color": "0e8a16",
+    "description": "New capability for CLI or public Action users",
+    "id": 12791427084,
+    "name": "feat"
+  },
+  {
+    "color": "0052cc",
+    "description": "Correction to user-observable CLI or public Action behavior",
+    "id": 12791427113,
+    "name": "fix"
+  },
+  {
+    "color": "7057ff",
+    "description": "Good for newcomers",
+    "id": 12636240788,
+    "name": "good first issue"
+  },
+  {
+    "color": "008672",
+    "description": "Extra attention is needed",
+    "id": 12636240774,
+    "name": "help wanted"
+  },
+  {
+    "color": "e4e669",
+    "description": "This doesn't seem right",
+    "id": 12636240800,
+    "name": "invalid"
+  },
+  {
+    "color": "7fd18a",
+    "description": "Runtime performance improvement experienced by product users",
+    "id": 12791427162,
+    "name": "perf"
+  },
+  {
+    "color": "d876e3",
+    "description": "Further information is requested",
+    "id": 12636240818,
+    "name": "question"
+  },
+  {
+    "color": "8ec9cc",
+    "description": "Implementation restructuring without user-observable behavior changes",
+    "id": 12791427206,
+    "name": "refactor"
+  },
+  {
+    "color": "79b8ff",
+    "description": "Reverts a previous change; review the resulting product impact",
+    "id": 12791427291,
+    "name": "revert"
+  },
+  {
+    "color": "b5dcde",
+    "description": "Formatting changes without a behavior change",
+    "id": 12791427403,
+    "name": "style"
+  },
+  {
+    "color": "d8ecec",
+    "description": "Test-only additions or corrections",
+    "id": 12791427479,
+    "name": "test"
+  },
+  {
+    "color": "ffffff",
+    "description": "This will not be worked on",
+    "id": 12636240834,
+    "name": "wontfix"
+  }
+]
