@@ -1,6 +1,7 @@
 package githubactions
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,34 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
+
+func TestRestoredLabelsMatchExistingObjects(t *testing.T) {
+	config, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	desired, err := workspace.DecodeConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Independent pre-migration API observation, not reconstructed from YAML.
+	data, err := os.ReadFile("testdata/managed-label-baseline.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var labels []settings.LabelState
+	if err := json.Unmarshal(data, &labels); err != nil {
+		t.Fatal(err)
+	}
+	observed, err := settings.NewLabelObservation(labels)
+	if err != nil {
+		t.Fatal(err)
+	}
+	comparison, err := settings.CompareLabels(observed, desired.Labels)
+	if err != nil || comparison.Managed != 1 || comparison.Labels.Len() != 0 {
+		t.Fatalf("restoration must not create, rename, recolor or change descriptions: %+v %v", comparison, err)
+	}
+}
 
 func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
@@ -18,8 +47,18 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if desired.Labels != nil {
-		t.Fatal("the package transition must omit labels, never declare an empty managed list")
+	if desired.Labels == nil || desired.Labels.Len() != 20 {
+		t.Fatal("restore exactly the twenty existing ID-owned labels")
+	}
+	ids := map[int64]bool{}
+	for _, label := range desired.Labels.Values() {
+		if label.ID == nil || *label.ID <= 0 || ids[*label.ID] || label.Color == nil || label.Description == nil {
+			t.Fatalf("all labels must retain unique existing IDs and complete values: %+v", label)
+		}
+		ids[*label.ID] = true
+		if label.Name == "ci" && *label.ID != 12791426962 {
+			t.Fatal("ci must select its observed existing object, not create or adopt by name")
+		}
 	}
 	// Independent observations recorded during adoption. These fixtures do not
 	// query GitHub or establish that the live policy has remained unchanged.
