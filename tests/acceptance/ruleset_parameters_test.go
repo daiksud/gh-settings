@@ -191,7 +191,10 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 	partial := `schemaVersion: 1
 settings:
   rulesets:
-    - name: default
+    - id: 7
+      name: default
+      enforcement: active
+      conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
       rules:
         - type: deletion
         - type: non_fast_forward
@@ -202,7 +205,7 @@ settings:
             dismiss_stale_reviews_on_push: false
             require_code_owner_review: false
             dismissal_restriction: {enabled: false}
-            required_reviewers: [{reviewer: {type: Team, id: 22}, minimum_approvals: 0}]
+            required_reviewers: [{reviewer: {type: Team, id: 22}, minimum_approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]
         - type: required_status_checks
           parameters:
             required_status_checks: [{context: pass}]
@@ -216,7 +219,7 @@ settings:
 	last := writes[len(writes)-1]
 	p := acceptanceRuleParams(t, last, "pull_request")
 	checks := acceptanceRuleParams(t, last, "required_status_checks")
-	if p["required_approving_review_count"] != float64(0) || p["dismiss_stale_reviews_on_push"] != false || p["require_code_owner_review"] != false || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != true || len(p["allowed_merge_methods"].([]any)) != 1 {
+	if p["required_approving_review_count"] != float64(0) || p["dismiss_stale_reviews_on_push"] != false || p["require_code_owner_review"] != false || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false || len(p["allowed_merge_methods"].([]any)) != 3 {
 		t.Fatal("lost review values", p)
 	}
 	r := p["required_reviewers"].([]any)[0].(map[string]any)
@@ -239,7 +242,7 @@ settings:
 		t.Fatal("repeat parameter apply wrote", count)
 	}
 	// Empty reviewer/check memberships remove their members; absent scalar flags stay intact.
-	clear := strings.Replace(partial, "required_reviewers: [{reviewer: {type: Team, id: 22}, minimum_approvals: 0}]", "required_reviewers: []", 1)
+	clear := strings.Replace(partial, "required_reviewers: [{reviewer: {type: Team, id: 22}, minimum_approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]", "required_reviewers: []", 1)
 	clear = strings.Replace(clear, "required_status_checks: [{context: pass}]", "required_status_checks: []", 1)
 	writeSettingsFile(fixture.work, clear)
 	run("apply")
@@ -252,7 +255,7 @@ settings:
 		t.Fatal(out)
 	}
 	// Removing the rule type from declared membership removes that rule, not the Ruleset.
-	writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{name: default, rules: [{type: deletion}]}]}\n")
+	writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: [{type: deletion}]}]}\n")
 	run("apply")
 	run("apply")
 	mu.Lock()
@@ -266,7 +269,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 	for _, tt := range []struct {
 		name, detail, desired string
 		status                int
-	}{{"unknown PR flag", strings.Replace(acceptanceReviewRuleset, `"require_code_owner_review":true`, `"require_code_owner_review":true,"future_flag":false`, 1), `[{name: default, rules: []}]`, 200}, {"null optional flag", strings.Replace(acceptanceReviewRuleset, `"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`, 1), `[]`, 200}, {"new reviewer incomplete", acceptanceReviewRuleset, `[{name: default, rules: [{type: pull_request, parameters: {required_reviewers: [{reviewer: {type: Team, id: 99}}]}}]}]`, 200}, {"write denied", acceptanceReviewRuleset, `[{name: default, rules: []}]`, 403}, {"write redirect", acceptanceReviewRuleset, `[{name: default, rules: []}]`, 307}} {
+	}{{"unknown PR flag", strings.Replace(acceptanceReviewRuleset, `"require_code_owner_review":true`, `"require_code_owner_review":true,"future_flag":false`, 1), `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: []}]`, 200}, {"null optional flag", strings.Replace(acceptanceReviewRuleset, `"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`, 1), `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}}]`, 200}, {"new reviewer incomplete", acceptanceReviewRuleset, `[{name: default, rules: [{type: pull_request, parameters: {required_reviewers: [{reviewer: {type: Team, id: 99}}]}}]}]`, 200}, {"write denied", acceptanceReviewRuleset, `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: []}]`, 403}, {"write redirect", acceptanceReviewRuleset, `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: []}]`, 307}} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var methods []string
@@ -306,6 +309,9 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 			want := []string{"GET", "GET"}
+			if tt.name == "new reviewer incomplete" {
+				want = nil
+			}
 			if tt.status != 200 {
 				want = append(want, "PUT")
 			}
@@ -316,7 +322,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 	}
 }
 
-func TestRulesetPRResponseMismatchStopsLaterDeletes(t *testing.T) {
+func TestRulesetPRResponseMismatchStopsLaterWrites(t *testing.T) {
 	for _, removeAll := range []bool{false, true} {
 		t.Run(fmt.Sprintf("remove-all-%t", removeAll), func(t *testing.T) {
 			binary := acceptanceBinary(t)
@@ -344,6 +350,7 @@ func TestRulesetPRResponseMismatchStopsLaterDeletes(t *testing.T) {
 						return
 					}
 					acceptanceRuleParams(t, policy, "pull_request")["require_extra_approval_for_unattributed_changes"] = true
+					policy["id"], policy["source_type"], policy["source"] = 7, "Repository", "owner/current"
 					json.NewEncoder(w).Encode(policy)
 				default:
 					t.Error("unexpected later operation", r.Method, r.URL)
@@ -361,7 +368,10 @@ func TestRulesetPRResponseMismatchStopsLaterDeletes(t *testing.T) {
 			writeSettingsFile(fixture.work, `schemaVersion: 1
 settings:
   rulesets:
-    - name: default
+    - id: 7
+      name: default
+      enforcement: active
+      conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
       rules:
         - type: deletion
         - type: non_fast_forward
@@ -371,7 +381,7 @@ settings:
         - type: required_status_checks
 `)
 			if removeAll {
-				writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{name: default, rules: [{type: deletion}]}]}\n")
+				writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: [{type: deletion}]}]}\n")
 			}
 			result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 			if e != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "writes may already have applied") {
@@ -381,7 +391,7 @@ settings:
 			defer mu.Unlock()
 			want := []string{"GET /repos/owner/current/rulesets", "GET /repos/owner/current/rulesets/7", "GET /repos/owner/current/rulesets/8", "PUT /repos/owner/current/rulesets/7"}
 			if !reflect.DeepEqual(methods, want) {
-				t.Fatal("response mismatch did not stop delete", methods)
+				t.Fatal("response mismatch did not stop later writes", methods)
 			}
 
 		})

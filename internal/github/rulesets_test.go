@@ -154,7 +154,7 @@ func TestRulesetsCRUDExactPolicyAndActorNull(t *testing.T) {
 	before := policy
 	disabled := "disabled"
 	policy.Enforcement = &disabled
-	for _, op := range []string{"create", "update", "delete"} {
+	for _, op := range []string{"create", "update"} {
 		t.Run(op, func(t *testing.T) {
 			var prior, after *settings.RulesetDeclaration
 			id := int64(7)
@@ -168,7 +168,9 @@ func TestRulesetsCRUDExactPolicyAndActorNull(t *testing.T) {
 				path = "/repos/owner/current/rulesets"
 			case "update":
 				prior = &before
-				after = &policy
+				selected := policy
+				selected.ID = &id
+				after = &selected
 			case "delete":
 				prior = &before
 				method = "DELETE"
@@ -203,9 +205,9 @@ func TestRulesetsCRUDExactPolicyAndActorNull(t *testing.T) {
 						t.Fatal("DeployKey null omitted")
 					}
 				}
-				return labelsResponse(r, 200, `{}`), nil
+				return rulesetMutationResponse(t, r, 200, string(data), 7), nil
 			}))
-			if err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil {
+			if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil {
 				t.Fatal(err)
 			}
 		})

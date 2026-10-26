@@ -27,7 +27,7 @@ func TestRulesetsAppFreshReadOrderAndFailures(t *testing.T) {
 	for _, fail := range []string{"", "read", "write"} {
 		var calls []string
 		state := appRulesetState(t)
-		desired := settings.Declaration{Rulesets: appRulesets(t, `[{name: basic, enforcement: disabled}]`)}
+		desired := settings.Declaration{Rulesets: appRulesets(t, `[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, bypass_actors: [], rules: [{type: deletion}]}]`)}
 		yes := true
 		desired.Repository.HasIssues = &yes
 		labels, _ := settings.NewLabelDeclarations(nil)
@@ -48,15 +48,15 @@ func TestRulesetsAppFreshReadOrderAndFailures(t *testing.T) {
 				return settings.RulesetObservation{}, errors.New("denied")
 			}
 			return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
-		}, Ruleset: func(_ repository.Repository, c settings.RulesetChange) error {
+		}, Ruleset: func(_ repository.Repository, c settings.RulesetChange) (int64, error) {
 			calls = append(calls, "ruleset-write")
 			if c.ID() != 7 || *c.After().Enforcement != "disabled" || len(*c.After().Rules) != 1 {
 				t.Fatal(c)
 			}
 			if fail == "write" {
-				return errors.New("denied")
+				return 0, errors.New("denied")
 			}
-			return nil
+			return c.ID(), nil
 		}})
 		want := []string{"repository", "rulesets-read"}
 		if fail != "read" {
@@ -76,9 +76,9 @@ func TestRulesetsAppFreshReadOrderAndFailures(t *testing.T) {
 func TestRulesetsAppPreflightsWholeCollectionAndNoops(t *testing.T) {
 	state := appRulesetState(t)
 	observed, _ := settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
-	for _, body := range []string{`[{name: basic}]`, `[{name: basic, enforcement: disabled},{name: z-missing}]`} {
+	for _, body := range []string{`[{id: 7, name: basic, enforcement: active, conditions: {ref_name: {include: ['~ALL']}}, bypass_actors: [], rules: [{type: deletion}]}]`, `[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~ALL']}}, bypass_actors: [], rules: [{type: deletion}]},{id: 99, name: z-missing, enforcement: active, conditions: {ref_name: {include: ['~ALL']}}, bypass_actors: [], rules: [{type: deletion}]}]`} {
 		writes := 0
-		result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Rulesets: appRulesets(t, body)}, nil }, checkoutRepository, Writer{ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) { return observed, nil }, Ruleset: func(repository.Repository, settings.RulesetChange) error { writes++; return nil }})
+		result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Rulesets: appRulesets(t, body)}, nil }, checkoutRepository, Writer{ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) { return observed, nil }, Ruleset: func(repository.Repository, settings.RulesetChange) (int64, error) { writes++; return 17, nil }})
 		if writes != 0 {
 			t.Fatal("partial collection written")
 		}
@@ -97,7 +97,7 @@ func TestRulesetsAppPreflightsWholeCollectionAndNoops(t *testing.T) {
 }
 func TestRulesetsPlanFailureDiscardsEarlierComparison(t *testing.T) {
 	yes := true
-	desired := settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &yes}, Rulesets: appRulesets(t, `[]`)}
+	desired := settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &yes}, Rulesets: appRulesets(t, `[{id: 7, name: basic, enforcement: active, conditions: {ref_name: {include: ['~ALL']}}, bypass_actors: [], rules: [{type: deletion}]}]`)}
 	result, err := Plan(func() (settings.Declaration, error) { return desired, nil }, checkoutRepository, Reader{ObserveRepository: observeBaseFixture(func(repository.Repository) (settings.RepositoryState, error) { return settings.RepositoryState{}, nil }), Rulesets: func(repository.Repository) (settings.RulesetObservation, error) {
 		return settings.RulesetObservation{}, errors.New("unsupported policy")
 	}})
@@ -124,6 +124,12 @@ func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
 					saved = true
 					if (d.Rulesets != nil) != include {
 						t.Fatal("presence")
+					}
+					if include {
+						values := d.Rulesets.Values()
+						if len(values) != 1 || values[0].ID == nil || *values[0].ID != 7 {
+							t.Fatal("export lost observed Ruleset ID", values)
+						}
 					}
 					return nil
 				}, nil

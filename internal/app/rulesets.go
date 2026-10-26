@@ -21,6 +21,15 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 		return false, fmt.Errorf("prepare Rulesets (earlier writes remain applied): %w", err)
 	}
 	result.Operations[index].Status = OperationCompleted
+	states, err := observed.Values()
+	if err != nil {
+		result.failOperation(index, OperationFailedRead)
+		return false, err
+	}
+	knownIDs := make(map[int64]bool, len(states))
+	for _, state := range states {
+		knownIDs[state.ID] = true
+	}
 	first := len(result.Operations)
 	for _, change := range changes {
 		var kind ApplyOperationKind
@@ -29,17 +38,34 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 			kind = RulesetCreate
 		case "update":
 			kind = RulesetUpdate
-		case "delete":
-			kind = RulesetDelete
 		}
 		result.Operations = append(result.Operations, ApplyOperation{Kind: kind, RulesetName: change.Name()})
 	}
 	for i, change := range changes {
-		if err := write.Ruleset(repo, change); err != nil {
+		id, err := write.Ruleset(repo, change)
+		if change.Operation() == "create" {
+			if id > 0 {
+				result.CreatedIDs = append(result.CreatedIDs, CreatedObject{Collection: "rulesets", Name: change.Name(), ID: id})
+			}
+			if err == nil && id <= 0 {
+				err = fmt.Errorf("creation returned no positive ID; remote creation may have succeeded")
+			}
+			if err == nil && knownIDs[id] {
+				err = fmt.Errorf("creation returned already-known Ruleset id %d; refusing ID adoption (writes may already have applied)", id)
+			}
+		}
+		if err != nil {
 			result.failOperation(first+i, OperationFailedUnknown)
 			return false, fmt.Errorf("%s Ruleset %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted
+		knownIDs[id] = true
+		if change.Operation() == "create" && write.CreatedID != nil {
+			if err := write.CreatedID("rulesets", change.Name(), id); err != nil {
+				result.Outcome = ApplyPartialFailure
+				return false, fmt.Errorf("Ruleset %q was created with id %d, but local ID writeback failed: %w; add id: %d before retrying", change.Name(), id, err, id)
+			}
+		}
 	}
 	return len(changes) > 0, nil
 }

@@ -64,7 +64,10 @@ settings: {rulesets: [{name: 'CANARY-hidden-policy', target: branch, enforcement
 		t.Fatal(err)
 	}
 	before := d.Rulesets.Values()[0]
-	change, err := settings.NewRulesetChange("delete", 7, &before, nil)
+	after := before
+	disabled := "disabled"
+	after.Enforcement = &disabled
+	change, err := settings.NewRulesetChange("update", 7, &before, &after)
 	if err != nil {
 		t.Fatal(err)
 	}

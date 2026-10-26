@@ -23,32 +23,45 @@ func ruleOf(t *testing.T, d RulesetDeclaration, kind string) *RuleParameters {
 	t.Fatal("missing rule", kind)
 	return nil
 }
-func TestRulesetReviewChecksPreserveOmittedAndExplicitValues(t *testing.T) {
+func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 	before := reviewPolicy()
-	observed := rsObserved(t, RulesetState{7, before})
-	desired := RulesetDeclaration{Name: "default", Rules: &[]RulesetRule{{Type: "deletion"}, {Type: "non_fast_forward"}, {Type: "required_linear_history"}, {Type: "pull_request", Parameters: &RuleParameters{RequiredApprovingReviewCount: paramInt(0), DismissStaleReviewsOnPush: paramBool(false), DismissalRestriction: &ReviewDismissalRestriction{Enabled: paramBool(false)}, RequiredReviewers: &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 21, Type: "Team"}, MinimumApprovals: paramInt(0)}}}}, {Type: "required_status_checks", Parameters: &RuleParameters{RequiredStatusChecks: &[]RequiredStatusCheck{}, StrictRequiredStatusChecksPolicy: paramBool(false)}}}}
-	changes, err := ReconcileRulesets(observed, rsDesired(t, desired))
+	current := rsObserved(t, RulesetState{7, before})
+	desired := basicPolicy("default")
+	desired.ID = rsID(7)
+	desired.BypassActors = nil
+	desired.Rules = &[]RulesetRule{
+		{Type: "pull_request", Parameters: &RuleParameters{RequiredApprovingReviewCount: paramInt(2)}},
+		{Type: "required_status_checks", Parameters: &RuleParameters{}},
+	}
+	changes, err := ReconcileRulesets(current, rsDesired(t, desired))
 	if err != nil || len(changes) != 1 {
-		t.Fatalf("%v %v", changes, err)
+		t.Fatal(changes, err)
 	}
 	after := *changes[0].After()
-	pr := ruleOf(t, after, "pull_request")
-	checks := ruleOf(t, after, "required_status_checks")
-	if *pr.RequiredApprovingReviewCount != 0 || *pr.DismissStaleReviewsOnPush || !*pr.RequireCodeOwnerReview || *pr.RequireExtraApprovalForUnattributedChanges || *pr.DismissalRestriction.Enabled || len(*pr.DismissalRestriction.AllowedActors) != 1 || len(*checks.RequiredStatusChecks) != 0 || *checks.StrictRequiredStatusChecksPolicy || *checks.DoNotEnforceOnCreate {
-		t.Fatal("lost explicit or omitted values", after)
+	pr, checks := ruleOf(t, after, "pull_request"), ruleOf(t, after, "required_status_checks")
+	if *pr.RequiredApprovingReviewCount != 2 || *pr.RequireCodeOwnerReview || *pr.DismissStaleReviewsOnPush || *pr.DismissalRestriction.Enabled || len(*pr.DismissalRestriction.AllowedActors) != 0 || len(*pr.RequiredReviewers) != 0 || len(*checks.RequiredStatusChecks) != 0 || *checks.StrictRequiredStatusChecksPolicy || *checks.DoNotEnforceOnCreate {
+		t.Fatal("defaults borrowed remote protection", after)
 	}
-	patterns := *(*pr.RequiredReviewers)[0].FilePatterns
-	if !reflect.DeepEqual(patterns, []string{"src/**", "!src/generated/**", "src/generated/manual.go"}) {
-		t.Fatal("pattern order lost", patterns)
+	if !reflect.DeepEqual(*pr.AllowedMergeMethods, []string{"merge", "rebase", "squash"}) {
+		t.Fatal("merge-method default", *pr.AllowedMergeMethods)
 	}
 	repeated, err := ReconcileRulesets(rsObserved(t, RulesetState{7, after}), rsDesired(t, desired))
 	if err != nil || len(repeated) != 0 {
 		t.Fatal("not idempotent", repeated, err)
 	}
-	// Returned values cannot mutate policy snapshots or later payloads.
-	(*(*pr.RequiredReviewers)[0].FilePatterns)[0] = "changed"
-	if (*(*ruleOf(t, *changes[0].After(), "pull_request").RequiredReviewers)[0].FilePatterns)[0] != "src/**" {
-		t.Fatal("nested pointer exposed")
+	created := desired
+	created.ID, created.Name = nil, "new"
+	operations, err := ReconcileRulesets(rsObserved(t), rsDesired(t, created))
+	if err != nil || len(operations) != 1 {
+		t.Fatal(operations, err)
+	}
+	createPR := ruleOf(t, *operations[0].After(), "pull_request")
+	if !reflect.DeepEqual(pr, createPR) {
+		t.Fatal("create/update defaults differ")
+	}
+	*pr.RequireCodeOwnerReview = true
+	if *ruleOf(t, *changes[0].After(), "pull_request").RequireCodeOwnerReview {
+		t.Fatal("mutable snapshot escaped")
 	}
 }
 func TestRulesetReviewerPatternsOrderIsPolicy(t *testing.T) {
@@ -56,6 +69,7 @@ func TestRulesetReviewerPatternsOrderIsPolicy(t *testing.T) {
 	p := ruleOf(t, before, "pull_request")
 	*(*p.RequiredReviewers)[0].FilePatterns = []string{"**", "!docs/**", "docs/README.md", "**"}
 	current := rsObserved(t, RulesetState{7, before})
+	before.ID = rsID(7)
 	desired := rsDesired(t, before)
 	if ops, e := ReconcileRulesets(current, desired); e != nil || len(ops) != 0 {
 		t.Fatal("unchanged pattern sequence differs", ops, e)
@@ -77,6 +91,7 @@ func TestRulesetCheckIdentityAndCollectionOrdering(t *testing.T) {
 	p.RequiredStatusChecks = &[]RequiredStatusCheck{{Context: "build", IntegrationID: rsID(2)}, {Context: "build"}, {Context: "build", IntegrationID: rsID(1)}}
 	observed := rsObserved(t, RulesetState{7, before})
 	reordered := cloneRuleset(before)
+	reordered.ID = rsID(7)
 	p = ruleOf(t, reordered, "required_status_checks")
 	(*p.RequiredStatusChecks)[0], (*p.RequiredStatusChecks)[2] = (*p.RequiredStatusChecks)[2], (*p.RequiredStatusChecks)[0]
 	if ops, e := ReconcileRulesets(observed, rsDesired(t, reordered)); e != nil || len(ops) != 0 {
@@ -114,55 +129,54 @@ func TestRulesetReviewParameterValidationAndCreation(t *testing.T) {
 		}
 	}
 	for _, kind := range []string{"pull_request", "required_status_checks"} {
-		partial := basicPolicy("new")
-		partial.Rules = &[]RulesetRule{{Type: kind, Parameters: &RuleParameters{}}}
-		d, e := NewRulesetDeclarations([]RulesetDeclaration{partial})
-		if e != nil {
-			t.Fatal(e)
+		policy := basicPolicy("new")
+		policy.Rules = &[]RulesetRule{{Type: kind}}
+		d, err := NewRulesetDeclarations([]RulesetDeclaration{policy})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if _, e := ReconcileRulesets(rsObserved(t), &d); e == nil {
-			t.Fatal("incomplete new rule accepted", kind)
+		if changes, err := ReconcileRulesets(rsObserved(t), &d); err != nil || len(changes) != 1 {
+			t.Fatal("defaulted rule create failed", changes, err)
 		}
 	}
-	// A newly inserted reviewer cannot borrow attributes from another identity.
-	d := RulesetDeclaration{Name: "default", Rules: &[]RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{RequiredReviewers: &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 99, Type: "Team"}}}}}}}
-	if _, e := ReconcileRulesets(rsObserved(t, RulesetState{7, reviewPolicy()}), rsDesired(t, d)); e == nil {
-		t.Fatal("new incomplete reviewer accepted")
+	missing := basicPolicy("selected")
+	missing.Rules = &[]RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{RequiredReviewers: &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 99, Type: "Team"}}}}}}
+	if _, err := NewRulesetDeclarations([]RulesetDeclaration{missing}); err == nil {
+		t.Fatal("reviewer scope/approval intent guessed")
 	}
 }
 
 func TestRulesetReviewerAndDismissalMembership(t *testing.T) {
 	before := reviewPolicy()
-	desired := RulesetDeclaration{Name: "default", Rules: &[]RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{
+	desired := basicPolicy("default")
+	desired.ID = rsID(7)
+	desired.Rules = &[]RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{
 		RequiredReviewers:    &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 99, Type: "Team"}, MinimumApprovals: paramInt(2), FilePatterns: rsList("**")}},
 		DismissalRestriction: &ReviewDismissalRestriction{AllowedActors: &[]ReviewActor{{ID: 45, Type: "User"}}},
-	}}}}
+	}}}
 	ops, err := ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, desired))
 	if err != nil || len(ops) != 1 {
 		t.Fatal(ops, err)
 	}
 	p := ruleOf(t, *ops[0].After(), "pull_request")
-	if len(*p.RequiredReviewers) != 1 || (*p.RequiredReviewers)[0].Reviewer.ID != 99 || *(*p.RequiredReviewers)[0].MinimumApprovals != 2 || !*p.DismissalRestriction.Enabled || len(*p.DismissalRestriction.AllowedActors) != 1 || (*p.DismissalRestriction.AllowedActors)[0].ID != 45 {
-		t.Fatal("membership or retained restriction flag changed", p)
+	if len(*p.RequiredReviewers) != 1 || (*p.RequiredReviewers)[0].Reviewer.ID != 99 || *(*p.RequiredReviewers)[0].MinimumApprovals != 2 || *p.DismissalRestriction.Enabled || len(*p.DismissalRestriction.AllowedActors) != 1 || (*p.DismissalRestriction.AllowedActors)[0].ID != 45 {
+		t.Fatal("membership or fixed restriction default changed", p)
 	}
 }
 
-func TestPullRequestRuleRejectsTagBeforeMutation(t *testing.T) {
+func TestPullRequestRuleTargetUsesDeclaredObjectNotRetainedRules(t *testing.T) {
 	tag := "tag"
-	newTag := reviewPolicy()
-	newTag.Target = &tag
-	if _, err := NewRulesetDeclarations([]RulesetDeclaration{newTag}); err == nil {
-		t.Fatal("accepted PR rule on explicit tag target")
+	invalid := reviewPolicy()
+	invalid.Target = &tag
+	if _, err := NewRulesetDeclarations([]RulesetDeclaration{invalid}); err == nil {
+		t.Fatal("PR rule accepted on tag target")
 	}
-	// A target omitted in a partial declaration is checked against fresh state.
-	before := basicPolicy("default")
-	before.Target = &tag
-	desired := RulesetDeclaration{Name: "default", Rules: &[]RulesetRule{{Type: "pull_request", Parameters: ruleOf(t, reviewPolicy(), "pull_request")}}}
-	if _, err := ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, desired)); err == nil {
-		t.Fatal("partial PR addition to tag accepted")
-	}
-	// Target-only edits must validate retained rules too.
-	if _, err := ReconcileRulesets(rsObserved(t, RulesetState{7, reviewPolicy()}), rsDesired(t, RulesetDeclaration{Name: "default", Target: &tag})); err == nil {
-		t.Fatal("tag target accepted with retained PR rule")
+	before := reviewPolicy()
+	desired := basicPolicy("default")
+	desired.ID, desired.Target = rsID(7), &tag
+	desired.Rules, desired.BypassActors = nil, nil
+	changes, err := ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, desired))
+	if err != nil || len(changes) != 1 || len(*changes[0].After().Rules) != 0 || *changes[0].After().Target != "tag" {
+		t.Fatal("target edit retained undeclared PR rule", changes, err)
 	}
 }

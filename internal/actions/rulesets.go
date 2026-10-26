@@ -9,8 +9,8 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// RulesetPlanChange carries declaration-owned presentation values, never
-// transport IDs, preserved unmanaged values, or apply input.
+// RulesetPlanChange carries selected whole supported objects and their declared
+// identity. It is presentation data, never apply input.
 type RulesetPlanChange struct {
 	Operation string                       `json:"operation"`
 	Before    *settings.RulesetDeclaration `json:"before,omitempty"`
@@ -61,8 +61,8 @@ func invalidRulesetReportValue(v any) bool {
 func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDisplayChange, error) {
 	out := make([]settings.RulesetDisplayChange, 0, len(entries))
 	seen := map[string]bool{}
+	seenIDs := map[int64]bool{}
 	last := ""
-	deleting := false
 	for _, e := range entries {
 		change, err := settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)
 		if err != nil {
@@ -72,11 +72,11 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 			return nil, fmt.Errorf("duplicate Ruleset operation")
 		}
 		seen[change.Name()] = true
-		if e.Operation == "delete" && !deleting {
-			deleting = true
-			last = ""
-		} else if deleting && e.Operation != "delete" {
-			return nil, fmt.Errorf("Ruleset operations must delete last")
+		if e.Before != nil && e.Before.ID != nil {
+			if seenIDs[*e.Before.ID] {
+				return nil, fmt.Errorf("duplicate Ruleset operation ID")
+			}
+			seenIDs[*e.Before.ID] = true
 		}
 		if last != "" && last >= change.Name() {
 			return nil, fmt.Errorf("unordered Ruleset operations")

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -250,81 +251,86 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 	}
 	return result, nil
 }
-func (client *Client) ApplyRuleset(repo repository.Repository, change settings.RulesetChange) error {
-	if change.Operation() == "" {
-		return fmt.Errorf("invalid Ruleset operation")
-	}
-	path := rulesetsPath(repo)
-	if change.Operation() == "delete" {
-		return client.rest.Delete(path+"/"+strconv.FormatInt(change.ID(), 10), nil)
+func (client *Client) ApplyRuleset(repo repository.Repository, change settings.RulesetChange) (int64, error) {
+	if change.Operation() != "create" && change.Operation() != "update" {
+		return 0, fmt.Errorf("invalid Ruleset operation")
 	}
 	after := change.After()
 	if after == nil {
-		return fmt.Errorf("missing Ruleset payload")
+		return 0, fmt.Errorf("missing Ruleset payload")
+	}
+	// YAML identity selects the URL resource, never a writable payload field.
+	if after.ID != nil {
+		if change.Operation() != "update" || *after.ID != change.ID() {
+			return 0, fmt.Errorf("Ruleset declaration ID does not match update identity")
+		}
+		after.ID = nil
 	}
 	if err := settings.ValidateRuleset(*after, true); err != nil {
-		return err
+		return 0, err
 	}
-	// Convert DeployKey's YAML omission to the API's explicit null.
 	data, err := json.Marshal(after)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	var payload map[string]json.RawMessage
 	if err := json.Unmarshal(data, &payload); err != nil {
-		return err
+		return 0, err
 	}
 	var actors []map[string]json.RawMessage
 	if err := json.Unmarshal(payload["bypass_actors"], &actors); err != nil {
-		return err
+		return 0, err
 	}
-	for _, a := range actors {
-		if string(a["actor_type"]) == `"DeployKey"` {
-			a["actor_id"] = json.RawMessage("null")
+	for _, actor := range actors {
+		if string(actor["actor_type"]) == `"DeployKey"` {
+			actor["actor_id"] = json.RawMessage("null")
 		}
 	}
 	payload["bypass_actors"], err = json.Marshal(actors)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	data, err = json.Marshal(payload)
 	if err != nil {
-		return err
+		return 0, err
 	}
+	path := rulesetsPath(repo)
 	var response map[string]json.RawMessage
-	var output any
-	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
-		if policy == nil {
-			continue
-		}
-		for _, rule := range *policy.Rules {
-			if rule.Type == "pull_request" || rule.Type == "required_status_checks" {
-				output = &response
-				break
-			}
-		}
-	}
-	switch change.Operation() {
-	case "create":
-		err = client.rest.Post(path, bytes.NewReader(data), output)
-	case "update":
-		err = client.rest.Put(path+"/"+strconv.FormatInt(change.ID(), 10), bytes.NewReader(data), output)
-	default:
-		return fmt.Errorf("invalid Ruleset operation")
+	if change.Operation() == "create" {
+		err = client.rest.Post(path, bytes.NewReader(data), &response)
+	} else {
+		err = client.rest.Put(path+"/"+strconv.FormatInt(change.ID(), 10), bytes.NewReader(data), &response)
 	}
 	if err != nil {
-		return err
+		return 0, err
 	}
-	if output != nil {
-		if err := verifyReviewRulesetResponse(*after, response); err != nil {
-			return fmt.Errorf("verify Ruleset response (repository writes may already have applied): %w", err)
-		}
+	// Retain a reported positive creation ID even if subsequent verification fails;
+	// the application must report uncertainty without retrying or writing it to YAML.
+	var id int64
+	if err := requiredRuleJSON(response, "id", &id); err != nil || id <= 0 {
+		return 0, fmt.Errorf("verify Ruleset response: missing positive ID (writes may already have applied)")
 	}
-	return nil
+	fail := func(err error) (int64, error) {
+		return id, fmt.Errorf("verify Ruleset response (repository writes may already have applied): %w", err)
+	}
+	if change.Operation() == "update" && id != change.ID() {
+		return fail(fmt.Errorf("Ruleset ID differs from the selected update ID"))
+	}
+	owned, err := rulesetOwner(response, repo)
+	if err != nil {
+		return fail(err)
+	}
+	if !owned {
+		return fail(fmt.Errorf("Ruleset response is not owned by the selected repository"))
+	}
+	if err := verifyReviewRulesetResponse(*after, response); err != nil {
+		return fail(err)
+	}
+	return id, nil
 }
 
-// Verify parameterized response values without an extra GET or rollback. A new
-// optional default remains unmanaged when omitted from the requested policy.
+// Verify the selected whole supported policy without running create/update
+// selection again: a successful create response is not a name-adoption request.
 func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[string]json.RawMessage) error {
 	policy, err := decodeRulesetPolicy(raw)
 	if err != nil {
@@ -338,11 +344,11 @@ func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[st
 	if err != nil {
 		return err
 	}
-	changes, err := settings.ReconcileRulesets(observed, &declaration)
+	values, err := observed.Values()
 	if err != nil {
 		return err
 	}
-	if len(changes) != 0 {
+	if !reflect.DeepEqual(values[0].Policy, declaration.Values()[0]) {
 		return fmt.Errorf("GitHub response did not retain the requested Ruleset policy")
 	}
 	return nil

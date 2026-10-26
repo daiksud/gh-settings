@@ -55,5 +55,5 @@ type Writer struct {
 	UpdateLabel          func(repository.Repository, settings.LabelChange) error
 	DeleteLabel          func(repository.Repository, settings.LabelChange) error
 	ReadRulesets         func(repository.Repository) (settings.RulesetObservation, error)
-	Ruleset              func(repository.Repository, settings.RulesetChange) error
+	Ruleset              func(repository.Repository, settings.RulesetChange) (int64, error)
 }

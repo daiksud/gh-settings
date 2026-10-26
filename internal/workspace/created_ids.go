@@ -32,7 +32,7 @@ func (checkout Checkout) PrepareApply() (settings.Declaration, func(string, stri
 func createdIDRecorder(root string, snapshot []byte) func(string, string, int64) error {
 	expected := bytes.Clone(snapshot)
 	return func(collection, name string, id int64) error {
-		if id <= 0 || (collection != "labels" && collection != "rulesets" && collection != "environments") {
+		if id <= 0 || (collection != "labels" && collection != "rulesets") {
 			return fmt.Errorf("invalid created object identity")
 		}
 		var document yaml.Node

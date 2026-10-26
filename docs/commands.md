@@ -137,7 +137,7 @@ settings.labels: update "help wanted" (id 123) description: "Old description" â†
 
 A nonempty label selection counts as one managed item; an empty selection manages nothing. The effective whole supported object is compared, including default-derived description clearing.
 
-Ruleset operations likewise show only declaration-owned values. Retained attributes omitted from YAML do not appear even though apply preserves them in complete mutation payloads. Declared nested collection membership, explicit false/zero/empty values, creates and names of deleted Rulesets remain visible; deletion does not disclose the removed member's unmanaged policy.
+Current unreleased Ruleset operations show only selected whole supported objects, with numeric IDs and fixed-default changes. Unlisted Rulesets never appear as deletes. ID updates can rename; ID-less collisions fail instead of adopting existing names. See the [Rulesets migration](settings.md#plan-apply-export-and-migration) before upgrading from v0.19.0 or earlier.
 
 Successful comparison exits 0 whether differences exist or not. File, validation, origin, authentication, API, decoding and output errors exit 1 with a diagnostic on stderr. Failures before output leave stdout empty. Plan changes neither configuration nor GitHub settings. Its output is an observation, not a saved execution plan or drift protection for apply.
 
@@ -158,6 +158,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] PR access, Issue creation policy and Sponsorships use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
 | `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
 | `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform only required label POST/PATCH operations.[^github-labels] |
+| `settings.rulesets` | Read complete supported branch/tag state, then POST ID-less creates or PUT ID-selected whole objects; never implicitly DELETE unlisted objects. |
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields remain outside update requests. Selected labels send complete supported values, including description defaults. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
@@ -165,7 +166,7 @@ Repository fields/topics retain their direct-write behavior. Nonempty label sele
 
 Apply never consumes a saved plan. Concurrent remote changes can affect or invalidate an update; fresh checks and response verification are not a lock. Earlier writes remain applied after a later failure, with no automatic rollback/retry.
 
-Success prints `Applied repository settings.` for managed work, followed by created IDs when applicable. Normal CLI apply adds new IDs to the original settings file; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Existing IDs are not replaced, comments are preserved as practicable and formatting may normalize. A changed/unsafe file or persistence failure after remote creation is a nonzero partial failure that reports recoverable IDs. Retain those IDs before retrying; no Git commit or push is made. Output errors can occur after remote/local changes succeed.
+Success prints `Applied repository settings.` for managed work, followed by created IDs when applicable. Normal CLI apply adds new IDs to the original settings file; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Existing IDs are not replaced, comments are preserved as practicable and formatting may normalize. A changed/unsafe file or persistence failure after remote creation is a nonzero partial failure that reports recoverable IDs. Retain those IDs before retrying; no Git commit or push is made. Output errors can occur after remote/local changes succeed; created label/Ruleset IDs remain in stderr recovery diagnostics. Rulesets use the same writeback/opt-out mechanism as labels.
 
 ## Failures and limits for mutation
 

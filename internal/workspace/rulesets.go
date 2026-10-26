@@ -113,7 +113,7 @@ func rulesetYAMLKey(context, key string) bool {
 	var allowed []string
 	switch context {
 	case "policy":
-		allowed = []string{"name", "target", "enforcement", "conditions", "bypass_actors", "rules"}
+		allowed = []string{"id", "name", "target", "enforcement", "conditions", "bypass_actors", "rules"}
 	case "conditions":
 		allowed = []string{"ref_name"}
 	case "ref_name":

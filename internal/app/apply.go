@@ -142,7 +142,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 			result.Operations[index].Status = OperationCompleted
 		}
 	}
-	if desired.Rulesets != nil {
+	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
 		wrote, err := applyRulesets(&result, repo, desired.Rulesets, write)
 		if err != nil {
 			return result, err
@@ -264,5 +264,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }
