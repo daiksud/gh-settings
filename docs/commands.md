@@ -11,6 +11,87 @@
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
+gh settings export [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
+gh settings validate
+gh settings plan
+gh settings apply [--no-writeback]
+```
+
+| Command | Contract |
+| --- | --- |
+| `export` | Read all supported settings and silently save `.github/settings.yml`. Existing configuration is not required. |
+| `validate` | Check the configuration locally against the supported schema. |
+| `plan` | Validate, then read managed resources and show field differences and label operations. |
+| `apply` | Validate, send repository fields/topics directly, then reconcile declared labels against a fresh read. |
+
+There are no target override, configuration-path or output-format flags. Use `gh settings --help` for usage and `gh settings --version` for the installed version. Unsupported commands or arguments fail with exit status 1.
+
+## Repository and authentication
+
+Export and plan/apply operations with managed resources resolve the checkout-scoped `origin` remote. Supported origins directly identify GitHub.com through HTTPS, `git@github.com:owner/repo.git` or a full SSH URL. Rewrite-only aliases and username-less `github.com:owner/repo` are rejected; configure a supported direct URL instead.
+
+Only local/worktree origin values, including repository-specific included configuration, can select the target. System, global and command Git configuration cannot supply it. A direct GitHub origin retains its repository identity when Git `insteadOf` changes the transport destination. `GH_REPO` is ignored; missing or unsupported origins fail before API access.
+
+The extension uses the authentication selected by GitHub CLI, normally the user's own authority. Check access with `gh auth status`; authenticate with `gh auth login` when needed. gh-settings has no separate credential store, does not mint credentials, and does not retry a denied API operation as another identity. Standard `gh` authentication selection (including explicitly configured environment credentials) remains GitHub CLI behavior, not an independent fallback in this extension. `validate` performs no API work and needs no authentication. For automation, use the separate [single-App Actions policy](github-actions.md#authentication-and-app-permissions), not a required App/PAT combination. Credentials need permissions for every resource the command reads or writes:
+
+| Resource | Read permission | Write permission |
+| --- | --- | --- |
+| Repository fields and topics | Metadata read | Administration write |
+| Labels | Issues or Pull requests read | Issues or Pull requests write |
+| Merge methods; automatic branch deletion; squash commit defaults; auto-merge and branch updates; normal merge commit defaults | GraphQL query; ordinary Actions Contents read verified | Administration write through REST PATCH |
+
+Administration write alone does not grant label write permission.[^github-labels] Source export always reads labels as well as repository fields/topics; source apply uses its apply credential for the fresh label read and any required mutations. Public REST reads may be unauthenticated; GraphQL reads use an authenticated read token. Local validation and valid declarations with no managed resources do not require an origin or authentication.
+
+Plan does not mutate settings, but complete Ruleset bypass observation requires write access to the Ruleset. A read-only token can therefore be insufficient. Feature-specific API permissions and unverified App-integration boundaries are listed in the [permission table](github-actions.md#authentication-and-app-permissions); denied/missing reads remain errors, never empty/default/success.
+
+## Topics command behavior
+
+The [topics contract](settings.md#topics) defines names, omission and explicit clearing. Export includes the observed topics; plan compares the managed set; apply replaces that set. A configuration containing only `settings.topics.names` is a valid managed declaration. An omitted or empty topics mapping skips topics; the command is a local no-op only when no other resource is managed.
+
+## Labels command behavior
+
+The [labels contract](settings.md#labels) uses ID-based listed-object ownership: only listed objects are managed, and omitted/empty collections or unlisted objects cause no label writes. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
+
+Plan shows creates and ID-bound updates, including default-derived values. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
+
+## Export behavior
+
+`export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Existing export choices are unchanged;
+
+Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection), and `export --security private-vulnerability-reporting` for the independent [public-repository reporting toggle](settings.md#private-vulnerability-reporting). Repeat `--security` with distinct families to include both. It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Implemented families are `secret-scanning` and `private-vulnerability-reporting`: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export requests and scope are unchanged;
+
+`export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy after any other requested resources. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
+
+`export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy) for required credentials and transition limits.
+
+`export --rulesets` additionally reads complete repository-owned branch/tag Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Excluded push Rulesets produce a diagnostic on stderr; export success otherwise stays silent. See the [Rulesets contract](settings.md#rulesets) before adoption.
+
+Export uses the [repository and authentication rules](#repository-and-authentication) above. It reads repository settings, then topics, then every labels page, and serializes the complete supported configuration before opening the destination. Label reads use pages of 100 until a short page; a failed later page fails the operation before any file replacement. Unsupported fields and read-only metadata are excluded. Export preserves false and empty strings; the [settings reference](settings.md#exported-values) explains response normalization and invalid-response handling.
+
+Export creates `.github` when missing and always overwrites an existing regular `.github/settings.yml`, without a confirmation or overwrite flag. Symlinks at `.github` or `settings.yml`, including dangling links, and other non-regular destinations are rejected. A read or serialization failure leaves the destination untouched. A write failure can leave it truncated or partially written; use Git to restore tracked configuration.
+
+Success is silent and exits 0. Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
+
+```sh
+gh settings export
+cat .github/settings.yml
+```
+
+## Validate behavior
+
+Validate reads `.github/settings.yml` and checks the [configuration contract](settings.md#configuration-semantics). It requires one YAML root mapping with integer `schemaVersion: 1`, accepts partial declarations and empty settings/repository/topics mappings, and rejects unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple documents, and wrong shapes or value types. Alias and merge values are checked after YAML resolves them.
+
+Success is silent and exits 0. Failures exit 1 and report a diagnostic on stderr, with no stdout. Validation requires a Git checkout but no GitHub origin or authentication. It makes no API requests and changes neither the file nor GitHub settings. Passing local validation does not guarantee that GitHub will accept an update.
+
+## Plan behavior
+
+Plan validates the configuration before resolving origin, configuring authentication or reading GitHub. A valid declaration with no managed resources prints `No managed repository settings.` and exits 0 locally without an origin, credentials or API calls. `topics.names: []` remains a managed clearing declaration. In current source, `labels: []` selects no objects and requires no label comparison.
+
+Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
+
+Changed repository fields appear in this order: description, homepage, default_branch, has_issues, has_projects, has_wiki, has_discussions, web_commit_signoff_required, is_template, allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy, then has_sponsorships and archived, followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+
+```text
 settings.repository.has_issues: true → false
 settings.topics.names: ["old"] → ["github-cli","settings-as-code"]
 ```
