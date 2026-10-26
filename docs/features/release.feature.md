@@ -6,7 +6,7 @@ description: Specify automatically numbered, tested, and recoverable GitHub CLI 
 
 ## Feature: Publish a manually authorized release
 
-A maintainer explicitly starts publication from `main`. The version is calculated from reviewed, committed changes and prepared in source before validation. The workflow publishes exactly the binaries accepted for macOS arm64 and Linux amd64.
+A maintainer explicitly starts publication from `main`. The version is calculated during dispatch from reviewed, committed changes before validation. The workflow publishes exactly the binaries accepted for macOS arm64 and Linux amd64.
 
 ### Rule: Derive one version from durable reviewed changes
 
@@ -21,22 +21,23 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - And later main commits and mutable branch names or labels do not affect that calculation
 - And a revert does not subtract another included commit's signal
 
-#### Scenario: Prepare a shared Action and CLI version
+#### Scenario: Calculate from immutable source without a preparation PR
 
-- Given a clean tracked checkout with complete history and a stable release baseline
-- When the preparation command computes the next version
-- Then it updates only `action/cli-version` for a reviewed preparation PR
-- And it does not create a commit, branch, tag, draft, or release
-- And a preparation-only commit does not create another version increment
-- But a preparation-named commit that changes another path remains a substantive PATCH signal
-- And an interval containing no other changes is rejected
+- Given a published stable baseline and an exact selected main source
+- When the Python resolver reads the entire Git interval at workflow dispatch
+- Then it emits the next SemVer, published predecessor tag, and predecessor SHA
+- And no persistent version-file edit, preparation PR, new tag, or release is required
+- And empty commits and old version-only preparation commits do not create an increment
+- But a preparation-named commit with another changed path remains substantive
+- And no substantive changes, invalid history, or malformed metadata fail closed
 
-#### Scenario: Prepared source no longer agrees
+#### Scenario: A published Action selects its matching CLI release
 
-- Given the frozen source records a different version from the calculated result
-- When the release resolver validates that source
-- Then it stops before building or creating a tag or release
-- And it does not silently rewrite source or publish an Action that installs another CLI
+- Given a published version-tag or a full SHA pin to a uniquely tagged published commit
+- When the Action installs the CLI
+- Then it downloads only that release's expected binary and checksums
+- And an untagged SHA, conflicting tag mapping, or failed verification rejects installation
+- And local candidate tests use the exact accepted product version, not a release preparation file
 
 ### Rule: Freeze the source and prove binary identity
 
@@ -58,7 +59,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 #### Scenario: Release two validated native binaries
 
 - Given the maintainer manually dispatches the workflow from main
-- And source A contains the correctly prepared calculated version
+- And source A is the immutable source for the calculated version
 - When main advances to B during validation
 - Then both binaries are built once from A with that shared embedded version
 - And each product is transferred with a manifest binding A, version, target, asset name, and SHA-256
@@ -71,7 +72,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 #### Scenario: Validation fails before remote state
 
-- Given preparation, commit checks, native acceptance, candidate smoke, or hash verification fails
+- Given version resolution, commit checks, native acceptance, candidate smoke, or hash verification fails
 - Or a publication prerequisite is skipped or cancelled
 - When the workflow evaluates the publication gate
 - Then no tag or release is created by that run
@@ -91,7 +92,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 #### Scenario: Resume an incomplete matching draft
 
-- Given a draft marker, tag, committed version, and frozen source identify the same release
+- Given a draft marker, tag, calculated version, and frozen source identify the same release
 - And one required asset is absent while the others match their expected bytes
 - When the release run is retried
 - Then it retains that version rather than recalculating another increment
@@ -149,4 +150,4 @@ The [workflow gate tests](../../tests/github-actions/release_test.go) protect fr
 
 The existing [publisher preflight](../../scripts/release-publisher/main_test.go), [lookup/tag](../../scripts/release-publisher/lookup_test.go), [state](../../scripts/release-publisher/state_test.go), [asset](../../scripts/release-publisher/assets_test.go), and [controller](../../scripts/release-publisher/publish_test.go) tests retain validation order, exact checksum/manifest bytes, duplicate/unknown assets, downloaded hashes, missing-only uploads, immutable published no-ops, and fresh confirmation. The [CLI test](../../internal/cli/run_test.go) still owns the explicit version command.
 
-PR/main CI establishes current-source integration, not real published downloads or live native-note rendering. Only an explicitly authorized manual release run establishes operational publication evidence. No version preparation or successful merge alone authorizes that run.
+PR/main CI establishes current-source integration, not real published downloads or live native-note rendering. Only an explicitly authorized manual release run establishes operational publication evidence. No successful merge or calculated version alone authorizes that run.

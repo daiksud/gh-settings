@@ -24,7 +24,7 @@ The strongest included change selects the increment:
 
 A revert does not automatically cancel another included change's signal. Ignore only nonbreaking `build(release)` or `chore(release)` commits whose entire file change is `action/cli-version`; a preparation-named commit with any other changed path remains substantive. Reject an empty remaining interval. Initial publication without an established stable baseline requires a separate policy decision.
 
-A local preparation command computes the version and updates the committed Action/CLI version through a reviewed PR. The manually dispatched workflow recomputes and verifies it at a fixed main SHA before builds; operators do not supply a version. Existing matching drafts/releases retain their original version, source, notes, and verified bytes on retry.
+The manually dispatched release workflow uses the same Python version calculator as gh-qw at the frozen main SHA. No version-preparation PR or persisted version update is necessary. The published composite Action selects its CLI by the invoking version tag or exact SHA-matching release tag. Existing matching drafts/releases retain their original version, source, notes, and verified bytes on retry.
 
 New release notes use GitHub's native generation with `.github/release.yml`. Reviewed labels classify PR entries; a minimal supplement retains committed breaking migration footers and a fixed-SHA comparison. Do not retain the superseded categorized Git-log renderer or implement a second version engine from labels.
 
@@ -32,4 +32,4 @@ New release notes use GitHub's native generation with `.github/release.yml`. Rev
 
 Reviewers must reconcile titles, footers, and labels before merging, including already-merged unreleased PRs during adoption. A later label edit can affect new notes but not change the committed version signal. Native PR lists and contributors differ from the former per-commit changelog; direct commits remain visible through the frozen comparison.
 
-Version preparation remains separate from authorization to publish. Computation, API, history, or preparation mismatches fail before remote tag/release creation. Existing publication gates, immutable artifacts, and matching-draft recovery remain required. See the [maintainer release contract](../contributing/releases.md) for executable steps and evidence limits.
+Version calculation does not authorize publication. Computation, API, history, or immutable-identity mismatches fail before remote tag/release creation. Existing publication gates, immutable artifacts, and matching-draft recovery remain required. See the [maintainer release contract](../contributing/releases.md) for executable steps and evidence limits.
