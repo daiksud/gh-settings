@@ -15,6 +15,7 @@ type ExportCheckout struct {
 	IncludeActions             bool
 	IncludeWorkflowPermissions bool
 	IncludeRulesets            bool
+	IncludeEnvironments        bool
 	IncludeSecretScanning      bool
 	IncludePrivateReporting    bool
 	IncludeRetention           bool
@@ -88,6 +89,25 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if observed.ExcludedPush() > 0 && checkout.ExcludedRulesets != nil {
 			checkout.ExcludedRulesets(observed.ExcludedPush())
 		}
+	}
+	if checkout.IncludeEnvironments {
+		observed, err := read.Environments(repo, nil)
+		if err != nil {
+			return err
+		}
+		values, err := observed.Values()
+		if err != nil {
+			return err
+		}
+		entries := make([]settings.EnvironmentDeclaration, 0, len(values))
+		for _, value := range values {
+			entries = append(entries, value.Policy)
+		}
+		d, err := settings.NewEnvironmentDeclarations(entries)
+		if err != nil {
+			return err
+		}
+		declaration.Environments = &d
 	}
 	if checkout.IncludeActions {
 		observed, err := read.Actions(repo, true)

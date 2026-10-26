@@ -14,7 +14,7 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	var output strings.Builder
 	if comparison.Managed == 0 {
 		output.WriteString("No managed repository settings.\n")
-	} else if len(comparison.Changes) == 0 && comparison.Labels.Len() == 0 && len(comparison.Rulesets) == 0 && len(comparison.Actions) == 0 && len(comparison.Security) == 0 && len(comparison.Pages) == 0 {
+	} else if len(comparison.Changes) == 0 && comparison.Labels.Len() == 0 && len(comparison.Rulesets) == 0 && len(comparison.Environments) == 0 && len(comparison.Actions) == 0 && len(comparison.Security) == 0 && len(comparison.Pages) == 0 {
 		output.WriteString("No differences for managed repository settings.\n")
 	} else {
 		for _, change := range comparison.Changes {
@@ -36,6 +36,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	}
 	for _, change := range comparison.Rulesets {
 		fmt.Fprintln(&output, presentation.RulesetLine(change.Display()))
+	}
+	for _, change := range comparison.Environments {
+		fmt.Fprintln(&output, presentation.EnvironmentLine(change))
 	}
 	for _, change := range comparison.Actions {
 		fmt.Fprintln(&output, presentation.ActionsPolicyLine(change))
