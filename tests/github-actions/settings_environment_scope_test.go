@@ -225,52 +225,66 @@ func checkSettingsPRTrigger(node *yaml.Node) error {
 // The protected manual plan remains dispatch-only; the same workflow also
 // exposes a credential-free merge-candidate validation job for required PR checks.
 func checkSettingsPlanTrigger(node *yaml.Node) error {
-    if node == nil { return fmt.Errorf("expected workflow_dispatch and optional pull_request") }
-    events, err := settingsYAMLMap(node)
-    if err != nil { return err }
-    dispatch, ok := events["workflow_dispatch"]
-    if !ok || len(events) > 2 {
-        return fmt.Errorf("expected workflow_dispatch and optional pull_request only")
-    }
-    fields, err := settingsYAMLMap(dispatch)
-    if err != nil { return err }
-    if len(fields) != 1 || fields["inputs"] == nil {
-        return fmt.Errorf("expected pinned PR and head inputs")
-    }
-    inputs, err := settingsYAMLMap(fields["inputs"])
-    if err != nil { return err }
-    if len(inputs) != 2 || inputs["pr_number"] == nil || inputs["head_sha"] == nil {
-        return fmt.Errorf("expected only PR number and expected head SHA")
-    }
-    if len(events) == 1 { return nil }
-    pr, ok := events["pull_request"]
-    if !ok { return fmt.Errorf("only pull_request may accompany workflow_dispatch") }
-    filters, err := settingsYAMLMap(pr)
-    if err != nil { return err }
-    if len(filters) != 2 || filters["branches"] == nil || filters["types"] == nil {
-        return fmt.Errorf("required PR check must target main with explicit activities")
-    }
-    branches, types := filters["branches"], filters["types"]
-    if branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 ||
-        branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
-        return fmt.Errorf("required PR check must target only main")
-    }
-    if types.Kind != yaml.SequenceNode || len(types.Content) != 4 {
-        return fmt.Errorf("required PR check must handle opened, synchronize, reopened and edited")
-    }
-    seen := make(map[string]bool)
-    for _, value := range types.Content {
-        if value.Kind != yaml.ScalarNode || seen[value.Value] {
-            return fmt.Errorf("duplicate or invalid PR event")
-        }
-        switch value.Value {
-        case "opened", "synchronize", "reopened", "edited":
-            seen[value.Value] = true
-        default:
-            return fmt.Errorf("unsupported PR event %q", value.Value)
-        }
-    }
-    return nil
+	if node == nil {
+		return fmt.Errorf("expected workflow_dispatch and optional pull_request")
+	}
+	events, err := settingsYAMLMap(node)
+	if err != nil {
+		return err
+	}
+	dispatch, ok := events["workflow_dispatch"]
+	if !ok || len(events) > 2 {
+		return fmt.Errorf("expected workflow_dispatch and optional pull_request only")
+	}
+	fields, err := settingsYAMLMap(dispatch)
+	if err != nil {
+		return err
+	}
+	if len(fields) != 1 || fields["inputs"] == nil {
+		return fmt.Errorf("expected pinned PR and head inputs")
+	}
+	inputs, err := settingsYAMLMap(fields["inputs"])
+	if err != nil {
+		return err
+	}
+	if len(inputs) != 2 || inputs["pr_number"] == nil || inputs["head_sha"] == nil {
+		return fmt.Errorf("expected only PR number and expected head SHA")
+	}
+	if len(events) == 1 {
+		return nil
+	}
+	pr, ok := events["pull_request"]
+	if !ok {
+		return fmt.Errorf("only pull_request may accompany workflow_dispatch")
+	}
+	filters, err := settingsYAMLMap(pr)
+	if err != nil {
+		return err
+	}
+	if len(filters) != 2 || filters["branches"] == nil || filters["types"] == nil {
+		return fmt.Errorf("required PR check must target main with explicit activities")
+	}
+	branches, types := filters["branches"], filters["types"]
+	if branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 ||
+		branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
+		return fmt.Errorf("required PR check must target only main")
+	}
+	if types.Kind != yaml.SequenceNode || len(types.Content) != 4 {
+		return fmt.Errorf("required PR check must handle opened, synchronize, reopened and edited")
+	}
+	seen := make(map[string]bool)
+	for _, value := range types.Content {
+		if value.Kind != yaml.ScalarNode || seen[value.Value] {
+			return fmt.Errorf("duplicate or invalid PR event")
+		}
+		switch value.Value {
+		case "opened", "synchronize", "reopened", "edited":
+			seen[value.Value] = true
+		default:
+			return fmt.Errorf("unsupported PR event %q", value.Value)
+		}
+	}
+	return nil
 }
 
 // Keep this guard about the Environment boundary. Privileged steps and Action
