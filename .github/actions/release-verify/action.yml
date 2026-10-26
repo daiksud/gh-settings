@@ -69,7 +69,6 @@ runs:
       run: |
         [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'public download verification received a token environment' >&2; exit 1; }
         [[ "$(git -C .published rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'published tag differs from accepted source' >&2; exit 1; }
-        [[ "$(cat .published/action/cli-version)" == "$VERSION" ]] || { echo 'published Action version differs from release' >&2; exit 1; }
         published="$RUNNER_TEMP/published-release"
         [[ ! -e "$published" ]]
         mkdir "$published"
@@ -96,6 +95,11 @@ runs:
         git add .github/settings.yml
         git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: initialize consumer fixture'
         [[ "$(git rev-parse --show-toplevel)" != "$(git -C .published rev-parse --show-toplevel)" ]] || { echo 'published Action and consumer checkouts overlap' >&2; exit 1; }
+    - name: Select the version for the local published-Action invocation
+      shell: bash
+      env:
+        RELEASE_VERSION: ${{ inputs.version }}
+      run: printf 'SETTINGS_CANDIDATE_VERSION=%s\n' "$RELEASE_VERSION" >> "$GITHUB_ENV"
     - name: Validate through the actual published root Action
       id: validate
       uses: ./.published

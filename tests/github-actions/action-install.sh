@@ -34,6 +34,17 @@ done
 exit 1
 MOCK
 chmod +x "$fixture/bin/curl"
+REAL_GIT="$(command -v git)"
+export REAL_GIT
+cat > "$fixture/bin/git" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1 $2" == "ls-remote --tags" ]]; then
+  printf '%s\t%s\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa refs/tags/v0.6.0
+else
+  exec "$REAL_GIT" "$@"
+fi
+MOCK
+chmod +x "$fixture/bin/git"
 export PATH="$fixture/bin:$PATH"
 cat > "$MOCK_ASSET" <<'MOCK'
 #!/usr/bin/env bash
@@ -71,8 +82,12 @@ expect_failure() {
 }
 export RUNNER_TEMP="$fixture/failed runner"
 mkdir -p "$RUNNER_TEMP"
-SETTINGS_ACTION_REF=v0.7.0 expect_failure
-grep -q 'Action tag differs from committed CLI version' "$fixture/error"
+SETTINGS_ACTION_REF=v0.7.0 expect_failure --version
+grep -q 'unexpected CLI version' "$fixture/error"
+SETTINGS_ACTION_REF=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb expect_failure
+grep -q 'SHA-pinned Action has no matching stable release tag' "$fixture/error"
+SETTINGS_ACTION_REF=unknown expect_failure
+grep -q 'unsupported Action reference' "$fixture/error"
 cp "$MOCK_CHECKSUMS" "$fixture/good-checksums"
 for invalid_manifest in missing duplicate malformed; do
   case "$invalid_manifest" in

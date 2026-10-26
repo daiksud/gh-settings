@@ -60,7 +60,7 @@ func runCommand(args []string, output io.Writer, gh ghAPI) error {
 	if len(args) != 2 {
 		return fmt.Errorf("usage: release-publisher SOURCE_ROOT WORK_DIR")
 	}
-	identity, err := prepareIdentity(args[0]+"/action/cli-version", os.Getenv)
+	identity, err := prepareIdentity(os.Getenv)
 	if err != nil {
 		return err
 	}
@@ -214,15 +214,11 @@ func prepareNotes(identity releaseIdentity, root, work string) (string, error) {
 	}, "\n"), nil
 }
 
-func prepareIdentity(committedVersionFile string, getenv func(string) string) (releaseIdentity, error) {
+func prepareIdentity(getenv func(string) string) (releaseIdentity, error) {
 	var identity releaseIdentity
 	identity.Version = getenv("VERSION")
 	if !versionPattern.MatchString(identity.Version) {
 		return releaseIdentity{}, fmt.Errorf("version must be vMAJOR.MINOR.PATCH")
-	}
-	committed, err := os.ReadFile(committedVersionFile)
-	if err != nil || strings.TrimRight(string(committed), "\n") != identity.Version {
-		return releaseIdentity{}, fmt.Errorf("release version differs from committed CLI version")
 	}
 	identity.Commit = getenv("SOURCE_SHA")
 	if !sourcePattern.MatchString(identity.Commit) {

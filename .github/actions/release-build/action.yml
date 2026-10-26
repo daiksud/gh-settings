@@ -24,7 +24,6 @@ runs:
         [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid build version' >&2; exit 1; }
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid build source' >&2; exit 1; }
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'build checkout differs from frozen source' >&2; exit 1; }
-        [[ "$(cat action/cli-version)" == "$VERSION" ]] || { echo 'prepared CLI version differs from release' >&2; exit 1; }
     - name: Check source and build Linux product
       if: inputs.target == 'linux-amd64'
       id: linux

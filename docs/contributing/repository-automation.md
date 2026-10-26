@@ -19,7 +19,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
 
-Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after version preparation and main verification. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
+Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
 
 ## PR lifecycle
 
@@ -47,7 +47,7 @@ After a permitted merge, a matching main push starts the settings workflow. Whet
 
 ## Active settings workflows
 
-The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. Their pins are independent of [`action/cli-version`](../../action/cli-version), which selects the CLI packaged by current source. Publishing a release or changing examples does not automatically update these callers.
+The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. Their pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.
 
 The PR caller uses trusted default-branch `pull_request_target` code for opened, synchronize and reopened events targeting main. Its path filter covers `.github/settings.yml`, both operational caller workflows, and the GitHub Actions examples. The exact main-ref/repository/base condition and Environment `gh-settings` constrain this credential consumer. Per-PR concurrency cancels superseded plans.
 

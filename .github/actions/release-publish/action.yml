@@ -29,7 +29,6 @@ runs:
         [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid publication version' >&2; exit 1; }
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid publication source' >&2; exit 1; }
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'publication checkout differs from frozen source' >&2; exit 1; }
-        [[ "$(cat action/cli-version)" == "$VERSION" ]] || { echo 'published CLI version differs from release' >&2; exit 1; }
         if [[ -n "$PREVIOUS_TAG" || -n "$PREVIOUS_SHA" ]]; then
           [[ "$PREVIOUS_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid predecessor tag' >&2; exit 1; }
           [[ "$PREVIOUS_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid predecessor source' >&2; exit 1; }

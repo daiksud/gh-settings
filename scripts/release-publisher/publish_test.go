@@ -13,8 +13,8 @@ import (
 )
 
 func TestPublishStopsAfterFirstUploadError(t *testing.T) {
-	version, env := preflightFixture(t)
-	identity, err := prepareIdentity(version, func(key string) string { return env[key] })
+	_, env := preflightFixture(t)
+	identity, err := prepareIdentity(func(key string) string { return env[key] })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,8 +73,8 @@ func TestPublishDraftChecksFreshAssetsStateMarkerThenTag(t *testing.T) {
 		{name: "confirmation cannot reuse initial state", initialPublished: true, confirmation: "missing", want: "release publication not confirmed", tagReads: 2, publishes: 1, reads: 4},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			version, env := preflightFixture(t)
-			identity, err := prepareIdentity(version, func(key string) string { return env[key] })
+			_, env := preflightFixture(t)
+			identity, err := prepareIdentity(func(key string) string { return env[key] })
 			if err != nil {
 				t.Fatal(err)
 			}

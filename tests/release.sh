@@ -169,13 +169,6 @@ reject() {
   fi
 }
 
-# The source version must agree before any GitHub lookup or mutation.
-printf 'v1.2.4\n' > "$fixture/source/action/cli-version"
-reject
-[[ ! -e "$fixture/calls" ]]
-grep -q 'committed CLI version' "$fixture/output"
-printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
-
 # Every preflight failure must stop before even a GitHub lookup.
 VERSION='v1.2.3;unsafe' reject
 export VERSION=v1.2.3

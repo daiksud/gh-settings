@@ -83,7 +83,7 @@ Reports preserve native field values and carry label creates/ID updates with com
 
 Summary validation converts the JSON report DTO to a private validated presentation input, retaining native comparisons, label operations, and checked report state. Typed visitors render the retained values; JSON type assertions and operation reconstruction remain at the input boundary. This preserves credential-free rendering and validates all input and metadata before opening the Summary destination.
 
-The public Action installs the released CLI selected by its committed [`action/cli-version`](../../action/cli-version). See the [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) for released capabilities and the [labels permission guidance](../github-actions.md#labels-and-permissions) for caller requirements.
+The public Action installs the verified CLI from its invoking release tag or unique SHA-matching stable tag. The local [`action/cli-version`](../../action/cli-version) is a development-candidate default, not a release input. See the [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) for released capabilities and the [labels permission guidance](../github-actions.md#labels-and-permissions) for caller requirements.
 
 ## v0 simplification contract
 
@@ -143,7 +143,7 @@ Pages lifecycle/visibility and unadopted Actions endpoints remain outside curren
 
 [ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. That historical ownership decision is superseded in unreleased source by the [ID-selected Rulesets specification](../features/rulesets.feature.md): name collisions require explicit adoption by ID, selected objects have fixed defaults, and unlisted objects are never deleted. Inherited/push Rulesets and legacy branch protection remain outside that managed collection; legacy protection implementation is deferred. Published and older CLI/Action packages do not support this feature.
 
-Other future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version preparation](releases.md#version-preparation) is implemented separately from manually authorized publication.
+Other future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version calculation](releases.md#automatic-version-calculation) occurs during manually authorized release resolution.
 
 [ADR 0026](../adr/0026-explicit-security-observations.md) accepts explicit per-family security observations and export selection. The [Security specification](../features/security.feature.md) records planned boolean declarations, permissions/availability, dependencies, failure semantics, and gates for #344–#347. Published implements Secret scanning and private vulnerability reporting for public repositories; ambiguous Dependabot disabled reads and distinct paid-product adoption still require the documented evidence before implementation.
 
