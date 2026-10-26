@@ -75,6 +75,11 @@ Include compatibility, migration, and operational effects when relevant. Keep li
 
 ### Breaking changes: require both signals
 
+Apply the [v0.x compatibility policy](../../../AGENTS.md#v0x-compatibility-policy):
+do not require legacy fallbacks or automatic migration solely to preserve
+superseded public behavior. Review the current contract and safeguards, and
+retain all breaking-change disclosure requirements below.
+
 Identify incompatibility from the supported behavior before and after the change, even when the author labels it a fix or refactor. Check existing consumers of CLI commands/options, documented output and exit codes, configuration keys/types/omission semantics, target resolution, and Action inputs/outputs, supported runners, or required credentials/permissions. An internal signature change alone is not a public compatibility break; adding an opt-in capability is not breaking when existing supported usage continues to work.
 
 For every change that makes a previously supported use incompatible, require **both**:
