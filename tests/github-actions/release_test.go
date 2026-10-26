@@ -153,7 +153,9 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 			err := cmd.Run()
 			published, readErr := os.ReadFile(pathFile)
 			envPublished, envReadErr := os.ReadFile(envFile)
-			if envReadErr != nil { t.Fatal(envReadErr) }
+			if envReadErr != nil {
+				t.Fatal(envReadErr)
+			}
 			if readErr != nil {
 				t.Fatal(readErr)
 			}
@@ -169,7 +171,9 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 			if err != nil || stderr.Len() != 0 {
 				t.Fatalf("matching candidate rejected: %v\n%s", err, stderr.String())
 			}
-			if string(envPublished) != "SETTINGS_CANDIDATE_VERSION="+version+"\n" { t.Fatalf("candidate version was not selected: %q", envPublished) }
+			if string(envPublished) != "SETTINGS_CANDIDATE_VERSION="+version+"\n" {
+				t.Fatalf("candidate version was not selected: %q", envPublished)
+			}
 			fixture := strings.TrimSpace(string(published))
 			if filepath.Dir(fixture) != f.base["RUNNER_TEMP"] || strings.Contains(fixture, "\n") {
 				t.Fatalf("candidate PATH is not one owned directory: %q", fixture)
