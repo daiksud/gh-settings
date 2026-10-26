@@ -125,7 +125,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 		}) {
 		t.Fatal("operational App credentials, target scope or revocation changed")
 	}
-	if apply.Steps[2].Uses != exampleAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{
+	if apply.Steps[2].Uses != exampleConsumerAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{
 		"command": "apply", "token": "${{ steps.app.outputs.token }}",
 	}) || strings.Count(source, "steps.app.outputs.token") != 1 || strings.Contains(source, "verify-settings-handoff") ||
 		strings.Contains(source, "run:") || !strings.Contains(source, "branches: [main]") {
