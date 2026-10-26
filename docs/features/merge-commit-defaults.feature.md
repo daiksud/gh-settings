@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-CLI and Action v0.14.0 support optional `settings.repository.merge_commit_title` and `merge_commit_message` under `schemaVersion: 1`. Published v0.13.0 rejects these keys; the pinned v0.18.0 examples support them. They extend the existing repository group without enabling normal merge commits, changing squash defaults, or performing a merge.
+CLI and Action Current source supports optional `settings.repository.merge_commit_title` and `merge_commit_message` under `schemaVersion: 1`. They extend the existing repository group without enabling normal merge commits, changing squash defaults, or performing a merge.
 
 The [configuration reference](../settings.md#merge-commit-defaults-v0140) owns declaration/value semantics. GitHub rejects these defaults while normal merges are disabled. An explicit `allow_merge_commit: false` combination therefore fails local validation. When the allow flag is omitted, local validation does not guess an unmanaged value; plan checks the observed effective setting and fails if it is false. An explicit true value satisfies the prerequisite without synthesizing another declaration.
 
