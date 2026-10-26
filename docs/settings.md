@@ -146,7 +146,7 @@ The [contributor API](https://docs.github.com/en/rest/actions/permissions#set-fo
 
 ## Check, run, status, artifact and log retention
 
-Current source supports optional integer `settings.actions.artifact_and_log_retention_days`. The maintained Action pin selects v0.18.0.
+Current source supports optional integer `settings.actions.artifact_and_log_retention_days`.
 
 ```yaml
 schemaVersion: 1
@@ -237,7 +237,7 @@ settings:
 
 When Issues are enabled, `ALL` permits creation by anyone and `COLLABORATORS_ONLY` limits it to collaborators, following [GitHub's enum contract](https://docs.github.com/en/graphql/reference/issues#issuecreationpolicy). Omission leaves the setting unmanaged. Null, empty strings, booleans/numbers, case variants and unknown policies are invalid. This controls creation eligibility independently of `has_issues`; it does not enable Issues, edit individual Issues, invite collaborators or change grants.
 
-Plan uses a separate complete authenticated GraphQL query only when this policy is declared. PR-only and older declarations retain their reads. Export includes the observed policy after all reads succeed, including when Issues are disabled. Missing/null/wrong-type/unsupported values and partial GraphQL errors fail instead of becoming `ALL`; failed export preserves the old file. Policy reads and ID lookup disable rename following, so stale origins fail.
+Plan uses a separate complete authenticated GraphQL query only when this policy is declared. PR-only declarations retain their separate reads. Export includes the observed policy after all reads succeed, including when Issues are disabled. Missing/null/wrong-type/unsupported values and partial GraphQL errors fail instead of becoming `ALL`; failed export preserves the old file. Policy reads and ID lookup disable rename following, so stale origins fail.
 
 Direct apply reuses the validated opaque repository-ID lookup and `updateRepository` transport. Send only declared Issue/PR values; never synthesize `hasIssuesEnabled`, `has_issues` or PR companions. If PR and Issue controls are both declared, one lookup and one mutation carry them together. Explicitly declared REST fields such as `has_issues` run first, then GraphQL, topics, labels and Rulesets. Repeated scalar apply still sends declared values. Mutation response identity and requested values must match; failures stop later work and may leave earlier writes applied, with no rollback or retry.
 
@@ -336,9 +336,9 @@ GitHub's [official CLI sends this field through repository PATCH](https://github
 
 ## Merge methods
 
-The tool supports optional `allow_merge_commit`, `allow_squash_merge` and `allow_rebase_merge` booleans under `settings.repository`. Omission remains unmanaged, explicit false is retained, and null/wrong types fail validation. These fields extend the repository group; they are not a new resource family. Published v0.9.0 does not accept them.
+The tool supports optional `allow_merge_commit`, `allow_squash_merge` and `allow_rebase_merge` booleans under `settings.repository`. Omission remains unmanaged, explicit false is retained, and null/wrong types fail validation. These fields extend the repository group; they are not a new resource family.
 
-The [merge-method contract](features/merge-methods.feature.md) defines their narrow GraphQL read path, strict complete-read handling, unchanged REST PATCH semantics and read-only Actions evidence. Plan reads them only when declared; Export includes all three after a complete read. Review exported configuration before using an older pinned CLI/Action.
+The [merge-method contract](features/merge-methods.feature.md) defines their narrow GraphQL read path, strict complete-read handling, unchanged REST PATCH semantics and read-only Actions evidence. Plan reads them only when declared; Export includes all three after a complete read.
 
 ## Automatic branch deletion
 
@@ -475,15 +475,15 @@ Use `gh settings apply --no-writeback` to disable this local change. With `GITHU
 
 Remote creation and local writeback are not a transaction. If creation succeeded but writeback fails, apply stops, reports the created ID and leaves the remote object in place. Add that ID before retrying. Earlier confirmed IDs remain recorded if a later operation fails. A failed response may leave an unknown remote effect; inspect/export current state before attempting another create. No automatic create retry, delete or rollback occurs. File replacement is guarded and atomic, not a concurrent-editor lock.
 
-For migration, first review an export made with the **new CLI**, which contains IDs. Add IDs to every existing label you intend to update, supply its color, and explicitly preserve any description you want retained. Review plan before apply. Older partial declarations may now fail for missing color or collide as create-only entries; omitted descriptions now clear. Removing entries and emptying the list no longer delete labels. Legacy deletion removed issue/PR assignments and recreating a label did not restore them.[^github-delete-labels] Published older versions do not gain this behavior merely by checking out newer Action source.
+Export labels to inspect their IDs. Give each existing object its ID, required color, and intended description, then review plan before apply.
 
 Labels read and mutation credentials still need Issues or Pull requests read/write respectively; Administration write alone does not suffice.[^github-labels] No permissions are created or expanded. See the [command reference](commands.md#labels-command-behavior) and [behavior specification](features/labels.feature.md).
 
 ## Configuration semantics
 
-The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus an optional `labels` sequence. The configuration also accepts `rulesets` and the optional `actions` and `security` mappings described above. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic migration or compatibility parsing.
+The document requires integer `schemaVersion: 1`, a file-format version independent of the CLI release. The `settings` mapping is optional and can contain optional `repository` and `topics` mappings plus an optional `labels` sequence. The configuration also accepts `rulesets` and the optional `actions` and `security` mappings described above. Unknown root keys, unsupported versions and unsupported groups fail validation; there is no automatic import.
 
-Declared values are managed, and YAML is authoritative for them. Omitted repository fields remain unmanaged. Topics retain authoritative membership. Current-source labels and Rulesets instead select whole ID-owned objects, leaving unlisted objects untouched. Labels require color and default omitted description to empty; Rulesets have their own [required intent/default table](#rulesets). These object-ownership semantics are unreleased; see the [labels](#apply-id-writeback-and-migration) and [Rulesets](#plan-apply-export-and-migration) migration guidance. For example:
+Declared values are managed, and YAML is authoritative for them. Omitted repository fields remain unmanaged. Topics retain authoritative membership. Labels and Rulesets select whole ID-owned objects, leaving unlisted objects untouched. Labels require color and default omitted description to empty; Rulesets have their own [required intent/default table](#rulesets). See the [labels](#apply-id-writeback) and [Rulesets](#plan-apply-and-export) contracts. For example:
 
 ```yaml
 schemaVersion: 1
@@ -593,9 +593,9 @@ Nonempty selections acquire complete supported repository branch/tag observation
 
 Plan is read-only. It shows creates or ID updates and complete supported before/after objects, including fixed-default reductions and rename. It never displays unlisted objects as changes or plans implicit deletion. A nonempty collection counts once as managed. Apply reads fresh state after earlier repository/topics/labels work, prepares every selected operation before the first Rulesets write, and writes in stable operation-name order. A fresh complete match makes no Rulesets write; successful ID writeback makes repeat apply an update/no-op instead of duplicate creation.
 
-Every POST/PUT response must confirm positive ID, repository ownership and complete supported requested settings. An update response must retain the selected ID. Missing/mismatching responses return nonzero: writes may already have applied, later operations stop, and there is no retry or rollback. Successful creation is distinct from failed local ID persistence. Confirmed created IDs use the same [guarded writeback and opt-out contract](#apply-id-writeback-and-migration) as labels; `--no-writeback` and `GITHUB_ACTIONS=true` disable it. IDs remain in output/recovery diagnostics, including output-write failure. No Git commit/push occurs.
+Every POST/PUT response must confirm positive ID, repository ownership and complete supported requested settings. An update response must retain the selected ID. Missing/mismatching responses return nonzero: writes may already have applied, later operations stop, and there is no retry or rollback. Successful creation is distinct from failed local ID persistence. Confirmed created IDs use the same [guarded writeback and opt-out contract](#apply-id-writeback) as labels; `--no-writeback` and `GITHUB_ACTIONS=true` disable it. IDs remain in output/recovery diagnostics, including output-write failure. No Git commit/push occurs.
 
-Migration: use the **new CLI** to `export --rulesets`, review IDs and every supported setting, and retain explicit values needed to avoid default-derived changes. Existing updates require IDs, enforcement and ref include; name-only and partial declarations no longer preserve remote policy. Remove unlisted objects from YAML to stop managing them, not to delete them. Review plan before apply, especially reviewer/check/bypass clearing and method defaults. Published older packages retain their previous behavior and do not gain this contract from a newer checkout.
+Use `export --rulesets` to inspect supported IDs and policy before editing. Updates require explicit IDs, enforcement, and reference include rules. Removing an object from the declaration stops managing it without deleting its remote policy. Review plan before apply, especially reviewer, check, bypass, and merge-method defaults.
 
 [Rulesets REST](https://docs.github.com/en/rest/repos/rules) documents Metadata read for GET and Administration write for mutations; complete bypass visibility additionally requires Ruleset write access. Missing bypass actors are an error, never an empty set. GitHub validates account/plan prerequisites, including Enterprise-only evaluate; no permission expansion or workaround is performed. See [availability and layering](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) and the [behavior/test contract](features/rulesets.feature.md). This source change neither applies live policy nor publishes a release.
 
