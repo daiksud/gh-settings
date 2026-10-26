@@ -24,8 +24,8 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 	if err := yaml.Unmarshal(data, &w); err != nil {
 		t.Fatal(err)
 	}
-	if len(w.On) != 1 || w.On["workflow_dispatch"].Kind != yaml.MappingNode || len(w.Jobs) != 2 || !reflect.DeepEqual(w.Permissions, map[string]string{}) {
-		t.Fatal("protected plan must use only manual dispatch and no default token grants")
+	if len(w.On) != 2 || w.On["workflow_dispatch"].Kind != yaml.MappingNode || w.On["pull_request"].Kind != yaml.MappingNode || len(w.Jobs) != 3 || !reflect.DeepEqual(w.Permissions, map[string]string{}) {
+		t.Fatal("protected manual plan and required PR validation must have no default token grants")
 	}
 	var inputs struct {
 		Inputs map[string]struct {
@@ -45,8 +45,15 @@ func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 			t.Fatalf("missing bounded mandatory %s", key)
 		}
 	}
+	required, present := w.Jobs["settings-plan"]
+	if !present || required.Runner != "ubuntu-slim" || required.If != "github.event_name == 'pull_request'" ||
+		required.Environment != "" || required.Timeout != 10 || required.Needs != "" ||
+		!reflect.DeepEqual(required.Permissions, map[string]string{"contents": "read"}) ||
+		len(required.Steps) != 3 || !strings.Contains(required.Steps[2].Run, "go run . validate") {
+		t.Fatal("required PR plan check must validate locally without privileged credentials")
+	}
 	gate, present := w.Jobs["activation-gate"]
-	if !present || gate.Runner != "ubuntu-slim" || len(gate.Steps) != 1 || len(gate.Permissions) != 0 ||
+	if !present || gate.If != "github.event_name == 'workflow_dispatch'" || gate.Runner != "ubuntu-slim" || len(gate.Steps) != 1 || len(gate.Permissions) != 0 ||
 		gate.Steps[0].Env["ENABLED"] != "${{ vars.GH_SETTINGS_PLAN_ENABLED }}" ||
 		gate.Steps[0].Env["REPOSITORY"] != "${{ github.repository }}" ||
 		gate.Steps[0].Env["REF"] != "${{ github.ref }}" ||
@@ -140,13 +147,13 @@ func TestProtectedPlanGuardRejectsUnexpectedPlacement(t *testing.T) {
 	}
 	base := map[string][]byte{
 		settingsWorkflowPath:      []byte("on: {push: {branches: [main]}}\njobs:\n  apply:\n    environment: gh-settings\n"),
-		settingsGuardWorkflowPath: []byte("jobs:\n  gh-settings:\n    name: gh-settings\n"),
+		settingsGuardWorkflowPath: []byte("jobs:\n  settings-environment-guard:\n    name: settings-environment-guard\n"),
 		settingsPlanWorkflowPath:  data,
 	}
 	for _, tc := range []struct {
 		name, path, content string
 	}{
-		{"PR event", settingsPlanWorkflowPath, strings.Replace(string(data), "  workflow_dispatch:", "  pull_request:\n  workflow_dispatch:", 1)},
+		{"untrusted PR target event", settingsPlanWorkflowPath, strings.Replace(string(data), "  workflow_dispatch:", "  pull_request_target: {}\n  workflow_dispatch:", 1)},
 		{"push event", settingsPlanWorkflowPath, strings.Replace(string(data), "  workflow_dispatch:", "  push:\n  workflow_dispatch:", 1)},
 		{"wrong main gate", settingsPlanWorkflowPath, strings.Replace(string(data), "github.ref == 'refs/heads/main'", "github.ref == 'refs/heads/dev'", 1)},
 		{"missing activation", settingsPlanWorkflowPath, strings.Replace(string(data), " && vars.GH_SETTINGS_PLAN_ENABLED == 'true'", "", 1)},
