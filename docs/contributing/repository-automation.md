@@ -16,7 +16,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Dedicated manual main-only declared-settings observer; inactive until separately approved Environment/credential activation |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
 | [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `gh-settings` |
-| [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
+| [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or successful PR CI completion; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
 
 Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
@@ -33,7 +33,7 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The inspected [default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) requires one approving review, dismisses stale approvals when new commits are pushed, requires CODEOWNER review and resolved review threads, and requires strict `pass`, `gh-settings`, and `pr-message` checks from the GitHub Actions app. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
+The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, signed and linear history, and strict required checks. The declaration retains the existing `pass`, `gh-settings`, and `pr-message` contexts while their separate check-name migration is pending. Repository merge configuration allows squash only. No bypass actors are configured, including administrators. Every change must satisfy the ordinary approval, CI, signature, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). This declaration is applied by the trusted main workflow only after merge; verify the actual live Ruleset and Actions permission after application rather than assuming that this file is already enforced.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
@@ -123,11 +123,9 @@ For activation, explicitly approve and configure the dedicated Environment, appr
 
 ## Codex approval control
 
-The [approval workflow](../../.github/workflows/approve-codex-review.yml) reacts only to a PR comment from `chatgpt-codex-connector[bot]` whose body starts with the expected review-summary marker. It fetches that summary and requires both **Code Review** and **Security Review** to say **Completed**, plus a Codex 👍 reaction to the PR body. It waits up to three minutes for the reaction, then may create an approving bot review.
+The [approval workflow](../../.github/workflows/approve-codex-review.yml) reacts to trusted summary updates from `chatgpt-codex-connector[bot]` and rechecks the most recent summary after successful PR CI completion. It reads the structured Codex review state, requires both **Code Review** and **Security Review** to have completed on the *current exact PR HEAD*, rejects unresolved findings, and requires Codex's 👍 reaction. It waits up to three minutes for a delayed reaction, refuses draft/closed/stale heads, avoids a duplicate same-HEAD bot approval, and submits an approving GitHub Actions review tied to the verified SHA.
 
-The workflow executes trusted default-branch code without checking out PR source. It becomes available for comment events after the workflow exists on the default branch. GitHub must also allow Actions to create and approve pull requests for the final approval call to succeed.
-
-The mechanism does not verify the reviewed HEAD or the latest Ready-triggered review cycle, and an older completion/reaction can satisfy its conditions. A successful workflow run alone does not prove that an approval was created. Inspect the actual current review, relevant findings, and resulting approval separately.
+The workflow runs trusted default-branch code without checking out PR source. GitHub Actions must be permitted to approve PRs, and a submitted approval is distinct from Codex's comment/reaction or workflow success. Recheck live Ruleset approvals, any review threads, and required CI for the final HEAD. No administrative bypass is permitted; an unavailable reviewer leaves the PR blocked until an eligible approval is obtained.
 
 ## Inspect external configuration
 

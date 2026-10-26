@@ -107,8 +107,35 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")
 	}
-	if desired.Rulesets != nil || desired.Environments != nil || !desired.Pages.Empty() || !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
+	if desired.Environments != nil || !desired.Pages.Empty() || !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
 		t.Fatal("unadopted, unsupported or inactive resources must remain unmanaged")
+	}
+	if desired.Rulesets == nil || desired.Rulesets.Len() != 1 {
+		t.Fatal("manage only the existing main-branch Ruleset")
+	}
+	ruleset := desired.Rulesets.Values()[0]
+	if ruleset.ID == nil || *ruleset.ID != 24911852 || ruleset.Name != "default" ||
+		ruleset.BypassActors == nil || len(*ruleset.BypassActors) != 0 {
+		t.Fatalf("select the existing Ruleset and remove every bypass actor: %+v", ruleset)
+	}
+	approval, signed, linear := false, false, false
+	for _, rule := range *ruleset.Rules {
+		switch rule.Type {
+		case "pull_request":
+			p := rule.Parameters
+			approval = p != nil && p.RequiredApprovingReviewCount != nil &&
+				*p.RequiredApprovingReviewCount == 1 && p.RequireCodeOwnerReview != nil &&
+				*p.RequireCodeOwnerReview && p.DismissStaleReviewsOnPush != nil &&
+				*p.DismissStaleReviewsOnPush && p.RequiredReviewThreadResolution != nil &&
+				*p.RequiredReviewThreadResolution
+		case "required_signatures":
+			signed = true
+		case "required_linear_history":
+			linear = true
+		}
+	}
+	if !approval || !signed || !linear {
+		t.Fatal("the main Ruleset must keep approval, signature, and history protections")
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.
