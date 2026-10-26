@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-CLI and Action Current source supports `settings.repository.squash_merge_commit_title` and `squash_merge_commit_message` under `schemaVersion: 1`. This extends the existing repository fields; it does not introduce a resource family, change merge methods, edit PR contents or perform a merge.
+CLI and Action support `settings.repository.squash_merge_commit_title` and `squash_merge_commit_message` under `schemaVersion: 1`. This extends the existing repository fields; it does not introduce a resource family, change merge methods, edit PR contents or perform a merge.
 
-The [configuration reference](../settings.md#squash-commit-defaults-v0120) owns the public declaration and value semantics.
+The [configuration reference](../settings.md#squash-commit-defaults) owns the public declaration and value semantics.
 
 ## API contract
 
