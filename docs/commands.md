@@ -157,4 +157,3 @@ Contributors can find the [behavior specifications](features/README.md), [testin
 Plan and the credential-free Action Summary show native credential-exposure booleans and the exact approval enum. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 
 `export --pages` for [existing Pages configuration](settings.md#existing-pages-configuration). It is explicit, composable and rejects duplicate selection. Ordinary export adds no Pages requests. Complete Pages read access is required; a 404 or incomplete response fails without replacing the output. Site creation/deletion and visibility remain unsupported under #350.
-
