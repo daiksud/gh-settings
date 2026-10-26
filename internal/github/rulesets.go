@@ -246,7 +246,7 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 	if err := decoder.Decode(&result); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
-	if err := settings.ValidateObservedRuleset(result); err != nil {
+	if err := settings.ValidateRuleset(result, true); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
 	return result, nil
@@ -325,6 +325,30 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	}
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
+	}
+	if after.Rules != nil {
+		for _, rule := range *after.Rules {
+			if rule.Type != "pull_request" || rule.Parameters.DismissalRestriction != nil {
+				continue
+			}
+			// A successful PUT response alone is not the post-write GET contract.
+			// Compare every observable supported value; absent stays unobserved.
+			var readback map[string]json.RawMessage
+			if err := client.rest.Get(fmt.Sprintf("%s/%d?includes_parents=false", path, id), &readback); err != nil {
+				return fail(fmt.Errorf("read back omitted optional Ruleset parameter: %w", err))
+			}
+			var actual int64
+			if err := requiredRuleJSON(readback, "id", &actual); err != nil || actual != id {
+				return fail(fmt.Errorf("Ruleset readback ID differs from mutation identity"))
+			}
+			owned, err := rulesetOwner(readback, repo)
+			if err != nil || !owned {
+				return fail(fmt.Errorf("Ruleset readback ownership is not the selected repository"))
+			}
+			if err := verifyReviewRulesetResponse(*after, readback); err != nil {
+				return fail(fmt.Errorf("Ruleset readback differs from requested observable policy: %w", err))
+			}
+		}
 	}
 	return id, nil
 }

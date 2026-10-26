@@ -39,8 +39,11 @@ func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 	}
 	after := *changes[0].After()
 	pr, checks := ruleOf(t, after, "pull_request"), ruleOf(t, after, "required_status_checks")
-	if *pr.RequiredApprovingReviewCount != 2 || *pr.RequireCodeOwnerReview || *pr.DismissStaleReviewsOnPush || *pr.DismissalRestriction.Enabled || len(*pr.DismissalRestriction.AllowedActors) != 0 || len(*pr.RequiredReviewers) != 0 || len(*checks.RequiredStatusChecks) != 0 || *checks.StrictRequiredStatusChecksPolicy || *checks.DoNotEnforceOnCreate {
+	if *pr.RequiredApprovingReviewCount != 2 || *pr.RequireCodeOwnerReview || *pr.DismissStaleReviewsOnPush || len(*pr.RequiredReviewers) != 0 || len(*checks.RequiredStatusChecks) != 0 || *checks.StrictRequiredStatusChecksPolicy || *checks.DoNotEnforceOnCreate {
 		t.Fatal("defaults borrowed remote protection", after)
+	}
+	if !*pr.DismissalRestriction.Enabled || len(*pr.DismissalRestriction.AllowedActors) != 1 {
+		t.Fatal("optional dismissal observation was replaced by a default")
 	}
 	if !reflect.DeepEqual(*pr.AllowedMergeMethods, []string{"merge", "rebase", "squash"}) {
 		t.Fatal("merge-method default", *pr.AllowedMergeMethods)
@@ -56,7 +59,9 @@ func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 		t.Fatal(operations, err)
 	}
 	createPR := ruleOf(t, *operations[0].After(), "pull_request")
-	if !reflect.DeepEqual(pr, createPR) {
+	withoutObserved := cloneRulesetRule(RulesetRule{Type: "pull_request", Parameters: pr}).Parameters
+	withoutObserved.DismissalRestriction = nil
+	if createPR.DismissalRestriction != nil || !reflect.DeepEqual(withoutObserved, createPR) {
 		t.Fatal("create/update defaults differ")
 	}
 	*pr.RequireCodeOwnerReview = true

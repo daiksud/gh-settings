@@ -64,26 +64,6 @@ func supportedRule(kind string) bool {
 	return slices.Contains([]string{"deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
-	if err := validateRuleset(d, complete); err != nil {
-		return err
-	}
-	if complete && d.Rules != nil {
-		for _, rule := range *d.Rules {
-			if rule.Type == "pull_request" && rule.Parameters.DismissalRestriction == nil {
-				return fmt.Errorf("GitHub omitted pull_request.dismissal_restriction; cannot safely compare or update the whole Ruleset; obtain a complete API observation before managing this ID (export remains available)")
-			}
-		}
-	}
-	return nil
-}
-
-// ValidateObservedRuleset accepts documented optional absence without inferring
-// its effective value. Complete writable policies have stricter validation.
-func ValidateObservedRuleset(d RulesetDeclaration) error {
-	return validateRuleset(d, true)
-}
-
-func validateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.ID != nil && *d.ID <= 0 {
 		return fmt.Errorf("ruleset id must be a positive integer")
 	}
@@ -318,7 +298,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 	names := map[string]bool{}
 	ids := map[int64]bool{}
 	for _, v := range entries {
-		if err := ValidateObservedRuleset(v.Policy); err != nil {
+		if err := ValidateRuleset(v.Policy, true); err != nil {
 			return RulesetObservation{}, err
 		}
 		if v.ID <= 0 || ids[v.ID] || names[v.Policy.Name] {
@@ -460,6 +440,11 @@ func NewRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 			}
 		}
 	}
+	if before != nil && after != nil {
+		resolved := cloneRuleset(*after)
+		preserveOptionalDismissal(*before, &resolved)
+		after = &resolved
+	}
 	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && !reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)))
 	if !valid {
 		return RulesetChange{}, fmt.Errorf("invalid ruleset operation")
@@ -521,10 +506,7 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		}
 		prior, id := cloneRuleset(before.Policy), before.ID
 		prior.ID = &id
-		// Even an apparent no-op must not certify an unobserved protection value.
-		if err := ValidateRuleset(prior, true); err != nil {
-			return nil, fmt.Errorf("ruleset %q (id %d): %w", prior.Name, id, err)
-		}
+		preserveOptionalDismissal(prior, &after)
 		if reflect.DeepEqual(prior, after) {
 			continue
 		}
@@ -536,4 +518,23 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 	}
 	slices.SortFunc(out, func(a, b RulesetChange) int { return strings.Compare(a.Name(), b.Name()) })
 	return out, nil
+}
+
+// This optional field follows the observed wire representation when YAML omits
+// it. All other supported whole-object defaults remain independent of reads.
+func preserveOptionalDismissal(before RulesetDeclaration, after *RulesetDeclaration) {
+	if before.Rules == nil || after.Rules == nil {
+		return
+	}
+	for _, observed := range *before.Rules {
+		if observed.Type != "pull_request" || observed.Parameters == nil {
+			continue
+		}
+		for i := range *after.Rules {
+			desired := &(*after.Rules)[i]
+			if desired.Type == "pull_request" && desired.Parameters != nil && desired.Parameters.DismissalRestriction == nil {
+				desired.Parameters.DismissalRestriction = cloneRulesetRule(observed).Parameters.DismissalRestriction
+			}
+		}
+	}
 }

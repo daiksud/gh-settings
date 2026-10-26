@@ -49,8 +49,8 @@ func TestOptionalDismissalResponsePresence(t *testing.T) {
 			}
 			_, err = settings.ReconcileRulesets(observed, &exported)
 			if tc.absent {
-				if err == nil || !strings.Contains(err.Error(), "dismissal_restriction") {
-					t.Fatalf("unknown protection became a successful no-op: %v", err)
+				if err != nil {
+					t.Fatalf("omitted wire value prevented observable round trip: %v", err)
 				}
 				complete, err := decodeRulesetPolicyFromTest([]byte(fullReviewRulesetJSON))
 				if err != nil {
