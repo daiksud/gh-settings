@@ -31,7 +31,6 @@ no rules or separate policy tests.
 
 Apply the [code-review policy](../../.agents/skills/code-review/SKILL.md) for PR scope and semantic impact. Either breaking marker is sufficient. PRLint itself only invokes commitlint on the title and body; it does not implement additional semantic review rules.
 
-
 To check a proposed squash message locally after `mise install`:
 
 ```sh
