@@ -14,12 +14,14 @@ import (
 
 const (
 	settingsWorkflowPath      = ".github/workflows/settings-main.yml"
+	settingsPRWorkflowPath    = ".github/workflows/settings-pr.yml"
 	settingsEnvironment       = "gh-settings"
 	settingsGuardWorkflowPath = ".github/workflows/settings-environment-guard.yml"
 	settingsGuardCheckName    = "gh-settings"
 	settingsPlanWorkflowPath  = ".github/workflows/settings-plan.yml"
 	settingsPlanEnvironment   = "gh-settings-plan"
 	settingsPlanCheckName     = "settings-plan"
+	settingsPRCondition       = "github.event_name == 'pull_request_target' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && github.event.pull_request.base.ref == 'main'"
 )
 
 // The existing required CI pass check runs this test with the rest of the Go suite.
@@ -51,6 +53,7 @@ func TestSettingsEnvironmentScope(t *testing.T) {
 
 func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	found := 0
+	prFound := 0
 	guardChecks := 0
 	planChecks := 0
 	planEnvironments := 0
@@ -145,8 +148,19 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if !strings.EqualFold(strings.TrimSpace(name), settingsEnvironment) {
 				continue
 			}
+			if path == settingsPRWorkflowPath && jobName == "plan" && name == settingsEnvironment {
+				if err := checkSettingsPRTrigger(workflow["on"]); err != nil {
+					return fmt.Errorf("%s: on: %w", path, err)
+				}
+				condition := job["if"]
+				if condition == nil || condition.Kind != yaml.ScalarNode || condition.Value != settingsPRCondition {
+					return fmt.Errorf("%s: jobs.plan: missing trusted main PR-target condition", path)
+				}
+				prFound++
+				continue
+			}
 			if path != settingsWorkflowPath || jobName != "apply" || name != settingsEnvironment {
-				return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only as a literal in %s jobs.apply", path, jobName, name, settingsWorkflowPath)
+				return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only as a literal in %s jobs.apply or %s jobs.plan", path, jobName, name, settingsWorkflowPath, settingsPRWorkflowPath)
 			}
 			found++
 		}
@@ -154,11 +168,56 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	if found != 1 {
 		return fmt.Errorf("expected exactly one %q Environment, at %s jobs.apply; found %d", settingsEnvironment, settingsWorkflowPath, found)
 	}
+	if prFound > 1 {
+		return fmt.Errorf("expected at most one trusted PR plan Environment; found %d", prFound)
+	}
 	if guardChecks != 1 {
 		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
 	}
 	if planPresent && (planChecks != 1 || planEnvironments != 1) {
 		return fmt.Errorf("expected one protected plan and status in %s; found jobs=%d environments=%d", settingsPlanWorkflowPath, planChecks, planEnvironments)
+	}
+	return nil
+}
+
+// The allowlist can be deployed before its new caller. Absence does not grant
+// access; any PR caller selecting this Environment must meet the full boundary.
+func checkSettingsPRTrigger(node *yaml.Node) error {
+	if node == nil {
+		return fmt.Errorf("expected pull_request_target to main only")
+	}
+	events, err := settingsYAMLMap(node)
+	if err != nil {
+		return err
+	}
+	target, ok := events["pull_request_target"]
+	if !ok || len(events) != 1 {
+		return fmt.Errorf("expected pull_request_target only")
+	}
+	filters, err := settingsYAMLMap(target)
+	if err != nil {
+		return err
+	}
+	for key := range filters {
+		if key != "branches" && key != "paths" && key != "types" {
+			return fmt.Errorf("PR-target filter %q is not permitted", key)
+		}
+	}
+	branches := filters["branches"]
+	if branches == nil || branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 || branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
+		return fmt.Errorf("PR-target branches must be exactly [main]")
+	}
+	if types := filters["types"]; types != nil {
+		if types.Kind != yaml.SequenceNode || len(types.Content) != 3 {
+			return fmt.Errorf("PR-target types must be opened, synchronize and reopened")
+		}
+		seen := map[string]bool{}
+		for _, kind := range types.Content {
+			if kind.Kind != yaml.ScalarNode || seen[kind.Value] || (kind.Value != "opened" && kind.Value != "synchronize" && kind.Value != "reopened") {
+				return fmt.Errorf("unsupported PR-target activity")
+			}
+			seen[kind.Value] = true
+		}
 	}
 	return nil
 }
