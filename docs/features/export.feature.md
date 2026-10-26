@@ -88,13 +88,11 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 #### Scenario: Require a directly configured GitHub origin in current source
 
 - Given the current checkout's origin directly identifies "owner/current" through HTTPS, `git@github.com:owner/current.git` or a full SSH URL
-
 - Then the settings are read from "owner/current" on GitHub
 
 #### Scenario: Reject an SCP origin without a username in current source
 
 - Given the current checkout's origin is "github.com:owner/current.git"
-
 - Then the command fails with a repository-resolution diagnostic
 - And no GitHub API request is made
 
@@ -110,7 +108,6 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 
 - Given the current checkout's origin is a Git alias for "owner/current"
 - And Git `insteadOf` rewrites the alias to a GitHub URL
-
 - Then the command fails with a repository-resolution diagnostic
 - And no GitHub API request is made
 
