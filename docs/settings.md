@@ -617,11 +617,51 @@ Migration: use the **new CLI** to `export --rulesets`, review IDs and every supp
 
 [Rulesets REST](https://docs.github.com/en/rest/repos/rules) documents Metadata read for GET and Administration write for mutations; complete bypass visibility additionally requires Ruleset write access. Missing bypass actors are an error, never an empty set. GitHub validates account/plan prerequisites, including Enterprise-only evaluate; no permission expansion or workaround is performed. See [availability and layering](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) and the [behavior/test contract](features/rulesets.feature.md). This source change neither applies live policy nor publishes a release.
 
+## Environments
+
+Current **unreleased** source adds named Environment management. Published v0.19.0 and older packages reject `settings.environments` and `export --environments`. This implementation supersedes the existing-only, omitted-field preservation proposal in historical [ADR 0029](adr/0029-environment-ownership-and-protection.md).
+
+```yaml
+schemaVersion: 1
+settings:
+  environments:
+    - name: production
+      wait_timer: 30
+      prevent_self_review: true
+      reviewers: [{type: User, id: 123}]
+      deployment_branch_policy:
+        protected_branches: true
+        custom_branch_policies: false
+```
+
+Names are identity: a listed name updates that Environment or creates it when absent, using GitHub's ordinary name-addressed upsert. Omitted/empty collections select nothing. Unlisted names are never deleted or changed. Changing a name selects another object and leaves the old one unmanaged; there is no rename/delete operation. Unlike labels/Rulesets, Environment declarations have **no numeric `id`**, and apply never writes an Environment ID into YAML.
+
+Names contain 1–255 Unicode characters without surrounding whitespace or control characters. Client identity and duplicate detection use Unicode simple folding; spelling is retained, and names including slash/percent are URL-encoded as one path segment. This is the client's case-insensitive comparison policy, not a claim that every undocumented GitHub Unicode equivalence is reproduced.
+
+Each selected object owns the complete supported policy, with identical fixed defaults on create and update:
+
+| Field | Omitted default | Accepted explicit values |
+| --- | --- | --- |
+| `wait_timer` | `0` (no delay) | Integer 0–43200 minutes |
+| `prevent_self_review` | `false` | Boolean; true requires a nonempty reviewer set |
+| `reviewers` | `[]` (no required reviewers) | At most six unique `{type: User\|Team, id: positive-integer}` references |
+| `deployment_branch_policy` | `null` (all branches/tags) | Null, or both `protected_branches: true` and `custom_branch_policies: false` |
+
+Only `deployment_branch_policy` accepts null. Other nulls, unknown fields, Environment IDs, deletion/rename markers, human-reference-only reviewers and custom branch/tag mode are rejected locally. GitHub validates reviewer access, account/plan eligibility and write permission; this tool does not invite principals or expand permissions. Protected-branches mode can permit all branches when no branch protections exist; successful configuration does not prove a deployment is protected.
+
+Plan shows complete selected before/after policies, including default-derived removal of timers, reviewers and branch restrictions. Nonempty selections count once as managed. Reads require complete inventory and selected detail/protection responses; missing/null containers, malformed values, unknown rules, custom deployment protection rules and unreadable responses fail rather than becoming empty/default state. Server-generated Environment metadata is not writable configuration. An observed unsupported root setting, including `can_admins_bypass`, is rejected because its safe setter/preservation contract is not established; it is not silently dropped or guessed.
+
+Apply preflights all selected policies, then performs stable name-order upserts with fresh prerequisite reads and complete supported payloads. It verifies the returned policy and fresh readback, including custom-protection absence. Earlier writes remain applied on later failure; a PUT/response/readback failure may have applied and is reported as uncertain. There is no transaction, automatic rollback, concurrency lock or guarantee that the numeric Environment incarnation remains unchanged. Concurrent name-addressed creation/update follows normal GitHub upsert behavior.
+
+Explicit `export --environments` includes every observed supported Environment policy, without numeric Environment IDs. Unsupported/unreadable settings stop export before file replacement. Ordinary export does not acquire Environment permissions. Review exported defaults and plan before apply: a name-only declaration intentionally resets supported protections, not merely asserts existence. No secrets or Environment variables are read/exported/managed.
+
+[REST Environments](https://docs.github.com/en/rest/deployments/environments) documents Actions read and Administration write; [custom deployment protection reads](https://docs.github.com/en/rest/deployments/protection-rules#get-all-deployment-protection-rules-for-an-environment) are additionally required for selected existing objects. Local fixtures establish client requests/failure handling, not live API preservation, entitlement or effective deployment security. See [behavior/test coverage](features/environments.feature.md).
+
 ## Unsupported settings
 
 Collaborator grants, repository invitations and team access remain unsupported in source and published packages. The [access design](features/repository-access.feature.md) describes proposed ownership and adoption gates; its examples are not accepted configuration.
 
-Environment configuration, lifecycle, deployment protections and branch/tag policies remain unsupported in source and published packages. The contributor [Environment design](features/environments.feature.md) reserves possible syntax and records adoption gates; it does not extend the accepted YAML schema or export options.
+Environment deletion/rename, custom branch/tag patterns, administrator-bypass management, secrets and variables remain unsupported. Published packages do not gain the new source capability merely by checking out newer configuration.
 
 Pages lifecycle and visibility changes, and unadopted Actions settings, are not supported. Rulesets support is limited to the current-source subset above; push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
 
