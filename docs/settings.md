@@ -328,7 +328,7 @@ settings:
     has_discussions: false
 ```
 
-Omission leaves the value unmanaged; explicit `false` remains a declared value. Null, quoted booleans, and other types are invalid. Export includes the observed value only after complete reads;  Existing configurations that omit this field keep their previous managed count.
+Omission leaves the value unmanaged; explicit `false` remains a declared value. Null, quoted booleans, and other types are invalid. Export includes the observed value only after complete reads.
 
 Plan reads the value from the existing repository REST GET without an additional GraphQL query. Apply sends it only when declared, through the existing Administration-write PATCH. When declared, a successful PATCH must return the same boolean; a missing, null, wrongly typed, or unequal value is an error. This check occurs after the request and does not roll back repository writes or prove transactional application. No prerequisite read, implicit enabling, or additional permission is introduced.
 
@@ -649,8 +649,6 @@ Pages lifecycle and visibility changes, and unadopted Actions settings, are not 
 
 [^github-update-repository]: [GitHub REST API — Update a repository](https://docs.github.com/en/rest/repos/repos#update-a-repository), checked on 2026-10-11 for the five body parameters and their request body placement. This reference does not expand the supported scope.
 
-[^github-delete-labels]: [GitHub — Deleting a label](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/managing-labels#deleting-a-label), including removal from associated issues and pull requests.
-
 [^github-labels]: [GitHub Labels REST API](https://docs.github.com/en/rest/issues/labels), including listing and mutation permissions.
 
 [^github-repository-openapi]: [GitHub official OpenAPI schema](https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json), checked on 2026-10-12 for nullable full-repository description/homepage values and optional string parameters in `PATCH /repos/{owner}/{repo}`.
@@ -680,4 +678,3 @@ Plan is read-only and shows native string/boolean/null differences. Workflow sou
 Configuration convergence does not establish DNS, certificate or deployment readiness. Pending operational metadata does not create a configuration difference; a server refusal (including HTTPS not yet ready) fails the operation. GitHub may publish or create a CNAME-file commit as a consequence of settings changes; gh-settings neither triggers a build/deployment nor edits DNS/content itself.
 
 Pages GET requires Pages read (public resources may be readable without authentication); mutations require Pages write plus Administration write and the applicable actor authorization. Public GET success does not prove write grants. A private repository can have a public site; observed `public` is preserved, never used as a write key. Site creation/deletion, visibility/access changes, unknown lifecycle keys and permission expansion remain unsupported. See the [Pages contract and evidence limits](features/pages.feature.md).
-
