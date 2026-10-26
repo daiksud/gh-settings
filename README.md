@@ -6,8 +6,6 @@ The extension uses your existing `gh` authentication. Actions use one GitHub App
 
 The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged; declared collections control their complete membership.
 
-Current source removes organization-only custom-property values and private repository forking. These features were published before 1.0 in v0.18.x. See the [migration instructions](docs/settings.md#custom-property-values) before upgrading; existing remote settings are left unmanaged.
-
 ## Install
 
 Install [GitHub CLI](https://cli.github.com/) and Git. Authenticate with `gh auth login` if needed, then check your credentials with `gh auth status`.
@@ -20,20 +18,6 @@ gh settings --version
 Published binaries support macOS on Apple Silicon (`arm64`) and Linux on x86-64 (`amd64`). See the [latest release](https://github.com/daiksud/gh-settings/releases/latest) for assets and checksums, or the [development guide](docs/contributing/development.md) to build from source.
 
 Update with `gh extension upgrade gh-settings`, or uninstall with `gh extension remove gh-settings`.
-
-The published [v0.18.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0) added private plan reporting, Sponsor visibility, repository archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. The examples now select immutable v0.19.0 for corrected declared-only Ruleset reporting; that release removes the two organization-only features. Review [package identity and migration](docs/github-actions.md#published-package-and-consumer-pins) and the [configuration reference](docs/settings.md) before adopting the pin.
-
-[v0.10.0](https://github.com/daiksud/gh-settings/releases/tag/v0.10.0) adds three [repository merge-method booleans](docs/features/merge-methods.feature.md). The pinned examples include them; v0.9.0 and older packages do not accept these keys.
-
-[v0.11.0](https://github.com/daiksud/gh-settings/releases/tag/v0.11.0) adds the [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The selected v0.19.0 package includes this key; publication does not change the repository's live policy.
-
-[v0.12.0](https://github.com/daiksud/gh-settings/releases/tag/v0.12.0) adds [squash commit title/body defaults](docs/features/squash-commit-defaults.feature.md). The selected v0.19.0 package includes these keys; publication does not change live policy.
-
-[v0.13.0](https://github.com/daiksud/gh-settings/releases/tag/v0.13.0) adds [`allow_auto_merge` and `allow_update_branch`](docs/features/pull-request-options.feature.md). The selected v0.19.0 package includes these keys; publication does not change live policy.
-
-[v0.14.0](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md). The selected v0.19.0 package includes these keys; publication does not change live policy.
-
-[v0.15.0](https://github.com/daiksud/gh-settings/releases/tag/v0.15.0) adds [`has_discussions`](docs/features/discussions.feature.md). The pinned package includes this optional boolean; v0.14.0 and older packages reject it.
 
 ## Quick start
 
