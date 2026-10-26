@@ -92,7 +92,7 @@ The completed [source-refactoring series](https://github.com/daiksud/gh-settings
 - Keep schema versioning, resource grouping, partial declarations, false/empty values, accepted YAML aliases and merges, strict validation, and checkout/target isolation.
 - Validate before remote work and omit unmanaged fields from updates. Repository/topics apply remains direct; labels adds only the fresh collection reconciliation described above. No resource consumes a saved plan or gains drift protection, automatic rollback, or retries.
 - Preserve explicit credential ownership, release artifact verification, and the distinction among consumer, Action, and CLI identities.
-- Put tests with the owner of a current requirement. Retired wrappers, internal interfaces, and historical fixture combinations do not require compatibility shims merely because they once existed.
+- Put tests with the owner of a current requirement. Retired wrappers, internal interfaces, and historical fixture combinations do not require compatibility shims merely because they once existed. The [v0.x compatibility policy](../../AGENTS.md#v0x-compatibility-policy) also governs public CLI, Action, and configuration changes.
 - Extend useful concrete structure when a resource is requested; avoid speculative registries or a package for every concept.
 
 Two deliberate behavior simplifications remain current: empty CLI plan/apply succeeds before target/authentication work, and origins must directly identify GitHub.com through supported HTTPS, `git@` SCP, or full SSH forms. Rewrite-only aliases and username-less SCP have no fallback mode. Exact user behavior belongs in the [command reference](../commands.md).
