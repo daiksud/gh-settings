@@ -19,13 +19,14 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	var document struct {
 		SchemaVersion int `yaml:"schemaVersion"`
 		Settings      struct {
-			Repository yaml.Node                          `yaml:"repository"`
-			Topics     *topicsDocument                    `yaml:"topics,omitempty"`
-			Labels     *[]labelDocument                   `yaml:"labels,omitempty"`
-			Rulesets   *[]settings.RulesetDeclaration     `yaml:"rulesets,omitempty"`
-			Actions    *settings.ActionsPolicyDeclaration `yaml:"actions,omitempty"`
-			Security   *settings.SecurityDeclaration      `yaml:"security,omitempty"`
-			Pages      map[string]any                     `yaml:"pages,omitempty"`
+			Repository   yaml.Node                          `yaml:"repository"`
+			Topics       *topicsDocument                    `yaml:"topics,omitempty"`
+			Labels       *[]labelDocument                   `yaml:"labels,omitempty"`
+			Rulesets     *[]settings.RulesetDeclaration     `yaml:"rulesets,omitempty"`
+			Environments *[]settings.EnvironmentDeclaration `yaml:"environments,omitempty"`
+			Actions      *settings.ActionsPolicyDeclaration `yaml:"actions,omitempty"`
+			Security     *settings.SecurityDeclaration      `yaml:"security,omitempty"`
+			Pages        map[string]any                     `yaml:"pages,omitempty"`
 		} `yaml:"settings"`
 	}
 	document.SchemaVersion = 1
@@ -54,6 +55,10 @@ func EncodeConfig(declaration settings.Declaration) ([]byte, error) {
 	if declaration.Rulesets != nil {
 		values := declaration.Rulesets.Values()
 		document.Settings.Rulesets = &values
+	}
+	if declaration.Environments != nil {
+		values := declaration.Environments.Values()
+		document.Settings.Environments = &values
 	}
 	if !declaration.Actions.Empty() {
 		if err := declaration.Actions.Validate(); err != nil {
@@ -124,6 +129,14 @@ func DecodeConfig(data []byte) (settings.Declaration, error) {
 			return settings.Declaration{}, err
 		}
 		for group, value := range groups {
+			if group == "environments" {
+				environments, err := parseEnvironments(&value)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				declaration.Environments = environments
+				continue
+			}
 			if group == "pages" {
 				d, err := parsePages(&value)
 				if err != nil {

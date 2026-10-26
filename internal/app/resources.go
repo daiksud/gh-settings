@@ -27,6 +27,7 @@ type Reader struct {
 	Topics              func(repository.Repository) ([]string, error)
 	Labels              func(repository.Repository) (settings.LabelObservation, error)
 	Rulesets            func(repository.Repository) (settings.RulesetObservation, error)
+	Environments        func(repository.Repository, []string) (settings.EnvironmentObservation, error)
 }
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
@@ -56,4 +57,6 @@ type Writer struct {
 	DeleteLabel          func(repository.Repository, settings.LabelChange) error
 	ReadRulesets         func(repository.Repository) (settings.RulesetObservation, error)
 	Ruleset              func(repository.Repository, settings.RulesetChange) (int64, error)
+	ReadEnvironments     func(repository.Repository, []string) (settings.EnvironmentObservation, error)
+	Environment          func(repository.Repository, settings.EnvironmentDeclaration) (bool, error)
 }

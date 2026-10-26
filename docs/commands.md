@@ -4,6 +4,12 @@
 
 Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). The maintained examples select v0.18.0; adopting its pin does not expand caller grants or change settings by itself.
 
+## Environment export (unreleased source)
+
+`gh settings export --environments` includes all supported named Environment policies and composes with other export options. It requires complete Environment/custom-protection reads and preserves the existing output-file safety contract. Ordinary export does not read Environments. Published v0.19.0 and earlier reject this option.
+
+`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments) in current source. Names select ordinary create-or-update, not numeric IDs. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries reset supported settings to documented defaults; inspect plan before apply.
+
 ## Scope and status
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.

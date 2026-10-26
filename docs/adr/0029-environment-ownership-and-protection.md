@@ -6,7 +6,7 @@ description: Define named existing-environment intent without implicit deletion,
 
 ## Status
 
-Design decision for #351. Documentation only; no Environment key or export option is implemented. #352 and #353 remain subject to the evidence gates in the specification. Closing a design issue does not remove those gates.
+Historical design decision for #351. Current-source [Environment management](../settings.md#environments) supersedes this record's existing-only, field-level omission and numeric-incarnation binding proposals with named whole-object upsert and fixed defaults. The original rationale below is retained as history, not the current accepted YAML contract. Custom-mode and administrator-bypass adoption remain deferred; neither this record nor source implementation authorizes live protection changes.
 
 ## Context
 

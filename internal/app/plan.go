@@ -106,6 +106,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed++
 		comparison.Rulesets = changes
 	}
+	if desired.Environments != nil && desired.Environments.Len() > 0 {
+		observed, err := read.Environments(repo, environmentNames(desired.Environments))
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		changes, err := settings.ReconcileEnvironments(observed, desired.Environments)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.Environments = changes
+	}
 	if !desired.Actions.ExecutionEmpty() {
 		observed, err := read.Actions(repo, !desired.Actions.SelectedActions.Empty())
 		if err != nil {

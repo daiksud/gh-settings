@@ -7,20 +7,21 @@ import (
 
 // Declaration holds only explicitly managed values for each supported resource.
 type Declaration struct {
-	Repository RepositoryDeclaration
-	Topics     TopicsDeclaration
-	Labels     *LabelDeclarations
-	Rulesets   *RulesetDeclarations
-	Actions    ActionsPolicyDeclaration
-	Security   SecurityDeclaration
-	Pages      PagesDeclaration
+	Repository   RepositoryDeclaration
+	Topics       TopicsDeclaration
+	Labels       *LabelDeclarations
+	Rulesets     *RulesetDeclarations
+	Environments *EnvironmentDeclarations
+	Actions      ActionsPolicyDeclaration
+	Security     SecurityDeclaration
+	Pages        PagesDeclaration
 }
 
 // TopicsDeclaration distinguishes omitted names from an explicitly empty list.
 type TopicsDeclaration struct{ Names *[]string }
 
 func (d Declaration) Empty() bool {
-	return d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
+	return d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
 }
 
 // ValidateTopics follows GitHub's canonical topic naming rules.
