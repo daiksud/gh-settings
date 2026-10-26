@@ -6,7 +6,7 @@ description: Select whole Ruleset objects by numeric ID without deleting unliste
 
 ## Status and goal
 
-Current source adopts **unreleased** ID-selected whole-object ownership. Published v0.19.0 and earlier retain name adoption, outer membership deletion and field-level omission preservation. The [configuration reference](../settings.md#rulesets) owns schema, fixed defaults and migration. Historical [ADR 0025](../adr/0025-declarative-repository-rulesets.md) remains a record of the superseded ownership decision.
+Current source adopts **unreleased** ID-selected whole-object ownership. The [configuration reference](../settings.md#rulesets) owns schema, fixed defaults and migration. Historical [ADR 0025](../adr/0025-declarative-repository-rulesets.md) remains a record of the superseded ownership decision.
 
 ## Ownership and identity
 
