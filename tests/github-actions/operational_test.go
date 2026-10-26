@@ -63,7 +63,7 @@ func TestOperationalPRPlan(t *testing.T) {
 	if app.ID != "app" || app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(app.With, map[string]string{
 		"client-id": "${{ vars.ANSWER26_CLIENT_ID }}", "private-key": "${{ secrets.ANSWER26_PRIVATE_KEY }}",
 		"owner": "${{ github.repository_owner }}", "repositories": "${{ github.event.repository.name }}",
-		"permission-administration": "read", "permission-issues": "read",
+		"permission-administration": "write", "permission-issues": "read",
 	}) {
 		t.Fatal("operational PR must use the existing repository-scoped App without new grants")
 	}

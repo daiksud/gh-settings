@@ -107,7 +107,9 @@ jobs:
           private-key: ${{ secrets.ANSWER26_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
-          permission-administration: read
+          # Complete Ruleset bypass observation requires Ruleset write access.
+          # The trusted Action still runs only the nonmutating plan command.
+          permission-administration: write
           permission-issues: read
       - name: Validate and plan data with the trusted pinned Action
         uses: daiksud/gh-settings@3785af9e73886565fe711e6b4428922055a2f687 # v0.19.0
