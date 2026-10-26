@@ -46,7 +46,7 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 - Omitted fields are unmanaged and produce no difference.
 - Explicit false and empty strings are managed values.
-- Show changed REST fields in description, homepage, has_issues, has_projects, has_wiki, has_discussions order, followed by the [merge-related fields](../commands.md#plan-behavior), topics and labels. Discussions is supported since v0.15.0; v0.14.0 retains the five-field REST state.
+- Show changed REST fields in description, homepage, has_issues, has_projects, has_wiki, has_discussions order, followed by the [merge-related fields](../commands.md#plan-behavior), topics and labels.
 - Each line uses `settings.repository.FIELD: CURRENT → DESIRED`.
 - Strings are double-quoted with Go string escaping; booleans use `true` or `false`.
 - Equal managed values produce `No differences for managed repository settings.`
@@ -92,13 +92,11 @@ Test mapping: [TestTopicsSetComparison](../../internal/settings/topics_test.go),
 
 ### Rule: Show label collection operations
 
-Current unreleased source reads nonempty label selections and reports typed creates and ID-selected whole-object updates, including default-derived changes. An empty list selects nothing and counts as unmanaged. The [Labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures) owns label comparison scenarios and test mappings. Published v0.19.0 and earlier retain the legacy label contract.
+Current unreleased source reads nonempty label selections and reports typed creates and ID-selected whole-object updates, including default-derived changes. An empty list selects nothing and counts as unmanaged. The [Labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures) owns label comparison scenarios and test mappings.
 
 ### Rule: Actions execution policy comparison
 
 Current source compares six independent managed fields and explicitly marks inactive selected before values unavailable. The [Actions policy specification](actions-execution-policy.feature.md#rule-plan-inactive-values-honestly) owns native comparisons, Summary validation and error boundaries.
-
-### Rule: Compare the complete v0.18.0 feature set without writes
 
 Plan reads only declared resources, retaining registry order for repository fields and resource order for collections/policies. Current source supports twenty-five scalar repository fields, topics, labels, Rulesets, fourteen Actions fields, three security fields, five Pages fields and custom properties. Each scalar counts once and each managed resource collection according to its selection contract. Report validation and a valid explicit-unarchive declaration have a closed upper bound of fifty-one. All resources retain closed native before/after values. Unknown, denied, inapplicable or incomplete observations fail and discard earlier partial comparisons. A zero plan covers only successfully observed managed intent; it proves neither write permission nor future drift protection.
 

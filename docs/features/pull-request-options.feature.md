@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-CLI and Action v0.13.0 support optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. Published v0.12.0 rejects these keys; the pinned v0.18.0 examples support them. This extends the existing repository group, with no new resource family or credential permissions.
+CLI and Action support optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. This extends the existing repository group, with no new resource family or credential permissions.
 
-The [configuration reference](../settings.md#auto-merge-and-branch-updates-v0130) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
+The [configuration reference](../settings.md#auto-merge-and-branch-updates) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
 
 ## API and execution contract
 
@@ -17,7 +17,7 @@ The [REST update endpoint](https://docs.github.com/en/rest/repos/repos#update-a-
 
 Omission is unmanaged, false is a declared value, and null/non-booleans fail local validation before target/authentication/API access. Existing strict spelling, alias/merge and duplicate-key rules apply. Fields are independent; neither requires or infers any other repository setting.
 
-The shared `MergeMethodsState`, fixed query and deferred read retain their names and now contain six booleans and four commit enums. Declaring only either new option skips the base REST read. Omitting all merge-related fields skips GraphQL. A complete ten-field current-source observation (eight in v0.13.0) is required for any merge-related plan/export read: missing/null/invalid values or GraphQL errors including partial data discard the entire observation. Earlier partial plan comparisons are discarded, and export preserves the prior file on failure.
+The shared `MergeMethodsState`, fixed query and deferred read retain their names and now contain six booleans and four commit enums. Declaring only either new option skips the base REST read. Omitting all merge-related fields skips GraphQL. Earlier partial plan comparisons are discarded, and export preserves the prior file on failure.
 
 Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 

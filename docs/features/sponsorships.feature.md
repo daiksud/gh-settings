@@ -6,7 +6,7 @@ description: Manage the Sponsorships boolean without managing funding destinatio
 
 ## Feature: Manage repository Sponsor button visibility
 
-Published v0.18.0 supports `settings.repository.has_sponsorships` under `schemaVersion: 1`. It maps to GraphQL `hasSponsorshipsEnabled`. Published v0.17.0 and older packages reject the key.
+Current source supports `settings.repository.has_sponsorships` under `schemaVersion: 1`. It maps to GraphQL `hasSponsorshipsEnabled`.
 
 ### Rule: Preserve omission and native booleans
 

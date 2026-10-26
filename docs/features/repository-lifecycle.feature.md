@@ -6,7 +6,7 @@ description: Define archival sequencing and the boundary for deferred identity a
 
 ## Status and scope
 
-Archive/unarchive is published in v0.18.0 according to [ADR 0027](../adr/0027-repository-lifecycle.md). Published v0.17.0 and older packages reject `repository.archived`; #333 and #334 remain deferred, and `repository.visibility`, `repository.private`, and `repository.name` are unsupported. No real repository lifecycle operation or token permission was used as release evidence.
+Archive/unarchive is supported according to [ADR 0027](../adr/0027-repository-lifecycle.md). No real repository lifecycle operation or token permission was used as release evidence.
 
 The target stays the checkout's GitHub.com origin. There is no repository creation, deletion, transfer, fork migration, organization policy update, local-origin rewrite, saved-plan execution, or automatic rollback.
 
@@ -50,8 +50,6 @@ A concurrent state change is not an authorization to undo it blindly. Re-read at
 Permission loss or an inaccessible repository after a transition is an unknown result, not proof that it is deleted or that the transition failed remotely. Operators inspect and recover deliberately. Do not promise the repository's own workflow can later unarchive it; a trusted external checkout or GitHub's administrator interface may be needed. No additional credential is requested or provisioned automatically.
 
 ## Examples of the intended interface
-
-These examples are supported by published v0.18.0; v0.17.0 and older Action/CLI packages do not support them.
 
 ```yaml
 schemaVersion: 1

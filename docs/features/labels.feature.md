@@ -6,7 +6,7 @@ description: Create ID-less labels and reconcile whole supported ID-selected obj
 
 ## Feature: Manage repository labels
 
-Current source adopts ID-based ownership; this is unreleased. Published v0.19.0 and earlier keep the legacy authoritative collection contract. The [settings reference](../settings.md#labels) owns the schema and migration instructions.
+Current source adopts ID-based ownership; this is unreleased. The [settings reference](../settings.md#labels) owns the schema and migration instructions.
 
 ### Rule: Select objects, never delete unlisted labels
 

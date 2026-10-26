@@ -135,19 +135,17 @@ Test mapping: [TestTopicsConfigPresenceAndRoundTrip and TestTopicsConfigRejectsI
 
 ### Rule: Validate label declarations
 
-Current unreleased source validates listed whole label objects with positive optional IDs, required names/colors and optional descriptions. Empty selections manage nothing; duplicate IDs/names, null and unknown fields fail before API access. The [Labels specification](labels.feature.md#rule-select-objects-never-delete-unlisted-labels) owns the contract. Published v0.19.0 and earlier retain authoritative-list semantics.
+Current unreleased source validates listed whole label objects with positive optional IDs, required names/colors and optional descriptions. Empty selections manage nothing; duplicate IDs/names, null and unknown fields fail before API access. The [Labels specification](labels.feature.md#rule-select-objects-never-delete-unlisted-labels) owns the contract.
 
 ### Rule: Validate the optional Discussions field
 
-v0.15.0 and current source accept omitted `has_discussions` or an explicit native boolean under `settings.repository`. Omission remains unmanaged; false remains declared. Null, quoted booleans, numbers, collections and legacy boolean spellings fail before origin/authentication/API access. Published v0.14.0 rejects this key. The [Discussions specification](discussions.feature.md) owns its behavior and test boundaries.
+Omission remains unmanaged; false remains declared. Null, quoted booleans, numbers, collections and legacy boolean spellings fail before origin/authentication/API access. The [Discussions specification](discussions.feature.md) owns its behavior and test boundaries.
 
 Test mapping: [TestDiscussionsDeclaration](../../internal/workspace/discussions_test.go) and [TestApplyAcceptance](../../tests/acceptance/apply_test.go).
 
 ### Rule: Actions execution policy validation
 
 Current source accepts only the strict optional `actions` mapping. The [Actions policy specification](actions-execution-policy.feature.md#rule-validate-only-explicit-native-values) owns omission/false/empty/null semantics and zero-network failure cases.
-
-### Rule: Validate all adopted fields in the v0.18.0 package locally
 
 Validation accepts twenty-four repository fields, ID-selected whole-object Rulesets, fourteen Actions policy fields, three adopted security booleans, five Pages fields. Omission remains unmanaged; false and supported empty collections remain explicit; Pages cname null is the endpoint-specific clear operation; other nulls follow their resource contracts. Unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Pages lifecycle/visibility, organization-only settings and other gated candidates are not accepted.
 
