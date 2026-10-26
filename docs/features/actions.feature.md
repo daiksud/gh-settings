@@ -67,7 +67,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 ### Rule: A release selects the same Action and CLI version
 
 - Invoke the root Action as `uses: daiksud/gh-settings@<approved full commit SHA>`; use a reviewed revision containing the implemented package.
-- The Action revision selects packaged support code and the committed CLI version; see the [consumer pins](../github-actions.md#published-package-and-consumer-pins). [Older release limitations](../contributing/releases.md#historical-release-limitations) remain historical; source changes never rewrite immutable tags or assets.
+- The Action revision selects packaged support code and the committed CLI version; see the [consumer pins](../github-actions.md#published-package-and-consumer-pins). Source changes never rewrite immutable tags or assets.
 - The committed `action/cli-version` selects an explicit CLI release. Download only its `gh-settings-linux-amd64` asset and `SHA256SUMS` through fixed upstream HTTPS paths; require one well-formed checksum for that asset, verify it before execution, and check the exact reported version. A SHA pin fixes the version; the checksum is trusted from that GitHub release. Never fall back to latest or accept an arbitrary URL.
 - A strict version-tag invocation must agree with the committed CLI version or fail before download. SHA-pinned and local invocations read the committed version. Future release publication requires that same version; it cannot silently retain an older CLI.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.
@@ -207,7 +207,7 @@ Changed values retain native string/bool/topic-list meaning. No-difference, unma
 
 ### Rule: Private plan reporting does not publish observed values
 
-Published v0.18.0 adds opt-in `plan-reporting: status-only`. Published v0.17.0 and older packages do not implement it. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts. Package availability does not activate the protected observer tracked by #380.
+Current source supports opt-in `plan-reporting: status-only`. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts. Package availability does not activate the protected observer tracked by #380.
 
 #### Scenario: A private plan reports status without hidden policy
 
@@ -242,4 +242,4 @@ Test mapping: [TestTopicsSummaryNativeAndJSONLists](../../internal/actions/summa
 
 ### Rule: Present typed label operations
 
-The same-version report/Summary presents typed label operations. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The installer and maintained examples select published v0.19.0 from immutable source `3785af9e73886565fe711e6b4428922055a2f687`; it includes #412's declared-only Ruleset projection correction. Unreleased ID-owned object contracts are not attributed to this package; source protocol tests and published-package verification remain separate evidence.
+The same-version report/Summary presents typed label operations. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. Unreleased ID-owned object contracts are not attributed to this package; source protocol tests and published-package verification remain separate evidence.

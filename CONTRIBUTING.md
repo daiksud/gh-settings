@@ -75,9 +75,15 @@ User documentation explains how to use the published interface and understand it
 
 Contributor documentation explains how the implementation works and how this project is developed and maintained. Internal report schemas, fixture wiring, this repository's credential names, and release publication procedures belong under `docs/contributing/`.
 
-ADRs and behavior specifications remain at their existing paths so decision numbers and scenario links stay stable. Read ADR context as a historical record; update status and supersession links when decisions change, and describe the current implementation in the architecture guide. Keep proposed behavior clearly separate from supported behavior. Mark implemented but unreleased behavior explicitly, and identify which CLI or Action version can use it; source support does not make the currently pinned Action capable of that behavior.
+Keep current behavior specifications and useful accepted architectural decisions accurate. Remove retired feature documentation instead of preserving a v0 archive. Distinguish current source behavior from capabilities of a pinned published Action where that affects execution; do not maintain release-by-release comparisons.
 
 ### Keep each contract in one place
+
+During v0.x, maintain documentation for current contracts only. Do not add
+previous-release feature matrices, compatibility histories, retired feature
+guides, or upgrade/migration instructions for obsolete formats. Git history
+and immutable published releases preserve the past; the source documentation
+does not. Keep the selected Action pin and CLI identity as operational facts.
 
 - Link to the detailed reference from quick starts and examples instead of copying its full explanation.
 - Update user references and affected behavior specifications with a behavior change; do not require users to infer the contract from test code or ADRs.

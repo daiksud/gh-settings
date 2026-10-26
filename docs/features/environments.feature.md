@@ -1,6 +1,6 @@
 # Feature: Named Environment policies
 
-Status: implemented in current **unreleased** source for the bounded protection subset of #352. Published v0.19.0 and earlier reject all Environment keys/options. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) retains the earlier existing-only/field-preservation proposal; the accepted current contract is [Environments](../settings.md#environments).
+Status: implemented in current source for the bounded protection subset of #352. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) retains the earlier existing-only/field-preservation proposal; the accepted current contract is [Environments](../settings.md#environments).
 
 ## Ownership and defaults
 

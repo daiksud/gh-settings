@@ -4,7 +4,11 @@ Copy these workflows into the repository whose settings you want to manage. The 
 
 Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
-The selected immutable v0.19.0 package includes the declared-only Ruleset report correction required by this privileged observer pattern. It removes organization-only custom properties/private repository forking; remove those declarations before adopting this pin. It does not include unreleased label/Ruleset ID ownership or named Environment management. Published label/Ruleset collections remain authoritative; review deletion consequences and resource-specific permissions in the [package guide](../../docs/github-actions.md#published-package-and-consumer-pins).
+The examples pin a published Action and CLI. **Safety:** its current v0.19.0
+label and Ruleset contracts are authoritative: unlisted labels or repository
+Rulesets are deleted, potentially removing branch protection. Do not apply
+current-source ID-selected declarations through this pin. Inspect the selected binary's contract and
+permissions in the [Action guide](../../docs/github-actions.md#labels-and-permissions).
 
 ## Copy the workflows
 

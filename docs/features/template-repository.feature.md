@@ -2,7 +2,7 @@
 
 ## Status
 
-Published in v0.16.0 and implemented in current source. Published v0.15.1 and older CLI/Action packages reject `settings.repository.is_template`. The [settings reference](../settings.md#template-repository) owns usage and package-adoption guidance.
+supported and implemented in current source. The [settings reference](../settings.md#template-repository) owns usage and package-adoption guidance.
 
 ## Behavior
 
