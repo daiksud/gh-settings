@@ -30,14 +30,14 @@ Authors propose the PR's Conventional Commits type and labels, and reviewers che
 
 Any path-based label automation must be limited to unambiguous file categories. A source path alone cannot decide whether a change is a feature, fix, performance improvement, refactor, or compatibility break. Reviewers correct semantic labels and remove stale path suggestions when the diff changes; automatic message validation checks syntax, not that judgment.
 
-Before merging, reconcile the final title, labels, body, and compatibility information with the final diff. Retain the single-purpose PR policy and both breaking-change signals required by the [code-review policy](.agents/skills/code-review/SKILL.md). Editing a PR after merge does not rewrite its existing squash commit.
+Before merging, reconcile the final title, labels, body, and compatibility information with the final diff. Retain the single-purpose PR policy and either Conventional Commits breaking-change marker under the [code-review policy](.agents/skills/code-review/SKILL.md). Editing a PR after merge does not rewrite its existing squash commit.
 
 ### Write PR bodies for the Git history
 
 The PR body is intended to become the squash commit message. Use the [PR template](.github/pull_request_template.md) to leave a durable explanation that is understandable from `git log` alone:
 
 - **Why**: state the concrete problem and its impact, including the essential background even when an Issue already describes it.
-- **What changed**: explain the resulting behavior and how it solves the problem. Include non-obvious design reasons and any compatibility, migration, or operational effects needed to use or maintain the change.
+- **What changed**: explain the resulting behavior and how it solves the problem. Include non-obvious design reasons and material behavioral or operational effects.
 - **Verification**: summarize the behavior or cases checked, the method, and observed results. State any gap that limits the claimed outcome. The [testing guide](docs/contributing/testing.md) helps select appropriate checks.
 
 Issue, test, and CI links supplement this explanation; the problem, decisions, and verification results must remain understandable if those links are unavailable. Use `Closes #123` only when the PR completes the issue.
@@ -106,4 +106,4 @@ The existing Markdown check validates relative files and heading fragments. When
 
 Merging a PR does not publish a release or authorize one. Without an explicit release request, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers automatic version preparation, tested binary identity, and immutable release recovery.
 
-Version preparation derives the next version from durable squash messages and updates `action/cli-version` through a reviewed PR. Manual publication verifies that prepared version before testing; no version input or automatic release on merge is used. New notes use GitHub generation configured by `.github/release.yml`, with committed migration guidance preserved. The release guide owns the full policy and retry behavior.
+Version preparation derives the next version from durable squash messages and updates `action/cli-version` through a reviewed PR. Manual publication verifies that prepared version before testing; no version input or automatic release on merge is used. New notes use GitHub generation configured by `.github/release.yml`, with committed breaking-change details preserved. The release guide owns the full policy and retry behavior.
