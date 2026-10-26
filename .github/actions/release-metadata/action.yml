@@ -1,12 +1,12 @@
 name: Resolve release metadata
-description: Resolve the prepared release identity and fixed product matrices.
+description: Calculate the release version and validate fixed product matrices.
 inputs:
   source-sha:
     description: Exact frozen main commit.
     required: true
 outputs:
   version:
-    description: Prepared release version.
+    description: Automatically calculated release version.
     value: ${{ steps.resolve.outputs.version }}
   previous-tag:
     description: Previous published stable tag, empty only for an immutable retry.
@@ -23,12 +23,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Install pinned metadata tools
-      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-      with:
-        version: 2026.10.8
-        install_args: go
-        cache: false
     - name: Resolve and validate release metadata
       id: resolve
       shell: bash
@@ -39,18 +33,16 @@ runs:
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'metadata checkout differs from frozen source' >&2; exit 1; }
         metadata="$RUNNER_TEMP/release-metadata"
         [[ ! -e "$metadata" ]]
-        go run ./scripts/release-metadata/main.go resolve "$GITHUB_REPOSITORY" "$SOURCE_SHA" > "$metadata"
-        [[ "$(wc -l < "$metadata" | tr -d ' ')" == 4 ]] || { echo 'metadata output line count changed' >&2; exit 1; }
-        for key in version previous-tag previous-sha source-sha; do
+        python3 .github/scripts/release-version.py --allow-retry > "$metadata"
+        [[ "$(wc -l < "$metadata" | tr -d ' ')" == 3 ]] || { echo 'metadata output line count changed' >&2; exit 1; }
+        for key in version previous-tag previous-sha; do
           [[ "$(grep -c "^$key=" "$metadata")" == 1 ]] || { echo "metadata output lacks $key" >&2; exit 1; }
         done
-        [[ -z "$(grep -Ev '^(version|previous-tag|previous-sha|source-sha)=' "$metadata")" ]] || { echo 'metadata output contains an unexpected key' >&2; exit 1; }
+        [[ -z "$(grep -Ev '^(version|previous-tag|previous-sha)=' "$metadata")" ]] || { echo 'metadata output contains an unexpected key' >&2; exit 1; }
         version="$(sed -n 's/^version=//p' "$metadata")"
         previous_tag="$(sed -n 's/^previous-tag=//p' "$metadata")"
         previous_sha="$(sed -n 's/^previous-sha=//p' "$metadata")"
-        resolved_source="$(sed -n 's/^source-sha=//p' "$metadata")"
         [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'metadata returned an invalid version' >&2; exit 1; }
-        [[ "$resolved_source" == "$SOURCE_SHA" ]] || { echo 'metadata returned another source' >&2; exit 1; }
         if [[ -n "$previous_tag" || -n "$previous_sha" ]]; then
           [[ "$previous_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'metadata returned an invalid predecessor tag' >&2; exit 1; }
           [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || { echo 'metadata returned an invalid predecessor source' >&2; exit 1; }

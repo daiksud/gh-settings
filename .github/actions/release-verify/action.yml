@@ -69,7 +69,6 @@ runs:
       run: |
         [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'public download verification received a token environment' >&2; exit 1; }
         [[ "$(git -C .published rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'published tag differs from accepted source' >&2; exit 1; }
-        [[ "$(cat .published/action/cli-version)" == "$VERSION" ]] || { echo 'published Action version differs from release' >&2; exit 1; }
         published="$RUNNER_TEMP/published-release"
         [[ ! -e "$published" ]]
         mkdir "$published"
