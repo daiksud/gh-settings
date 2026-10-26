@@ -87,8 +87,8 @@ func validateLabelReport(changes []LabelPlanChange) (settings.LabelChanges, erro
 			before = settings.LabelState{ID: *change.ID, Name: *change.Before.Name, Color: *change.Before.Color, Description: *change.Before.Description}
 		}
 		if change.After != nil {
-			if change.After.Name == nil {
-				return settings.LabelChanges{}, fmt.Errorf("incomplete label name")
+			if change.After.Name == nil || change.After.Color == nil || change.After.Description == nil {
+				return settings.LabelChanges{}, fmt.Errorf("incomplete label after value")
 			}
 			after = settings.LabelDeclaration{ID: change.ID, Name: *change.After.Name, Color: change.After.Color, Description: change.After.Description}
 		}

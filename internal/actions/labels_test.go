@@ -60,6 +60,8 @@ func TestLabelMalformedReportsPreserveSummary(t *testing.T) {
 		`[{"operation":"rename","name":"a","after":{}}]`,
 		`[{"operation":"create","name":"a"}]`,
 		`[{"operation":"create","name":"a","after":null}]`,
+		`[{"operation":"create","name":"a","after":{"name":"a","color":"abcdef"}}]`,
+		`[{"operation":"create","name":"a","after":{"name":"a","description":""}}]`,
 		`[{"operation":"create","name":"a","before":{"color":"abcdef","description":""},"after":{}}]`,
 		`[{"operation":"delete","name":"a"}]`,
 		`[{"operation":"delete","name":"a","before":{"color":"ABCDEF","description":""}}]`,
