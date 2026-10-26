@@ -98,14 +98,10 @@ func TestRootCompositeRejectsGlobalOnlyOrigin(t *testing.T) {
 	}
 }
 
-func TestRootCompositeRejectsMismatchedReleaseTag(t *testing.T) {
-	ref := "v0.0.0"
-	if ref == committedCLIVersion(t) {
-		ref = "v0.0.1"
-	}
-	result := runComposite(t, "validate", "", map[string]string{"github.action_ref": ref})
-	if result.status == 0 || len(result.outputs) != 0 || result.calls != "" || result.downloaded || !strings.Contains(result.log, "Action tag differs from committed CLI version") {
-		t.Fatalf("mismatched release tag reached installation: %+v", result)
+func TestRootCompositeRejectsUnsupportedActionRef(t *testing.T) {
+	result := runComposite(t, "validate", "", map[string]string{"github.action_ref": "v0.0.0-invalid"})
+	if result.status == 0 || len(result.outputs) != 0 || result.calls != "" || result.downloaded || !strings.Contains(result.log, "unsupported Action reference") {
+		t.Fatalf("invalid Action reference reached installation: %+v", result)
 	}
 }
 

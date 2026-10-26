@@ -143,12 +143,17 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 			pathFile := filepath.Join(f.base["RUNNER_TEMP"], "candidate-path")
 			f.write(pathFile, "")
 			f.base["GITHUB_PATH"] = pathFile
+			envFile := filepath.Join(f.base["RUNNER_TEMP"], "candidate-env")
+			f.write(envFile, "")
+			f.base["GITHUB_ENV"] = envFile
 			cmd := exec.Command("bash", filepath.Join(directory, "prepare-candidate-download.sh"), f.base["MOCK_ASSET"], digest, source, version)
 			cmd.Dir, cmd.Env = f.caller, fixtureEnvironment(f.base)
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			err := cmd.Run()
 			published, readErr := os.ReadFile(pathFile)
+			envPublished, envReadErr := os.ReadFile(envFile)
+			if envReadErr != nil { t.Fatal(envReadErr) }
 			if readErr != nil {
 				t.Fatal(readErr)
 			}
@@ -156,7 +161,7 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 				t.Fatal("candidate preparation invoked a download")
 			}
 			if mismatch != "" {
-				if err == nil || stdout.Len() != 0 || len(published) != 0 || !strings.Contains(stderr.String(), mismatch+" mismatch") {
+				if err == nil || stdout.Len() != 0 || len(published) != 0 || len(envPublished) != 0 || !strings.Contains(stderr.String(), mismatch+" mismatch") {
 					t.Fatalf("mismatched candidate reached PATH publication: err=%v stdout=%q stderr=%q path=%q", err, stdout.String(), stderr.String(), published)
 				}
 				return
@@ -164,6 +169,7 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 			if err != nil || stderr.Len() != 0 {
 				t.Fatalf("matching candidate rejected: %v\n%s", err, stderr.String())
 			}
+			if string(envPublished) != "SETTINGS_CANDIDATE_VERSION="+version+"\n" { t.Fatalf("candidate version was not selected: %q", envPublished) }
 			fixture := strings.TrimSpace(string(published))
 			if filepath.Dir(fixture) != f.base["RUNNER_TEMP"] || strings.Contains(fixture, "\n") {
 				t.Fatalf("candidate PATH is not one owned directory: %q", fixture)
