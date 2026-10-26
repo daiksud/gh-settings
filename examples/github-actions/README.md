@@ -5,9 +5,9 @@ Copy these workflows into the repository whose settings you want to manage. The 
 Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
 The examples pin a published Action and CLI. **Safety:** its current v0.19.0
-label contract is authoritative: unlisted labels, including all labels when
-`labels: []`, are deleted. Do not apply current-source ID-based label
-declarations through this pin. Inspect the selected binary's contract and
+label and Ruleset contracts are authoritative: unlisted labels or repository
+Rulesets are deleted, potentially removing branch protection. Do not apply
+current-source ID-selected declarations through this pin. Inspect the selected binary's contract and
 permissions in the [Action guide](../../docs/github-actions.md#labels-and-permissions).
 
 ## Copy the workflows
