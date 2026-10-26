@@ -178,4 +178,3 @@ The existing repository mutation includes `hasSponsorshipsEnabled` only when dec
 ## Repository access design boundary
 
 [ADR0031](../adr/0031-repository-access-ownership.md) and the [access specification](../features/repository-access.feature.md) separate direct collaborator/team grants, inherited effective access and pending invitations. This is design only: no access declaration, export selection, API adapter or executable test exists yet. #356/#357 must establish complete provenance, exact roles, invitation intent and operator/recovery evidence before adopting a mutation subset. A design merge does not authorize live grants, invitations, revocations, organization changes or credentials.
-
