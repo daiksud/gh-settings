@@ -8,7 +8,7 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 A repository maintainer can capture all twenty-two current-source repository fields, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
 
-The nine-field current-source REST state includes `has_discussions` since v0.15.0, plus default branch, web commit sign-off and template status since v0.16.0; published v0.14.0 exports fifteen repository fields without that key. The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
+The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
 
 This feature assumes an owner-controlled checkout whose directory and link entries remain stable during export. Concurrent replacement of those entries is outside its scope.
 
@@ -88,13 +88,13 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 #### Scenario: Require a directly configured GitHub origin in current source
 
 - Given the current checkout's origin directly identifies "owner/current" through HTTPS, `git@github.com:owner/current.git` or a full SSH URL
-- When the maintainer runs the v0.7.0 CLI's `gh settings export`
+
 - Then the settings are read from "owner/current" on GitHub
 
 #### Scenario: Reject an SCP origin without a username in current source
 
 - Given the current checkout's origin is "github.com:owner/current.git"
-- When the maintainer runs the v0.7.0 CLI's `gh settings export`
+
 - Then the command fails with a repository-resolution diagnostic
 - And no GitHub API request is made
 
@@ -110,11 +110,11 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 
 - Given the current checkout's origin is a Git alias for "owner/current"
 - And Git `insteadOf` rewrites the alias to a GitHub URL
-- When the maintainer runs the v0.7.0 CLI's `gh settings export`
+
 - Then the command fails with a repository-resolution diagnostic
 - And no GitHub API request is made
 
-These origin-support changes are published in v0.7.0 and do not change settings YAML syntax. Consumers pinned to v0.6.1 retain that release's username-less SCP and rewrite-alias compatibility.
+These origin-support changes are supported and do not change settings YAML syntax.
 
 #### Scenario: Read an origin from repository-specific Git configuration
 
@@ -229,8 +229,6 @@ Current source reads every label page after repository settings and topics befor
 ### Rule: Actions execution policy export opt-in
 
 Current source keeps ordinary export unchanged and adds explicit `--actions`, composing with `--rulesets`. The [Actions policy specification](actions-execution-policy.feature.md#rule-export-only-complete-observable-policy) owns complete active/inactive reads, preserved destinations and test mappings.
-
-### Rule: Complete explicit export choices for the v0.18.0 package
 
 Ordinary export reads the non-opt-in repository fields, topics and labels. Each explicit selection adds only its independent resource: `--rulesets`, `--actions`, `--workflow-permissions`, `--retention`, `--fork-approval`, `--private-fork-workflows`, repeatable distinct `--security` families, `--archive` and `--pages`. Duplicate/unknown selections fail before export. Complete all requested observations and serialization before opening the destination; an inapplicable/denied/partial selection fails without plausible defaults or a successful partial save. Unchanged supported exports validate and plan with zero differences. Resource applicability can prevent combining otherwise independently parsed choices; public and private fork choices cannot both apply to a fixed target.
 
