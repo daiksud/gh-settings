@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-CLI and Action v0.12.0 support `settings.repository.squash_merge_commit_title` and `squash_merge_commit_message` under `schemaVersion: 1`. Published v0.11.0 rejects these keys; the pinned v0.18.0 examples support them. This extends the existing repository fields; it does not introduce a resource family, change merge methods, edit PR contents or perform a merge.
+CLI and Action Current source supports `settings.repository.squash_merge_commit_title` and `squash_merge_commit_message` under `schemaVersion: 1`. This extends the existing repository fields; it does not introduce a resource family, change merge methods, edit PR contents or perform a merge.
 
 The [configuration reference](../settings.md#squash-commit-defaults-v0120) owns the public declaration and value semantics.
 
@@ -17,7 +17,7 @@ GitHub's [Update a repository REST API](https://docs.github.com/en/rest/repos/re
 
 REST requires title when message is specified. Local validation rejects message-only declarations before target/authentication/API access; title-only is valid. No title is synthesized from live state. Null, empty, unknown and wrong-typed enums fail validation. Omitted fields remain unmanaged, independently of `allow_squash_merge`.
 
-The [GraphQL public schema](https://docs.github.com/en/graphql/overview/public-schema) defines the non-null enums. The existing fixed `POST /graphql` v0.12.0 observation contains four merge-related booleans and both enums; v0.13.0 adds two PR option booleans; current source also adds two normal merge enums. It uses only the origin-selected owner/name, with no caller query or mutation. A declaration of only title (or both enums) skips the base REST read; omission of every merge-related field skips GraphQL. Existing merge booleans read the complete observation (six fields in v0.12.0, eight in v0.13.0, ten in current source) but compare only declared fields.
+The [GraphQL public schema](https://docs.github.com/en/graphql/overview/public-schema) defines the non-null enums. It uses only the origin-selected owner/name, with no caller query or mutation. A declaration of only title (or both enums) skips the base REST read; omission of every merge-related field skips GraphQL.
 
 Missing/null repository or fields, invalid enum strings/types, malformed JSON, HTTP/transport failures and any GraphQL errors (including partial data) fail the whole observation. They never become empty/default values or trigger a privileged fallback. Plan discards earlier partial comparisons; export preserves the prior file on read failure.
 
@@ -25,7 +25,7 @@ Apply uses the existing repository REST PATCH with Administration write. It send
 
 ## Export, ordering and presentation
 
-Ordinary export saves twenty-three repository fields in current source, fifteen in v0.14.0, thirteen in v0.13.0, eleven in v0.12.0, complete topics and all label pages only after all reads and serialization succeed. Archive and private forking remain separate, mutually incompatible opt-in selections. Older v0.11.0 retains its nine-field shape.
+Archive and private forking remain separate, mutually incompatible opt-in selections.
 
 Repository comparison retains registry order for repository scalars, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once. Current-source report/Summary accepts at most fifty-one managed units across all adopted resources; older packages retain their documented lower limits. Enum changes retain native JSON strings and quoted CLI/Summary values. Unknown, empty or wrong-typed enum report values are rejected. Reports remain presentation data, never apply input.
 
