@@ -13,12 +13,30 @@ import (
 
 func TestPRExamplePreparesOnlyVerifiedSettingsData(t *testing.T) {
 	w, _ := readWorkflow(t, "settings-pr.yml")
+	testCandidatePreparation(t, w, false)
+}
+
+func TestOperationalPRPreparesOnlyPublicSettingsData(t *testing.T) {
+	w, _ := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
+	testCandidatePreparation(t, w, true)
+}
+
+func testCandidatePreparation(t *testing.T, w workflow, public bool) {
+	t.Helper()
 	prepare := findStep(t, w.Jobs["plan"], "candidate")
+	repo := "owner/config"
+	if public {
+		repo = "daiksud/gh-settings"
+	}
 	realGit, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, mode := range []string{"valid", "symlink", "missing", "moved", "wrong-blob", "oversize", "null-size", "api403", "redirect", "unsafe-root", "unfiltered"} {
+	modes := []string{"valid", "symlink", "missing", "moved", "wrong-blob", "oversize", "null-size", "api403", "redirect", "unsafe-root", "unfiltered"}
+	if public {
+		modes = append(modes, "private", "wrong-repository")
+	}
+	for _, mode := range modes {
 		t.Run(mode, func(t *testing.T) {
 			root := t.TempDir()
 			source, consumer, tools := filepath.Join(root, "source"), filepath.Join(root, "consumer"), filepath.Join(root, "tools")
@@ -96,6 +114,9 @@ func TestPRExamplePreparesOnlyVerifiedSettingsData(t *testing.T) {
 			wrapper := `#!/usr/bin/env python3
 import os, subprocess, sys
 args = sys.argv[1:]
+if os.environ['FIXTURE_PUBLIC'] == 'true':
+    if any(k in os.environ for k in ('GH_TOKEN', 'GITHUB_TOKEN', 'SSH_ASKPASS', 'GIT_CONFIG_COUNT')) or any('extraheader' in a.lower() for a in args):
+        sys.exit(92)
 if 'fetch' in args:
     at = args.index('origin')
     args[at:at+2] = [os.environ['FIXTURE_REMOTE'], 'HEAD']
@@ -105,12 +126,22 @@ sys.exit(subprocess.call([os.environ['REAL_GIT'], *args]))
 			if err := os.WriteFile(filepath.Join(tools, "git"), []byte(wrapper), 0700); err != nil {
 				t.Fatal(err)
 			}
-			pythonTransport := `import io, os, urllib.error, urllib.request
+			pythonTransport := `import io, json, os, urllib.error, urllib.request
 class FixtureOpener:
     def open(self, request, timeout):
-        expected = 'https://api.github.com/repos/owner/config/git/blobs/' + os.environ['FIXTURE_BLOB']
-        if request.full_url != expected or request.get_header('Authorization') != 'Bearer dummy-app-token' or timeout != 30:
+        public = os.environ['FIXTURE_PUBLIC'] == 'true'
+        base = 'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY']
+        if timeout != 30 or request.get_header('Authorization') != (None if public else 'Bearer dummy-app-token'):
             raise RuntimeError('unexpected request')
+        if public and request.full_url == base:
+            value = {'id': 1414158260, 'full_name': 'daiksud/gh-settings', 'private': False, 'visibility': 'public'}
+            if os.environ['FIXTURE_MODE'] == 'private':
+                value.update(private=True, visibility='private')
+            if os.environ['FIXTURE_MODE'] == 'wrong-repository':
+                value['id'] = 1
+            return io.BytesIO(json.dumps(value).encode())
+        if request.full_url != base + '/git/blobs/' + os.environ['FIXTURE_BLOB']:
+            raise RuntimeError('unexpected URL')
         if os.environ['FIXTURE_MODE'] in ('api403', 'redirect'):
             code = 302 if os.environ['FIXTURE_MODE'] == 'redirect' else 403
             raise urllib.error.HTTPError(request.full_url, code, 'PRIVATE_SERVER_VALUE', {}, None)
@@ -127,7 +158,11 @@ urllib.request.build_opener = lambda *args: FixtureOpener()
 			}
 			cmd := exec.Command("bash", "--noprofile", "--norc", "-euo", "pipefail", "-c", prepare.Run)
 			cmd.Dir = consumer
-			cmd.Env = append(base, "PATH="+tools+":"+os.Getenv("PATH"), "PYTHONPATH="+tools, "REAL_GIT="+realGit, "FIXTURE_REMOTE=file://"+source, "FIXTURE_BLOB="+blob, "FIXTURE_RESPONSE="+response, "FIXTURE_MODE="+mode, "GH_TOKEN=dummy-app-token", "GITHUB_TOKEN=must-not-be-used", "GITHUB_REPOSITORY=owner/config", "GITHUB_WORKSPACE="+consumer, "EXPECTED_HEAD="+head, "PR_NUMBER=7")
+			publicMode := "false"
+			if public {
+				publicMode = "true"
+			}
+			cmd.Env = append(base, "PATH="+tools+":"+os.Getenv("PATH"), "PYTHONPATH="+tools, "REAL_GIT="+realGit, "FIXTURE_PUBLIC="+publicMode, "FIXTURE_REMOTE=file://"+source, "FIXTURE_BLOB="+blob, "FIXTURE_RESPONSE="+response, "FIXTURE_MODE="+mode, "GH_TOKEN=dummy-app-token", "GITHUB_TOKEN=must-not-be-used", "GITHUB_REPOSITORY="+repo, "GITHUB_WORKSPACE="+consumer, "EXPECTED_HEAD="+head, "PR_NUMBER=7")
 			output, runErr := cmd.CombinedOutput()
 			if strings.Contains(string(output), "dummy-app-token") || strings.Contains(string(output), "PRIVATE_SERVER_VALUE") || strings.Contains(string(output), "touch PWNED") {
 				t.Fatal("credential/data leaked", string(output))

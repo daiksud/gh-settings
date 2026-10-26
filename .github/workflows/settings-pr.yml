@@ -1,12 +1,14 @@
 name: Settings PR plan
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [main]
     paths:
       - .github/settings.yml
       - .github/workflows/settings-pr.yml
+      - .github/workflows/settings-main.yml
       - examples/github-actions/**
-permissions:
-  contents: read
+permissions: {}
 defaults:
   run:
     shell: bash
@@ -15,17 +17,100 @@ concurrency:
   cancel-in-progress: true
 jobs:
   plan:
+    if: github.event_name == 'pull_request_target' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && github.event.pull_request.base.ref == 'main'
+    environment: gh-settings
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Checkout containing repository PR merge revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Prepare only candidate settings data, never a PR code checkout
+        id: candidate
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, re, subprocess, sys, urllib.request
+
+          def prepare():
+              repo, head, number = (os.environ[k] for k in ('GITHUB_REPOSITORY', 'EXPECTED_HEAD', 'PR_NUMBER'))
+              if repo != 'daiksud/gh-settings':
+                  raise ValueError('repository')
+              if not re.fullmatch(r'[0-9a-f]{40}', head) or not re.fullmatch(r'[1-9][0-9]{0,9}', number):
+                  raise ValueError('candidate identity')
+              root = pathlib.Path(os.environ['GITHUB_WORKSPACE'])
+              if root.resolve() != pathlib.Path.cwd().resolve():
+                  raise ValueError('workspace')
+              for path in (root / '.git', root / '.github'):
+                  if path.exists() or path.is_symlink():
+                      raise ValueError('workspace is not fresh')
+              class NoRedirect(urllib.request.HTTPRedirectHandler):
+                  def redirect_request(self, *args, **kwargs):
+                      return None
+              def public_json(path):
+                  request = urllib.request.Request('https://api.github.com/repos/' + repo + path, headers={'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'})
+                  with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
+                      raw = response.read(2 * 1024 * 1024 + 1)
+                  if len(raw) > 2 * 1024 * 1024:
+                      raise ValueError('response limit')
+                  return json.loads(raw)
+              # ANSWER26 has no Contents grant. Public data is fetched before
+              # minting its settings token, without any credential fallback.
+              repository = public_json('')
+              if repository.get('id') != 1414158260 or repository.get('full_name') != repo or repository.get('private') is not False or repository.get('visibility') != 'public':
+                  raise ValueError('public repository identity')
+              # No inherited Git programs, credentials, hooks, filters or lazy
+              # object downloads. Candidate files are never checked out.
+              env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_') and k not in ('GH_TOKEN', 'GITHUB_TOKEN', 'SSH_ASKPASS')}
+              env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', GIT_TERMINAL_PROMPT='0', GIT_NO_LAZY_FETCH='1')
+              def git(*args):
+                  flags = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', '-c', 'credential.helper=', '-c', 'core.askPass=', '-c', 'http.followRedirects=false', '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', '-c', 'submodule.recurse=false']
+                  return subprocess.run(['git', *flags, *args], env=env, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=90).stdout
+              git('init', '--quiet', '--template=')
+              git('remote', 'add', 'origin', 'https://github.com/' + repo + '.git')
+              git('fetch', '--quiet', '--filter=blob:none', '--depth=1', '--no-tags', '--no-recurse-submodules', 'origin', 'refs/pull/' + number + '/head')
+              if git('rev-parse', '--verify', 'FETCH_HEAD').decode().strip() != head:
+                  raise ValueError('candidate changed')
+              if b'blob' in git('cat-file', '--batch-all-objects', '--batch-check=%(objecttype)').splitlines():
+                  raise ValueError('server did not honor metadata-only fetch')
+              def entry(tree, name, mode, kind):
+                  raw = git('ls-tree', '-z', tree, '--', name)
+                  match = re.fullmatch((mode + ' ' + kind + r' ([0-9a-f]{40})\t' + re.escape(name) + '\x00').encode(), raw)
+                  if not match:
+                      raise ValueError('settings must be one regular file')
+                  return match.group(1).decode()
+              directory = entry(head, '.github', '040000', 'tree')
+              blob = entry(directory, 'settings.yml', '100644', 'blob')
+              value = public_json('/git/blobs/' + blob)
+              if value.get('sha') != blob or value.get('encoding') != 'base64' or type(value.get('size')) is not int or not 0 <= value['size'] <= 1024 * 1024:
+                  raise ValueError('invalid blob identity/size')
+              data = base64.b64decode(value['content'].replace('\n', ''), validate=True)
+              if len(data) != value['size'] or hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\x00' + data).hexdigest() != blob:
+                  raise ValueError('blob content mismatch')
+              git('update-ref', '--no-deref', 'HEAD', head)
+              (root / '.github').mkdir(mode=0o700)
+              with (root / '.github/settings.yml').open('xb') as output:
+                  output.write(data)
+              os.chmod(root / '.github/settings.yml', 0o600)
+
+          try:
+              prepare()
+          except Exception:
+              # Do not print candidate data, server messages or credential values.
+              print('candidate settings preparation failed', file=sys.stderr)
+              sys.exit(1)
+          PY
+      - name: Mint a repository-scoped settings token from ANSWER26
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app
         with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Validate and plan with the Action Summary
-        uses: daiksud/gh-settings@cccd06a151c2dce3b9eb71520d3c01b4c73ac92f # v0.17.0
+          client-id: ${{ vars.ANSWER26_CLIENT_ID }}
+          private-key: ${{ secrets.ANSWER26_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-administration: read
+          permission-issues: read
+      - name: Validate and plan data with the trusted pinned Action
+        uses: daiksud/gh-settings@3785af9e73886565fe711e6b4428922055a2f687 # v0.19.0
         with:
           command: plan
-          token: ${{ github.token }}
+          token: ${{ steps.app.outputs.token }}
