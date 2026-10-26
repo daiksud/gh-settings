@@ -63,7 +63,7 @@ func validateRule(r RulesetRule, complete bool) error {
 		if p.hasChecks() {
 			return fmt.Errorf("status-check parameters do not belong to pull_request")
 		}
-		if complete && (p == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil) {
+		if complete && (p == nil || p.AllowedMergeMethods == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireExtraApprovalForUnattributedChanges == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil || p.RequiredReviewers == nil || p.DismissalRestriction == nil) {
 			return fmt.Errorf("pull_request requires complete review parameters")
 		}
 		if p == nil {
@@ -128,7 +128,7 @@ func validateRule(r RulesetRule, complete bool) error {
 		if p.hasPR() {
 			return fmt.Errorf("pull-request parameters do not belong to required_status_checks")
 		}
-		if complete && (p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil) {
+		if complete && (p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil || p.DoNotEnforceOnCreate == nil) {
 			return fmt.Errorf("required_status_checks requires checks and strict policy")
 		}
 		if p == nil {
@@ -246,76 +246,4 @@ func cloneRulesetRule(r RulesetRule) RulesetRule {
 		r.Parameters = nil
 	}
 	return r
-}
-func mergeRuleParameters(before, desired *RuleParameters) *RuleParameters {
-	out := cloneRuleParameters(before)
-	d := cloneRuleParameters(desired)
-	if d == nil {
-		return out
-	}
-	if out == nil {
-		out = &RuleParameters{}
-	}
-	if d.AllowedMergeMethods != nil {
-		out.AllowedMergeMethods = d.AllowedMergeMethods
-	}
-	if d.DismissStaleReviewsOnPush != nil {
-		out.DismissStaleReviewsOnPush = d.DismissStaleReviewsOnPush
-	}
-	if d.RequireCodeOwnerReview != nil {
-		out.RequireCodeOwnerReview = d.RequireCodeOwnerReview
-	}
-	if d.RequireExtraApprovalForUnattributedChanges != nil {
-		out.RequireExtraApprovalForUnattributedChanges = d.RequireExtraApprovalForUnattributedChanges
-	}
-	if d.RequireLastPushApproval != nil {
-		out.RequireLastPushApproval = d.RequireLastPushApproval
-	}
-	if d.RequiredApprovingReviewCount != nil {
-		out.RequiredApprovingReviewCount = d.RequiredApprovingReviewCount
-	}
-	if d.RequiredReviewThreadResolution != nil {
-		out.RequiredReviewThreadResolution = d.RequiredReviewThreadResolution
-	}
-	if d.DismissalRestriction != nil {
-		if out.DismissalRestriction == nil {
-			out.DismissalRestriction = &ReviewDismissalRestriction{}
-		}
-		if d.DismissalRestriction.Enabled != nil {
-			out.DismissalRestriction.Enabled = d.DismissalRestriction.Enabled
-		}
-		if d.DismissalRestriction.AllowedActors != nil {
-			out.DismissalRestriction.AllowedActors = d.DismissalRestriction.AllowedActors
-		}
-	}
-	if d.RequiredReviewers != nil {
-		old := map[string]RequiredReviewer{}
-		if out.RequiredReviewers != nil {
-			for _, r := range *out.RequiredReviewers {
-				old[reviewActorKey(r.Reviewer)] = r
-			}
-		}
-		for i := range *d.RequiredReviewers {
-			r := &(*d.RequiredReviewers)[i]
-			if prior, ok := old[reviewActorKey(r.Reviewer)]; ok {
-				if r.MinimumApprovals == nil {
-					r.MinimumApprovals = prior.MinimumApprovals
-				}
-				if r.FilePatterns == nil {
-					r.FilePatterns = prior.FilePatterns
-				}
-			}
-		}
-		out.RequiredReviewers = d.RequiredReviewers
-	}
-	if d.RequiredStatusChecks != nil {
-		out.RequiredStatusChecks = d.RequiredStatusChecks
-	}
-	if d.StrictRequiredStatusChecksPolicy != nil {
-		out.StrictRequiredStatusChecksPolicy = d.StrictRequiredStatusChecksPolicy
-	}
-	if d.DoNotEnforceOnCreate != nil {
-		out.DoNotEnforceOnCreate = d.DoNotEnforceOnCreate
-	}
-	return cloneRuleParameters(out)
 }

@@ -94,7 +94,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += labels.Managed
 		comparison.Labels = labels.Labels
 	}
-	if desired.Rulesets != nil {
+	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
 		observed, err := read.Rulesets(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}

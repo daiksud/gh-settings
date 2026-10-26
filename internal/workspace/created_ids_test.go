@@ -82,6 +82,7 @@ func TestCreatedIDWritebackFailurePreservesSettings(t *testing.T) {
 		{"ambiguous object", "settings: {labels: [{name: x}, {name: x}]}\n", "labels", "x", 7, false},
 		{"invalid ID", "settings: {labels: [{name: x}]}\n", "labels", "x", 0, false},
 		{"wrong collection", "settings: {labels: [{name: x}]}\n", "repository", "x", 7, false},
+		{"environment name identity", "settings: {labels: [{name: x}]}\n", "environments", "x", 7, false},
 		{"concurrent edit", "settings: {labels: [{name: x}]}\n", "labels", "x", 7, true},
 		{"aliased collection", "value: &items [{name: x}]\nsettings: {labels: *items}\n", "labels", "x", 7, false},
 		{"aliased entry", "value: &item {name: x}\nsettings: {labels: [*item]}\n", "labels", "x", 7, false},

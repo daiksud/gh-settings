@@ -39,6 +39,8 @@ settings:
 	}
 	before := d.Rulesets.Values()[0]
 	after := d.Rulesets.Values()[0]
+	id := int64(7)
+	before.ID, after.ID = &id, &id
 	for i := range *after.Rules {
 		r := &(*after.Rules)[i]
 		if r.Type == "pull_request" {

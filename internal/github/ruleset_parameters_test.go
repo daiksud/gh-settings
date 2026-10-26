@@ -46,7 +46,7 @@ func TestReadReviewRulesetRejectsNullUnknownAndIncomplete(t *testing.T) {
 		}
 	}
 }
-func TestReviewRulesetPartialEditExactPutPreservesCompanions(t *testing.T) {
+func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 	before, e := decodeRulesetPolicyFromTest([]byte(fullReviewRulesetJSON))
 	if e != nil {
 		t.Fatal(e)
@@ -58,7 +58,10 @@ func TestReviewRulesetPartialEditExactPutPreservesCompanions(t *testing.T) {
 	d, e := workspace.DecodeConfig([]byte(`schemaVersion: 1
 settings:
   rulesets:
-    - name: default
+    - id: 7
+      name: default
+      enforcement: active
+      conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
       rules:
         - type: deletion
         - type: non_fast_forward
@@ -69,6 +72,7 @@ settings:
             require_code_owner_review: false
             required_reviewers:
               - reviewer: {type: Team, id: 22}
+                minimum_approvals: 1
                 file_patterns: ['!docs/**', '**', 'docs/README.md', '**']
         - type: required_status_checks
           parameters: {required_status_checks: [], strict_required_status_checks_policy: false}
@@ -98,8 +102,8 @@ settings:
 			rule := value.(map[string]any)
 			if rule["type"] == "pull_request" {
 				p := rule["parameters"].(map[string]any)
-				if p["required_approving_review_count"] != float64(0) || p["require_code_owner_review"] != false || p["dismiss_stale_reviews_on_push"] != true || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != true {
-					t.Fatal("lost companions", p)
+				if p["required_approving_review_count"] != float64(0) || p["require_code_owner_review"] != false || p["dismiss_stale_reviews_on_push"] != false || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false {
+					t.Fatal("lost declared defaults", p)
 				}
 				reviewer := p["required_reviewers"].([]any)[0].(map[string]any)
 				if reviewer["minimum_approvals"] != float64(1) || !reflect.DeepEqual(reviewer["file_patterns"], []any{"!docs/**", "**", "docs/README.md", "**"}) {
@@ -116,9 +120,9 @@ settings:
 				}
 			}
 		}
-		return labelsResponse(r, 200, string(data)), nil
+		return rulesetMutationResponse(t, r, 200, string(data), 7), nil
 	}))
-	if e := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0]); e != nil || calls != 1 {
+	if _, e := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0]); e != nil || calls != 1 {
 		t.Fatal(calls, e)
 	}
 	after := *changes[0].After()
@@ -182,8 +186,8 @@ func TestReviewRulesetResponseRefusesSilentPolicyLoss(t *testing.T) {
 	}
 	var response map[string]json.RawMessage
 	json.Unmarshal(afterData, &response)
-	if e := verifyReviewRulesetResponse(desired, response); e != nil {
-		t.Fatal("new optional default treated as managed", e)
+	if e := verifyReviewRulesetResponse(desired, response); e == nil {
+		t.Fatal("whole-object merge-method default mismatch was ignored")
 	}
 }
 
@@ -210,9 +214,9 @@ func TestCreateReviewRulesetExactPolicyAndResponse(t *testing.T) {
 		if err != nil || r.Method != "POST" || r.URL.Path != "/repos/owner/current/rulesets" || !reflect.DeepEqual(got, want) {
 			t.Fatal(r.Method, r.URL, string(data), err)
 		}
-		return labelsResponse(r, 201, string(data)), nil
+		return rulesetMutationResponse(t, r, 201, string(data), 7), nil
 	}))
-	if err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 1 {
+	if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 1 {
 		t.Fatal(calls, err)
 	}
 }
@@ -239,9 +243,9 @@ func TestRemovingReviewAndChecksStillVerifiesResponse(t *testing.T) {
 			if ignored {
 				return labelsResponse(r, 200, fullReviewRulesetJSON), nil
 			}
-			return labelsResponse(r, 200, string(data)), nil
+			return rulesetMutationResponse(t, r, 200, string(data), 7), nil
 		}))
-		err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
+		_, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
 		if calls != 1 || (err != nil) != ignored || (ignored && !strings.Contains(err.Error(), "writes may already have applied")) {
 			t.Fatal("removal response not verified", ignored, calls, err)
 		}

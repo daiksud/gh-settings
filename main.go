@@ -138,10 +138,10 @@ func readRulesets(repo repository.Repository) (settings.RulesetObservation, erro
 	}
 	return client.ReadRulesets(repo)
 }
-func writeRuleset(repo repository.Repository, change settings.RulesetChange) error {
+func writeRuleset(repo repository.Repository, change settings.RulesetChange) (int64, error) {
 	client, err := github.NewRulesetsClient(repo.Host)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	return client.ApplyRuleset(repo, change)
 }

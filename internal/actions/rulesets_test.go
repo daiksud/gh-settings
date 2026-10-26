@@ -6,7 +6,6 @@ import (
 	"html"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -24,7 +23,10 @@ settings: {rulesets: [{name: '<policy>', target: branch, enforcement: active, co
 		t.Fatal(err)
 	}
 	before := d.Rulesets.Values()[0]
-	change, err := settings.NewRulesetChange("delete", 7, &before, nil)
+	after := before
+	disabled := "disabled"
+	after.Enforcement = &disabled
+	change, err := settings.NewRulesetChange("update", 7, &before, &after)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,11 +43,11 @@ settings: {rulesets: [{name: '<policy>', target: branch, enforcement: active, co
 	if err := json.Unmarshal(data, &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.Outcome != "changed" || len(report.Rulesets) != 1 || !reflect.DeepEqual(report.Rulesets[0].Before, &settings.RulesetDeclaration{Name: "<policy>"}) {
+	if report.Outcome != "changed" || len(report.Rulesets) != 1 || report.Rulesets[0].Before.ID == nil || *report.Rulesets[0].Before.ID != 7 || report.Rulesets[0].After.ID == nil {
 		t.Fatal(string(data))
 	}
 	content, err := actions.RenderSummary(report, summaryMetadata())
-	if err != nil || strings.Contains(content, "<policy>") || !strings.Contains(html.UnescapeString(content), "removes repository protection") {
+	if err != nil || strings.Contains(content, "<policy>") || !strings.Contains(html.UnescapeString(content), `"id":7`) {
 		t.Fatal(content, err)
 	}
 	// A Rulesets operation adds a managed resource independently of label/field changes.
@@ -71,14 +73,14 @@ settings: {rulesets: [{name: '<policy>', target: branch, enforcement: active, co
 	}
 }
 
-func TestRulesetPlanReportAndSummaryProjectManagedValues(t *testing.T) {
+func TestRulesetPlanReportAndSummaryShowSelectedWholeObjects(t *testing.T) {
 	current, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
 settings:
   rulesets:
     - name: default
       target: branch
       enforcement: active
-      conditions: {ref_name: {include: ['refs/heads/CANARY-unmanaged-condition'], exclude: []}}
+      conditions: {ref_name: {include: ['refs/heads/CANARY-selected-condition'], exclude: []}}
       bypass_actors: [{actor_type: Team, actor_id: 987654321, bypass_mode: always}]
       rules: [{type: deletion}, {type: non_fast_forward}]
 `))
@@ -86,12 +88,14 @@ settings:
 		t.Fatal(err)
 	}
 	desired, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings: {rulesets: [{name: default, enforcement: disabled}]}
+settings: {rulesets: [{id: 7, name: default, enforcement: disabled, conditions: {ref_name: {include: ['~ALL']}}}]}
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
-	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: current.Rulesets.Values()[0]}}, 0)
+	unlisted := current.Rulesets.Values()[0]
+	unlisted.Name = "CANARY-unlisted-object"
+	observed, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: current.Rulesets.Values()[0]}, {ID: 8, Policy: unlisted}}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,9 +112,12 @@ settings: {rulesets: [{name: default, enforcement: disabled}]}
 	if status != 0 || err != nil {
 		t.Fatal(status, err, stderr.String())
 	}
-	for _, hidden := range []string{"CANARY-unmanaged-condition", "987654321", `"rules"`, `"bypass_actors"`, `"conditions"`} {
-		if strings.Contains(string(data), hidden) {
-			t.Fatal("report leaked unmanaged value", hidden, string(data))
+	if strings.Contains(string(data), "CANARY-unlisted-object") {
+		t.Fatal("unselected object reported", string(data))
+	}
+	for _, shown := range []string{"CANARY-selected-condition", "987654321", `"rules"`, `"bypass_actors"`, `"conditions"`, `"id":7`} {
+		if !strings.Contains(string(data), shown) {
+			t.Fatal("selected whole-object value hidden", shown, string(data))
 		}
 	}
 	var report actions.PlanReport
@@ -121,13 +128,8 @@ settings: {rulesets: [{name: default, enforcement: disabled}]}
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, hidden := range []string{"CANARY-unmanaged-condition", "987654321", `&quot;rules&quot;`, `&quot;bypass_actors&quot;`, `&quot;conditions&quot;`} {
-		if strings.Contains(content, hidden) {
-			t.Fatal("summary leaked unmanaged value", hidden, content)
-		}
-	}
 	visible := html.UnescapeString(content)
-	if !strings.Contains(visible, `{"name":"default","enforcement":"active"} → {"name":"default","enforcement":"disabled"}`) {
-		t.Fatal("managed enforcement missing", visible)
+	if strings.Contains(visible, "CANARY-unlisted-object") || !strings.Contains(visible, `"enforcement":"disabled"`) || !strings.Contains(visible, `"rules":[]`) || !strings.Contains(visible, `"id":7`) {
+		t.Fatal("selected defaults or identity missing", visible)
 	}
 }

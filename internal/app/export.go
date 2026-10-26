@@ -76,7 +76,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		entries := make([]settings.RulesetDeclaration, 0, len(values))
 		for _, value := range values {
-			entries = append(entries, value.Policy)
+			policy, id := value.Policy, value.ID
+			policy.ID = &id
+			entries = append(entries, policy)
 		}
 		desired, err := settings.NewRulesetDeclarations(entries)
 		if err != nil {

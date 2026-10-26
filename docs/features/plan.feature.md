@@ -100,7 +100,7 @@ Current source compares six independent managed fields and explicitly marks inac
 
 ### Rule: Compare the complete v0.18.0 feature set without writes
 
-Plan reads only declared resources, retaining registry order for repository fields and resource order for collections/policies. Current source supports twenty-five scalar repository fields, topics, labels, Rulesets, fourteen Actions fields, three security fields, five Pages fields and custom properties. Each scalar counts once and each authoritative collection once. Report validation and a valid explicit-unarchive declaration have a closed upper bound of fifty-one. All resources retain closed native before/after values. Unknown, denied, inapplicable or incomplete observations fail and discard earlier partial comparisons. A zero plan covers only successfully observed managed intent; it proves neither write permission nor future drift protection.
+Plan reads only declared resources, retaining registry order for repository fields and resource order for collections/policies. Current source supports twenty-five scalar repository fields, topics, labels, Rulesets, fourteen Actions fields, three security fields, five Pages fields and custom properties. Each scalar counts once and each managed resource collection according to its selection contract. Report validation and a valid explicit-unarchive declaration have a closed upper bound of fifty-one. All resources retain closed native before/after values. Unknown, denied, inapplicable or incomplete observations fail and discard earlier partial comparisons. A zero plan covers only successfully observed managed intent; it proves neither write permission nor future drift protection.
 
 | Subset | Existing application and supplied-binary coverage |
 | --- | --- |

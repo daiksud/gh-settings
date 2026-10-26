@@ -226,6 +226,26 @@ func TestApplyOutputFailure(t *testing.T) {
 	}
 }
 
+func TestApplyOutputFailureReportsCreatedIDsWithoutRetry(t *testing.T) {
+	var stderr bytes.Buffer
+	calls := 0
+	status := Run([]string{"apply", "--no-writeback"}, brokenWriter{}, &stderr, "fixture", Operations{Apply: func(options ApplyOptions) (app.ApplyResult, error) {
+		calls++
+		if !options.NoWriteback {
+			t.Fatal("writeback opt-out lost")
+		}
+		return app.ApplyResult{Outcome: app.ApplyCompleted, CreatedIDs: []app.CreatedObject{{Collection: "labels", Name: "label", ID: 17}, {Collection: "rulesets", Name: "policy", ID: 27}}}, nil
+	}})
+	if status != 1 || calls != 1 {
+		t.Fatal(status, calls)
+	}
+	for _, want := range []string{"write output: output unavailable", `reported labels "label" id 17`, `reported rulesets "policy" id 27`, "retain this ID before retrying"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Fatalf("missing recovery %q: %s", want, stderr.String())
+		}
+	}
+}
+
 func TestApplyResultMessages(t *testing.T) {
 	for _, test := range []struct {
 		name    string

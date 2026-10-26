@@ -116,6 +116,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		return errUnsupportedCommand
 	}
 	var data []byte
+	var createdIDs []app.CreatedObject
 	switch args[0] {
 	case "--version", "-v":
 		if _, err := fmt.Fprintln(stdout, "gh-settings "+version); err != nil {
@@ -123,7 +124,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security <secret-scanning|private-vulnerability-reporting>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply [--no-writeback]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --pages to include existing Pages configuration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nUse --private-fork-workflows for private fork execution/token/secrets/approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly. New label IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security <secret-scanning|private-vulnerability-reporting>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply [--no-writeback]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --pages to include existing Pages configuration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nUse --private-fork-workflows for private fork execution/token/secrets/approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly. New label and Ruleset IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 		return nil
@@ -139,11 +140,9 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 	case "apply":
 		result, err := operations.Apply(applyOptions)
 		if err != nil {
-			for _, object := range result.CreatedIDs {
-				err = fmt.Errorf("%w; reported %s %q id %d (retain this ID before retrying)", err, object.Collection, object.Name, object.ID)
-			}
-			return err
+			return createdIDDiagnostic(err, result.CreatedIDs)
 		}
+		createdIDs = result.CreatedIDs
 		if result.Completed() {
 			data = []byte("Applied repository settings.\n")
 		} else {
@@ -156,7 +155,14 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		return errUnsupportedCommand
 	}
 	if _, err := stdout.Write(data); err != nil {
-		return fmt.Errorf("write output: %w", err)
+		return createdIDDiagnostic(fmt.Errorf("write output: %w", err), createdIDs)
 	}
 	return nil
+}
+
+func createdIDDiagnostic(err error, objects []app.CreatedObject) error {
+	for _, object := range objects {
+		err = fmt.Errorf("%w; reported %s %q id %d (retain this ID before retrying)", err, object.Collection, object.Name, object.ID)
+	}
+	return err
 }

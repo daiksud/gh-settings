@@ -149,7 +149,7 @@ Current source accepts only the strict optional `actions` mapping. The [Actions 
 
 ### Rule: Validate all adopted fields in the v0.18.0 package locally
 
-Validation accepts twenty-four repository fields, authoritative Rulesets, fourteen Actions policy fields, three adopted security booleans, five Pages fields. Omission remains unmanaged; false and supported empty collections remain explicit; Pages cname null is the endpoint-specific clear operation; other nulls follow their resource contracts. Unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Pages lifecycle/visibility, organization-only settings and other gated candidates are not accepted.
+Validation accepts twenty-four repository fields, ID-selected whole-object Rulesets, fourteen Actions policy fields, three adopted security booleans, five Pages fields. Omission remains unmanaged; false and supported empty collections remain explicit; Pages cname null is the endpoint-specific clear operation; other nulls follow their resource contracts. Unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Pages lifecycle/visibility, organization-only settings and other gated candidates are not accepted.
 
 | Subset | Existing owning tests and specification |
 | --- | --- |

@@ -63,7 +63,7 @@ settings:
 
 `schemaVersion: 1` is required. Omission leaves a field unmanaged; `false` and empty strings are explicit values. Declaring `topics.names` manages the complete topic set, and `names: []` clears it. See the [configuration reference](docs/settings.md) for supported fields, types, and validation rules.
 
-Current unreleased source exports label IDs and manages only listed label objects: ID means update, no ID means create-only, and unlisted labels are never deleted. Color is required; description omission clears it. Normal apply records new IDs in YAML unless disabled. Published v0.19.0 and earlier retain the old authoritative-list contract. Review the [migration instructions](docs/settings.md#apply-id-writeback-and-migration) before upgrading.
+Current unreleased source exports label IDs and manages only listed label objects: ID means update, no ID means create-only, and unlisted labels are never deleted. Color is required; description omission clears it. Normal apply records new IDs in YAML unless disabled. Published v0.19.0 and earlier retain the old authoritative-list contract. Review the [migration instructions](docs/settings.md#apply-id-writeback-and-migration) before upgrading. Current unreleased Rulesets use the same numeric-ID selection, no implicit deletion and created-ID recording model, with their own [whole-object defaults and migration](docs/settings.md#rulesets).
 
 ### 3. Validate and review differences
 
