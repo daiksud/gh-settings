@@ -10,7 +10,7 @@ import (
 )
 
 // RulesetDeclaration selects one whole supported object; declaration defaults
-// are normalized independently of complete server observations.
+// are normalized independently of server observations and their optional absence.
 type RulesetDeclaration struct {
 	ID           *int64             `json:"id,omitempty" yaml:"id,omitempty"`
 	Name         string             `json:"name" yaml:"name"`
@@ -37,7 +37,8 @@ type RulesetRule struct {
 	Parameters *RuleParameters `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 }
 
-// RulesetState contains a complete supported writable policy and its transport ID.
+// RulesetState contains the observed supported policy and its transport ID.
+// An omitted optional dismissal restriction remains unknown, never disabled.
 type RulesetState struct {
 	ID     int64
 	Policy RulesetDeclaration
@@ -63,6 +64,26 @@ func supportedRule(kind string) bool {
 	return slices.Contains([]string{"deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
+	if err := validateRuleset(d, complete); err != nil {
+		return err
+	}
+	if complete && d.Rules != nil {
+		for _, rule := range *d.Rules {
+			if rule.Type == "pull_request" && rule.Parameters.DismissalRestriction == nil {
+				return fmt.Errorf("GitHub omitted pull_request.dismissal_restriction; cannot safely compare or update the whole Ruleset; obtain a complete API observation before managing this ID (export remains available)")
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateObservedRuleset accepts documented optional absence without inferring
+// its effective value. Complete writable policies have stricter validation.
+func ValidateObservedRuleset(d RulesetDeclaration) error {
+	return validateRuleset(d, true)
+}
+
+func validateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.ID != nil && *d.ID <= 0 {
 		return fmt.Errorf("ruleset id must be a positive integer")
 	}
@@ -297,7 +318,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 	names := map[string]bool{}
 	ids := map[int64]bool{}
 	for _, v := range entries {
-		if err := ValidateRuleset(v.Policy, true); err != nil {
+		if err := ValidateObservedRuleset(v.Policy); err != nil {
 			return RulesetObservation{}, err
 		}
 		if v.ID <= 0 || ids[v.ID] || names[v.Policy.Name] {
@@ -320,6 +341,23 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 	return out, nil
 }
 func (o RulesetObservation) ExcludedPush() int { return o.excludedPush }
+
+// ExportDeclarations preserves observed optional absence. Unlike the ordinary
+// declaration constructor it must not apply writable declaration defaults.
+func (o RulesetObservation) ExportDeclarations() (RulesetDeclarations, error) {
+	values, err := o.Values()
+	if err != nil {
+		return RulesetDeclarations{}, err
+	}
+	out := RulesetDeclarations{entries: make([]RulesetDeclaration, 0, len(values))}
+	for _, value := range values {
+		policy, id := value.Policy, value.ID
+		policy.ID = &id
+		out.entries = append(out.entries, policy)
+	}
+	slices.SortFunc(out.entries, func(a, b RulesetDeclaration) int { return strings.Compare(a.Name, b.Name) })
+	return out, nil
+}
 
 // RulesetChange owns validated before/after policies; no arbitrary payload enters CRUD.
 type RulesetChange struct {
@@ -483,6 +521,10 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		}
 		prior, id := cloneRuleset(before.Policy), before.ID
 		prior.ID = &id
+		// Even an apparent no-op must not certify an unobserved protection value.
+		if err := ValidateRuleset(prior, true); err != nil {
+			return nil, fmt.Errorf("ruleset %q (id %d): %w", prior.Name, id, err)
+		}
 		if reflect.DeepEqual(prior, after) {
 			continue
 		}

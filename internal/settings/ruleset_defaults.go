@@ -1,7 +1,7 @@
 package settings
 
 // These are declaration defaults, not inferred server observations. Never call
-// this on an API read: missing protection data must remain an error, not false.
+// this on an API read: unobserved protection must remain unknown, not false.
 func normalizeRuleObject(rule *RulesetRule) {
 	if rule.Type != "pull_request" && rule.Type != "required_status_checks" {
 		return

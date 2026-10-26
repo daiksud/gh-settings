@@ -246,7 +246,7 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 	if err := decoder.Decode(&result); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
-	if err := settings.ValidateRuleset(result, true); err != nil {
+	if err := settings.ValidateObservedRuleset(result); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
 	return result, nil
