@@ -135,7 +135,7 @@ Test mapping: [TestTopicsConfigPresenceAndRoundTrip and TestTopicsConfigRejectsI
 
 ### Rule: Validate label declarations
 
-Current source accepts a label list as an authoritative collection, distinguishes omission from an empty list, and validates names, identity, and optional attributes before API access. The [Labels specification](labels.feature.md#rule-declare-authoritative-membership-explicitly) owns these scenarios and test mappings. Published v0.8.0 does not include labels.
+Current unreleased source validates listed whole label objects with positive optional IDs, required names/colors and optional descriptions. Empty selections manage nothing; duplicate IDs/names, null and unknown fields fail before API access. The [Labels specification](labels.feature.md#rule-select-objects-never-delete-unlisted-labels) owns the contract. Published v0.19.0 and earlier retain authoritative-list semantics.
 
 ### Rule: Validate the optional Discussions field
 

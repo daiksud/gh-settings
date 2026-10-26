@@ -193,6 +193,31 @@ func TestArchiveApplyFailuresPreserveProvenProgress(t *testing.T) {
 	}
 }
 
+func TestArchivedRepositoryWithEmptyLabelSelectionIsMatching(t *testing.T) {
+	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+	archived := true
+	labels := appLabelDeclarations(t)
+	desired := settings.Declaration{Repository: settings.RepositoryDeclaration{Archived: &archived}, Labels: &labels}
+	reads := 0
+	result, err := Apply(func() (settings.Declaration, error) { return desired, nil }, func() (repository.Repository, error) { return repo, nil }, Writer{
+		ReadArchive: func(repository.Repository) (settings.ArchiveState, error) {
+			reads++
+			return settings.ArchiveState{ID: 42, FullName: "owner/current", Archived: true}, nil
+		},
+		ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+			t.Fatal("empty selection read labels")
+			return settings.LabelObservation{}, nil
+		},
+		Archive: func(repository.Repository, settings.ArchiveState, bool) error {
+			t.Fatal("matching archive state mutated")
+			return nil
+		},
+	})
+	if err != nil || result.Outcome != ApplyMatchingLabels || reads != 1 || len(result.Operations) != 1 {
+		t.Fatalf("result=%+v error=%v reads=%d", result, err, reads)
+	}
+}
+
 func TestArchiveExportExplicitlyOptInAndFailClosed(t *testing.T) {
 	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	from := settings.RepositoryState{DefaultBranch: "main"}

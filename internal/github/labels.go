@@ -28,6 +28,10 @@ func (client *Client) ReadLabels(repo repository.Repository) (settings.LabelObse
 		}
 		for _, item := range items {
 			var label settings.LabelState
+			value, present := item["id"]
+			if !present || json.Unmarshal(value, &label.ID) != nil || label.ID <= 0 {
+				return settings.LabelObservation{}, fmt.Errorf("GitHub label response is missing positive id")
+			}
 			for _, field := range []struct {
 				name   string
 				target *string

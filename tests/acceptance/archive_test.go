@@ -15,6 +15,51 @@ import (
 	"testing"
 )
 
+func TestArchivedRepositoryEmptyLabelsDoNotBlockApply(t *testing.T) {
+	binary := acceptanceBinary(t)
+	var mu sync.Mutex
+	reads := 0
+	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if r.Method != "GET" || r.URL.Path != "/repos/owner/current" {
+			t.Error("empty labels or matching archive caused unexpected request", r.Method, r.URL)
+			w.WriteHeader(400)
+			return
+		}
+		reads++
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"id":42,"full_name":"owner/current","archived":true}`)
+	}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fixture.close()
+	env := exportFixtureEnv(fixture.cfg)
+	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
+		t.Fatal(err)
+	}
+	input := "schemaVersion: 1\nsettings:\n  repository:\n    archived: true\n  labels: []\n"
+	if err := writeSettingsFile(fixture.work, input); err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range []string{"plan", "apply"} {
+		result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
+		if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+			t.Fatalf("%s: %v %v %s", command, err, result.runErr, result.stderr.String())
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if reads != 2 {
+		t.Fatalf("reads=%d, want one archive read per command and no label reads", reads)
+	}
+	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
+	if err != nil || string(data) != input {
+		t.Fatalf("matching apply changed declaration: %s %v", data, err)
+	}
+}
+
 func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex

@@ -58,7 +58,7 @@ func TestRulesetsAppFreshReadOrderAndFailures(t *testing.T) {
 			}
 			return nil
 		}})
-		want := []string{"repository", "labels", "rulesets-read"}
+		want := []string{"repository", "rulesets-read"}
 		if fail != "read" {
 			want = append(want, "ruleset-write")
 		}

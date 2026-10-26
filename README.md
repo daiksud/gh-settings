@@ -63,7 +63,7 @@ settings:
 
 `schemaVersion: 1` is required. Omission leaves a field unmanaged; `false` and empty strings are explicit values. Declaring `topics.names` manages the complete topic set, and `names: []` clears it. See the [configuration reference](docs/settings.md) for supported fields, types, and validation rules.
 
-A source build also exports the complete label collection. A declared label list is authoritative: undeclared remote labels are deleted, and `labels: []` deletes every label and its issue/PR associations. Omit `settings.labels` to leave labels unmanaged. The [configuration reference](docs/settings.md#labels) explains retained attributes and name identity.
+Current unreleased source exports label IDs and manages only listed label objects: ID means update, no ID means create-only, and unlisted labels are never deleted. Color is required; description omission clears it. Normal apply records new IDs in YAML unless disabled. Published v0.19.0 and earlier retain the old authoritative-list contract. Review the [migration instructions](docs/settings.md#apply-id-writeback-and-migration) before upgrading.
 
 ### 3. Validate and review differences
 
@@ -82,7 +82,7 @@ After reviewing the plan and configuration, apply with credentials that can writ
 gh settings apply
 ```
 
-Apply does not execute a saved plan or protect against intervening changes. It writes declared repository settings, then topics, directly. In current source, declared labels are then read afresh and reconciled with creates, updates, and deletes. A later read or write failure leaves earlier successful updates applied, with no automatic rollback. See the [command reference](docs/commands.md) for authentication, output, and failure behavior.
+Apply does not execute a saved plan or protect against intervening changes. It writes declared repository settings, then topics, directly. Current-source labels use fresh ID observations and needed creates/updates without implicit deletion. A later failure retains earlier remote writes and any already-recorded IDs; there is no rollback. See the [command reference](docs/commands.md) for authentication, writeback and failure behavior.
 
 ## Use as a GitHub Action
 

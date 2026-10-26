@@ -34,8 +34,15 @@ func main() {
 		Plan: func() (app.PlanResult, error) {
 			return app.Plan(checkout.Declaration, checkout.Repository, reader)
 		},
-		Apply: func() (app.ApplyResult, error) {
-			return app.Apply(checkout.Declaration, checkout.Repository, app.Writer{ReadPages: readPages, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: readSecretScanning, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadForkApproval: readForkApproval, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
+		Apply: func(options cli.ApplyOptions) (app.ApplyResult, error) {
+			desired, record, err := checkout.PrepareApply()
+			if err != nil {
+				return app.ApplyResult{Outcome: app.ApplyFailed}, err
+			}
+			if options.NoWriteback || os.Getenv("GITHUB_ACTIONS") == "true" {
+				record = nil
+			}
+			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{CreatedID: record, ReadPages: readPages, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: readSecretScanning, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadForkApproval: readForkApproval, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
 		},
 	}))
 }
@@ -102,10 +109,10 @@ func readLabelsForApply(repo repository.Repository) (settings.LabelObservation, 
 	}
 	return client.ReadLabels(repo)
 }
-func createLabel(repo repository.Repository, change settings.LabelChange) error {
+func createLabel(repo repository.Repository, change settings.LabelChange) (int64, error) {
 	client, err := github.NewWriteClient(repo.Host)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	return client.CreateLabel(repo, change)
 }

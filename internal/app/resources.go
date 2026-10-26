@@ -50,7 +50,8 @@ type Writer struct {
 	Repository           func(repository.Repository, settings.RepositoryDeclaration) error
 	Topics               func(repository.Repository, settings.TopicsDeclaration) error
 	ReadLabels           func(repository.Repository) (settings.LabelObservation, error)
-	CreateLabel          func(repository.Repository, settings.LabelChange) error
+	CreateLabel          func(repository.Repository, settings.LabelChange) (int64, error)
+	CreatedID            func(string, string, int64) error
 	UpdateLabel          func(repository.Repository, settings.LabelChange) error
 	DeleteLabel          func(repository.Repository, settings.LabelChange) error
 	ReadRulesets         func(repository.Repository) (settings.RulesetObservation, error)

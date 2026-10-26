@@ -9,7 +9,7 @@ import (
 
 func TestValidatedReportRetainsNativeValues(t *testing.T) {
 	var report PlanReport
-	input := `{"outcome":"changed","target":"owner/current","managed":4,"changes":[{"field":"repository.description","before":"before","after":"after"},{"field":"repository.has_issues","before":true,"after":false},{"field":"topics.names","before":["old"],"after":[]}],"labels":[{"operation":"create","name":"bug","after":{"color":"abcdef","description":""}}]}`
+	input := `{"outcome":"changed","target":"owner/current","managed":4,"changes":[{"field":"repository.description","before":"before","after":"after"},{"field":"repository.has_issues","before":true,"after":false},{"field":"topics.names","before":["old"],"after":[]}],"labels":[{"operation":"create","name":"bug","after":{"name":"bug","color":"abcdef","description":""}}]}`
 	if err := json.Unmarshal([]byte(input), &report); err != nil {
 		t.Fatal(err)
 	}

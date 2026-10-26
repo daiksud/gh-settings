@@ -16,12 +16,11 @@ import (
 )
 
 func TestLabelPlanReportAndSummary(t *testing.T) {
-	empty := ""
+	empty, color, id := "", "abcdef", int64(1)
 	op := labelOperation(t)
 	changes := labelSequence(t,
-		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "<new>"})),
-		op(settings.NewLabelUpdate(settings.LabelState{Name: "existing", Color: "abcdef", Description: "old"}, settings.LabelDeclaration{Name: "existing", Description: &empty})),
-		op(settings.NewLabelDelete(settings.LabelState{Name: "old", Color: "abcdef", Description: "</pre><script>"})),
+		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "<new>", Color: &color})),
+		op(settings.NewLabelUpdate(settings.LabelState{ID: 1, Name: "existing", Color: "abcdef", Description: "</pre><script>"}, settings.LabelDeclaration{ID: &id, Name: "existing", Color: &color, Description: &empty})),
 	)
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
@@ -36,10 +35,10 @@ func TestLabelPlanReportAndSummary(t *testing.T) {
 	if err := json.Unmarshal(data, &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.Outcome != "changed" || report.Managed != 1 || len(report.Labels) != 3 || len(report.Changes) != 0 {
+	if report.Outcome != "changed" || report.Managed != 1 || len(report.Labels) != 2 || len(report.Changes) != 0 {
 		t.Fatalf("report=%+v", report)
 	}
-	if report.Labels[0].After.Color != nil || report.Labels[0].After.Description != nil || report.Labels[1].After.Description == nil || *report.Labels[1].After.Description != "" {
+	if report.Labels[0].After.Color == nil || report.Labels[0].After.Description == nil || report.Labels[1].ID == nil || *report.Labels[1].ID != 1 || report.Labels[1].After.Description == nil || *report.Labels[1].After.Description != "" {
 		t.Fatalf("lost attribute presence: %s", data)
 	}
 	rendered, err := actions.RenderSummary(report, summaryMetadata())
@@ -47,7 +46,7 @@ func TestLabelPlanReportAndSummary(t *testing.T) {
 		t.Fatalf("rendered=%s err=%v", rendered, err)
 	}
 	visible := html.UnescapeString(rendered)
-	for _, want := range []string{`settings.labels: create "<new>"`, `settings.labels: update "existing" description: "old" → ""`, `settings.labels: delete "old" (removes issue/PR associations)`} {
+	for _, want := range []string{`settings.labels: create "<new>"`, `settings.labels: update "existing" (id 1) description: "</pre><script>" → ""`} {
 		if !strings.Contains(visible, want) {
 			t.Fatalf("missing %s in %s", want, visible)
 		}
@@ -61,6 +60,8 @@ func TestLabelMalformedReportsPreserveSummary(t *testing.T) {
 		`[{"operation":"rename","name":"a","after":{}}]`,
 		`[{"operation":"create","name":"a"}]`,
 		`[{"operation":"create","name":"a","after":null}]`,
+		`[{"operation":"create","name":"a","after":{"name":"a","color":"abcdef"}}]`,
+		`[{"operation":"create","name":"a","after":{"name":"a","description":""}}]`,
 		`[{"operation":"create","name":"a","before":{"color":"abcdef","description":""},"after":{}}]`,
 		`[{"operation":"delete","name":"a"}]`,
 		`[{"operation":"delete","name":"a","before":{"color":"ABCDEF","description":""}}]`,

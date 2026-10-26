@@ -7,12 +7,13 @@ import (
 
 func TestLabelDeclarationsOwnValues(t *testing.T) {
 	color, description := "ABCDEF", ""
-	input := []LabelDeclaration{{Name: "bug", Color: &color, Description: &description}, {Name: "help wanted"}}
+	id := int64(7)
+	input := []LabelDeclaration{{ID: &id, Name: "bug", Color: &color, Description: &description}, {Name: "help wanted", Color: labelText("abcdef")}}
 	declarations, err := NewLabelDeclarations(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []LabelDeclaration{{Name: "bug", Color: labelText("abcdef"), Description: labelText("")}, {Name: "help wanted"}}
+	want := []LabelDeclaration{{ID: labelID(7), Name: "bug", Color: labelText("abcdef"), Description: labelText("")}, {Name: "help wanted", Color: labelText("abcdef")}}
 	if color != "ABCDEF" {
 		t.Fatal("construction mutated input color")
 	}
@@ -24,11 +25,11 @@ func TestLabelDeclarationsOwnValues(t *testing.T) {
 	}
 	*values[0].Color, *values[0].Description, values[0].Name = "bad", "changed", ""
 	values[1] = LabelDeclaration{}
-	comparison, err := CompareLabels(labelObservation(t), &declarations)
+	comparison, err := CompareLabels(labelObservation(t, LabelState{ID: 7, Name: "bug", Color: "000000", Description: "old"}), &declarations)
 	if err != nil || comparison.Labels.Len() != 2 {
 		t.Fatalf("comparison=%+v error=%v", comparison, err)
 	}
-	comparison.Labels.Values()[0].Visit(func(after LabelDeclaration) {
+	comparison.Labels.Values()[1].Visit(func(after LabelDeclaration) {
 		*after.Color, *after.Description, after.Name = "bad", "changed", ""
 	}, nil, nil)
 	if !reflect.DeepEqual(declarations.Values(), want) {
@@ -43,7 +44,7 @@ func TestLabelDeclarationsEmpty(t *testing.T) {
 			t.Fatalf("declarations=%+v error=%v", declarations, err)
 		}
 		comparison, err := CompareLabels(labelObservation(t), &declarations)
-		if err != nil || comparison.Managed != 1 || comparison.Labels.Len() != 0 {
+		if err != nil || comparison.Managed != 0 || comparison.Labels.Len() != 0 {
 			t.Fatalf("comparison=%+v error=%v", comparison, err)
 		}
 	}

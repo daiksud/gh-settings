@@ -20,7 +20,7 @@ type Declaration struct {
 type TopicsDeclaration struct{ Names *[]string }
 
 func (d Declaration) Empty() bool {
-	return d.Repository.Empty() && d.Topics.Names == nil && d.Labels == nil && d.Rulesets == nil && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
+	return d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && d.Rulesets == nil && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
 }
 
 // ValidateTopics follows GitHub's canonical topic naming rules.

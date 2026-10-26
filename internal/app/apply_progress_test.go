@@ -34,7 +34,6 @@ func TestTopicsFailureRetainsKnownApplyProgress(t *testing.T) {
 	want := ApplyResult{Outcome: ApplyPartialFailure, Target: target, Operations: []ApplyOperation{
 		{Kind: RepositoryUpdate, Status: OperationCompleted},
 		{Kind: TopicsUpdate, Status: OperationFailedUnknown},
-		{Kind: LabelsRead, Status: OperationNotExecuted},
 	}}
 	if !errors.Is(err, cause) || !reflect.DeepEqual(result, want) || result.Completed() || !reflect.DeepEqual(calls, []string{"load", "target", "repository", "topics"}) {
 		t.Fatalf("result=%+v error=%v calls=%v", result, err, calls)
@@ -44,50 +43,42 @@ func TestTopicsFailureRetainsKnownApplyProgress(t *testing.T) {
 func TestLabelOnlyApplyRetainsCompletedUnknownAndUnexecutedOperations(t *testing.T) {
 	for _, failName := range []string{"", "a", "b"} {
 		t.Run(failName, func(t *testing.T) {
+			color := "abcdef"
+			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "b", Color: &color}, settings.LabelDeclaration{Name: "a", Color: &color})
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
-			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "b"}, settings.LabelDeclaration{Name: "a"})
 			cause := errors.New("connection lost after request")
 			var calls []string
 			result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Labels: &labels}, nil }, func() (repository.Repository, error) { return target, nil }, Writer{
 				ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
-					return settings.NewLabelObservation([]settings.LabelState{{Name: "old", Color: "abcdef"}})
+					return settings.NewLabelObservation([]settings.LabelState{{ID: 9, Name: "old", Color: "abcdef"}})
 				},
-				CreateLabel: func(repo repository.Repository, change settings.LabelChange) error {
-					if repo != target {
-						t.Fatalf("target=%+v", repo)
+				CreateLabel: func(_ repository.Repository, c settings.LabelChange) (int64, error) {
+					calls = append(calls, c.Name())
+					if c.Name() == failName {
+						return 0, cause
 					}
-					calls = append(calls, "create:"+change.Name())
-					if change.Name() == failName {
-						return cause
+					if c.Name() == "a" {
+						return 17, nil
 					}
-					return nil
-				},
-				DeleteLabel: func(repo repository.Repository, change settings.LabelChange) error {
-					if repo != target {
-						t.Fatalf("target=%+v", repo)
-					}
-					calls = append(calls, "delete:"+change.Name())
-					return nil
+					return 18, nil
 				},
 			})
-			want := ApplyResult{Outcome: ApplyCompleted, Target: target, Operations: []ApplyOperation{
-				{Kind: LabelsRead, Status: OperationCompleted},
-				{Kind: LabelCreate, LabelName: "a", Status: OperationCompleted},
-				{Kind: LabelCreate, LabelName: "b", Status: OperationCompleted},
-				{Kind: LabelDelete, LabelName: "old", Status: OperationCompleted},
-			}}
-			wantCalls := []string{"create:a", "create:b", "delete:old"}
+			want := ApplyResult{Outcome: ApplyCompleted, Target: target, Operations: []ApplyOperation{{Kind: LabelsRead, Status: OperationCompleted}, {Kind: LabelCreate, LabelName: "a", Status: OperationCompleted}, {Kind: LabelCreate, LabelName: "b", Status: OperationCompleted}}, CreatedIDs: []CreatedObject{{Collection: "labels", Name: "a", ID: 17}, {Collection: "labels", Name: "b", ID: 18}}}
+			wantCalls := []string{"a", "b"}
 			if failName == "a" {
 				want.Outcome = ApplyFailed
-				want.Operations[1].Status, want.Operations[2].Status, want.Operations[3].Status = OperationFailedUnknown, OperationNotExecuted, OperationNotExecuted
+				want.Operations[1].Status = OperationFailedUnknown
+				want.Operations[2].Status = OperationNotExecuted
+				want.CreatedIDs = nil
 				wantCalls = wantCalls[:1]
-			} else if failName == "b" {
+			}
+			if failName == "b" {
 				want.Outcome = ApplyPartialFailure
-				want.Operations[2].Status, want.Operations[3].Status = OperationFailedUnknown, OperationNotExecuted
-				wantCalls = wantCalls[:2]
+				want.Operations[2].Status = OperationFailedUnknown
+				want.CreatedIDs = want.CreatedIDs[:1]
 			}
 			if !reflect.DeepEqual(result, want) || !reflect.DeepEqual(calls, wantCalls) || (failName == "" && err != nil) || (failName != "" && !errors.Is(err, cause)) {
-				t.Fatalf("result=%+v want=%+v calls=%v error=%v", result, want, calls, err)
+				t.Fatal(result, want, calls, err)
 			}
 		})
 	}

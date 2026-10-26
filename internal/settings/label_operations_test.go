@@ -6,7 +6,7 @@ import (
 )
 
 func TestLabelOperationConstructionRejectsInvalidValues(t *testing.T) {
-	before := LabelState{Name: "bug", Color: "abcdef", Description: "old"}
+	before := LabelState{ID: 1, Name: "bug", Color: "abcdef", Description: "old"}
 	for _, after := range []LabelDeclaration{
 		{Name: ""}, {Name: "bug", Color: labelText("ABCDEF")}, {Name: "bug", Color: labelText("bad")},
 	} {
@@ -23,7 +23,7 @@ func TestLabelOperationConstructionRejectsInvalidValues(t *testing.T) {
 			t.Fatalf("created invalid update %+v", after)
 		}
 	}
-	for _, invalid := range []LabelState{{}, {Name: "bug", Color: "ABCDEF"}, {Name: "bug", Color: "bad"}} {
+	for _, invalid := range []LabelState{{}, {ID: 1, Name: "bug", Color: "ABCDEF"}, {ID: 2, Name: "bug", Color: "bad"}} {
 		if _, err := NewLabelDelete(invalid); err == nil {
 			t.Fatalf("created invalid delete %+v", invalid)
 		}
@@ -34,11 +34,11 @@ func TestLabelOperationConstructionRejectsInvalidValues(t *testing.T) {
 	if _, err := NewLabelChanges([]LabelChange{{}}); err == nil {
 		t.Fatal("accepted missing operation")
 	}
-	create, err := NewLabelCreate(LabelDeclaration{Name: "Σ"})
+	create, err := NewLabelCreate(LabelDeclaration{Name: "Σ", Color: labelText("abcdef")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	remove, err := NewLabelDelete(LabelState{Name: "ς", Color: "abcdef"})
+	remove, err := NewLabelDelete(LabelState{ID: 1, Name: "ς", Color: "abcdef"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,6 +60,20 @@ func TestLabelChangesEmptySequence(t *testing.T) {
 	}
 }
 
+func TestLabelChangesRejectDuplicateIDsAcrossRenames(t *testing.T) {
+	var changes []LabelChange
+	for _, name := range []string{"first", "second"} {
+		change, err := NewLabelUpdate(LabelState{ID: 7, Name: name, Color: "abcdef"}, LabelDeclaration{ID: labelID(7), Name: name + "-renamed", Color: labelText("abcdef"), Description: labelText("")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		changes = append(changes, change)
+	}
+	if _, err := NewLabelChanges(changes); err == nil {
+		t.Fatal("accepted multiple updates for the same ID")
+	}
+}
+
 func TestLabelOperationsOwnAttributesAndSequence(t *testing.T) {
 	color, empty := "123456", ""
 	input := LabelDeclaration{Name: "bug", Color: &color, Description: &empty}
@@ -67,11 +81,11 @@ func TestLabelOperationsOwnAttributesAndSequence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	update, err := NewLabelUpdate(LabelState{Name: "existing", Color: "abcdef", Description: "old"}, LabelDeclaration{Name: "existing", Description: &empty})
+	update, err := NewLabelUpdate(LabelState{ID: 1, Name: "existing", Color: "abcdef", Description: "old"}, LabelDeclaration{ID: labelID(1), Name: "existing", Color: labelText("abcdef"), Description: &empty})
 	if err != nil {
 		t.Fatal(err)
 	}
-	remove, err := NewLabelDelete(LabelState{Name: "old", Color: "abcdef"})
+	remove, err := NewLabelDelete(LabelState{ID: 2, Name: "old", Color: "abcdef"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +106,7 @@ func TestLabelOperationsOwnAttributesAndSequence(t *testing.T) {
 			}
 			*after.Color, *after.Description = "bad", "changed"
 		}, func(before LabelState, after LabelDeclaration) {
-			if before.Name != "existing" || after.Color != nil || *after.Description != "" {
+			if before.Name != "existing" || after.Color == nil || *after.Color != "abcdef" || *after.Description != "" {
 				t.Fatalf("update before=%+v after=%+v", before, after)
 			}
 			*after.Description = "changed"

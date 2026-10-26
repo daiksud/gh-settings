@@ -41,7 +41,7 @@ func TestLabelsPaginationAndCompleteRead(t *testing.T) {
 				if calls == 1 {
 					labels := make([]map[string]any, 100)
 					for i := range labels {
-						labels[i] = map[string]any{"name": fmt.Sprintf("label-%d", i), "color": "abcdef", "description": ""}
+						labels[i] = map[string]any{"id": i + 1, "name": fmt.Sprintf("label-%d", i), "color": "abcdef", "description": ""}
 					}
 					body, _ := json.Marshal(labels)
 					return labelsResponse(req, 200, string(body)), nil
@@ -49,7 +49,7 @@ func TestLabelsPaginationAndCompleteRead(t *testing.T) {
 				if calls != 2 {
 					t.Fatal("unexpected extra page")
 				}
-				return labelsResponse(req, test.status, test.last), nil
+				return labelsResponse(req, test.status, fixtureLabelIDs(test.last, 101)), nil
 			}))
 			got, err := client.ReadLabels(repository.Repository{Owner: "owner", Name: "current"})
 			values, readErr := got.Values()
@@ -66,7 +66,9 @@ func TestLabelsPaginationAndCompleteRead(t *testing.T) {
 func TestReadLabelsRejectsIncompleteState(t *testing.T) {
 	for _, body := range []string{`[{"color":"abcdef","description":""}]`, `[{"name":"a","description":""}]`, `[{"name":42,"color":"abcdef","description":""}]`, `[{"name":"a","color":false,"description":""}]`, `[{"name":"","color":"abcdef","description":""}]`, `null`, `{}`, `[null]`, `not json`, `[{"name":"a","color":"abcdef"}]`, `[{"name":null,"color":"abcdef","description":""}]`, `[{"name":"a","color":null,"description":""}]`, `[{"name":"a","color":"#abcdef","description":""}]`, `[{"name":"a","color":"abcdef","description":false}]`, `[{"name":"a","color":"abcdef","description":""},{"name":"A","color":"abcdef","description":""}]`} {
 		t.Run(body, func(t *testing.T) {
-			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) { return labelsResponse(req, 200, body), nil }))
+			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+				return labelsResponse(req, 200, fixtureLabelIDs(body, 1)), nil
+			}))
 			got, err := client.ReadLabels(repository.Repository{Owner: "owner", Name: "current"})
 			values, readErr := got.Values()
 			if err == nil || readErr == nil || values != nil {
@@ -86,20 +88,23 @@ func TestReadLabelsCompleteEmptyObservation(t *testing.T) {
 }
 
 func TestUpdateLabelEscapedNames(t *testing.T) {
-	empty := ""
+	empty, color, id := "", "abcdef", int64(1)
 	op := labelOperation(t)
 	for _, name := range []string{"area/docs", "a?b#c%", ".", "..", "✨ help wanted"} {
 		t.Run(name, func(t *testing.T) {
-			before := settings.LabelState{Name: name, Color: "abcdef", Description: "old"}
-			change := op(settings.NewLabelUpdate(before, settings.LabelDeclaration{Name: name, Description: &empty}))
+			before := settings.LabelState{ID: 1, Name: name, Color: "abcdef", Description: "old"}
+			change := op(settings.NewLabelUpdate(before, settings.LabelDeclaration{ID: &id, Name: name, Color: &color, Description: &empty}))
 			calls := 0
 			client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				calls++
 				var payload map[string]any
+				if req.Method == "GET" {
+					return labelsResponse(req, 200, `{"id":1}`), nil
+				}
 				if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
 					t.Fatal(err)
 				}
-				if req.Method != "PATCH" || req.URL.Path != "/repos/owner/current/labels/"+name || !reflect.DeepEqual(payload, map[string]any{"description": ""}) {
+				if req.Method != "PATCH" || req.URL.Path != "/repos/owner/current/labels/"+name || !reflect.DeepEqual(payload, map[string]any{"new_name": name, "color": "abcdef", "description": ""}) {
 					t.Fatalf("request=%s %s payload=%v", req.Method, req.URL, payload)
 				}
 				if strings.ContainsAny(name, "/?#%") && req.URL.EscapedPath() == req.URL.Path {
@@ -108,13 +113,31 @@ func TestUpdateLabelEscapedNames(t *testing.T) {
 				if (name == "." || name == "..") && !strings.Contains(req.URL.EscapedPath(), "%2E") {
 					t.Fatalf("dot not encoded: %s", req.URL)
 				}
-				return labelsResponse(req, 200, `{}`), nil
+				response, _ := json.Marshal(map[string]any{"id": 1, "name": name, "color": "abcdef", "description": ""})
+				return labelsResponse(req, 200, string(response)), nil
 			}))
-			if err := client.UpdateLabel(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 1 {
+			if err := client.UpdateLabel(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 2 {
 				t.Fatalf("calls=%d err=%v", calls, err)
 			}
 		})
 	}
+}
+
+func fixtureLabelIDs(body string, start int) string {
+	var items []map[string]any
+	if json.Unmarshal([]byte(body), &items) != nil || items == nil {
+		return body
+	}
+	for i, item := range items {
+		if item == nil {
+			continue
+		}
+		if _, present := item["id"]; !present {
+			item["id"] = start + i
+		}
+	}
+	encoded, _ := json.Marshal(items)
+	return string(encoded)
 }
 
 func labelOperation(t *testing.T) func(settings.LabelChange, error) settings.LabelChange {

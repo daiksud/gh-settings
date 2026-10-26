@@ -13,7 +13,12 @@ type LabelObservation struct{ entries []LabelState }
 func NewLabelObservation(labels []LabelState) (LabelObservation, error) {
 	owned := make([]LabelState, len(labels))
 	seen := make(map[string]bool, len(labels))
+	ids := make(map[int64]bool, len(labels))
 	for i, label := range labels {
+		if label.ID <= 0 || ids[label.ID] {
+			return LabelObservation{}, fmt.Errorf("invalid or duplicate label id")
+		}
+		ids[label.ID] = true
 		if err := ValidateLabelName(label.Name); err != nil {
 			return LabelObservation{}, err
 		}

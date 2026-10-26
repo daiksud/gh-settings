@@ -92,7 +92,7 @@ func TestRunSelectsOperation(t *testing.T) {
 					planCalls++
 					return app.PlanResult{Comparison: settings.Comparison{Managed: 1}}, test.operationError
 				},
-				Apply: func() (app.ApplyResult, error) {
+				Apply: func(ApplyOptions) (app.ApplyResult, error) {
 					applyCalls++
 					return app.ApplyResult{Outcome: app.ApplyCompleted}, test.operationError
 				},
@@ -136,6 +136,34 @@ func TestRemovedOrganizationExportOptions(t *testing.T) {
 		if code != 1 || stdout.Len() != 0 || stderr.Len() == 0 {
 			t.Fatalf("option=%s status=%d stderr=%q", option, code, stderr.String())
 		}
+	}
+}
+
+func TestApplyWritebackOption(t *testing.T) {
+	for _, disabled := range []bool{false, true} {
+		args := []string{"apply"}
+		if disabled {
+			args = append(args, "--no-writeback")
+		}
+		var stdout, stderr bytes.Buffer
+		called := false
+		status := Run(args, &stdout, &stderr, "fixture", Operations{Apply: func(options ApplyOptions) (app.ApplyResult, error) {
+			called = true
+			if options.NoWriteback != disabled {
+				t.Fatalf("options=%+v", options)
+			}
+			return app.ApplyResult{Outcome: app.ApplyCompleted, CreatedIDs: []app.CreatedObject{{Collection: "labels", Name: "new", ID: 17}}}, nil
+		}})
+		if status != 0 || !called || stderr.Len() != 0 || !strings.Contains(stdout.String(), `Created labels "new": id 17`) {
+			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
+		}
+	}
+	var output bytes.Buffer
+	if Run([]string{"apply", "--no-writeback", "--no-writeback"}, &output, &output, "fixture", Operations{Apply: func(ApplyOptions) (app.ApplyResult, error) {
+		t.Fatal("invalid duplicate option reached apply")
+		return app.ApplyResult{}, nil
+	}}) != 1 {
+		t.Fatal("duplicate option accepted")
 	}
 }
 
@@ -187,7 +215,7 @@ func TestApplyOutputFailure(t *testing.T) {
 		var stderr bytes.Buffer
 		calls := 0
 		code := Run([]string{"apply"}, brokenWriter{}, &stderr, "fixture-version", Operations{
-			Apply: func() (app.ApplyResult, error) {
+			Apply: func(ApplyOptions) (app.ApplyResult, error) {
 				calls++
 				return app.ApplyResult{Outcome: outcome}, nil
 			},
@@ -211,7 +239,10 @@ func TestApplyResultMessages(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			calls := 0
 			status := Run([]string{"apply"}, &stdout, &stderr, "fixture-version", Operations{
-				Apply: func() (app.ApplyResult, error) { calls++; return app.ApplyResult{Outcome: test.outcome}, nil },
+				Apply: func(ApplyOptions) (app.ApplyResult, error) {
+					calls++
+					return app.ApplyResult{Outcome: test.outcome}, nil
+				},
 			})
 			if status != 0 || calls != 1 || stdout.String() != test.message || stderr.Len() != 0 {
 				t.Fatalf("status=%d calls=%d stdout=%q stderr=%q", status, calls, stdout.String(), stderr.String())

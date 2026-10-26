@@ -17,7 +17,7 @@ func TestLabelsConfigOmissionEmptyAndRoundTrip(t *testing.T) {
 		{"schemaVersion: 1", false, 0},
 		{"schemaVersion: 1\nsettings: {labels: []}", true, 0},
 		{"schemaVersion: 1\nsettings: {labels: [{name: bug, color: ABCDEF, description: ''}]}", true, 1},
-		{"schemaVersion: 1\nsettings: {labels: [{<<: {name: bug, color: ABCDEF}, description: &text Test}, {name: other, description: *text}]}", true, 2},
+		{"schemaVersion: 1\nsettings: {labels: [{<<: {name: bug, color: ABCDEF}, description: &text Test}, {name: other, color: abcdef, description: *text}]}", true, 2},
 	} {
 		t.Run(test.input, func(t *testing.T) {
 			got, err := DecodeConfig([]byte(test.input))
@@ -55,7 +55,7 @@ func TestLabelsConfigRejectsInvalidDeclarations(t *testing.T) {
 }
 
 func TestLabelsConfigExportSortsNamesAndPreservesOmittedFields(t *testing.T) {
-	data := []byte("schemaVersion: 1\nsettings: {labels: [{name: z, description: ''}, {name: a, color: ABCDEF}]}")
+	data := []byte("schemaVersion: 1\nsettings: {labels: [{id: 17, name: z, color: fedcba, description: ''}, {id: 18, name: a, color: ABCDEF}]}")
 	declaration, err := DecodeConfig(data)
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func TestLabelsConfigExportSortsNamesAndPreservesOmittedFields(t *testing.T) {
 	if strings.Index(text, "name: a") > strings.Index(text, "name: z") || !strings.Contains(text, "color: abcdef") || !strings.Contains(text, `description: ""`) {
 		t.Fatalf("encoded=%s", text)
 	}
-	if declaration.Labels.Values()[0].Color != nil || declaration.Labels.Values()[1].Description != nil {
+	if declaration.Labels.Values()[0].ID == nil || *declaration.Labels.Values()[0].ID != 17 || declaration.Labels.Values()[1].Description != nil {
 		t.Fatal("injected omitted values")
 	}
 }

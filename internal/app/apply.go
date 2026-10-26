@@ -64,7 +64,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 	if topicsManaged {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: TopicsUpdate})
 	}
-	if desired.Labels != nil {
+	if desired.Labels != nil && desired.Labels.Len() > 0 {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: LabelsRead})
 	}
 	index := firstOrdinary
@@ -85,7 +85,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		index++
 	}
 	hasWrites := repositoryManaged || topicsManaged || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
-	if desired.Labels != nil {
+	if desired.Labels != nil && desired.Labels.Len() > 0 {
 		current, err := write.ReadLabels(repo)
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
@@ -108,14 +108,35 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 			var err error
 			switch result.Operations[index].Kind {
 			case LabelCreate:
-				err = write.CreateLabel(repo, change)
+				var id int64
+				id, err = write.CreateLabel(repo, change)
+				if id > 0 {
+					result.CreatedIDs = append(result.CreatedIDs, CreatedObject{Collection: "labels", Name: change.Name(), ID: id})
+				}
+				if err == nil && id <= 0 {
+					err = fmt.Errorf("creation returned no positive ID; remote creation may have succeeded")
+				}
+				if err == nil {
+					result.Operations[index].Status = OperationCompleted
+					if write.CreatedID != nil {
+						if saveErr := write.CreatedID("labels", change.Name(), id); saveErr != nil {
+							result.Outcome = ApplyPartialFailure
+							return result, fmt.Errorf("label %q was created with id %d, but local ID writeback failed: %w; add id: %d before retrying", change.Name(), id, saveErr, id)
+						}
+					}
+				}
 			case LabelUpdate:
 				err = write.UpdateLabel(repo, change)
 			case LabelDelete:
 				err = write.DeleteLabel(repo, change)
 			}
 			if err != nil {
-				result.failOperation(index, OperationFailedUnknown)
+				status := OperationFailedUnknown
+				var readFailure PreWriteReadFailure
+				if errors.As(err, &readFailure) {
+					status = OperationFailedRead
+				}
+				result.failOperation(index, status)
 				return result, fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 			}
 			result.Operations[index].Status = OperationCompleted
@@ -243,5 +264,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }

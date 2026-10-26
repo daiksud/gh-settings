@@ -59,13 +59,12 @@ func TestPlanNoManagedSettings(t *testing.T) {
 }
 
 func TestPlanManagedEmptyCollectionsResolveTarget(t *testing.T) {
-	names, labels := []string{}, settings.LabelDeclarations{}
+	names := []string{}
 	for _, test := range []struct {
 		name    string
 		desired settings.Declaration
 	}{
 		{"topics", settings.Declaration{Topics: settings.TopicsDeclaration{Names: &names}}},
-		{"labels", settings.Declaration{Labels: &labels}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			target := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}

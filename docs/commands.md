@@ -46,7 +46,7 @@ Published v0.16.0 and current source additionally support [`web_commit_signoff_r
 gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
 gh settings validate
 gh settings plan
-gh settings apply
+gh settings apply [--no-writeback]
 ```
 
 | Command | Contract |
@@ -80,9 +80,9 @@ The [topics contract](settings.md#topics) defines names, omission and explicit c
 
 ## Labels command behavior
 
-The [labels contract](settings.md#labels) makes a declared list authoritative: labels absent from that list are deleted, and `labels: []` deletes all labels. Deletion removes issue/PR associations; recreating the label does not restore them. Omitted `labels` is unmanaged.
+Current unreleased source uses the [ID-based labels contract](settings.md#labels): only listed objects are managed, and omitted/empty collections or unlisted objects cause no label writes. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID. Published v0.19.0 and earlier retain authoritative-list deletion.
 
-Plan shows explicit create/update/delete operations. Apply reads fresh labels after any repository/topics updates and performs only the needed operations. Omitted label attributes retain existing values; creating a label with omitted attributes delegates those values to GitHub. Changing a name to a different identity is create plus delete, without rename inference.
+Plan shows creates and ID-bound updates, including default-derived values. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback. Review the migration instructions before using old partial declarations.
 
 ## Export behavior
 
@@ -115,7 +115,7 @@ Success is silent and exits 0. Failures exit 1 and report a diagnostic on stderr
 
 ## Plan behavior
 
-Plan validates the configuration before resolving origin, configuring authentication or reading GitHub. A valid declaration with no managed resources prints `No managed repository settings.` and exits 0 locally without an origin, credentials or API calls. Both `names: []` and `labels: []` are managed declarations and require a comparison.
+Plan validates the configuration before resolving origin, configuring authentication or reading GitHub. A valid declaration with no managed resources prints `No managed repository settings.` and exits 0 locally without an origin, credentials or API calls. `topics.names: []` remains a managed clearing declaration. In current source, `labels: []` selects no objects and requires no label comparison.
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
@@ -128,15 +128,14 @@ settings.topics.names: ["old"] → ["github-cli","settings-as-code"]
 
 Strings are double-quoted with Go string escaping, including quotes, backslashes, newlines and control characters. Booleans use `true` or `false`; topics use sorted JSON arrays. Equal managed values are omitted. When all managed values match, output is `No differences for managed repository settings.`
 
-Label creates and updates appear in identity order, followed by deletes in identity order. Names and attribute values are quoted and escaped; deletes include the association-loss warning. For example, source plan can print:
+Current-source label creates and updates appear in stable identity order, with no implicit deletes. Names and attribute values are quoted and escaped. For example:
 
 ```text
-settings.labels: create "bug" color="d73a4a"
-settings.labels: update "help wanted" description: "Old description" → ""
-settings.labels: delete "obsolete" (removes issue/PR associations)
+settings.labels: create "bug" color="d73a4a" description=""
+settings.labels: update "help wanted" (id 123) description: "Old description" → ""
 ```
 
-A declared label collection counts as one managed item, including an empty list. Label attributes omitted from an existing definition are not compared or updated.
+A nonempty label selection counts as one managed item; an empty selection manages nothing. The effective whole supported object is compared, including default-derived description clearing.
 
 Ruleset operations likewise show only declaration-owned values. Retained attributes omitted from YAML do not appear even though apply preserves them in complete mutation payloads. Declared nested collection membership, explicit false/zero/empty values, creates and names of deleted Rulesets remain visible; deletion does not disclose the removed member's unmanaged policy.
 
@@ -150,7 +149,7 @@ v0.17.0 workflow permissions are applied after execution policy as a separate op
 
 v0.17.0 Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings.md#actions-execution-policy).
 
-Apply validates the configuration before resolving origin, configuring authentication or contacting GitHub. When no resources are managed, it prints `No managed repository settings.` and exits 0 locally. A topics-only declaration, including `names: []`, performs an update. A labels-only declaration, including `labels: []`, reads current labels and reconciles membership and declared attributes.
+Apply validates the configuration before resolving origin, configuring authentication or contacting GitHub. When no resources are managed, it prints `No managed repository settings.` and exits 0 locally. A topics-only declaration, including `names: []`, performs an update. A nonempty label selection reads current labels and preflights ID-selected object updates and ID-less creates. `labels: []` selects nothing.
 
 Declared resources are sent in this order, skipping resources that are unmanaged:
 
@@ -158,15 +157,15 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | --- | --- |
 | `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] PR access, Issue creation policy and Sponsorships use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
 | `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
-| `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform required label POST/PATCH/DELETE operations.[^github-labels] |
+| `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform only required label POST/PATCH operations.[^github-labels] |
 
-The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields and label attributes remain outside update requests. Apply rejects redirects, including on its label reads; update origin when a repository moves.
+The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields remain outside update requests. Selected labels send complete supported values, including description defaults. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
-Repository fields and topics are sent without a preliminary comparison read, even when the YAML values already match GitHub. v0.17.0 PR access and Issue creation policy apply add only the required repository-ID lookup; it does not infer companion values. A later GraphQL failure leaves earlier REST writes applied. Declared labels use a fresh read: creates/updates run in identity order, then deletes in identity order. Create sends the name and only declared attributes; update sends only changed declared attributes; delete removes each undeclared remote label. Names are escaped as individual URL path segments, and no rename field is sent. The separately declared `archived` control is never merged into the ordinary repository update.
+Repository fields/topics retain their direct-write behavior. Nonempty label selections use fresh observations and stable create/update order. A valid ID fixes update identity; a name collision without an ID fails before label writes. Updates may rename the same object. Current source performs no implicit label deletion.
 
-Apply never consumes a saved plan. Remote changes after review can alter label operations and be overwritten for managed values or membership. Label deletion removes issue/PR associations, which are not restored by recreating the name. Review these semantics before applying.
+Apply never consumes a saved plan. Concurrent remote changes can affect or invalidate an update; fresh checks and response verification are not a lock. Earlier writes remain applied after a later failure, with no automatic rollback/retry.
 
-Success prints `Applied repository settings.` and exits 0 for a managed declaration, including a topics-only update or a labels-only reconciliation with no required writes. File, validation, origin, authentication, API/response and output failures exit 1 with a diagnostic on stderr. The first failure stops later work; earlier successful updates remain applied. An output failure can occur after an update succeeds. Apply does not edit the configuration.
+Success prints `Applied repository settings.` for managed work, followed by created IDs when applicable. Normal CLI apply adds new IDs to the original settings file; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Existing IDs are not replaced, comments are preserved as practicable and formatting may normalize. A changed/unsafe file or persistence failure after remote creation is a nonzero partial failure that reports recoverable IDs. Retain those IDs before retrying; no Git commit or push is made. Output errors can occur after remote/local changes succeed.
 
 ## Failures and limits for mutation
 

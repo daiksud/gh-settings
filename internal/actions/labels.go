@@ -10,6 +10,7 @@ import (
 
 // LabelAttributes holds only the writable attributes represented by this report.
 type LabelAttributes struct {
+	Name        *string `json:"name,omitempty"`
 	Color       *string `json:"color,omitempty"`
 	Description *string `json:"description,omitempty"`
 }
@@ -21,7 +22,7 @@ func (attributes *LabelAttributes) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	for key, value := range raw {
-		if key != "color" && key != "description" {
+		if key != "name" && key != "color" && key != "description" {
 			return fmt.Errorf("unknown label attribute %q", key)
 		}
 		if bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
@@ -38,6 +39,7 @@ func (attributes *LabelAttributes) UnmarshalJSON(data []byte) error {
 
 // LabelPlanChange is same-version presentation data, never apply input.
 type LabelPlanChange struct {
+	ID        *int64           `json:"id,omitempty"`
 	Operation string           `json:"operation"`
 	Name      string           `json:"name"`
 	Before    *LabelAttributes `json:"before,omitempty"`
@@ -59,11 +61,15 @@ func (change *LabelPlanChange) UnmarshalJSON(data []byte) error {
 func labelPlanChange(change settings.LabelChange) LabelPlanChange {
 	result := LabelPlanChange{Operation: change.Operation(), Name: change.Name()}
 	before := func(value settings.LabelState) {
+		id := value.ID
+		result.ID = &id
 		color, description := value.Color, value.Description
-		result.Before = &LabelAttributes{Color: &color, Description: &description}
+		name := value.Name
+		result.Before = &LabelAttributes{Name: &name, Color: &color, Description: &description}
 	}
 	after := func(value settings.LabelDeclaration) {
-		result.After = &LabelAttributes{Color: value.Color, Description: value.Description}
+		name := value.Name
+		result.After = &LabelAttributes{Name: &name, Color: value.Color, Description: value.Description}
 	}
 	change.Visit(after, func(prior settings.LabelState, declared settings.LabelDeclaration) { before(prior); after(declared) }, before)
 	return result
@@ -75,32 +81,30 @@ func validateLabelReport(changes []LabelPlanChange) (settings.LabelChanges, erro
 		var before settings.LabelState
 		var after settings.LabelDeclaration
 		if change.Before != nil {
-			if change.Before.Color == nil || change.Before.Description == nil {
+			if change.ID == nil || *change.ID <= 0 || change.Before.Name == nil || change.Before.Color == nil || change.Before.Description == nil {
 				return settings.LabelChanges{}, fmt.Errorf("incomplete label before value")
 			}
-			before = settings.LabelState{Name: change.Name, Color: *change.Before.Color, Description: *change.Before.Description}
+			before = settings.LabelState{ID: *change.ID, Name: *change.Before.Name, Color: *change.Before.Color, Description: *change.Before.Description}
 		}
 		if change.After != nil {
-			after = settings.LabelDeclaration{Name: change.Name, Color: change.After.Color, Description: change.After.Description}
+			if change.After.Name == nil || change.After.Color == nil || change.After.Description == nil {
+				return settings.LabelChanges{}, fmt.Errorf("incomplete label after value")
+			}
+			after = settings.LabelDeclaration{ID: change.ID, Name: *change.After.Name, Color: change.After.Color, Description: change.After.Description}
 		}
 		var value settings.LabelChange
 		var err error
 		switch change.Operation {
 		case "create":
-			if change.Before != nil || change.After == nil {
+			if change.ID != nil || change.Before != nil || change.After == nil || change.Name != after.Name {
 				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 			}
 			value, err = settings.NewLabelCreate(after)
 		case "update":
-			if change.Before == nil || change.After == nil {
+			if change.Before == nil || change.After == nil || change.Name != before.Name {
 				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 			}
 			value, err = settings.NewLabelUpdate(before, after)
-		case "delete":
-			if change.Before == nil || change.After != nil {
-				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
-			}
-			value, err = settings.NewLabelDelete(before)
 		default:
 			return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 		}

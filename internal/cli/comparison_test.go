@@ -55,14 +55,13 @@ func TestRenderTopicsComparison(t *testing.T) {
 }
 
 func TestRenderLabelsComparison(t *testing.T) {
-	empty := ""
+	empty, color, id := "", "abcdef", int64(1)
 	op := labelOperation(t)
 	got := string(RenderComparison(settings.Comparison{Managed: 1, Labels: labelSequence(t,
-		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "new"})),
-		op(settings.NewLabelUpdate(settings.LabelState{Name: "a", Color: "abcdef", Description: "old\ntext"}, settings.LabelDeclaration{Name: "a", Description: &empty})),
-		op(settings.NewLabelDelete(settings.LabelState{Name: "old", Color: "abcdef"})),
+		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "new", Color: &color})),
+		op(settings.NewLabelUpdate(settings.LabelState{ID: 1, Name: "a", Color: "abcdef", Description: "old\ntext"}, settings.LabelDeclaration{ID: &id, Name: "a", Color: &color, Description: &empty})),
 	)}))
-	want := "settings.labels: create \"new\"\nsettings.labels: update \"a\" description: \"old\\ntext\" → \"\"\nsettings.labels: delete \"old\" (removes issue/PR associations)\n"
+	want := "settings.labels: create \"new\" color=\"abcdef\" description=\"\"\nsettings.labels: update \"a\" (id 1) description: \"old\\ntext\" → \"\"\n"
 	if got != want {
 		t.Fatalf("got=%q want=%q", got, want)
 	}
