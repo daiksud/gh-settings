@@ -27,7 +27,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - When the Python resolver reads the entire Git interval at workflow dispatch
 - Then it emits the next SemVer, published predecessor tag, and predecessor SHA
 - And no persistent version-file edit, preparation PR, new tag, or release is required
-- And empty commits and old version-only preparation commits do not create an increment
+- And empty commits do not create an increment, while all nonempty source changes do
 - But a preparation-named commit with another changed path remains substantive
 - And no substantive changes, invalid history, or malformed metadata fail closed
 

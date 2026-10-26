@@ -12,7 +12,7 @@ The same standard-library Python [release-version.py](../../.github/scripts/rele
 | `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
 | Any other substantive commit, including maintenance and reverts | PATCH |
 
-The strongest signal wins once; a breaking change never auto-promotes v0.x to v1.0.0. Empty commits and legacy nonbreaking version-only preparation commits are ignored, while a preparation-named commit changing another file still counts. If no substantive change remains, calculation fails. The GitHub release list, stable baseline, complete history, and ancestor relationship must validate; drafts, prereleases, unpublished tags, and code-fenced footer examples do not change the result.
+The strongest signal wins once; a breaking change never auto-promotes v0.x to v1.0.0. Empty commits are ignored; every tree change counts, including a release-preparation-named commit. If no substantive change remains, calculation fails. The GitHub release list, stable baseline, complete history, and ancestor relationship must validate; drafts, prereleases, unpublished tags, and code-fenced footer examples do not change the result.
 
 The resolver is read-only. It also recognizes an exact immutable gh-settings release retry from its signed-off source/tag/embedded identity marker; the publisher independently checks all binary bytes and retains the original notes. A conflicting tag, missing marker, or new source is not an acceptable retry.
 

@@ -22,7 +22,7 @@ The strongest included change selects the increment:
 - Otherwise `feat`, `perf`, or a `DEPRECATED:` footer selects MINOR.
 - Otherwise fixes, reverts, maintenance, and legacy messages select PATCH when publication is explicitly requested.
 
-A revert does not automatically cancel another included change's signal. Ignore only nonbreaking `build(release)` or `chore(release)` commits whose entire file change is `action/cli-version`; a preparation-named commit with any other changed path remains substantive. Reject an empty remaining interval. Initial publication without an established stable baseline requires a separate policy decision.
+A revert does not automatically cancel another included change's signal. Ignore empty commits only; every changed tree, including any release-preparation-named commit, remains substantive. Reject an empty remaining interval. Initial publication without an established stable baseline requires a separate policy decision.
 
 The manually dispatched release workflow uses the same Python version calculator as gh-qw at the frozen main SHA. No version-preparation PR or persisted version update is necessary. The published composite Action selects its CLI by the invoking version tag or exact SHA-matching release tag. Existing matching drafts/releases retain their original version, source, notes, and verified bytes on retry.
 
