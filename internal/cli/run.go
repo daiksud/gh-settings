@@ -159,6 +159,9 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		for _, object := range result.CreatedIDs {
 			data = append(data, []byte(fmt.Sprintf("Created %s %q: id %d\n", object.Collection, object.Name, object.ID))...)
 		}
+		for _, notice := range result.Notices {
+			data = append(data, []byte("Note: "+notice+"\n")...)
+		}
 	default:
 		return errUnsupportedCommand
 	}

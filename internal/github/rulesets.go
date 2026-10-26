@@ -246,7 +246,7 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 	if err := decoder.Decode(&result); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
-	if err := settings.ValidateObservedRuleset(result); err != nil {
+	if err := settings.ValidateRuleset(result, true); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
 	return result, nil
@@ -326,11 +326,44 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
 	}
+	needsReadback := false
+	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
+		if policy != nil && policy.Rules != nil {
+			for _, rule := range *policy.Rules {
+				needsReadback = needsReadback || rule.Type == "pull_request"
+			}
+		}
+	}
+	if needsReadback {
+		// A successful PUT response alone is not the post-write GET contract.
+		// Compare every observable supported value; absent stays unobserved.
+		var readback map[string]json.RawMessage
+		if err := client.rest.Get(fmt.Sprintf("%s/%d?includes_parents=false", path, id), &readback); err != nil {
+			return fail(fmt.Errorf("read back Ruleset policy: %w", err))
+		}
+		var actual int64
+		if err := requiredRuleJSON(readback, "id", &actual); err != nil {
+			return fail(fmt.Errorf("verify Ruleset readback identity: %w", err))
+		}
+		if actual != id {
+			return fail(fmt.Errorf("Ruleset readback ID differs from mutation identity"))
+		}
+		owned, err := rulesetOwner(readback, repo)
+		if err != nil {
+			return fail(fmt.Errorf("verify Ruleset readback ownership: %w", err))
+		}
+		if !owned {
+			return fail(fmt.Errorf("Ruleset readback ownership is not the selected repository"))
+		}
+		if err := verifyReviewRulesetResponse(*after, readback); err != nil {
+			return fail(fmt.Errorf("Ruleset readback differs from requested observable policy: %w", err))
+		}
+	}
 	return id, nil
 }
 
-// Verify the selected whole supported policy without running create/update
-// selection again: a successful create response is not a name-adoption request.
+// Verify the requested observable policy without running create/update selection
+// again. Matching absence never proves that an unobservable value is unchanged.
 func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[string]json.RawMessage) error {
 	policy, err := decodeRulesetPolicy(raw)
 	if err != nil {
@@ -348,7 +381,19 @@ func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[st
 	if err != nil {
 		return err
 	}
-	if !reflect.DeepEqual(values[0].Policy, declaration.Values()[0]) {
+	actual, requested := values[0].Policy, declaration.Values()[0]
+	// Temporary write-only support: API acceptance does not verify this value.
+	// Still decode and validate present response objects before excluding it.
+	for _, policy := range []*settings.RulesetDeclaration{&actual, &requested} {
+		if policy.Rules != nil {
+			for i := range *policy.Rules {
+				if p := (*policy.Rules)[i].Parameters; p != nil {
+					p.DismissalRestriction = nil
+				}
+			}
+		}
+	}
+	if !reflect.DeepEqual(actual, requested) {
 		return fmt.Errorf("GitHub response did not retain the requested Ruleset policy")
 	}
 	return nil
