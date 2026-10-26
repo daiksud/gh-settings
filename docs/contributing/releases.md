@@ -10,7 +10,7 @@ The [release-metadata helper](../../scripts/release-metadata/main.go) calculates
 
 | Strongest change in the interval | Increment |
 | --- | --- |
-| A Conventional header with `!`, or a `BREAKING CHANGE:` / historical `BREAKING-CHANGE:` footer | MINOR during `0.x`; MAJOR from `1.0.0` onward |
+| A Conventional header with `!`, or a `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | MINOR during `0.x`; MAJOR from `1.0.0` onward |
 | `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
 | Fixes, reverts, maintenance, or legacy messages without a stronger signal | PATCH |
 
@@ -106,15 +106,11 @@ A versioned Action installs the CLI selected by its committed file. Strict versi
 
 PR/main CI builds one candidate and exercises it through process acceptance and an exact-source composite with bounded download/API fixtures. This works before publication; [testing](testing.md#ci-validation) distinguishes local/hosted integration from released-download evidence. Source features are not automatically available through an older published Action pin. Publish an explicitly authorized matching package before separately reviewing consumer adoption and permission changes.
 
-### Historical release limitations
-
-Historical packages retain their original behavior: Action v0.6.0 installs CLI v0.5.0; v0.5.0 has no root Action; CLI v0.4.0 and earlier export to stdout; releases before v0.2.0 use flat YAML. Do not repair those immutable versions by changing their tags or assets. [ADR 0023](../adr/0023-public-composite-action.md) records the Action/CLI alignment correction.
-
 ## Release decisions
 
 | Concern | Decision |
 | --- | --- |
-| Automatic selection, superseding the original explicit input | [ADR 0017](../adr/0017-pr-based-semver.md), historical [ADR 0010](../adr/0010-explicit-release-version.md) |
+| Automatic selection, superseding the original explicit input | [ADR 0017](../adr/0017-pr-based-semver.md), [ADR 0010](../adr/0010-explicit-release-version.md) |
 | Frozen source and exact tested binaries | [ADR 0011](../adr/0011-pin-release-source.md), [ADR 0012](../adr/0012-publish-tested-binaries.md) |
 | Immutable identity and complete drafts | [ADR 0013](../adr/0013-immutable-release-identity.md), [ADR 0014](../adr/0014-draft-release-publication.md), [ADR 0018](../adr/0018-preserve-published-assets.md) |
 | Raw executables and reviewed messages | [ADR 0015](../adr/0015-raw-extension-binaries.md), [ADR 0016](../adr/0016-conventional-pr-titles.md), [ADR 0024](../adr/0024-code-review-policy.md) |
