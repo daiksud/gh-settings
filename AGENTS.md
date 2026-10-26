@@ -13,9 +13,10 @@ tests instead of retaining historical contracts alongside the current one.
 
 This does not waive validation, checkout/target isolation, credential security,
 data protection, honest failure and partial-failure reporting, or the
-immutability of published releases. Incompatible public changes still require
-the `!` title and `BREAKING CHANGE:` footer, with impact and migration or
-replacement guidance, under the [code-review policy](.agents/skills/code-review/SKILL.md).
+immutability of published releases. Incompatible public changes may use either a `!` title marker or a
+`BREAKING CHANGE:` footer, following Conventional Commits. PRLint only runs
+commitlint on the proposed squash message; reviewers assess the actual impact
+under the [code-review policy](.agents/skills/code-review/SKILL.md).
 
 ## Branches, classification, and releases
 
