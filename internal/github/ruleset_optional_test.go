@@ -44,8 +44,8 @@ func TestOptionalDismissalResponsePresence(t *testing.T) {
 				t.Fatal(err)
 			}
 			encoded, err := json.Marshal(exported.Values())
-			if err != nil || strings.Contains(string(encoded), `"dismissal_restriction"`) == tc.absent {
-				t.Fatalf("absence was synthesized or explicit policy lost: %s %v", encoded, err)
+			if err != nil || strings.Contains(string(encoded), `"dismissal_restriction"`) {
+				t.Fatalf("write-only field escaped export: %s %v", encoded, err)
 			}
 			_, err = settings.ReconcileRulesets(observed, &exported)
 			if tc.absent {
@@ -60,8 +60,8 @@ func TestOptionalDismissalResponsePresence(t *testing.T) {
 				if err := json.Unmarshal([]byte(body), &raw); err != nil {
 					t.Fatal(err)
 				}
-				if err := verifyReviewRulesetResponse(complete, raw); err == nil {
-					t.Fatal("mutation response confirmed an unobserved requested protection")
+				if err := verifyReviewRulesetResponse(complete, raw); err != nil {
+					t.Fatal("write-only omission blocked API acceptance", err)
 				}
 			} else if err != nil {
 				t.Fatalf("explicit observable policy rejected: %v", err)

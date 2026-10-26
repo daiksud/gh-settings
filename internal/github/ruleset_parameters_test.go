@@ -87,6 +87,10 @@ settings:
 	calls := 0
 	client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
 		calls++
+		if r.Method == "GET" && r.URL.Path == "/repos/owner/current/rulesets/7" {
+			data, _ := json.Marshal(changes[0].After())
+			return rulesetMutationResponse(t, r, 200, string(data), 7), nil
+		}
 		if r.Method != "PUT" || r.URL.Path != "/repos/owner/current/rulesets/7" {
 			t.Fatal(r.Method, r.URL)
 		}
@@ -109,8 +113,8 @@ settings:
 				if reviewer["minimum_approvals"] != float64(1) || !reflect.DeepEqual(reviewer["file_patterns"], []any{"!docs/**", "**", "docs/README.md", "**"}) {
 					t.Fatal("reviewer changed", reviewer)
 				}
-				if p["dismissal_restriction"] == nil || p["allowed_merge_methods"] == nil {
-					t.Fatal("optional siblings lost", p)
+				if p["dismissal_restriction"] != nil || p["allowed_merge_methods"] == nil {
+					t.Fatal("write-only omission or supported defaults changed", p)
 				}
 			}
 			if rule["type"] == "required_status_checks" {
@@ -122,7 +126,7 @@ settings:
 		}
 		return rulesetMutationResponse(t, r, 200, string(data), 7), nil
 	}))
-	if _, e := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0]); e != nil || calls != 1 {
+	if _, e := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0]); e != nil || calls != 2 {
 		t.Fatal(calls, e)
 	}
 	after := *changes[0].After()
@@ -207,6 +211,9 @@ func TestCreateReviewRulesetExactPolicyAndResponse(t *testing.T) {
 	calls := 0
 	client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
 		calls++
+		if r.Method == "GET" && r.URL.Path == "/repos/owner/current/rulesets/7" {
+			return rulesetMutationResponse(t, r, 200, string(expected), 7), nil
+		}
 		data, err := io.ReadAll(r.Body)
 		var got, want any
 		json.Unmarshal(data, &got)
@@ -216,7 +223,7 @@ func TestCreateReviewRulesetExactPolicyAndResponse(t *testing.T) {
 		}
 		return rulesetMutationResponse(t, r, 201, string(data), 7), nil
 	}))
-	if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 1 {
+	if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 2 {
 		t.Fatal(calls, err)
 	}
 }
@@ -236,6 +243,10 @@ func TestRemovingReviewAndChecksStillVerifiesResponse(t *testing.T) {
 		calls := 0
 		client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
 			calls++
+			if r.Method == "GET" && r.URL.Path == "/repos/owner/current/rulesets/7" {
+				data, _ := json.Marshal(after)
+				return rulesetMutationResponse(t, r, 200, string(data), 7), nil
+			}
 			data, _ := io.ReadAll(r.Body)
 			if r.Method != "PUT" || r.URL.Path != "/repos/owner/current/rulesets/7" {
 				t.Fatal(r.Method, r.URL)
@@ -246,7 +257,11 @@ func TestRemovingReviewAndChecksStillVerifiesResponse(t *testing.T) {
 			return rulesetMutationResponse(t, r, 200, string(data), 7), nil
 		}))
 		_, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
-		if calls != 1 || (err != nil) != ignored || (ignored && !strings.Contains(err.Error(), "writes may already have applied")) {
+		wantCalls := 2
+		if ignored {
+			wantCalls = 1
+		}
+		if calls != wantCalls || (err != nil) != ignored || (ignored && !strings.Contains(err.Error(), "writes may already have applied")) {
 			t.Fatal("removal response not verified", ignored, calls, err)
 		}
 	}

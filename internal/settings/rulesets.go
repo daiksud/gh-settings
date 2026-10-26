@@ -322,8 +322,8 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 }
 func (o RulesetObservation) ExcludedPush() int { return o.excludedPush }
 
-// ExportDeclarations preserves observed optional absence. Unlike the ordinary
-// declaration constructor it must not apply writable declaration defaults.
+// ExportDeclarations excludes write-only dismissal settings, including values
+// returned by GET. It must not apply writable declaration defaults.
 func (o RulesetObservation) ExportDeclarations() (RulesetDeclarations, error) {
 	values, err := o.Values()
 	if err != nil {
@@ -333,6 +333,7 @@ func (o RulesetObservation) ExportDeclarations() (RulesetDeclarations, error) {
 	for _, value := range values {
 		policy, id := value.Policy, value.ID
 		policy.ID = &id
+		omitDismissalRestriction(&policy)
 		out.entries = append(out.entries, policy)
 	}
 	slices.SortFunc(out.entries, func(a, b RulesetDeclaration) int { return strings.Compare(a.Name, b.Name) })
@@ -388,17 +389,19 @@ func NewRulesetDisplayChange(operation string, before, after *RulesetDeclaration
 		}
 	}
 	valid := (operation == "create" && before == nil && after != nil && after.ID == nil) ||
-		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && !reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)))
+		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal()))
 	if !valid {
 		return RulesetDisplayChange{}, fmt.Errorf("invalid ruleset display operation")
 	}
 	out := RulesetDisplayChange{operation: operation}
 	if before != nil {
 		v := cloneRuleset(*before)
+		omitDismissalRestriction(&v)
 		out.before = &v
 	}
 	if after != nil {
 		v := cloneRuleset(*after)
+		omitDismissalRestriction(&v)
 		out.after = &v
 	}
 	return out, nil
@@ -440,12 +443,7 @@ func NewRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 			}
 		}
 	}
-	if before != nil && after != nil {
-		resolved := cloneRuleset(*after)
-		preserveOptionalDismissal(*before, &resolved)
-		after = &resolved
-	}
-	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && !reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)))
+	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal()))
 	if !valid {
 		return RulesetChange{}, fmt.Errorf("invalid ruleset operation")
 	}
@@ -506,8 +504,9 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		}
 		prior, id := cloneRuleset(before.Policy), before.ID
 		prior.ID = &id
-		preserveOptionalDismissal(prior, &after)
-		if reflect.DeepEqual(prior, after) {
+		comparableBefore := cloneRuleset(prior)
+		omitDismissalRestriction(&comparableBefore)
+		if !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
 			continue
 		}
 		change, err := NewRulesetChange("update", id, &prior, &after)
@@ -520,20 +519,37 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 	return out, nil
 }
 
-// This optional field follows the observed wire representation when YAML omits
-// it. All other supported whole-object defaults remain independent of reads.
-func preserveOptionalDismissal(before RulesetDeclaration, after *RulesetDeclaration) {
-	if before.Rules == nil || after.Rules == nil {
-		return
-	}
-	for _, observed := range *before.Rules {
-		if observed.Type != "pull_request" || observed.Parameters == nil {
-			continue
+// WriteOnlyDismissalRulesets identifies declarations whose values cannot be
+// compared or exported reliably. Explicit apply always sends these values.
+func (d *RulesetDeclarations) WriteOnlyDismissalRulesets() []string {
+	var names []string
+	if d != nil {
+		for _, policy := range d.entries {
+			if policy.HasWriteOnlyDismissal() {
+				names = append(names, policy.Name)
+			}
 		}
-		for i := range *after.Rules {
-			desired := &(*after.Rules)[i]
-			if desired.Type == "pull_request" && desired.Parameters != nil && desired.Parameters.DismissalRestriction == nil {
-				desired.Parameters.DismissalRestriction = cloneRulesetRule(observed).Parameters.DismissalRestriction
+	}
+	return names
+}
+
+// HasWriteOnlyDismissal reports explicit write-only intent, not observed drift.
+func (policy RulesetDeclaration) HasWriteOnlyDismissal() bool {
+	if policy.Rules != nil {
+		for _, rule := range *policy.Rules {
+			if rule.Parameters != nil && rule.Parameters.DismissalRestriction != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func omitDismissalRestriction(policy *RulesetDeclaration) {
+	if policy.Rules != nil {
+		for i := range *policy.Rules {
+			if p := (*policy.Rules)[i].Parameters; p != nil {
+				p.DismissalRestriction = nil
 			}
 		}
 	}

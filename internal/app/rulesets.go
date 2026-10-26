@@ -59,6 +59,9 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 			return false, fmt.Errorf("%s Ruleset %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted
+		if after := change.After(); after != nil && after.HasWriteOnlyDismissal() {
+			result.Notices = append(result.Notices, fmt.Sprintf("Ruleset %q: dismissal_restriction accepted by GitHub; value not verified (write-only)", change.Name()))
+		}
 		knownIDs[id] = true
 		if change.Operation() == "create" && write.CreatedID != nil {
 			if err := write.CreatedID("rulesets", change.Name(), id); err != nil {

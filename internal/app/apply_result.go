@@ -74,6 +74,7 @@ type ApplyResult struct {
 	Target     repository.Repository
 	Operations []ApplyOperation
 	CreatedIDs []CreatedObject
+	Notices    []string
 }
 
 type CreatedObject struct {

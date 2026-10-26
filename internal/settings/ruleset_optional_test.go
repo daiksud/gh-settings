@@ -2,7 +2,7 @@ package settings
 
 import "testing"
 
-func TestOptionalDismissalRetainsObservedWireValue(t *testing.T) {
+func TestWriteOnlyDismissalSelectionAndExport(t *testing.T) {
 	policy := reviewPolicy()
 	ruleOf(t, policy, "pull_request").DismissalRestriction = nil
 	observed, err := NewRulesetObservation([]RulesetState{{ID: 7, Policy: policy}}, 0)
@@ -34,6 +34,10 @@ func TestOptionalDismissalRetainsObservedWireValue(t *testing.T) {
 	}
 	known := reviewPolicy()
 	knownObserved := rsObserved(t, RulesetState{ID: 7, Policy: known})
+	knownExport, err := knownObserved.ExportDeclarations()
+	if err != nil || ruleOf(t, knownExport.Values()[0], "pull_request").DismissalRestriction != nil {
+		t.Fatal("observed write-only setting escaped export", err)
+	}
 	if changes, err := ReconcileRulesets(knownObserved, desired); err != nil || len(changes) != 0 {
 		t.Fatalf("omission cleared explicitly observed protection: %v %v", changes, err)
 	}
@@ -42,6 +46,10 @@ func TestOptionalDismissalRetainsObservedWireValue(t *testing.T) {
 	changes, err = ReconcileRulesets(observed, rsDesired(t, explicit))
 	if err != nil || len(changes) != 1 || *ruleOf(t, *changes[0].After(), "pull_request").DismissalRestriction.Enabled {
 		t.Fatalf("explicit YAML did not select its requested value: %v %v", changes, err)
+	}
+	repeated, err := ReconcileRulesets(rsObserved(t, RulesetState{ID: 7, Policy: *changes[0].After()}), rsDesired(t, explicit))
+	if err != nil || len(repeated) != 1 {
+		t.Fatal("write-only declaration must be sent on each apply, not called verified", repeated, err)
 	}
 	remove := basicPolicy("default")
 	remove.ID = rsID(7)
