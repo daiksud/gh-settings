@@ -16,8 +16,8 @@ const (
 	settingsWorkflowPath      = ".github/workflows/settings-main.yml"
 	settingsPRWorkflowPath    = ".github/workflows/settings-pr.yml"
 	settingsEnvironment       = "gh-settings"
-	settingsGuardWorkflowPath = ".github/workflows/settings-environment-guard.yml"
-	settingsGuardCheckName    = "settings-environment-guard"
+	settingsGuardWorkflowPath = ".github/workflows/settings-env.yml"
+	settingsGuardCheckName    = "settings-env"
 	settingsPlanWorkflowPath  = ".github/workflows/settings-plan.yml"
 	settingsPlanEnvironment   = "gh-settings-plan"
 	settingsPlanCheckName     = "settings-plan"
@@ -371,7 +371,7 @@ func settingsEnvironmentName(node *yaml.Node) (string, error) {
 
 func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 	const allowed = "jobs:\n  apply:\n    environment: gh-settings\n"
-	const guard = "jobs:\n  settings-environment-guard:\n    name: settings-environment-guard\n"
+	const guard = "jobs:\n  settings-env:\n    name: settings-env\n"
 	const other = "jobs:\n  check:\n    environment: preview\n"
 	for _, test := range []struct {
 		name, main, extra string
@@ -388,8 +388,8 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		{"unauthorized name mapping", allowed, "jobs:\n  check:\n    environment: {name: gh-settings}\n", false},
 		{"unauthorized job in allowed workflow", allowed + "  other:\n    environment: gh-settings\n", "", false},
 		{"reusable workflow job", allowed, "jobs:\n  delegate:\n    uses: example/repo/.github/workflows/deploy.yml@main\n", false},
-		{"duplicate guard job id", allowed, "jobs:\n  settings-environment-guard:\n    runs-on: ubuntu-24.04\n", false},
-		{"duplicate guard display name", allowed, "jobs:\n  unrelated:\n    name: settings-environment-guard\n", false},
+		{"duplicate guard job id", allowed, "jobs:\n  settings-env:\n    runs-on: ubuntu-24.04\n", false},
+		{"duplicate guard display name", allowed, "jobs:\n  unrelated:\n    name: settings-env\n", false},
 		{"dynamic job display name", allowed, "jobs:\n  unrelated:\n    name: ${{ vars.CHECK_NAME }}\n", false},
 		{"dynamic scalar", allowed, "jobs:\n  check:\n    environment: ${{ vars.DEPLOY_ENV }}\n", false},
 		{"dynamic name mapping", allowed, "jobs:\n  check:\n    environment: {name: \"${{ 'gh-settings' }}\"}\n", false},

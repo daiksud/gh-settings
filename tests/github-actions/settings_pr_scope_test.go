@@ -32,7 +32,7 @@ func TestSettingsEnvironmentScopeTrustedPRFixtures(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			files := map[string][]byte{
 				settingsWorkflowPath:      []byte("on: {push: {branches: [main]}}\njobs:\n  apply:\n    environment: gh-settings\n"),
-				settingsGuardWorkflowPath: []byte("jobs:\n  gh-settings:\n    name: gh-settings\n"),
+				settingsGuardWorkflowPath: []byte("jobs:\n  settings-env:\n    name: settings-env\n"),
 				tc.path:                   []byte(tc.content),
 			}
 			if err := checkSettingsEnvironmentScope(files); (err == nil) != tc.valid {

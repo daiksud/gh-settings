@@ -3,7 +3,7 @@
 The required PR checks are named for their workflow file and aggregate job:
 `ci-pr.yml` → `ci-pr`, `prlint.yml` → `prlint`, and
 `settings-plan.yml` → `settings-plan`. The independent
-`settings-environment-guard.yml` reports `settings-environment-guard`.
+`settings-env.yml` reports `settings-env`.
 No workflow publishes the shared `pass` commit status.
 
 ## Staged code validation
@@ -32,13 +32,13 @@ The dispatch-only, Environment-protected plan within `settings-plan.yml` remains
 inactive until explicitly enabled. Its `plan` job is not itself a required PR
 check.
 
-The trusted `settings-environment-guard` check audits the Environment boundary
+The trusted `settings-env` check audits the Environment boundary
 using the default-branch policy. Neither the guard nor the source-controlled
 workflow alone proves live credential configuration.
 
 ## Ruleset transition
 
 Set required contexts to `ci-pr`, `prlint`, `settings-plan` and
-`settings-environment-guard`, each produced by GitHub Actions. Remove the
+`settings-env`, each produced by GitHub Actions. Remove the
 old `pass`, `pr-message` and `gh-settings` required contexts. The live
 Ruleset is an external GitHub setting; changing job names does not update it.

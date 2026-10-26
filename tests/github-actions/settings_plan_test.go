@@ -147,7 +147,7 @@ func TestProtectedPlanGuardRejectsUnexpectedPlacement(t *testing.T) {
 	}
 	base := map[string][]byte{
 		settingsWorkflowPath:      []byte("on: {push: {branches: [main]}}\njobs:\n  apply:\n    environment: gh-settings\n"),
-		settingsGuardWorkflowPath: []byte("jobs:\n  settings-environment-guard:\n    name: settings-environment-guard\n"),
+		settingsGuardWorkflowPath: []byte("jobs:\n  settings-env:\n    name: settings-env\n"),
 		settingsPlanWorkflowPath:  data,
 	}
 	for _, tc := range []struct {

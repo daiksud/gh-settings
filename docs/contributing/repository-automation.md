@@ -15,7 +15,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
 | [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Read-only PR merge-candidate validation through `settings-plan`; also contains the inactive manually protected settings observer |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
-| [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-environment-guard` |
+| [`settings-env.yml`](../../.github/workflows/settings-env.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-env` |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
 
@@ -33,14 +33,14 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The default-branch Ruleset must be changed separately to require `ci-pr`, `prlint`, `settings-plan` and `settings-environment-guard` from GitHub Actions instead of the old `pass`, `pr-message` and `gh-settings` names. It retains its independent approval, CODEOWNER, and thread-resolution settings. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
+The default-branch Ruleset must be changed separately to require `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions instead of the old `pass`, `pr-message` and `gh-settings` names. It retains its independent approval, CODEOWNER, and thread-resolution settings. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
 | `ci-pr` | [PR code CI](../../.github/workflows/ci-pr.yml) aggregates the build and acceptance stages | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
 | `prlint` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
 | `settings-plan` | [Settings plan workflow](../../.github/workflows/settings-plan.yml) checks the PR declaration without write credentials | Live differences are observed by the separate privileged settings-pr workflow when relevant |
-| `settings-environment-guard` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below |
+| `settings-env` | The [trusted guard](../../.github/workflows/settings-env.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
 
@@ -68,7 +68,7 @@ There is no prepare/handoff job or main-side pre-approval plan. The PR Summary a
 
 ## Active repository Environment guard
 
-The [guard workflow](../../.github/workflows/settings-environment-guard.yml) checks out trusted `main` policy into `.policy` and the candidate PR merge into `.candidate`. The candidate is inspected only as YAML data. The job has a read-only token, installs Go using trusted configuration, and runs the main-branch [scope test](../../tests/github-actions/settings_environment_scope_test.go) with `GH_SETTINGS_WORKFLOWS_DIR` pointing at the candidate workflows.
+The [guard workflow](../../.github/workflows/settings-env.yml) checks out trusted `main` policy into `.policy` and the candidate PR merge into `.candidate`. The candidate is inspected only as YAML data. The job has a read-only token, installs Go using trusted configuration, and runs the main-branch [scope test](../../tests/github-actions/settings_environment_scope_test.go) with `GH_SETTINGS_WORKFLOWS_DIR` pointing at the candidate workflows.
 
 The `gh-settings` Environment allowlist contains exactly two locations: `.github/workflows/settings-main.yml/jobs.apply` on push to main, and `.github/workflows/settings-pr.yml/jobs.plan` on trusted `pull_request_target` targeting main. The PR job must have the exact event/main-ref/repository/base condition, and only opened/synchronize/reopened activities are permitted. All other `gh-settings` references are rejected. The existing main reference remains mandatory; the new PR reference may be absent while the guard is deployed before its caller, but absence cannot grant another path access. Dynamic Environment names, workflow/job aliases or merges, duplicate mapping keys, dynamic job names and job-level reusable-workflow calls remain rejected. Unrelated literal Environment names and the separately gated inactive `gh-settings-plan` observer retain their existing boundaries.
 
@@ -76,7 +76,7 @@ The guard was deployed before the operational PR credential consumer. GitHub [ev
 
 The guard does not inspect the allowed apply job's step bodies, approve Action revisions, restrict its API operations, validate actual token grants, or configure remote Environment/ruleset settings. The allowed job could still be changed to execute code with privileged credentials. Review that job, its referenced code, and changes to the guard/policy itself under the [apply-path protection guidance](../github-actions.md#protect-the-apply-path); later runs use whatever policy has been merged into `main`.
 
-The dedicated check name is **`settings-environment-guard`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `pass`.
+The dedicated check name is **`settings-env`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `pass`.
 
 These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). Selecting GitHub Actions as the required check provider identifies the app, not this guard's workflow file. Another Actions job can report the same name, so a green `gh-settings` result alone is not proof that the trusted guard ran. The name-reservation test prevents collisions only when the trusted policy actually executes.
 
