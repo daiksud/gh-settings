@@ -37,7 +37,7 @@ The preset already enforces all of these style rules except lowercase scopes. Th
 
 The configuration intentionally has no header, body, or footer line-length limit. Commitlint permits an empty body and either breaking-change marker alone. Mandatory structure remains enforced, including type and description, a blank line before the body, and a blank line before footers. Unlike local commit linting, PR checks do not ignore titles resembling generated Git messages such as `fixup!` or `Merge branch`.
 
-Apply the [code-review policy](../../.agents/skills/code-review/SKILL.md) in addition to these syntax checks. It requires one coherent type/scope, a durable explanation in the body, and both `!` in the title and a `BREAKING CHANGE:` footer with impact and migration for every incompatible change. [ADR 0024](../adr/0024-code-review-policy.md) records this stricter review requirement.
+Apply the [code-review policy](../../.agents/skills/code-review/SKILL.md) for PR scope and semantic impact. Either breaking marker is sufficient. PRLint itself only invokes commitlint on the title and body; it does not implement additional semantic review rules.
 
 To check a proposed squash message locally after `mise install`:
 
