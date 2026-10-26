@@ -2,9 +2,9 @@
 
 ## v0.18.0 package
 
-Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). It also includes the v0.17.0 Rulesets, PR/Issue access, Actions, security, retention and fork-workflow features. The maintained examples select v0.18.0; adopting its pin does not expand caller grants, activate this repository's protected observer, or change settings by itself.
+Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). It also includes the v0.17.0 Rulesets, PR/Issue access, Actions, security, retention and fork-workflow features. This is package history: maintained examples now select [v0.19.0](#published-package-and-consumer-pins). Updating a pin does not expand grants, activate this repository's observer or itself apply settings.
 
-The pinned v0.18.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
+The selected v0.19.0 package includes optional [`has_discussions` support](features/discussions.feature.md). v0.14.0 and older packages reject this field; update older consumer pins before adopting it.
 
 Published v0.16.0 includes the [`web_commit_signoff_required` setting](settings.md#web-commit-sign-off). Published v0.15.1 and older CLI/Action packages reject it, while the current v0.17.0 examples support it. Its candidate plan report and Summary use native booleans; apply uses the existing Administration-write repository PATCH. No Action input or permission expansion is added.
 
@@ -34,7 +34,7 @@ Published v0.17.0 adds [repository retention policy](settings.md#check-run-statu
 
 ## Public Action and supported checkout
 
-`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout, credentials and approval policy; they do not install the CLI or copy Action internals. This guide covers the pinned v0.18.0 package.
+`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout/data preparation, credentials and approval policy; they do not install the CLI or copy Action internals. Current examples select immutable v0.19.0; older package facts below remain version-specific history.
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and commit `.github/settings.yml` at its root.
 
@@ -50,7 +50,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `token` | Unused for validate; required and nonempty for plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. Status-only is published in v0.18.0; v0.17.0 does not support it. |
 
-Validate checks local configuration without credentials. Plan validates first, then reads settings with an explicit read-only token, such as `token: ${{ github.token }}` in the example PR job. For the supported repository fields and topics, apply uses a caller-created, target-scoped App installation token with Administration write. The Action neither creates the token nor verifies its actual grants.
+Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Plan is nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action neither mints a token, identifies its credential type nor verifies its actual grants; there is no ambient-token or personal-credential fallback.
 
 There are no inputs for export, arbitrary arguments, configuration path, target, CLI version or download URL. The Action's checkout metadata and explicit plan/apply token requirements also apply to configurations with no managed fields.
 
@@ -76,7 +76,7 @@ This mode does not make a write-capable token read-only or protect it from other
 
 ## Published package and consumer pins
 
-The examples use the published [v0.18.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), pinned to the full immutable source SHA `6d3146b30860692f84dc54e32d746e6fbbb55c66`. Its selected CLI version is fixed by that package; use a reviewed full SHA when adopting or updating the workflows. Release assets and `SHA256SUMS` are available on the release page.
+The examples use the immutable published [v0.19.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.19.0), pinned to source SHA `3785af9e73886565fe711e6b4428922055a2f687`. It includes the declared-only Ruleset report fix; v0.18.0 predates that correction and is unsuitable for the new privileged observer example. Remove organization-only custom-property/private-forking declarations before adopting v0.19.0. Unreleased ID-owned labels/Rulesets and named Environments are not in that package. Its CLI version is fixed; no new release is published by updating these inert examples. Assets and `SHA256SUMS` remain on the immutable release page.
 
 Installation downloads the selected `gh-settings-linux-amd64` asset and `SHA256SUMS` from fixed upstream HTTPS release paths. It requires one valid checksum for the exact asset, verifies before execution and checks exact `gh-settings <version>` output. There is no latest fallback or caller version/URL override. The binary and checksum come from the same GitHub release; the Action SHA fixes the selected version, not an independent binary digest.
 
@@ -94,7 +94,41 @@ Current-source label apply is ID-based and never deletes unlisted labels. An ID-
 
 The [copyable PR/main examples](../examples/github-actions/README.md) need two workflow files plus `.github/settings.yml`. No caller script, root `action.yml` or copied `action/` directory is required.
 
-The PR workflow validates and plans with a read-only token and produces a review Summary. Main uses one job with three steps: checkout, App token creation and direct apply. It checks out the event's exact configuration SHA. Main does not consume a PR artifact, depend on the PR run, or produce another plan before approval.
+The PR workflow runs trusted base workflow code on `pull_request_target`, obtains only pinned candidate settings data, and plans using a token from the same App as main. Main uses one job with three steps: checkout, App token creation and direct apply. It checks out the event's exact protected-main configuration SHA after merge. Main does not consume a PR artifact, depend on the PR run, or produce another plan before approval.
+
+## Authentication and App permissions
+
+The two supported use cases are distinct:
+
+- **GitHub CLI extension:** use the authentication already selected by `gh`, normally the user's own authority. There is no independent gh-settings credential store or retry with another identity. See [CLI authentication](commands.md#repository-and-authentication).
+- **GitHub Actions:** use one installed GitHub App for the supported settings APIs. Do not require a PAT/personal login alongside the App to complete a feature. The App/installation grants are the ceiling; each job mints a short-lived token narrowed to its target and needed permissions, with normal post-job revocation. One App does not mean one endlessly reused token string. `validate` needs no settings API credential; installation/download and checkout metadata are separate prerequisites.
+
+The following are resource-specific boundaries, not a request to grant all permissions. Metadata read is automatic for installations. Add only the permissions needed by the actual declaration to both the App installation and token request; no workflow here changes the installation's grants. Public unauthenticated reads do not establish private access or mutation permission.
+
+| Feature/API | Plan/observation boundary | Apply boundary |
+| --- | --- | --- |
+| Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
+| Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
+| Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
+| Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
+| Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
+| Secret scanning/push protection | Complete repository security-block visibility; Metadata read alone is insufficient | Administration write plus applicable security authority/entitlement and complete readback |
+| Private vulnerability reporting | Metadata read and supported public applicability | Administration write and applicable repository authority |
+| Existing Pages | Pages read | Pages write plus Administration write and applicable repository authority |
+| Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility | Administration write plus complete supported observation/readback |
+| PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
+
+GitHub documents installation-token support for the relevant [repository/topic](https://docs.github.com/en/rest/repos/repos), [label](https://docs.github.com/en/rest/issues/labels), [Ruleset](https://docs.github.com/en/rest/repos/rules#get-a-repository-ruleset), [Actions permissions](https://docs.github.com/en/rest/actions/permissions), [Pages](https://docs.github.com/en/rest/pages/pages) and [Environment](https://docs.github.com/en/rest/deployments/environments) REST APIs. The Ruleset GET explicitly limits `bypass_actors` to actors with write access: nonmutating plan is **not** proof that a read-only installation token is sufficient. Missing visibility must fail, never become an empty bypass list.
+
+GitHub also [supports installation-token GraphQL and HTTP Git access](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/authenticating-as-a-github-app-installation), but instructs callers to test the permissions for their exact GraphQL queries/mutations. Documentation of the API family is not live verification of every gh-settings field. App compatibility, complete visibility and required permissions are feature-adoption conditions; if the selected App cannot perform a needed operation, stop and investigate that boundary rather than combine it with personal credentials, weaken validation or silently skip the field. This change runs only local fixtures: it does not claim real App access, private-fork retrieval, token revocation, protection enforcement or successful live writes. Follow the selected package's feature/version contract; unreleased source support does not extend the pinned binary.
+
+### Trusted PR data, not PR code
+
+The PR example has no PR checkout, build, dependency install, local Action or artifact execution. A fixed script in the trusted base workflow validates the event's immutable head SHA and PR number, fetches commit/tree metadata with blob filtering, verifies the fetched head, and obtains only `.github/settings.yml` by its Git blob identity. It rejects symlinks/executable file mode, missing paths, malformed/oversized data, redirects, identity mismatch and failed reads. Git hooks, inherited Git programs/credentials and lazy object downloads are disabled. The prepared root contains configuration plus Git metadata; its `HEAD` identifies the candidate head and its fixed base-repository `origin` identifies the target. The workflow-source SHA remains the trusted base SHA, not that configuration SHA.
+
+Candidate bytes are never evaluated as shell, expressions, scripts or workflow code. No PR-controlled executable file is checked out, and no token is persisted to Git configuration. The trusted pinned public Action alone consumes YAML as configuration data. Failed preparation stops before settings observation and exposes only a fixed diagnostic. PR refs/objects must be readable with the same App; absence or denied access fails instead of switching to a fork credential or PAT.
+
+Strongly recommend exact Environment Branch `main` restrictions **and** enforced protection/review of workflow and credential-consuming paths, pinned Action dependencies and the enforcement policy itself. Protect the plan credential path as well as apply, especially when complete Ruleset reads require write authority. Branch restrictions identify a ref, not a workflow: another workflow on main could still request the same Environment. `pull_request_target` is safe only while its executing code remains trusted; it is not permission to execute candidate content. Check the repository's applicable [Actions event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target) before adoption. These examples do not opt out of that policy or configure protections.
 
 ## Protect the apply path
 
@@ -113,10 +147,10 @@ The examples use Environment approval. If PR review is intended to be the only m
 Configure supported controls before supplying the apply credential; availability depends on the GitHub plan and repository visibility.[^environment-controls]
 
 1. [Protect `main` with required reviews and checks](#protect-main-with-required-checks), including the settings and automation that can use privileged credentials.
-2. Install a dedicated selected-repositories App on the target. Repository fields/topics need Administration write and automatic Metadata read; label mutations need separately approved [label permissions](#labels-and-permissions). The official token Action narrows the token with explicit `owner`, `repositories` and permission inputs; retain its default post-job revocation.[^app-token-action]
-3. In **Settings → Environments**, create the example's exact `settings-apply` Environment before use. Enable **Required reviewers**, disable administrator bypass, and choose **Selected branches and tags** with a **Branch** rule for exactly `main` and no Tag rule. The single-owner example permits self-approval; enable **Prevent self-review** and provide another eligible reviewer when independent approval is required. One listed reviewer can approve; a list does not require every reviewer to approve.
+2. Install one selected-repositories App on the target. The PR sample needs Contents read for candidate metadata/blob retrieval; repository fields/topics apply needs Administration write and automatic Metadata read. Other resources need the separately approved [feature permissions](#authentication-and-app-permissions). The official token Action narrows each token with explicit `owner`, `repositories` and permission inputs; retain its default post-job revocation.[^app-token-action]
+3. Configure the examples' exact `settings-plan` and `settings-apply` Environments before use. Strongly recommend **Selected branches and tags** with a **Branch** rule for exactly `main` and no Tag rule, plus protection of their workflow/credential-consuming paths. For apply, enable **Required reviewers** and disable administrator bypass; use equivalent approval for a write-capable plan token. The single-owner example permits self-approval; enable **Prevent self-review** and provide another eligible reviewer when independent approval is required. One listed reviewer can approve; a list does not require every reviewer to approve.
 4. Adopt the [two workflows](../examples/github-actions/README.md#copy-the-workflows) and root configuration through review. Retain the exact-event checkout, no persisted credentials, `push`/`refs/heads/main` guards, reviewed full-SHA Action pins and concurrency. [Verify the protection](#verify-the-protection-before-use) with an isolated setup before supplying a live write credential.
-5. Store `SETTINGS_APP_CLIENT_ID` as an Environment variable and `SETTINGS_APP_PRIVATE_KEY` as a secret in that protected Environment. Keep the private key out of repository/organization secrets that an unprotected job could use as an alternate path. Issue the short-lived installation token only inside the approved apply job.
+5. Bind `SETTINGS_APP_CLIENT_ID` and `SETTINGS_APP_PRIVATE_KEY` to the **same App** in the two protected Environments. Keep the private key out of alternate unprotected credential paths. Mint tokens only inside the intended trusted jobs; the PR sample requests Contents read/Administration read, while main requests Administration write. Adjust token permissions only for separately adopted features under the table above. This document is setup guidance, not authorization to create Environments, enter keys or change App grants.
 
 An unknown Environment name in workflow YAML can create an Environment with no protection rules or secrets. Merely adding `environment: settings-apply` does not configure approval. Required reviewers on Free, Pro and Team are available only for public repositories; check feature availability for the actual repository before relying on the gate.[^environment-controls]
 
@@ -126,7 +160,7 @@ An Environment's protection rules are checked before the referencing job starts,
 
 Environment branch rules match the run's ref, rather than selecting a workflow file or event. A different workflow running with an allowed `main` ref could also request the Environment. In particular, a privileged event such as `pull_request_target` must not be treated as safe merely because it uses a trusted base ref. Review the workflow identity as well as the configuration. Avoid **Protected branches only** as a substitute for the exact Branch rule: when no branches have protection rules, that option permits every branch. These boundaries follow [GitHub's Environment rules](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 
-Keep the apply job limited to reviewed code. Passing `token` only to the apply step limits ordinary exposure, but all steps share the job's runner; another step can compromise later credential use. Keep untrusted PR builds, local Actions, scripts and artifacts out of the privileged job, and keep privileged credentials out of PR jobs. Review third-party Action code at the selected revisions; SHA pinning fixes the selected code, not whether that code is trustworthy. See [GitHub's secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
+Keep plan and apply jobs limited to reviewed code. Passing `token` only to intended data/API steps limits ordinary exposure, but all steps share the job's runner; another step can compromise later credential use. Keep untrusted PR builds, local Actions, scripts and artifacts out of credential-bearing jobs. Never give this App key/token to an ordinary PR-code job. Review third-party Action code at selected revisions; SHA pinning fixes the selected code, not whether it is trustworthy. See [GitHub's secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
 
 ### Protect main with required checks
 
@@ -143,7 +177,7 @@ Ensure the required policy reports on every applicable PR update. The example `p
 
 #### What the workflow-scope policy should check
 
-Inspect all candidate workflow YAML as data and permit the privileged Environment only in the approved main workflow/job with the intended event and branch restriction. Account for scalar and mapping Environment syntax, dynamic names, YAML aliases/merges and reusable-workflow calls; reject constructs the policy cannot resolve safely. A text search for one spelling of `environment:` is insufficient.
+Inspect all candidate workflow YAML as data and permit each credential-bearing Environment only in its approved trusted workflow/job: target-event data-only plan or protected-main push apply. Account for scalar and mapping Environment syntax, dynamic names, YAML aliases/merges and reusable-workflow calls; reject constructs the policy cannot resolve safely. A text search for one spelling of `environment:` is insufficient.
 
 Run the policy from a separately protected source, so a PR cannot change both an unsafe workflow and the test that is supposed to reject it. A trusted `pull_request_target` checker must have minimal read permissions and no apply credential. Never execute candidate code or install candidate-selected dependencies; do not run candidate local Actions or downloaded PR artifacts as code. Confirm that GitHub's applicable event policy allows the checker to run; see [secure use of `pull_request_target`](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target).
 
@@ -206,7 +240,7 @@ Confirm the active GitHub rules and the actual blocked/pending runs. Local fixtu
 | Unexpected Environment request or changed privileged code | Reject the request and inspect the workflow, policy and credential use before enabling further apply runs. If a credential was exposed, revoke/rotate it and review remote changes. |
 | Missing/invalid config | Correct the declaration and rerun through normal review; validation fails before settings API access. |
 | CLI download/checksum/version error | Inspect the release identity and reviewed pin. Do not execute an unchecked binary or switch to source/latest. |
-| Plan read/API permission error | Check read-token access and the target origin. Keep administration credentials out of PR jobs. |
+| Plan read/API permission error | Check the same App's target/feature grants and complete visibility. A write grant may be required for observation; do not fall back to a PAT, personal login, empty state or PR-code execution. |
 | Rejected Environment approval | The main job cannot start; review the configuration and protection policy before requesting another approval. |
 | Missing App key/client ID or token error | Verify the protected Environment and dedicated installation scope using secure credential entry. |
 | Failed/cancelled apply or output failure | Read current target settings before retrying: an update may already have succeeded. There is no atomicity or automatic rollback. |

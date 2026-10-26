@@ -395,7 +395,7 @@ case "$1" in
         printf 'config-sha=%s\ntarget=owner/config\ncli-version=%s\ncli-sha256=%s\n' "$MOCK_CONFIG_SHA" "$MOCK_CLI_VERSION" "$MOCK_CLI_SHA256"
         exit "${MOCK_METADATA_STATUS:-0}" ;;
       plan)
-        [[ ($# == 3 || $# == 4) && (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
+        [[ ($# == 3 || $# == 4) && (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture || ${GH_TOKEN:-} == app-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
         if [[ ${MOCK_DEBUG_NOISE:-0} == 1 ]]; then
           echo 'CANARY-unexpected-stdout'
           echo 'CANARY-unexpected-stderr' >&2

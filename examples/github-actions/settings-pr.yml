@@ -1,12 +1,13 @@
 name: Settings PR plan (example)
 on:
-  pull_request:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [main]
     paths:
       - .github/settings.yml
       - .github/workflows/settings-pr.yml
       - examples/github-actions/**
-permissions:
-  contents: read
+permissions: {}
 defaults:
   run:
     shell: bash
@@ -15,17 +16,99 @@ concurrency:
   cancel-in-progress: true
 jobs:
   plan:
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main'
+    environment: settings-plan
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
-      - name: Checkout containing repository PR merge revision
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Mint a repository-scoped token from the same App used for apply
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app
         with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Validate and plan with the Action Summary
-        uses: daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66 # v0.18.0
+          client-id: ${{ vars.SETTINGS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SETTINGS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          permission-contents: read
+          permission-administration: read
+      - name: Prepare only candidate settings data, never a PR code checkout
+        id: candidate
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, re, subprocess, sys, urllib.request
+
+          def prepare():
+              repo, head, number = (os.environ[k] for k in ('GITHUB_REPOSITORY', 'EXPECTED_HEAD', 'PR_NUMBER'))
+              if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repo):
+                  raise ValueError('repository')
+              if not re.fullmatch(r'[0-9a-f]{40}', head) or not re.fullmatch(r'[1-9][0-9]{0,9}', number):
+                  raise ValueError('candidate identity')
+              root = pathlib.Path(os.environ['GITHUB_WORKSPACE'])
+              if root.resolve() != pathlib.Path.cwd().resolve():
+                  raise ValueError('workspace')
+              for path in (root / '.git', root / '.github'):
+                  if path.exists() or path.is_symlink():
+                      raise ValueError('workspace is not fresh')
+              token = os.environ['GH_TOKEN']
+              # No inherited Git programs, credentials, hooks, filters or lazy
+              # object downloads. Candidate files are never checked out.
+              env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_') and k not in ('GH_TOKEN', 'GITHUB_TOKEN', 'SSH_ASKPASS')}
+              env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', GIT_TERMINAL_PROMPT='0', GIT_NO_LAZY_FETCH='1')
+              def git(*args, authenticated=False):
+                  scoped = env.copy()
+                  if authenticated:
+                      auth = base64.b64encode(('x-access-token:' + token).encode()).decode()
+                      scoped.update(GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='http.https://github.com/.extraheader', GIT_CONFIG_VALUE_0='AUTHORIZATION: basic ' + auth)
+                  flags = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', '-c', 'credential.helper=', '-c', 'core.askPass=', '-c', 'http.followRedirects=false', '-c', 'protocol.allow=never', '-c', 'protocol.https.allow=always', '-c', 'submodule.recurse=false']
+                  return subprocess.run(['git', *flags, *args], env=scoped, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=90).stdout
+              git('init', '--quiet', '--template=')
+              git('remote', 'add', 'origin', 'https://github.com/' + repo + '.git')
+              git('fetch', '--quiet', '--filter=blob:none', '--depth=1', '--no-tags', '--no-recurse-submodules', 'origin', 'refs/pull/' + number + '/head', authenticated=True)
+              if git('rev-parse', '--verify', 'FETCH_HEAD').decode().strip() != head:
+                  raise ValueError('candidate changed')
+              if b'blob' in git('cat-file', '--batch-all-objects', '--batch-check=%(objecttype)').splitlines():
+                  raise ValueError('server did not honor metadata-only fetch')
+              def entry(tree, name, mode, kind):
+                  raw = git('ls-tree', '-z', tree, '--', name)
+                  match = re.fullmatch((mode + ' ' + kind + r' ([0-9a-f]{40})\t' + re.escape(name) + '\x00').encode(), raw)
+                  if not match:
+                      raise ValueError('settings must be one regular file')
+                  return match.group(1).decode()
+              directory = entry(head, '.github', '040000', 'tree')
+              blob = entry(directory, 'settings.yml', '100644', 'blob')
+              class NoRedirect(urllib.request.HTTPRedirectHandler):
+                  def redirect_request(self, *args, **kwargs):
+                      return None
+              request = urllib.request.Request('https://api.github.com/repos/' + repo + '/git/blobs/' + blob, headers={'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'})
+              with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
+                  raw = response.read(2 * 1024 * 1024 + 1)
+              if len(raw) > 2 * 1024 * 1024:
+                  raise ValueError('response limit')
+              value = json.loads(raw)
+              if value.get('sha') != blob or value.get('encoding') != 'base64' or type(value.get('size')) is not int or not 0 <= value['size'] <= 1024 * 1024:
+                  raise ValueError('invalid blob identity/size')
+              data = base64.b64decode(value['content'].replace('\n', ''), validate=True)
+              if len(data) != value['size'] or hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\x00' + data).hexdigest() != blob:
+                  raise ValueError('blob content mismatch')
+              git('update-ref', '--no-deref', 'HEAD', head)
+              (root / '.github').mkdir(mode=0o700)
+              with (root / '.github/settings.yml').open('xb') as output:
+                  output.write(data)
+              os.chmod(root / '.github/settings.yml', 0o600)
+
+          try:
+              prepare()
+          except Exception:
+              # Do not print candidate data, server messages or credential values.
+              print('candidate settings preparation failed', file=sys.stderr)
+              sys.exit(1)
+          PY
+      - name: Validate and plan data with the trusted pinned Action
+        uses: daiksud/gh-settings@3785af9e73886565fe711e6b4428922055a2f687 # v0.19.0
         with:
           command: plan
-          token: ${{ github.token }}
+          token: ${{ steps.app.outputs.token }}

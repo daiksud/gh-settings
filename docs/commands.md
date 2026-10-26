@@ -2,7 +2,7 @@
 
 ## v0.18.0 package
 
-Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). The maintained examples select v0.18.0; adopting its pin does not expand caller grants or change settings by itself.
+Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0), built from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`, adds private plan reporting, Sponsor visibility, archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. Its native binaries and published Action passed the [release workflow](https://github.com/daiksud/gh-settings/actions/runs/39979971859). The maintained examples now select [v0.19.0](github-actions.md#published-package-and-consumer-pins) for corrected declared-only Ruleset reporting and exclude the removed organization-only groups. Updating their inert pin does not expand grants or itself apply settings.
 
 ## Environment export (unreleased source)
 
@@ -14,7 +14,7 @@ Published [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0)
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
-This reference describes v0.18.0 and current source. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select v0.18.0; older v0.8.0 packages do not support labels.
+This reference distinguishes package history from current source. The [pinned Action and examples](github-actions.md#published-package-and-consumer-pins) select immutable v0.19.0; unreleased capabilities require a future separately published package.
 
 v0.10.0 adds [merge-method booleans](features/merge-methods.feature.md); published v0.9.0 does not accept those keys. Their GraphQL query runs only for declared fields during plan and always during export. Existing repository PATCH behavior is retained.
 
@@ -70,7 +70,7 @@ Export and plan/apply operations with managed resources resolve the checkout-sco
 
 Only local/worktree origin values, including repository-specific included configuration, can select the target. System, global and command Git configuration cannot supply it. A direct GitHub origin retains its repository identity when Git `insteadOf` changes the transport destination. `GH_REPO` is ignored; missing or unsupported origins fail before API access.
 
-API operations use GitHub CLI authentication. Check access with `gh auth status`; authenticate with `gh auth login` when needed. Fine-grained and GitHub App tokens need permissions for every resource the command reads or writes:
+The extension uses the authentication selected by GitHub CLI, normally the user's own authority. Check access with `gh auth status`; authenticate with `gh auth login` when needed. gh-settings has no separate credential store, does not mint credentials, and does not retry a denied API operation as another identity. Standard `gh` authentication selection (including explicitly configured environment credentials) remains GitHub CLI behavior, not an independent fallback in this extension. `validate` performs no API work and needs no authentication. For automation, use the separate [single-App Actions policy](github-actions.md#authentication-and-app-permissions), not a required App/PAT combination. Credentials need permissions for every resource the command reads or writes:
 
 | Resource | Read permission | Write permission |
 | --- | --- | --- |
@@ -79,6 +79,8 @@ API operations use GitHub CLI authentication. Check access with `gh auth status`
 | Merge methods (v0.10.0); automatic branch deletion (v0.11.0); squash commit defaults (v0.12.0); auto-merge and branch updates (v0.13.0); normal merge commit defaults (v0.14.0) | GraphQL query; ordinary Actions Contents read verified | Administration write through REST PATCH |
 
 Administration write alone does not grant label write permission.[^github-labels] Source export always reads labels as well as repository fields/topics; source apply uses its apply credential for the fresh label read and any required mutations. Public REST reads may be unauthenticated; GraphQL reads use an authenticated read token. Local validation and valid declarations with no managed resources do not require an origin or authentication.
+
+Plan does not mutate settings, but complete Ruleset bypass observation requires write access to the Ruleset. A read-only token can therefore be insufficient. Feature-specific API permissions and unverified App-integration boundaries are listed in the [permission table](github-actions.md#authentication-and-app-permissions); denied/missing reads remain errors, never empty/default/success.
 
 ## Topics command behavior
 

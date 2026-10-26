@@ -2,6 +2,8 @@
 
 Manage a GitHub repository's settings as code, using a GitHub CLI extension or a [GitHub Action](docs/github-actions.md). Keep the intended values in `.github/settings.yml`, review differences with `plan`, and send declared values with `apply`.
 
+The extension uses your existing `gh` authentication. Actions use one GitHub App with explicit, short-lived installation tokens scoped per job/target, without a required PAT or personal-login combination. Validation needs no API authentication; nonmutating plan may still require write grants for complete reads. See the [authentication and trust policy](docs/github-actions.md#authentication-and-app-permissions), including trusted-base PR data-only planning and protected-main apply.
+
 The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged; declared collections control their complete membership.
 
 Current source removes organization-only custom-property values and private repository forking. These features were published before 1.0 in v0.18.x. See the [migration instructions](docs/settings.md#custom-property-values) before upgrading; existing remote settings are left unmanaged.
@@ -19,17 +21,17 @@ Published binaries support macOS on Apple Silicon (`arm64`) and Linux on x86-64 
 
 Update with `gh extension upgrade gh-settings`, or uninstall with `gh extension remove gh-settings`.
 
-The published [v0.18.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0) add private plan reporting, Sponsor visibility, repository archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking to the earlier repository, Rulesets, Actions, security, topics and labels support. The Action examples below select this release. Pages site creation/deletion and visibility, and the remaining custom-property constraints, are not included. See the [configuration reference](docs/settings.md) for each adopted boundary.
+The published [v0.18.0 CLI and Action](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0) added private plan reporting, Sponsor visibility, repository archive lifecycle, existing-site Pages configuration, bounded custom-property values and private repository forking. The examples now select immutable v0.19.0 for corrected declared-only Ruleset reporting; that release removes the two organization-only features. Review [package identity and migration](docs/github-actions.md#published-package-and-consumer-pins) and the [configuration reference](docs/settings.md) before adopting the pin.
 
 [v0.10.0](https://github.com/daiksud/gh-settings/releases/tag/v0.10.0) adds three [repository merge-method booleans](docs/features/merge-methods.feature.md). The pinned examples include them; v0.9.0 and older packages do not accept these keys.
 
-[v0.11.0](https://github.com/daiksud/gh-settings/releases/tag/v0.11.0) adds the [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The pinned v0.18.0 package includes this key; publication does not change the repository's live policy.
+[v0.11.0](https://github.com/daiksud/gh-settings/releases/tag/v0.11.0) adds the [`delete_branch_on_merge` setting](docs/features/delete-branch-on-merge.feature.md). The selected v0.19.0 package includes this key; publication does not change the repository's live policy.
 
-[v0.12.0](https://github.com/daiksud/gh-settings/releases/tag/v0.12.0) adds [squash commit title/body defaults](docs/features/squash-commit-defaults.feature.md). The pinned v0.18.0 package includes these keys; publication does not change live policy.
+[v0.12.0](https://github.com/daiksud/gh-settings/releases/tag/v0.12.0) adds [squash commit title/body defaults](docs/features/squash-commit-defaults.feature.md). The selected v0.19.0 package includes these keys; publication does not change live policy.
 
-[v0.13.0](https://github.com/daiksud/gh-settings/releases/tag/v0.13.0) adds [`allow_auto_merge` and `allow_update_branch`](docs/features/pull-request-options.feature.md). The pinned v0.18.0 package includes these keys; publication does not change live policy.
+[v0.13.0](https://github.com/daiksud/gh-settings/releases/tag/v0.13.0) adds [`allow_auto_merge` and `allow_update_branch`](docs/features/pull-request-options.feature.md). The selected v0.19.0 package includes these keys; publication does not change live policy.
 
-[v0.14.0](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md). The pinned v0.18.0 package includes these keys; publication does not change live policy.
+[v0.14.0](https://github.com/daiksud/gh-settings/releases/tag/v0.14.0) adds [merge commit title/body defaults](docs/features/merge-commit-defaults.feature.md). The selected v0.19.0 package includes these keys; publication does not change live policy.
 
 [v0.15.0](https://github.com/daiksud/gh-settings/releases/tag/v0.15.0) adds [`has_discussions`](docs/features/discussions.feature.md). The pinned package includes this optional boolean; v0.14.0 and older packages reject it.
 
@@ -102,12 +104,12 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66 # v0.18.0
+      - uses: daiksud/gh-settings@3785af9e73886565fe711e6b4428922055a2f687 # v0.19.0
         with:
           command: validate
 ```
 
-The pinned v0.18.0 Action supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan takes an explicit read token; apply needs the permissions required by each declared resource. The caller owns approval, credential issuance and revocation, and concurrency.
+The pinned v0.19.0 Action supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
 
 Before enabling apply, follow the [approval and required-check guidance](docs/github-actions.md#protect-the-apply-path) to protect both `main` and the job that receives the write credential. Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 

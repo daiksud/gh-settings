@@ -11,8 +11,9 @@ inputs:
     required: true
   token:
     description: >-
-      Explicit read token for plan or target-scoped App installation token with
-      Administration write for apply; unused for validate. Exposure is scoped to
+      Explicit target-scoped GitHub App installation token for plan/apply;
+      unused for validate. Plan is nonmutating but complete reads may need write
+      grants (for example Ruleset bypass visibility). Exposure is scoped to
       the command-step environment; the composite shares the caller job. The caller
       owns approval and token lifecycle.
     required: false

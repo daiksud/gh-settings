@@ -84,21 +84,21 @@ func findStep(t *testing.T, j job, id string) step {
 
 const (
 	exampleAction         = "daiksud/gh-settings@cccd06a151c2dce3b9eb71520d3c01b4c73ac92f"
-	exampleConsumerAction = "daiksud/gh-settings@6d3146b30860692f84dc54e32d746e6fbbb55c66"
+	exampleConsumerAction = "daiksud/gh-settings@3785af9e73886565fe711e6b4428922055a2f687"
 )
 
 func TestWorkflowCredentialBoundaries(t *testing.T) {
 	pr, prText := readWorkflow(t, "settings-pr.yml")
 	main, mainText := readWorkflow(t, "settings-main.yml")
-	if len(pr.On) != 1 || pr.On["pull_request"].Kind == 0 || len(main.On) != 1 || main.On["push"].Kind == 0 {
+	if len(pr.On) != 1 || pr.On["pull_request_target"].Kind == 0 || len(main.On) != 1 || main.On["push"].Kind == 0 {
 		t.Fatal("unexpected privileged trigger")
 	}
-	if strings.Contains(prText, "secrets.") || strings.Contains(prText, "environment:") || strings.Contains(prText, " apply") {
-		t.Fatal("privileged PR path")
+	if strings.Contains(prText, "command: apply") || strings.Contains(prText, "actions/checkout@") || strings.Contains(prText, "uses: ./") {
+		t.Fatal("PR executes candidate code or applies settings")
 	}
-	for event, keys := range map[string]map[string]bool{"push": {"branches": true, "paths": true}, "pull_request": {"types": true, "paths": true}} {
+	for event, keys := range map[string]map[string]bool{"push": {"branches": true, "paths": true}, "pull_request_target": {"types": true, "paths": true, "branches": true}} {
 		node := main.On[event]
-		if event == "pull_request" {
+		if event == "pull_request_target" {
 			node = pr.On[event]
 		}
 		if node.Kind != yaml.MappingNode {
@@ -120,10 +120,11 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		t.Fatal(err)
 	}
 	var pull struct {
-		Types []string `yaml:"types"`
-		Paths []string `yaml:"paths"`
+		Types    []string `yaml:"types"`
+		Paths    []string `yaml:"paths"`
+		Branches []string `yaml:"branches"`
 	}
-	prNode := pr.On["pull_request"]
+	prNode := pr.On["pull_request_target"]
 	if err := prNode.Decode(&pull); err != nil {
 		t.Fatal(err)
 	}
@@ -144,22 +145,34 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 	if len(push.Branches) != 1 || push.Branches[0] != "main" || len(push.Tags) != 0 {
 		t.Fatal("main trigger scope changed")
 	}
+	if !reflect.DeepEqual(pull.Branches, []string{"main"}) {
+		t.Fatal("PR trusted-base scope changed")
+	}
 	if !pr.Concurrency.Cancel || main.Concurrency.Cancel || main.Concurrency.Group != "settings-main-${{ github.repository }}" || pr.Concurrency.Group != "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}" {
 		t.Fatal("concurrency contract changed")
 	}
 	pin := regexp.MustCompile(`^[^@]+@[0-9a-f]{40}$`)
-	for _, w := range []workflow{pr, main} {
-		if len(w.Env) != 0 || !reflect.DeepEqual(w.Permissions, map[string]string{"contents": "read"}) {
+	for index, w := range []workflow{pr, main} {
+		if len(w.Env) != 0 || (index == 0 && len(w.Permissions) != 0) || (index == 1 && !reflect.DeepEqual(w.Permissions, map[string]string{"contents": "read"})) {
 			t.Fatal("global token environment or widened workflow permissions")
 		}
 		for _, j := range w.Jobs {
 			if j.Permissions != nil && !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) {
 				t.Fatal("job permissions widened")
 			}
-			if j.Runner != "ubuntu-24.04" || len(j.Env) != 0 || j.Continue || j.Timeout != 5 || len(j.Outputs) != 0 {
+			if j.Runner != "ubuntu-24.04" || len(j.Env) != 0 || j.Continue || (index == 0 && j.Timeout != 8) || (index == 1 && j.Timeout != 5) || len(j.Outputs) != 0 {
 				t.Fatal("runner, credential output or failure boundary changed")
 			}
 			for _, s := range j.Steps {
+				if index == 0 && s.ID == "candidate" {
+					if s.Run == "" || s.Uses != "" || s.Continue || s.If != "" || strings.Contains(s.Run, "${{") {
+						t.Fatal("untrusted expression or ignored candidate failure")
+					}
+					if !reflect.DeepEqual(s.Env, map[string]string{"GH_TOKEN": "${{ steps.app.outputs.token }}", "EXPECTED_HEAD": "${{ github.event.pull_request.head.sha }}", "PR_NUMBER": "${{ github.event.pull_request.number }}"}) {
+						t.Fatal("candidate token/identity boundary changed")
+					}
+					continue
+				}
 				if s.Continue || !pin.MatchString(s.Uses) || s.Run != "" || s.If != "" || len(s.Env) != 0 {
 					t.Fatal("unchecked Action, caller script, credential environment or ignored failure")
 				}
@@ -170,17 +183,17 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 		}
 	}
 	plan, apply := pr.Jobs["plan"], main.Jobs["apply"]
-	if len(main.Jobs) != 1 || len(pr.Jobs) != 1 || len(plan.Steps) != 2 || len(apply.Steps) != 3 {
-		t.Fatal("examples must use one job with two PR steps and three main steps")
+	if len(main.Jobs) != 1 || len(pr.Jobs) != 1 || len(plan.Steps) != 3 || len(apply.Steps) != 3 {
+		t.Fatal("examples must keep one bounded plan/apply job")
 	}
-	if plan.If != "" || plan.Environment != "" || plan.Needs != "" || pr.Defaults.Run.Shell != "bash" {
+	if plan.If != "github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main'" || plan.Environment != "settings-plan" || plan.Needs != "" || pr.Defaults.Run.Shell != "bash" {
 		t.Fatal("PR approval or execution boundary changed")
 	}
 	guard := "github.event_name == 'push' && github.ref == 'refs/heads/main'"
 	if apply.If != guard || apply.Needs != "" || apply.Environment != "settings-apply" {
 		t.Fatal("main event or approval boundary changed")
 	}
-	for _, j := range []job{plan, apply} {
+	for _, j := range []job{apply} {
 		checkout := j.Steps[0]
 		if checkout.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || checkout.With["ref"] != "${{ github.sha }}" || checkout.With["persist-credentials"] != "false" {
 			t.Fatal("checkout must use the exact triggering commit without persisted credentials")
@@ -194,8 +207,12 @@ func TestWorkflowCredentialBoundaries(t *testing.T) {
 			}
 		}
 	}
-	if plan.Steps[1].Uses != exampleConsumerAction || !reflect.DeepEqual(plan.Steps[1].With, map[string]string{"command": "plan", "token": "${{ github.token }}"}) {
-		t.Fatal("PR public Action/read-token binding changed")
+	if plan.Steps[2].Uses != exampleConsumerAction || !reflect.DeepEqual(plan.Steps[2].With, map[string]string{"command": "plan", "token": "${{ steps.app.outputs.token }}"}) {
+		t.Fatal("PR pinned public Action/App-token binding changed")
+	}
+	planApp := plan.Steps[0]
+	if planApp.ID != "app" || planApp.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(planApp.With, map[string]string{"client-id": "${{ vars.SETTINGS_APP_CLIENT_ID }}", "private-key": "${{ secrets.SETTINGS_APP_PRIVATE_KEY }}", "owner": "${{ github.repository_owner }}", "repositories": "${{ github.event.repository.name }}", "permission-contents": "read", "permission-administration": "read"}) {
+		t.Fatal("plan App installation/permission scope changed")
 	}
 	app := apply.Steps[1]
 	if app.ID != "app" || app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(app.With, map[string]string{
