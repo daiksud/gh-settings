@@ -6,7 +6,7 @@ description: Declarative Issue creation eligibility without changing issue avail
 
 ## Contract
 
-Published v0.17.0 adds `settings.repository.issue_creation_policy` with exact values `ALL` and `COLLABORATORS_ONLY`. Published v0.16.0 and older CLI/Action packages reject the key. Omission leaves it unmanaged. Null, empty strings, wrong types, case variants and unknown policies are invalid. Declaring a policy never enables or disables `has_issues`.
+Current source supports `settings.repository.issue_creation_policy` with exact values `ALL` and `COLLABORATORS_ONLY`. Omission leaves it unmanaged. Null, empty strings, wrong types, case variants and unknown policies are invalid. Declaring a policy never enables or disables `has_issues`.
 
 A separate narrow authenticated GraphQL query reads this policy only when requested; PR-only and existing repository declarations retain their reads. Export includes the complete observed policy after all resource reads succeed. Missing/null/unsupported data and partial GraphQL errors fail rather than becoming `ALL`, including when issues are disabled. Failed export preserves the old file. Reads and ID lookup disable rename following to reject stale origins.
 
