@@ -13,13 +13,16 @@ description: Specify inert workflow examples and the public composite Action aro
 - Every job uses a fresh GitHub-hosted Linux runner and reviewed full-SHA Action pins.
 - Both examples use the reviewed full-SHA pin recorded in the [consumer guide](../github-actions.md#published-package-and-consumer-pins). The Action verifies its fixed CLI against the same-release SHA256SUMS and exact version before settings execution; no caller verifier is required.
 
-### Rule: PRs have only read access
+### Rule: PR plan executes trusted code and consumes only candidate data
 
-- On a PR, check out the containing repository's PR revision without persisted credentials.
-- Validate the checkout-root `.github/settings.yml` before read-only plan.
+- Use the trusted base workflow on `pull_request_target`; never execute PR code with its credentials.
+- The same App as main mints a target/permission-scoped short-lived token inside the protected `settings-plan` job; no personal credential or ambient fallback is required.
+- Obtain only candidate commit/tree metadata and the fixed settings blob. Validate event SHA/number, file mode, blob identity/size and fixed destination; disable hooks, inherited Git credentials/programs and lazy object fetches. No PR code checkout, build, dependency install or local Action execution occurs.
+- Validate the prepared root `.github/settings.yml` before nonmutating plan. Its configuration SHA identifies the candidate head, not the trusted workflow revision.
 - Valid configuration and successful plan exit successfully whether differences exist or not.
 - Missing/invalid configuration fails before API access; authentication/API failures fail visibly.
-- Fork changes have no App credential, Environment, apply, or privileged fallback path.
+- Fork content remains untrusted data; it is never given executing code authority. Inaccessible candidate data fails rather than falling back to another credential, adopting another revision or applying settings.
+- Plan does not mutate, but complete reads may need write authority (notably Ruleset bypass visibility); the supported App/permission boundary must be established per feature. Fixtures do not prove all live App integrations.
 - Per-PR concurrency cancels superseded executions.
 
 ### Rule: Main apply uses one approved job
@@ -80,7 +83,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 - `validate` performs local CLI validation without authentication or API calls, even if a token input was supplied.
 - `plan` requires a read-only caller token, validates first, and runs read-only CLI plan only after validation succeeds. Differences, no differences, and no managed fields are all successful outcomes.
-- `apply` requires a caller-created GitHub App installation token scoped to the approved target repository with Administration write. Invoke existing direct CLI apply; a previous plan is not required or consumed.
+- `plan` and `apply` use one caller-created GitHub App, with potentially different short-lived target/permission-scoped installation tokens per job. Apply needs each resource's write/observation permissions, not just a universal Administration grant. Invoke existing direct CLI apply; a previous plan is not required or consumed.
 - No `export`, arbitrary command/arguments, configuration-path, target, version, asset, or download-URL input is supported.
 
 #### Scenario: Validate without a credential
@@ -93,7 +96,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 
 #### Scenario: Invalid configuration blocks plan
 
-- Given an explicit read-only token and invalid `.github/settings.yml`
+- Given an explicit App installation token and invalid `.github/settings.yml`
 - When the caller selects `command: plan`
 - Then validation fails before comparison or API execution
 - And the Action fails without success outputs
@@ -128,7 +131,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 - The caller owns checkout, event/ref guards, Environment selection/approval, App token minting/revocation, and concurrency. The Action does not perform those operations or introduce custom approval/freshness machinery.
 - Bind `inputs.token` as `GH_TOKEN` only on the plan/apply command execution step. Validate, installer, Summary, and metadata/output steps must not receive that input as `GH_TOKEN`; never write it to `GITHUB_ENV`, files, logs, artifacts, or outputs.
 - This is scoped environment exposure, not token process isolation. Composite steps share the caller job; all code in a credential-bearing job must be trusted. The caller must keep privileged credentials away from untrusted PR code.
-- Preserve owner-approved main direct apply and repository-scoped concurrency without cancellation of running apply. PR plan remains read-only with no privileged fallback.
+- Preserve owner-approved main direct apply and repository-scoped concurrency without cancellation of running apply. PR plan remains nonmutating with trusted executing code, data-only candidate preparation and no alternate-credential fallback. Strongly recommend Environment branch restrictions together with enforced protection of workflow/credential-consuming paths; a permitted ref does not identify a workflow.
 - These are the generic consumer/example requirements. This repository's Environment, App bindings, and scope guard are documented separately in [repository automation](../contributing/repository-automation.md).
 
 ### Rule: Source metadata identifies the consumer and executing binary
@@ -167,7 +170,7 @@ On the supported Linux runner, the digest remains bound to the running image aft
 
 The same-version `gh settings action plan REPORT_PATH` entry invokes shared application planning and writes one JSON report to a caller-owned runner-temporary file whose parent already exists. New report files use mode 0600. The same CLI/Action version owns the format: explicit outcome, available target, managed count and ordered changes with native string/bool/topic-list before/after values. Changed, no-difference and unmanaged results are distinct without parsing terminal sentences. Invalid configuration and repository-read failure remain distinguishable failures with minimum safe categorical diagnostics; raw authentication errors, tokens, environment dumps and request headers are not serialized.
 
-Success is silent on stdout and exits zero. Planning or report-storage failure exits nonzero, including when a failure report was written; writing a report never turns a failed plan into success. Validation precedes API access, and unmanaged planning retains its local no-op. Target resolution has an explicit `target-failure` outcome without an unresolved target; read failures retain the available target. Failure reports have no comparison, so their zero managed count does not mean unmanaged. Apply never reads this report: it is ephemeral presentation data, not saved-plan execution. The current composite invokes this entry directly with its explicit read token; shared application planning owns validation before API access. No separate CLI validation call or multi-version protocol is needed.
+Success is silent on stdout and exits zero. Planning or report-storage failure exits nonzero, including when a failure report was written; writing a report never turns a failed plan into success. Validation precedes API access, and unmanaged planning retains its local no-op. Target resolution has an explicit `target-failure` outcome without an unresolved target; read failures retain the available target. Failure reports have no comparison, so their zero managed count does not mean unmanaged. Apply never reads this report: it is ephemeral presentation data, not saved-plan execution. The current composite invokes this entry directly with its explicit App installation token; shared application planning owns validation before API access. No separate CLI validation call or multi-version protocol is needed.
 
 #### Scenario: A changed report retains native values
 
@@ -195,7 +198,7 @@ Changed values retain native string/bool/topic-list meaning. No-difference, unma
 #### Scenario: Composite plan separates authenticated execution from presentation
 
 - Given the composite has verified its same-version CLI and consumer metadata
-- And the caller supplies an explicit read token
+- And the caller supplies an explicit App installation token with complete observation permissions
 - When the authenticated step writes a typed plan report
 - Then a separate credential-free step renders that report with explicit nonsecret run metadata
 - And changed, unchanged, unmanaged and failed outcomes retain their intended review meaning
@@ -239,4 +242,4 @@ Test mapping: [TestTopicsSummaryNativeAndJSONLists](../../internal/actions/summa
 
 ### Rule: Present typed label operations
 
-The same-version report/Summary presents typed label operations and explains association loss for deletions. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The committed installer and maintained examples select published v0.18.0 from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`; source protocol tests and published-package verification remain separate evidence. The #412 Ruleset projection correction exists only after that immutable source and must not be attributed to the v0.18.0 package.
+The same-version report/Summary presents typed label operations. The [Labels specification](labels.feature.md) owns label scenarios and test mappings, and [Actions internals](../contributing/actions-internals.md#source-actions-plan-report) owns the report schema. The installer and maintained examples select published v0.19.0 from immutable source `3785af9e73886565fe711e6b4428922055a2f687`; it includes #412's declared-only Ruleset projection correction. Unreleased ID-owned object contracts are not attributed to this package; source protocol tests and published-package verification remain separate evidence.

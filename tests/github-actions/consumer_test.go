@@ -32,16 +32,14 @@ func TestPRConsumerPlan(t *testing.T) {
 				f.sha = f.git("rev-parse", "HEAD")
 				f.base["MOCK_VALIDATE_STATUS"] = fmt.Sprint(test.status)
 			}
-			context := map[string]string{"github.repository": "owner/config", "github.sha": f.sha, "github.token": "read-fixture"}
-			checkout := job.Steps[0]
-			if fixtureValue(t, checkout.With["repository"], context) != "owner/config" || fixtureValue(t, checkout.With["ref"], context) != f.git("rev-parse", "HEAD") {
-				t.Fatal("PR checkout did not select the triggering configuration")
-			}
-			f.base["GITHUB_EVENT_NAME"] = "pull_request"
-			f.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/settings-pr.yml@refs/pull/1/merge"
+			// Candidate preparation has its own real-Git/data-only tests. This
+			// composition test starts with the prepared configuration-only root.
+			context := map[string]string{"github.repository": "owner/config", "github.sha": strings.Repeat("b", 40), "steps.app.outputs.token": "app-fixture"}
+			f.base["GITHUB_EVENT_NAME"] = "pull_request_target"
+			f.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/settings-pr.yml@refs/heads/main"
 			f.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
 			f.base["MOCK_PLAN_OUTCOME"] = test.outcome
-			result := f.call(t, job.Steps[1], context, nil)
+			result := f.call(t, job.Steps[2], context, nil)
 			want := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": committedCLIVersion(t), "cli-sha256": f.digest}
 			calls := "plan\n"
 			if test.status != 0 {
@@ -50,12 +48,12 @@ func TestPRConsumerPlan(t *testing.T) {
 			if result.status != test.status || result.calls != calls || result.api != "" || !reflect.DeepEqual(result.outputs, want) {
 				t.Fatalf("PR plan boundary failed: %+v", result)
 			}
-			for _, value := range []string{test.review, f.sha, "pull_request", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@")} {
+			for _, value := range []string{test.review, f.sha, "pull_request_target", ".github/workflows/settings-pr.yml", "daiksud/gh-settings", strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@")} {
 				if !strings.Contains(result.summary, value) {
 					t.Fatalf("PR Summary missing %q: %s", value, result.summary)
 				}
 			}
-			if strings.Contains(result.log+result.summary+fmt.Sprint(result.outputs), "read-fixture") {
+			if strings.Contains(result.log+result.summary+fmt.Sprint(result.outputs), "app-fixture") {
 				t.Fatal("read token escaped the PR plan boundary")
 			}
 		})
