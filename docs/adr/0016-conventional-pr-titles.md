@@ -18,7 +18,7 @@ Future release automation needs structured change descriptions. Conventional Com
 
 ## Decision
 
-Validate the PR title and optional body as a single Conventional Commits 1.0.0 message in GitHub Actions, independently of automatic versioning. Add only the six agreed style constraints: the conventional 11-type list, lowercase types, lowercase scopes, subject-case restrictions, no subject-final period, and no leading or trailing title whitespace. Do not enforce line-length rules.
+Validate the PR title and optional body as one proposed Conventional Commits message with commitlint's unmodified `@commitlint/config-conventional` preset, independently of release-version calculation. Do not add overrides or separate message-policy tests.
 
 ## Consequences
 
