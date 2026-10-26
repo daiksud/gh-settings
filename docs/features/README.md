@@ -1,69 +1,42 @@
 # Behavior specifications
 
-These specifications describe detailed behavior and map scenarios to existing Go tests. They are contributor reference material, written in Markdown; no BDD runner executes these files.
-
-For usage, start with the [command reference](../commands.md), [configuration reference](../settings.md), or [GitHub Actions guide](../github-actions.md). For choosing checks and understanding what they prove, use the [testing guide](../contributing/testing.md).
+These files describe observable behavior and its Go test mappings. They are
+contributor references; no BDD runner executes them. The [configuration
+reference](../settings.md), [CLI reference](../commands.md), and [Action
+guide](../github-actions.md) own user-facing behavior.
 
 | Specification | Responsibility |
 | --- | --- |
-| [Export](export.feature.md) | Read the checkout's supported state and save configuration. |
-| [Validate](validate.feature.md) | Accept valid declarations and reject invalid configuration locally. |
-| [Plan](plan.feature.md) | Compare declared resources and report differences without mutation. |
-| [Apply](apply.feature.md) | Write declared values and report partial or failed updates. |
-| [Labels](labels.feature.md) | Authoritative membership, retained attributes, fresh-state reconciliation, and label-specific test mappings. |
-| [GitHub Actions](actions.feature.md) | Public Action behavior, consumer scenarios, and internal adapter test mappings. |
-| [Release](release.feature.md) | Manual publication, tested binary identity, and recovery. |
+| [Export](export.feature.md) | Read supported state into a configuration file. |
+| [Validate](validate.feature.md) | Validate declarations locally. |
+| [Plan](plan.feature.md) | Compare declared values without writes. |
+| [Apply](apply.feature.md) | Apply declarations and report partial failure. |
+| [Labels](labels.feature.md) | Manage selected label objects by ID. |
+| [Rulesets](rulesets.feature.md) | Manage selected repository rulesets. |
+| [Environments](environments.feature.md) | Manage supported named environment policies. |
+| [GitHub Actions](actions.feature.md) | Operate the public composite Action. |
+| [Actions execution](actions-execution-policy.feature.md) | Manage repository Actions policy. |
+| [Workflow permissions](workflow-permissions.feature.md) | Manage default Actions token and approval policy. |
+| [Fork workflows](fork-workflows.feature.md) | Manage fork pull-request workflow controls. |
+| [Security](security.feature.md) | Manage adopted security controls. |
+| [Retention](retention.feature.md) | Manage Actions retention policy. |
+| [Pages](pages.feature.md) | Manage supported existing Pages configuration. |
+| [Release](release.feature.md) | Publish and verify immutable artifacts. |
+| [Default branch](default-branch.feature.md) | Manage the repository default branch. |
+| [Repository lifecycle](repository-lifecycle.feature.md) | Archive and unarchive repositories. |
+| [Discussions](discussions.feature.md) | Manage Discussions availability. |
+| [Template repository](template-repository.feature.md) | Manage template availability. |
+| [Web signoff](web-commit-signoff.feature.md) | Manage web commit sign-off requirement. |
+| [Merge methods](merge-methods.feature.md) | Manage allowed merge methods. |
+| [Automatic branch deletion](delete-branch-on-merge.feature.md) | Manage head-branch deletion after merge. |
+| [Squash commit defaults](squash-commit-defaults.feature.md) | Manage squash commit title and body defaults. |
+| [Merge commit defaults](merge-commit-defaults.feature.md) | Manage normal merge message defaults. |
+| [Auto merge / branch update](pull-request-options.feature.md) | Manage optional PR merge behavior. |
+| [Pull request access](pull-request-access.feature.md) | Manage pull-request availability and creation policy. |
+| [Issue creation](issue-creation-policy.feature.md) | Manage issue creation policy. |
+| [Sponsorships](sponsorships.feature.md) | Manage Sponsor button visibility. |
+| [Repository access](repository-access.feature.md) | Describe separately proposed access management boundaries. |
 
-When behavior changes, update its user reference and affected scenarios together. Keep test mappings accurate, put detailed fixture implementation and evidence limits in the testing guide, and use [ADRs](../adr/README.md) for decision rationale.
-
-The v0.10.0 [repository merge-method extension](merge-methods.feature.md) adds three booleans to the existing repository group, with a narrow GraphQL read and the existing REST apply path.
-
-The v0.11.0 [automatic branch-deletion setting](delete-branch-on-merge.feature.md) adds one optional repository boolean using the same fixed GraphQL read and direct REST PATCH.
-
-The v0.12.0 [squash commit defaults](squash-commit-defaults.feature.md) add two optional repository enums with explicit message/title dependency and the same read/write paths.
-
-The v0.13.0 [auto-merge and branch-update options](pull-request-options.feature.md) add two independent repository booleans through the existing fixed GraphQL read and direct REST PATCH.
-
-The v0.14.0 [normal merge commit defaults](merge-commit-defaults.feature.md) add two repository enums with an independent message/title dependency, without enabling normal merges.
-
-v0.15.0 adds the optional [`has_discussions` setting](discussions.feature.md) through the repository REST read/write path with a verified PATCH response.
-
-Published v0.16.0 adds the [web commit sign-off requirement](web-commit-signoff.feature.md) through the existing repository REST read/write path.
-
-Published v0.16.0 also adds the [template repository setting](template-repository.feature.md) through the existing repository REST read/write path.
-
-Published v0.16.0 adds the [default branch setting](default-branch.feature.md), including literal-name validation and PATCH response verification.
-
-These three features are published in v0.16.0; older consumer pins must be updated before adopting them.
-
-The [Rulesets design](rulesets.feature.md) records the accepted declaration/reconciliation contract and its implementation published in v0.17.0, including PR/check rules; published v0.16.0 and older CLI/Action packages reject Rulesets.
-
-Published v0.17.0 adds [pull request access controls](pull-request-access.feature.md) with independent availability/policy declarations, complete GraphQL reads and declared-only mutations. Published v0.16.0 and older packages reject these keys.
-
-Published v0.17.0 adds [Issue creation policy](issue-creation-policy.feature.md), an independent enum with selective GraphQL reads and a shared declared-only repository mutation. It does not change `has_issues` implicitly; published v0.16.0 and older packages reject the key.
-
-Published v0.17.0 adds [Actions execution policy](actions-execution-policy.feature.md), with explicit export opt-in, complete conditional reads, inactive-value comparisons and fresh nontransactional apply. Published v0.16.0 and older packages reject it.
-
-Published v0.17.0 adds [default workflow permissions](workflow-permissions.feature.md), independently of execution policy, with declared-only updates and explicit export selection. Published v0.16.0 and older packages reject it.
-
-The [Security design](security.feature.md) defines proposed feature-family selection, complete observations, dependency ordering, and adoption gates for #344–#347. Secret scanning and private vulnerability reporting for public repositories are implemented in v0.17.0; other families remain planned/gated. Published v0.16.0 and older packages reject all proposed security keys/options.
-
-Published v0.17.0 adds [repository retention policy](retention.feature.md), with complete configured/maximum observations, explicit export opt-in, native integer differences and fresh upper-limit verification. Published v0.16.0 and older packages reject the key and option.
-
-Published v0.17.0 adds [fork workflow policies](fork-workflows.feature.md): public contributor approval and private fork execution/token/secrets/approval choices, with explicit export selections, declared-only updates and fresh visibility/readback boundaries. Published v0.16.0 and older packages reject the keys and options.
-
-The v0.17.0 feature set and the bounded additions below are published in [v0.18.0](https://github.com/daiksud/gh-settings/releases/tag/v0.18.0) from immutable source `6d3146b30860692f84dc54e32d746e6fbbb55c66`. Native acceptance, immutable assets and published Action smoke checks passed. Unimplemented/gated candidates remain outside this package. See the [package boundary](../settings.md#v0180-package).
-
-Published v0.18.0 adds [Sponsor button visibility](sponsorships.feature.md), with an independent complete boolean read and declared-only shared repository mutation. It does not manage funding destinations or payments; published v0.17.0 and older packages reject the key.
-
-Published v0.18.0 adds [repository archive/unarchive](repository-lifecycle.feature.md), with explicit sequencing, identity/readback verification, and opt-in `export --archive`. Published v0.17.0 and older packages reject this field and option. Visibility and rename remain deferred; no live repository has been archived.
-
-Published v0.18.0 adds the [existing-site Pages contract](pages.feature.md) from #350, including cname-only null clearing and explicit export. Creation/deletion and visibility changes remain deferred until their observation and exposure gates are resolved; #350 retains that lifecycle work. Published v0.17.0 and older packages reject all Pages keys/options.
-
-The current-source [Environment contract](environments.feature.md) adds named whole-object upsert with documented defaults, complete selected reads, readback and no unlisted deletion or numeric-ID writeback. Published v0.19.0 and earlier do not support it. Custom branch/tag policies, administrator-bypass management and deletion remain outside this subset.
-
-Current source removes organization-only [custom property values](custom-properties.feature.md); published v0.18.x retains the feature.
-
-The [repository access design](repository-access.feature.md) reserves collaborator/team ownership, pending invitation outcomes and revocation gates for #356/#357. It is unimplemented; current source and published packages reject access declarations and export options.
-
-Current source removes organization-only [private repository forking policy](private-forking.feature.md); published v0.18.x retains the feature.
+Update affected scenarios, tests, and the authoritative user reference together
+when current behavior changes. Use [testing](../contributing/testing.md) for
+validation boundaries and [ADRs](../adr/README.md) for decision rationale.
