@@ -73,45 +73,20 @@ Require the [PR template](../../../.github/pull_request_template.md)'s explanati
 
 Include compatibility, migration, and operational effects when relevant. Keep links as supporting evidence; use `Closes #123` only for work actually completed. Remove template comments, temporary progress notes, approval requests, full logs, and file-by-file diff narration. Require the final title/body to match the final diff and verify the final squash message before merging.
 
-### Breaking changes: require both signals
+### Breaking changes: follow Conventional Commits
 
 Apply the [v0.x compatibility policy](../../../AGENTS.md#v0x-compatibility-policy):
-do not require legacy fallbacks or automatic migration solely to preserve
-superseded public behavior. Review the current contract and safeguards, and
-retain all breaking-change disclosure requirements below.
+do not preserve obsolete behavior merely to avoid an incompatible change.
+Identify user-observable changes to supported CLI commands, options,
+configuration, outputs, exit codes, and public Action inputs and outputs.
 
-Identify incompatibility from the supported behavior before and after the change, even when the author labels it a fix or refactor. Check existing consumers of CLI commands/options, documented output and exit codes, configuration keys/types/omission semantics, target resolution, and Action inputs/outputs, supported runners, or required credentials/permissions. An internal signature change alone is not a public compatibility break; adding an opt-in capability is not breaking when existing supported usage continues to work.
-
-For every change that makes a previously supported use incompatible, require **both**:
-
-1. A title of `type!: description` or `type(scope)!: description`. Reject `type!(scope): description`.
-2. A footer beginning with exactly `BREAKING CHANGE:` followed by a space, separated from the body by a blank line. Explain what was supported before, what changes, who is affected, and the concrete migration or replacement. If no migration exists, say so and explain the consequence.
-
-Use the semantically correct type with `!`; breaking changes are not limited to `feat`. Apply this requirement before 1.0 as well. Do not use either breaking marker for a compatible change, and do not accept a heading, vague warning, or `BREAKING-CHANGE:` alias instead of the required footer spelling.
-
-Conventional Commits itself permits either marker alone. This repository deliberately requires both during review, as recorded in [ADR 0024](../../../docs/adr/0024-code-review-policy.md). The current commitlint configuration accepts either marker alone; reviewers must enforce this stricter rule and assess the actual compatibility impact.
-
-Use the following hypothetical message as a format example, not as a statement of current product behavior:
-
-```text
-feat(settings)!: rename the repository configuration section
-
-## Why
-
-Make the resource represented by the configuration section explicit.
-
-## What changed
-
-Rename the settings section to repository and update its parser and reference.
-
-## Verification
-
-Verified that the new section is accepted and the old section is rejected
-before any API request.
-
-BREAKING CHANGE: Existing declarations using settings must rename that
-section to repository. The old section is no longer accepted.
-```
+Conventional Commits marks a breaking change with **either** a `!` immediately
+before the title colon (`type!:` or `type(scope)!:`) **or** a
+`BREAKING CHANGE:` footer. Either is sufficient; do not require both,
+automatic migration, or upgrade guides during v0.x. Reviewers assess whether
+the PR accurately describes the user impact. PRLint only checks the title
+and body together with commitlint, not a separate semantic policy.
+An internal-only change is not automatically a public breaking change.
 
 ## Check the affected implementation contracts
 

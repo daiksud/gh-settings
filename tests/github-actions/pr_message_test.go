@@ -23,16 +23,16 @@ func TestIndependentPRMessageValidation(t *testing.T) {
 		t.Fatal("message edits need their own concurrency group and validation event")
 	}
 	j := w.Jobs["pr-message"]
-	if j.If != "" || j.Needs != "" || j.Environment != "" || j.Continue || j.Timeout != 5 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Steps) != 4 {
+	if j.If != "" || j.Needs != "" || j.Environment != "" || j.Continue || j.Timeout != 5 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Steps) != 3 {
 		t.Fatal("stable required message job must always run without write permissions")
 	}
 	if j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || j.Steps[0].With["persist-credentials"] != "false" {
 		t.Fatal("message policy checkout must not retain credentials")
 	}
-	if j.Steps[1].Uses != "jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca" || j.Steps[1].With["install_args"] != "bun npm:@commitlint/cli" || j.Steps[2].Run != "bash tests/github-actions/commitlint.sh" {
-		t.Fatal("reuse the pinned message tools and existing policy tests")
+	if j.Steps[1].Uses != "jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca" || j.Steps[1].With["install_args"] != "bun npm:@commitlint/cli" {
+		t.Fatal("install the pinned commitlint tools")
 	}
-	validate := j.Steps[3]
+	validate := j.Steps[2]
 	if !reflect.DeepEqual(validate.Env, map[string]string{"PR_TITLE": "${{ github.event.pull_request.title }}", "PR_BODY": "${{ github.event.pull_request.body }}"}) || !strings.Contains(validate.Run, `printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY"`) || !strings.Contains(validate.Run, "--strict") {
 		t.Fatal("validate the title and body as one message through environment values")
 	}
