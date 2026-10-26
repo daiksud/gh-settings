@@ -264,5 +264,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return !other.Empty() || desired.Topics.Names != nil || desired.Labels != nil || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || desired.Rulesets != nil || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }
