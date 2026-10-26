@@ -6,7 +6,7 @@ description: Manage one optional repository boolean through the existing merge-r
 
 ## Feature: Manage automatic branch deletion
 
-CLI and Action v0.11.0 support `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Consumers using v0.10.0 reject the key; the pinned v0.18.0 examples support it. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
+CLI and Action Current source supports `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
 
 ```yaml
 schemaVersion: 1
@@ -25,9 +25,9 @@ Repository comparison retains registry order for repository fields, followed by 
 
 The [GraphQL Repository field](https://docs.github.com/en/graphql/reference/objects#repository) is `deleteBranchOnMerge: Boolean!`, as defined by GitHub's [public schema](https://docs.github.com/en/graphql/overview/public-schema). It joins the existing fixed `POST /graphql` query for the three merge-method booleans, using only the origin-selected owner/name. There is no caller-supplied query or mutation and no extra read when both settings are declared.
 
-The shared `MergeMethodsState`, adapter and deferred callback retain their internal names but hold four merge-related booleans; current source also includes two PR option booleans and four commit enums. A declaration containing only the new field calls GraphQL without the base REST read. Omitting all merge-related fields skips GraphQL. A configuration declaring existing merge-method fields reads the complete source observation (four fields in v0.11.0; six in v0.12.0; eight in v0.13.0; ten in current source) but still compares and writes only declared values.
+The shared `MergeMethodsState`, adapter and deferred callback retain their internal names but hold four merge-related booleans; current source also includes two PR option booleans and four commit enums. A declaration containing only the new field calls GraphQL without the base REST read. Omitting all merge-related fields skips GraphQL.
 
-Export reads all repository fields (nine in v0.11.0, eleven in v0.12.0, thirteen in v0.13.0, fifteen in v0.14.0, twenty-two in current source), complete topics and all label pages before saving. Missing/null repository or field values, invalid types, transport/HTTP/JSON failures, and GraphQL errors including partial data fail the whole read. They never silently become false or fall back to a write-privileged REST read. A read failure preserves an existing export file and discards any partial plan comparison.
+Missing/null repository or field values, invalid types, transport/HTTP/JSON failures, and GraphQL errors including partial data fail the whole read. They never silently become false or fall back to a write-privileged REST read. A read failure preserves an existing export file and discards any partial plan comparison.
 
 An [isolated PR Actions run](https://github.com/daiksud/gh-settings/actions/runs/39098804967) returned `deleteBranchOnMerge: true` with effective Contents read and Metadata read only. It used no checkout, App credentials, Environment or write permission. Its temporary workflow is excluded from the final implementation diff. This proves access for that token/repository, not all possible credentials.
 
