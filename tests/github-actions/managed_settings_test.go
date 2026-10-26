@@ -18,6 +18,9 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if desired.Labels != nil {
+		t.Fatal("the package transition must omit labels, never declare an empty managed list")
+	}
 	// Independent observations recorded during adoption. These fixtures do not
 	// query GitHub or establish that the live policy has remained unchanged.
 	checks := []struct {

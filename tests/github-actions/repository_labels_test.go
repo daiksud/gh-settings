@@ -10,7 +10,9 @@ import (
 )
 
 func TestRepositoryLabelVocabulary(t *testing.T) {
-	data, err := os.ReadFile("../../.github/settings.yml")
+	// Retain the existing vocabulary during the explicitly approved temporary
+	// management gap. The live declaration must remain absent in this stage.
+	data, err := os.ReadFile("testdata/label-migration-snapshot.yml")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -221,7 +221,7 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
 	// Model pinned caller wiring with candidate package bytes, not released tag bytes.
-	if ref != strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") {
+	if ref != strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(operationalAction, "daiksud/gh-settings@") {
 		t.Fatalf("unmodeled public Action revision %s", ref)
 	}
 	overrides := map[string]string{
