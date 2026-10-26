@@ -2,6 +2,21 @@
 
 Follow [CONTRIBUTING](CONTRIBUTING.md) for development, verification, and documentation placement.
 
+## v0.x compatibility policy
+
+During v0.x, do not preserve superseded CLI or public Action interfaces, YAML
+formats, aliases, or behavior solely for backward compatibility. Do not add
+automatic migrations, importers, fallback paths, or parallel implementations
+for obsolete contracts. When a behavior changes, update its authoritative
+public documentation and behavior specifications and remove obsolete code and
+tests instead of retaining historical contracts alongside the current one.
+
+This does not waive validation, checkout/target isolation, credential security,
+data protection, honest failure and partial-failure reporting, or the
+immutability of published releases. Incompatible public changes still require
+the `!` title and `BREAKING CHANGE:` footer, with impact and migration or
+replacement guidance, under the [code-review policy](.agents/skills/code-review/SKILL.md).
+
 ## Branches, classification, and releases
 
 - Treat branch names only as work identifiers. Do not derive PR types, labels, or release versions from them, or rename a branch solely to correct classification.
