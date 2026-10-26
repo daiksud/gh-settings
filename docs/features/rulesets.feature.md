@@ -6,7 +6,7 @@ description: Select whole Ruleset objects by numeric ID without deleting unliste
 
 ## Status and goal
 
-Current source adopts **unreleased** ID-selected whole-object ownership. The [configuration reference](../settings.md#rulesets) owns schema, fixed defaults and migration. Historical [ADR 0025](../adr/0025-declarative-repository-rulesets.md) remains a record of the superseded ownership decision.
+Rulesets use ID-selected whole-object ownership. The [configuration reference](../settings.md#rulesets) owns schema, fixed defaults and observation limits. Optional-absence export handling is current-source behavior requiring a release containing the fix. Historical [ADR 0025](../adr/0025-declarative-repository-rulesets.md) remains a record of the superseded ownership decision.
 
 ## Ownership and identity
 
@@ -26,9 +26,9 @@ Null, unknown keys and wrong types remain invalid locally. Explicit false, zero 
 
 ## Complete observation and export
 
-Reads require complete repository ownership/ID, supported writable policy, bypass visibility and every page/detail. Unknown writable fields, unsupported rules, missing/null values, denied reads and partial data fail rather than becoming defaults or success. Declaration defaults must never be applied to an API read.
+Reads require complete repository ownership/ID, required supported policy, bypass visibility and every page/detail. Unknown writable fields, unsupported rules, missing required values, null values, denied reads and partial data fail rather than becoming defaults or success. Optional `dismissal_restriction` absence remains nil/unobserved; malformed present objects fail. Declaration defaults must never be applied to an API read.
 
-Opted-in export includes numeric IDs plus the complete supported policy; ordinary export adds no Rulesets request. Export → validate → plan against unchanged fixture state yields zero differences. Failed export preserves the destination. Push/inherited resources remain outside mutation ownership. Server-generated metadata is explicitly classified and never replayed as writable policy.
+Opted-in export includes numeric IDs plus observed supported policy without normalizing absent dismissal restrictions. Ordinary export adds no Rulesets request. For complete observations, export → validate → plan against unchanged fixture state yields zero differences. An absent restriction remains absent in exported YAML and passes local validation, but selecting that ID for plan/apply errors before any Rulesets write instead of guessing a disabled value or reporting a no-op. Unselected optional absence does not manage that object or block independent selections. Whole-object defaults and ownership remain unchanged. Failed export preserves the destination. Push/inherited resources remain outside mutation ownership. Server-generated metadata is explicitly classified and never replayed as writable policy.
 
 ## Plan, apply and idempotence
 
@@ -58,5 +58,6 @@ One focused breaking Rulesets change builds on labels' ID recorder. Environment 
 | Application | [Sequencing](../../internal/app/rulesets_test.go), [ID recording](../../internal/app/ruleset_ids_test.go): empty no-op, fresh preparation, partial failure, confirmed recorder ordering and earlier-label recovery. |
 | Action | [Whole-object report](../../internal/actions/rulesets_test.go), [parameters](../../internal/actions/ruleset_parameters_test.go): complete selected policy/IDs, native false/zero/order, no unlisted values and escaped Summary. |
 | Built process | [Lifecycle](../../tests/acceptance/rulesets_test.go), [ID modes/recovery](../../tests/acceptance/ruleset_ids_test.go), [parameters](../../tests/acceptance/ruleset_parameters_test.go): export/zero plan, rename, unmanaged siblings, writeback/repeat, opt-out/Actions, partial failures and response loss. |
+| Optional observation | [Model](../../internal/settings/ruleset_optional_test.go), [API](../../internal/github/ruleset_optional_test.go), [built process](../../tests/acceptance/ruleset_optional_test.go): absent versus malformed/explicit restriction, omission-preserving export, selected-ID safety guard, no false diff/success, no mutation and closed Action failure report. |
 
 All cases use local HTTP/files/Git and dummy credentials. Hosted candidate/required CI and review results must be inspected separately; local tests are not evidence of live settings changes or publication.

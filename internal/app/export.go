@@ -71,17 +71,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
-		values, err := observed.Values()
-		if err != nil {
-			return err
-		}
-		entries := make([]settings.RulesetDeclaration, 0, len(values))
-		for _, value := range values {
-			policy, id := value.Policy, value.ID
-			policy.ID = &id
-			entries = append(entries, policy)
-		}
-		desired, err := settings.NewRulesetDeclarations(entries)
+		desired, err := observed.ExportDeclarations()
 		if err != nil {
 			return err
 		}
