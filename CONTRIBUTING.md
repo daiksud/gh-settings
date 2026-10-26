@@ -22,6 +22,8 @@ When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose
 
 Blank issues remain available for questions or work that does not fit these forms. Use the same information structure when submitting through the web, CLI, or API. Add constraints or references to the relevant answer only when they affect the work.
 
+Dependabot checks Go modules and GitHub Actions weekly using [the dependency update configuration](.github/dependabot.yml). Its Go updates use `build` and its Actions updates use `ci` in their proposed Conventional Commit messages and labels. These PRs require normal review and merge decisions; no workflow enables auto-merge for them automatically. The repository-level auto-merge option remains available.
+
 ### Branch names and change classification
 
 Use topic branches and PRs targeting `main`. Branch names identify work, not its semantic type. A name may contain `feat/` or `fix/`, but no classification depends on that prefix. Correct a mistaken PR title or label directly; do not rename the branch or open a replacement PR just to change its classification.
