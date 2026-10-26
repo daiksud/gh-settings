@@ -49,7 +49,14 @@ settings:
 
 `schemaVersion: 1` is required. Omission leaves a field unmanaged; `false` and empty strings are explicit values. Declaring `topics.names` manages the complete topic set, and `names: []` clears it. See the [configuration reference](docs/settings.md) for supported fields, types, and validation rules.
 
-Current unreleased source exports label IDs and manages only listed label objects: ID means update, no ID means create-only, and unlisted labels are never deleted. Color is required; description omission clears it. Normal apply records new IDs in YAML unless disabled. Published v0.19.0 and earlier retain the old authoritative-list contract. Review the [migration instructions](docs/settings.md#apply-id-writeback) before upgrading. Current unreleased Rulesets use the same numeric-ID selection, no implicit deletion and created-ID recording model, with their own [whole-object defaults and migration](docs/settings.md#rulesets).
+Current source manages selected labels and Rulesets by ID; see their
+[configuration contracts](docs/settings.md#labels) before declaring them.
+
+**Safety:** The currently pinned v0.19.0 published CLI and Action still treat a
+label list as authoritative: unlisted labels are deleted, and `labels: []`
+deletes all labels. Use the contract of the installed binary, not current
+unreleased source behavior. Installing or pinning an Action never upgrades its
+CLI automatically.
 
 ### 3. Validate and review differences
 
