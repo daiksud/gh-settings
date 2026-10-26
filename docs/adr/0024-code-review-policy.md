@@ -1,27 +1,33 @@
 ---
 type: ADR
-title: Require focused PRs and explicit breaking-change reviews
-description: Record the repository review policy and stricter squash-message requirements.
+title: Require focused PRs and review of change impact
+description: Record scope and semantic-review requirements without extra breaking-message syntax.
 ---
 
 ## Status
 
-Accepted. Supersedes the review-time breaking-change notation in [ADR 0016](0016-conventional-pr-titles.md) and resolves the notation question left open in [ADR 0017](0017-pr-based-semver.md).
+Accepted — the code-review skill owns the current review procedure.
 
 ## Context
 
-PR titles and bodies become durable squash commit messages. Syntax validation cannot determine whether a type describes the actual change, whether independent changes have been combined, or whether existing users must migrate. The previous decision allowed either breaking-change marker, leaving reviewers and release readers with different places to look for compatibility impact.
+The PR title and body become a durable squash commit message. Commitlint
+validates Conventional Commits format, but cannot judge user impact, review
+scope, or whether the selected type reflects the actual change.
 
 ## Decision
 
-Maintain the review procedure and detailed criteria in the repository's [code-review skill](../../.agents/skills/code-review/SKILL.md), linked from [AGENTS.md](../../AGENTS.md) and the contributor guides.
+Require one coherent purpose with one Conventional Commits type and at most
+one meaningful scope. Keep implementation, tests, and necessary documentation
+for that purpose in one PR; split unrelated changes.
 
-Require one coherent change purpose, one appropriate type, and at most one meaningful scope per PR. Keep implementation, tests, documentation, and necessary wiring for the same purpose together. Split independent changes rather than hiding them behind a broad type or scope.
-
-Review the title and body as one Conventional Commits message, with an explanation that remains useful in Git history. For every backward-incompatible change, require both `type!: description` or `type(scope)!: description` and an explicit `BREAKING CHANGE:` footer explaining impact and migration, regardless of type or pre-1.0 version.
+Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/):
+**either** a `!` header marker **or** a `BREAKING CHANGE:` footer is sufficient
+for a breaking change. Do not require both. During v0.x, do not require
+obsolete compatibility paths or historical migration guides.
+Reviewers assess actual impact; PRLint only invokes commitlint.
 
 ## Consequences
 
-These are mandatory review criteria. Existing commitlint checks continue to validate syntax and the agreed style constraints; they do not detect semantic type/scope violations or undisclosed incompatibilities, and currently accept either breaking marker alone. Passing CI therefore does not establish compliance with the stricter review policy.
-
-Review relevant product contracts and meaningful verification evidence without requiring unrelated refactoring or speculative safeguards. The skill is the authoritative procedure; this ADR records why it was adopted. Automatic version calculation remains future work under ADR 0017, and release publication remains explicitly initiated.
+Review changes against the current public contract and relevant evidence.
+A successful `pr-message` check establishes formatting, not semantic
+correctness, PR-body completeness, or release approval.
