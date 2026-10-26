@@ -11,6 +11,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+const operationalAction = "daiksud/gh-settings@552968e34645aba9ebeee1f3040fb11dbf338043"
+
 func TestManagedRepositoryMergePreferences(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
 	if err != nil {
@@ -47,7 +49,7 @@ func TestManagedRepositoryMergePreferences(t *testing.T) {
 func TestOperationalPRPlan(t *testing.T) {
 	w, text := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
 	j := w.Jobs["plan"]
-	if len(j.Steps) != 3 || j.Steps[2].Uses != exampleConsumerAction || !reflect.DeepEqual(j.Steps[2].With, map[string]string{"command": "plan", "token": "${{ steps.app.outputs.token }}"}) {
+	if len(j.Steps) != 3 || j.Steps[2].Uses != operationalAction || !reflect.DeepEqual(j.Steps[2].With, map[string]string{"command": "plan", "token": "${{ steps.app.outputs.token }}"}) {
 		t.Fatal("operational PR must call the released public Action with its explicit App token")
 	}
 	if len(w.On) != 1 || w.On["pull_request_target"].Kind == 0 || len(w.Jobs) != 1 || j.Environment != "gh-settings" || j.If != settingsPRCondition || len(j.Env) != 0 || len(j.Outputs) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 8 {
@@ -87,7 +89,7 @@ func TestOperationalPRPlan(t *testing.T) {
 				t.Fatalf("operational PR result: %+v", r)
 			}
 			if scenario.status == 0 {
-				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@")) {
+				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalAction, "daiksud/gh-settings@")) {
 					t.Fatalf("operational PR identity or execution: %+v", r)
 				}
 			} else if r.calls != "plan\n" || len(r.outputs) != 0 {
@@ -125,7 +127,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 		}) {
 		t.Fatal("operational App credentials, target scope or revocation changed")
 	}
-	if apply.Steps[2].Uses != exampleConsumerAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{
+	if apply.Steps[2].Uses != operationalAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{
 		"command": "apply", "token": "${{ steps.app.outputs.token }}",
 	}) || strings.Count(source, "steps.app.outputs.token") != 1 || strings.Contains(source, "verify-settings-handoff") ||
 		strings.Contains(source, "run:") || !strings.Contains(source, "branches: [main]") {
