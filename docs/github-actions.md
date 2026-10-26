@@ -16,7 +16,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | --- | --- |
 | `command` | Required, no default; exactly `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
-| `plan-reporting` | `detailed` by default, or `status-only` for plan only.  |
+| `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
 
 Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Plan is nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action neither mints a token, identifies its credential type nor verifies its actual grants; there is no ambient-token or personal-credential fallback.
 
@@ -237,4 +237,3 @@ Implementation protocols belong in [Action internals](contributing/actions-inter
 [Fork workflow policies](settings.md#fork-pr-workflow-policies), with public contributor approval separate from private fork execution/token/secrets/approval controls. Existing Administration read/write credentials are required; no Action input or grant is added. Summary shows exact enum and native boolean differences, including credentials passed to forks. It remains credential-free presentation; apply independently rereads state. Fixtures do not establish live mutation compatibility, workflow execution safety or organization-policy enforcement.
 
 [Existing Pages configuration](settings.md#existing-pages-configuration) through validate/plan/apply and typed native Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Existing caller grants and Action inputs are unchanged; no export input exists. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Site creation/deletion and visibility changes remain unsupported under #350.
-
