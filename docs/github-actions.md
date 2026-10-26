@@ -51,11 +51,13 @@ Installation downloads the selected `gh-settings-linux-amd64` asset and `SHA256S
 ### Labels and permissions
 
 The selected published CLI determines supported [label behavior](settings.md#labels).
-**Safety:** The currently pinned v0.19.0 CLI treats the label list as
-authoritative: unlisted labels are deleted and `labels: []` deletes every
-label. The ID-selected, no-implicit-deletion contract in current source does
-not apply to this immutable Action pin. Review the pinned binary's behavior
-before applying labels; no release or pin update is performed here.
+**Safety:** The currently pinned v0.19.0 CLI treats declared label and
+repository Ruleset lists as authoritative: unlisted objects are deleted, and
+an explicitly empty list can delete every object in that collection. Ruleset
+deletions can remove required reviews and checks. The current source's
+ID-selected, no-implicit-deletion contracts do not apply through this pin.
+Review the pinned binary's behavior before approving apply. No pin or release
+is changed here.
 
 Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Installing or pinning the Action does not grant permissions.
 
