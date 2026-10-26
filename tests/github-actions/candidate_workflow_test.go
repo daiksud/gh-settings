@@ -58,7 +58,7 @@ func TestCandidateCompositeCallers(t *testing.T) {
 				if err := readyNode.Decode(&ready); err != nil {
 					t.Fatal(err)
 				}
-				if draft.Needs != "code-start" || ready.Needs != "commit-stage" {
+				if draft.Needs != "" || ready.Needs != "commit-stage" {
 					t.Fatal("PR Draft and Ready transitions must bracket the commit stage")
 				}
 			} else if _, exists := w.Jobs["ready"]; exists {
@@ -111,14 +111,14 @@ func TestCandidateCompositeCallers(t *testing.T) {
 				}
 			}
 			if name == "ci-pr.yml" {
-				return // PR code-result is exercised in pr_code_gate_test.go.
+				return // PR ci-pr gate is exercised in pr_code_gate_test.go.
 			}
 			var pass struct {
 				Needs []string `yaml:"needs"`
 				If    string   `yaml:"if"`
 				Steps []step   `yaml:"steps"`
 			}
-			passNode := w.Jobs["pass"]
+			passNode := w.Jobs["ci-push"]
 			if err := passNode.Decode(&pass); err != nil {
 				t.Fatal(err)
 			}

@@ -9,7 +9,7 @@ import (
 
 func TestIndependentPRMessageValidation(t *testing.T) {
 	w, source := readWorkflow(t, "../../.github/workflows/prlint.yml")
-	if w.Name != "PRLint" || len(w.On) != 1 || w.On["pull_request"].Kind == 0 || len(w.Jobs) != 1 || len(w.Permissions) != 0 {
+	if w.Name != "prlint" || len(w.On) != 1 || w.On["pull_request"].Kind == 0 || len(w.Jobs) != 1 || len(w.Permissions) != 0 {
 		t.Fatal("message validation must remain a separate read-only PR workflow")
 	}
 	var event struct {
@@ -19,10 +19,10 @@ func TestIndependentPRMessageValidation(t *testing.T) {
 	if err := node.Decode(&event); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(event.Types, []string{"opened", "synchronize", "reopened", "edited"}) || w.Concurrency.Group != "pr-message-${{ github.event.pull_request.number }}" || !w.Concurrency.Cancel {
+	if !slices.Equal(event.Types, []string{"opened", "synchronize", "reopened", "edited"}) || w.Concurrency.Group != "prlint-${{ github.event.pull_request.number }}" || !w.Concurrency.Cancel {
 		t.Fatal("message edits need their own concurrency group and validation event")
 	}
-	j := w.Jobs["pr-message"]
+	j := w.Jobs["prlint"]
 	if j.If != "" || j.Needs != "" || j.Environment != "" || j.Continue || j.Timeout != 5 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Steps) != 3 {
 		t.Fatal("stable required message job must always run without write permissions")
 	}

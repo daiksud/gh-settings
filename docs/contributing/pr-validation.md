@@ -1,23 +1,44 @@
-# Independent PR message and code validation
+# PR validation and required checks
 
-The [PRLint workflow](../../.github/workflows/prlint.yml) validates the PR title and body on creation, push, reopening, and metadata edits. Its stable `pr-message` job passes the title, a blank line, and the body to [commitlint](../../commitlint.config.mjs) without extra policy scripts. It has read-only permissions, no Draft/Ready changes, and no product build or acceptance work.
+The required PR checks are named for their workflow file and aggregate job:
+`ci-pr.yml` → `ci-pr`, `prlint.yml` → `prlint`, and
+`settings-plan.yml` → `settings-plan`. The independent
+`settings-environment-guard.yml` reports `settings-environment-guard`.
+No workflow publishes the shared `pass` commit status.
 
-Types, scope, compatibility, and meaningful body content still require the [code-review policy](../../.agents/skills/code-review/SKILL.md); passing syntax checks cannot establish semantic correctness.
+## Staged code validation
 
-## Code-only validation
+Every PR event (including title/body edits) runs Draft, metadata resolution,
+Commit stage, Ready and Acceptance stage. The final `ci-pr` job succeeds only
+when every prerequisite succeeds. A failed, skipped or cancelled prerequisite
+cannot report success. The separate `ci-push` aggregate checks main after merge.
 
-The [code workflow](../../.github/workflows/ci-pr.yml) receives PR edits but starts product work only on creation, push, reopening, or a base edit. A title/body-only edit skips the code path without writing a new `pass` result. A separate metadata concurrency group prevents that edit from cancelling running code validation.
+All PR-source execution uses read-only tokens and checkouts without persisted
+credentials. The Draft/Ready jobs change only PR state; the aggregate job has
+no write permission. Repeated metadata edits can rerun expensive CI, but they
+cannot create a skipped-success replacement for a prior failed job.
 
-For a code event, the status-only `code-start` job marks the tested pull-request merge candidate's `pass` commit status pending. The workflow then sets Draft, resolves target matrices, runs commit-stage, sets Ready, and runs process and public-Action acceptance matrix legs against the same manifested binary. The status-only `code-result` job publishes success on that same merge candidate only when every prerequisite succeeded. Failed, skipped, or cancelled prerequisites cannot yield success. An interrupted run can leave a pending status, which remains blocking until a valid code run completes.
+## Message and settings validation
 
-The orchestration uses GitHub's event triggers and per-PR concurrency to cancel superseded code runs. It does not reimplement head/base freshness, execution-generation, or ruleset enforcement checks. GitHub protection settings own merge eligibility and required-check freshness. The artifact manifest separately verifies candidate source SHA, target, binary name, digest, and product version.
+`prlint` checks the current PR title and body together via commitlint. A green
+result confirms syntax, not semantic correctness.
 
-Only dedicated status and Draft/Ready jobs receive write permissions. They do not check out or execute candidate code or downloaded artifacts. Code and acceptance jobs use read-only permissions and checkouts without persisted credentials. Forks and Dependabot PRs without sufficient Draft/Ready permissions require human intervention; there is no privileged fallback.
+The required `settings-plan` job runs `validate` on the PR merge candidate
+without repository administration credentials. It does not claim to run an
+authenticated GitHub settings difference plan. The path-scoped
+[`settings-pr.yml`](../../.github/workflows/settings-pr.yml) separately runs
+a trusted, authenticated plan when relevant settings files change.
+The dispatch-only, Environment-protected plan within `settings-plan.yml` remains
+inactive until explicitly enabled. Its `plan` job is not itself a required PR
+check.
 
-## Required checks and rollout
+The trusted `settings-environment-guard` check audits the Environment boundary
+using the default-branch policy. Neither the guard nor the source-controlled
+workflow alone proves live credential configuration.
 
-The observed default-branch Ruleset requires `pass`, `pr-message`, and the trusted Environment guard `gh-settings` from GitHub Actions. All three must succeed for the intended revision. A metadata-only edit revalidates `pr-message` independently without replacing the previous code result.
+## Ruleset transition
 
-A separate, explicitly authorized protection change is required before replacing or removing any required context. Preserve the existing required checks during the transition; do not fabricate a passing check or bypass a failure. Review approval, CODEOWNER review, and thread-resolution policy remain separate from the CI result.
-
-[Repository automation](repository-automation.md#protected-main-and-required-checks) describes the operational settings and their verification limits. Repository source tests cannot establish that GitHub's current protection, Environment reviewer configuration, or credential boundaries are correctly enforced.
+Set required contexts to `ci-pr`, `prlint`, `settings-plan` and
+`settings-environment-guard`, each produced by GitHub Actions. Remove the
+old `pass`, `pr-message` and `gh-settings` required contexts. The live
+Ruleset is an external GitHub setting; changing job names does not update it.

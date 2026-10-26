@@ -8,14 +8,14 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 
 | Workflow | Trigger and responsibility |
 | --- | --- |
-| [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR creation, push, reopening, and base edits run code validation; metadata-only edits do not alter the reported `pass` result |
-| [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate the current title/body through `pr-message` |
+| [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR events run staged code validation and publish the native `ci-pr` aggregate check |
+| [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate the current title/body through `prlint` |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
 | [`labeler.yml`](../../.github/workflows/labeler.yml) | PR-target events suggest add-only labels for unambiguous all-files path categories without executing candidate code |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
-| [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Dedicated manual main-only declared-settings observer; inactive until separately approved Environment/credential activation |
+| [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Read-only PR merge-candidate validation through `settings-plan`; also contains the inactive manually protected settings observer |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
-| [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `gh-settings` |
+| [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-environment-guard` |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
 
@@ -23,9 +23,9 @@ Release publication has no Issue-comment bridge. The owner starts [`release.yml`
 
 ## PR lifecycle
 
-A code-changing PR event marks `pass` pending, sets Draft, resolves the static build and acceptance matrices, runs commit-stage, then marks the PR Ready before process and public-Action acceptance. Both acceptance legs verify the same manifested binary from commit-stage without rebuilding it. The final API-only reporter succeeds only when every prerequisite succeeded; GitHub triggers, concurrency, and protection own revision freshness and merge eligibility. A title/body-only edit skips this path without writing a new `pass` status or repeating Draft/Ready changes. Metadata edits use a different concurrency group so they do not cancel code validation.
+Every PR event sets Draft, resolves the static build and acceptance matrices, runs commit-stage, then marks the PR Ready before process and public-Action acceptance. Both acceptance legs verify the same manifested binary from commit-stage without rebuilding it. The final native `ci-pr` aggregate job succeeds only when every prerequisite succeeded. Title/body edits rerun the same stages rather than introducing skipped-success required checks.
 
-The independent `pr-message` job checks the current title and body together as the proposed squash message. GitHub's required-check settings enforce this separately from the code reporter; the reporter does not query or enforce rulesets. See [PR validation](pr-validation.md) for the independent checks, metadata separation, and failure behavior.
+The independent `prlint` job checks the current title and body together as the proposed squash message. GitHub's required-check settings enforce this separately from the code reporter; the reporter does not query or enforce rulesets. See [PR validation](pr-validation.md) for the independent checks, metadata separation, and failure behavior.
 
 Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready and code-status jobs have narrowly scoped write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state/status changes; the workflow does not bypass them.
 
@@ -33,13 +33,14 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The inspected [default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) requires one approving review, dismisses stale approvals when new commits are pushed, requires CODEOWNER review and resolved review threads, and requires strict `pass`, `gh-settings`, and `pr-message` checks from the GitHub Actions app. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
+The default-branch Ruleset must be changed separately to require `ci-pr`, `prlint`, `settings-plan` and `settings-environment-guard` from GitHub Actions instead of the old `pass`, `pr-message` and `gh-settings` names. It retains its independent approval, CODEOWNER, and thread-resolution settings. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
-| `pass` | [PR code CI](../../.github/workflows/ci-pr.yml) reports source, commit, and both acceptance matrix results; metadata-only edits do not overwrite it | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
-| `pr-message` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body separately from code validation | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
-| `gh-settings` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below, and the required check's app/name does not identify a unique workflow |
+| `ci-pr` | [PR code CI](../../.github/workflows/ci-pr.yml) aggregates the build and acceptance stages | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `prlint` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
+| `settings-plan` | [Settings plan workflow](../../.github/workflows/settings-plan.yml) checks the PR declaration without write credentials | Live differences are observed by the separate privileged settings-pr workflow when relevant |
+| `settings-environment-guard` | The [trusted guard](../../.github/workflows/settings-environment-guard.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
 
@@ -75,7 +76,7 @@ The guard was deployed before the operational PR credential consumer. GitHub [ev
 
 The guard does not inspect the allowed apply job's step bodies, approve Action revisions, restrict its API operations, validate actual token grants, or configure remote Environment/ruleset settings. The allowed job could still be changed to execute code with privileged credentials. Review that job, its referenced code, and changes to the guard/policy itself under the [apply-path protection guidance](../github-actions.md#protect-the-apply-path); later runs use whatever policy has been merged into `main`.
 
-The dedicated check name is **`gh-settings`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `pass`.
+The dedicated check name is **`settings-environment-guard`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `pass`.
 
 These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). Selecting GitHub Actions as the required check provider identifies the app, not this guard's workflow file. Another Actions job can report the same name, so a green `gh-settings` result alone is not proof that the trusted guard ran. The name-reservation test prevents collisions only when the trusted policy actually executes.
 

@@ -65,7 +65,7 @@ The [PR code](../../.github/workflows/ci-pr.yml) and [main](../../.github/workfl
 
 | Stage | Work and handoff |
 | --- | --- |
-| `pr-message` (PR only) | Validate the current title and optional body together as the squash message directly with commitlint; reject invalid Conventional Commits |
+| `prlint` (PR only) | Validate the current title and optional body together as the squash message directly with commitlint; reject invalid Conventional Commits |
 | Commit stage | Formatting, modules, vet, race tests, workflow/shell checks, release/installer fixtures, Markdown/local links, and one product build |
 | Acceptance stage (process) | Download the same run's manifested product, verify source SHA, target, binary name, digest and version, then execute the tagged process suite |
 | Acceptance stage (public Action) | Verify the identical candidate on Ubuntu 24.04 x64 and exercise the published Action interface against a local fixture without rebuilding the product |
