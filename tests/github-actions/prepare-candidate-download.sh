@@ -10,6 +10,7 @@ action_root="$(cd "$script_directory/../.." && pwd -P)"
   echo 'candidate source mismatch' >&2; exit 1
 }
 [[ -f "$binary" ]] || { echo 'candidate binary is missing' >&2; exit 1; }
+[[ "$("$binary" --version)" == "gh-settings $version" ]] || { echo 'candidate version mismatch' >&2; exit 1; }
 [[ "$(sha256sum "$binary" | cut -d ' ' -f 1)" == "$expected_sha" ]] || {
   echo 'candidate binary checksum mismatch' >&2; exit 1
 }

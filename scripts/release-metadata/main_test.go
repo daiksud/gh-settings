@@ -81,7 +81,7 @@ func TestReleaseNotesRecognizeCompatibilityFooters(t *testing.T) {
 		{"fix: correction\n\nBREAKING CHANGE: Migrate A.", true, false},
 		{"fix: correction\n\nBREAKING-CHANGE: Migrate B.", true, false},
 		{"chore: notice\n\nDEPRECATED: Migrate before removal.", false, true},
-		{{"docs: example\n\n~~~text\nBREAKING CHANGE: Example only.\n~~~", false, false},
+		{"docs: example\n\n~~~text\nBREAKING CHANGE: Example only.\n~~~", false, false},
 	} {
 		t.Run(strings.ReplaceAll(tt.message, "\n", " "), func(t *testing.T) {
 			c := parseChange(strings.Repeat("a", 40), tt.message)
