@@ -26,7 +26,7 @@ func TestSettingsPlanRemainsUnprivilegedPRValidation(t *testing.T) {
 	if !present || j.Runner != "ubuntu-slim" || j.If != "github.event_name == 'pull_request'" || j.Timeout != 10 || j.Environment != "" || j.Needs != "" || j.Continue || len(j.Env) != 0 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) {
 		t.Fatal("required settings-plan check cannot acquire privileged credentials or an Environment")
 	}
-	if len(j.Steps) != 3 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(j.Steps[0].With, map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}) || j.Steps[1].Uses != "jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca" || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"version": "2026.10.8", "install_args": "go", "cache": "false"}) || j.Steps[2].Run != "go run . validate" {
+	if len(j.Steps) != 3 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(j.Steps[0].With, map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}) || j.Steps[1].Uses != "jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e" || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"version": "2026.10.8", "install_args": "go", "cache": "false"}) || j.Steps[2].Run != "go run . validate" {
 		t.Fatal("preserve credential-free checkout, pinned Go and local validation")
 	}
 	for _, step := range j.Steps {

@@ -29,7 +29,7 @@ func TestIndependentPRMessageValidation(t *testing.T) {
 	if j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || j.Steps[0].With["persist-credentials"] != "false" {
 		t.Fatal("message policy checkout must not retain credentials")
 	}
-	if j.Steps[1].Uses != "jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca" || j.Steps[1].With["install_args"] != "bun npm:@commitlint/cli" {
+	if j.Steps[1].Uses != "jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e" || j.Steps[1].With["install_args"] != "bun npm:@commitlint/cli" {
 		t.Fatal("install the pinned commitlint tools")
 	}
 	validate := j.Steps[2]
