@@ -62,10 +62,10 @@ func (c *EnvironmentPlanChange) UnmarshalJSON(data []byte) error {
 			if err := json.Unmarshal(value, &policy); err != nil {
 				return err
 			}
-			if _, ok := policy["deployment_branch_policy"]; !ok {
+			if _, ok := policy["deployment_branch_policy"]; !ok && side == "before" {
 				return fmt.Errorf("environment report missing deployment_branch_policy")
 			}
-			if value := policy["deployment_branch_policy"]; !bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			if value := policy["deployment_branch_policy"]; value != nil && !bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
 				var branch map[string]json.RawMessage
 				if err := json.Unmarshal(value, &branch); err != nil {
 					return err

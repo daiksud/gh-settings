@@ -8,7 +8,7 @@ import (
 
 func environmentPolicy(t *testing.T, name string) EnvironmentDeclaration {
 	t.Helper()
-	d, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: name}})
+	d, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: name, WaitTimer: paramInt(0), PreventSelfReview: paramBool(false), Reviewers: &[]EnvironmentReviewer{}, DeploymentBranchPolicyDeclared: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,8 +41,8 @@ func TestEnvironmentNamesSelectWholeObjectsWithoutDeletingOthers(t *testing.T) {
 		t.Fatal(changes, err)
 	}
 	after := changes[0].After()
-	if *after.WaitTimer != 0 || *after.PreventSelfReview || len(*after.Reviewers) != 0 || after.DeploymentBranchPolicy != nil {
-		t.Fatal("omission retained protection instead of fixed defaults", after)
+	if after.WaitTimer != nil || after.PreventSelfReview != nil || after.Reviewers != nil || after.DeploymentBranchPolicy != nil || after.DeploymentBranchPolicyDeclared {
+		t.Fatal("omission acquired fabricated API defaults", after)
 	}
 	if *changes[0].Before().WaitTimer != 30 || !*changes[0].Before().PreventSelfReview {
 		t.Fatal("before values lost")
@@ -85,12 +85,10 @@ func TestEnvironmentValidationAndCompleteObservation(t *testing.T) {
 	for _, invalid := range []EnvironmentDeclaration{
 		{Name: ""}, {Name: " production"}, {Name: "production\n"},
 		{Name: "production", WaitTimer: paramInt(-1)}, {Name: "production", WaitTimer: paramInt(43201)},
-		{Name: "production", PreventSelfReview: paramBool(true)},
 		{Name: "production", Reviewers: &[]EnvironmentReviewer{{Type: "User", ID: 0}}},
 		{Name: "production", Reviewers: &[]EnvironmentReviewer{{Type: "Bot", ID: 1}}},
 		{Name: "production", Reviewers: &[]EnvironmentReviewer{{Type: "User", ID: 7}, {Type: "User", ID: 7}}},
 		{Name: "production", DeploymentBranchPolicy: &EnvironmentBranchPolicy{}},
-		{Name: "production", DeploymentBranchPolicy: &EnvironmentBranchPolicy{CustomBranchPolicies: true}},
 	} {
 		if _, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{invalid}); err == nil {
 			t.Fatal("invalid environment accepted", invalid)
@@ -112,7 +110,7 @@ func TestEnvironmentValidationAndCompleteObservation(t *testing.T) {
 }
 
 func TestEnvironmentCanonicalCopiesAndReviewerOrder(t *testing.T) {
-	input := EnvironmentDeclaration{Name: "production", WaitTimer: paramInt(10), Reviewers: &[]EnvironmentReviewer{{Type: "User", ID: 2}, {Type: "Team", ID: 1}}}
+	input := EnvironmentDeclaration{Name: "production", WaitTimer: paramInt(10), PreventSelfReview: paramBool(false), DeploymentBranchPolicyDeclared: true, Reviewers: &[]EnvironmentReviewer{{Type: "User", ID: 2}, {Type: "Team", ID: 1}}}
 	desired, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{input})
 	if err != nil {
 		t.Fatal(err)

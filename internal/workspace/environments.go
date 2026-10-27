@@ -55,13 +55,17 @@ func environmentYAMLValue(node *yaml.Node, context string, depth int) (any, erro
 	if context == "deployment_branch_policy" && n.Kind == yaml.ScalarNode && n.Tag == "!!null" {
 		return nil, nil
 	}
-	if context == "reviewers" {
+	if context == "reviewers" || context == "deployment_branch_patterns" {
 		if n.Kind != yaml.SequenceNode {
-			return nil, fmt.Errorf("environment reviewers must be an array")
+			return nil, fmt.Errorf("environment %s must be an array", context)
 		}
 		values := []any{}
 		for _, entry := range n.Content {
-			v, err := environmentYAMLValue(entry, "reviewer", depth+1)
+			kind := "reviewer"
+			if context == "deployment_branch_patterns" {
+				kind = "pattern"
+			}
+			v, err := environmentYAMLValue(entry, kind, depth+1)
 			if err != nil {
 				return nil, err
 			}
@@ -69,7 +73,7 @@ func environmentYAMLValue(node *yaml.Node, context string, depth int) (any, erro
 		}
 		return values, nil
 	}
-	if context != "environment" && context != "reviewer" && context != "deployment_branch_policy" {
+	if context != "environment" && context != "reviewer" && context != "pattern" && context != "deployment_branch_policy" {
 		if n.Kind != yaml.ScalarNode || n.Tag == "!!null" {
 			return nil, fmt.Errorf("invalid environment %s value", context)
 		}
@@ -104,9 +108,11 @@ func environmentYAMLValue(node *yaml.Node, context string, depth int) (any, erro
 		allowed := false
 		switch context {
 		case "environment":
-			allowed = key == "name" || key == "wait_timer" || key == "prevent_self_review" || key == "reviewers" || key == "deployment_branch_policy"
+			allowed = key == "name" || key == "wait_timer" || key == "prevent_self_review" || key == "reviewers" || key == "deployment_branch_policy" || key == "deployment_branch_patterns"
 		case "reviewer":
 			allowed = key == "id" || key == "type"
+		case "pattern":
+			allowed = key == "name" || key == "type"
 		case "deployment_branch_policy":
 			allowed = key == "protected_branches" || key == "custom_branch_policies"
 		}

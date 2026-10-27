@@ -14,8 +14,8 @@ import (
 	"testing"
 )
 
-func TestEnvironmentBinaryNameUpsertDefaultsAndRepeatWithoutWriteback(t *testing.T) {
-	for _, mode := range []string{"create", "update", "actions", "unsupported", "readback"} {
+func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.T) {
+	for _, mode := range []string{"create", "update", "actions", "unsupported", "readback", "omitted"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			writes := 0
@@ -65,6 +65,9 @@ func TestEnvironmentBinaryNameUpsertDefaultsAndRepeatWithoutWriteback(t *testing
 					t.Error(err)
 				}
 				want := map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "reviewers": []any{}, "deployment_branch_policy": nil}
+				if mode == "omitted" {
+					want = map[string]any{}
+				}
 				if !reflect.DeepEqual(payload, want) {
 					t.Error("incomplete/identity-bearing policy", payload)
 				}
@@ -79,7 +82,10 @@ func TestEnvironmentBinaryNameUpsertDefaultsAndRepeatWithoutWriteback(t *testing
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "# preserve caller YAML\nschemaVersion: 1\nsettings:\n  environments:\n    - name: production # name is identity\n"
+			input := "# preserve caller YAML\nschemaVersion: 1\nsettings:\n  environments:\n    - name: production # name is identity\n      wait_timer: 0\n      prevent_self_review: false\n      reviewers: []\n      deployment_branch_policy: null\n"
+			if mode == "omitted" {
+				input = "schemaVersion: 1\nsettings:\n  environments:\n    - name: production\n"
+			}
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -96,7 +102,11 @@ func TestEnvironmentBinaryNameUpsertDefaultsAndRepeatWithoutWriteback(t *testing
 					t.Fatal(planned)
 				}
 			} else {
-				if planned.runErr != nil || !strings.Contains(planned.stdout.String(), "settings.environments:") || !strings.Contains(planned.stdout.String(), `"wait_timer":0`) {
+				want := "\"wait_timer\":0"
+				if mode == "omitted" {
+					want = "API-controlled"
+				}
+				if planned.runErr != nil || !strings.Contains(planned.stdout.String(), "settings.environments:") || !strings.Contains(planned.stdout.String(), want) {
 					t.Fatal(planned)
 				}
 			}
@@ -120,7 +130,11 @@ func TestEnvironmentBinaryNameUpsertDefaultsAndRepeatWithoutWriteback(t *testing
 					t.Fatal(again, err)
 				}
 				plan, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"plan"}, false)
-				if err != nil || plan.runErr != nil || !strings.Contains(plan.stdout.String(), "No differences") {
+				want := "No differences"
+				if mode == "omitted" {
+					want = "API-controlled"
+				}
+				if err != nil || plan.runErr != nil || !strings.Contains(plan.stdout.String(), want) {
 					t.Fatal(plan, err)
 				}
 			}
@@ -133,6 +147,9 @@ func TestEnvironmentBinaryNameUpsertDefaultsAndRepeatWithoutWriteback(t *testing
 			want := 1
 			if mode == "unsupported" {
 				want = 0
+			}
+			if mode == "omitted" {
+				want = 2
 			}
 			if writes != want {
 				t.Fatal("repeated or unsafe upsert", writes, want)
