@@ -15,7 +15,7 @@ on:
         type: string
 permissions: {}
 concurrency:
-  group: settings-plan-${{ github.repository }}
+  group: settings-plan-${{ github.repository }}-${{ github.event_name }}-${{ github.event.pull_request.number || 'manual' }}
   cancel-in-progress: false
 jobs:
   settings-plan:

@@ -15,6 +15,37 @@ import (
 
 const planAction = "daiksud/gh-settings@e4a90d281aff8eab3f057eadcdbf609330c014a0"
 
+func TestSettingsPlanConcurrencyIsolation(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var w workflow
+	if err := yaml.Unmarshal(data, &w); err != nil {
+		t.Fatal(err)
+	}
+	const group = "settings-plan-${{ github.repository }}-${{ github.event_name }}-${{ github.event.pull_request.number || 'manual' }}"
+	if w.Concurrency.Group != group || w.Concurrency.Cancel {
+		t.Fatal("PR validation needs per-PR groups separate from non-cancelling manual plans")
+	}
+	// Render the closed interpolation contract for collision cases, not the
+	// GitHub scheduler itself. Actionlint separately checks expression validity.
+	groups := make(map[string]bool)
+	for _, tc := range []struct{ event, number string }{
+		{"pull_request", "455"}, {"pull_request", "459"}, {"workflow_dispatch", "manual"},
+	} {
+		rendered := strings.NewReplacer(
+			"${{ github.repository }}", "owner/repo",
+			"${{ github.event_name }}", tc.event,
+			"${{ github.event.pull_request.number || 'manual' }}", tc.number,
+		).Replace(w.Concurrency.Group)
+		if groups[rendered] {
+			t.Fatalf("independent PR/manual runs collide in %q", rendered)
+		}
+		groups[rendered] = true
+	}
+}
+
 func TestProtectedPlanSourceAndCredentialBoundary(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), settingsPlanWorkflowPath))
 	if err != nil {

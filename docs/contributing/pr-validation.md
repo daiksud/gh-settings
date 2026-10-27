@@ -32,6 +32,10 @@ The dispatch-only, Environment-protected plan within `settings-plan.yml` remains
 inactive until explicitly enabled. Its `plan` job is not itself a required PR
 check.
 
+PR validation uses per-PR concurrency groups, separate from protected manual
+dispatches. Neither mode cancels active runs; newer events within the same PR
+may still replace its pending run, but cannot evict another PR or a manual plan.
+
 The trusted `settings-env` check audits the Environment boundary
 using the default-branch policy. Neither the guard nor the source-controlled
 workflow alone proves live credential configuration.
