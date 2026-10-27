@@ -11,10 +11,14 @@ import (
 )
 
 func TestEnvironmentAdminBypassPayloadAndReadback(t *testing.T) {
-	for _, mode := range []string{"false", "true", "omitted", "ignored", "missing", "null", "string", "write422"} {
+	for _, mode := range []string{"false", "true", "omitted-false", "omitted-true", "ignored", "missing", "null", "string", "write422"} {
 		t.Run(mode, func(t *testing.T) {
 			wanted := mode == "true"
 			var value any = !wanted
+			omitted := mode == "omitted-false" || mode == "omitted-true"
+			if omitted {
+				value = mode == "omitted-true"
+			}
 			writes := 0
 			c := &EnvironmentsClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
 				respond := func() (*http.Response, error) {
@@ -50,8 +54,8 @@ func TestEnvironmentAdminBypassPayloadAndReadback(t *testing.T) {
 				var payload map[string]any
 				json.NewDecoder(r.Body).Decode(&payload)
 				want := map[string]any{"can_admins_bypass": wanted}
-				if mode == "omitted" {
-					want = map[string]any{}
+				if omitted {
+					want = map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "reviewers": []any{}, "deployment_branch_policy": nil}
 				}
 				if !reflect.DeepEqual(payload, want) {
 					t.Fatal("bypass default or missing native false", payload, want)
@@ -59,14 +63,16 @@ func TestEnvironmentAdminBypassPayloadAndReadback(t *testing.T) {
 				if mode == "write422" {
 					return actionsResponse(r, 422, `{"message":"rejected"}`), nil
 				}
-				if mode != "ignored" && mode != "omitted" {
+				if mode != "ignored" && !omitted {
 					value = wanted
 				}
 				return respond()
 			}).rest}
 			request := settings.EnvironmentDeclaration{Name: "production", CanAdminsBypass: &wanted}
-			if mode == "omitted" {
+			if omitted {
 				request.CanAdminsBypass = nil
+				zero, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
+				request.WaitTimer, request.PreventSelfReview, request.Reviewers, request.DeploymentBranchPolicyDeclared = &zero, &prevent, &reviewers, true
 			}
 			_, err := c.Update(repository.Repository{Owner: "owner", Name: "current"}, request)
 			bad := mode == "ignored" || mode == "missing" || mode == "null" || mode == "string" || mode == "write422"
