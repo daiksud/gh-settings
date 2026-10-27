@@ -129,6 +129,26 @@ settings:
     private_vulnerability_reporting: true
     secret_scanning: true
     secret_scanning_push_protection: true
+  # Preserve complete observed protection for each named Environment.
+  # Unlisted names remain unmanaged; API pattern IDs are not declarative IDs.
+  environments:
+    - name: copilot
+      wait_timer: 0
+      prevent_self_review: false
+      reviewers: []
+      can_admins_bypass: true
+      deployment_branch_policy: null
+    - name: gh-settings
+      wait_timer: 0
+      prevent_self_review: false
+      reviewers: []
+      can_admins_bypass: false
+      deployment_branch_policy:
+        protected_branches: false
+        custom_branch_policies: true
+      deployment_branch_patterns:
+        - type: branch
+          name: main
   # Own the existing main Ruleset by ID; preserve the current required-check
   # names until their separate workflow-name migration is applied.
   rulesets:

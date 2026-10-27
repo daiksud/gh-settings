@@ -119,7 +119,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")
 	}
-	if desired.Environments != nil || !desired.Pages.Empty() || !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
+	if !desired.Pages.Empty() || !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
 		t.Fatal("unadopted, unsupported or inactive resources must remain unmanaged")
 	}
 	if desired.Rulesets == nil || desired.Rulesets.Len() != 1 {

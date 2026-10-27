@@ -62,6 +62,15 @@ The token-creation step references `vars.ANSWER26_CLIENT_ID` and `secrets.ANSWER
 
 The operational callers manage the twenty existing labels in [this repository's configuration](../../.github/settings.yml) by their verified numeric IDs, with every supported value explicit. Unlisted objects remain unmanaged and are never implicitly deleted. The main caller requests Issues write for label mutations; installation grants are unchanged. This permission also permits operations on issues, comments, assignees and milestones. See the [label permission contract](../github-actions.md#labels-and-permissions) before changing label definitions or token requests.
 
+The configuration also selects the existing `gh-settings` and `copilot`
+Environments by name with complete supported observations. `gh-settings`
+retains administrator bypass disabled and only the typed Branch `main` pattern;
+`copilot` retains administrator bypass enabled and no branch/tag restriction.
+Both retain zero wait time and no reviewers. Unlisted Environment names remain
+unmanaged. A fresh complete match skips Environment writes; a prior plan is
+not a lock. Read back the policy and typed patterns after any apply rather than
+inferring effective deployment security from a successful workflow alone.
+
 When the fresh labels comparison performed by apply has no operations, that invocation sends no label mutations. An earlier zero-difference PR plan does not guarantee that result: labels can change before apply reads them. It also does not make the whole apply write-free, because declared repository fields and topics retain their direct PATCH/PUT behavior. A labels read or mutation failure occurs after those earlier writes and does not roll them back. Any claim that an adoption or run performed no label writes needs evidence for that exact execution, not just a prior plan or the generic success message.
 
 There is no prepare/handoff job or main-side pre-approval plan. The PR Summary and exact committed configuration provide review context; direct apply does not consume a saved plan and may overwrite intervening changes to managed values. The presence of `environment: gh-settings` identifies the selected Environment but does not establish whether reviewers are currently configured.
