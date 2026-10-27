@@ -13,7 +13,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func TestEnvironmentUpsertWritesWholePolicyAndVerifiesWithoutNumericBinding(t *testing.T) {
+func TestEnvironmentUpsertWritesExplicitPolicyAndVerifiesWithoutNumericBinding(t *testing.T) {
 	repo := repository.Repository{Owner: "owner", Name: "current"}
 	for _, mode := range []string{"create", "update", "matching", "unsupported", "write422", "ignored", "readback403", "changed-incarnation"} {
 		t.Run(mode, func(t *testing.T) {
@@ -76,7 +76,8 @@ func TestEnvironmentUpsertWritesWholePolicyAndVerifiesWithoutNumericBinding(t *t
 				exists = true
 				return respond(state)
 			}).rest}
-			changed, err := c.Update(repo, settings.EnvironmentDeclaration{Name: "production"})
+			timer, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
+			changed, err := c.Update(repo, settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true})
 			bad := mode == "unsupported" || mode == "write422" || mode == "ignored" || mode == "readback403"
 			if (err != nil) != bad {
 				t.Fatal(changed, err)

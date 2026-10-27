@@ -16,7 +16,8 @@ import (
 )
 
 func TestEnvironmentPlanReportSummaryAndClosedBoundary(t *testing.T) {
-	d, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "<production>"}})
+	zero, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
+	d, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "<production>", WaitTimer: &zero, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,5 +78,38 @@ func TestEnvironmentPlanReportSummaryAndClosedBoundary(t *testing.T) {
 				t.Fatal("incomplete/noncanonical environment report accepted", body)
 			}
 		}
+	}
+}
+
+func TestEnvironmentPartialRequestReportDoesNotInventAPIOutcome(t *testing.T) {
+	timer, prevent, reviewers := 30, false, []settings.EnvironmentReviewer{}
+	before := settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}
+	after := settings.EnvironmentDeclaration{Name: "production"}
+	change, err := settings.NewEnvironmentChange("update", &before, &after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "plan.json")
+	var stdout, stderr bytes.Buffer
+	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, Environments: []settings.EnvironmentChange{change}}}, nil
+	})
+	data, err := os.ReadFile(path)
+	if err != nil || status != 0 {
+		t.Fatal(status, err, stderr.String())
+	}
+	var report actions.PlanReport
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatal(err)
+	}
+	content, err := actions.RenderSummary(report, summaryMetadata())
+	if err != nil || !strings.Contains(content, "API-controlled") || !strings.Contains(content, "unknown until apply") {
+		t.Fatal(content, err)
+	}
+	var raw map[string]json.RawMessage
+	afterJSON, _ := json.Marshal(report.Environments[0].After)
+	json.Unmarshal(afterJSON, &raw)
+	if len(raw) != 1 || raw["name"] == nil {
+		t.Fatal("fabricated after state", string(afterJSON))
 	}
 }

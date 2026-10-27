@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -152,6 +151,7 @@ func decodeEnvironment(raw map[string]json.RawMessage) (settings.EnvironmentStat
 	if !exists {
 		return result, fmt.Errorf("environment response missing deployment_branch_policy")
 	}
+	result.Policy.DeploymentBranchPolicyDeclared = true
 	if !bytes.Equal(bytes.TrimSpace(branch), []byte("null")) {
 		var fields map[string]json.RawMessage
 		if err := json.Unmarshal(branch, &fields); err != nil {
@@ -207,6 +207,18 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 	}
 	if count != 0 || len(rules) != 0 {
 		return state, fmt.Errorf("custom environment protection rules are not supported; no environment write is safe")
+	}
+	if policy := state.Policy.DeploymentBranchPolicy; policy != nil && policy.CustomBranchPolicies {
+		patterns, err := c.readPatterns(repo, name)
+		if err != nil {
+			return state, err
+		}
+		state.Patterns = patterns
+		values := make([]settings.EnvironmentPattern, 0, len(patterns))
+		for _, pattern := range patterns {
+			values = append(values, pattern.Pattern)
+		}
+		state.Policy.DeploymentBranchPatterns = &values
 	}
 	return state, nil
 }
@@ -298,6 +310,12 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if err != nil {
 		return pre(err)
 	}
+	if desired.DeploymentBranchPatterns != nil && desired.DeploymentBranchPolicy == nil {
+		states, _ := current.Values()
+		if len(states) != 1 || states[0].Policy.DeploymentBranchPolicy == nil || !states[0].Policy.DeploymentBranchPolicy.CustomBranchPolicies {
+			return pre(fmt.Errorf("deployment patterns without an explicit mode require an existing custom-mode environment"))
+		}
+	}
 	changes, err := settings.ReconcileEnvironments(current, &d)
 	if err != nil {
 		return pre(err)
@@ -315,6 +333,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 		return pre(err)
 	}
 	delete(payload, "name")
+	delete(payload, "deployment_branch_patterns")
 	body, err = json.Marshal(payload)
 	if err != nil {
 		return pre(err)
@@ -333,11 +352,25 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if _, err := decodeEnvironment(raw); err != nil {
 		return false, fmt.Errorf("verify environment update response (write may have applied): %w", err)
 	}
+	if expected.DeploymentBranchPatterns != nil {
+		// Mode entry and pattern changes are separate API calls. No transaction,
+		// intermediate enforcement guarantee, or automatic rollback is claimed.
+		state, err := c.readOne(repo, expected.Name)
+		if err != nil {
+			return false, fmt.Errorf("read patterns after environment PUT (write may have applied): %w", err)
+		}
+		if state.Policy.DeploymentBranchPolicy == nil || !state.Policy.DeploymentBranchPolicy.CustomBranchPolicies {
+			return false, fmt.Errorf("environment is not in custom mode after PUT (write may have applied)")
+		}
+		if err := c.applyPatterns(repo, expected.Name, state.Patterns, expected.DeploymentBranchPatterns); err != nil {
+			return false, fmt.Errorf("update deployment patterns (earlier writes remain applied): %w", err)
+		}
+	}
 	actual, err := c.readOne(repo, expected.Name)
 	if err != nil {
 		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
-	if !reflect.DeepEqual(actual.Policy, *expected) {
+	if !settings.EnvironmentMatchesRequest(actual.Policy, *expected) {
 		return false, fmt.Errorf("environment readback differs from requested policy (write may have applied)")
 	}
 	return true, nil

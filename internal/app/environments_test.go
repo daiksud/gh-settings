@@ -35,8 +35,8 @@ func TestEnvironmentPlanAndApplyNameOwnershipWithoutIDWriteback(t *testing.T) {
 			if failure && p.Name == "production" {
 				return false, errors.New("write uncertainty")
 			}
-			if *p.WaitTimer != 0 || *p.PreventSelfReview || len(*p.Reviewers) != 0 || p.DeploymentBranchPolicy != nil {
-				t.Fatal("lost whole-object defaults", p)
+			if p.WaitTimer != nil || p.PreventSelfReview != nil || p.Reviewers != nil || p.DeploymentBranchPolicy != nil || p.DeploymentBranchPolicyDeclared {
+				t.Fatal("fabricated omitted values", p)
 			}
 			return true, nil
 		}})
@@ -108,7 +108,9 @@ func TestEnvironmentExportIsOptInAndReadFailureDoesNotSave(t *testing.T) {
 	for _, mode := range []string{"ordinary", "selected", "failure"} {
 		reads, saves := 0, 0
 		reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
-		d, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "production"}})
+		timer, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
+		patterns := []settings.EnvironmentPattern{{Type: "branch", Name: "same"}, {Type: "tag", Name: "same"}}
+		d, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: &patterns}})
 		reader.Environments = func(_ repository.Repository, names []string) (settings.EnvironmentObservation, error) {
 			reads++
 			if names != nil {

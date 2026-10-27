@@ -624,24 +624,44 @@ Names are identity: a listed name updates that Environment or creates it when ab
 
 Names contain 1–255 Unicode characters without surrounding whitespace or control characters. Client identity and duplicate detection use Unicode simple folding; spelling is retained, and names including slash/percent are URL-encoded as one path segment. This is the client's case-insensitive comparison policy, not a claim that every undocumented GitHub Unicode equivalence is reproduced.
 
-Each selected object owns the complete supported policy, with identical fixed defaults on create and update:
+Each selected Environment is managed as one object. Optional fields omitted from YAML are omitted from its PUT request, on create and update; the client does not fill in default values or copy old values into the request. GitHub decides the effect of an omitted request field. This is not a promise that omitted values are preserved or reset. Use explicit values when a particular resulting policy is required.
 
-| Field | Omitted default | Accepted explicit values |
+| Field | Omission | Accepted explicit values |
 | --- | --- | --- |
-| `wait_timer` | `0` (no delay) | Integer 0–43200 minutes |
-| `prevent_self_review` | `false` | Boolean; true requires a nonempty reviewer set |
-| `reviewers` | `[]` (no required reviewers) | At most six unique `{type: User\|Team, id: positive-integer}` references |
-| `deployment_branch_policy` | `null` (all branches/tags) | Null, or both `protected_branches: true` and `custom_branch_policies: false` |
+| `wait_timer` | Not sent; API-controlled | Integer 0–43200 minutes |
+| `prevent_self_review` | Not sent; API-controlled | Boolean; true cannot accompany an explicitly empty reviewer set |
+| `reviewers` | Not sent; API-controlled | At most six unique `{type: User\|Team, id: positive-integer}` references |
+| `deployment_branch_policy` | Not sent; API-controlled | Null (all refs), or both opposite `protected_branches` and `custom_branch_policies` booleans |
+| `deployment_branch_patterns` | No pattern CRUD requests | Array of `{type: branch\|tag, name: pattern}`; `[]` removes all observed patterns |
 
-Only `deployment_branch_policy` accepts null. Other nulls, unknown fields, Environment IDs, deletion/rename markers, human-reference-only reviewers and custom branch/tag mode are rejected locally. GitHub validates reviewer access, account/plan eligibility and write permission; this tool does not invite principals or expand permissions. Protected-branches mode can permit all branches when no branch protections exist; successful configuration does not prove a deployment is protected.
+Only `deployment_branch_policy` accepts null. Other nulls, unknown fields, Environment IDs, deletion/rename markers and human-reference-only reviewers are rejected locally. GitHub validates reviewer access, account/plan eligibility and write permission; this tool does not invite principals or expand permissions. Protected-branches mode can permit all branches when no branch protections exist; successful configuration does not prove a deployment is protected.
 
-Plan shows complete selected before/after policies, including default-derived removal of timers, reviewers and branch restrictions. Nonempty selections count once as managed. Reads require complete inventory and selected detail/protection responses; missing/null containers, malformed values, unknown rules, custom deployment protection rules and unreadable responses fail rather than becoming empty/default state. Server-generated Environment metadata is not writable configuration. An observed unsupported root setting, including `can_admins_bypass`, is rejected because its safe setter/preservation contract is not established; it is not silently dropped or guessed.
+Custom mode and a complete authoritative pattern list can be declared together:
 
-Apply preflights all selected policies, then performs stable name-order upserts with fresh prerequisite reads and complete supported payloads. It verifies the returned policy and fresh readback, including custom-protection absence. Earlier writes remain applied on later failure; a PUT/response/readback failure may have applied and is reported as uncertain. There is no transaction, automatic rollback, concurrency lock or guarantee that the numeric Environment incarnation remains unchanged. Concurrent name-addressed creation/update follows normal GitHub upsert behavior.
+```yaml
+schemaVersion: 1
+settings:
+  environments:
+    - name: production
+      deployment_branch_policy:
+        protected_branches: false
+        custom_branch_policies: true
+      deployment_branch_patterns:
+        - {type: branch, name: 'release/*'}
+        - {type: tag, name: 'v*'}
+```
 
-Explicit `export --environments` includes every observed supported Environment policy, without numeric Environment IDs. Unsupported/unreadable settings stop export before file replacement. Ordinary export does not acquire Environment permissions. Review exported defaults and plan before apply: a name-only declaration intentionally resets supported protections, not merely asserts existence. No secrets or Environment variables are read/exported/managed.
+Pattern identity is the case-sensitive pair `(type, name)`, not a YAML/API ID. A branch and tag may use the same name. Duplicate pairs are invalid. A changed pair is added and the obsolete pair removed; retained pairs keep their observed IDs. GitHub owns pattern matching semantics. An omitted mode with an explicit list requires an existing custom-mode Environment; creation requires explicit custom mode. A list combined with explicit null/protected-branches mode is invalid.
 
-[REST Environments](https://docs.github.com/en/rest/deployments/environments) documents Actions read and Administration write; [custom deployment protection reads](https://docs.github.com/en/rest/deployments/protection-rules#get-all-deployment-protection-rules-for-an-environment) are additionally required for selected existing objects. Local fixtures establish client requests/failure handling, not live API preservation, entitlement or effective deployment security. See [behavior/test coverage](features/environments.feature.md).
+Patterns belong to a separate REST collection, not the Environment PUT body. Omitting the list means the client sends no create/delete operations to that endpoint; it does not synthesize an empty list. It does not promise how a mode change affects inactive server-side patterns. An explicit list is authoritative and removes unlisted observed patterns. No Environment or unlisted Environment's patterns are deleted.
+
+Plan shows the complete observed policy and the requested values/pattern list, without changing GitHub. Omitted built-in fields are marked API-controlled: their resulting values cannot be predicted, so even an apparently matching partial request remains an update intent rather than a verified no-op. Fully explicit matching policies can produce no differences. Nonempty selections count once as managed. Reads require complete inventory and selected detail/protection responses; missing/null containers, malformed values, unknown rules, custom deployment protection rules and unreadable responses fail rather than becoming empty/default state. Pattern reads require a complete typed paginated list: a missing `type` is not assumed to mean branch. Server-generated Environment/pattern IDs are not writable YAML. An observed unsupported root setting, including `can_admins_bypass`, is rejected because its safe setter/preservation contract is not established; it is not silently dropped or guessed.
+
+Apply preflights selected policies, then performs stable name-order upserts with fresh prerequisite reads and only the specified built-in fields. If a pattern list is supplied, it reads custom mode after PUT, creates missing typed patterns, then removes obsolete patterns by their verified API IDs. It verifies the requested values/list against complete fresh readback; omitted built-in outcomes are not claimed to match an invented default. A duplicate-create 303 or unavailable/malformed read is an error, not an adopted pattern. Earlier writes remain applied on later failure; a PUT/POST/DELETE/response/readback failure may have applied and is reported as uncertain. There is no transaction, automatic rollback, concurrency lock, intermediate deployment-enforcement guarantee or guarantee that the numeric Environment incarnation remains unchanged. Concurrent name-addressed creation/update follows normal GitHub upsert behavior.
+
+Explicit `export --environments` includes every observed supported Environment policy, including the complete typed pattern list in custom mode, without numeric Environment/pattern IDs. It does not invent patterns for inactive modes or unknown responses. Unsupported/unreadable settings stop export before file replacement. Ordinary export does not acquire Environment permissions. A name-only declaration sends an empty PUT body: it is not merely an existence assertion, and the client does not predict the server's omission behavior. No secrets or Environment variables are read/exported/managed.
+
+[REST Environments](https://docs.github.com/en/rest/deployments/environments) and [deployment branch policies](https://docs.github.com/en/rest/deployments/branch-policies) document Actions read and Administration write; [custom deployment protection reads](https://docs.github.com/en/rest/deployments/protection-rules#get-all-deployment-protection-rules-for-an-environment) are additionally required for selected existing objects. The API documentation defines separate pattern CRUD, but does not establish a general preservation/reset guarantee for omitted Environment fields or inactive patterns. Local fixtures establish client requests/failure handling, not live API preservation, entitlement or effective deployment security. See [behavior/test coverage](features/environments.feature.md). This pattern support and API-controlled omission behavior are implemented in source, not the published v0.21.0 package.
 
 ## Unsupported settings
 
