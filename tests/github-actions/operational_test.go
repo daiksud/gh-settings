@@ -11,7 +11,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const operationalAction = "daiksud/gh-settings@552968e34645aba9ebeee1f3040fb11dbf338043"
+const operationalAction = "daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8"
+const operationalPlanAction = "daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8"
 
 func TestManagedRepositoryMergePreferences(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
@@ -49,7 +50,7 @@ func TestManagedRepositoryMergePreferences(t *testing.T) {
 func TestOperationalPRPlan(t *testing.T) {
 	w, text := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
 	j := w.Jobs["plan"]
-	if len(j.Steps) != 3 || j.Steps[2].Uses != operationalAction || !reflect.DeepEqual(j.Steps[2].With, map[string]string{"command": "plan", "token": "${{ steps.app.outputs.token }}"}) {
+	if len(j.Steps) != 3 || j.Steps[2].Uses != operationalPlanAction || !reflect.DeepEqual(j.Steps[2].With, map[string]string{"command": "plan", "token": "${{ steps.app.outputs.token }}"}) {
 		t.Fatal("operational PR must call the released public Action with its explicit App token")
 	}
 	if len(w.On) != 1 || w.On["pull_request_target"].Kind == 0 || len(w.Jobs) != 1 || j.Environment != "gh-settings" || j.If != settingsPRCondition || len(j.Env) != 0 || len(j.Outputs) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 8 {
@@ -89,7 +90,7 @@ func TestOperationalPRPlan(t *testing.T) {
 				t.Fatalf("operational PR result: %+v", r)
 			}
 			if scenario.status == 0 {
-				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalAction, "daiksud/gh-settings@")) {
+				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalPlanAction, "daiksud/gh-settings@")) {
 					t.Fatalf("operational PR identity or execution: %+v", r)
 				}
 			} else if r.calls != "plan\n" || len(r.outputs) != 0 {
