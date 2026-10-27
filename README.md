@@ -33,7 +33,7 @@ gh settings export
 
 ### 2. Edit the declaration
 
-Edit the saved `.github/settings.yml`. Export includes every supported resource; remove resources or fields you want to leave unmanaged. For example:
+Edit the saved `.github/settings.yml`. The default export covers the standard resources; other supported groups require explicit export options. See the [export reference](docs/commands.md#export-behavior). Remove any resources or fields you do not want to manage. For example:
 
 ```yaml
 schemaVersion: 1
@@ -49,15 +49,14 @@ settings:
 
 `schemaVersion: 1` is required. Omission leaves a field unmanaged; `false` and empty strings are explicit values. Declaring `topics.names` manages the complete topic set, and `names: []` clears it. See the [configuration reference](docs/settings.md) for supported fields, types, and validation rules.
 
-Current source manages selected labels and Rulesets by ID; see their
-[configuration contracts](docs/settings.md#labels) before declaring them.
-
-**Safety:** The currently pinned v0.19.0 published CLI and Action still treat a
-label and Ruleset lists as authoritative: omitting an existing label or
-repository Ruleset deletes it, and an explicitly empty list deletes all of
-that kind. Removing Rulesets may remove branch protections. Use the contract
-of the installed binary, not current-source ID-selected behavior. Installing or pinning an Action never upgrades its
-CLI automatically.
+The pinned v0.21.0 release selects labels and repository Rulesets by numeric ID.
+Only listed objects are managed; omitting an object or declaring an empty list
+does not delete it. Entries without IDs are create-only. **Safety:** updating a
+listed Ruleset can still change branch protection, including required reviews
+and checks. Read the [labels](docs/settings.md#labels) and
+[Rulesets](docs/settings.md#rulesets) contracts before applying them. A
+different installed version may have a different contract; pinning an Action
+does not upgrade an independently installed CLI.
 
 ### 3. Validate and review differences
 
@@ -76,7 +75,11 @@ After reviewing the plan and configuration, apply with credentials that can writ
 gh settings apply
 ```
 
-Apply does not execute a saved plan or protect against intervening changes. It writes declared repository settings, then topics, directly. Current-source labels use fresh ID observations and needed creates/updates without implicit deletion. A later failure retains earlier remote writes and any already-recorded IDs; there is no rollback. See the [command reference](docs/commands.md) for authentication, writeback and failure behavior.
+Apply does not execute a saved plan or protect against intervening changes.
+It updates managed resources directly; a later failure can leave earlier remote
+writes and recorded IDs in place. There is no automatic rollback. The
+[command reference](docs/commands.md#apply-behavior) owns operation ordering,
+ID writeback, permissions, and failure recovery.
 
 ## Use as a GitHub Action
 
@@ -96,12 +99,12 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@3785af9e73886565fe711e6b4428922055a2f687 # v0.19.0
+      - uses: daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8 # v0.21.0
         with:
           command: validate
 ```
 
-The pinned v0.19.0 Action supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
+The example pins the immutable v0.21.0 Action, which supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
 
 Before enabling apply, follow the [approval and required-check guidance](docs/github-actions.md#protect-the-apply-path) to protect both `main` and the job that receives the write credential. Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 

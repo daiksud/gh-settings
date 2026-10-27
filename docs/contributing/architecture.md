@@ -44,8 +44,8 @@ The GitHub read adapter requires complete repository values, normalizes permitte
 | --- | --- |
 | Validate | Invoke the declaration loader and return its typed declaration or error; no origin, authentication, API access, or output formatting |
 | Plan | Validate; return a local no-op for an empty declaration; otherwise resolve the target, read only managed resources, and return native field changes and typed label operations |
-| Apply | Validate; return a local no-op for an empty declaration; otherwise send declared repository settings, then topics, then read/reconcile declared labels, stopping on the first failure |
-| Export | Resolve the checkout/target; read complete repository settings, topics, and every labels page; construct a complete declaration, serialize it, then write the configuration |
+| Apply | Validate; return a local no-op for an empty declaration; otherwise sequence managed resources in the [documented order](../commands.md#apply-behavior), using fresh observations as required. Stop on failure without undoing earlier writes. |
+| Export | Resolve the checkout/target; observe the resources selected by the command and optional flags completely before serializing and saving a declaration. The [export reference](../commands.md#export-behavior) owns selection and file effects. |
 
 `app.PlanError` preserves the original error and identifies validation, target, or read/comparison failure; read failures carry the resolved target. A failed later resource does not expose an earlier partial comparison.
 

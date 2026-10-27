@@ -11,6 +11,7 @@ Start with the [README quick start](../README.md#quick-start).
 | Export, validate, plan, or apply; understand targeting and errors | [Command reference](commands.md) |
 | Declare repository settings, topics, and labels in YAML | [Configuration reference](settings.md) |
 | Use the public Action and configure approval and credentials | [GitHub Actions guide](github-actions.md) |
+| Check which published Action/CLI a copied workflow runs | [Published package and consumer pins](github-actions.md#published-package-and-consumer-pins) |
 | Protect apply with Environment review and trusted required checks | [Apply protection guide](github-actions.md#protect-the-apply-path) |
 | Adopt the example PR and main workflows | [Workflow examples](../examples/github-actions/README.md) |
 
