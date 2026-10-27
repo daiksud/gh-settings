@@ -11,7 +11,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const operationalAction = "daiksud/gh-settings@552968e34645aba9ebeee1f3040fb11dbf338043"
+const operationalAction = "daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8"
 const operationalPlanAction = "daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8"
 
 func TestManagedRepositoryMergePreferences(t *testing.T) {
