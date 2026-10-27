@@ -80,7 +80,7 @@ func TestEnvironmentPatternUpsertSequenceOmissionAndPartialFailure(t *testing.T)
 				if mode == "omitted-api-changes" && len(writes) > 0 {
 					rules = []any{}
 				}
-				return map[string]any{"id": 1, "name": "production", "protection_rules": rules, "deployment_branch_policy": policy}
+				return map[string]any{"id": 1, "name": "production", "protection_rules": rules, "deployment_branch_policy": policy, "can_admins_bypass": false}
 			}
 			c := &EnvironmentsClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
 				respond := func(body any) (*http.Response, error) {

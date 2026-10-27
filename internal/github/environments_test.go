@@ -19,7 +19,7 @@ func TestEnvironmentUpsertWritesExplicitPolicyAndVerifiesWithoutNumericBinding(t
 		t.Run(mode, func(t *testing.T) {
 			writes := 0
 			exists := mode != "create"
-			state := map[string]any{"id": 1, "name": "production", "protection_rules": []any{}, "deployment_branch_policy": nil}
+			state := map[string]any{"id": 1, "name": "production", "protection_rules": []any{}, "deployment_branch_policy": nil, "can_admins_bypass": false}
 			if mode != "matching" {
 				state["protection_rules"] = []any{map[string]any{"type": "wait_timer", "wait_timer": 30}}
 			}
@@ -60,7 +60,7 @@ func TestEnvironmentUpsertWritesExplicitPolicyAndVerifiesWithoutNumericBinding(t
 				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 					t.Fatal(err)
 				}
-				want := map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "reviewers": []any{}, "deployment_branch_policy": nil}
+				want := map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "can_admins_bypass": false, "reviewers": []any{}, "deployment_branch_policy": nil}
 				if !reflect.DeepEqual(payload, want) {
 					t.Fatal("incomplete or identity-bearing PUT", payload)
 				}
@@ -77,7 +77,7 @@ func TestEnvironmentUpsertWritesExplicitPolicyAndVerifiesWithoutNumericBinding(t
 				return respond(state)
 			}).rest}
 			timer, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
-			changed, err := c.Update(repo, settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true})
+			changed, err := c.Update(repo, settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, CanAdminsBypass: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true})
 			bad := mode == "unsupported" || mode == "write422" || mode == "ignored" || mode == "readback403"
 			if (err != nil) != bad {
 				t.Fatal(changed, err)
@@ -99,7 +99,7 @@ func TestEnvironmentUpsertWritesExplicitPolicyAndVerifiesWithoutNumericBinding(t
 	}
 }
 
-const emptyEnvironmentFixture = `{"id":1,"name":"production","protection_rules":[],"deployment_branch_policy":null}`
+const emptyEnvironmentFixture = `{"id":1,"name":"production","protection_rules":[],"deployment_branch_policy":null,"can_admins_bypass":false}`
 const customEnvironmentEmpty = `{"total_count":0,"custom_deployment_protection_rules":[]}`
 
 func TestEnvironmentCompleteDisabledAndConfiguredProtections(t *testing.T) {
@@ -128,7 +128,7 @@ func TestEnvironmentCompleteDisabledAndConfiguredProtections(t *testing.T) {
 }
 
 func TestEnvironmentMissingAndUnknownAreNotDisabled(t *testing.T) {
-	for _, key := range []string{"id", "name", "protection_rules", "deployment_branch_policy"} {
+	for _, key := range []string{"id", "name", "protection_rules", "deployment_branch_policy", "can_admins_bypass"} {
 		for _, null := range []bool{true, false} {
 			if key == "deployment_branch_policy" && null {
 				continue
@@ -160,7 +160,7 @@ func TestEnvironmentMissingAndUnknownAreNotDisabled(t *testing.T) {
 			t.Fatal("unsafe protection accepted", rules)
 		}
 	}
-	for _, field := range []string{"can_admins_bypass", "future_setting"} {
+	for _, field := range []string{"future_setting"} {
 		var raw map[string]json.RawMessage
 		json.Unmarshal([]byte(emptyEnvironmentFixture), &raw)
 		raw[field] = json.RawMessage("false")

@@ -1,6 +1,6 @@
 # Feature: Named Environment policies
 
-Status: current source implements named policies (#352) and custom deployment branch/tag patterns (#353). Pattern support and API-controlled omission are not in the published v0.21.0 package. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
+Status: current source implements named policies (#352), custom deployment branch/tag patterns (#353), and typed administrator-bypass management. Administrator-bypass support is not included in v0.22.0. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
 
 ## Ownership and API-controlled omissions
 
@@ -20,9 +20,11 @@ Custom-mode reads require all pages, stable total count, unique positive IDs, ty
 
 Inventory requires explicit total count, complete pages and unambiguous names/IDs. Selected existing names receive individual detail and enabled-custom-protection reads. Unlisted details are not acquired by plan/apply; export explicitly selects every name. Failed/hidden reads never become absent objects. Detail 404 after inventory is a read failure, not create permission.
 
-An explicitly present complete `protection_rules: []` represents no enabled built-in rules. Missing/null containers are errors. Present timer/reviewer rules require their complete typed values, including false/zero/empty. Missing policy is not null. Unknown rule kinds/fields, enabled custom deployment rules and observed unsupported root settings (including administrator bypass) fail rather than being silently erased. Read-only principal profile metadata is reduced to its typed numeric reference; Environment URLs/timestamps/internal IDs do not enter writable policy.
+An explicitly present complete `protection_rules: []` represents no enabled built-in rules. Missing/null containers are errors. Present timer/reviewer rules require their complete typed values, including false/zero/empty. Missing policy is not null. An explicit root `can_admins_bypass` boolean is required for a complete observation; neither an absent nor a null/malformed value implies false or true. Unknown rule kinds/fields, enabled custom deployment rules and other unsupported root settings fail rather than being silently erased. Read-only principal profile metadata is reduced to its typed numeric reference; Environment URLs/timestamps/internal IDs do not enter writable policy.
 
-The supported public request body has no administrator-bypass setter. This feature does not implement or guess one. It also does not preserve unknown settings by blindly copying response JSON into a mutation.
+An explicit YAML administrator-bypass boolean is sent natively as `can_admins_bypass`, including false. Omission sends no field and supplies no true/default value. Export and plan carry observed false/true values; apply verifies a requested value in fresh typed readback. Request spelling is supported by the pinned [go-github implementation](https://github.com/google/go-github/blob/6eccc42c1ea8cd175b190f8e785d1a55656e3c49/github/repos_environments.go), independently of that library's default-inserting marshaler. The client uses its own omission-preserving payload and does not copy arbitrary response fields into a mutation. The REST documentation's incomplete parameter table is not treated as proof of server behavior.
+
+An explicitly authorized 2026-10-27 live characterization used one uniquely named temporary Environment in a public, personally owned GitHub repository, with API version `2026-03-10`. Explicit false and true each returned HTTP 200 and matched fresh GET. With timer zero, self-review false, reviewers empty and branch policy null held constant in the requests, subsequent flag omission retained each preceding false/true value. Other observable fields stayed equal. Creation without the flag returned true in this one test; the client still does not encode that as a default. The newly created ID was checked before HTTP 204 deletion, absence was verified, and pre-existing Environment observations/inventory matched before and after. No deployment, workflow, secrets or permissions were created, and no effective administrator-bypass attempt was tested. These results support the tested writable field; they do not generalize omission or entitlement guarantees to all requests/servers.
 
 ## Apply and reporting
 
@@ -40,10 +42,12 @@ Explicit `export --environments` saves supported observed policies and complete 
 | --- | --- |
 | Name identity, API-controlled omission, unlisted preservation, no deletion, reviewer ordering | `internal/settings/environments_test.go` |
 | Typed pattern identity, authoritative empty list, omission, duplicate rejection | `internal/settings/environment_patterns_test.go` |
+| Explicit bypass false/true, omitted request uncertainty, missing-observation rejection and repeat no-op | `internal/settings/environment_bypass_test.go` |
 | Strict YAML, null/type/unknown/ID rejection, encode/decode round trip | `internal/workspace/environments_test.go` |
 | Complete configured/disabled reads, selected-only details, unavailable/custom protections, exact escaped path | `internal/github/environments_test.go` |
 | Explicit upsert payload, matching no-op, server rejection, ignored values, uncertain readback, accepted changed incarnation | `TestEnvironmentUpsertWritesExplicitPolicyAndVerifiesWithoutNumericBinding` |
 | Typed paginated reads, custom-mode entry, omitted/empty lists, 303/403, partial writes and identity races | `internal/github/environment_patterns_test.go` |
+| Native bypass request booleans, no implicit true, 422/ignored values and failed typed reads | `internal/github/environment_bypass_test.go` |
 | Plan/apply ordering, no ID recorder, earlier-success partial failure, empty/read-failure no write | `internal/app/environments_test.go` |
 | Report round trip, default visibility, HTML escaping and closed report boundary | `internal/actions/environments_test.go` |
 | Actual binary create/update/repeat plan/apply, API-controlled omissions, unchanged caller YAML including Actions mode, unsupported protection and readback failure | `TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback` |
@@ -57,4 +61,4 @@ Explicit `export --environments` saves supported observed policies and complete 
 - [Managing environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments): case-insensitive names up to 255 characters and lifecycle consequences.
 - [Deployment availability/effectiveness](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments): account/visibility restrictions and protected-branches behavior. No subscription, visibility, credential or permission expansion is attempted.
 
-Fixtures prove client serialization, parsing and failure/order behavior, not live omitted-field preservation/reset, entitlements, exact token grants, inactive-pattern retention or effective/intermediate deployment protection. No live Environment mutation or privileged test is part of this verification. Undocumented administrator-bypass behavior remains unsupported. Source implementation does not activate operational #380–#382 or publish a release.
+Fixtures prove client serialization, parsing and failure/order behavior, not live omitted-field preservation/reset, entitlements, exact token grants, inactive-pattern retention or effective/intermediate deployment protection. The bounded administrator-bypass experiment above is separate evidence, not a claim that fixtures performed live mutations. Production Environment policies remain unchanged. Source implementation does not activate operational #380–#382 or publish a release.

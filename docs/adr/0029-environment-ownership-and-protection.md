@@ -6,7 +6,7 @@ description: Define named existing-environment intent without implicit deletion,
 
 ## Status
 
-Historical design decision for #351. Current-source [Environment management](../settings.md#environments) supersedes this record's existing-only, field-level omission and numeric-incarnation binding proposals with named whole-object upsert and fixed defaults. The original rationale below is retained as history, not the current accepted YAML contract. Custom-mode and administrator-bypass adoption remain deferred; neither this record nor source implementation authorizes live protection changes.
+Historical design decision for #351. Current-source [Environment management](../settings.md#environments) supersedes this record's existing-only, field-level omission and numeric-incarnation binding proposals with named whole-object upsert and API-controlled omissions. The original rationale below is retained as history, not the current accepted YAML contract. Current source also supports typed custom patterns and administrator bypass using the evidence and limits in the current contract; neither this record nor source implementation authorizes live protection changes.
 
 ## Context
 

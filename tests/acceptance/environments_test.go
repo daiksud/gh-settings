@@ -15,12 +15,12 @@ import (
 )
 
 func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.T) {
-	for _, mode := range []string{"create", "update", "actions", "unsupported", "readback", "omitted"} {
+	for _, mode := range []string{"create", "update", "actions", "unsupported", "readback", "omitted", "admin-bypass"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			writes := 0
 			exists := mode != "create" && mode != "actions"
-			state := map[string]any{"id": 5, "name": "production", "protection_rules": []any{map[string]any{"type": "wait_timer", "wait_timer": 30}}, "deployment_branch_policy": nil}
+			state := map[string]any{"id": 5, "name": "production", "protection_rules": []any{map[string]any{"type": "wait_timer", "wait_timer": 30}}, "deployment_branch_policy": nil, "can_admins_bypass": false}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -64,7 +64,10 @@ func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.
 				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 					t.Error(err)
 				}
-				want := map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "reviewers": []any{}, "deployment_branch_policy": nil}
+				want := map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "can_admins_bypass": false, "reviewers": []any{}, "deployment_branch_policy": nil}
+				if mode == "admin-bypass" {
+					want["can_admins_bypass"] = true
+				}
 				if mode == "omitted" {
 					want = map[string]any{}
 				}
@@ -72,6 +75,9 @@ func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.
 					t.Error("incomplete/identity-bearing policy", payload)
 				}
 				state["protection_rules"], exists = []any{}, true
+				if mode == "admin-bypass" {
+					state["can_admins_bypass"] = true
+				}
 				json.NewEncoder(w).Encode(state)
 			}, false)
 			if err != nil {
@@ -82,7 +88,10 @@ func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "# preserve caller YAML\nschemaVersion: 1\nsettings:\n  environments:\n    - name: production # name is identity\n      wait_timer: 0\n      prevent_self_review: false\n      reviewers: []\n      deployment_branch_policy: null\n"
+			input := "# preserve caller YAML\nschemaVersion: 1\nsettings:\n  environments:\n    - name: production # name is identity\n      wait_timer: 0\n      prevent_self_review: false\n      can_admins_bypass: false\n      reviewers: []\n      deployment_branch_policy: null\n"
+			if mode == "admin-bypass" {
+				input = strings.Replace(input, "can_admins_bypass: false", "can_admins_bypass: true", 1)
+			}
 			if mode == "omitted" {
 				input = "schemaVersion: 1\nsettings:\n  environments:\n    - name: production\n"
 			}

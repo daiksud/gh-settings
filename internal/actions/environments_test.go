@@ -17,12 +17,14 @@ import (
 
 func TestEnvironmentPlanReportSummaryAndClosedBoundary(t *testing.T) {
 	zero, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
-	d, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "<production>", WaitTimer: &zero, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}})
+	d, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "<production>", WaitTimer: &zero, PreventSelfReview: &prevent, CanAdminsBypass: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	after := d.Values()[0]
 	before := d.Values()[0]
+	bypass := true
+	after.CanAdminsBypass = &bypass
 	timer := 30
 	before.WaitTimer = &timer
 	change, err := settings.NewEnvironmentChange("update", &before, &after)
@@ -49,7 +51,7 @@ func TestEnvironmentPlanReportSummaryAndClosedBoundary(t *testing.T) {
 	if err != nil || strings.Contains(content, "<production>") {
 		t.Fatal(content, err)
 	}
-	for _, want := range []string{`settings.environments: update`, `"wait_timer":30`, `"wait_timer":0`, `"prevent_self_review":false`, `"reviewers":[]`, `"deployment_branch_policy":null`} {
+	for _, want := range []string{`settings.environments: update`, `"wait_timer":30`, `"wait_timer":0`, `"prevent_self_review":false`, `"can_admins_bypass":false`, `"can_admins_bypass":true`, `"reviewers":[]`, `"deployment_branch_policy":null`} {
 		if !strings.Contains(html.UnescapeString(content), want) {
 			t.Fatal("missing default-derived change", want, content)
 		}
@@ -83,7 +85,7 @@ func TestEnvironmentPlanReportSummaryAndClosedBoundary(t *testing.T) {
 
 func TestEnvironmentPartialRequestReportDoesNotInventAPIOutcome(t *testing.T) {
 	timer, prevent, reviewers := 30, false, []settings.EnvironmentReviewer{}
-	before := settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}
+	before := settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, CanAdminsBypass: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}
 	after := settings.EnvironmentDeclaration{Name: "production"}
 	change, err := settings.NewEnvironmentChange("update", &before, &after)
 	if err != nil {

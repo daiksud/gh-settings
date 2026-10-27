@@ -8,7 +8,7 @@ import (
 
 func environmentPolicy(t *testing.T, name string) EnvironmentDeclaration {
 	t.Helper()
-	d, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: name, WaitTimer: paramInt(0), PreventSelfReview: paramBool(false), Reviewers: &[]EnvironmentReviewer{}, DeploymentBranchPolicyDeclared: true}})
+	d, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: name, WaitTimer: paramInt(0), PreventSelfReview: paramBool(false), CanAdminsBypass: paramBool(false), Reviewers: &[]EnvironmentReviewer{}, DeploymentBranchPolicyDeclared: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestEnvironmentValidationAndCompleteObservation(t *testing.T) {
 }
 
 func TestEnvironmentCanonicalCopiesAndReviewerOrder(t *testing.T) {
-	input := EnvironmentDeclaration{Name: "production", WaitTimer: paramInt(10), PreventSelfReview: paramBool(false), DeploymentBranchPolicyDeclared: true, Reviewers: &[]EnvironmentReviewer{{Type: "User", ID: 2}, {Type: "Team", ID: 1}}}
+	input := EnvironmentDeclaration{Name: "production", WaitTimer: paramInt(10), PreventSelfReview: paramBool(false), CanAdminsBypass: paramBool(false), DeploymentBranchPolicyDeclared: true, Reviewers: &[]EnvironmentReviewer{{Type: "User", ID: 2}, {Type: "Team", ID: 1}}}
 	desired, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{input})
 	if err != nil {
 		t.Fatal(err)
