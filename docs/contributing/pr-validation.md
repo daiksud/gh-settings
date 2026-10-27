@@ -12,6 +12,8 @@ Every PR event (including title/body edits) runs Draft, metadata resolution,
 Commit stage, Ready and Acceptance stage. The final `ci-pr` job succeeds only
 when every prerequisite succeeds. A failed, skipped or cancelled prerequisite
 cannot report success. The separate `ci-push` aggregate checks main after merge.
+The PR aggregate uses `always()` so cancelled prerequisites are evaluated as
+non-success rather than skipping the required job.
 
 All PR-source execution uses read-only tokens and checkouts without persisted
 credentials. The Draft/Ready jobs change only PR state; the aggregate job has

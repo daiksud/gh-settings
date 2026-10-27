@@ -106,7 +106,7 @@ jobs:
           artifact-directory: ${{ runner.temp }}/product
   ci-pr:
     needs: [draft, resolve, commit-stage, ready, acceptance-stage]
-    if: always() && !cancelled()
+    if: always()
     runs-on: ubuntu-slim
     timeout-minutes: 3
     permissions: {}

@@ -60,8 +60,8 @@ func TestPRWorkflowNamedAggregateCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(check.Needs, []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}) ||
-		check.If != "always() && !cancelled()" || len(check.Permissions) != 0 || len(check.Steps) != 1 {
-		t.Fatal("ci-pr must aggregate all stages with no write permissions")
+		check.If != "always()" || len(check.Permissions) != 0 || len(check.Steps) != 1 {
+		t.Fatal("ci-pr must evaluate all stages even on cancellation, with no write permissions")
 	}
 	if check.Steps[0].Uses != "" || check.Steps[0].Continue ||
 		check.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" ||
@@ -82,11 +82,15 @@ func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
 		t.Fatal(err)
 	}
 	var check struct {
+		If    string `yaml:"if"`
 		Steps []step `yaml:"steps"`
 	}
 	checkNode := w.Jobs["ci-pr"]
 	if err := checkNode.Decode(&check); err != nil {
 		t.Fatal(err)
+	}
+	if check.If != "always()" {
+		t.Fatal("cancellation must not skip the required native aggregate")
 	}
 	names := []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}
 	for _, tc := range []struct {
@@ -96,6 +100,10 @@ func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
 		{"all-success", "", "", true},
 		{"failed-commit", "commit-stage", "failure", false},
 		{"skipped-ready", "ready", "skipped", false},
+		{"cancelled-draft", "draft", "cancelled", false},
+		{"cancelled-resolve", "resolve", "cancelled", false},
+		{"cancelled-commit", "commit-stage", "cancelled", false},
+		{"cancelled-ready", "ready", "cancelled", false},
 		{"cancelled-acceptance", "acceptance-stage", "cancelled", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,7 +119,8 @@ func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
 				t.Fatal(err)
 			}
 			cmd := exec.Command("bash", "-euo", "pipefail", "-c", check.Steps[0].Run)
-			cmd.Env = append(os.Environ(), "RESULTS="+string(value))
+			isolated := t.TempDir()
+			cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + isolated, "XDG_CONFIG_HOME=" + isolated, "GH_CONFIG_DIR=" + isolated, "RESULTS=" + string(value)}
 			output, err := cmd.CombinedOutput()
 			if (err == nil) != tc.wantOK {
 				t.Fatalf("success=%t, want=%t: %s", err == nil, tc.wantOK, output)
