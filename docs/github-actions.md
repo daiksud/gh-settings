@@ -36,7 +36,7 @@ Missing command/token, unsupported prerequisites, install/metadata/output failur
 
 ### Private plan reporting
 
-For plan, `plan-reporting: status-only` It displays only a validated outcome and bounded managed count; it omits policy values, names, actors and raw diagnostics. Setup checks the installed binary's private-reporting capability before authenticated work and reports a fixed error for an unsupported package. This package capability does not activate this repository's protected observer: #380 remains open for its dedicated Environment, credentials, activation and real nonmutating verification.
+For plan, `plan-reporting: status-only` displays only a validated outcome and bounded managed count; it omits policy values, names, actors and raw diagnostics. Setup checks the installed binary's private-reporting capability before authenticated work and reports a fixed error for an unsupported package. This optional public Action capability is independent of this repository's operational workflows.
 
 Status-only failures use fixed diagnostics and preserve failure status. Detailed reports stay in the installer's private temporary directory with mode 0600 and are removed by an `always()` cleanup step, including after ordinary failures. No report is uploaded or cached. Forced runner termination can prevent cleanup; use a fresh supported hosted runner, and never arrange for other steps to cache/upload its temporary data. Metadata success outputs still identify the caller's checkout and installed package; the caller must supply a trusted target/revision and must not inject confidential data into public identities or caller logs.
 

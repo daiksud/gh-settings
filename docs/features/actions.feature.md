@@ -207,7 +207,7 @@ Changed values retain native string/bool/topic-list meaning. No-difference, unma
 
 ### Rule: Private plan reporting does not publish observed values
 
-Current source supports opt-in `plan-reporting: status-only`. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts. Package availability does not activate the protected observer tracked by #380.
+Current source supports opt-in `plan-reporting: status-only`. Detailed mode remains the default; the caller still owns the trusted job, identities and token grants. Private mode is plan-only, checks installed capability before authentication and validates the complete report before reducing output to outcome/counts. This package capability is independent of this repository's operational workflows.
 
 #### Scenario: A private plan reports status without hidden policy
 
