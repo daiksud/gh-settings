@@ -108,7 +108,7 @@ jobs:
               sys.exit(1)
           PY
       - name: Validate and plan data with the trusted pinned Action
-        uses: daiksud/gh-settings@3785af9e73886565fe711e6b4428922055a2f687 # v0.19.0
+        uses: daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8 # v0.21.0
         with:
           command: plan
           token: ${{ steps.app.outputs.token }}
