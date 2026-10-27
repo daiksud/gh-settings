@@ -16,7 +16,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Read-only PR merge-candidate validation through `settings-plan`; also contains the inactive manually protected settings observer |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
 | [`settings-env.yml`](../../.github/workflows/settings-env.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-env` |
-| [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
+| [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or successful PR CI completion; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
 
 Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
@@ -33,7 +33,7 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The default-branch Ruleset must be changed separately to require `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions instead of the old `pass`, `pr-message` and `gh-settings` names. It retains its independent approval, CODEOWNER, and thread-resolution settings. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
+The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, signed and linear history, and strict required checks. It requires `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions. Repository merge configuration allows squash only. No bypass actors are declared, including administrators. Every change must satisfy ordinary approval, CI, signature, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). The trusted main workflow applies this declaration only after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
@@ -76,9 +76,9 @@ The guard was deployed before the operational PR credential consumer. GitHub [ev
 
 The guard does not inspect the allowed apply job's step bodies, approve Action revisions, restrict its API operations, validate actual token grants, or configure remote Environment/ruleset settings. The allowed job could still be changed to execute code with privileged credentials. Review that job, its referenced code, and changes to the guard/policy itself under the [apply-path protection guidance](../github-actions.md#protect-the-apply-path); later runs use whatever policy has been merged into `main`.
 
-The dedicated check name is **`settings-env`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `pass`.
+The dedicated check name is **`settings-env`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `ci-pr` or `ci-push`.
 
-These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). Selecting GitHub Actions as the required check provider identifies the app, not this guard's workflow file. Another Actions job can report the same name, so a green `gh-settings` result alone is not proof that the trusted guard ran. The name-reservation test prevents collisions only when the trusted policy actually executes.
+These checks detect violations in the inspected source, but the required status name does not identify a unique workflow. GitHub documents that [required checks do not take the workflow or event trigger into account](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/troubleshooting-rules#troubleshooting-required-status-checks). Selecting GitHub Actions as the required check provider identifies the app, not this guard's workflow file. Another Actions job can report the same name, so a green `settings-env` result alone is not proof that the trusted guard ran. The name-reservation test prevents collisions only when the trusted policy actually executes.
 
 When evaluating enforcement, inspect the applicable required checks and allowed check providers, actual guard run, Environment deployment branches/reviewers, and [`pull_request_target` event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target). The repository YAML does not establish those external settings or enforce policy across other repositories. This guide records the guard's behavior and limits without prescribing a change to external approval configuration.
 
@@ -124,11 +124,9 @@ For activation, explicitly approve and configure the dedicated Environment, appr
 
 ## Codex approval control
 
-The [approval workflow](../../.github/workflows/approve-codex-review.yml) reacts only to a PR comment from `chatgpt-codex-connector[bot]` whose body starts with the expected review-summary marker. It fetches that summary and requires both **Code Review** and **Security Review** to say **Completed**, plus a Codex 👍 reaction to the PR body. It waits up to three minutes for the reaction, then may create an approving bot review.
+The [approval workflow](../../.github/workflows/approve-codex-review.yml) reacts to trusted summary updates from `chatgpt-codex-connector[bot]` and rechecks the most recent summary after successful PR CI completion. It reads the structured Codex review state, requires both **Code Review** and **Security Review** to have completed on the *current exact PR HEAD*, rejects unresolved findings, and requires Codex's 👍 reaction. It waits up to three minutes for a delayed reaction, refuses draft/closed/stale heads, avoids a duplicate same-HEAD bot approval, and submits an approving GitHub Actions review tied to the verified SHA.
 
-The workflow executes trusted default-branch code without checking out PR source. It becomes available for comment events after the workflow exists on the default branch. GitHub must also allow Actions to create and approve pull requests for the final approval call to succeed.
-
-The mechanism does not verify the reviewed HEAD or the latest Ready-triggered review cycle, and an older completion/reaction can satisfy its conditions. A successful workflow run alone does not prove that an approval was created. Inspect the actual current review, relevant findings, and resulting approval separately.
+The workflow runs trusted default-branch code without checking out PR source. GitHub Actions must be permitted to approve PRs, and a submitted approval is distinct from Codex's comment/reaction or workflow success. Recheck live Ruleset approvals, any review threads, and required CI for the final HEAD. No administrative bypass is permitted; an unavailable reviewer leaves the PR blocked until an eligible approval is obtained.
 
 ## Inspect external configuration
 
