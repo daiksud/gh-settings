@@ -161,9 +161,11 @@ settings:
             strict_required_status_checks_policy: true
             do_not_enforce_on_create: false
             required_status_checks:
-              - context: pass
+              - context: ci-pr
                 integration_id: 15368
-              - context: gh-settings
+              - context: prlint
                 integration_id: 15368
-              - context: pr-message
+              - context: settings-plan
+                integration_id: 15368
+              - context: settings-env
                 integration_id: 15368

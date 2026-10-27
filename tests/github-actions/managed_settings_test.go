@@ -130,7 +130,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 		ruleset.BypassActors == nil || len(*ruleset.BypassActors) != 0 {
 		t.Fatalf("select the existing Ruleset and remove every bypass actor: %+v", ruleset)
 	}
-	approval, signed, linear := false, false, false
+	approval, signed, linear, nativeChecks := false, false, false, false
 	for _, rule := range *ruleset.Rules {
 		switch rule.Type {
 		case "pull_request":
@@ -139,15 +139,30 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				*p.RequiredApprovingReviewCount == 1 && p.RequireCodeOwnerReview != nil &&
 				*p.RequireCodeOwnerReview && p.DismissStaleReviewsOnPush != nil &&
 				*p.DismissStaleReviewsOnPush && p.RequiredReviewThreadResolution != nil &&
-				*p.RequiredReviewThreadResolution
+				*p.RequiredReviewThreadResolution && p.RequireExtraApprovalForUnattributedChanges != nil &&
+				*p.RequireExtraApprovalForUnattributedChanges
+		case "required_status_checks":
+			p := rule.Parameters
+			if p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil ||
+				!*p.StrictRequiredStatusChecksPolicy || p.DoNotEnforceOnCreate == nil || *p.DoNotEnforceOnCreate {
+				t.Fatal("native required checks must retain strict enforcement on creation")
+			}
+			want := map[string]bool{"ci-pr": true, "prlint": true, "settings-plan": true, "settings-env": true}
+			for _, check := range *p.RequiredStatusChecks {
+				if !want[check.Context] || check.IntegrationID == nil || *check.IntegrationID != 15368 {
+					t.Fatalf("unexpected check or provider: %+v", check)
+				}
+				delete(want, check.Context)
+			}
+			nativeChecks = len(want) == 0
 		case "required_signatures":
 			signed = true
 		case "required_linear_history":
 			linear = true
 		}
 	}
-	if !approval || !signed || !linear {
-		t.Fatal("the main Ruleset must keep approval, signature, and history protections")
+	if !approval || !signed || !linear || !nativeChecks {
+		t.Fatal("the main Ruleset must keep approvals, signatures, history, and all four native checks")
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.
