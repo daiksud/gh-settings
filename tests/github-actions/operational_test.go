@@ -8,11 +8,45 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 	"go.yaml.in/yaml/v4"
 )
 
 const operationalAction = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
 const operationalPlanAction = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
+
+func TestManagedRepositoryEnvironments(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := workspace.DecodeConfig(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.Environments == nil || len(d.Environments.Values()) != 2 {
+		t.Fatal("both existing named Environments must be declared")
+	}
+	for _, p := range d.Environments.Values() {
+		if settings.EnvironmentHasAPIOmissions(p) || *p.WaitTimer != 0 || *p.PreventSelfReview || len(*p.Reviewers) != 0 {
+			t.Fatalf("Environment policy must retain complete observed values: %+v", p)
+		}
+		switch p.Name {
+		case "copilot":
+			if !*p.CanAdminsBypass || p.DeploymentBranchPolicy != nil || p.DeploymentBranchPatterns != nil {
+				t.Fatal("copilot must retain administrator bypass and unrestricted refs")
+			}
+		case "gh-settings":
+			want := []settings.EnvironmentPattern{{Type: "branch", Name: "main"}}
+			if *p.CanAdminsBypass || p.DeploymentBranchPolicy == nil || p.DeploymentBranchPolicy.ProtectedBranches || !p.DeploymentBranchPolicy.CustomBranchPolicies || p.DeploymentBranchPatterns == nil || !reflect.DeepEqual(*p.DeploymentBranchPatterns, want) {
+				t.Fatal("settings credential Environment must retain main-only refs without administrator bypass")
+			}
+		default:
+			t.Fatalf("unexpected Environment %q", p.Name)
+		}
+	}
+}
 
 func TestManagedRepositoryMergePreferences(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
