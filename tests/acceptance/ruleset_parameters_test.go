@@ -204,7 +204,6 @@ settings:
             required_approving_review_count: 0
             dismiss_stale_reviews_on_push: false
             require_code_owner_review: false
-            dismissal_restriction: {enabled: false}
             required_reviewers: [{reviewer: {type: Team, id: 22}, minimum_approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]
         - type: required_status_checks
           parameters:

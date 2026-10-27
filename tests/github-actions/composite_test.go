@@ -98,14 +98,10 @@ func TestRootCompositeRejectsGlobalOnlyOrigin(t *testing.T) {
 	}
 }
 
-func TestRootCompositeRejectsMismatchedReleaseTag(t *testing.T) {
-	ref := "v0.0.0"
-	if ref == committedCLIVersion(t) {
-		ref = "v0.0.1"
-	}
-	result := runComposite(t, "validate", "", map[string]string{"github.action_ref": ref})
-	if result.status == 0 || len(result.outputs) != 0 || result.calls != "" || result.downloaded || !strings.Contains(result.log, "Action tag differs from committed CLI version") {
-		t.Fatalf("mismatched release tag reached installation: %+v", result)
+func TestRootCompositeRejectsUnsupportedActionRef(t *testing.T) {
+	result := runComposite(t, "validate", "", map[string]string{"github.action_ref": "v0.0.0-invalid"})
+	if result.status == 0 || len(result.outputs) != 0 || result.calls != "" || result.downloaded || !strings.Contains(result.log, "unsupported Action reference") {
+		t.Fatalf("invalid Action reference reached installation: %+v", result)
 	}
 }
 
@@ -117,7 +113,7 @@ func TestRootCompositePlan(t *testing.T) {
 	if result.presentationCalls != "action plan\naction summary\n" || result.calls != "plan\n" {
 		t.Fatalf("presentation calls=%q settings calls=%q", result.presentationCalls, result.calls)
 	}
-	for _, text := range []string{"Settings review", "settings.repository.description", `"before"`, `"desired"`, "settings.repository.has_issues: true → false", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", "approved-action-ref", strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
+	for _, text := range []string{"Settings review", "settings.repository.description", `"before"`, `"desired"`, "settings.repository.has_issues: true → false", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", committedCLIVersion(t), strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
 		if !strings.Contains(html.UnescapeString(result.summary), text) {
 			t.Errorf("Summary missing %q: %s", text, result.summary)
 		}
@@ -451,6 +447,19 @@ done
 exit 1
 `)
 	write(filepath.Join(bin, "sha256sum"), "#!/usr/bin/env bash\nexec shasum -a 256 \"$@\"\n")
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(filepath.Join(bin, "git"), `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$1 $2" == "ls-remote --tags" ]]; then
+  [[ "${MOCK_PINNED_ACTION_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || exit 1
+  printf '%s\trefs/tags/%s\n' "$MOCK_PINNED_ACTION_SHA" "$MOCK_CLI_VERSION"
+  exit 0
+fi
+exec "$REAL_GIT" "$@"
+`)
 	write(filepath.Join(bin, "rm"), `#!/usr/bin/env bash
 if [[ ${MOCK_CLEANUP_FAILURE:-0} == 1 ]]; then
   echo CANARY-cleanup-diagnostic >&2
@@ -477,6 +486,7 @@ exec /bin/rm "$@"
 	if err != nil {
 		t.Fatal(err)
 	}
+	base["REAL_GIT"] = realGit
 	base["MOCK_TEST_BINARY"] = testBinary
 	base["MOCK_PRESENTATION_CALLS"] = filepath.Join(fixture, "presentation-calls")
 	base["MOCK_CLI_VERSION"] = committedCLIVersion(t)
@@ -518,7 +528,7 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	base["MOCK_CONFIG_SHA"], base["MOCK_CLI_SHA256"] = sha, digest
 	outputDirectory := t.TempDir()
 	values := map[string]string{"inputs.command": command, "inputs.plan-reporting": "detailed", "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
-		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": "approved-action-ref"}
+		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": committedCLIVersion(t)}
 	for key, value := range extra {
 		if _, known := values[key]; known && (strings.HasPrefix(key, "github.") || key == "inputs.plan-reporting") {
 			values[key] = value

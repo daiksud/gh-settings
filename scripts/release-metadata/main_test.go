@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -71,7 +69,7 @@ func newFixtureVersion(t *testing.T, version string, messages ...string) fixture
 	return f
 }
 
-func TestVersionTiersAndCompatibilityFooters(t *testing.T) {
+func TestReleaseNotesRecognizeCompatibilityFooters(t *testing.T) {
 	for _, tt := range []struct {
 		message      string
 		major, minor bool
@@ -79,223 +77,18 @@ func TestVersionTiersAndCompatibilityFooters(t *testing.T) {
 		{"fix: correct behavior", false, false},
 		{"feat(settings): expose a field", false, true},
 		{"perf: reduce runtime work", false, true},
-		{"ci: accelerate tests", false, false},
-		{"build(release): prepare next version", false, false},
-		{"revert: remove a feature", false, false},
 		{"refactor!: replace the API", true, false},
-		{"fix: correction\n\nBREAKING CHANGE: Migrate A.\n\nSecond paragraph.\n\nRefs #123", true, false},
-		{"fix: correction\n\nBREAKING-CHANGE: Historical marker.", true, false},
+		{"fix: correction\n\nBREAKING CHANGE: Migrate A.", true, false},
+		{"fix: correction\n\nBREAKING-CHANGE: Migrate B.", true, false},
 		{"chore: notice\n\nDEPRECATED: Migrate before removal.", false, true},
-		{"docs: example\n\n```text\nBREAKING CHANGE: Not a real footer.\nDEPRECATED: Not a real footer.\n```", false, false},
-		{"docs: example\n\n~~~text\nBREAKING CHANGE: Not a real footer.\n~~~~\n\nBREAKING CHANGE: Actual footer.", true, false},
-		{"legacy maintenance", false, false},
+		{"docs: example\n\n~~~text\nBREAKING CHANGE: Example only.\n~~~", false, false},
 	} {
 		t.Run(strings.ReplaceAll(tt.message, "\n", " "), func(t *testing.T) {
 			c := parseChange(strings.Repeat("a", 40), tt.message)
 			if c.major != tt.major || c.minor != tt.minor {
-				t.Fatalf("%+v", c)
+				t.Fatalf("unexpected release-note classification: %+v", c)
 			}
 		})
-	}
-	c := parseChange(strings.Repeat("a", 40), "fix: correction\n\nBREAKING CHANGE: Migrate A.\n\nSecond paragraph.\n\nRefs #123")
-	if !reflect.DeepEqual(c.breaking, []string{"Migrate A.\n\nSecond paragraph."}) {
-		t.Fatal(c.breaking)
-	}
-	for _, tt := range []struct {
-		version string
-		tier    int
-		want    string
-	}{
-		{"v0.17.0", 2, "v0.18.0"}, {"v0.17.0", 1, "v0.18.0"}, {"v0.17.0", 0, "v0.17.1"},
-		{"v1.2.3", 2, "v2.0.0"}, {"v1.2.3", 1, "v1.3.0"}, {"v1.2.3", 0, "v1.2.4"},
-	} {
-		got, err := bump(tt.version, tt.tier)
-		if err != nil || got != tt.want {
-			t.Fatalf("%s %d: %s %v", tt.version, tt.tier, got, err)
-		}
-	}
-	for _, invalid := range []string{"v01.2.3", "v1.2.3-rc.1", "v1.2.3+build", "1.2.3", "v1.2.18446744073709551615", "v1.2.18446744073709551616"} {
-		if _, err := bump(invalid, 0); err == nil {
-			t.Fatal("accepted", invalid)
-		}
-	}
-}
-
-func TestProposalUsesEntireFrozenPublishedInterval(t *testing.T) {
-	f := newFixture(t, "feat: earlier feature", "fix: later correction")
-	mustGit(t, f.root, "tag", "v99.0.0")
-	write(t, filepath.Join(f.root, "later.txt"), "later")
-	mustGit(t, f.root, "add", ".")
-	mustGit(t, f.root, "commit", "--quiet", "-m", "feat!: not part of the frozen source")
-	p, err := propose(f.root, f.source, strings.NewReader(f.catalog), false)
-	if err != nil || p.version != "v1.3.0" || p.previousTag != "v1.2.3" {
-		t.Fatalf("%+v %v", p, err)
-	}
-	// Published order, not the numerically highest version, chooses the boundary.
-	mustGit(t, f.root, "-c", "tag.gpgsign=false", "tag", "-a", "v1.1.9", f.base, "-m", "annotated")
-	catalog := strings.TrimSuffix(f.catalog, "]]") + `,{"id":2,"tag_name":"v99.0.0","draft":true,"prerelease":false},{"id":3,"tag_name":"v1.1.9","draft":false,"prerelease":false,"published_at":"2026-10-02T00:00:00Z"}]]`
-	p, err = propose(f.root, f.source, strings.NewReader(catalog), false)
-	if err != nil || p.version != "v1.2.0" || p.previousTag != "v1.1.9" {
-		t.Fatalf("%+v %v", p, err)
-	}
-}
-
-func TestProposalPrecedenceAndVersionPreparation(t *testing.T) {
-	for _, tt := range []struct {
-		baseline string
-		messages []string
-		want     string
-	}{
-		{"v0.18.1", []string{"refactor!: incompatible behavior"}, "v0.19.0"},
-		{"v0.18.1", []string{"fix: incompatible behavior\n\nBREAKING CHANGE: Update callers."}, "v0.19.0"},
-		{"v1.2.3", []string{"refactor!: incompatible behavior"}, "v2.0.0"},
-		{"v1.2.3", []string{"fix: incompatible behavior\n\nBREAKING-CHANGE: Historical marker."}, "v2.0.0"},
-		{"v1.2.3", []string{"feat: new behavior"}, "v1.3.0"},
-		{"v1.2.3", []string{"perf: reduce work"}, "v1.3.0"},
-		{"v1.2.3", []string{"fix: maintenance\n\nDEPRECATED: Retire this API later."}, "v1.3.0"},
-		{"v1.2.3", []string{"fix: correct behavior"}, "v1.2.4"},
-		{"v1.2.3", []string{"revert: restore prior behavior"}, "v1.2.4"},
-		{"v1.2.3", []string{"docs: explain usage", "ci: faster validation", "build: update tooling", "chore: maintain repository", "refactor: reorganize internals"}, "v1.2.4"},
-		{"v0.18.1", []string{"fix: correction", "feat: capability", "refactor!: incompatible behavior"}, "v0.19.0"},
-		{"v1.2.3", []string{"fix: correction", "feat: capability", "docs: replacement\n\nBREAKING CHANGE: Remove the old behavior."}, "v2.0.0"},
-		{"v1.2.3", []string{"feat: add capability", "revert: revert capability"}, "v1.3.0"},
-	} {
-		f := newFixtureVersion(t, tt.baseline, tt.messages...)
-		p, err := propose(f.root, f.source, strings.NewReader(f.catalog), false)
-		if err != nil || p.version != tt.want {
-			t.Fatalf("%+v %v", p, err)
-		}
-	}
-	f := newFixture(t)
-	write(t, filepath.Join(f.root, "action/cli-version"), "v1.2.4\n")
-	mustGit(t, f.root, "add", ".")
-	mustGit(t, f.root, "commit", "--quiet", "-m", "build(release): prepare next version")
-	if _, err := propose(f.root, mustGit(t, f.root, "rev-parse", "HEAD"), strings.NewReader(f.catalog), false); err == nil {
-		t.Fatal("version-only release accepted")
-	}
-	if _, err := propose(f.root, f.base, strings.NewReader(f.catalog), false); err == nil {
-		t.Fatal("empty interval accepted")
-	}
-
-	f = newFixture(t)
-	write(t, filepath.Join(f.root, "action/cli-version"), "v1.2.4\n")
-	write(t, filepath.Join(f.root, "release-notes.md"), "substantive maintenance\n")
-	mustGit(t, f.root, "add", ".")
-	mustGit(t, f.root, "commit", "--quiet", "-m", "build(release): prepare next version")
-	p, err := propose(f.root, mustGit(t, f.root, "rev-parse", "HEAD"), strings.NewReader(f.catalog), false)
-	if err != nil || p.version != "v1.2.4" {
-		t.Fatalf("substantive preparation commit: %+v %v", p, err)
-	}
-}
-
-func TestProposalDoesNotUseReleaseNoteLabels(t *testing.T) {
-	f := newFixture(t, "fix: correct behavior")
-	p, err := propose(f.root, f.source, strings.NewReader(f.catalog), false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	write(t, filepath.Join(f.root, ".github/release.yml"), "changelog:\n  categories:\n    - title: Breaking\n      labels: ['BREAKING CHANGE', feat]\n")
-	after, err := propose(f.root, f.source, strings.NewReader(f.catalog), false)
-	if err != nil || after.version != p.version || after.version != "v1.2.4" {
-		t.Fatalf("labels changed calculated version: before=%+v after=%+v err=%v", p, after, err)
-	}
-}
-
-func TestCatalogAndHistoryFailures(t *testing.T) {
-	f := newFixture(t, "fix: corrected behavior")
-	for _, catalog := range []string{"null", "[]", "[null]", "{}", "[[]] true", `[[{"id":1,"tag_name":"v1.2.3"}]]`, `[[{"id":1,"tag_name":"v1.2.3","draft":false,"prerelease":false}]]`, strings.ReplaceAll(f.catalog, "false", "null"), strings.TrimSuffix(f.catalog, "]]") + "," + strings.TrimPrefix(f.catalog, "[[")} {
-		if _, err := propose(f.root, f.source, strings.NewReader(catalog), false); err == nil {
-			t.Fatal("accepted catalog", catalog)
-		}
-	}
-	if _, err := propose(f.root, f.source, strings.NewReader("[[]]"), false); err == nil {
-		t.Fatal("silently invented an initial release")
-	}
-	if _, err := propose(f.root, f.source, strings.NewReader(strings.ReplaceAll(f.catalog, "v1.2.3", "v1.2.2")), false); err == nil {
-		t.Fatal("missing predecessor accepted")
-	}
-	if _, err := propose(f.root, "main", strings.NewReader(f.catalog), false); err == nil {
-		t.Fatal("mutable source accepted")
-	}
-	write(t, filepath.Join(f.root, ".git/shallow"), f.base+"\n")
-	if _, err := propose(f.root, f.source, strings.NewReader(f.catalog), false); err == nil {
-		t.Fatal("shallow history accepted")
-	}
-}
-
-func TestPrepareResolveAndRetryWithoutRemoteMutation(t *testing.T) {
-	f := newFixture(t, "feat: new capability")
-	calls := 0
-	gh := func(args ...string) ([]byte, error) {
-		calls++
-		want := []string{"api", "repos/owner/repo/releases?per_page=100", "--paginate", "--slurp"}
-		if !reflect.DeepEqual(args, want) {
-			t.Fatalf("unexpected remote operation: %v", args)
-		}
-		return []byte(f.catalog), nil
-	}
-	var output bytes.Buffer
-	if err := run(f.root, []string{"resolve", "owner/repo", f.source}, &output, gh); err == nil || output.Len() != 0 {
-		t.Fatal("unprepared version resolved")
-	}
-	if err := run(f.root, []string{"prepare", "owner/repo"}, &output, gh); err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(filepath.Join(f.root, "action/cli-version"))
-	if err != nil || string(data) != "v1.3.0\n" {
-		t.Fatal(string(data), err)
-	}
-	if mustGit(t, f.root, "tag", "--list") != "v1.2.3" {
-		t.Fatal("preparation created a tag")
-	}
-	mustGit(t, f.root, "add", "action/cli-version")
-	mustGit(t, f.root, "commit", "--quiet", "-m", "build(release): prepare next version")
-	source := mustGit(t, f.root, "rev-parse", "HEAD")
-	output.Reset()
-	if err := run(f.root, []string{"resolve", "owner/repo", source}, &output, gh); err != nil {
-		t.Fatal(err)
-	}
-	if output.String() != "version=v1.3.0\nprevious-tag=v1.2.3\nprevious-sha="+f.base+"\nsource-sha="+source+"\n" {
-		t.Fatal(output.String())
-	}
-	if calls != 3 {
-		t.Fatal(calls)
-	}
-	// A matching draft or published release is a retry, not another version bump.
-	mustGit(t, f.root, "tag", "v1.3.0")
-	for _, draft := range []bool{true, false} {
-		marker := fmt.Sprintf(`<!-- gh-settings-release: {"version":"v1.3.0","commit":%q,"macos_sha256":%q,"linux_sha256":%q,"checksums_sha256":%q} -->`+"\nStored notes", source, strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64))
-		record := map[string]any{"id": 2, "tag_name": "v1.3.0", "draft": draft, "prerelease": false, "published_at": "2026-10-02T00:00:00Z", "body": marker}
-		encoded, _ := json.Marshal(record)
-		catalog := strings.TrimSuffix(f.catalog, "]]") + "," + string(encoded) + "]]"
-		p, err := propose(f.root, source, strings.NewReader(catalog), true)
-		if err != nil || !p.reuse || p.version != "v1.3.0" {
-			t.Fatalf("retry: %+v %v", p, err)
-		}
-		bad := strings.ReplaceAll(catalog, strings.Repeat("a", 64), "invalid")
-		p, err = propose(f.root, source, strings.NewReader(bad), true)
-		if err == nil && p.reuse {
-			t.Fatal("invalid manifest reused")
-		}
-	}
-}
-
-func TestPreparePreservesDirtyOrUnsafeFilesAndAPIFailure(t *testing.T) {
-	f := newFixture(t, "fix: correction")
-	write(t, filepath.Join(f.root, "action/cli-version"), "user work\n")
-	noAPI := func(...string) ([]byte, error) { t.Fatal("dirty work reached API"); return nil, nil }
-	var output bytes.Buffer
-	if err := prepare(f.root, "owner/repo", &output, noAPI); err == nil {
-		t.Fatal("dirty work overwritten")
-	}
-	data, _ := os.ReadFile(filepath.Join(f.root, "action/cli-version"))
-	if string(data) != "user work\n" {
-		t.Fatal("dirty work lost")
-	}
-	mustGit(t, f.root, "checkout", "--", "action/cli-version")
-	failure := func(...string) ([]byte, error) { return nil, errors.New("fixture unavailable") }
-	if err := run(f.root, []string{"resolve", "owner/repo", f.source}, &output, failure); err == nil || output.Len() != 0 {
-		t.Fatal("failed API emitted metadata")
 	}
 }
 
@@ -370,7 +163,11 @@ func TestUnrelatedPublishedHistoryIsNotSilentlySkipped(t *testing.T) {
 	unrelated := mustGit(t, f.root, "commit-tree", tree, "-m", "chore: unrelated history")
 	mustGit(t, f.root, "tag", "v2.0.0", unrelated)
 	catalog := strings.ReplaceAll(f.catalog, "v1.2.3", "v2.0.0")
-	if _, err := propose(f.root, f.source, strings.NewReader(catalog), false); err == nil {
+	releases, err := readCatalog(strings.NewReader(catalog))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := history(f.root, f.source, "", releases); err == nil {
 		t.Fatal("unrelated predecessor accepted")
 	}
 }

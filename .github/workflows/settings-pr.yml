@@ -112,7 +112,7 @@ jobs:
           permission-administration: write
           permission-issues: read
       - name: Validate and plan data with the trusted pinned Action
-        uses: daiksud/gh-settings@552968e34645aba9ebeee1f3040fb11dbf338043 # v0.20.0
+        uses: daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8 # v0.21.0
         with:
           command: plan
           token: ${{ steps.app.outputs.token }}

@@ -78,6 +78,16 @@ settings:
 		t.Fatal("unescaped report")
 	}
 	// Reports remain a closed presentation protocol, never a raw policy passthrough.
+	writeOnly := strings.Replace(string(data), `"require_code_owner_review":true`, `"require_code_owner_review":true,"dismissal_restriction":{"enabled":true,"allowed_actors":[]}`, 1)
+	if writeOnly == string(data) {
+		t.Fatal("missing injection target")
+	}
+	if err := json.Unmarshal([]byte(writeOnly), &round); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := actions.RenderSummary(round, summaryMetadata()); err == nil {
+		t.Fatal("plan report accepted an unsupported write-only value")
+	}
 	for _, pair := range [][2]string{{`"minimum_approvals":0`, `"minimum_approvals":null`}, {`"strict_required_status_checks_policy":true`, `"Strict_required_status_checks_policy":true`}, {`"required_approving_review_count":0`, `"required_approving_review_count":0,"future":false`}} {
 		invalid := strings.Replace(string(data), pair[0], pair[1], 1)
 		if invalid == string(data) {

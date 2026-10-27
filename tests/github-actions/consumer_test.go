@@ -221,12 +221,13 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
 	// Model pinned caller wiring with candidate package bytes, not released tag bytes.
-	if ref != strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(operationalAction, "daiksud/gh-settings@") {
+	if ref != strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(operationalAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(operationalPlanAction, "daiksud/gh-settings@") {
 		t.Fatalf("unmodeled public Action revision %s", ref)
 	}
 	overrides := map[string]string{
 		"github.action_repository": repository, "github.action_ref": ref,
-		"github.event_name": f.base["GITHUB_EVENT_NAME"], "github.workflow_ref": f.base["GITHUB_WORKFLOW_REF"], "github.workflow_sha": f.base["GITHUB_WORKFLOW_SHA"],
+		"MOCK_PINNED_ACTION_SHA": ref,
+		"github.event_name":      f.base["GITHUB_EVENT_NAME"], "github.workflow_ref": f.base["GITHUB_WORKFLOW_REF"], "github.workflow_sha": f.base["GITHUB_WORKFLOW_SHA"],
 	}
 	for key, value := range extra {
 		overrides[key] = value

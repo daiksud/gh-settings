@@ -22,6 +22,8 @@ When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose
 
 Blank issues remain available for questions or work that does not fit these forms. Use the same information structure when submitting through the web, CLI, or API. Add constraints or references to the relevant answer only when they affect the work.
 
+Dependabot checks Go modules and GitHub Actions weekly using [the dependency update configuration](.github/dependabot.yml). Its Go updates use `build` and its Actions updates use `ci` in their proposed Conventional Commit messages and labels. These PRs require normal review and merge decisions; no workflow enables auto-merge for them automatically. The repository-level auto-merge option remains available.
+
 ### Branch names and change classification
 
 Use topic branches and PRs targeting `main`. Branch names identify work, not its semantic type. A name may contain `feat/` or `fix/`, but no classification depends on that prefix. Correct a mistaken PR title or label directly; do not rename the branch or open a replacement PR just to change its classification.
@@ -64,7 +66,7 @@ Choose the reader and the question first. Use one authoritative page for a detai
 | PR scope, squash-message requirements, compatibility review, and actionable findings | [Code-review policy](.agents/skills/code-review/SKILL.md) |
 | Internal metadata, plan-report, and Summary interfaces | [Actions internals](docs/contributing/actions-internals.md) |
 | This repository's PR controls, settings workflows, Environment, and App bindings | [Repository automation](docs/contributing/repository-automation.md) |
-| Maintainer release preparation, publication, and recovery | [Release guide](docs/contributing/releases.md) |
+| Maintainer automatic version calculation, publication, and recovery | [Release guide](docs/contributing/releases.md) |
 | Why an architectural decision was accepted or superseded | [Architecture decision records](docs/adr/README.md) |
 | Detailed behavior scenarios and their existing Go test mappings | [Behavior specifications](docs/features/README.md) |
 | Proposed work, implementation progress, and release-specific changes | [Issues](https://github.com/daiksud/gh-settings/issues), PRs, and [release notes](https://github.com/daiksud/gh-settings/releases) |
@@ -88,7 +90,7 @@ does not. Keep the selected Action pin and CLI identity as operational facts.
 - Link to the detailed reference from quick starts and examples instead of copying its full explanation.
 - Update user references and affected behavior specifications with a behavior change; do not require users to infer the contract from test code or ADRs.
 - Keep `examples/github-actions/README.md` focused on its adjacent workflow files; the Action guide owns general setup and recovery.
-- Use [Action metadata](action.yml), the [committed CLI version](action/cli-version), and workflow pins as the source for implementation/version facts. Avoid repeating release digests, rollout progress, or the active repository's deployment state across guides.
+- Use [Action metadata](action.yml), the [release tags](https://github.com/daiksud/gh-settings/releases), and workflow pins as the source for implementation/version facts. Avoid repeating release digests, rollout progress, or the active repository's deployment state across guides.
 - Describe external GitHub settings as prerequisites or things to verify unless their current state has been checked; workflow YAML alone cannot establish Environment protection or live token revocation.
 
 ## Documentation checks
@@ -106,4 +108,4 @@ The existing Markdown check validates relative files and heading fragments. When
 
 Merging a PR does not publish a release or authorize one. Without an explicit release request, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers automatic version preparation, tested binary identity, and immutable release recovery.
 
-Version preparation derives the next version from durable squash messages and updates `action/cli-version` through a reviewed PR. Manual publication verifies that prepared version before testing; no version input or automatic release on merge is used. New notes use GitHub generation configured by `.github/release.yml`, with committed breaking-change details preserved. The release guide owns the full policy and retry behavior.
+Release dispatch calculates the version from the frozen main Git history with the shared Python script; no preparation PR or version-file change is needed. Manual publication still requires acceptance checks, and release notes use GitHub generation configured by `.github/release.yml`, preserving committed breaking-change details. The release guide owns retries and full policy.

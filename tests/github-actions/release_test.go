@@ -117,6 +117,10 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 	for _, mismatch := range []string{"", "source", "version", "checksum"} {
 		t.Run("mismatch="+mismatch, func(t *testing.T) {
 			f := newCompositeFixture(t)
+			// Artifact downloads retain the bytes but strip their execute bit.
+			if err := os.Chmod(f.base["MOCK_ASSET"], 0600); err != nil {
+				t.Fatal(err)
+			}
 			directory := filepath.Join(f.packagePath, "tests/github-actions")
 			if err := os.MkdirAll(directory, 0700); err != nil {
 				t.Fatal(err)
@@ -143,12 +147,19 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 			pathFile := filepath.Join(f.base["RUNNER_TEMP"], "candidate-path")
 			f.write(pathFile, "")
 			f.base["GITHUB_PATH"] = pathFile
+			envFile := filepath.Join(f.base["RUNNER_TEMP"], "candidate-env")
+			f.write(envFile, "")
+			f.base["GITHUB_ENV"] = envFile
 			cmd := exec.Command("bash", filepath.Join(directory, "prepare-candidate-download.sh"), f.base["MOCK_ASSET"], digest, source, version)
 			cmd.Dir, cmd.Env = f.caller, fixtureEnvironment(f.base)
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
 			err := cmd.Run()
 			published, readErr := os.ReadFile(pathFile)
+			envPublished, envReadErr := os.ReadFile(envFile)
+			if envReadErr != nil {
+				t.Fatal(envReadErr)
+			}
 			if readErr != nil {
 				t.Fatal(readErr)
 			}
@@ -156,7 +167,7 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 				t.Fatal("candidate preparation invoked a download")
 			}
 			if mismatch != "" {
-				if err == nil || stdout.Len() != 0 || len(published) != 0 || !strings.Contains(stderr.String(), mismatch+" mismatch") {
+				if err == nil || stdout.Len() != 0 || len(published) != 0 || len(envPublished) != 0 || !strings.Contains(stderr.String(), mismatch+" mismatch") {
 					t.Fatalf("mismatched candidate reached PATH publication: err=%v stdout=%q stderr=%q path=%q", err, stdout.String(), stderr.String(), published)
 				}
 				return
@@ -164,9 +175,20 @@ func TestCandidateDownloadFixtureIdentity(t *testing.T) {
 			if err != nil || stderr.Len() != 0 {
 				t.Fatalf("matching candidate rejected: %v\n%s", err, stderr.String())
 			}
+			if string(envPublished) != "SETTINGS_CANDIDATE_VERSION="+version+"\n" {
+				t.Fatalf("candidate version was not selected: %q", envPublished)
+			}
 			fixture := strings.TrimSpace(string(published))
 			if filepath.Dir(fixture) != f.base["RUNNER_TEMP"] || strings.Contains(fixture, "\n") {
 				t.Fatalf("candidate PATH is not one owned directory: %q", fixture)
+			}
+			stagedInfo, err := os.Stat(filepath.Join(fixture, "gh-settings-linux-amd64"))
+			if err != nil || stagedInfo.Mode().Perm() != 0700 {
+				t.Fatalf("verified candidate is not executable: %v", err)
+			}
+			sourceInfo, err := os.Stat(f.base["MOCK_ASSET"])
+			if err != nil || sourceInfo.Mode().Perm() != 0600 {
+				t.Fatalf("input artifact executable permissions changed: %v", err)
 			}
 			asset, err := os.ReadFile(f.base["MOCK_ASSET"])
 			if err != nil {

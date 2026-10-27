@@ -19,11 +19,10 @@ func normalizeRuleObject(rule *RulesetRule) {
 		defaultRuleValue(&p.RequiredApprovingReviewCount, 0)
 		defaultRuleValue(&p.RequiredReviewThreadResolution, false)
 		defaultRuleValue(&p.RequiredReviewers, []RequiredReviewer{})
-		if p.DismissalRestriction == nil {
-			p.DismissalRestriction = &ReviewDismissalRestriction{}
+		if p.DismissalRestriction != nil {
+			defaultRuleValue(&p.DismissalRestriction.Enabled, false)
+			defaultRuleValue(&p.DismissalRestriction.AllowedActors, []ReviewActor{})
 		}
-		defaultRuleValue(&p.DismissalRestriction.Enabled, false)
-		defaultRuleValue(&p.DismissalRestriction.AllowedActors, []ReviewActor{})
 	} else {
 		defaultRuleValue(&p.RequiredStatusChecks, []RequiredStatusCheck{})
 		defaultRuleValue(&p.StrictRequiredStatusChecksPolicy, false)

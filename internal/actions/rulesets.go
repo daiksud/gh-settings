@@ -64,6 +64,11 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 	seenIDs := map[int64]bool{}
 	last := ""
 	for _, e := range entries {
+		for _, policy := range []*settings.RulesetDeclaration{e.Before, e.After} {
+			if policy != nil && policy.HasWriteOnlyDismissal() {
+				return nil, fmt.Errorf("Ruleset plan report does not support write-only dismissal_restriction")
+			}
+		}
 		change, err := settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)
 		if err != nil {
 			return nil, err

@@ -24,7 +24,6 @@ runs:
         [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid acceptance version' >&2; exit 1; }
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid acceptance source' >&2; exit 1; }
         [[ "$(git -C .action rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'acceptance checkout differs from frozen source' >&2; exit 1; }
-        [[ "$(cat .action/action/cli-version)" == "$VERSION" ]] || { echo 'accepted CLI version differs from release' >&2; exit 1; }
     - name: Retrieve the Linux release artifact
       if: inputs.target == 'linux-amd64' || inputs.target == 'candidate-action'
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2

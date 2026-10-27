@@ -1,46 +1,32 @@
 # Maintainer releases
 
-The [manual release workflow](../../.github/workflows/release.yml) builds and validates its own platform binaries. Merging code does not dispatch it, and ordinary main CI artifacts are not substituted for release artifacts. Installation belongs in the [README](../../README.md); current published consumer pins belong in the [Actions guide](../github-actions.md#published-package-and-consumer-pins).
+The [manual release workflow](../../.github/workflows/release.yml) builds and accepts its own platform binaries. Merging code neither calculates a persistent version nor authorizes publication. The [README](../../README.md) owns installation; the [Actions guide](../github-actions.md#published-package-and-consumer-pins) owns consumer pins.
 
-Source changes, version preparation, publication, and consumer adoption are separate operations. The public Action installs the release selected by its committed [`action/cli-version`](../../action/cli-version), not an arbitrary current-source build. Only an explicit release request authorizes publication.
+## Automatic version calculation
 
-## Version preparation
+The same standard-library Python [release-version.py](../../.github/scripts/release-version.py) runs in gh-settings and gh-qw. It calculates the next version directly during manually dispatched release resolution, from the last published stable release through the fixed main SHA. There is **no preparation PR, committed release-version update, version input, or automatic publication on merge**. Branch names and mutable PR labels do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
 
-The [release-metadata helper](../../scripts/release-metadata/main.go) calculates the next version from the complete Git interval between the most recently published stable release and one fixed source SHA. Committed squash messages are the authoritative version signal; branch names and mutable PR labels are not. Reviewers keep PR titles, compatibility footers, and labels consistent before merging.
-
-| Strongest change in the interval | Increment |
+| Committed change | Selected increment |
 | --- | --- |
-| A Conventional header with `!`, or a `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | MINOR during `0.x`; MAJOR from `1.0.0` onward |
+| Header `!` or compatibility footer `BREAKING CHANGE:` / `BREAKING-CHANGE:` | MINOR while v0.x, MAJOR from v1.0.0 |
 | `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
-| Fixes, reverts, maintenance, or legacy messages without a stronger signal | PATCH |
+| Any other substantive commit, including maintenance and reverts | PATCH |
 
-This implements [ADR 0017](../adr/0017-pr-based-semver.md). A pre-1.0 breaking signal never graduates the project automatically to `1.0.0`; that milestone remains an explicit project decision. A revert does not subtract the classification of another included commit. Fenced examples are not compatibility footers. Either breaking marker suffices under [Conventional Commits](../../.agents/skills/code-review/SKILL.md#breaking-changes-follow-conventional-commits).
+The strongest signal wins once; a breaking change never auto-promotes v0.x to v1.0.0. Empty commits are ignored; every tree change counts, including a release-preparation-named commit. If no substantive change remains, calculation fails. The GitHub release list, stable baseline, complete history, and ancestor relationship must validate; drafts, prereleases, unpublished tags, and code-fenced footer examples do not change the result.
 
-A nonbreaking `build(release)` or `chore(release)` commit changing only `action/cli-version` is preparation, not another substantive change. A similarly named commit that changes any other path remains substantive and permits a PATCH. An interval containing nothing else is rejected. A repository with no published stable baseline requires a separately chosen initial release policy; this tool does not invent one.
-
-On a clean topic branch based on current main, with complete history and tags:
-
-```sh
-go run ./scripts/release-metadata/main.go prepare daiksud/gh-settings
-```
-
-The command reads GitHub metadata through the authenticated `gh` CLI and updates only `action/cli-version`. It does not create a branch, PR, commit, tag, draft, or release. Review that one-file preparation in a normal PR, using `build(release): prepare the next version`, and verify main CI after merging it. The operator never needs to calculate or enter a version manually.
-
-Preparation preserves existing tracked changes by refusing a dirty tracked worktree. Missing/malformed release metadata, failed reads, incomplete history, invalid version components, and unresolvable or unrelated predecessor tags stop calculation. If new changes or a new published baseline alter the computed version before dispatch, prepare and review the corrected file rather than overriding validation.
+The resolver is read-only. It also recognizes an exact immutable gh-settings release retry from its signed-off source/tag/embedded identity marker; the publisher independently checks all binary bytes and retains the original notes. A conflicting tag, missing marker, or new source is not an acceptable retry.
 
 ## Start a manual release
 
-After the preparation PR is merged and the owner explicitly requests publication, dispatch from `main`:
+After the relevant change PRs are merged and main CI has passed, **only an explicit user release request** authorizes dispatch from main:
 
 ```sh
 gh workflow run release.yml --repo daiksud/gh-settings --ref main
 ```
 
-Optionally add `-f source_sha=FULL_40_CHARACTER_SHA` to require an already reviewed exact main commit. Resolve reads current main once and fails if it differs from that pin. There is no version input and no push/tag publication trigger.
+Optionally add `-f source_sha=FULL_40_CHARACTER_SHA` to pin the reviewed main commit. Resolution stops if main moved before it starts, if an explicit pin differs, or if the metadata source differs from the checkout. No workflow dispatch from a non-main ref, issue comment, or PR merge publishes a release.
 
-The read-only resolver checks out complete history at the frozen SHA, computes the version, and requires the committed Action version to match before product builds begin. It freezes the previous release's tag and resolved SHA as well. Only numeric `vMAJOR.MINOR.PATCH` versions without leading zeros or prerelease/build suffixes are supported.
-
-Issue and pull-request comments do not authorize or dispatch a release. `release.yml`'s direct `workflow_dispatch` event is the only release entrypoint. After dispatch, follow the release workflow itself through native acceptance, publication, and the published Action smoke test. The resolver rechecks current main and the committed version, and the serialized immutable retry contract still applies to repeated direct dispatches.
+The workflow calculates the version before building, freezes the source SHA and previous published baseline, then requires native tests, candidate Action acceptance, and exact binary identity checks before publication. Source changes after resolution do not enter the release.
 
 ## Release assets and validation
 
@@ -53,7 +39,7 @@ Each release contains those two raw executables, `SHA256SUMS`, and notes with so
 
 | Stage | Required behavior |
 | --- | --- |
-| Resolve | Require the dispatched main commit to remain current, check an optional reviewed source pin, derive the version or recognize an exact retry, verify the committed version, freeze the predecessor, and emit allowlisted build/acceptance matrices from that trusted source |
+| Resolve | Require the dispatched main commit to remain current, check an optional reviewed source pin, derive the version or recognize an exact retry, freeze the predecessor, and emit allowlisted build/acceptance matrices from that trusted source |
 | Commit stage | Run source checks in the Linux lane, build Linux and macOS once on their native runners, and upload each executable with a source/version/asset/SHA-256 manifest |
 | Acceptance stage | Download only this run's manifested products, verify exact inventory and bytes, run both native harnesses, and exercise the candidate root Action against a separate consumer |
 | Release | Redownload and reverify both accepted manifests, generate new notes, create/validate the tag and draft, upload only missing matching assets, recheck identity, and publish |
@@ -85,7 +71,7 @@ Generation must return a nonempty body. API or decoding failures stop before tag
 
 ## Publication and recovery
 
-The [Go publisher](../../scripts/release-publisher/main.go) verifies the committed/requested version, source, expected hashes, repository, and both binary files before any GitHub lookup. It prepares `SHA256SUMS` and the identity marker, checks existing release metadata and lightweight/annotated tags through `gh`, and owns publication, draft recovery, and verified no-ops. The [shell entry point](../../scripts/publish-release.sh) builds only this internal tool; accepted product binaries are never rebuilt.
+The [Go publisher](../../scripts/release-publisher/main.go) verifies the resolved release version, source, expected hashes, repository, and both binary files before any GitHub lookup. It prepares `SHA256SUMS` and the identity marker, checks existing release metadata and lightweight/annotated tags through `gh`, and owns publication, draft recovery, and verified no-ops. The [shell entry point](../../scripts/publish-release.sh) builds only this internal tool; accepted product binaries are never rebuilt.
 
 For a new release, the complete notes are prepared before creating any missing tag or draft. The publisher checks asset names and downloaded bytes, uploads only missing assets, then rechecks assets, draft state, marker, and tag before publishing. A fresh release read must confirm `draft=false`. Final API operations are not transactional: failure can leave an inspectable tag or incomplete draft.
 
@@ -96,13 +82,13 @@ For a new release, the complete notes are prepared before creating any missing t
 | Conflicting tag/manifest, altered or unexpected assets, duplicate names, or missing tag for an existing release | Stop without retagging, replacing assets, or recreating the missing tag |
 | Post-publication smoke failed | Diagnose the same immutable release and rerun verification; do not replace published bytes |
 
-The resolver recognizes a retry only when the committed version, release identity marker, and tag identify the exact frozen source; the publisher still verifies every checksum and asset. It does not recalculate a new version or regenerate stored notes for that release. An unrelated release with the same version is not a retry. Publication consumes only products downloaded from this run's build artifacts and verified against their per-target manifests; it never rebuilds an accepted executable.
+The resolver recognizes a retry only when the calculated version, release identity marker, and tag identify the exact frozen source; the publisher still verifies every checksum and asset. It does not recalculate a new version or regenerate stored notes for that release. An unrelated release with the same version is not a retry. Publication consumes only products downloaded from this run's build artifacts and verified against their per-target manifests; it never rebuilds an accepted executable.
 
 A new workflow run resolves current main again. Existing tags remain immutable, so changed source cannot reuse a conflicting tag. Before tag creation, a fresh run may validate a newly reviewed source. The original SHA remains in run logs; artifacts are retained for one day. Keep incomplete drafts for inspection instead of automatically deleting them.
 
 ## Action version and availability
 
-A versioned Action installs the CLI selected by its committed file. Strict version-tag invocation must match that file; SHA pins select their committed version without a mutable latest lookup. The installer verifies the fixed version's `SHA256SUMS` over HTTPS and checks the installed version. There is no caller version/download-URL override.
+A published Action resolves its CLI from its own version tag. Full-SHA pins resolve an exact matching stable tag using public Git refs; untagged commits fail rather than falling back to latest. The installer verifies the release's `SHA256SUMS` and the executable's reported version. The committed `action/cli-version` file is only the local development candidate default; it does not control a published release. Local candidate/verification Actions use the exact accepted binary version. There is no public version or download-URL input.
 
 PR/main CI builds one candidate and exercises it through process acceptance and an exact-source composite with bounded download/API fixtures. This works before publication; [testing](testing.md#ci-validation) distinguishes local/hosted integration from released-download evidence. Source features are not automatically available through an older published Action pin. Publish an explicitly authorized matching package before separately reviewing consumer adoption and permission changes.
 
@@ -115,4 +101,4 @@ PR/main CI builds one candidate and exercises it through process acceptance and 
 | Immutable identity and complete drafts | [ADR 0013](../adr/0013-immutable-release-identity.md), [ADR 0014](../adr/0014-draft-release-publication.md), [ADR 0018](../adr/0018-preserve-published-assets.md) |
 | Raw executables and reviewed messages | [ADR 0015](../adr/0015-raw-extension-binaries.md), [ADR 0016](../adr/0016-conventional-pr-titles.md), [ADR 0024](../adr/0024-code-review-policy.md) |
 
-The [release specification](../features/release.feature.md) maps behavior to tests. [Metadata tests](../../scripts/release-metadata/main_test.go) use temporary Git repositories and an injected GitHub boundary for version precedence, exact ranges, preparation, retries, generation requests, migration details, and failures. [Release fixtures](../../tests/release.sh) exercise new publication and recovery with a local `gh` stand-in, retaining notes and validating artifact identity. These tests neither publish a release nor prove GitHub's live rendering; only an explicitly authorized release run establishes that operational evidence.
+The [release specification](../features/release.feature.md) maps behavior to tests. Identical [Python version tests](../../.github/scripts/test_release_version.py) use temporary Git repositories for version precedence, exact ranges, metadata failures and retry identity. [Go notes tests](../../scripts/release-metadata/main_test.go) cover generation requests, migration footers and failures. [Release fixtures](../../tests/release.sh) exercise new publication and recovery with a local `gh` stand-in, retaining notes and validating artifact identity. These tests neither publish a release nor prove GitHub's live rendering; only an explicitly authorized release run establishes that operational evidence.

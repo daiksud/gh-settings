@@ -32,8 +32,8 @@ func preflightFixture(t *testing.T) (string, map[string]string) {
 }
 
 func TestPreflightExactIdentityBytes(t *testing.T) {
-	version, env := preflightFixture(t)
-	identity, err := prepareIdentity(version, func(key string) string { return env[key] })
+	_, env := preflightFixture(t)
+	identity, err := prepareIdentity(func(key string) string { return env[key] })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestPreflightExactIdentityBytes(t *testing.T) {
 }
 
 func TestPreflightPreservesSymlinkDirectoryTraversal(t *testing.T) {
-	version, env := preflightFixture(t)
+	_, env := preflightFixture(t)
 	directory := env["RELEASE_DIR"]
 	child := filepath.Join(directory, "child")
 	if err := os.Mkdir(child, 0700); err != nil {
@@ -63,7 +63,7 @@ func TestPreflightPreservesSymlinkDirectoryTraversal(t *testing.T) {
 		t.Fatal(err)
 	}
 	env["RELEASE_DIR"] = link + "/.."
-	identity, err := prepareIdentity(version, func(key string) string { return env[key] })
+	identity, err := prepareIdentity(func(key string) string { return env[key] })
 	if err != nil || identity.Directory != env["RELEASE_DIR"] {
 		t.Fatalf("directory=%q error=%v", identity.Directory, err)
 	}
@@ -77,14 +77,12 @@ func TestPreflightRejectsInvalidInputsBeforeChecksumWrite(t *testing.T) {
 	for _, test := range []struct {
 		name             string
 		env              map[string]string
-		committed        string
 		missingDirectory bool
 		remove, change   []string
 		want             string
 	}{
 		{name: "malformed version", env: map[string]string{"VERSION": "v1.2.3;unsafe"}, want: "version must be vMAJOR.MINOR.PATCH"},
 		{name: "leading zero", env: map[string]string{"VERSION": "v01.2.3"}, want: "version must be vMAJOR.MINOR.PATCH"},
-		{name: "committed version mismatch", committed: "v1.2.4\n", want: "release version differs from committed CLI version"},
 		{name: "invalid source", env: map[string]string{"SOURCE_SHA": "main"}, want: "invalid source commit"},
 		{name: "invalid Linux hash", env: map[string]string{"LINUX_SHA256": "bad"}, want: "invalid expected binary hash"},
 		{name: "invalid macOS hash", env: map[string]string{"MACOS_SHA256": "bad"}, want: "invalid expected binary hash"},
@@ -100,15 +98,10 @@ func TestPreflightRejectsInvalidInputsBeforeChecksumWrite(t *testing.T) {
 		{name: "Linux fails before macOS", remove: []string{"gh-settings-linux-amd64", "gh-settings-darwin-arm64"}, want: "artifact hash mismatch: gh-settings-linux-amd64"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			version, env := preflightFixture(t)
+			_, env := preflightFixture(t)
 			dir := env["RELEASE_DIR"]
 			for key, value := range test.env {
 				env[key] = value
-			}
-			if test.committed != "" {
-				if err := os.WriteFile(version, []byte(test.committed), 0600); err != nil {
-					t.Fatal(err)
-				}
 			}
 			if test.missingDirectory {
 				env["RELEASE_DIR"] = filepath.Join(dir, "absent")
@@ -123,7 +116,7 @@ func TestPreflightRejectsInvalidInputsBeforeChecksumWrite(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			identity, err := prepareIdentity(version, func(key string) string { return env[key] })
+			identity, err := prepareIdentity(func(key string) string { return env[key] })
 			if err == nil || err.Error() != test.want || identity != (releaseIdentity{}) {
 				t.Fatalf("identity=%+v error=%v, want no identity and %q", identity, err, test.want)
 			}

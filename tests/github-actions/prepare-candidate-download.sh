@@ -9,20 +9,26 @@ action_root="$(cd "$script_directory/../.." && pwd -P)"
 [[ "$(git -C "$action_root" rev-parse HEAD)" == "$expected_source" ]] || {
   echo 'candidate source mismatch' >&2; exit 1
 }
-[[ "$(cat "$action_root/action/cli-version")" == "$version" ]] || {
-  echo 'candidate version mismatch' >&2; exit 1
-}
 [[ -f "$binary" ]] || { echo 'candidate binary is missing' >&2; exit 1; }
 [[ "$(sha256sum "$binary" | cut -d ' ' -f 1)" == "$expected_sha" ]] || {
   echo 'candidate binary checksum mismatch' >&2; exit 1
 }
-[[ "${RUNNER_TEMP:-}" == /* && -d "$RUNNER_TEMP" && "${GITHUB_PATH:-}" == /* ]]
+[[ "${RUNNER_TEMP:-}" == /* && -d "$RUNNER_TEMP" && "${GITHUB_PATH:-}" == /* && "${GITHUB_ENV:-}" == /* ]]
 fixture="$(mktemp -d "$RUNNER_TEMP/gh-settings-candidate.XXXXXX")"
+trap 'rm -rf "$fixture"' EXIT
 cp "$binary" "$fixture/gh-settings-linux-amd64"
+# GitHub Actions artifact downloads do not preserve executable permissions.
+# Make only the checksum-verified copy executable, never the transferred input.
+chmod 700 "$fixture/gh-settings-linux-amd64"
+[[ "$("$fixture/gh-settings-linux-amd64" --version)" == "gh-settings $version" ]] || {
+  echo 'candidate version mismatch' >&2; exit 1
+}
 printf '%s  gh-settings-linux-amd64\n' "$expected_sha" > "$fixture/SHA256SUMS"
 printf '%s\n' "$version" > "$fixture/cli-version"
 cp "$script_directory/candidate-curl.sh" "$fixture/curl"
 chmod 700 "$fixture/curl"
 printf '%s\n' "$fixture" >> "$GITHUB_PATH"
+printf 'SETTINGS_CANDIDATE_VERSION=%s\n' "$version" >> "$GITHUB_ENV"
 printf 'Candidate download fixture: source=%s cli-version=%s cli-sha256=%s\n' \
   "$expected_source" "$version" "$expected_sha"
+trap - EXIT
