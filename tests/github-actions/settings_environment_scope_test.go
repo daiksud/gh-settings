@@ -56,8 +56,6 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	prFound := 0
 	guardChecks := 0
 	planChecks := 0
-	planEnvironments := 0
-	planObserverPresent := false
 	_, planPresent := workflows[settingsPlanWorkflowPath]
 	for path, content := range workflows {
 		decoder := yaml.NewDecoder(bytes.NewReader(content))
@@ -85,12 +83,8 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if err := checkSettingsPlanTrigger(workflow["on"]); err != nil {
 				return fmt.Errorf("%s: on: %w", path, err)
 			}
-			events, _ := settingsYAMLMap(workflow["on"])
-			_, planObserverPresent = events["workflow_dispatch"]
-			if !planObserverPresent {
-				if err := checkUnprivilegedSettingsPlan(workflow); err != nil {
-					return fmt.Errorf("%s: %w", path, err)
-				}
+			if err := checkUnprivilegedSettingsPlan(workflow); err != nil {
+				return fmt.Errorf("%s: %w", path, err)
 			}
 		}
 		jobsNode, ok := workflow["jobs"]
@@ -143,15 +137,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				return fmt.Errorf("%s: jobs.%s.environment: %w", path, jobName, err)
 			}
 			if strings.EqualFold(strings.TrimSpace(name), settingsPlanEnvironment) {
-				if path != settingsPlanWorkflowPath || jobName != "plan" || name != settingsPlanEnvironment {
-					return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only in %s jobs.plan", path, jobName, name, settingsPlanWorkflowPath)
-				}
-				condition := job["if"]
-				if condition == nil || condition.Kind != yaml.ScalarNode || condition.Value != "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && vars.GH_SETTINGS_PLAN_ENABLED == 'true'" {
-					return fmt.Errorf("%s: jobs.plan: missing required main-only activation gate", path)
-				}
-				planEnvironments++
-				continue
+				return fmt.Errorf("%s: jobs.%s.environment: retired observer Environment %q is forbidden", path, jobName, name)
 			}
 			if !strings.EqualFold(strings.TrimSpace(name), settingsEnvironment) {
 				continue
@@ -182,18 +168,13 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	if guardChecks != 1 {
 		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
 	}
-	expectedPlanEnvironments := 0
-	if planObserverPresent {
-		expectedPlanEnvironments = 1
-	}
-	if planPresent && (planChecks != 1 || planEnvironments != expectedPlanEnvironments) {
-		return fmt.Errorf("expected one validation check and %d observer Environments in %s; found jobs=%d environments=%d", expectedPlanEnvironments, settingsPlanWorkflowPath, planChecks, planEnvironments)
+	if planPresent && planChecks != 1 {
+		return fmt.Errorf("expected one validation check in %s; found %d", settingsPlanWorkflowPath, planChecks)
 	}
 	return nil
 }
 
-// Deploy this retirement path before removing the manually gated observer:
-// trusted-main policy must accept the credential-free PR-only replacement.
+// The settings-plan workflow validates candidate code without an Environment.
 func checkUnprivilegedSettingsPlan(workflow map[string]*yaml.Node) error {
 	permissions, err := settingsYAMLMap(workflow["permissions"])
 	if err != nil || len(permissions) != 0 {
@@ -263,39 +244,15 @@ func checkSettingsPRTrigger(node *yaml.Node) error {
 // exposes a credential-free merge-candidate validation job for required PR checks.
 func checkSettingsPlanTrigger(node *yaml.Node) error {
 	if node == nil {
-		return fmt.Errorf("expected workflow_dispatch and optional pull_request")
+		return fmt.Errorf("expected pull_request only")
 	}
 	events, err := settingsYAMLMap(node)
 	if err != nil {
 		return err
 	}
-	if pr, ok := events["pull_request"]; ok && len(events) == 1 {
-		return checkSettingsPlanPREvent(pr)
-	}
-	dispatch, ok := events["workflow_dispatch"]
-	if !ok || len(events) > 2 {
-		return fmt.Errorf("expected workflow_dispatch and optional pull_request only")
-	}
-	fields, err := settingsYAMLMap(dispatch)
-	if err != nil {
-		return err
-	}
-	if len(fields) != 1 || fields["inputs"] == nil {
-		return fmt.Errorf("expected pinned PR and head inputs")
-	}
-	inputs, err := settingsYAMLMap(fields["inputs"])
-	if err != nil {
-		return err
-	}
-	if len(inputs) != 2 || inputs["pr_number"] == nil || inputs["head_sha"] == nil {
-		return fmt.Errorf("expected only PR number and expected head SHA")
-	}
-	if len(events) == 1 {
-		return nil
-	}
 	pr, ok := events["pull_request"]
-	if !ok {
-		return fmt.Errorf("only pull_request may accompany workflow_dispatch")
+	if !ok || len(events) != 1 {
+		return fmt.Errorf("expected pull_request only")
 	}
 	return checkSettingsPlanPREvent(pr)
 }
