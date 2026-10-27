@@ -440,7 +440,7 @@ func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string][]byte{
 				settingsWorkflowPath:      []byte(test.trigger + "\njobs:\n  apply:\n    environment: gh-settings\n"),
-				settingsGuardWorkflowPath: []byte("jobs:\n  gh-settings:\n    name: gh-settings\n"),
+				settingsGuardWorkflowPath: []byte("jobs:\n  settings-env:\n    name: settings-env\n"),
 			}
 			err := checkSettingsEnvironmentScope(files)
 			if (err == nil) != test.valid {
