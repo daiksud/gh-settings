@@ -16,15 +16,15 @@ const (
 	settingsWorkflowPath      = ".github/workflows/settings-main.yml"
 	settingsPRWorkflowPath    = ".github/workflows/settings-pr.yml"
 	settingsEnvironment       = "gh-settings"
-	settingsGuardWorkflowPath = ".github/workflows/settings-environment-guard.yml"
-	settingsGuardCheckName    = "gh-settings"
+	settingsGuardWorkflowPath = ".github/workflows/settings-env.yml"
+	settingsGuardCheckName    = "settings-env"
 	settingsPlanWorkflowPath  = ".github/workflows/settings-plan.yml"
 	settingsPlanEnvironment   = "gh-settings-plan"
 	settingsPlanCheckName     = "settings-plan"
 	settingsPRCondition       = "github.event_name == 'pull_request_target' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && github.event.pull_request.base.ref == 'main'"
 )
 
-// The existing required CI pass check runs this test with the rest of the Go suite.
+// The ci-pr aggregate check runs this test with the rest of the Go suite.
 // The dedicated PR workflow runs it separately to give reviewers a focused result.
 func TestSettingsEnvironmentScope(t *testing.T) {
 	dir := os.Getenv("GH_SETTINGS_WORKFLOWS_DIR")
@@ -110,7 +110,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				checkName = node.Value
 			}
 			if jobName == settingsPlanCheckName || checkName == settingsPlanCheckName {
-				if path != settingsPlanWorkflowPath || jobName != "plan" || checkName != settingsPlanCheckName {
+				if path != settingsPlanWorkflowPath || jobName != settingsPlanCheckName || checkName != settingsPlanCheckName {
 					return fmt.Errorf("%s: jobs.%s: check name %q is reserved", path, jobName, settingsPlanCheckName)
 				}
 				planChecks++
@@ -222,18 +222,19 @@ func checkSettingsPRTrigger(node *yaml.Node) error {
 	return nil
 }
 
-// A protected observer is never triggered by a PR, a push or a tag.
+// The protected manual plan remains dispatch-only; the same workflow also
+// exposes a credential-free merge-candidate validation job for required PR checks.
 func checkSettingsPlanTrigger(node *yaml.Node) error {
 	if node == nil {
-		return fmt.Errorf("expected workflow_dispatch only")
+		return fmt.Errorf("expected workflow_dispatch and optional pull_request")
 	}
 	events, err := settingsYAMLMap(node)
 	if err != nil {
 		return err
 	}
 	dispatch, ok := events["workflow_dispatch"]
-	if !ok || len(events) != 1 {
-		return fmt.Errorf("expected workflow_dispatch only")
+	if !ok || len(events) > 2 {
+		return fmt.Errorf("expected workflow_dispatch and optional pull_request only")
 	}
 	fields, err := settingsYAMLMap(dispatch)
 	if err != nil {
@@ -248,6 +249,40 @@ func checkSettingsPlanTrigger(node *yaml.Node) error {
 	}
 	if len(inputs) != 2 || inputs["pr_number"] == nil || inputs["head_sha"] == nil {
 		return fmt.Errorf("expected only PR number and expected head SHA")
+	}
+	if len(events) == 1 {
+		return nil
+	}
+	pr, ok := events["pull_request"]
+	if !ok {
+		return fmt.Errorf("only pull_request may accompany workflow_dispatch")
+	}
+	filters, err := settingsYAMLMap(pr)
+	if err != nil {
+		return err
+	}
+	if len(filters) != 2 || filters["branches"] == nil || filters["types"] == nil {
+		return fmt.Errorf("required PR check must target main with explicit activities")
+	}
+	branches, types := filters["branches"], filters["types"]
+	if branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 ||
+		branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
+		return fmt.Errorf("required PR check must target only main")
+	}
+	if types.Kind != yaml.SequenceNode || len(types.Content) != 4 {
+		return fmt.Errorf("required PR check must handle opened, synchronize, reopened and edited")
+	}
+	seen := make(map[string]bool)
+	for _, value := range types.Content {
+		if value.Kind != yaml.ScalarNode || seen[value.Value] {
+			return fmt.Errorf("duplicate or invalid PR event")
+		}
+		switch value.Value {
+		case "opened", "synchronize", "reopened", "edited":
+			seen[value.Value] = true
+		default:
+			return fmt.Errorf("unsupported PR event %q", value.Value)
+		}
 	}
 	return nil
 }
@@ -336,7 +371,7 @@ func settingsEnvironmentName(node *yaml.Node) (string, error) {
 
 func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 	const allowed = "jobs:\n  apply:\n    environment: gh-settings\n"
-	const guard = "jobs:\n  gh-settings:\n    name: gh-settings\n"
+	const guard = "jobs:\n  settings-env:\n    name: settings-env\n"
 	const other = "jobs:\n  check:\n    environment: preview\n"
 	for _, test := range []struct {
 		name, main, extra string
@@ -353,8 +388,8 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 		{"unauthorized name mapping", allowed, "jobs:\n  check:\n    environment: {name: gh-settings}\n", false},
 		{"unauthorized job in allowed workflow", allowed + "  other:\n    environment: gh-settings\n", "", false},
 		{"reusable workflow job", allowed, "jobs:\n  delegate:\n    uses: example/repo/.github/workflows/deploy.yml@main\n", false},
-		{"duplicate guard job id", allowed, "jobs:\n  gh-settings:\n    runs-on: ubuntu-24.04\n", false},
-		{"duplicate guard display name", allowed, "jobs:\n  unrelated:\n    name: gh-settings\n", false},
+		{"duplicate guard job id", allowed, "jobs:\n  settings-env:\n    runs-on: ubuntu-24.04\n", false},
+		{"duplicate guard display name", allowed, "jobs:\n  unrelated:\n    name: settings-env\n", false},
 		{"dynamic job display name", allowed, "jobs:\n  unrelated:\n    name: ${{ vars.CHECK_NAME }}\n", false},
 		{"dynamic scalar", allowed, "jobs:\n  check:\n    environment: ${{ vars.DEPLOY_ENV }}\n", false},
 		{"dynamic name mapping", allowed, "jobs:\n  check:\n    environment: {name: \"${{ 'gh-settings' }}\"}\n", false},
@@ -405,7 +440,7 @@ func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string][]byte{
 				settingsWorkflowPath:      []byte(test.trigger + "\njobs:\n  apply:\n    environment: gh-settings\n"),
-				settingsGuardWorkflowPath: []byte("jobs:\n  gh-settings:\n    name: gh-settings\n"),
+				settingsGuardWorkflowPath: []byte("jobs:\n  settings-env:\n    name: settings-env\n"),
 			}
 			err := checkSettingsEnvironmentScope(files)
 			if (err == nil) != test.valid {

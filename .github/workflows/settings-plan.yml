@@ -1,5 +1,8 @@
-name: Settings protected plan
+name: settings-plan
 on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches: [main]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -12,10 +15,30 @@ on:
         type: string
 permissions: {}
 concurrency:
-  group: settings-plan-${{ github.repository }}
+  group: settings-plan-${{ github.repository }}-${{ github.event_name }}-${{ github.event.pull_request.number || 'manual' }}
   cancel-in-progress: false
 jobs:
+  settings-plan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions: {contents: read}
+    steps:
+      - name: Checkout PR merge without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install Go
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          version: 2026.10.8
+          install_args: go
+          cache: false
+      - name: Validate candidate settings without remote credentials
+        run: go run . validate
   activation-gate:
+    if: github.event_name == 'workflow_dispatch'
     name: settings-plan-activation
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -33,7 +56,7 @@ jobs:
           fi
   plan:
     needs: activation-gate
-    name: settings-plan
+    name: settings-protected-plan
     # Activation is a separate, approved operation. No active repo variable = no job.
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && vars.GH_SETTINGS_PLAN_ENABLED == 'true'
     environment: gh-settings-plan
