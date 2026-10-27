@@ -1,26 +1,24 @@
 # Change labels
 
-[Repository settings](../../.github/settings.yml) owns label names, colors, and descriptions. Use the conventional types `feat`, `fix`, `perf`, `revert`, `docs`, `refactor`, `style`, `test`, `build`, `ci`, and `chore` for change classification. `BREAKING CHANGE` and `DEPRECATED` record compatibility information alongside the applicable type. Independent triage labels, including `accessibility`, `duplicate`, `good first issue`, `help wanted`, `invalid`, `question`, and `wontfix`, remain available.
+[Repository settings](../../.github/settings.yml) owns the 20 label names, descriptions, and colors shared with gh-qw: eleven Conventional Commit types, two compatibility labels (`BREAKING CHANGE` and `DEPRECATED`), and seven independent issue-triage labels.
 
-Authors and reviewers classify the actual change, not its branch name, file extension, or associated Issue's initial label. A new public Action capability can be `feat` even when implemented in YAML or shell; an internal CI feature is `ci`. Follow the [review policy](../../.agents/skills/code-review/SKILL.md) and retain its single-purpose PR and breaking-change requirements.
+Give each focused PR one Conventional Commit type. Use `feat`, `fix`, and `perf` only for user-observable changes to the CLI or public Action, not development infrastructure. Compatibility labels may accompany a type. The initial Issue label, branch name, title alone, or file extension is not proof of a change type. Reviewers compare labels against the final diff under the [review policy](../../.agents/skills/code-review/SKILL.md).
 
-Issue forms use `fix` for bug reports and `feat` for feature requests as initial triage classifications. They do not prescribe the eventual PR type: a reported problem might be resolved by documentation or tests instead of a product fix.
+Issue forms suggest `fix` for bug reports and `feat` for feature requests. Tasks and blank Issues have no default classification; an implementing PR may use another type. The seven manually managed triage labels are `accessibility`, `duplicate`, `good first issue`, `help wanted`, `invalid`, `question`, and `wontfix`.
 
-Version selection uses durable squash messages; reviewed labels classify native generated release notes. See [releases](releases.md).
+Version selection uses durable squash messages, not labels. Reviewed PR labels classify generated release notes: breaking, deprecated, feature/performance, fix, and maintenance. See [releases](releases.md).
 
 ## Automatic path suggestions
 
-The [labeler configuration](../../.github/labeler.yml) defines four conservative categories. Every changed file must match the same category before its label is suggested. A product change with incidental documentation or tests does not become documentation-only or test-only. Mixed categories and semantic types are classified in review.
+The [Labeler configuration](../../.github/labeler.yml) has four deliberately conservative categories. A label is suggested only when **every changed file** matches the same category. Product changes including incidental tests or documentation are not automatically labeled as test-only or docs-only.
 
 | Label | Automatic scope |
 | --- | --- |
-| `docs` | Root contributor/user documents, `docs/`, and the review skill |
-| `test` | Test fixtures under `tests/` and Go test files |
-| `build` | Go module files and the pinned development tool manifest |
-| `ci` | Internal workflows, internal Actions, repository scripts, and labeler configuration |
+| `docs` | Root README/contributing/agent docs, `docs/**`, skill instructions, PR template |
+| `test` | `tests/**` and `**/*_test.go` |
+| `build` | `go.mod`, `go.sum`, and `mise.toml` |
+| `ci` | CI/PRLint/Labeler workflows, CI-specific local Actions/scripts, Labeler rules |
 
-The public `action.yml` and `action/` implementation are intentionally excluded from internal CI classification. Copyable consumer examples also remain manually classified. Branch names and titles are never labeling inputs; product features, fixes, performance, refactors, reverts, and compatibility impact require author/reviewer judgment.
+Release workflows and tooling, repository-settings workflows, public Action source, and consumer examples are classified manually; their paths do not determine user impact or whether the work is `build` versus `ci`. Dependabot suggests `build` for Go modules and `ci` for GitHub Actions updates, without automatic merging.
 
-The [labeler workflow](../../.github/workflows/labeler.yml) runs on PR-target events without checking out or executing PR code. It reads the base configuration through the API and has only Contents read and Pull requests write. The declared labels must exist before activation; it does not receive Issues write to create missing labels.
-
-`sync-labels: false` makes suggestions add-only, so the labeler does not remove manually assigned semantic labels. Reviewers remove outdated suggestions when the diff changes. A matching path label may be re-added by a later run; a manual removal is not a persistent override. Initial configuration and later changes take effect from the base repository, not from the candidate branch.
+The [Labeler workflow](../../.github/workflows/labeler.yml) uses base-branch rules over the GitHub API under `pull_request_target` without executing PR code. Permissions are Contents read and Pull requests write. `dot: true` includes hidden files; `sync-labels: false` preserves manually assigned labels. Reviewers remove stale suggestions when the PR changes; a later matching run can re-add them. All label names must exist before Labeler can apply them.
