@@ -33,7 +33,7 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, signed and linear history, and strict required checks. The declaration retains the existing `pass`, `gh-settings`, and `pr-message` contexts while their separate check-name migration is pending. Repository merge configuration allows squash only. No bypass actors are configured, including administrators. Every change must satisfy the ordinary approval, CI, signature, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). This declaration is applied by the trusted main workflow only after merge; verify the actual live Ruleset and Actions permission after application rather than assuming that this file is already enforced.
+The default-branch Ruleset must be changed separately to require `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions instead of the old `pass`, `pr-message` and `gh-settings` names. It retains its independent approval, CODEOWNER, and thread-resolution settings. The existing administrator-role bypass is available for the owner's bounded [review-quota fallback](../../AGENTS.md#code-review); that exception does not waive required verification. Recheck the live Ruleset and bypass actors when assessing enforcement: these are GitHub settings, not properties created by workflow files.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
