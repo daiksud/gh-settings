@@ -57,6 +57,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	guardChecks := 0
 	planChecks := 0
 	planEnvironments := 0
+	planObserverPresent := false
 	_, planPresent := workflows[settingsPlanWorkflowPath]
 	for path, content := range workflows {
 		decoder := yaml.NewDecoder(bytes.NewReader(content))
@@ -83,6 +84,13 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 		if path == settingsPlanWorkflowPath {
 			if err := checkSettingsPlanTrigger(workflow["on"]); err != nil {
 				return fmt.Errorf("%s: on: %w", path, err)
+			}
+			events, _ := settingsYAMLMap(workflow["on"])
+			_, planObserverPresent = events["workflow_dispatch"]
+			if !planObserverPresent {
+				if err := checkUnprivilegedSettingsPlan(workflow); err != nil {
+					return fmt.Errorf("%s: %w", path, err)
+				}
 			}
 		}
 		jobsNode, ok := workflow["jobs"]
@@ -174,8 +182,37 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	if guardChecks != 1 {
 		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
 	}
-	if planPresent && (planChecks != 1 || planEnvironments != 1) {
-		return fmt.Errorf("expected one protected plan and status in %s; found jobs=%d environments=%d", settingsPlanWorkflowPath, planChecks, planEnvironments)
+	expectedPlanEnvironments := 0
+	if planObserverPresent {
+		expectedPlanEnvironments = 1
+	}
+	if planPresent && (planChecks != 1 || planEnvironments != expectedPlanEnvironments) {
+		return fmt.Errorf("expected one validation check and %d observer Environments in %s; found jobs=%d environments=%d", expectedPlanEnvironments, settingsPlanWorkflowPath, planChecks, planEnvironments)
+	}
+	return nil
+}
+
+// Deploy this retirement path before removing the manually gated observer:
+// trusted-main policy must accept the credential-free PR-only replacement.
+func checkUnprivilegedSettingsPlan(workflow map[string]*yaml.Node) error {
+	permissions, err := settingsYAMLMap(workflow["permissions"])
+	if err != nil || len(permissions) != 0 {
+		return fmt.Errorf("PR-only settings validation must have no default token grants")
+	}
+	jobs, err := settingsYAMLMap(workflow["jobs"])
+	if err != nil || len(jobs) != 1 || jobs[settingsPlanCheckName] == nil {
+		return fmt.Errorf("PR-only settings validation requires exactly the settings-plan job")
+	}
+	job, err := settingsYAMLMap(jobs[settingsPlanCheckName])
+	if err != nil {
+		return err
+	}
+	if job["environment"] != nil || job["uses"] != nil || job["if"] == nil || job["if"].Kind != yaml.ScalarNode || job["if"].Value != "github.event_name == 'pull_request'" {
+		return fmt.Errorf("PR-only settings validation cannot select an Environment or delegate execution")
+	}
+	grants, err := settingsYAMLMap(job["permissions"])
+	if err != nil || len(grants) != 1 || grants["contents"] == nil || grants["contents"].Kind != yaml.ScalarNode || grants["contents"].Value != "read" {
+		return fmt.Errorf("PR-only settings validation requires only Contents read")
 	}
 	return nil
 }
@@ -232,6 +269,9 @@ func checkSettingsPlanTrigger(node *yaml.Node) error {
 	if err != nil {
 		return err
 	}
+	if pr, ok := events["pull_request"]; ok && len(events) == 1 {
+		return checkSettingsPlanPREvent(pr)
+	}
 	dispatch, ok := events["workflow_dispatch"]
 	if !ok || len(events) > 2 {
 		return fmt.Errorf("expected workflow_dispatch and optional pull_request only")
@@ -257,6 +297,10 @@ func checkSettingsPlanTrigger(node *yaml.Node) error {
 	if !ok {
 		return fmt.Errorf("only pull_request may accompany workflow_dispatch")
 	}
+	return checkSettingsPlanPREvent(pr)
+}
+
+func checkSettingsPlanPREvent(pr *yaml.Node) error {
 	filters, err := settingsYAMLMap(pr)
 	if err != nil {
 		return err
