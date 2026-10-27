@@ -12,11 +12,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const codeEventCondition = "github.event.action != 'edited' || github.event.changes.base != null"
-
-func readCodeGate(t *testing.T) map[string]yaml.Node {
-	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
+func TestPRWorkflowNamedAggregateCheck(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,133 +24,106 @@ func readCodeGate(t *testing.T) map[string]yaml.Node {
 			Cancel bool   `yaml:"cancel-in-progress"`
 		} `yaml:"concurrency"`
 	}
-	if err := yaml.Unmarshal(data, &w); err != nil {
+	if err := yaml.Unmarshal(source, &w); err != nil {
 		t.Fatal(err)
 	}
-	if w.Concurrency.Group != "ci-pr-${{ github.event.pull_request.number }}-${{ github.event.action == 'edited' && github.event.changes.base == null && 'metadata' || 'code' }}" || !w.Concurrency.Cancel {
-		t.Fatal("metadata edits must not cancel the code validation group")
+	if w.Concurrency.Group != "ci-pr-${{ github.event.pull_request.number }}" || !w.Concurrency.Cancel {
+		t.Fatal("every PR event must validate one current candidate")
 	}
-	return w.Jobs
-}
-
-func TestCodeGatePreservesResultsAcrossMetadataEdits(t *testing.T) {
-	jobs := readCodeGate(t)
-	if _, exists := jobs["pass"]; exists {
-		t.Fatal("a skipped native pass job could replace a failed required code result")
+	for _, old := range []string{"pass", "code-start", "code-result"} {
+		if _, exists := w.Jobs[old]; exists {
+			t.Fatalf("legacy job remains: %s", old)
+		}
 	}
-	if _, exists := jobs["commitlint"]; exists {
-		t.Fatal("message validation belongs to the independent required workflow")
+	if strings.Contains(string(source), "/statuses/") || strings.Contains(string(source), "context=pass") {
+		t.Fatal("required checks must be native jobs, not manually published statuses")
 	}
-	var start, draft job
-	startNode, draftNode := jobs["code-start"], jobs["draft"]
-	if err := startNode.Decode(&start); err != nil {
-		t.Fatal(err)
+	var draft struct {
+		Needs string `yaml:"needs"`
+		If    string `yaml:"if"`
 	}
+	draftNode := w.Jobs["draft"]
 	if err := draftNode.Decode(&draft); err != nil {
 		t.Fatal(err)
 	}
-	if start.If != codeEventCondition || draft.Needs != "code-start" || len(start.Steps) != 1 || !reflect.DeepEqual(start.Permissions, map[string]string{"statuses": "write"}) {
-		t.Fatal("code-event guard must precede status publication and Draft/Ready transitions")
+	if draft.Needs != "" || draft.If != "" {
+		t.Fatal("Draft must start every PR run")
 	}
-	if start.Steps[0].Uses != "" || !strings.Contains(start.Steps[0].Run, "-f state=pending -f context=pass") {
-		t.Fatal("start must publish pending without checking out candidate code")
-	}
-	if start.Steps[0].Env["CANDIDATE_SHA"] != "${{ github.sha }}" || start.Steps[0].Env["HEAD_SHA"] != "" ||
-		!strings.Contains(start.Steps[0].Run, "/statuses/$CANDIDATE_SHA") {
-		t.Fatal("start must publish pending on the tested merge candidate")
-	}
-	var result struct {
+	var check struct {
 		Needs       []string          `yaml:"needs"`
 		If          string            `yaml:"if"`
 		Permissions map[string]string `yaml:"permissions"`
 		Steps       []step            `yaml:"steps"`
 	}
-	node := jobs["code-result"]
-	if err := node.Decode(&result); err != nil {
+	checkNode := w.Jobs["ci-pr"]
+	if err := checkNode.Decode(&check); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(result.Needs, []string{"code-start", "draft", "resolve", "commit-stage", "ready", "acceptance-stage"}) || result.If != "always() && !cancelled() && ("+codeEventCondition+")" || !reflect.DeepEqual(result.Permissions, map[string]string{"statuses": "write"}) || len(result.Steps) != 1 {
-		t.Fatal("code result must aggregate every prerequisite only for non-cancelled code/base events")
+	if !reflect.DeepEqual(check.Needs, []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}) ||
+		check.If != "always()" || len(check.Permissions) != 0 || len(check.Steps) != 1 {
+		t.Fatal("ci-pr must evaluate all stages even on cancellation, with no write permissions")
 	}
-	if result.Steps[0].Uses != "" || result.Steps[0].Continue || result.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" || result.Steps[0].Env["WAS_CANCELLED"] != "" {
-		t.Fatal("API-only reporter must consume actual prerequisite results and a supported cancellation context")
-	}
-	if result.Steps[0].Env["CANDIDATE_SHA"] != "${{ github.sha }}" || result.Steps[0].Env["HEAD_SHA"] != "" ||
-		!strings.Contains(result.Steps[0].Run, "/statuses/$CANDIDATE_SHA") {
-		t.Fatal("code result must publish on the tested merge candidate")
+	if check.Steps[0].Uses != "" || check.Steps[0].Continue ||
+		check.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" ||
+		!strings.Contains(check.Steps[0].Run, `length == 5 and all(.[]; .result == "success")`) {
+		t.Fatal("ci-pr must fail when any prerequisite does not succeed")
 	}
 }
 
-func TestCodeResultPublication(t *testing.T) {
-	jobs := readCodeGate(t)
-	var result struct{ Steps []step }
-	resultNode := jobs["code-result"]
-	if err := resultNode.Decode(&result); err != nil {
+func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
+	if err != nil {
 		t.Fatal(err)
 	}
-	head := strings.Repeat("a", 40)
+	var w struct {
+		Jobs map[string]yaml.Node `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal(source, &w); err != nil {
+		t.Fatal(err)
+	}
+	var check struct {
+		If    string `yaml:"if"`
+		Steps []step `yaml:"steps"`
+	}
+	checkNode := w.Jobs["ci-pr"]
+	if err := checkNode.Decode(&check); err != nil {
+		t.Fatal(err)
+	}
+	if check.If != "always()" {
+		t.Fatal("cancellation must not skip the required native aggregate")
+	}
+	names := []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}
 	for _, tc := range []struct {
-		name        string
-		failedJob   string
-		outcome     string
-		failAPI     bool
-		wantState   string
-		wantSuccess bool
+		name, failed, outcome string
+		wantOK                bool
 	}{
-		{name: "all prerequisites pass", wantState: "success", wantSuccess: true},
-		{name: "commit fails", failedJob: "commit-stage", outcome: "failure", wantState: "failure"},
-		{name: "acceptance fails", failedJob: "acceptance-stage", outcome: "failure", wantState: "failure"},
-		{name: "ready skipped", failedJob: "ready", outcome: "skipped", wantState: "failure"},
-		{name: "resolve cancelled", failedJob: "resolve", outcome: "cancelled", wantState: "failure"},
-		{name: "status API fails", failAPI: true, wantState: "success"},
+		{"all-success", "", "", true},
+		{"failed-commit", "commit-stage", "failure", false},
+		{"skipped-ready", "ready", "skipped", false},
+		{"cancelled-draft", "draft", "cancelled", false},
+		{"cancelled-resolve", "resolve", "cancelled", false},
+		{"cancelled-commit", "commit-stage", "cancelled", false},
+		{"cancelled-ready", "ready", "cancelled", false},
+		{"cancelled-acceptance", "acceptance-stage", "cancelled", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			log := filepath.Join(dir, "calls")
-			stub := strings.Join([]string{
-				"#!/usr/bin/env bash",
-				"set -euo pipefail",
-				"case \"$*\" in *repos/example/gh-settings/statuses/*) ;; *) exit 44;; esac",
-				"printf '%s\\n' \"$@\" >> \"$CALL_LOG\"",
-				"[[ \"$FAIL_API\" != true ]] || exit 42",
-			}, "\n")
-			if err := os.WriteFile(filepath.Join(dir, "gh"), []byte(stub), 0700); err != nil {
-				t.Fatal(err)
+			results := make(map[string]map[string]string)
+			for _, name := range names {
+				results[name] = map[string]string{"result": "success"}
 			}
-			outcomes := map[string]map[string]string{}
-			for _, name := range []string{"code-start", "draft", "resolve", "commit-stage", "ready", "acceptance-stage"} {
-				outcomes[name] = map[string]string{"result": "success"}
+			if tc.failed != "" {
+				results[tc.failed]["result"] = tc.outcome
 			}
-			if tc.failedJob != "" {
-				outcomes[tc.failedJob]["result"] = tc.outcome
-			}
-			encoded, err := json.Marshal(outcomes)
+			value, err := json.Marshal(results)
 			if err != nil {
 				t.Fatal(err)
 			}
-			apiFailure := "false"
-			if tc.failAPI {
-				apiFailure = "true"
-			}
-			cmd := exec.Command("bash", "-euo", "pipefail", "-c", result.Steps[0].Run)
-			cmd.Env = append(os.Environ(),
-				"PATH="+dir+string(os.PathListSeparator)+os.Getenv("PATH"),
-				"GH_TOKEN=fixture", "GITHUB_REPOSITORY=example/gh-settings",
-				"GITHUB_SERVER_URL=https://github.com", "GITHUB_RUN_ID=123",
-				"CANDIDATE_SHA="+head, "RESULTS="+string(encoded),
-				"FAIL_API="+apiFailure, "CALL_LOG="+log)
-			output, runErr := cmd.CombinedOutput()
-			if (runErr == nil) != tc.wantSuccess {
-				t.Fatalf("success=%v, want %v: %s", runErr == nil, tc.wantSuccess, output)
-			}
-			calls, readErr := os.ReadFile(log)
-			if readErr != nil {
-				t.Fatal(readErr)
-			}
-			if !strings.Contains(string(calls), "state="+tc.wantState+"\n") ||
-				!strings.Contains(string(calls), "context=pass\n") ||
-				!strings.Contains(string(calls), "/statuses/"+head+"\n") {
-				t.Fatalf("unexpected required status request: %s", calls)
+			cmd := exec.Command("bash", "-euo", "pipefail", "-c", check.Steps[0].Run)
+			isolated := t.TempDir()
+			cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + isolated, "XDG_CONFIG_HOME=" + isolated, "GH_CONFIG_DIR=" + isolated, "RESULTS=" + string(value)}
+			output, err := cmd.CombinedOutput()
+			if (err == nil) != tc.wantOK {
+				t.Fatalf("success=%t, want=%t: %s", err == nil, tc.wantOK, output)
 			}
 		})
 	}

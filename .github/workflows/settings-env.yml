@@ -1,4 +1,4 @@
-name: settings-environment-guard
+name: settings-env
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, edited]
@@ -6,11 +6,11 @@ on:
     branches: [main]
 permissions: {}
 concurrency:
-  group: settings-environment-guard-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
+  group: settings-env-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 jobs:
-  gh-settings:
-    name: gh-settings
+  settings-env:
+    name: settings-env
     runs-on: ubuntu-slim
     timeout-minutes: 5
     permissions:
