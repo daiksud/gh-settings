@@ -11,8 +11,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const operationalAction = "daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8"
-const operationalPlanAction = "daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8"
+const operationalAction = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
+const operationalPlanAction = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
 
 func TestManagedRepositoryMergePreferences(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))

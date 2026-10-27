@@ -1,6 +1,6 @@
 # Feature: Named Environment policies
 
-Status: current source implements named policies (#352), custom deployment branch/tag patterns (#353), and typed administrator-bypass management. Administrator-bypass support is not included in v0.22.0. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
+Status: implements named policies (#352), custom deployment branch/tag patterns (#353), and typed administrator-bypass management. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
 
 ## Ownership and API-controlled omissions
 
