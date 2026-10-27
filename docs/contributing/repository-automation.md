@@ -15,8 +15,8 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
 | [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Dedicated manual main-only declared-settings observer; inactive until separately approved Environment/credential activation |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
-| [`settings-environment-guard.yml`](../../.github/workflows/settings-environment-guard.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `gh-settings` |
-| [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or successful PR CI completion; conditionally create a bot approval |
+| [`settings-env.yml`](../../.github/workflows/settings-env.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-env` |
+| [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Qualifying Codex summary comments; conditionally create a bot approval |
 | [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
 
 Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
