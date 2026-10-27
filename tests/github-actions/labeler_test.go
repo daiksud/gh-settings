@@ -50,7 +50,14 @@ func TestPathLabelPolicy(t *testing.T) {
 		{"root and nested documents", []string{"README.md", "docs/contributing/labels.md", ".agents/skills/code-review/SKILL.md"}, []string{"docs"}},
 		{"tests across owners", []string{"main_test.go", "internal/settings/labels_test.go", "tests/github-actions/fixture.sh"}, []string{"test"}},
 		{"build inputs", []string{"go.mod", "go.sum", "mise.toml"}, []string{"build"}},
-		{"internal automation", []string{".github/workflows/ci-pr.yml", ".github/actions/commit-stage/action.yml", ".github/scripts/verify-settings-handoff.sh", ".github/labeler.yml"}, []string{"ci"}},
+		{"CI automation", []string{".github/workflows/ci-pr.yml", ".github/workflows/ci-push.yml", ".github/workflows/prlint.yml", ".github/workflows/labeler.yml", ".github/actions/ci-commit/action.yml", ".github/scripts/ci-artifacts.test.sh", ".github/labeler.yml"}, []string{"ci"}},
+		{"PR template", []string{".github/pull_request_template.md"}, []string{"docs"}},
+		{"nested skill documentation", []string{".agents/skills/code-review/SKILL.md"}, []string{"docs"}},
+		{"release workflow excluded", []string{".github/workflows/release.yml"}, nil},
+		{"settings workflow excluded", []string{".github/workflows/settings-main.yml"}, nil},
+		{"release Action excluded", []string{".github/actions/release-build/action.yml"}, nil},
+		{"old internal commit Action excluded", []string{".github/actions/commit-stage/action.yml"}, nil},
+		{"unrelated internal helper excluded", []string{".github/scripts/verify-settings-handoff.sh"}, nil},
 		{"product and supporting docs", []string{"main.go", "README.md", "main_test.go"}, nil},
 		{"product and test", []string{"internal/settings/labels.go", "internal/settings/labels_test.go"}, nil},
 		{"mixed maintenance categories", []string{"README.md", "go.mod"}, nil},
@@ -85,20 +92,37 @@ func TestPathLabelPolicy(t *testing.T) {
 	}
 }
 
-// Model only the literal/prefix/test-suffix patterns used by this configuration.
-// This checks repository policy, not the upstream labeler's glob implementation.
+// Model the current policy patterns, not the upstream Labeler glob engine.
 func pathPolicyMatch(t *testing.T, pattern, file string) bool {
 	t.Helper()
 	switch {
 	case pattern == "**/*_test.go":
 		return strings.HasSuffix(path.Base(file), "_test.go")
+	case strings.Contains(pattern, "/**/"):
+		prefix, suffix, _ := strings.Cut(pattern, "/**/")
+		return strings.HasPrefix(file, prefix+"/") && strings.HasSuffix(file, "/"+suffix)
 	case strings.HasSuffix(pattern, "/**"):
-		return strings.HasPrefix(file, strings.TrimSuffix(pattern, "**"))
-	default:
-		if strings.ContainsAny(pattern, "*?{}[]!") {
-			t.Fatalf("unsupported policy-test pattern %q", pattern)
+		prefix := strings.TrimSuffix(pattern, "/**")
+		if strings.ContainsAny(prefix, "*?[") {
+			parent := path.Dir(prefix)
+			relative := strings.TrimPrefix(file, parent+"/")
+			child, _, nested := strings.Cut(relative, "/")
+			if relative == file || !nested {
+				return false
+			}
+			matched, err := path.Match(path.Base(prefix), child)
+			if err != nil {
+				t.Fatalf("invalid policy glob %q: %v", pattern, err)
+			}
+			return matched
 		}
-		return file == pattern
+		return strings.HasPrefix(file, prefix+"/")
+	default:
+		matched, err := path.Match(pattern, file)
+		if err != nil {
+			t.Fatalf("invalid policy glob %q: %v", pattern, err)
+		}
+		return matched
 	}
 }
 

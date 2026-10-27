@@ -10,7 +10,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-func TestRestoredLabelsMatchExistingObjects(t *testing.T) {
+func TestManagedLabelsPreserveExistingIDsNamesAndColors(t *testing.T) {
 	config, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -19,7 +19,8 @@ func TestRestoredLabelsMatchExistingObjects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Independent pre-migration API observation, not reconstructed from YAML.
+	// Preserve the independent pre-unification API observation. The intended
+	// policy change updates descriptions, not existing label identity or color.
 	data, err := os.ReadFile("testdata/managed-label-baseline.json")
 	if err != nil {
 		t.Fatal(err)
@@ -28,13 +29,24 @@ func TestRestoredLabelsMatchExistingObjects(t *testing.T) {
 	if err := json.Unmarshal(data, &labels); err != nil {
 		t.Fatal(err)
 	}
-	observed, err := settings.NewLabelObservation(labels)
-	if err != nil {
+	if _, err := settings.NewLabelObservation(labels); err != nil {
 		t.Fatal(err)
 	}
-	comparison, err := settings.CompareLabels(observed, desired.Labels)
-	if err != nil || comparison.Managed != 1 || comparison.Labels.Len() != 0 {
-		t.Fatalf("restoration must not create, rename, recolor or change descriptions: %+v %v", comparison, err)
+	if len(labels) != desired.Labels.Len() {
+		t.Fatalf("managed labels = %d, observed labels = %d", desired.Labels.Len(), len(labels))
+	}
+	observedByID := map[int64]settings.LabelState{}
+	for _, label := range labels {
+		observedByID[label.ID] = label
+	}
+	for _, label := range desired.Labels.Values() {
+		if label.ID == nil || label.Color == nil {
+			t.Fatalf("managed label lacks ID or color: %+v", label)
+		}
+		original, exists := observedByID[*label.ID]
+		if !exists || original.Name != label.Name || original.Color != *label.Color {
+			t.Fatalf("label identity or color changed: desired=%+v original=%+v", label, original)
+		}
 	}
 }
 
