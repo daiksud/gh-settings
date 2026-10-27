@@ -31,7 +31,7 @@ func TestEnvironmentPatternBinaryTypedReconciliationAndRepeat(t *testing.T) {
 				fmt.Fprint(w, `{"total_count":1,"environments":[{"id":1,"name":"production"}]}`)
 				return
 			case base:
-				fmt.Fprint(w, `{"id":1,"name":"production","protection_rules":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}`)
+				fmt.Fprint(w, `{"id":1,"name":"production","protection_rules":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true},"can_admins_bypass":false}`)
 				return
 			case base + "/deployment_protection_rules":
 				fmt.Fprint(w, `{"total_count":0,"custom_deployment_protection_rules":[]}`)
@@ -53,10 +53,10 @@ func TestEnvironmentPatternBinaryTypedReconciliationAndRepeat(t *testing.T) {
 		case r.Method == "PUT" && r.URL.Path == base:
 			var payload map[string]any
 			json.NewDecoder(r.Body).Decode(&payload)
-			if len(payload) != 4 || payload["wait_timer"] != float64(0) || payload["deployment_branch_patterns"] != nil {
+			if len(payload) != 5 || payload["wait_timer"] != float64(0) || payload["can_admins_bypass"] != false || payload["deployment_branch_patterns"] != nil {
 				t.Error("incorrect environment PUT", payload)
 			}
-			fmt.Fprint(w, `{"id":1,"name":"production","protection_rules":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}`)
+			fmt.Fprint(w, `{"id":1,"name":"production","protection_rules":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true},"can_admins_bypass":false}`)
 		case r.Method == "POST" && r.URL.Path == base+"/deployment-branch-policies":
 			var payload map[string]any
 			json.NewDecoder(r.Body).Decode(&payload)
@@ -87,6 +87,7 @@ settings:
     - name: production
       wait_timer: 0
       prevent_self_review: false
+      can_admins_bypass: false
       reviewers: []
       deployment_branch_policy:
         protected_branches: false

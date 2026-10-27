@@ -15,6 +15,8 @@ func TestEnvironmentConfigPresenceAndRoundTrip(t *testing.T) {
 		"schemaVersion: 1\nsettings: {environments: [{name: production, deployment_branch_policy: null}]}",
 		"schemaVersion: 1\nsettings: {environments: [{name: production, deployment_branch_policy: {protected_branches: false, custom_branch_policies: true}, deployment_branch_patterns: [{type: branch, name: 'release/*'}, {type: tag, name: 'release/*'}]}]}",
 		"schemaVersion: 1\nsettings: {environments: [{name: production, deployment_branch_patterns: []}]}",
+		"schemaVersion: 1\nsettings: {environments: [{name: production, can_admins_bypass: false}]}",
+		"schemaVersion: 1\nsettings: {environments: [{name: production, can_admins_bypass: true}]}",
 	} {
 		d, err := DecodeConfig([]byte(input))
 		if err != nil {
@@ -45,6 +47,7 @@ func TestEnvironmentConfigRejectsIDsNullAndUnsupportedPolicies(t *testing.T) {
 		"null", "{}", "[null]", "[{}]", "[{name: 7}]", "[{name: null}]", "[{name: a, id: 7}]",
 		"[{name: a, wait_timer: null}]", "[{name: a, wait_timer: '0'}]", "[{name: a, wait_timer: 0.5}]",
 		"[{name: a, prevent_self_review: null}]", "[{name: a, prevent_self_review: 'false'}]",
+		"[{name: a, can_admins_bypass: null}]", "[{name: a, can_admins_bypass: 'false'}]", "[{name: a, can_admins_bypass: 0}]",
 		"[{name: a, reviewers: null}]", "[{name: a, reviewers: [null]}]", "[{name: a, reviewers: [{type: User, id: '7'}]}]",
 		"[{name: a, reviewers: [{type: User, id: 7, login: ignored}]}]",
 		"[{name: a, deployment_branch_policy: {protected_branches: true}}]",

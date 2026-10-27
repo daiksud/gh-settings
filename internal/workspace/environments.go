@@ -108,7 +108,7 @@ func environmentYAMLValue(node *yaml.Node, context string, depth int) (any, erro
 		allowed := false
 		switch context {
 		case "environment":
-			allowed = key == "name" || key == "wait_timer" || key == "prevent_self_review" || key == "reviewers" || key == "deployment_branch_policy" || key == "deployment_branch_patterns"
+			allowed = key == "name" || key == "wait_timer" || key == "prevent_self_review" || key == "can_admins_bypass" || key == "reviewers" || key == "deployment_branch_policy" || key == "deployment_branch_patterns"
 		case "reviewer":
 			allowed = key == "id" || key == "type"
 		case "pattern":

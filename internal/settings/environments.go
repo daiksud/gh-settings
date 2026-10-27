@@ -18,6 +18,7 @@ type EnvironmentDeclaration struct {
 	Name                           string                   `json:"name" yaml:"name"`
 	WaitTimer                      *int                     `json:"wait_timer,omitempty" yaml:"wait_timer,omitempty"`
 	PreventSelfReview              *bool                    `json:"prevent_self_review,omitempty" yaml:"prevent_self_review,omitempty"`
+	CanAdminsBypass                *bool                    `json:"can_admins_bypass,omitempty" yaml:"can_admins_bypass,omitempty"`
 	Reviewers                      *[]EnvironmentReviewer   `json:"reviewers,omitempty" yaml:"reviewers,omitempty"`
 	DeploymentBranchPolicy         *EnvironmentBranchPolicy `json:"deployment_branch_policy" yaml:"deployment_branch_policy"`
 	DeploymentBranchPolicyDeclared bool                     `json:"-" yaml:"-"`
@@ -33,6 +34,9 @@ func (p EnvironmentDeclaration) fields() map[string]any {
 	}
 	if p.PreventSelfReview != nil {
 		fields["prevent_self_review"] = *p.PreventSelfReview
+	}
+	if p.CanAdminsBypass != nil {
+		fields["can_admins_bypass"] = *p.CanAdminsBypass
 	}
 	if p.Reviewers != nil {
 		fields["reviewers"] = *p.Reviewers
@@ -108,8 +112,8 @@ func validateEnvironment(policy EnvironmentDeclaration, complete bool) error {
 			return fmt.Errorf("environment name must not contain control characters")
 		}
 	}
-	if complete && (policy.WaitTimer == nil || policy.PreventSelfReview == nil || policy.Reviewers == nil || (!policy.DeploymentBranchPolicyDeclared && policy.DeploymentBranchPolicy == nil)) {
-		return fmt.Errorf("environment %q requires complete timer/self-review/reviewer/branch-policy observation", policy.Name)
+	if complete && (policy.WaitTimer == nil || policy.PreventSelfReview == nil || policy.CanAdminsBypass == nil || policy.Reviewers == nil || (!policy.DeploymentBranchPolicyDeclared && policy.DeploymentBranchPolicy == nil)) {
+		return fmt.Errorf("environment %q requires complete timer/self-review/admin-bypass/reviewer/branch-policy observation", policy.Name)
 	}
 	if policy.WaitTimer != nil && (*policy.WaitTimer < 0 || *policy.WaitTimer > 43200) {
 		return fmt.Errorf("environment wait_timer must be between 0 and 43200 minutes")
@@ -152,6 +156,7 @@ func validateEnvironment(policy EnvironmentDeclaration, complete bool) error {
 func cloneEnvironment(policy EnvironmentDeclaration) EnvironmentDeclaration {
 	policy.WaitTimer = copyRuleValue(policy.WaitTimer)
 	policy.PreventSelfReview = copyRuleValue(policy.PreventSelfReview)
+	policy.CanAdminsBypass = copyRuleValue(policy.CanAdminsBypass)
 	policy.DeploymentBranchPolicy = copyRuleValue(policy.DeploymentBranchPolicy)
 	if policy.DeploymentBranchPolicy != nil {
 		policy.DeploymentBranchPolicyDeclared = true
@@ -333,7 +338,7 @@ func NewEnvironmentChange(operation string, before, after *EnvironmentDeclaratio
 // Omitted fields are sent as omissions and their server-selected result is not
 // predicted by plan. Such declarations remain update intents, not verified no-ops.
 func EnvironmentHasAPIOmissions(p EnvironmentDeclaration) bool {
-	return p.WaitTimer == nil || p.PreventSelfReview == nil || p.Reviewers == nil || (!p.DeploymentBranchPolicyDeclared && p.DeploymentBranchPolicy == nil)
+	return p.WaitTimer == nil || p.PreventSelfReview == nil || p.CanAdminsBypass == nil || p.Reviewers == nil || (!p.DeploymentBranchPolicyDeclared && p.DeploymentBranchPolicy == nil)
 }
 
 // Verify only requested values. The full readback is still typed and validated;
@@ -343,6 +348,7 @@ func EnvironmentMatchesRequest(actual, requested EnvironmentDeclaration) bool {
 	return EnvironmentIdentity(a.Name) == EnvironmentIdentity(r.Name) &&
 		(r.WaitTimer == nil || reflect.DeepEqual(a.WaitTimer, r.WaitTimer)) &&
 		(r.PreventSelfReview == nil || reflect.DeepEqual(a.PreventSelfReview, r.PreventSelfReview)) &&
+		(r.CanAdminsBypass == nil || reflect.DeepEqual(a.CanAdminsBypass, r.CanAdminsBypass)) &&
 		(r.Reviewers == nil || reflect.DeepEqual(a.Reviewers, r.Reviewers)) &&
 		(!r.DeploymentBranchPolicyDeclared || reflect.DeepEqual(a.DeploymentBranchPolicy, r.DeploymentBranchPolicy)) &&
 		(r.DeploymentBranchPatterns == nil || reflect.DeepEqual(a.DeploymentBranchPatterns, r.DeploymentBranchPatterns))

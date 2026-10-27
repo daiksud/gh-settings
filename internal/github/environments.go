@@ -67,7 +67,7 @@ func environmentKnownFields(raw map[string]json.RawMessage, allowed ...string) e
 // rules. Absence of a rule in that array means disabled, not a failed read.
 func decodeEnvironment(raw map[string]json.RawMessage) (settings.EnvironmentState, error) {
 	var result settings.EnvironmentState
-	if err := environmentKnownFields(raw, "id", "node_id", "name", "url", "html_url", "created_at", "updated_at", "protection_rules", "deployment_branch_policy"); err != nil {
+	if err := environmentKnownFields(raw, "id", "node_id", "name", "url", "html_url", "created_at", "updated_at", "protection_rules", "deployment_branch_policy", "can_admins_bypass"); err != nil {
 		return result, err
 	}
 	if err := requiredEnvironmentJSON(raw, "id", &result.ID); err != nil {
@@ -76,6 +76,11 @@ func decodeEnvironment(raw map[string]json.RawMessage) (settings.EnvironmentStat
 	if err := requiredEnvironmentJSON(raw, "name", &result.Policy.Name); err != nil {
 		return result, err
 	}
+	var bypass bool
+	if err := requiredEnvironmentJSON(raw, "can_admins_bypass", &bypass); err != nil {
+		return result, err
+	}
+	result.Policy.CanAdminsBypass = &bypass
 	var rules []map[string]json.RawMessage
 	if err := requiredEnvironmentJSON(raw, "protection_rules", &rules); err != nil {
 		return result, err

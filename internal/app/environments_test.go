@@ -110,7 +110,7 @@ func TestEnvironmentExportIsOptInAndReadFailureDoesNotSave(t *testing.T) {
 		reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
 		timer, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
 		patterns := []settings.EnvironmentPattern{{Type: "branch", Name: "same"}, {Type: "tag", Name: "same"}}
-		d, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, Reviewers: &reviewers, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: &patterns}})
+		d, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, CanAdminsBypass: &prevent, Reviewers: &reviewers, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: &patterns}})
 		reader.Environments = func(_ repository.Repository, names []string) (settings.EnvironmentObservation, error) {
 			reads++
 			if names != nil {
