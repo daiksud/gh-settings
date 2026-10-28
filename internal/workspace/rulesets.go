@@ -69,6 +69,9 @@ func rulesetYAMLValue(node *yaml.Node, context string, depth int) (any, error) {
 			if k == "required_reviewers" {
 				next = "required_reviewer"
 			}
+			if k == "code_scanning_tools" {
+				next = "scanning_tool"
+			}
 			if k == "allowed_actors" {
 				next = "review_actor"
 			}
@@ -121,7 +124,9 @@ func rulesetYAMLKey(context, key string) bool {
 	case "rule":
 		allowed = []string{"type", "parameters"}
 	case "parameters":
-		allowed = []string{"allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create"}
+		allowed = []string{"allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity"}
+	case "scanning_tool":
+		allowed = []string{"tool", "alerts_threshold", "security_alerts_threshold"}
 	case "dismissal_restriction":
 		allowed = []string{"enabled", "allowed_actors"}
 	case "review_actor", "reviewer":
