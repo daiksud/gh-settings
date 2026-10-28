@@ -23,6 +23,22 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 
 Markdown checks use the pinned rumdl from [mise.toml](../../mise.toml) and [.rumdl.toml](../../.rumdl.toml). MD051 checks local heading fragments and MD057 checks relative file links; external HTTP availability is not a CI dependency.
 
+## Internal UI repository preparation
+
+The [prepared About/General/Labels mapping](ui-repository-mapping.md) is internal work for #482. Its tests specify the future UI-oriented boundary without changing the public codec or invoking live writes:
+
+| Test owner | Independent expected behavior |
+| --- | --- |
+| [About](../../internal/github/ui_about_test.go) | Omission vs empty strings/list; Website to `homepage`; raw null-string/topic reads; exact empty PATCH/PUT payloads; owned values and invalid topics |
+| [General scalars](../../internal/github/ui_general_test.go) | Singleton mappings for each true/false control and branch; reverse projection; invalid branch; exact mixed REST payload; complete raw GraphQL observation |
+| [Commit menus](../../internal/github/ui_commit_message_test.go) | Seven literal UI/API pairs and exact payloads; absent vs incomplete pairs; API-only choices and invalid/disabled declarations |
+| [Creation policies](../../internal/github/ui_creation_policy_test.go) | Both policies and choices; unknown tokens; exact GraphQL input with native access/sponsorship booleans and verified target identity |
+| [Labels](../../internal/github/ui_labels_test.go) | UI color prefix; complete raw list conversion; omission/empty; missing observation; selected-ID rename leaving unlisted objects alone; exact update/create bodies and ID validation |
+
+[Conditional desired-policy fixtures](../../internal/github/ui_creation_policy_visibility_test.go) reject explicitly disabled feature/policy combinations while retaining omitted/true gates. [Conditional observation fixtures](../../internal/github/ui_general_conditional_observation_test.go) exercise independent mixed gates for both feature policies and merge menus, six owned raw values, absence and strict validation before hiding. Exact composed GraphQL tests retain visible policy intent and an independent false Sponsorships control.
+
+The new fixtures use literal expectations rather than production mapping definitions. Existing repository, merge-method, access-policy and label owner tests continue to cover complete/malformed/denied reads, pagination, identity checks, redirects and partial failures. Existing archive tests retain lifecycle guards and sequencing. The public process suite remains regression evidence for the current interface, not evidence that the prepared names are accepted as YAML. Activation, normalization/warnings and presentation have separate acceptance in #479, #480 and #481.
+
 Current-source [archive lifecycle model](../../internal/settings/archive_test.go), [API](../../internal/github/archive_test.go), [application](../../internal/app/archive_test.go), and [built-process acceptance](../../tests/acceptance/archive_test.go) tests verify typed state, target identity, narrow updates, ordered transitions, partial failures, and export opt-in. They use local fixtures only; live lifecycle permissions and recovery are not established.
 
 ## Local process acceptance
