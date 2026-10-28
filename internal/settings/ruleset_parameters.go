@@ -9,6 +9,8 @@ import (
 // RuleParameters is the closed parameter union selected by the surrounding rule type.
 // Pointers retain omission independently of false, zero and empty collections.
 type RuleParameters struct {
+	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
+	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
 	DismissStaleReviewsOnPush                  *bool                       `json:"dismiss_stale_reviews_on_push,omitempty" yaml:"dismiss_stale_reviews_on_push,omitempty"`
 	DismissalRestriction                       *ReviewDismissalRestriction `json:"dismissal_restriction,omitempty" yaml:"dismissal_restriction,omitempty"`
@@ -21,6 +23,11 @@ type RuleParameters struct {
 	RequiredStatusChecks                       *[]RequiredStatusCheck      `json:"required_status_checks,omitempty" yaml:"required_status_checks,omitempty"`
 	StrictRequiredStatusChecksPolicy           *bool                       `json:"strict_required_status_checks_policy,omitempty" yaml:"strict_required_status_checks_policy,omitempty"`
 	DoNotEnforceOnCreate                       *bool                       `json:"do_not_enforce_on_create,omitempty" yaml:"do_not_enforce_on_create,omitempty"`
+}
+type CodeScanningTool struct {
+	Tool                    string `json:"tool" yaml:"tool"`
+	AlertsThreshold         string `json:"alerts_threshold" yaml:"alerts_threshold"`
+	SecurityAlertsThreshold string `json:"security_alerts_threshold" yaml:"security_alerts_threshold"`
 }
 type ReviewActor struct {
 	ID   int64  `json:"id" yaml:"id"`
@@ -46,6 +53,9 @@ func (p *RuleParameters) hasPR() bool {
 func (p *RuleParameters) hasChecks() bool {
 	return p != nil && (p.RequiredStatusChecks != nil || p.StrictRequiredStatusChecksPolicy != nil || p.DoNotEnforceOnCreate != nil)
 }
+func (p *RuleParameters) hasAnalysis() bool {
+	return p != nil && (p.CodeScanningTools != nil || p.Severity != nil)
+}
 func reviewActorKey(a ReviewActor) string { return fmt.Sprintf("%s:%d", a.Type, a.ID) }
 func checkKey(c RequiredStatusCheck) string {
 	if c.IntegrationID == nil {
@@ -60,8 +70,8 @@ func validateRule(r RulesetRule, complete bool) error {
 	p := r.Parameters
 	switch r.Type {
 	case "pull_request":
-		if p.hasChecks() {
-			return fmt.Errorf("status-check parameters do not belong to pull_request")
+		if p.hasChecks() || p.hasAnalysis() {
+			return fmt.Errorf("parameters do not belong to pull_request")
 		}
 		if complete && (p == nil || p.AllowedMergeMethods == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireExtraApprovalForUnattributedChanges == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil || p.RequiredReviewers == nil) {
 			return fmt.Errorf("pull_request requires complete review parameters")
@@ -125,8 +135,8 @@ func validateRule(r RulesetRule, complete bool) error {
 			}
 		}
 	case "required_status_checks":
-		if p.hasPR() {
-			return fmt.Errorf("pull-request parameters do not belong to required_status_checks")
+		if p.hasPR() || p.hasAnalysis() {
+			return fmt.Errorf("parameters do not belong to required_status_checks")
 		}
 		if complete && (p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil || p.DoNotEnforceOnCreate == nil) {
 			return fmt.Errorf("required_status_checks requires checks and strict policy")
@@ -144,8 +154,32 @@ func validateRule(r RulesetRule, complete bool) error {
 				seen[key] = true
 			}
 		}
+	case "code_scanning":
+		if p == nil || p.CodeScanningTools == nil {
+			return fmt.Errorf("code_scanning requires code_scanning_tools")
+		}
+		if p.hasPR() || p.hasChecks() || p.Severity != nil {
+			return fmt.Errorf("parameters do not belong to code_scanning")
+		}
+		seen := map[string]bool{}
+		for _, tool := range *p.CodeScanningTools {
+			if !validRulesetText(tool.Tool) || seen[tool.Tool] {
+				return fmt.Errorf("invalid or duplicate code scanning tool")
+			}
+			seen[tool.Tool] = true
+			if !slices.Contains([]string{"none", "errors", "errors_and_warnings", "all"}, tool.AlertsThreshold) || !slices.Contains([]string{"none", "critical", "high_or_higher", "medium_or_higher", "all"}, tool.SecurityAlertsThreshold) {
+				return fmt.Errorf("invalid code scanning alert threshold")
+			}
+		}
+	case "code_quality":
+		if p == nil || p.Severity == nil || !slices.Contains([]string{"errors", "warnings", "notes", "all"}, *p.Severity) {
+			return fmt.Errorf("code_quality requires supported severity")
+		}
+		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil {
+			return fmt.Errorf("parameters do not belong to code_quality")
+		}
 	default:
-		if p.hasPR() || p.hasChecks() {
+		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
 			return fmt.Errorf("rule %q has no parameters", r.Type)
 		}
 	}
@@ -170,6 +204,11 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 		return nil
 	}
 	out := *p
+	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
+	if out.CodeScanningTools != nil {
+		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
+	}
+	out.Severity = copyRuleValue(p.Severity)
 	out.AllowedMergeMethods = copyRuleList(p.AllowedMergeMethods)
 	if out.AllowedMergeMethods != nil {
 		slices.Sort(*out.AllowedMergeMethods)
@@ -242,7 +281,7 @@ func compareReviewActor(a, b ReviewActor) int {
 }
 func cloneRulesetRule(r RulesetRule) RulesetRule {
 	r.Parameters = cloneRuleParameters(r.Parameters)
-	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() {
+	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() {
 		r.Parameters = nil
 	}
 	return r

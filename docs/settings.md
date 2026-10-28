@@ -612,7 +612,7 @@ Only listed objects are managed. Omitted `rulesets` and `rulesets: []` select no
 
 Names use exact comparison without trimming or case folding, as in the existing Rulesets contract. Duplicate declared names or IDs fail. A valid ID and a new noncolliding name rename the same object. An ID-less name collision is never auto-adopted, and a missing ID is never replaced with a new object. A rename cannot collide even with another existing object scheduled to rename; apply is not a rename transaction.
 
-Inner rules use unique `type`; bypass actors use `(actor_type, actor_id)`. Supported rule types are `deletion`, `non_fast_forward`, `required_linear_history`, `required_signatures`, `pull_request` and `required_status_checks`. Basic rules have no nonempty parameters.
+Inner rules use unique `type`; bypass actors use `(actor_type, actor_id)`. Supported rule types are `deletion`, `non_fast_forward`, `required_linear_history`, `required_signatures`, `pull_request`, `required_status_checks`, `code_scanning` and `code_quality`. Basic rules have no nonempty parameters.
 
 Every declared bypass actor requires explicit `bypass_mode`: `always`, `pull_request` (branch/non-DeployKey only) or `exempt`. Types `Integration`, `RepositoryRole`, `Team` and `User` require positive `actor_id`; `OrganizationAdmin` and `DeployKey` omit it. OrganizationAdmin is unavailable for personal repositories. The adapter maps DeployKey omission to API null. No actor, access grant or credential is created.
 
@@ -636,13 +636,34 @@ A required check has nonempty `context` and optional positive `integration_id`. 
 
 The extra-approval flag follows the [documented GitHub preview control](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#additional-approval-for-unattributed-copilot-pull-requests) and previously adopted observed REST shape. Unknown/unreadable supported values are not defaulted on read. Required parameter fields must be observable; missing protection cannot become false or empty. The optional dismissal-restriction wire contract is described below. Fixtures do not establish live write compatibility or entitlement.
 
+### Code scanning and code quality parameters
+
+The [Rulesets REST contract](https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset) defines these distinct rules within a selected Ruleset's `rules` list:
+
+```yaml
+rules:
+  - type: code_scanning
+    parameters:
+      code_scanning_tools:
+        - tool: CodeQL
+          alerts_threshold: errors
+          security_alerts_threshold: high_or_higher
+  - type: code_quality
+    parameters:
+      severity: errors
+```
+
+`code_scanning` requires an explicit `code_scanning_tools` array. Each entry requires a nonempty `tool`, `alerts_threshold` (`none`, `errors`, `errors_and_warnings`, `all`) and `security_alerts_threshold` (`none`, `critical`, `high_or_higher`, `medium_or_higher`, `all`). Tool names are case-sensitive identities, duplicates are rejected, and the collection is canonicalized by tool name. An explicit empty array remains empty; it is not filled from existing policy. `code_quality` requires explicit `severity`: `errors`, `warnings`, `notes` or `all`. No analysis parameters or thresholds receive declaration defaults. Missing/null/unknown values, wrong types and parameters belonging to another rule are rejected. API reads require the same complete fields; no protection is silently discarded to make export succeed.
+
+Export includes both rule types, plan and Action reports display their thresholds, and apply verifies the complete requested observable policy in both the mutation response and an independent fresh GET. Verification failure is an uncertain write, with earlier writes retained. Removing the last analysis rule also requires readback. These rules follow existing whole-object ownership: include every supported rule and condition that must remain; a shorter `rules` list does not preserve omitted rules. The rule controls merge requirements; it does not enable scanning or Code Quality, create analysis workflows, change entitlements, or expand credentials. GitHub validates availability and prerequisite analysis results. Local fixtures prove request/readback behavior, not live enforcement. Published Action use requires a release containing this support.
+
 ### Plan, apply, and export
 
 Nonempty selections acquire supported repository branch/tag observations, including complete bypass visibility. Unsupported rules, unknown writable fields, missing required values, null values, failed pages or unreadable details fail before Rulesets mutation. The documented optional absence of `pull_request.parameters.dismissal_restriction` is retained as unobserved state, not inferred to mean disabled. A present object still requires explicit `enabled` and `allowed_actors`; empty, incomplete and null objects fail. Only explicitly classified server-generated metadata is discarded. Inherited organization/enterprise and repository push Rulesets remain outside mutation ownership; push Rulesets are excluded from export with a diagnostic. Other protection can still affect effective behavior.
 
 Plan is read-only. It shows creates or ID updates and supported comparable before/after objects, including fixed-default reductions and rename. A declaration containing `dismissal_restriction` fails plan explicitly before remote reads: that field cannot currently be compared. Omitted declarations do not manage or display its remote value. Plan never displays unlisted objects as changes or plans implicit deletion. A nonempty collection counts once as managed. Apply reads fresh state after earlier repository/topics/labels work, prepares every selected operation before the first Rulesets write, and writes in stable operation-name order. A fresh comparable match makes no Rulesets write unless a write-only value is explicitly declared; that value is sent on every apply. Successful ID writeback makes repeat apply select the created object instead of duplicate creation.
 
-Every POST/PUT response must confirm positive ID, repository ownership and requested comparable settings. An update response must retain the selected ID. A write involving a pull-request rule also requires a fresh GET to match the comparable policy and identity, even if the mutation response echoed the request. The write-only dismissal restriction is excluded from value comparison, not from response type validation. Missing/mismatching comparable settings or failed readback return nonzero: writes may already have applied, later operations stop, and there is no retry or rollback. Successful creation is distinct from failed local ID persistence. Confirmed created IDs use the same [guarded writeback and opt-out contract](#apply-id-writeback) as labels; `--no-writeback` and `GITHUB_ACTIONS=true` disable it. IDs remain in output/recovery diagnostics, including output-write failure. No Git commit/push occurs.
+Every POST/PUT response must confirm positive ID, repository ownership and requested comparable settings. An update response must retain the selected ID. A write adding, updating or removing a pull-request, code-scanning or code-quality rule also requires a fresh GET to match the comparable policy and identity, even if the mutation response echoed the request. The write-only dismissal restriction is excluded from value comparison, not from response type validation. Missing/mismatching comparable settings or failed readback return nonzero: writes may already have applied, later operations stop, and there is no retry or rollback. Successful creation is distinct from failed local ID persistence. Confirmed created IDs use the same [guarded writeback and opt-out contract](#apply-id-writeback) as labels; `--no-writeback` and `GITHUB_ACTIONS=true` disable it. IDs remain in output/recovery diagnostics, including output-write failure. No Git commit/push occurs.
 
 Use `export --rulesets` to inspect supported IDs and policy before editing. Updates require explicit IDs, enforcement, and reference include rules. Removing an object from the declaration stops managing it without deleting its remote policy. Review plan before apply, especially reviewer, check, bypass, and merge-method defaults.
 
