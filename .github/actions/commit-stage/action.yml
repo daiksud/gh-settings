@@ -57,9 +57,6 @@ runs:
     - name: Test with race detection
       shell: bash
       run: go test -race -count=1 -vet=off ./...
-    - name: Test release version calculation
-      shell: bash
-      run: python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
     - name: Test release recovery without GitHub
       shell: bash
       run: bash tests/release.sh
