@@ -180,3 +180,7 @@ Inspect the relevant workflow run for hosted or publication evidence. A successf
 ## Prepared Security UI mapping
 
 [Security mapping fixtures](../../internal/github/ui_security_composition_test.go) connect literal UI booleans with existing acquired raw status, narrow PATCH and readback behavior. The [mapping reference](ui-security-mapping.md) identifies reporting and immutability endpoint fixtures, presence, dependency, applicability and owner-known metadata checks. Public activation remains separate.
+
+## Prepared Pages UI mapping
+
+[Pages mapping fixtures](../../internal/github/ui_pages_composition_test.go) connect literal UI declarations, acquired raw state and exact existing-site updates/readback. The [mapping reference](ui-pages-mapping.md) identifies source/folder, nullable-domain, ownership and metadata checks. Current public/process and lifecycle-limit coverage remains with the existing Pages tests.
