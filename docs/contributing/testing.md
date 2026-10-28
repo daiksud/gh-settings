@@ -39,6 +39,25 @@ The [prepared About/General/Labels mapping](ui-repository-mapping.md) is interna
 
 The new fixtures use literal expectations rather than production mapping definitions. Existing repository, merge-method, access-policy and label owner tests continue to cover complete/malformed/denied reads, pagination, identity checks, redirects and partial failures. Existing archive tests retain lifecycle guards and sequencing. The public process suite remains regression evidence for the current interface, not evidence that the prepared names are accepted as YAML. Activation, normalization/warnings and presentation have separate acceptance in #479, #480 and #481.
 
+## Internal UI Ruleset preparation
+
+The [Ruleset mapping](ui-ruleset-mapping.md) records the internal #483 preparation including its verified UI dismissal control and preserved write-only limits. The public interface remains unchanged.
+
+| Fixture owner | Independent contract checked |
+| --- | --- |
+| [Root](../../internal/github/ui_ruleset_root_test.go) | Required enforcement/one target, sentinels, short/full-ref patterns, empty criteria, blank rejection, ownership and out-of-UI values |
+| [Bypass](../../internal/github/ui_ruleset_bypass_test.go) | Three verified role IDs, dynamic actor IDs, three UI modes, marker validation and target restrictions |
+| [Simple rules](../../internal/github/ui_ruleset_rules_test.go) | Four singleton false/true checkbox mappings and complete observed absence |
+| [PR settings](../../internal/github/ui_ruleset_pr_test.go) | Singleton flags, finite count choices, merge methods and complete read projection |
+| [Team reviewers](../../internal/github/ui_ruleset_reviewers_test.go) | Numeric Team identity, explicit approvals, ordered/repeated/negated patterns and out-of-UI dismissal role rejection |
+| [Checks](../../internal/github/ui_ruleset_checks_test.go) | Singleton flags, empty collections, Any source vs App identity, raw null source and owned values |
+| [Analysis](../../internal/github/ui_ruleset_analysis_test.go) | All 20 scanning threshold combinations, four quality choices and required desired values |
+| [Collection/transport](../../internal/github/ui_ruleset_collection_test.go) | Acquired IDs, sorting, excluded-push metadata, no partial projection, raw eight-rule reads, exact no-ID POST/selected-ID PUT and independent readback |
+
+[Dismissal declarations](../../internal/github/ui_ruleset_dismissal_test.go), [prepared observations](../../internal/github/ui_ruleset_dismissal_observation_test.go) and [literal transport fixtures](../../internal/github/ui_ruleset_dismissal_transport_test.go) cover the verified checkbox/actor labels, six actor choices, pre-default presence, selected-object defaults, hidden/raw provenance, exact POST/PUT, export omission and repeated write-only reconciliation. Existing [plan tests](../../internal/app/ruleset_writeonly_test.go) keep explicit intent rejected before remote work.
+
+Expected payloads and choices are literal fixtures, independent of production maps. Existing Ruleset owner tests retain denied/malformed/incomplete reads, pagination, inherited/push filtering, write-only uncertainty, identity/target failures and partial-write coverage. Local conversion/transport tests do not establish live policy changes, effective enforcement, new YAML acceptance or normalization warnings. The official screenshot now supplies the dismissal UI wording; existing write-only behavior remains a separate operational limit.
+
 Current-source [archive lifecycle model](../../internal/settings/archive_test.go), [API](../../internal/github/archive_test.go), [application](../../internal/app/archive_test.go), and [built-process acceptance](../../tests/acceptance/archive_test.go) tests verify typed state, target identity, narrow updates, ordered transitions, partial failures, and export opt-in. They use local fixtures only; live lifecycle permissions and recovery are not established.
 
 ## Local process acceptance
