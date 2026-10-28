@@ -60,6 +60,55 @@ Plan reads both statuses only when security is managed, checks prerequisites and
 
 The [repository endpoint](https://docs.github.com/en/rest/repos/repos#update-a-repository) documents Metadata read for GET, with admin/organization-owner/security-manager visibility for the security block, and Administration write plus applicable role for security updates. A normal read token or repository role alone does not establish the required token grants or visibility. Public availability differs from private/internal Secret Protection entitlement; existing applicable entitlement is required. This feature neither buys a product nor expands credentials. Upper configurations can return apparent PATCH success without changing settings, so readback mismatch fails visibly. API schema presence and a zero plan do not prove licensing or writable access. See the [design and acceptance specification](features/security.feature.md).
 
+## Immutable release policy
+
+Current source supports optional boolean `settings.security.immutable_releases`.
+
+```yaml
+schemaVersion: 1
+settings:
+  security:
+    immutable_releases: true
+```
+
+Omission is unmanaged; false explicitly disables the repository policy. Null,
+strings, collections and an `enabled` submapping are invalid. Ordinary export
+does not read this endpoint. Explicit `export --security immutable-releases`
+exports only the enabled boolean after all selected reads complete; it composes
+with the other distinct security selections. `enforced_by_owner` is read-only
+metadata, never YAML intent or a toggle payload.
+
+The [policy GET](https://docs.github.com/en/rest/repos/repos#check-if-immutable-releases-are-enabled-for-a-repository)
+requires Administration read. A 200 response must contain complete boolean
+`enabled` and `enforced_by_owner` values. **HTTP 404 means disabled**, without
+additional permission-discrimination requests. Owner enforcement is unknown on
+that response; no false enforcement value is invented. Other failures, including
+401, 403, redirects, malformed or incomplete 200 responses, remain errors.
+
+This 404 rule is an explicit product tradeoff: GitHub's general authentication
+behavior can return 403 or [404 for inaccessible private resources](https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api#404-not-found-for-an-existing-resource).
+An authorization-related 404 may therefore be misreported as disabled in export,
+plan, preflight or readback. No additional authorization discriminator is used.
+This is not evidence that this endpoint has actually returned an
+insufficient-permission 404 in a live test, nor an exception for other endpoints.
+
+Plan is read-only and shows native boolean differences. An owner-enforced policy
+cannot be planned or applied as false. Apply runs after private vulnerability
+reporting and before Pages, reads fresh policy, skips matching state, and sends
+one body-free PUT (enable) or DELETE (disable) to the policy endpoint with
+Administration write. Only 204 is accepted, followed by fresh readback. A 404
+readback after DELETE is accepted as disabled under the same tradeoff; it is not
+independent proof of authorization. Owner enforcement is never changed.
+
+Preflight failures attempt no policy write. A write, unexpected write status or
+readback failure may already have changed the policy; earlier successful writes
+remain applied. No retry, rollback, saved-plan execution or transaction exists.
+Individual releases, tags and assets are never read or mutated by this feature;
+changing this policy does not promise to make existing immutable releases
+editable. Local [fixtures and process tests](features/immutable-releases.feature.md)
+establish client behavior, not live App permissions or enforcement. Published
+packages support only their own versioned contracts.
+
 ## Private vulnerability reporting
 
 Current source supports optional boolean `settings.security.private_vulnerability_reporting`.

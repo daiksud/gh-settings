@@ -2,10 +2,11 @@ package settings
 
 import "fmt"
 
-const SecurityFieldCount = 3
+const SecurityFieldCount = 4
 
 // SecurityDeclaration owns only the adopted repository security controls.
 type SecurityDeclaration struct {
+	ImmutableReleases             *bool `yaml:"immutable_releases,omitempty"`
 	SecretScanning                *bool `yaml:"secret_scanning,omitempty"`
 	PushProtection                *bool `yaml:"secret_scanning_push_protection,omitempty"`
 	PrivateVulnerabilityReporting *bool `yaml:"private_vulnerability_reporting,omitempty"`
@@ -15,7 +16,7 @@ func (d SecurityDeclaration) SecretScanningEmpty() bool {
 	return d.SecretScanning == nil && d.PushProtection == nil
 }
 func (d SecurityDeclaration) Empty() bool {
-	return d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil
+	return d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil && d.ImmutableReleases == nil
 }
 func (d SecurityDeclaration) Validate() error {
 	if d.SecretScanning != nil && !*d.SecretScanning && d.PushProtection != nil && *d.PushProtection {
@@ -63,7 +64,7 @@ func (c SecurityChange) Values() (bool, bool) { return c.before, c.after }
 func NewSecurityChange(field string, before, after any) (SecurityChange, error) {
 	b, bok := before.(bool)
 	a, aok := after.(bool)
-	if (field != "security.secret_scanning" && field != "security.secret_scanning_push_protection" && field != "security.private_vulnerability_reporting") || !bok || !aok || b == a {
+	if (field != "security.secret_scanning" && field != "security.secret_scanning_push_protection" && field != "security.private_vulnerability_reporting" && field != "security.immutable_releases") || !bok || !aok || b == a {
 		return SecurityChange{}, fmt.Errorf("invalid security comparison")
 	}
 	return SecurityChange{field: field, before: b, after: a}, nil
@@ -82,6 +83,8 @@ func ValidateSecurityChanges(changes []SecurityChange) error {
 			d.SecretScanning = &v
 		case "security.secret_scanning_push_protection":
 			d.PushProtection = &v
+		case "security.immutable_releases":
+			d.ImmutableReleases = &v
 		case "security.private_vulnerability_reporting":
 			d.PrivateVulnerabilityReporting = &v
 		default:

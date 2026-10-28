@@ -29,3 +29,11 @@ Adopt the narrow Secret scanning and public-repository private vulnerability rep
 Opted-in export can fail when requested data is unavailable; it cannot silently omit it or overwrite a file with partial configuration. Paid-product availability and write authorization are not implied by API schema presence, a repository role, or an unchanged plan. Plan remains read-only, and apply remains direct and nontransactional with honest partial progress.
 
 The design changes documentation only. Later implementations must add the public references, native CLI/Action presentation, closed report validation, and fixture coverage together. Local fixtures establish behavior against modeled responses, not live licensing, enforcement, permission grants, or scan outcomes. No settings, scans, contracts, grants, workflows, releases, or package versions change with this decision.
+
+## Later scoped decision
+
+The [immutable release policy](../features/immutable-releases.feature.md), adopted
+separately for #348, interprets its GET 404 as disabled by explicit user decision.
+An authorization-related 404 can therefore be misclassified; owner enforcement
+is unknown on that response. This exception does not change the Dependabot gates
+or other security endpoints' missing/denied-response handling.

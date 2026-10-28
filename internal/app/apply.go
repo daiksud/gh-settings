@@ -216,6 +216,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if desired.Security.ImmutableReleases != nil {
+		wrote, err := applyImmutableReleases(&result, repo, desired.Security, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if !desired.Pages.Empty() {
 		wrote, err := applyPages(&result, repo, desired.Pages, write)
 		if err != nil {

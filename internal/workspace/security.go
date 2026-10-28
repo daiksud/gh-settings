@@ -15,7 +15,7 @@ func parseSecurity(node *yaml.Node) (settings.SecurityDeclaration, error) {
 		return d, err
 	}
 	for key, node := range fields {
-		if key != "secret_scanning" && key != "secret_scanning_push_protection" && key != "private_vulnerability_reporting" {
+		if key != "secret_scanning" && key != "secret_scanning_push_protection" && key != "private_vulnerability_reporting" && key != "immutable_releases" {
 			return d, fmt.Errorf("unknown settings.security key %q", key)
 		}
 		n, err := resolveAlias(&node)
@@ -30,6 +30,8 @@ func parseSecurity(node *yaml.Node) (settings.SecurityDeclaration, error) {
 			d.SecretScanning = &value
 		} else if key == "secret_scanning_push_protection" {
 			d.PushProtection = &value
+		} else if key == "immutable_releases" {
+			d.ImmutableReleases = &value
 		} else {
 			d.PrivateVulnerabilityReporting = &value
 		}
