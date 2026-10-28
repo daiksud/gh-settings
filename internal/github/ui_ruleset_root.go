@@ -76,25 +76,32 @@ func appendUITargetPatterns(result []string, patterns *[]string, prefix string) 
 	return result
 }
 
+// PreparedRuleset keeps acquired write-only state outside visible UI controls.
+// The raw restriction is not authorized for export/comparison by this projection.
+type PreparedRuleset struct {
+	uimodel.Ruleset
+	UnverifiedReviewDismissalRestriction *settings.ReviewDismissalRestriction
+}
+
 // RulesetObservation projects only complete, validated acquired API policies.
 // Never run declaration-default normalization on an observation.
-func RulesetObservation(policy settings.RulesetDeclaration) (uimodel.Ruleset, error) {
+func RulesetObservation(policy settings.RulesetDeclaration) (PreparedRuleset, error) {
 	if err := settings.ValidateRuleset(policy, true); err != nil {
-		return uimodel.Ruleset{}, err
+		return PreparedRuleset{}, err
 	}
 	status := uimodel.EnforcementStatus(*policy.Enforcement)
 	if status != uimodel.Active && status != uimodel.Disabled {
-		return uimodel.Ruleset{}, fmt.Errorf("ruleset enforcement_status is outside UI choices")
+		return PreparedRuleset{}, fmt.Errorf("ruleset enforcement_status is outside UI choices")
 	}
 	result := uimodel.Ruleset{ID: copyUIRulesetValue(policy.ID), RulesetName: policy.Name, EnforcementStatus: &status}
 	var err error
 	result.BypassList, err = observeUIRulesetBypass(*policy.BypassActors)
 	if err != nil {
-		return uimodel.Ruleset{}, err
+		return PreparedRuleset{}, err
 	}
 	result.Rules, err = observeUIRulesetRules(*policy.Rules)
 	if err != nil {
-		return uimodel.Ruleset{}, err
+		return PreparedRuleset{}, err
 	}
 	prefix := "refs/heads/"
 	if *policy.Target == "tag" {
@@ -111,20 +118,20 @@ func RulesetObservation(policy settings.RulesetDeclaration) (uimodel.Ruleset, er
 		case strings.HasPrefix(value, prefix):
 			pattern := strings.TrimPrefix(value, prefix)
 			if strings.TrimSpace(pattern) == "" {
-				return uimodel.Ruleset{}, fmt.Errorf("ruleset inclusion pattern has blank UI suffix")
+				return PreparedRuleset{}, fmt.Errorf("ruleset inclusion pattern has blank UI suffix")
 			}
 			include = append(include, pattern)
 		default:
-			return uimodel.Ruleset{}, fmt.Errorf("ruleset inclusion pattern is outside target UI choices")
+			return PreparedRuleset{}, fmt.Errorf("ruleset inclusion pattern is outside target UI choices")
 		}
 	}
 	for _, value := range *policy.Conditions.RefName.Exclude {
 		if !strings.HasPrefix(value, prefix) {
-			return uimodel.Ruleset{}, fmt.Errorf("ruleset exclusion pattern is outside target UI choices")
+			return PreparedRuleset{}, fmt.Errorf("ruleset exclusion pattern is outside target UI choices")
 		}
 		pattern := strings.TrimPrefix(value, prefix)
 		if strings.TrimSpace(pattern) == "" {
-			return uimodel.Ruleset{}, fmt.Errorf("ruleset exclusion pattern has blank UI suffix")
+			return PreparedRuleset{}, fmt.Errorf("ruleset exclusion pattern has blank UI suffix")
 		}
 		exclude = append(exclude, pattern)
 	}
@@ -133,7 +140,15 @@ func RulesetObservation(policy settings.RulesetDeclaration) (uimodel.Ruleset, er
 	} else {
 		result.TargetTags = &uimodel.TagTargets{IncludeAllTags: &all, IncludeByPattern: &include, ExcludeByPattern: &exclude}
 	}
-	return result, nil
+	prepared := PreparedRuleset{Ruleset: result}
+	for _, rule := range *policy.Rules {
+		if rule.Type == "pull_request" && rule.Parameters != nil && rule.Parameters.DismissalRestriction != nil {
+			raw := rule.Parameters.DismissalRestriction
+			actors := append([]settings.ReviewActor{}, (*raw.AllowedActors)...)
+			prepared.UnverifiedReviewDismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: copyUIRulesetValue(raw.Enabled), AllowedActors: &actors}
+		}
+	}
+	return prepared, nil
 }
 
 func copyUIRulesetValue[T any](value *T) *T {

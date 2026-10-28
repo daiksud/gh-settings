@@ -54,9 +54,9 @@ func TestUIRulesetTeamReviewerFailures(t *testing.T) {
 	}
 	source := apiRulesetBase()
 	p := completeUIAPIPR()
-	p.DismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: rulesetPtr(false), AllowedActors: rulesetPtr([]settings.ReviewActor{})}
+	p.DismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: rulesetPtr(true), AllowedActors: rulesetPtr([]settings.ReviewActor{{Type: "RepositoryRole", ID: 99}})}
 	source.Rules = rulesetPtr([]settings.RulesetRule{{Type: "pull_request", Parameters: p}})
 	if _, err := RulesetObservation(source); err == nil {
-		t.Fatal("unmapped dismissal state silently erased")
+		t.Fatal("out-of-UI dismissal role silently erased")
 	}
 }

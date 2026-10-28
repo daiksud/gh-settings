@@ -9,7 +9,7 @@ import (
 
 // PreparedRulesets keeps acquisition diagnostics outside the UI policy entries.
 type PreparedRulesets struct {
-	Rulesets     []uimodel.Ruleset
+	Rulesets     []PreparedRuleset
 	ExcludedPush int
 }
 
@@ -37,7 +37,7 @@ func RulesetsObservation(observed settings.RulesetObservation) (PreparedRulesets
 	if err != nil {
 		return PreparedRulesets{}, err
 	}
-	result := PreparedRulesets{Rulesets: make([]uimodel.Ruleset, 0, len(entries)), ExcludedPush: observed.ExcludedPush()}
+	result := PreparedRulesets{Rulesets: make([]PreparedRuleset, 0, len(entries)), ExcludedPush: observed.ExcludedPush()}
 	for _, entry := range entries {
 		policy := entry.Policy
 		policy.ID = &entry.ID
@@ -47,6 +47,6 @@ func RulesetsObservation(observed settings.RulesetObservation) (PreparedRulesets
 		}
 		result.Rulesets = append(result.Rulesets, ui)
 	}
-	slices.SortFunc(result.Rulesets, func(a, b uimodel.Ruleset) int { return strings.Compare(a.RulesetName, b.RulesetName) })
+	slices.SortFunc(result.Rulesets, func(a, b PreparedRuleset) int { return strings.Compare(a.RulesetName, b.RulesetName) })
 	return result, nil
 }

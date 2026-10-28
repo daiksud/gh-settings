@@ -79,7 +79,14 @@ const (
 
 func DefaultRulesetMergeMethods() []MergeMethod { return []MergeMethod{Merge, Squash, Rebase} }
 
+type ReviewDismissalActor struct {
+	Role            *BypassRole
+	Team, App, User *int64
+}
+
 type PullRequestRule struct {
+	RestrictWhoCanDismissPullRequestReviews                       *bool
+	PeopleTeamsOrAppsThatCanDismissReviews                        *[]ReviewDismissalActor
 	RequiredApprovals                                             *int
 	AllowedMergeMethods                                           *[]MergeMethod
 	DismissStalePullRequestApprovalsWhenNewCommitsArePushed       *bool

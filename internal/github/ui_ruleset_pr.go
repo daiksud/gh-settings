@@ -39,15 +39,16 @@ func declareUIRulesetPR(ui uimodel.PullRequestRule) (*settings.RuleParameters, e
 	if err != nil {
 		return nil, err
 	}
+	result.DismissalRestriction, err = declareUIRulesetDismissal(ui)
+	if err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
 func observeUIRulesetPR(p *settings.RuleParameters) (*uimodel.PullRequestRule, error) {
 	if p == nil || p.RequiredApprovingReviewCount == nil || *p.RequiredApprovingReviewCount > 10 || *p.RequiredApprovingReviewCount < 0 {
 		return nil, fmt.Errorf("required_approvals is missing or outside UI choices")
-	}
-	if p.DismissalRestriction != nil {
-		return nil, fmt.Errorf("UI mapping unresolved for write-only review dismissal restrictions")
 	}
 	result := &uimodel.PullRequestRule{
 		RequiredApprovals: copyUIRulesetValue(p.RequiredApprovingReviewCount),
@@ -76,6 +77,10 @@ func observeUIRulesetPR(p *settings.RuleParameters) (*uimodel.PullRequestRule, e
 	result.AllowedMergeMethods = &methods
 	var err error
 	result.RequireReviewFromSpecificTeams, err = observeUIRulesetTeams(p.RequiredReviewers)
+	if err != nil {
+		return nil, err
+	}
+	result.RestrictWhoCanDismissPullRequestReviews, result.PeopleTeamsOrAppsThatCanDismissReviews, err = observeUIRulesetDismissal(p.DismissalRestriction)
 	if err != nil {
 		return nil, err
 	}

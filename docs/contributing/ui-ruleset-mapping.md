@@ -1,25 +1,31 @@
 ---
 type: Reference
 title: Prepared Ruleset UI mappings
-description: Ruleset UI controls, internal API translation, observation defaults and the unresolved dismissal mapping.
+description: Ruleset UI controls, internal API translation, observation defaults and write-only dismissal provenance.
 sources:
   - id: ruleset-ui
     resource: https://github.com/daiksud/gh-settings/settings/rules
   - id: existing-bypass-ui
     resource: https://github.com/daiksud/agents/settings/rules/22615823
+  - id: dismissal-ui
+    resource: https://github.blog/changelog/2026-07-07-restrict-who-can-dismiss-reviews-in-rulesets/
+  - id: dismissal-api
+    resource: https://docs.github.com/en/rest/repos/rules
   - id: role-identities
     resource: https://raw.githubusercontent.com/integrations/terraform-provider-github/main/docs/resources/repository_ruleset.md
 ---
 
-## Internal preparation and remaining decision
+## Internal preparation
 
 This is the internal Ruleset mapping for [Issue #483](https://github.com/daiksud/gh-settings/issues/483), not accepted new YAML. The current parser, public configuration, API adapters and reports retain their existing behavior. [Issue #479](https://github.com/daiksud/gh-settings/issues/479) owns activation; [#480](https://github.com/daiksud/gh-settings/issues/480) owns normalization/warnings, and [#481](https://github.com/daiksud/gh-settings/issues/481) owns reporting.
 
-**The mapping is incomplete for the current write-only `dismissal_restriction` setting.** No corresponding control was found in the inspected existing or new-form PR rule details. Do not invent a UI name, silently discard acquired values, or claim full #483 completion. The prepared read converter returns an explicit unresolved-mapping error if that object is present, even when its values are false/empty. The existing public implementation is untouched. Activation needs verified UI evidence or an authorized disposition of this setting; a new-format unsupported decision has not been made.
+The current write-only `dismissal_restriction` now has a verified UI mapping from GitHub's official release screenshot. The checkbox is **Restrict who can dismiss pull request reviews**, and its collection heading is **People, teams, or apps that can dismiss reviews**. This completes the control inventory without removing support or requiring an unsupported-setting decision. Existing export, plan and unverified-apply limits remain unchanged; UI wording does not establish stored/read-comparable enforcement.[^dismissal-ui][^dismissal-api]
 
 ## UI evidence
 
 English labels and choices were inspected on 2026-10-28. Existing gh-settings and agents Rulesets supplied root, bypass and active-rule controls. Conditional reviewer and code-analysis controls were revealed only in an unnamed, unsaved new Ruleset form; no Create or Save action was submitted, and that form was discarded. This verifies UI wording and options, not live mutation effects or effective protection.[^ruleset-ui][^existing-bypass-ui]
+
+The dismissal control was not visible in the inspected personal repository form. GitHub's 2026-07-07 release article supplies a direct screenshot of the checkbox, actor heading and Repository admin Role / App / Team / User rows, and states that it uses the same actor picker as other Ruleset controls. The documented API supplies the corresponding enabled flag and typed actor references. This evidence verifies the missing display without changing live settings.[^dismissal-ui][^dismissal-api]
 
 The visible bypass options' DOM identities map Repository admin to `RepositoryRole:5`, Maintain to `RepositoryRole:2`, and Write to `RepositoryRole:4`. The independent provider reference documents the same role IDs; the existing agents API/UI pair also identifies Repository admin 5. App, team and user identities remain dynamic; no installation-specific ID is hardcoded.[^role-identities]
 
@@ -51,6 +57,9 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 | Required approvals | PR rule `.required_approvals` | `required_approving_review_count`; UI integers 0–10 |
 | Allowed merge methods | PR rule `.allowed_merge_methods` | Merge / Squash / Rebase → `merge` / `squash` / `rebase` |
 | Dismiss stale pull request approvals when new commits are pushed | PR rule `.dismiss_stale_pull_request_approvals_when_new_commits_are_pushed` | `dismiss_stale_reviews_on_push` |
+| Restrict who can dismiss pull request reviews | PR rule `.restrict_who_can_dismiss_pull_request_reviews` | Optional write-only `dismissal_restriction.enabled` |
+| People, teams, or apps that can dismiss reviews | PR rule `.people_teams_or_apps_that_can_dismiss_reviews[]` | `dismissal_restriction.allowed_actors` |
+| Dismissal actor Role / Team / App / User | Actor `.role`, `.team`, `.app`, `.user` | `RepositoryRole` with verified role IDs / `Team` / `IntegrationInstallation` / `User` |
 | Require review from Code Owners | PR rule `.require_review_from_code_owners` | `require_code_owner_review` |
 | Require approval of the most recent reviewable push | PR rule `.require_approval_of_the_most_recent_reviewable_push` | `require_last_push_approval` |
 | Require conversation resolution before merging | PR rule `.require_conversation_resolution_before_merging` | `required_review_thread_resolution` |
@@ -77,6 +86,14 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 Branch rules and Tag rules are subheadings under Rules, selected by the target object rather than a second independent discriminator. Require exactly one target object and an explicit enforcement choice. A present empty target object selects an empty inclusion. Empty or whitespace-only naming patterns are invalid before prefixing and after reverse prefix removal; nonblank contents are otherwise retained exactly. Tag criteria cannot use the default-branch sentinel.
 
 Each bypass entry selects exactly one actor and explicitly supplies its mode. `deploy_keys: false`, multiple selectors, nonpositive dynamic IDs and unsupported role tokens are invalid. Existing target dependencies remain enforced, including no pull-request bypass for tag Rulesets or deploy keys.
+
+## Review dismissal presence and write-only limits
+
+Omitting both dismissal controls preserves an absent/unacquired restriction, never an invented false value. Selecting either field creates a desired restriction object; the existing selected-object constructor alone supplies omitted false/empty members. A nonempty actor list requires an explicit true checkbox. False with an explicit empty list remains a disabled/cleared state. Each actor selects exactly one verified role or positive dynamic Team/App/User identity. The App value is an **installation ID**, matching `IntegrationInstallation`; it is not the bypass list's `Integration` App-ID namespace.
+
+`PreparedRuleset` embeds the visible UI model and separately retains an owned `UnverifiedReviewDismissalRestriction`. Absent raw restriction remains nil. A present false checkbox hides the actor list from visible UI while preserving the complete latent actor list in this metadata. A present true checkbox projects the typed actors. Unknown roles and malformed/incomplete acquired data fail explicitly. `PreparedRulesets.Rulesets` carries these prepared entries rather than discarding their provenance.
+
+This metadata does not authorize export or comparison. Existing export omits the setting even if GET returned it; explicit desired plan fails before remote work; apply repeats selected write-only intent and reports accepted-but-unverified results. Independent readback may omit the restriction without establishing its retained value. #479 must honor this boundary rather than serialize every projected control automatically, and #480/#481 must retain unverified provenance and honest reporting. No live setting/enforcement test is claimed.
 
 ## Analysis choices and defaults
 
@@ -109,10 +126,12 @@ Correctly typed booleans have no out-of-UI value. Missing fields, invalid types,
 
 `RulesetsObservation` requires a complete acquisition, uses `RulesetState.ID` rather than a possibly absent policy ID, and returns stable name order. It never applies declaration defaults to observations or strips dismissal state to manufacture success. Failure in any entry returns no partial UI collection. `PreparedRulesets.ExcludedPush` retains the existing excluded-push diagnostic; activation/reporting must carry it forward. Existing transport still excludes inherited/push Rulesets and performs its complete pagination, ownership, mutation-response and independent readback checks.
 
-The observed UI also contains Restrict creations, Restrict updates, Require deployments to succeed, Restrict code coverage and Automatically request Copilot code review. This preparation does not adopt those unsupported controls, inherited/push rules, legacy branch protection or organization-wide policy. Unresolved dismissal mapping must remain visible in the draft PR and activation checklist.
+The observed UI also contains Restrict creations, Restrict updates, Require deployments to succeed, Restrict code coverage and Automatically request Copilot code review. This preparation does not adopt those unsupported controls, inherited/push rules, legacy branch protection or organization-wide policy. The verified dismissal mapping retains the documented write-only limitation at activation.
 
 See [the test specification](testing.md#internal-ui-ruleset-preparation) for independent expectations and the limits of local evidence.
 
+[^dismissal-ui]: GitHub Changelog, Restrict who can dismiss reviews in rulesets, 2026-07-07; official screenshot and instructions inspected 2026-10-28.
+[^dismissal-api]: GitHub REST API, repository Rulesets pull-request parameters and typed dismissal actors, consulted 2026-10-28.
 [^ruleset-ui]: Existing Ruleset and unsaved new branch/tag forms inspected read-only or with local unsaved control reveals, then discarded, 2026-10-28.
 [^existing-bypass-ui]: Existing Repository admin / For pull requests only bypass inspected without editing its policy, 2026-10-28.
 [^role-identities]: Provider-maintained reference explicitly lists associated base repository role IDs: maintain 2, write 4, admin 5; retrieved 2026-10-28.

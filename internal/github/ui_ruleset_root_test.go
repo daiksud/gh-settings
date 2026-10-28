@@ -37,7 +37,7 @@ func TestUIRulesetRootObservation(t *testing.T) {
 	got, err := RulesetObservation(source)
 	want := uimodel.Ruleset{ID: rulesetPtr(int64(7)), RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("active")), TargetBranches: &uimodel.BranchTargets{IncludeDefaultBranch: rulesetPtr(true), IncludeAllBranches: rulesetPtr(false), IncludeByPattern: rulesetPtr([]string{"release/*"}), ExcludeByPattern: rulesetPtr([]string{})}, BypassList: rulesetPtr([]uimodel.BypassEntry{})}
 	want.Rules = uiObservedRuleFlags()
-	if err != nil || !reflect.DeepEqual(got, want) {
+	if err != nil || !reflect.DeepEqual(got.Ruleset, want) {
 		t.Fatalf("observation=%+v err=%v want %+v", got, err, want)
 	}
 	for _, enforcement := range []string{"evaluate", "UNKNOWN"} {

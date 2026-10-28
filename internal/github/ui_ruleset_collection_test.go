@@ -35,7 +35,7 @@ func TestUIRulesetCollectionPresenceAndIdentity(t *testing.T) {
 		t.Fatal("missing acquisition accepted")
 	}
 	p := completeUIAPIPR()
-	p.DismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: rulesetPtr(false), AllowedActors: rulesetPtr([]settings.ReviewActor{})}
+	p.DismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: rulesetPtr(true), AllowedActors: rulesetPtr([]settings.ReviewActor{{Type: "RepositoryRole", ID: 99}})}
 	policy.Name = "Unrepresentable"
 	policy.Rules = rulesetPtr([]settings.RulesetRule{{Type: "pull_request", Parameters: p}})
 	partial, err := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: apiRulesetBase()}, {ID: 8, Policy: policy}}, 0)
