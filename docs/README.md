@@ -43,3 +43,5 @@ Internal preparation: [Actions UI mappings](contributing/ui-actions-mapping.md).
 Internal preparation: [Security UI mappings](contributing/ui-security-mapping.md).
 
 Internal preparation: [Pages UI mappings](contributing/ui-pages-mapping.md).
+
+Internal preparation: [Environment UI mappings](contributing/ui-environments-mapping.md).

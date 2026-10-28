@@ -184,3 +184,7 @@ Inspect the relevant workflow run for hosted or publication evidence. A successf
 ## Prepared Pages UI mapping
 
 [Pages mapping fixtures](../../internal/github/ui_pages_composition_test.go) connect literal UI declarations, acquired raw state and exact existing-site updates/readback. The [mapping reference](ui-pages-mapping.md) identifies source/folder, nullable-domain, ownership and metadata checks. Current public/process and lifecycle-limit coverage remains with the existing Pages tests.
+
+## Prepared Environment UI mapping
+
+[Environment mapping fixtures](../../internal/github/ui_environments_composition_test.go) connect literal UI declarations to complete raw reads, exact name-addressed PUT and separately owned typed pattern CRUD. The [mapping reference](ui-environments-mapping.md) links builtin, principal, finite-choice, acquisition/metadata and API-controlled omission tests. Public schema and process contracts remain unchanged.
