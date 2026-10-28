@@ -719,7 +719,7 @@ Explicit `export --environments` includes every observed supported Environment p
 
 Collaborator grants, repository invitations and team access remain unsupported in source and published packages. The [access design](features/repository-access.feature.md) describes proposed ownership and adoption gates; its examples are not accepted configuration.
 
-Environment deletion/rename, custom branch/tag patterns, administrator-bypass management, secrets and variables remain unsupported. Published packages do not gain the new source capability merely by checking out newer configuration.
+Environment deletion/rename, custom deployment protection apps, secrets and variables remain unsupported. Custom branch/tag deployment patterns and administrator bypass are supported under the [Environment contract](#environments); public Action availability follows the [published package boundary](github-actions.md#published-package-and-consumer-pins).
 
 Pages lifecycle and visibility changes, and unadopted Actions settings, are not supported. Rulesets support is limited to the current-source subset above; push and inherited Rulesets, and legacy branch protection are not managed. Organization settings and multi-repository management are outside the tool's scope. Contributor [architecture and future direction](contributing/architecture.md) explains design choices without extending the configuration contract.
 
