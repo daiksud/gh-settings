@@ -13,6 +13,12 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 	if general.DefaultBranch != nil && !settings.ValidDefaultBranch(*general.DefaultBranch) {
 		return settings.RepositoryDeclaration{}, fmt.Errorf("general.default_branch must be a valid branch name")
 	}
+	if general.Features.Issues != nil && !*general.Features.Issues && general.Features.IssuePermissions.CreationAllowedBy != nil {
+		return settings.RepositoryDeclaration{}, fmt.Errorf("issue_permissions require enabled Issues or an omitted feature checkbox")
+	}
+	if general.Features.PullRequests != nil && !*general.Features.PullRequests && general.Features.PullRequestPermissions.CreationAllowedBy != nil {
+		return settings.RepositoryDeclaration{}, fmt.Errorf("pull_request_permissions require enabled Pull requests or an omitted feature checkbox")
+	}
 	result := settings.RepositoryDeclaration{
 		IsTemplate: copyUIValue(general.TemplateRepository), DefaultBranch: copyUIValue(general.DefaultBranch),
 		HasWiki: copyUIValue(general.Features.Wikis), HasIssues: copyUIValue(general.Features.Issues),
@@ -44,9 +50,21 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 	return result, nil
 }
 
+// GeneralConditionalValues retains owned API values behind conditional controls.
+// Nil values remain independently unacquired; these never supply desired intent.
+type GeneralConditionalValues struct {
+	IssueCreationPolicy, PullRequestCreationPolicy   *string
+	MergeCommitTitle, MergeCommitMessage             *string
+	SquashMergeCommitTitle, SquashMergeCommitMessage *string
+}
+type PreparedGeneral struct {
+	uimodel.General
+	RawConditionalValues GeneralConditionalValues
+}
+
 // GeneralObservation projects acquired, validated adapter values, preserving
 // which independently requested fields were actually observed.
-func GeneralObservation(state settings.RepositoryDeclaration) (uimodel.General, error) {
+func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, error) {
 	result := uimodel.General{
 		TemplateRepository: copyUIValue(state.IsTemplate), DefaultBranch: copyUIValue(state.DefaultBranch),
 		Features: uimodel.Features{
@@ -64,19 +82,35 @@ func GeneralObservation(state settings.RepositoryDeclaration) (uimodel.General, 
 	var err error
 	result.PullRequests.MergeCommit.DefaultCommitMessage, err = observeCommitMessage(state.MergeCommitTitle, state.MergeCommitMessage, mergeCommitMenu[:], "merge_commit")
 	if err != nil {
-		return uimodel.General{}, err
+		return PreparedGeneral{}, err
 	}
 	result.PullRequests.SquashMerge.DefaultCommitMessage, err = observeCommitMessage(state.SquashMergeCommitTitle, state.SquashMergeCommitMessage, squashCommitMenu[:], "squash_merge")
 	if err != nil {
-		return uimodel.General{}, err
+		return PreparedGeneral{}, err
 	}
 	result.Features.IssuePermissions.CreationAllowedBy, err = observeCreationPolicy(state.IssueCreationPolicy, "issue_permissions")
 	if err != nil {
-		return uimodel.General{}, err
+		return PreparedGeneral{}, err
 	}
 	result.Features.PullRequestPermissions.CreationAllowedBy, err = observeCreationPolicy(state.PullRequestCreationPolicy, "pull_request_permissions")
 	if err != nil {
-		return uimodel.General{}, err
+		return PreparedGeneral{}, err
 	}
-	return result, nil
+	if state.HasIssues != nil && !*state.HasIssues {
+		result.Features.IssuePermissions.CreationAllowedBy = nil
+	}
+	if state.HasPullRequests != nil && !*state.HasPullRequests {
+		result.Features.PullRequestPermissions.CreationAllowedBy = nil
+	}
+	if state.AllowMergeCommit != nil && !*state.AllowMergeCommit {
+		result.PullRequests.MergeCommit.DefaultCommitMessage = nil
+	}
+	if state.AllowSquashMerge != nil && !*state.AllowSquashMerge {
+		result.PullRequests.SquashMerge.DefaultCommitMessage = nil
+	}
+	return PreparedGeneral{General: result, RawConditionalValues: GeneralConditionalValues{
+		IssueCreationPolicy: copyUIValue(state.IssueCreationPolicy), PullRequestCreationPolicy: copyUIValue(state.PullRequestCreationPolicy),
+		MergeCommitTitle: copyUIValue(state.MergeCommitTitle), MergeCommitMessage: copyUIValue(state.MergeCommitMessage),
+		SquashMergeCommitTitle: copyUIValue(state.SquashMergeCommitTitle), SquashMergeCommitMessage: copyUIValue(state.SquashMergeCommitMessage),
+	}}, nil
 }

@@ -11,6 +11,8 @@ sources:
     resource: https://github.com/daiksud/gh-settings/labels
   - id: merge-ui
     resource: https://github.com/daiksud/agents/settings
+  - id: conditional-ui-css
+    resource: https://github.githubassets.com/assets/settings-fa1c63e6812d44d9.css
 ---
 
 ## Preparation boundary
@@ -56,6 +58,16 @@ Prepared paths use the exact UI wording converted to snake_case. In this table `
 | Selected label identity | `repository.labels[].id` | Existing numeric ID selects a label; absent ID remains create-only |
 
 The two Default commit message menus are distinguished by their merge-method context. A declaration sends both API members together. It cannot request a menu choice while explicitly disabling that method. An omitted enable checkbox remains unspecified. Existing server-state dependency validation for merge-commit defaults still applies; conversion does not invent `true`.
+
+### Conditional controls and raw values
+
+The loaded General page stylesheet confirms that Issue permissions and Pull request permissions are hidden when their corresponding feature group is off; merge/squash default-message menus are likewise hidden when their merge method is off. The feature forms auto-submit, so the review used only DOM attributes and the loaded public stylesheet to verify these dependencies; no live checkbox was changed.[^conditional-ui-css]
+
+Desired conversion rejects an explicitly false Issues/Pull requests checkbox with a declared corresponding creation policy, just as it rejects a default-message choice with an explicitly disabled merge method. A true or omitted enabling checkbox preserves the existing independent declaration behavior. False feature controls without a policy remain valid; there is no implicit enabling.
+
+`GeneralObservation` returns `PreparedGeneral`, embedding the visible UI model plus `RawConditionalValues`. The latter owns six API string pointers: both creation policies and the title/message pair for both merge menus. All acquired choices are validated before conditional hiding. Explicitly false enabling controls hide their UI choices while retaining the exact owned raw values. An omitted enabling control remains independently unacquired, so partial projection is not treated as proof that a control is disabled. Missing values remain nil; unknown raw choices still fail pending #480. Metadata never supplies desired intent or invents an observed default.
+
+Issue #479 must consume the embedded General UI values and carry raw conditional metadata into #480/#481. Hiding a control cannot silently discard latent policy, replay it as newly selected intent, or report normalization as an observed change.
 
 ### Menu choices and observation defaults
 
@@ -104,3 +116,5 @@ The [test specification](testing.md#internal-ui-repository-preparation) records 
 [^about-ui]: Edit repository details dialog: Description, Website, Topics and unsupported home-page controls, 2026-10-28.
 [^labels-ui]: New label dialog: Name, Description and Color with the displayed `#` prefix, 2026-10-28.
 [^merge-ui]: Existing enabled merge method on agents exposed its three choices; gh-settings exposed the four squash choices, 2026-10-28.
+
+[^conditional-ui-css]: GitHub General page DOM and its loaded public stylesheet, inspected 2026-10-28; conditional feature/merge groups hide their policy menus when off.

@@ -29,7 +29,7 @@ func TestUICreationPolicies(t *testing.T) {
 				t.Fatalf("declaration=%+v err=%v want %+v", got, err, want)
 			}
 			observed, err := GeneralObservation(want)
-			if err != nil || !reflect.DeepEqual(observed, ui) {
+			if err != nil || !reflect.DeepEqual(observed.General, ui) {
 				t.Fatalf("observation=%+v err=%v want %+v", observed, err, ui)
 			}
 		}
@@ -61,13 +61,13 @@ func TestUICreationPolicyGraphQLPayload(t *testing.T) {
 			}
 			return labelsResponse(req, 200, `{"data":{"repository":{"id":"repo-id","nameWithOwner":"owner/current"}}}`), nil
 		}
-		want := map[string]any{"input": map[string]any{"repositoryId": "repo-id", "hasPullRequestsEnabled": false, "hasSponsorshipsEnabled": false, "issueCreationPolicy": "COLLABORATORS_ONLY", "pullRequestCreationPolicy": "ALL"}}
+		want := map[string]any{"input": map[string]any{"repositoryId": "repo-id", "hasPullRequestsEnabled": true, "hasSponsorshipsEnabled": false, "issueCreationPolicy": "COLLABORATORS_ONLY", "pullRequestCreationPolicy": "ALL"}}
 		if !reflect.DeepEqual(body.Variables, want) {
 			t.Fatalf("variables=%v want %v", body.Variables, want)
 		}
-		return labelsResponse(req, 200, `{"data":{"updateRepository":{"repository":{"id":"repo-id","nameWithOwner":"owner/current","hasPullRequestsEnabled":false,"hasSponsorshipsEnabled":false,"issueCreationPolicy":"COLLABORATORS_ONLY","pullRequestCreationPolicy":"ALL"}}}}`), nil
+		return labelsResponse(req, 200, `{"data":{"updateRepository":{"repository":{"id":"repo-id","nameWithOwner":"owner/current","hasPullRequestsEnabled":true,"hasSponsorshipsEnabled":false,"issueCreationPolicy":"COLLABORATORS_ONLY","pullRequestCreationPolicy":"ALL"}}}}`), nil
 	}))
-	desired, err := GeneralDeclaration(uimodel.General{Features: uimodel.Features{PullRequests: pointer(false), Sponsorships: pointer(false), IssuePermissions: uimodel.CreationPermissions{CreationAllowedBy: pointer(uimodel.CreationAllowedBy("collaborators_only"))}, PullRequestPermissions: uimodel.CreationPermissions{CreationAllowedBy: pointer(uimodel.CreationAllowedBy("all_users"))}}})
+	desired, err := GeneralDeclaration(uimodel.General{Features: uimodel.Features{PullRequests: pointer(true), Sponsorships: pointer(false), IssuePermissions: uimodel.CreationPermissions{CreationAllowedBy: pointer(uimodel.CreationAllowedBy("collaborators_only"))}, PullRequestPermissions: uimodel.CreationPermissions{CreationAllowedBy: pointer(uimodel.CreationAllowedBy("all_users"))}}})
 	if err != nil {
 		t.Fatal(err)
 	}

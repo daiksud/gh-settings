@@ -38,7 +38,7 @@ func TestUICommitMessageMenus(t *testing.T) {
 				want = map[string]any{"squash_merge_commit_title": test.title, "squash_merge_commit_message": test.message}
 			}
 			got, err := GeneralObservation(observed)
-			if err != nil || !reflect.DeepEqual(got, ui) {
+			if err != nil || !reflect.DeepEqual(got.General, ui) {
 				t.Fatalf("observation=%+v err=%v want %+v", got, err, ui)
 			}
 			desired, err := GeneralDeclaration(ui)
