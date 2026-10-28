@@ -39,3 +39,5 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 The user guides stay directly under `docs/`; contributor guides live under `docs/contributing/`. ADRs and behavior specifications keep their established paths as contributor reference material.
 
 Internal preparation: [Actions UI mappings](contributing/ui-actions-mapping.md).
+
+Internal preparation: [Security UI mappings](contributing/ui-security-mapping.md).
