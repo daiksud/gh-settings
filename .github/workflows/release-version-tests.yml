@@ -1,0 +1,32 @@
+name: release-version-tests
+on:
+  pull_request:
+    paths:
+      - .github/scripts/release-version.py
+      - .github/scripts/test_release_version.py
+      - .github/workflows/release-version-tests.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/scripts/release-version.py
+      - .github/scripts/test_release_version.py
+      - .github/workflows/release-version-tests.yml
+permissions: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: release-version-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  release-version-tests:
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    permissions: {contents: read}
+    steps:
+      - name: Checkout test source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test release version calculation
+        run: python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q

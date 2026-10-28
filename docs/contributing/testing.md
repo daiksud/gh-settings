@@ -118,7 +118,13 @@ Examples and active main callers use the same single-job apply pattern: three `u
 
 ## Release and publication evidence
 
-The [shared Python tests](../../.github/scripts/test_release_version.py) exercise version precedence, publication-order selection, complete frozen Git ranges and retry identity. The [Go metadata tests](../../scripts/release-metadata/main_test.go) retain native-note request, Git history boundary, and breaking-footer coverage. The [publisher fixtures](../../tests/release.sh) check generation failures before remote state and preservation of existing notes and artifacts during retries. These tests neither publish a release nor claim to execute GitHub's native renderer.
+The [shared Python tests](../../.github/scripts/test_release_version.py) exercise version precedence, publication-order selection, complete frozen Git ranges and retry identity. The independent [release-version-tests workflow](../../.github/workflows/release-version-tests.yml) runs them on pull requests and main pushes that change the resolver, its Python tests, or that workflow itself. It is not a required check or a dependency of the product build, acceptance, or release jobs. Keeping these tests in a separate checkout also prevents their untracked Python bytecode caches from marking the product build's VCS metadata as modified. Run them locally when changing the resolver or its tests:
+
+```sh
+python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
+```
+
+The [Go metadata tests](../../scripts/release-metadata/main_test.go) retain native-note request, Git history boundary, and breaking-footer coverage. The [publisher fixtures](../../tests/release.sh) check generation failures before remote state and preservation of existing notes and artifacts during retries. These tests neither publish a release nor claim to execute GitHub's native renderer.
 
 The [release runbook](releases.md) owns dispatch and recovery. Its build matrix transfers each native product with a manifest; the acceptance matrix reuses the bounded public Action fixture with the frozen source, calculated release version, and manifested Linux product. Actual token-free validate must succeed before publication. Source/helper tests inspect orchestration and wrapper behavior without dispatching a release, and therefore are not hosted release evidence.
 
