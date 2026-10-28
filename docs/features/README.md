@@ -19,6 +19,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Workflow permissions](workflow-permissions.feature.md) | Manage default Actions token and approval policy. |
 | [Fork workflows](fork-workflows.feature.md) | Manage fork pull-request workflow controls. |
 | [Security](security.feature.md) | Manage adopted security controls. |
+| [Immutable releases](immutable-releases.feature.md) | Manage repository release immutability policy and its explicit 404 tradeoff. |
 | [Retention](retention.feature.md) | Manage Actions retention policy. |
 | [Pages](pages.feature.md) | Manage supported existing Pages configuration. |
 | [Release](release.feature.md) | Publish and verify immutable artifacts. |

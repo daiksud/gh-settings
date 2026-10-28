@@ -18,6 +18,7 @@ type ExportCheckout struct {
 	IncludeEnvironments        bool
 	IncludeSecretScanning      bool
 	IncludePrivateReporting    bool
+	IncludeImmutableReleases   bool
 	IncludeRetention           bool
 	ExcludedRulesets           func(int)
 	PrepareSave                func() (func(settings.Declaration) error, error)
@@ -172,6 +173,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Security.PrivateVulnerabilityReporting = &enabled
+	}
+	if checkout.IncludeImmutableReleases {
+		observed, err := read.ImmutableReleases(repo)
+		if err != nil {
+			return err
+		}
+		enabled, _, _, err := observed.Values()
+		if err != nil {
+			return err
+		}
+		declaration.Security.ImmutableReleases = &enabled
 	}
 	if checkout.IncludeArchive {
 		state, err := read.Archive(repo)

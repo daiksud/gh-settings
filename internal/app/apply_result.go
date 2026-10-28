@@ -31,6 +31,8 @@ const (
 	SecretScanningUpdate
 	PrivateReportingRead
 	PrivateReportingUpdate
+	ImmutableReleasesRead
+	ImmutableReleasesUpdate
 	RetentionRead
 	RetentionUpdate
 	ForkApprovalRead
@@ -92,7 +94,7 @@ func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus)
 	result.Operations[index].Status = status
 	result.Outcome = ApplyFailed
 	for _, operation := range result.Operations {
-		if operation.Status == OperationCompleted && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != PrivateReportingRead && operation.Kind != RetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
+		if operation.Status == OperationCompleted && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
 			result.Outcome = ApplyPartialFailure
 			break
 		}

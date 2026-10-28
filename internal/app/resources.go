@@ -14,6 +14,7 @@ type PreWriteReadFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	ImmutableReleases   func(repository.Repository) (settings.ImmutableReleasesObservation, error)
 	Pages               func(repository.Repository) (settings.PagesObservation, error)
 	Archive             func(repository.Repository) (settings.ArchiveState, error)
 	ForkApproval        func(repository.Repository) (settings.ForkApprovalObservation, error)
@@ -32,31 +33,33 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
-	ReadPages            func(repository.Repository) (settings.PagesObservation, error)
-	Pages                func(repository.Repository, settings.PagesDeclaration) (bool, error)
-	ReadArchive          func(repository.Repository) (settings.ArchiveState, error)
-	Archive              func(repository.Repository, settings.ArchiveState, bool) error
-	ReadForkApproval     func(repository.Repository) (settings.ForkApprovalObservation, error)
-	ForkApproval         func(repository.Repository, string) (bool, error)
-	ReadPrivateFork      func(repository.Repository) (settings.PrivateForkObservation, error)
-	PrivateFork          func(repository.Repository, settings.PrivateForkDeclaration) (bool, error)
-	ReadRetention        func(repository.Repository) (settings.RetentionObservation, error)
-	Retention            func(repository.Repository, int) (bool, error)
-	ReadPrivateReporting func(repository.Repository) (settings.PrivateReportingObservation, error)
-	PrivateReporting     func(repository.Repository, settings.SecurityChange) (bool, error)
-	ReadSecretScanning   func(repository.Repository) (settings.SecretScanningObservation, error)
-	SecretScanning       func(repository.Repository, settings.SecurityChange) (bool, error)
-	WorkflowPermissions  func(repository.Repository, settings.ActionsPolicyDeclaration) error
-	Actions              func(repository.Repository, settings.ActionsPolicyDeclaration) error
-	Repository           func(repository.Repository, settings.RepositoryDeclaration) error
-	Topics               func(repository.Repository, settings.TopicsDeclaration) error
-	ReadLabels           func(repository.Repository) (settings.LabelObservation, error)
-	CreateLabel          func(repository.Repository, settings.LabelChange) (int64, error)
-	CreatedID            func(string, string, int64) error
-	UpdateLabel          func(repository.Repository, settings.LabelChange) error
-	DeleteLabel          func(repository.Repository, settings.LabelChange) error
-	ReadRulesets         func(repository.Repository) (settings.RulesetObservation, error)
-	Ruleset              func(repository.Repository, settings.RulesetChange) (int64, error)
-	ReadEnvironments     func(repository.Repository, []string) (settings.EnvironmentObservation, error)
-	Environment          func(repository.Repository, settings.EnvironmentDeclaration) (bool, error)
+	ReadImmutableReleases func(repository.Repository) (settings.ImmutableReleasesObservation, error)
+	ImmutableReleases     func(repository.Repository, settings.SecurityChange) (bool, error)
+	ReadPages             func(repository.Repository) (settings.PagesObservation, error)
+	Pages                 func(repository.Repository, settings.PagesDeclaration) (bool, error)
+	ReadArchive           func(repository.Repository) (settings.ArchiveState, error)
+	Archive               func(repository.Repository, settings.ArchiveState, bool) error
+	ReadForkApproval      func(repository.Repository) (settings.ForkApprovalObservation, error)
+	ForkApproval          func(repository.Repository, string) (bool, error)
+	ReadPrivateFork       func(repository.Repository) (settings.PrivateForkObservation, error)
+	PrivateFork           func(repository.Repository, settings.PrivateForkDeclaration) (bool, error)
+	ReadRetention         func(repository.Repository) (settings.RetentionObservation, error)
+	Retention             func(repository.Repository, int) (bool, error)
+	ReadPrivateReporting  func(repository.Repository) (settings.PrivateReportingObservation, error)
+	PrivateReporting      func(repository.Repository, settings.SecurityChange) (bool, error)
+	ReadSecretScanning    func(repository.Repository) (settings.SecretScanningObservation, error)
+	SecretScanning        func(repository.Repository, settings.SecurityChange) (bool, error)
+	WorkflowPermissions   func(repository.Repository, settings.ActionsPolicyDeclaration) error
+	Actions               func(repository.Repository, settings.ActionsPolicyDeclaration) error
+	Repository            func(repository.Repository, settings.RepositoryDeclaration) error
+	Topics                func(repository.Repository, settings.TopicsDeclaration) error
+	ReadLabels            func(repository.Repository) (settings.LabelObservation, error)
+	CreateLabel           func(repository.Repository, settings.LabelChange) (int64, error)
+	CreatedID             func(string, string, int64) error
+	UpdateLabel           func(repository.Repository, settings.LabelChange) error
+	DeleteLabel           func(repository.Repository, settings.LabelChange) error
+	ReadRulesets          func(repository.Repository) (settings.RulesetObservation, error)
+	Ruleset               func(repository.Repository, settings.RulesetChange) (int64, error)
+	ReadEnvironments      func(repository.Repository, []string) (settings.EnvironmentObservation, error)
+	Environment           func(repository.Repository, settings.EnvironmentDeclaration) (bool, error)
 }

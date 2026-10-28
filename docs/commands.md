@@ -58,7 +58,7 @@ Plan shows creates and ID-bound updates, including default-derived values. Color
 
 `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Existing export choices are unchanged;
 
-Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection), and `export --security private-vulnerability-reporting` for the independent [public-repository reporting toggle](settings.md#private-vulnerability-reporting). Repeat `--security` with distinct families to include both. It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Implemented families are `secret-scanning` and `private-vulnerability-reporting`: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export requests and scope are unchanged;
+Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection), and `export --security private-vulnerability-reporting` for the independent [public-repository reporting toggle](settings.md#private-vulnerability-reporting). Repeat `--security` with distinct families to include both. It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Implemented families are `secret-scanning`, `private-vulnerability-reporting` and `immutable-releases`: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export requests and scope are unchanged;
 
 `export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy after any other requested resources. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
 
@@ -82,6 +82,22 @@ cat .github/settings.yml
 Validate reads `.github/settings.yml` and checks the [configuration contract](settings.md#configuration-semantics). It requires one YAML root mapping with integer `schemaVersion: 1`, accepts partial declarations and empty settings/repository/topics mappings, and rejects unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple documents, and wrong shapes or value types. Alias and merge values are checked after YAML resolves them.
 
 Success is silent and exits 0. Failures exit 1 and report a diagnostic on stderr, with no stdout. Validation requires a Git checkout but no GitHub origin or authentication. It makes no API requests and changes neither the file nor GitHub settings. Passing local validation does not guarantee that GitHub will accept an update.
+
+## Immutable release policy commands
+
+`export --security immutable-releases` independently includes the repository
+[immutable release policy](settings.md#immutable-release-policy), requiring
+Administration read. Omitted selection adds no policy request. GET 404 is
+interpreted as disabled without a permission discriminator; an authorization
+404 can consequently be misreported as false. Other failures remain errors and
+preserve the export destination. Owner enforcement is never exported as intent.
+
+Plan compares only declared values without writes and rejects an owner-enforced
+disable. Apply follows private vulnerability reporting, uses fresh preflight,
+body-free PUT/DELETE, exact 204 and fresh readback; matching state is a no-op.
+Administration write is required. A 404 readback uses the same explicit tradeoff.
+Write/readback failures can leave earlier changes applied; no retry or rollback
+occurs. Individual releases, tags and assets are outside this command's scope.
 
 ## Plan behavior
 

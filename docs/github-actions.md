@@ -87,6 +87,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Secret scanning/push protection | Complete repository security-block visibility; Metadata read alone is insufficient | Administration write plus applicable security authority/entitlement and complete readback |
 | Private vulnerability reporting | Metadata read and supported public applicability | Administration write and applicable repository authority |
+| Immutable release policy | Administration read; GET 404 is interpreted as disabled with the documented authorization ambiguity | Administration write; fresh owner-enforcement preflight and readback |
 | Existing Pages | Pages read | Pages write plus Administration write and applicable repository authority |
 | Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility | Administration write plus complete supported observation/readback |
 | PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
