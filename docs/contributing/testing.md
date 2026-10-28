@@ -172,3 +172,7 @@ The [release runbook](releases.md) owns dispatch and recovery. Its build matrix 
 | Post-publication verification | The published tag and actual downloaded assets match both accepted manifests, and the published root Action reports all four identities | Failure after publication does not permit changing immutable tags/assets |
 
 Inspect the relevant workflow run for hosted or publication evidence. A successful local fixture, Summary file, or workflow source check cannot establish actual Environment approval, branch policy, token revocation, or GitHub Summary publication.
+
+## Prepared Actions UI mapping
+
+[Actions mapping fixtures](../../internal/github/ui_actions_composition_test.go) connect literal UI declarations to existing exact request/readback behavior. The [mapping reference](ui-actions-mapping.md) links the owning enum, singleton, acquisition, retention and fork tests. Current public YAML/process behavior remains covered by its existing tests; prepared helpers are not activated by this change.
