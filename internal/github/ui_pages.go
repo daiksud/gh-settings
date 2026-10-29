@@ -61,36 +61,52 @@ type PreparedPages struct {
 	Public bool
 }
 
-func PagesObservation(observation settings.PagesObservation) (PreparedPages, error) {
-	state, err := observation.Values()
-	if err != nil {
-		return PreparedPages{}, err
+// PagesPolicyUI projects complete exported policy without site visibility metadata.
+func PagesPolicyUI(policy settings.PagesDeclaration) (uimodel.Pages, error) {
+	if policy.BuildType == nil || policy.CNAME == nil || policy.HTTPSEnforced == nil {
+		return uimodel.Pages{}, fmt.Errorf("Pages policy requires complete build type, custom domain and HTTPS values")
+	}
+	if err := policy.Validate(); err != nil {
+		return uimodel.Pages{}, err
 	}
 	var source uimodel.PagesSourceChoice
-	switch state.BuildType {
+	switch *policy.BuildType {
 	case "legacy":
 		source = uimodel.DeployFromABranch
 	case "workflow":
 		source = uimodel.GitHubActions
 	default:
-		return PreparedPages{}, fmt.Errorf("Pages build type is outside UI choices")
+		return uimodel.Pages{}, fmt.Errorf("Pages build type is outside UI choices")
 	}
 	b := &uimodel.PagesBuildAndDeployment{Source: &source}
-	if state.BuildType == "legacy" {
-		if state.Source == nil {
-			return PreparedPages{}, fmt.Errorf("Pages branch source was not acquired")
+	if *policy.BuildType == "legacy" {
+		if policy.Source == nil {
+			return uimodel.Pages{}, fmt.Errorf("Pages branch source was not acquired")
 		}
 		var folder uimodel.PagesFolderChoice
-		switch state.Source.Path {
+		switch policy.Source.Path {
 		case "/":
 			folder = uimodel.PagesRoot
 		case "/docs":
 			folder = uimodel.PagesDocs
 		default:
-			return PreparedPages{}, fmt.Errorf("Pages folder is outside UI choices")
+			return uimodel.Pages{}, fmt.Errorf("Pages folder is outside UI choices")
 		}
-		b.Branch = copyUIPagesValue(&state.Source.Branch)
+		b.Branch = copyUIPagesValue(&policy.Source.Branch)
 		b.SelectFolder = &folder
 	}
-	return PreparedPages{Pages: uimodel.Pages{BuildAndDeployment: b, CustomDomain: &uimodel.PagesCustomDomain{Value: copyUIPagesValue(state.CNAME)}, EnforceHTTPS: copyUIPagesValue(&state.HTTPSEnforced)}, Public: state.Public}, nil
+	return uimodel.Pages{BuildAndDeployment: b, CustomDomain: &uimodel.PagesCustomDomain{Value: copyUIPagesValue(policy.CNAME.Value)}, EnforceHTTPS: copyUIPagesValue(policy.HTTPSEnforced)}, nil
+
+}
+
+func PagesObservation(observation settings.PagesObservation) (PreparedPages, error) {
+	state, err := observation.Values()
+	if err != nil {
+		return PreparedPages{}, err
+	}
+	ui, err := PagesPolicyUI(settings.PagesDeclaration{BuildType: &state.BuildType, Source: state.Source, CNAME: &settings.PagesDomain{Value: state.CNAME}, HTTPSEnforced: &state.HTTPSEnforced})
+	if err != nil {
+		return PreparedPages{}, err
+	}
+	return PreparedPages{Pages: ui, Public: state.Public}, nil
 }

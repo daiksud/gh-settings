@@ -150,7 +150,7 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 			}
 			write := func(value string) {
 				t.Helper()
-				if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {actions: "+value+"}\n"); err != nil {
+				if err := writeSettingsFile(fixture.work, actionsPolicyInput(value)); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -168,16 +168,16 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 			config := filepath.Join(fixture.work, ".github/settings.yml")
 			data, _ := os.ReadFile(config)
 			if private {
-				if !strings.Contains(string(data), "send_write_tokens_to_workflows: false") || strings.Contains(string(data), "fork_pr_approval_policy:") {
+				if !strings.Contains(string(data), "send_write_tokens_to_workflows_from_fork_pull_requests: false") || strings.Contains(string(data), "approval_for_running_fork_pull_request_workflows_from_contributors:") {
 					t.Fatal(string(data))
 				}
-			} else if !strings.Contains(string(data), "fork_pr_approval_policy: first_time_contributors") || strings.Contains(string(data), "private_fork_workflows:") {
+			} else if !strings.Contains(string(data), "approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors\n") || strings.Contains(string(data), "fork_pull_request_workflows:") {
 				t.Fatal(string(data))
 			}
-			desired := "{fork_pr_approval_policy: all_external_contributors}"
+			desired := "{approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_all_external_contributors}"
 			needle := "fork_pr_approval_policy"
 			if private {
-				desired = "{private_fork_workflows: {run_workflows_from_fork_pull_requests: true, send_secrets_and_variables: false}}"
+				desired = "{fork_pull_request_workflows: {run_workflows_from_fork_pull_requests: true, send_secrets_and_variables_to_workflows_from_fork_pull_requests: false}}"
 				needle = "send_secrets_and_variables: true → false"
 			}
 			write(desired)
@@ -216,10 +216,10 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 			mu.Unlock()
 			// Partial matching intent needs no mandatory parameter; a differing one may not replay it.
 			if private {
-				write("{private_fork_workflows: {send_secrets_and_variables: false}}")
+				write("{fork_pull_request_workflows: {send_secrets_and_variables_to_workflows_from_fork_pull_requests: false}}")
 				run("plan")
 				run("apply")
-				write("{private_fork_workflows: {send_secrets_and_variables: true}}")
+				write("{fork_pull_request_workflows: {send_secrets_and_variables_to_workflows_from_fork_pull_requests: true}}")
 				for _, cmd := range []string{"plan", "apply"} {
 					r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{cmd}, false)
 					if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "explicitly declared run_workflows") {
@@ -233,7 +233,7 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 				values[0] = false
 				beforeWrites := writes
 				mu.Unlock()
-				write("{private_fork_workflows: {run_workflows_from_fork_pull_requests: true}}")
+				write("{fork_pull_request_workflows: {run_workflows_from_fork_pull_requests: true}}")
 				for _, cmd := range []string{"plan", "apply"} {
 					r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{cmd}, false)
 					if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "all four values explicitly") {
@@ -245,7 +245,7 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 					t.Fatal("latent enable wrote")
 				}
 				mu.Unlock()
-				write("{private_fork_workflows: {run_workflows_from_fork_pull_requests: true, send_write_tokens_to_workflows: false, send_secrets_and_variables: false, require_approval_for_fork_pr_workflows: false}}")
+				write("{fork_pull_request_workflows: {run_workflows_from_fork_pull_requests: true, send_write_tokens_to_workflows_from_fork_pull_requests: false, send_secrets_and_variables_to_workflows_from_fork_pull_requests: false, require_approval_for_fork_pull_request_workflows: false}}")
 				run("apply")
 				mu.Lock()
 				if values != [4]bool{true, false, false, false} || !reflect.DeepEqual(payloads[len(payloads)-1], map[string]any{"run_workflows_from_fork_pull_requests": true, "send_write_tokens_to_workflows": false, "send_secrets_and_variables": false, "require_approval_for_fork_pr_workflows": false}) {
@@ -283,9 +283,9 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 				mu.Unlock()
 			}
 			// Reverse the declared value so every failure attempts an actual changed policy.
-			next := "{fork_pr_approval_policy: first_time_contributors}"
+			next := "{approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors}"
 			if private {
-				next = "{private_fork_workflows: {run_workflows_from_fork_pull_requests: true, send_secrets_and_variables: true}}"
+				next = "{fork_pull_request_workflows: {run_workflows_from_fork_pull_requests: true, send_secrets_and_variables_to_workflows_from_fork_pull_requests: true}}"
 			}
 			write(next)
 			for _, failure := range []string{"put-redirect", "write-denied", "enforced"} {
@@ -308,7 +308,7 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 				mu.Lock()
 				mode = ""
 				mu.Unlock()
-				write("{fork_pr_approval_policy: first_time_contributors, private_fork_workflows: {run_workflows_from_fork_pull_requests: false}}")
+				write("{approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors, fork_pull_request_workflows: {run_workflows_from_fork_pull_requests: false}}")
 				r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 				if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "earlier writes remain applied") {
 					t.Fatal(err, r.stderr.String())

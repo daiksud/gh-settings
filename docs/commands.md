@@ -4,7 +4,7 @@
 
 `gh settings export --environments` includes all supported named Environment policies and composes with other export options. It requires complete Environment/custom-protection reads and preserves the existing output-file safety contract. Ordinary export does not read Environments.
 
-`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); names select ordinary create-or-update, not numeric IDs. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries reset supported settings to documented defaults; inspect plan before apply.
+`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); names select ordinary create-or-update, not numeric IDs. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries send an empty upsert body. Omitted built-in values remain API-controlled; the client promises neither preservation nor reset. Inspect plan before apply.
 
 ## Scope and status
 
@@ -19,10 +19,10 @@ gh settings apply [--no-writeback]
 
 | Command | Contract |
 | --- | --- |
-| `export` | Read all supported settings and silently save `.github/settings.yml`. Existing configuration is not required. |
+| `export` | Read ordinary and explicitly selected settings and silently save `.github/settings.yml`. Existing configuration is not required. |
 | `validate` | Check the configuration locally against the supported schema. |
-| `plan` | Validate, then read managed resources and show field differences and label operations. |
-| `apply` | Validate, send repository fields/topics directly, then reconcile declared labels against a fresh read. |
+| `plan` | Validate, then read managed resources and show comparisons/selected-object operations. |
+| `apply` | Validate, then execute the declared families in order with their existing reconciliation/preflight rules. |
 
 There are no target override, configuration-path or output-format flags. Use `gh settings --help` for usage and `gh settings --version` for the installed version. Unsupported commands or arguments fail with exit status 1.
 
@@ -46,7 +46,7 @@ Plan does not mutate settings, but complete Ruleset bypass observation requires 
 
 ## Topics command behavior
 
-The [topics contract](settings.md#topics) defines names, omission and explicit clearing. Export includes the observed topics; plan compares the managed set; apply replaces that set. A configuration containing only `settings.topics.names` is a valid managed declaration. An omitted or empty topics mapping skips topics; the command is a local no-op only when no other resource is managed.
+The [topics contract](settings.md#topics) defines names, omission and explicit clearing. Export includes the observed topics; plan compares the managed set; apply replaces that set. A configuration containing only `repository.about.topics` is valid managed intent. Omitted topics skip the resource; `[]` clears it and `{}` is invalid. The command is a local no-op only when no other resource is managed.
 
 ## Labels command behavior
 
@@ -56,11 +56,11 @@ Plan shows creates and ID-bound updates, including default-derived values. Color
 
 ## Export behavior
 
-`export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Existing export choices are unchanged;
+`export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Other export selections compose with it.
 
-Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection), and `export --security private-vulnerability-reporting` for the independent [public-repository reporting toggle](settings.md#private-vulnerability-reporting). Repeat `--security` with distinct families to include both. It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Implemented families are `secret-scanning`, `private-vulnerability-reporting` and `immutable-releases`: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export requests and scope are unchanged;
+Current source adds `export --security secret-scanning`, selecting the two [Secret scanning controls](settings.md#secret-scanning-and-push-protection), and `export --security private-vulnerability-reporting` for the independent [public-repository reporting toggle](settings.md#private-vulnerability-reporting). Repeat `--security` with distinct families to include both. It composes with the existing selections; duplicate/missing/unknown families fail before reads or destination changes. Implemented families are `secret-scanning`, `private-vulnerability-reporting` and `immutable-releases`: `all`, Dependabot and product-level families are not accepted. Selected security reads occur after existing opt-in resources and must complete before saving. Ordinary export does not acquire security policy.
 
-`export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy after any other requested resources. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
+`export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
 
 `export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy) for required credentials and transition limits.
 
@@ -79,7 +79,7 @@ cat .github/settings.yml
 
 ## Validate behavior
 
-Validate reads `.github/settings.yml` and checks the [configuration contract](settings.md#configuration-semantics). It requires one YAML root mapping with integer `schemaVersion: 1`, accepts partial declarations and empty settings/repository/topics mappings, and rejects unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple documents, and wrong shapes or value types. Alias and merge values are checked after YAML resolves them.
+Validate reads `.github/settings.yml` and checks the [configuration contract](settings.md#configuration-semantics). It requires one YAML root mapping with the exact string `version: daiksud/gh-settings@v0`, accepts partial UI declarations and empty repository/settings mappings, and rejects unsupported versions, unknown or duplicate keys, non-string keys, malformed or multiple documents, and wrong shapes or value types. Alias and merge values are checked after YAML resolves them. Old envelopes/API-shaped aliases are rejected without compatibility or migration. Public paths are defined by the current-source reference; published packages keep their own contracts.
 
 Success is silent and exits 0. Failures exit 1 and report a diagnostic on stderr, with no stdout. Validation requires a Git checkout but no GitHub origin or authentication. It makes no API requests and changes neither the file nor GitHub settings. Passing local validation does not guarantee that GitHub will accept an update.
 
@@ -101,16 +101,18 @@ occurs. Individual releases, tags and assets are outside this command's scope.
 
 ## Plan behavior
 
-Plan validates the configuration before resolving origin, configuring authentication or reading GitHub. A valid declaration with no managed resources prints `No managed repository settings.` and exits 0 locally without an origin, credentials or API calls. `topics.names: []` remains a managed clearing declaration. In current source, `labels: []` selects no objects and requires no label comparison.
+Plan validates the configuration before resolving origin, configuring authentication or reading GitHub. A valid declaration with no managed resources prints `No managed repository settings.` and exits 0 locally without an origin, credentials or API calls. `repository.about.topics: []` remains a managed clearing declaration. In current source, `labels: []` selects no objects and requires no label comparison.
 
 Plan reads only declared resources, in repository-then-topics-then-labels order, completing every page of a declared label collection. It uses the same target resolution and response handling as export. Declared values and collection membership are compared; false, empty strings and empty topic/label lists remain explicit values. The GitHub client may sanitize some API control characters to caret notation before comparison.
 
-Changed repository fields appear in this order: description, homepage, default_branch, has_issues, has_projects, has_wiki, has_discussions, web_commit_signoff_required, is_template, allow_merge_commit, allow_squash_merge, allow_rebase_merge, delete_branch_on_merge, allow_auto_merge, allow_update_branch, squash_merge_commit_title, squash_merge_commit_message, merge_commit_title, merge_commit_message, has_pull_requests, pull_request_creation_policy and issue_creation_policy, then has_sponsorships and archived, followed by topics and then label operations. Lines use `settings.repository.FIELD: CURRENT → DESIRED` or `settings.topics.names: CURRENT → DESIRED`:
+About and General comparisons retain the existing stable field order, followed by Topics and selected-object operations. Unambiguous scalar/Topics paths use the current UI declaration paths:
 
 ```text
-settings.repository.has_issues: true → false
-settings.topics.names: ["old"] → ["github-cli","settings-as-code"]
+repository.settings.general.features.issues: true → false
+repository.about.topics: ["old"] → ["github-cli","settings-as-code"]
 ```
+
+One UI menu choice can produce two internal component comparisons. Complete UI rendering of compound choices and other families is deferred to [#481](https://github.com/daiksud/gh-settings/issues/481). Their existing internal display paths/values are not accepted YAML aliases. Out-of-UI normalization/warnings remain [#480](https://github.com/daiksud/gh-settings/issues/480); unknown observations currently fail.
 
 Strings are double-quoted with Go string escaping, including quotes, backslashes, newlines and control characters. Booleans use `true` or `false`; topics use sorted JSON arrays. Equal managed values are omitted. When all managed values match, output is `No differences for managed repository settings.`
 
@@ -135,16 +137,23 @@ Workflow permissions are applied after execution policy as a separate operation.
 
 Actions policy is applied after existing repository/topics/labels/Rulesets operations. It uses fresh preflight and readback, preserves API-required and selected companion values, and enables a currently disabled repository only after any requested selected-list update. Endpoints are not transactional; see the [Actions policy ordering and failure contract](settings.md#actions-execution-policy).
 
-Apply validates the configuration before resolving origin, configuring authentication or contacting GitHub. When no resources are managed, it prints `No managed repository settings.` and exits 0 locally. A topics-only declaration, including `names: []`, performs an update. A nonempty label selection reads current labels and preflights ID-selected object updates and ID-less creates. `labels: []` selects nothing.
+Apply validates the configuration before resolving origin, configuring authentication or contacting GitHub. When no resources are managed, it prints `No managed repository settings.` and exits 0 locally. A topics-only declaration, including `repository.about.topics: []`, performs an update. A nonempty label selection reads current labels and preflights ID-selected object updates and ID-less creates. `labels: []` selects nothing.
 
 Declared resources are sent in this order, skipping resources that are unmanaged:
 
 | Resource | Request |
 | --- | --- |
-| `settings.repository` | Existing fields use `PATCH /repos/{owner}/{repo}`.[^github-update-repository] PR access, Issue creation policy and Sponsorships use a shared ID lookup and declared-only GraphQL `updateRepository`; GraphQL-only declarations skip PATCH. |
-| `settings.topics.names` | `PUT /repos/{owner}/{repo}/topics` with the complete declared topic set in `names`; `names: []` clears it. |
-| `settings.labels` | Read all pages of `GET /repos/{owner}/{repo}/labels`, then perform only required label POST/PATCH operations.[^github-labels] |
-| `settings.rulesets` | Read complete supported branch/tag state, then POST ID-less creates or PUT ID-selected whole objects; never implicitly DELETE unlisted objects. |
+| `repository.about` and `repository.settings.general` scalars | Declared REST members use repository PATCH.[^github-update-repository] PR access, Issue permissions and Sponsorships share identity-checked, declared-only GraphQL updates; GraphQL-only intent skips PATCH. |
+| `repository.about.topics` | Topics PUT with the complete sorted set; `[]` clears it. |
+| `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
+| `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
+| `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
+| `repository.settings.actions.general` | Execution policy, workflow permissions, retention, public-fork approval, then private-fork workflows. Each uses its adopted preflight/readback contract. |
+| `repository.settings.security_and_quality.advanced_security` | Secret protection/push protection in dependency order, then private vulnerability reporting. |
+| `repository.settings.general.releases` | Immutable release policy after private reporting and before Pages. |
+| `repository.settings.pages` | Existing-site declared-only update with identity/visibility/readback checks. |
+
+An explicit archive lifecycle surrounds these operations: unarchive first, final archive last. The [archive contract](settings.md#repository-archive-lifecycle) owns preflight and failure behavior.
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields remain outside update requests. Selected labels send complete supported values, including description defaults. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
@@ -170,6 +179,6 @@ Contributors can find the [behavior specifications](features/README.md), [testin
 
 `gh settings export --fork-approval` adds the public-repository contributor approval enum. `gh settings export --private-fork-workflows` adds the four private-repository execution/token/secrets/approval booleans. Both require existing Administration read credentials and preserve ordinary export requests when omitted. They compose with `--rulesets`, `--actions`, `--workflow-permissions`, `--retention` and distinct `--security` selections; duplicate flags fail before export. Selecting both fork families fails because their adopted visibility scopes differ, preserving an existing destination.
 
-Plan and the credential-free Action Summary show native credential-exposure booleans and the exact approval enum. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
+Plan and the credential-free Action Summary retain native credential-exposure booleans and the existing internal approval tokens pending #481; public YAML uses the full UI choices. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 
 `export --pages` for [existing Pages configuration](settings.md#existing-pages-configuration). It is explicit, composable and rejects duplicate selection. Ordinary export adds no Pages requests. Complete Pages read access is required; a 404 or incomplete response fails without replacing the output. Site creation/deletion and visibility remain unsupported under #350.

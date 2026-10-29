@@ -159,7 +159,7 @@ func TestRulesetsIDOwnedLifecycleAndWriteback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "rulesets:") || strings.Contains(string(data), "name: push") {
+	if !strings.Contains(string(data), "rulesets:") || strings.Contains(string(data), "ruleset_name: push") {
 		t.Fatal(string(data))
 	}
 	run("validate")
@@ -168,18 +168,18 @@ func TestRulesetsIDOwnedLifecycleAndWriteback(t *testing.T) {
 	}
 	// One listed ID owns its complete supported policy; omitted siblings remain untouched.
 	desired := `# retained consumer comment
-schemaVersion: 1
-settings:
-  rulesets:
-    - id: 7
-      name: renamed
-      enforcement: disabled
-      conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
-    - name: new
-      target: tag
-      enforcement: active
-      conditions: {ref_name: {include: ['refs/tags/v*']}}
-      rules: [{type: deletion}]
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    rulesets:
+      - id: 7
+        ruleset_name: renamed
+        enforcement_status: disabled
+        target_branches: {include_default_branch: true}
+      - ruleset_name: new
+        enforcement_status: active
+        target_tags: {include_by_pattern: ['v*']}
+        rules: {restrict_deletions: true}
 `
 	if err := writeSettingsFile(fixture.work, desired); err != nil {
 		t.Fatal(err)
@@ -247,7 +247,7 @@ settings:
 	if count != 2 {
 		t.Fatal("repeat apply wrote", count)
 	}
-	if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: []}\n"); err != nil {
+	if err := writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: []}\n")); err != nil {
 		t.Fatal(err)
 	}
 	if out := run("plan"); out != "No managed repository settings.\n" {
@@ -263,15 +263,13 @@ settings:
 	if err := yaml.Unmarshal(data, &saved); err != nil {
 		t.Fatal(err)
 	}
-	exported := saved["settings"].(map[string]any)["rulesets"].([]any)
-	if len(exported) != 2 {
-		t.Fatal(exported)
+	exported := saved["repository"].(map[string]any)["settings"].(map[string]any)["rulesets"].([]any)
+	wantExport := []any{
+		map[string]any{"id": 7, "ruleset_name": "basic", "enforcement_status": "active", "target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}}, "bypass_list": []any{}, "rules": map[string]any{"restrict_deletions": true, "block_force_pushes": true, "require_linear_history": false, "require_signed_commits": false}},
+		map[string]any{"id": 8, "ruleset_name": "old", "enforcement_status": "active", "target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}}, "bypass_list": []any{}, "rules": map[string]any{"restrict_deletions": true, "block_force_pushes": true, "require_linear_history": false, "require_signed_commits": false}},
 	}
-	for _, item := range exported {
-		policy := item.(map[string]any)
-		if len(policy) != 7 || policy["id"] == nil || policy["source"] != nil {
-			t.Fatal("export identity/settings mismatch", policy)
-		}
+	if !reflect.DeepEqual(exported, wantExport) {
+		t.Fatalf("exported=%v want=%v", exported, wantExport)
 	}
 }
 
@@ -280,7 +278,7 @@ func TestRulesetsFailureBoundaries(t *testing.T) {
 	for _, tt := range []struct {
 		name, command, detail, config string
 		status                        int
-	}{{"hidden bypass", "apply", strings.Replace(acceptanceRuleset, `"bypass_actors":[],`, "", 1), "[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}}]", 200}, {"unsupported rule", "apply", strings.Replace(acceptanceRuleset, `"type":"deletion"`, `"type":"merge_queue"`, 1), "[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}}]", 200}, {"unknown condition", "plan", strings.Replace(acceptanceRuleset, `"exclude":[]`, `"exclude":[],"future":true`, 1), "[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}}]", 200}, {"get redirect", "apply", acceptanceRuleset, "[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}}]", 302}, {"put failure stops later writes", "apply", acceptanceRuleset, `[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}}]`, 403}, {"invalid before reads", "apply", "", "null", 200}} {
+	}{{"hidden bypass", "apply", strings.Replace(acceptanceRuleset, `"bypass_actors":[],`, "", 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"unsupported rule", "apply", strings.Replace(acceptanceRuleset, `"type":"deletion"`, `"type":"merge_queue"`, 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"unknown condition", "plan", strings.Replace(acceptanceRuleset, `"exclude":[]`, `"exclude":[],"future":true`, 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"get redirect", "apply", acceptanceRuleset, "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 302}, {"put failure stops later writes", "apply", acceptanceRuleset, `[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]`, 403}, {"invalid before reads", "apply", "", "null", 200}} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string
@@ -316,7 +314,7 @@ func TestRulesetsFailureBoundaries(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: "+tt.config+"}\n"); err != nil {
+			if err := writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: "+tt.config+"}\n")); err != nil {
 				t.Fatal(err)
 			}
 			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{tt.command}, false)
@@ -374,7 +372,7 @@ func TestRulesetsOptedExportFailurePreservesFile(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	before := "schemaVersion: 1\n"
+	before := "version: daiksud/gh-settings@v0\n"
 	writeSettingsFile(fixture.work, before)
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--rulesets"}, false)
 	if err != nil || result.runErr == nil || result.stdout.Len() != 0 {

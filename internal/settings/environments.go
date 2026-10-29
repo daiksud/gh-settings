@@ -103,6 +103,11 @@ func EnvironmentIdentity(name string) string {
 	}, name)
 }
 
+// ValidateObservationPolicy validates complete policy values without asserting acquisition or resource identity.
+func (policy EnvironmentDeclaration) ValidateObservationPolicy() error {
+	return validateEnvironment(policy, true)
+}
+
 func validateEnvironment(policy EnvironmentDeclaration, complete bool) error {
 	if policy.Name == "" || strings.TrimSpace(policy.Name) != policy.Name || !utf8.ValidString(policy.Name) || utf8.RuneCountInString(policy.Name) > 255 {
 		return fmt.Errorf("environment name must contain 1–255 characters without surrounding whitespace")

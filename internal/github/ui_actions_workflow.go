@@ -22,6 +22,16 @@ func declareUIActionsWorkflow(choice *uimodel.WorkflowPermissionChoice) (*string
 	return &value, nil
 }
 
+func WithActionsWorkflowPolicyUI(ui uimodel.ActionsGeneral, policy settings.ActionsPolicyDeclaration) (uimodel.ActionsGeneral, error) {
+	if policy.WorkflowPermissionsEmpty() {
+		return ui, nil
+	}
+	if policy.DefaultWorkflowPermissions == nil || policy.CanApprovePullRequestReviews == nil {
+		return uimodel.ActionsGeneral{}, fmt.Errorf("workflow policy requires complete permission and approval values")
+	}
+	return WithActionsWorkflowObservation(ui, settings.WorkflowPermissionsState{DefaultWorkflowPermissions: *policy.DefaultWorkflowPermissions, CanApprovePullRequestReviews: *policy.CanApprovePullRequestReviews})
+}
+
 func WithActionsWorkflowObservation(ui uimodel.ActionsGeneral, state settings.WorkflowPermissionsState) (uimodel.ActionsGeneral, error) {
 	var choice uimodel.WorkflowPermissionChoice
 	switch state.DefaultWorkflowPermissions {

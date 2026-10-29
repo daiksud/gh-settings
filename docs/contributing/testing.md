@@ -7,7 +7,7 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Concern | Owning checks | Scope |
 | --- | --- | --- |
 | Declaration presence and comparison | [Repository model](../../internal/settings/repository_test.go), [comparison](../../internal/settings/comparison_test.go), [topics](../../internal/settings/topics_test.go), [labels](../../internal/settings/labels_test.go) | Omitted vs explicit values, managed counts, native values, topic sets, label identity/attribute presence, and stable operation ordering |
-| YAML contract | [Codec](../../internal/workspace/config_test.go), [topics codec](../../internal/workspace/topics_test.go), [labels codec](../../internal/workspace/labels_test.go) | Types, strict rejection, aliases/merges, omission, and round trips |
+| YAML contract | [UI config](../../internal/workspace/ui_config_test.go), [YAML safety](../../internal/workspace/ui_yaml_safety_test.go), [Labels UI codec](../../internal/workspace/ui_labels_test.go) | Types, strict rejection, aliases/merges, omission, and round trips |
 | Files and target resolution | [Configuration files](../../internal/workspace/config_file_test.go), [repository resolution](../../internal/workspace/repository_test.go) | Fixed paths, file behavior, direct-origin formats, scope and isolation |
 | GitHub transport | [Repository reads](../../internal/github/repository_test.go), [writes](../../internal/github/apply_test.go), [topics](../../internal/github/topics_test.go), [labels](../../internal/github/labels_test.go) | Complete/paginated reads, null/type normalization, exact declared-only requests, escaped label paths, failures and redirects |
 | Application sequencing | [Application tests](../../internal/app/), [labels cases](../../internal/app/labels_test.go) | Validation/failure order, empty local no-ops, selective resource access, export composition, fresh labels reads, and partial writes |
@@ -25,7 +25,7 @@ Markdown checks use the pinned rumdl from [mise.toml](../../mise.toml) and [.rum
 
 ## Internal UI repository preparation
 
-The [prepared About/General/Labels mapping](ui-repository-mapping.md) is internal work for #482. Its tests specify the future UI-oriented boundary without changing the public codec or invoking live writes:
+The [prepared About/General/Labels mapping](ui-repository-mapping.md) was prepared in #482 and is now consumed by the current UI codec/root composition. These tests independently specify mapping behavior without invoking live writes:
 
 | Test owner | Independent expected behavior |
 | --- | --- |
@@ -37,11 +37,11 @@ The [prepared About/General/Labels mapping](ui-repository-mapping.md) is interna
 
 [Conditional desired-policy fixtures](../../internal/github/ui_creation_policy_visibility_test.go) reject explicitly disabled feature/policy combinations while retaining omitted/true gates. [Conditional observation fixtures](../../internal/github/ui_general_conditional_observation_test.go) exercise independent mixed gates for both feature policies and merge menus, six owned raw values, absence and strict validation before hiding. Exact composed GraphQL tests retain visible policy intent and an independent false Sponsorships control.
 
-The new fixtures use literal expectations rather than production mapping definitions. Existing repository, merge-method, access-policy and label owner tests continue to cover complete/malformed/denied reads, pagination, identity checks, redirects and partial failures. Existing archive tests retain lifecycle guards and sequencing. The public process suite remains regression evidence for the current interface, not evidence that the prepared names are accepted as YAML. Activation, normalization/warnings and presentation have separate acceptance in #479, #480 and #481.
+The new fixtures use literal expectations rather than production mapping definitions. Existing repository, merge-method, access-policy and label owner tests continue to cover complete/malformed/denied reads, pagination, identity checks, redirects and partial failures. Existing archive tests retain lifecycle guards and sequencing. Current codec/root/process tests below separately exercise accepted UI YAML activation in #479. These mapping unit fixtures alone do not establish public composition. Normalization/warnings and full presentation remain #480/#481.
 
 ## Internal UI Ruleset preparation
 
-The [Ruleset mapping](ui-ruleset-mapping.md) records the internal #483 preparation including its verified UI dismissal control and preserved write-only limits. The public interface remains unchanged.
+The [Ruleset mapping](ui-ruleset-mapping.md) records the internal #483 preparation including its verified UI dismissal control and preserved write-only limits. Current UI activation reuses that mapping and keeps the write-only limitation.
 
 | Fixture owner | Independent contract checked |
 | --- | --- |
@@ -175,11 +175,11 @@ Inspect the relevant workflow run for hosted or publication evidence. A successf
 
 ## Prepared Actions UI mapping
 
-[Actions mapping fixtures](../../internal/github/ui_actions_composition_test.go) connect literal UI declarations to existing exact request/readback behavior. The [mapping reference](ui-actions-mapping.md) links the owning enum, singleton, acquisition, retention and fork tests. Current public YAML/process behavior remains covered by its existing tests; prepared helpers are not activated by this change.
+[Actions mapping fixtures](../../internal/github/ui_actions_composition_test.go) connect literal UI declarations to existing exact request/readback behavior. The [mapping reference](ui-actions-mapping.md) links the owning enum, singleton, acquisition, retention and fork tests. Current public codec/process tests now cover UI activation with independently expected native payloads.
 
 ## Prepared Security UI mapping
 
-[Security mapping fixtures](../../internal/github/ui_security_composition_test.go) connect literal UI booleans with existing acquired raw status, narrow PATCH and readback behavior. The [mapping reference](ui-security-mapping.md) identifies reporting and immutability endpoint fixtures, presence, dependency, applicability and owner-known metadata checks. Public activation remains separate.
+[Security mapping fixtures](../../internal/github/ui_security_composition_test.go) connect literal UI booleans with existing acquired raw status, narrow PATCH and readback behavior. The [mapping reference](ui-security-mapping.md) identifies reporting and immutability endpoint fixtures, presence, dependency, applicability and owner-known metadata checks. Current codec/root/process tests now cover public UI activation; complete UI reporting remains separate.
 
 ## Prepared Pages UI mapping
 
@@ -187,4 +187,18 @@ Inspect the relevant workflow run for hosted or publication evidence. A successf
 
 ## Prepared Environment UI mapping
 
-[Environment mapping fixtures](../../internal/github/ui_environments_composition_test.go) connect literal UI declarations to complete raw reads, exact name-addressed PUT and separately owned typed pattern CRUD. The [mapping reference](ui-environments-mapping.md) links builtin, principal, finite-choice, acquisition/metadata and API-controlled omission tests. Public schema and process contracts remain unchanged.
+[Environment mapping fixtures](../../internal/github/ui_environments_composition_test.go) connect literal UI declarations to complete raw reads, exact name-addressed PUT and separately owned typed pattern CRUD. The [mapping reference](ui-environments-mapping.md) links builtin, principal, finite-choice, acquisition/metadata and API-controlled omission tests. Current UI schema/process tests exercise the mapping while preserving API-controlled omissions and raw private report semantics.
+
+## Current UI YAML activation
+
+| Owner | Contract exercised |
+| --- | --- |
+| [Current codec](../../internal/workspace/ui_config_test.go), [strict YAML safety](../../internal/workspace/ui_yaml_safety_test.go) and family `ui_*_test.go` files | Exact marker, obsolete/API aliases rejected, independent literal inventories, null/false/zero/empty/omitted values, aliases/merges and zero partial decoding |
+| [Desired composition](../../internal/github/ui_declaration_test.go) | Six-family reuse, independent native expectations, semantic failure returns zero whole declaration |
+| [Export composition](../../internal/github/ui_export_test.go) | Actual acquired data only, pure policy projections, hidden/raw distinctions, no metadata replay, stable Labels and no partial UI output |
+| [Root composition](../../checkout_config_test.go) | Deferred bound saver before reads, UI/native conversion, current-schema snapshot ID recording, no-op documents and failure-before-recorder behavior |
+| [Ruleset HTTP fixture](../../internal/github/ui_config_rulesets_test.go) | Literal UI YAML through decode/conversion/reconcile to exact independently authored POST/PUT and ID-bound paths |
+| [Process suite](../../tests/acceptance/) | The supplied binary exports/validates/plans/applies every adopted family against local API fixtures; independent UI baselines and exact raw payloads preserve ownership/failure semantics |
+| [Candidate Action fixture](../../tests/github-actions/candidate-plan.sh) and [composite tests](../../tests/github-actions/composite_test.go) | Current literal UI consumer configs with unchanged installer/token/identity/escaping boundaries; actual hosted `uses` expansion remains separate evidence |
+
+Superseded workspace parser/type files were removed after their safety/presence cases moved to the current codec owners. They are not a compatibility test suite or alternate parser. Raw domain, transport, snapshot/file/Git and private report tests remain at their existing owners. #480 and #481 are not claimed complete by these tests; pinned released self-configuration and immutable published assets retain their own contracts.

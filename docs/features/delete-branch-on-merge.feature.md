@@ -6,20 +6,21 @@ description: Manage one optional repository boolean through the existing merge-r
 
 ## Feature: Manage automatic branch deletion
 
-CLI and Action Current source supports `settings.repository.delete_branch_on_merge` under `schemaVersion: 1`. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
+Current source supports `repository.settings.general.pull_requests.automatically_delete_head_branches`. Publication does not adopt root configuration, change live policy, perform branch operations or grant permissions.
 
 ```yaml
-schemaVersion: 1
-settings:
-  repository:
-    delete_branch_on_merge: true
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    general:
+      pull_requests: {automatically_delete_head_branches: true}
 ```
 
 ### Rule: Preserve boolean presence
 
 Omitting the field leaves it unmanaged. Explicit false remains a declared value in encode, comparison, report and PATCH. Null, quoted booleans, numbers and collections fail local validation before API access; the existing strict boolean, duplicate-key, alias and merge rules apply.
 
-Repository comparison retains registry order for repository fields, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once. Current source supports fifty-one managed units across all adopted resources; older packages retain their documented lower limits.
+Repository comparison retains registry order for repository fields, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once. Private report bounds are retained internally pending the #481 UI reporting/count audit.
 
 ### Rule: Use the existing complete GraphQL read
 
@@ -42,10 +43,10 @@ This configures GitHub's after-merge behavior. It adds no branch-listing or bran
 | Boundary | Evidence |
 | --- | --- |
 | Nil/false presence and ordered comparison | [Settings tests](../../internal/settings/merge_methods_test.go) |
-| Strict types and encode/decode omission | [Workspace tests](../../internal/workspace/merge_methods_test.go) |
+| Strict types and encode/decode omission | [Workspace tests](../../internal/workspace/ui_general_test.go) |
 | Exact fixed query, complete/error reads and false/true PATCH payloads | [Adapter tests](../../internal/github/merge_methods_test.go) |
 | Deferred GraphQL-only plan and direct apply | [Application tests](../../internal/app/merge_methods_test.go) |
-| Native booleans, Summary validation and eleven-unit limit | [Actions tests](../../internal/actions/merge_methods_test.go) |
+| Native booleans and private Summary validation | [Actions tests](../../internal/actions/merge_methods_test.go) |
 | Built executable plan/apply, missing/null/partial errors, export and credential-free Summary | [Process acceptance](../../tests/acceptance/merge_methods_test.go) |
 
 All mutation tests use local API fixtures with dummy credentials; no test deletes a real branch or changes live repository policy. The read-only fixture admits only the exact current-source ten-field query and fixture owner/name, never arbitrary GraphQL POSTs.

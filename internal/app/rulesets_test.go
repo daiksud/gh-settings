@@ -8,16 +8,20 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
+	"go.yaml.in/yaml/v4"
 )
 
 func appRulesets(t *testing.T, body string) *settings.RulesetDeclarations {
 	t.Helper()
-	d, err := workspace.DecodeConfig([]byte("schemaVersion: 1\nsettings: {rulesets: " + body + "}"))
+	var policies []settings.RulesetDeclaration
+	if err := yaml.Unmarshal([]byte(body), &policies); err != nil {
+		t.Fatal(err)
+	}
+	d, err := settings.NewRulesetDeclarations(policies)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return d.Rulesets
+	return &d
 }
 func appRulesetState(t *testing.T) settings.RulesetState {
 	d := appRulesets(t, `[{name: basic, target: branch, enforcement: active, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, bypass_actors: [], rules: [{type: deletion}]}]`)

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
 
 func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
@@ -140,7 +142,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 	}
 	write := func(pages string) {
 		t.Helper()
-		if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings:\n  pages: "+pages+"\n"); err != nil {
+		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {pages: "+pages+"}\n")); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -157,10 +159,24 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		t.Fatal(got)
 	}
 	exported, _ := os.ReadFile(path)
-	if !strings.Contains(string(exported), "cname: example.com") || strings.Contains(string(exported), "public:") || strings.Contains(string(exported), "status:") {
+	if !strings.Contains(string(exported), "custom_domain: example.com") || strings.Contains(string(exported), "public:") || strings.Contains(string(exported), "status:") {
 		t.Fatal(string(exported))
 	}
-	write("{cname: null, https_enforced: false}")
+	var exportedDocument struct {
+		Repository struct {
+			Settings struct {
+				Pages map[string]any `yaml:"pages"`
+			} `yaml:"settings"`
+		} `yaml:"repository"`
+	}
+	if err := yaml.Unmarshal(exported, &exportedDocument); err != nil {
+		t.Fatal(err)
+	}
+	wantPages := map[string]any{"custom_domain": "example.com", "enforce_https": true, "build_and_deployment": map[string]any{"source": "deploy_from_a_branch", "branch": "main", "select_folder": "docs"}}
+	if !reflect.DeepEqual(exportedDocument.Repository.Settings.Pages, wantPages) {
+		t.Fatalf("pages=%v want=%v", exportedDocument.Repository.Settings.Pages, wantPages)
+	}
+	write("{custom_domain: null, enforce_https: false}")
 	plan := run("plan")
 	if !strings.Contains(plan, `"example.com" → null`) || !strings.Contains(plan, "true → false") {
 		t.Fatal(plan)
@@ -191,12 +207,12 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 	mu.Unlock()
 	run("export", "--pages")
 	data, _ = os.ReadFile(path)
-	if !strings.Contains(string(data), "cname: null") || !strings.Contains(run("plan"), "No differences") {
+	if !strings.Contains(string(data), "custom_domain: null") || !strings.Contains(run("plan"), "No differences") {
 		t.Fatal(string(data))
 	}
-	write("{build_type: workflow}")
+	write("{build_and_deployment: {source: github_actions}}")
 	run("apply")
-	write("{build_type: legacy, source: {branch: docs, path: /}}")
+	write("{build_and_deployment: {source: deploy_from_a_branch, branch: docs, select_folder: root}}")
 	if got := run("plan"); !strings.Contains(got, "inactive →") {
 		t.Fatal(got)
 	}
@@ -229,7 +245,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		state["cname"] = nil
 		before := len(writes)
 		mu.Unlock()
-		write("{cname: changed.example}")
+		write("{custom_domain: changed.example}")
 		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 		if err != nil || r.runErr == nil {
 			t.Fatal(failure, err, r.stderr.String())
@@ -246,7 +262,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 	state["cname"] = nil
 	events = nil
 	mu.Unlock()
-	if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings:\n  repository: {description: changed}\n  pages: {cname: changed.example}\n"); err != nil {
+	if err := writeSettingsFile(fixture.work, repositoryInput("about: {description: changed}\nsettings: {pages: {custom_domain: changed.example}}\n")); err != nil {
 		t.Fatal(err)
 	}
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)

@@ -113,7 +113,7 @@ func TestRootCompositePlan(t *testing.T) {
 	if result.presentationCalls != "action plan\naction summary\n" || result.calls != "plan\n" {
 		t.Fatalf("presentation calls=%q settings calls=%q", result.presentationCalls, result.calls)
 	}
-	for _, text := range []string{"Settings review", "settings.repository.description", `"before"`, `"desired"`, "settings.repository.has_issues: true → false", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", committedCLIVersion(t), strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
+	for _, text := range []string{"Settings review", "repository.about.description", `"before"`, `"desired"`, "repository.settings.general.features.issues: true → false", result.sha, "owner/config", "workflow-owner/workflow", "action-owner/action", committedCLIVersion(t), strings.Repeat("b", 40), "original-actor", "rerun-actor"} {
 		if !strings.Contains(html.UnescapeString(result.summary), text) {
 			t.Errorf("Summary missing %q: %s", text, result.summary)
 		}
@@ -143,7 +143,7 @@ func TestRootCompositeQuotesPlanData(t *testing.T) {
 	if result.status != 0 || !reflect.DeepEqual(result.outputs, want) {
 		t.Fatalf("quoted plan: %+v", result)
 	}
-	for _, text := range []string{`&lt;/pre&gt;&lt;script&gt;setting&lt;/script&gt;\n\n::error::value`, "&lt;script&gt;actor&lt;/script&gt;&#10;&#10;## forged", "settings.repository.has_issues: true → false"} {
+	for _, text := range []string{`&lt;/pre&gt;&lt;script&gt;setting&lt;/script&gt;\n\n::error::value`, "&lt;script&gt;actor&lt;/script&gt;&#10;&#10;## forged", "repository.settings.general.features.issues: true → false"} {
 		if !strings.Contains(result.summary, text) {
 			t.Fatalf("Summary lost quoted data %q: %s", text, result.summary)
 		}
@@ -371,7 +371,7 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 	poison := "#!/usr/bin/env bash\ntouch \"$GITHUB_WORKSPACE/injected\"\nexit 99\n"
 	write(filepath.Join(caller, "action", "install-cli.sh"), poison)
 	write(filepath.Join(bin, "gh-settings"), poison)
-	write(filepath.Join(caller, ".github/settings.yml"), "schemaVersion: 1\n")
+	write(filepath.Join(caller, ".github/settings.yml"), "version: daiksud/gh-settings@v0\n")
 	asset := `#!/usr/bin/env bash
 set -euo pipefail
 case "$1" in

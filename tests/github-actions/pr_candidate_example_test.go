@@ -68,7 +68,7 @@ func testCandidatePreparation(t *testing.T, w workflow, public bool) {
 			if mode == "unfiltered" {
 				git("config", "uploadpack.allowFilter", "false")
 			}
-			payload := []byte("schemaVersion: 1\nsettings: {repository: {description: '$(touch PWNED)'}}\n")
+			payload := []byte("version: daiksud/gh-settings@v0\nrepository: {about: {description: '$(touch PWNED)'}}\n")
 			if err := os.WriteFile(filepath.Join(source, "pwn.sh"), []byte("touch PWNED\n"), 0700); err != nil {
 				t.Fatal(err)
 			}

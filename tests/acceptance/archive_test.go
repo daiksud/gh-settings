@@ -39,7 +39,7 @@ func TestArchivedRepositoryEmptyLabelsDoNotBlockApply(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := "schemaVersion: 1\nsettings:\n  repository:\n    archived: true\n  labels: []\n"
+	input := repositoryInput("labels: []\nsettings: {general: {danger_zone: {archive_this_repository: true}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -161,24 +161,24 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
 	raw, err := os.ReadFile(path)
-	if err != nil || strings.Contains(string(raw), "archived:") {
+	if err != nil || strings.Contains(string(raw), "archive_this_repository:") {
 		t.Fatal("ordinary export added lifecycle", string(raw), err)
 	}
 	run("export", "--archive")
 	raw, err = os.ReadFile(path)
-	if err != nil || !strings.Contains(string(raw), "archived: false") {
+	if err != nil || !strings.Contains(string(raw), "archive_this_repository: false") {
 		t.Fatal("explicit archive export missing", string(raw), err)
 	}
 	run("validate")
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	input := repositoryInput("archived: true\ndescription: Closed for maintenance\n")
+	input := repositoryInput("about: {description: Closed for maintenance}\nsettings: {general: {danger_zone: {archive_this_repository: true}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
 	got := run("plan")
-	if !strings.Contains(got, "settings.repository.archived: false → true") || !strings.Contains(got, "settings.repository.description:") {
+	if !strings.Contains(got, "repository.settings.general.danger_zone.archive_this_repository: false → true") || !strings.Contains(got, "repository.about.description:") {
 		t.Fatal(got)
 	}
 	report := filepath.Join(fixture.root, "archive-plan.json")
@@ -198,7 +198,7 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal(err, result.stderr.String())
 	}
 	data, err = os.ReadFile(summary)
-	if err != nil || !strings.Contains(html.UnescapeString(string(data)), "settings.repository.archived: false → true") {
+	if err != nil || !strings.Contains(html.UnescapeString(string(data)), "repository.settings.general.danger_zone.archive_this_repository: false → true") {
 		t.Fatal(string(data), err)
 	}
 	run("apply")
@@ -208,18 +208,18 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	if !reflect.DeepEqual(gotWrites, []string{"description", "archive:true"}) {
 		t.Fatal(gotWrites)
 	}
-	input = repositoryInput("archived: true\ndescription: Closed for maintenance\n")
+	input = repositoryInput("about: {description: Closed for maintenance}\nsettings: {general: {danger_zone: {archive_this_repository: true}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	input = repositoryInput("archived: true\ndescription: Different\n")
+	input = repositoryInput("about: {description: Different}\nsettings: {general: {danger_zone: {archive_this_repository: true}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
-	if got := run("plan"); !strings.Contains(got, "settings.repository.description: \"Closed for maintenance\" → \"Different\"") {
+	if got := run("plan"); !strings.Contains(got, "repository.about.description: \"Closed for maintenance\" → \"Different\"") {
 		t.Fatal(got)
 	}
 	failedApply, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
@@ -231,7 +231,7 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal("failed apply wrote settings", writes)
 	}
 	mu.Unlock()
-	input = repositoryInput("archived: true\n")
+	input = generalInput("danger_zone: {archive_this_repository: true}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	if count != 2 {
 		t.Fatal(writes)
 	}
-	input = repositoryInput("archived: false\ndescription: Active again\n")
+	input = repositoryInput("about: {description: Active again}\nsettings: {general: {danger_zone: {archive_this_repository: false}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}

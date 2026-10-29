@@ -7,7 +7,6 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 type workflowReadFailure struct{ error }
@@ -16,10 +15,8 @@ func (*workflowReadFailure) ReadFailedBeforeWrite() {}
 
 func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
 	for _, earlier := range []bool{false, true} {
-		d, err := workspace.DecodeConfig([]byte("schemaVersion: 1\nsettings: {actions: {default_workflow_permissions: read}}"))
-		if err != nil {
-			t.Fatal(err)
-		}
+		permission := "read"
+		d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: &permission}}
 		if earlier {
 			value := false
 			d.Actions.Enabled = &value
@@ -41,10 +38,8 @@ func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
 }
 
 func TestWorkflowPermissionFailureRetainsEarlierExecutionProgress(t *testing.T) {
-	d, err := workspace.DecodeConfig([]byte("schemaVersion: 1\nsettings: {actions: {enabled: false, default_workflow_permissions: read}}"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	permission, enabled := "read", false
+	d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: &permission, Enabled: &enabled}}
 	result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) error {
 		return errors.New("organization conflict")
 	}})

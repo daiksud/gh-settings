@@ -24,61 +24,61 @@ func TestApplyAcceptance(t *testing.T) {
 		noAPI, noOrigin, noAuth, nested, outputFailure, globalOrigin bool
 		gitSetup                                                     func(string, []string) error
 	}{
-		{name: "default-branch-change", input: repositoryInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, response: `{"default_branch":"release/v2"}`},
-		{name: "default-branch-mixed", input: repositoryInput("default_branch: release/v2\nhas_issues: false\n"), payload: `{"default_branch":"release/v2","has_issues":false}`, response: `{"default_branch":"release/v2"}`},
-		{name: "default-branch-missing-response", input: repositoryInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, wantError: "lacks valid default_branch"},
-		{name: "default-branch-ignored-stops-topics", input: "schemaVersion: 1\nsettings:\n  repository:\n    default_branch: release/v2\n  topics:\n    names: []\n", payload: `{"default_branch":"release/v2"}`, response: `{"default_branch":"main"}`, wantError: "expected"},
-		{name: "default-branch-not-found", input: repositoryInput("default_branch: missing-branch\n"), payload: `{"default_branch":"missing-branch"}`, status: 422, wantError: "422"},
-		{name: "default-branch-forbidden", input: repositoryInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, status: 403, wantError: "403"},
-		{name: "default-branch-null-before-origin", input: repositoryInput("default_branch: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a string"},
-		{name: "template-disable", input: repositoryInput("is_template: false\n"), payload: `{"is_template":false}`},
-		{name: "web-signoff-disable", input: repositoryInput("web_commit_signoff_required: false\n"), payload: `{"web_commit_signoff_required":false}`},
-		{name: "template-enable", input: repositoryInput("is_template: true\n"), payload: `{"is_template":true}`},
-		{name: "web-signoff-enable", input: repositoryInput("web_commit_signoff_required: true\n"), payload: `{"web_commit_signoff_required":true}`},
-		{name: "template-rejected", input: repositoryInput("is_template: true\n"), payload: `{"is_template":true}`, status: 422, wantError: "422"},
-		{name: "template-forbidden", input: repositoryInput("is_template: false\n"), payload: `{"is_template":false}`, status: 403, wantError: "403"},
-		{name: "web-signoff-forbidden", input: repositoryInput("web_commit_signoff_required: false\n"), payload: `{"web_commit_signoff_required":false}`, status: 403, wantError: "403"},
-		{name: "template-invalid-before-origin", input: repositoryInput("is_template: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
-		{name: "web-signoff-invalid-before-origin", input: repositoryInput("web_commit_signoff_required: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
-		{name: "discussions-false", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":false}`},
-		{name: "discussions-ignored", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":true}`, wantError: "expected false"},
-		{name: "discussions-missing-response", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, wantError: "lacks boolean has_discussions"},
-		{name: "discussions-forbidden", input: repositoryInput("has_discussions: false\n"), payload: `{"has_discussions":false}`, status: 403, wantError: "403"},
-		{name: "discussions-invalid-before-origin", input: repositoryInput("has_discussions: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must be a boolean"},
-		{name: "partial-false", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, nested: true},
-		{name: "all-zero-values", input: repositoryInput("description: ''\nhomepage: ''\nhas_issues: false\nhas_projects: false\nhas_wiki: false\n"), payload: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`},
-		{name: "true-and-escaped-string", input: repositoryInput("description: \"quote\\\"\\n\\\\\"\nhas_wiki: true\n"), payload: `{"description":"quote\"\n\\","has_wiki":true}`},
-		{name: "rewritten-origin", input: repositoryInput("has_projects: true\n"), payload: `{"has_projects":true}`, gitSetup: setupRewrittenOrigin},
-		{name: "aliased-origin", input: repositoryInput("homepage: ''\n"), noAPI: true, wantError: "origin", gitSetup: setupAliasedOrigin},
-		{name: "worktree-origin", input: repositoryInput("description: new\n"), payload: `{"description":"new"}`, gitSetup: setupWorktreeOrigin},
-		{name: "global-origin-before-local", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, globalOrigin: true},
-		{name: "global-origin-before-alias", input: repositoryInput("has_issues: false\n"), noAPI: true, wantError: "origin", globalOrigin: true, gitSetup: setupAliasedOrigin},
-		{name: "global-origin-before-worktree", input: repositoryInput("has_issues: false\n"), payload: `{"has_issues":false}`, globalOrigin: true, gitSetup: setupWorktreeOrigin},
-		{name: "global-only-origin", input: repositoryInput("has_issues: false\n"), wantError: "checkout-scoped", noAPI: true, noOrigin: true, globalOrigin: true},
-		{name: "no-managed-fields", input: "schemaVersion: 1\n", noAPI: true, noAuth: true, noOrigin: true},
-		{name: "empty-settings", input: "schemaVersion: 1\nsettings: {}\n", noAPI: true, noAuth: true, noOrigin: true},
-		{name: "empty-repository", input: "schemaVersion: 1\nsettings:\n  repository: {}\n", noAPI: true, noAuth: true, noOrigin: true},
-		{name: "malformed-before-api", input: repositoryInput("has_issues: [\n"), wantError: "decode YAML", noAPI: true},
-		{name: "invalid-before-origin-auth", input: repositoryInput("has_issues: 'false'\n"), wantError: "must be a boolean", noAPI: true, noOrigin: true, noAuth: true},
-		{name: "unknown-key", input: repositoryInput("private: true\n"), wantError: "unknown setting", noAPI: true},
-		{name: "duplicate-key", input: repositoryInput("has_wiki: true\nhas_wiki: false\n"), wantError: "duplicate key", noAPI: true},
-		{name: "explicit-null", input: repositoryInput("description: null\n"), wantError: "must be a string", noAPI: true},
-		{name: "missing-version", input: "settings: {}\n", wantError: "missing schemaVersion", noAPI: true},
-		{name: "unsupported-version", input: "schemaVersion: 2\n", wantError: "unsupported schemaVersion", noAPI: true},
-		{name: "multiple-documents", input: "schemaVersion: 1\n---\nschemaVersion: 1\n", wantError: "one YAML document", noAPI: true},
+		{name: "default-branch-change", input: generalInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, response: `{"default_branch":"release/v2"}`},
+		{name: "default-branch-mixed", input: generalInput("default_branch: release/v2\nfeatures:\n  issues: false\n"), payload: `{"default_branch":"release/v2","has_issues":false}`, response: `{"default_branch":"release/v2"}`},
+		{name: "default-branch-missing-response", input: generalInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, wantError: "lacks valid default_branch"},
+		{name: "default-branch-ignored-stops-topics", input: "version: daiksud/gh-settings@v0\nrepository:\n  about: {topics: []}\n  settings: {general: {default_branch: release/v2}}\n", payload: `{"default_branch":"release/v2"}`, response: `{"default_branch":"main"}`, wantError: "expected"},
+		{name: "default-branch-not-found", input: generalInput("default_branch: missing-branch\n"), payload: `{"default_branch":"missing-branch"}`, status: 422, wantError: "422"},
+		{name: "default-branch-forbidden", input: generalInput("default_branch: release/v2\n"), payload: `{"default_branch":"release/v2"}`, status: 403, wantError: "403"},
+		{name: "default-branch-null-before-origin", input: generalInput("default_branch: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must not be null"},
+		{name: "template-disable", input: generalInput("template_repository: false\n"), payload: `{"is_template":false}`},
+		{name: "web-signoff-disable", input: generalInput("commits:\n  require_contributors_to_sign_off_on_web_based_commits: false\n"), payload: `{"web_commit_signoff_required":false}`},
+		{name: "template-enable", input: generalInput("template_repository: true\n"), payload: `{"is_template":true}`},
+		{name: "web-signoff-enable", input: generalInput("commits:\n  require_contributors_to_sign_off_on_web_based_commits: true\n"), payload: `{"web_commit_signoff_required":true}`},
+		{name: "template-rejected", input: generalInput("template_repository: true\n"), payload: `{"is_template":true}`, status: 422, wantError: "422"},
+		{name: "template-forbidden", input: generalInput("template_repository: false\n"), payload: `{"is_template":false}`, status: 403, wantError: "403"},
+		{name: "web-signoff-forbidden", input: generalInput("commits:\n  require_contributors_to_sign_off_on_web_based_commits: false\n"), payload: `{"web_commit_signoff_required":false}`, status: 403, wantError: "403"},
+		{name: "template-invalid-before-origin", input: generalInput("template_repository: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must not be null"},
+		{name: "web-signoff-invalid-before-origin", input: generalInput("commits:\n  require_contributors_to_sign_off_on_web_based_commits: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must not be null"},
+		{name: "discussions-false", input: generalInput("features:\n  discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":false}`},
+		{name: "discussions-ignored", input: generalInput("features:\n  discussions: false\n"), payload: `{"has_discussions":false}`, response: `{"has_discussions":true}`, wantError: "expected false"},
+		{name: "discussions-missing-response", input: generalInput("features:\n  discussions: false\n"), payload: `{"has_discussions":false}`, wantError: "lacks boolean has_discussions"},
+		{name: "discussions-forbidden", input: generalInput("features:\n  discussions: false\n"), payload: `{"has_discussions":false}`, status: 403, wantError: "403"},
+		{name: "discussions-invalid-before-origin", input: generalInput("features:\n  discussions: null\n"), noAPI: true, noOrigin: true, noAuth: true, wantError: "must not be null"},
+		{name: "partial-false", input: generalInput("features:\n  issues: false\n"), payload: `{"has_issues":false}`, nested: true},
+		{name: "all-zero-values", input: repositoryInput("about:\n  description: ''\n  website: ''\nsettings:\n  general:\n    features:\n      issues: false\n      projects: false\n      wikis: false\n"), payload: `{"description":"","homepage":"","has_issues":false,"has_projects":false,"has_wiki":false}`},
+		{name: "true-and-escaped-string", input: repositoryInput("about:\n  description: \"quote\\\"\\n\\\\\"\nsettings:\n  general:\n    features:\n      wikis: true\n"), payload: `{"description":"quote\"\n\\","has_wiki":true}`},
+		{name: "rewritten-origin", input: generalInput("features:\n  projects: true\n"), payload: `{"has_projects":true}`, gitSetup: setupRewrittenOrigin},
+		{name: "aliased-origin", input: aboutInput("website: ''\n"), noAPI: true, wantError: "origin", gitSetup: setupAliasedOrigin},
+		{name: "worktree-origin", input: aboutInput("description: new\n"), payload: `{"description":"new"}`, gitSetup: setupWorktreeOrigin},
+		{name: "global-origin-before-local", input: generalInput("features:\n  issues: false\n"), payload: `{"has_issues":false}`, globalOrigin: true},
+		{name: "global-origin-before-alias", input: generalInput("features:\n  issues: false\n"), noAPI: true, wantError: "origin", globalOrigin: true, gitSetup: setupAliasedOrigin},
+		{name: "global-origin-before-worktree", input: generalInput("features:\n  issues: false\n"), payload: `{"has_issues":false}`, globalOrigin: true, gitSetup: setupWorktreeOrigin},
+		{name: "global-only-origin", input: generalInput("features:\n  issues: false\n"), wantError: "checkout-scoped", noAPI: true, noOrigin: true, globalOrigin: true},
+		{name: "no-managed-fields", input: "version: daiksud/gh-settings@v0\n", noAPI: true, noAuth: true, noOrigin: true},
+		{name: "empty-settings", input: "version: daiksud/gh-settings@v0\nrepository: {settings: {}}\n", noAPI: true, noAuth: true, noOrigin: true},
+		{name: "empty-repository", input: "version: daiksud/gh-settings@v0\nrepository: {}\n", noAPI: true, noAuth: true, noOrigin: true},
+		{name: "malformed-before-api", input: generalInput("features:\n  issues: [\n"), wantError: "decode YAML", noAPI: true},
+		{name: "invalid-before-origin-auth", input: generalInput("features:\n  issues: 'false'\n"), wantError: "must be a boolean", noAPI: true, noOrigin: true, noAuth: true},
+		{name: "unknown-key", input: generalInput("private: true\n"), wantError: "unknown repository.settings.general key", noAPI: true},
+		{name: "duplicate-key", input: generalInput("features:\n  wikis: true\n  wikis: false\n"), wantError: "duplicate key", noAPI: true},
+		{name: "explicit-null", input: aboutInput("description: null\n"), wantError: "must be a string", noAPI: true},
+		{name: "missing-version", input: "repository: {}\n", wantError: "missing version", noAPI: true},
+		{name: "unsupported-version", input: "version: daiksud/gh-settings@v1\n", wantError: "version must be the string", noAPI: true},
+		{name: "multiple-documents", input: "version: daiksud/gh-settings@v0\n---\nversion: daiksud/gh-settings@v0\n", wantError: "one YAML document", noAPI: true},
 		{name: "missing-file", wantError: "read .github/settings.yml", noAPI: true},
-		{name: "missing-origin", input: repositoryInput("has_wiki: false\n"), wantError: "a GitHub origin remote is required", noAPI: true, noOrigin: true},
-		{name: "authentication", input: repositoryInput("has_wiki: false\n"), wantError: "configure GitHub API client", noAPI: true, noAuth: true},
-		{name: "unauthorized", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 401, wantError: "401"},
-		{name: "forbidden", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 403, wantError: "403"},
-		{name: "server-validation", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 422, wantError: "422"},
-		{name: "redirect-301", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 301, wantError: "301"},
-		{name: "redirect-302", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 302, wantError: "302"},
-		{name: "redirect-303", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 303, wantError: "303"},
-		{name: "redirect-307", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 307, wantError: "307"},
-		{name: "redirect-308", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, status: 308, wantError: "308"},
-		{name: "output-after-patch", input: repositoryInput("has_wiki: false\n"), payload: `{"has_wiki":false}`, outputFailure: true, wantError: "write output:"},
-		{name: "no-op-output-failure", input: "schemaVersion: 1\n", noAPI: true, noAuth: true, noOrigin: true, outputFailure: true, wantError: "write output:"},
+		{name: "missing-origin", input: generalInput("features:\n  wikis: false\n"), wantError: "a GitHub origin remote is required", noAPI: true, noOrigin: true},
+		{name: "authentication", input: generalInput("features:\n  wikis: false\n"), wantError: "configure GitHub API client", noAPI: true, noAuth: true},
+		{name: "unauthorized", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 401, wantError: "401"},
+		{name: "forbidden", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 403, wantError: "403"},
+		{name: "server-validation", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 422, wantError: "422"},
+		{name: "redirect-301", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 301, wantError: "301"},
+		{name: "redirect-302", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 302, wantError: "302"},
+		{name: "redirect-303", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 303, wantError: "303"},
+		{name: "redirect-307", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 307, wantError: "307"},
+		{name: "redirect-308", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, status: 308, wantError: "308"},
+		{name: "output-after-patch", input: generalInput("features:\n  wikis: false\n"), payload: `{"has_wiki":false}`, outputFailure: true, wantError: "write output:"},
+		{name: "no-op-output-failure", input: "version: daiksud/gh-settings@v0\n", noAPI: true, noAuth: true, noOrigin: true, outputFailure: true, wantError: "write output:"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			requests := make(chan string, 10)
@@ -246,11 +246,11 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		t.Fatalf("export=%v result=%+v", err, exported)
 	}
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
-	if err != nil || !strings.Contains(string(data), "has_issues: true") {
+	if err != nil || !strings.Contains(string(data), "version: daiksud/gh-settings@v0") || !strings.Contains(string(data), "features:") || !strings.Contains(string(data), "issues: true") || strings.Contains(string(data), "has_issues") {
 		t.Fatalf("exported file=%q error=%v", data, err)
 	}
 	// Edit to own only issues; omit the exported string/project/wiki fields.
-	input := repositoryInput("has_issues: false\n")
+	input := generalInput("features: {issues: false}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +261,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		}
 		want := ""
 		if command == "plan" {
-			want = "settings.repository.has_issues: true → false\n"
+			want = "repository.settings.general.features.issues: true → false\n"
 		}
 		if result.stdout.String() != want {
 			t.Fatalf("%s output=%q", command, result.stdout.String())

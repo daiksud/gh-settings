@@ -154,7 +154,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write := func(value string) {
 		t.Helper()
-		if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings:\n  actions: "+value+"\n"); err != nil {
+		if err := writeSettingsFile(fixture.work, actionsPolicyInput(value)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -171,13 +171,13 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	run("export", "--retention")
 	run("validate")
 	data, err := os.ReadFile(path)
-	if err != nil || !strings.Contains(string(data), "artifact_and_log_retention_days: 90") || strings.Contains(string(data), "maximum_allowed_days") || strings.Contains(string(data), "default_workflow_permissions:") {
+	if err != nil || !strings.Contains(string(data), "check_workflow_run_status_artifact_and_log_retention: 90") || strings.Contains(string(data), "maximum_allowed_days") || strings.Contains(string(data), "workflow_permissions:") {
 		t.Fatal(string(data), err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	write("{artifact_and_log_retention_days: 14}")
+	write("{check_workflow_run_status_artifact_and_log_retention: 14}")
 	plan := run("plan")
 	if !strings.Contains(plan, "settings.actions.artifact_and_log_retention_days: 90 → 14") {
 		t.Fatal(plan)
@@ -229,7 +229,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal("cap failure wrote/clamped", days, writes)
 	}
 	mu.Unlock()
-	write("{artifact_and_log_retention_days: 7}")
+	write("{check_workflow_run_status_artifact_and_log_retention: 7}")
 	run("apply")
 	mu.Lock()
 	if days != 7 {
@@ -260,7 +260,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 		mode = failure
 		before = len(writes)
 		mu.Unlock()
-		write("{artifact_and_log_retention_days: 14}")
+		write("{check_workflow_run_status_artifact_and_log_retention: 14}")
 		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 		if err != nil || r.runErr == nil {
 			t.Fatal(failure, err, r.stderr.String())
@@ -276,7 +276,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	mu.Unlock()
 	run("export", "--retention", "--actions", "--workflow-permissions")
 	data, _ = os.ReadFile(path)
-	for _, field := range []string{"artifact_and_log_retention_days: 7", "enabled: false", "default_workflow_permissions: read"} {
+	for _, field := range []string{"check_workflow_run_status_artifact_and_log_retention: 7", "actions_permissions: disable_actions", "workflow_permissions: read_repository_contents_and_packages_permissions"} {
 		if !strings.Contains(string(data), field) {
 			t.Fatal("composed resource lost", field, string(data))
 		}
@@ -284,7 +284,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	write("{default_workflow_permissions: write, artifact_and_log_retention_days: 30}")
+	write("{workflow_permissions: read_and_write_permissions, check_workflow_run_status_artifact_and_log_retention: 30}")
 	mu.Lock()
 	mode = "deny-write"
 	events = nil

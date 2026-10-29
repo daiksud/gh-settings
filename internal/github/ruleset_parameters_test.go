@@ -11,7 +11,7 @@ import (
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
+	"go.yaml.in/yaml/v4"
 )
 
 const fullReviewRulesetJSON = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"dismissal_restriction":{"enabled":true,"allowed_actors":[{"type":"Team","id":21}]},"required_reviewers":[{"reviewer":{"type":"Team","id":22},"minimum_approvals":1,"file_patterns":["**","!docs/**","docs/README.md","**"]}]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368},{"context":"any-source","integration_id":null}],"strict_required_status_checks_policy":true}}]}`
@@ -55,32 +55,34 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	d, e := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings:
-  rulesets:
-    - id: 7
-      name: default
-      enforcement: active
-      conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
-      rules:
-        - type: deletion
-        - type: non_fast_forward
-        - type: required_linear_history
-        - type: pull_request
-          parameters:
-            required_approving_review_count: 0
-            require_code_owner_review: false
-            required_reviewers:
-              - reviewer: {type: Team, id: 22}
-                minimum_approvals: 1
-                file_patterns: ['!docs/**', '**', 'docs/README.md', '**']
-        - type: required_status_checks
-          parameters: {required_status_checks: [], strict_required_status_checks_policy: false}
-`))
+	var policies []settings.RulesetDeclaration
+	if e := yaml.Unmarshal([]byte(`
+- id: 7
+  name: default
+  enforcement: active
+  conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
+  rules:
+    - type: deletion
+    - type: non_fast_forward
+    - type: required_linear_history
+    - type: pull_request
+      parameters:
+        required_approving_review_count: 0
+        require_code_owner_review: false
+        required_reviewers:
+          - reviewer: {type: Team, id: 22}
+            minimum_approvals: 1
+            file_patterns: ['!docs/**', '**', 'docs/README.md', '**']
+    - type: required_status_checks
+      parameters: {required_status_checks: [], strict_required_status_checks_policy: false}
+`), &policies); e != nil {
+		t.Fatal(e)
+	}
+	d, e := settings.NewRulesetDeclarations(policies)
 	if e != nil {
 		t.Fatal(e)
 	}
-	changes, e := settings.ReconcileRulesets(obs, d.Rulesets)
+	changes, e := settings.ReconcileRulesets(obs, &d)
 	if e != nil || len(changes) != 1 {
 		t.Fatal(changes, e)
 	}
@@ -131,7 +133,7 @@ settings:
 	}
 	after := *changes[0].After()
 	afterObs, _ := settings.NewRulesetObservation([]settings.RulesetState{{ID: 7, Policy: after}}, 0)
-	if again, e := settings.ReconcileRulesets(afterObs, d.Rulesets); e != nil || len(again) != 0 {
+	if again, e := settings.ReconcileRulesets(afterObs, &d); e != nil || len(again) != 0 {
 		t.Fatal("repeat writes", again, e)
 	}
 }

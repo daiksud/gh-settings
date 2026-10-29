@@ -6,6 +6,8 @@ description: Place API-aligned repository fields under settings.repository in co
 
 ## Status
 
+The public YAML placement decision is superseded by [Issue #479](https://github.com/daiksud/gh-settings/issues/479). The [current configuration reference](../settings.md) defines the repository groups. The original adoption status follows for historical context.
+
 Accepted — implemented by export and validate. Supersedes the root-placement consequence of [ADR 0006](0006-update-api-schema.md). [ADR 0021](0021-require-schema-version.md) subsequently defines the first root metadata key.
 
 ## Context

@@ -89,7 +89,7 @@ runs:
         [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || { echo 'published Action consumer received a token environment' >&2; exit 1; }
         [[ ! -e .git && ! -e action.yml && ! -e action ]] || { echo 'published Action consumer is not isolated' >&2; exit 1; }
         mkdir -p .github
-        printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: Hosted composite fixture\n' > .github/settings.yml
+        printf 'version: daiksud/gh-settings@v0\nrepository:\n  about:\n    description: Hosted composite fixture\n' > .github/settings.yml
         git init --quiet
         git remote add origin https://github.com/example-owner/settings-fixture.git
         git add .github/settings.yml

@@ -4,7 +4,7 @@ Manage a GitHub repository's settings as code, using a GitHub CLI extension or a
 
 The extension uses your existing `gh` authentication. Actions use one GitHub App with explicit, short-lived installation tokens scoped per job/target, without a required PAT or personal-login combination. Validation needs no API authentication; nonmutating plan may still require write grants for complete reads. See the [authentication and trust policy](docs/github-actions.md#authentication-and-app-permissions), including trusted-base PR data-only planning and protected-main apply.
 
-The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged; declared collections control their complete membership.
+The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets own only listed objects; Environment omissions remain API-controlled.
 
 ## Install
 
@@ -36,27 +36,21 @@ gh settings export
 Edit the saved `.github/settings.yml`. The default export covers the standard resources; other supported groups require explicit export options. See the [export reference](docs/commands.md#export-behavior). Remove any resources or fields you do not want to manage. For example:
 
 ```yaml
-schemaVersion: 1
-settings:
-  repository:
-    description: "My project"
-    has_issues: true
-  topics:
-    names:
-      - github-cli
-      - settings-as-code
+version: daiksud/gh-settings@v0
+repository:
+  about:
+    description: My project
+    topics: [github-cli, settings-as-code]
+  settings:
+    general:
+      features: {issues: true}
 ```
 
-`schemaVersion: 1` is required. Omission leaves a field unmanaged; `false` and empty strings are explicit values. Declaring `topics.names` manages the complete topic set, and `names: []` clears it. See the [configuration reference](docs/settings.md) for supported fields, types, and validation rules.
+Current source requires the exact `version` string above and uses UI wording in snake_case. Omission, false, empty strings and empty lists retain distinct meanings; `about.topics: []` clears the topic set. Old envelopes and API-shaped aliases are rejected without migration. See the [configuration reference](docs/settings.md) for every supported path and ownership rule.
 
-The pinned v0.21.0 release selects labels and repository Rulesets by numeric ID.
-Only listed objects are managed; omitting an object or declaring an empty list
-does not delete it. Entries without IDs are create-only. **Safety:** updating a
-listed Ruleset can still change branch protection, including required reviews
-and checks. Read the [labels](docs/settings.md#labels) and
-[Rulesets](docs/settings.md#rulesets) contracts before applying them. A
-different installed version may have a different contract; pinning an Action
-does not upgrade an independently installed CLI.
+This YAML requires a CLI release containing the activation change or a current-source build. Published packages and the pinned Action below keep their own contracts; installing an older release does not enable it. Out-of-UI normalization (#480) and complete reporting integration (#481) remain separate work.
+
+Labels and repository Rulesets select existing objects by numeric ID. Only listed objects are managed; an omitted object or empty list does not delete it. Entries without IDs are create-only. Updating a listed Ruleset can change branch protection, reviews and checks; read the [Labels](docs/settings.md#labels) and [Rulesets](docs/settings.md#rulesets) contracts before applying.
 
 ### 3. Validate and review differences
 
@@ -83,7 +77,7 @@ ID writeback, permissions, and failure recovery.
 
 ## Use as a GitHub Action
 
-Commit `.github/settings.yml`, then validate it in a GitHub-hosted Ubuntu 24.04 x64 job:
+The pinned example below uses its published package contract. It cannot consume the new YAML until a release containing that change is selected. See the [package boundary](docs/github-actions.md#published-package-and-consumer-pins); no pin is upgraded here.
 
 ```yaml
 name: Validate repository settings

@@ -1,14 +1,18 @@
-# Discussions setting
+---
+type: Feature
+title: Discussions setting
+description: Manage the General Features Discussions checkbox.
+---
 
 ## Status
 
-This is an optional field in `settings.repository` under `schemaVersion: 1`, not a new resource family.
+This is optional boolean `repository.settings.general.features.discussions` in the current UI document.
 
 ## Behavior
 
 ### Rule: Manage only explicitly declared values
 
-- Omitted `has_discussions` remains unmanaged and does not appear in PATCH payloads.
+- An omitted Discussions checkbox remains unmanaged and adds no internal `has_discussions` PATCH member.
 - Explicit `true` and `false` are native booleans and count as one managed field.
 - Null, quoted booleans, numbers, mappings, sequences, and legacy boolean spellings are rejected before origin/authentication/API work.
 - Comparison uses the stable REST-field order after `has_wiki`, before existing merge-related values, topics, and labels.
@@ -35,7 +39,7 @@ A same-value `false` PATCH can establish response/read agreement, but does not e
 
 ## Test mapping
 
-- [Schema](../../internal/workspace/discussions_test.go): omission, explicit booleans, round trip, and invalid types.
+- [Schema](../../internal/workspace/ui_general_test.go): omission, explicit booleans, round trip, and invalid types.
 - [Comparison](../../internal/settings/discussions_test.go): false, omission, no difference, and stable order.
 - [REST adapter](../../internal/github/discussions_test.go): complete reads, declared-only PATCH, response mismatch/missing data, and forbidden writes.
 - [Use case](../../internal/app/discussions_test.go) and [export](../../internal/app/export_test.go): REST-only plan and observed export values.

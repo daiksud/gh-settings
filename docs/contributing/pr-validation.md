@@ -25,18 +25,24 @@ cannot create a skipped-success replacement for a prior failed job.
 `prlint` checks the current PR title and body together via commitlint. A green
 result confirms syntax, not semantic correctness.
 
-The required `settings-plan` job runs `validate` on the PR merge candidate
-without repository administration credentials. It does not claim to run an
-authenticated GitHub settings difference plan. The path-scoped
-[`settings-pr.yml`](../../.github/workflows/settings-pr.yml) separately runs
-a trusted, authenticated plan when relevant settings files change.
-The dispatch-only, Environment-protected plan within `settings-plan.yml` remains
-inactive until explicitly enabled. Its `plan` job is not itself a required PR
-check.
+The required `settings-plan` job validates the PR merge checkout's operational
+`.github/settings.yml` with the same immutable public Action pin as the trusted
+PR plan and main apply callers. It uses `command: validate` without a token,
+Environment or repository administration credentials, on the Action's supported
+fresh Ubuntu 24.04 x64 VM. Invalid configuration fails the check.
 
-PR validation uses per-PR concurrency groups, separate from protected manual
-dispatches. Neither mode cancels active runs; newer events within the same PR
-may still replace its pending run, but cannot evict another PR or a manual plan.
+The separate required `ci-pr` validates candidate code and current-format
+fixtures through its build, process and public Action acceptance stages.
+Operational YAML remains tied to its pinned consumer until the declaration and
+compatible package are adopted together under
+[#382](https://github.com/daiksud/gh-settings/issues/382). There is no automatic
+format conversion or compatibility path in the candidate product.
+
+The path-scoped [settings-pr.yml](../../.github/workflows/settings-pr.yml)
+separately runs a trusted, authenticated plan when relevant settings files
+change. Local validation does not establish live settings differences.
+`settings-plan` uses a per-PR concurrency group and does not cancel active runs;
+another PR cannot replace its pending run.
 
 The trusted `settings-env` check audits the Environment boundary
 using the default-branch policy. Neither the guard nor the source-controlled

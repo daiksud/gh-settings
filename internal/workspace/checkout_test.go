@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 func TestCheckoutDeclaration(t *testing.T) {
@@ -26,7 +26,7 @@ func TestCheckoutDeclaration(t *testing.T) {
 				t.Fatal(err)
 			}
 			path := filepath.Join(root, SettingsPath)
-			input := []byte("schemaVersion: 1\nsettings:\n  repository:\n    description: ''\n    has_issues: false\n")
+			input := []byte("version: daiksud/gh-settings@v0\nrepository: {about: {description: ''}, settings: {general: {features: {issues: false}}}}\n")
 			if err := os.WriteFile(path, input, 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -42,7 +42,7 @@ func TestCheckoutDeclaration(t *testing.T) {
 			}
 			t.Chdir(t.TempDir()) // The explicit checkout, not process cwd, owns the declaration.
 			empty, disabled := "", false
-			want := settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}}
+			want := uimodel.Repository{About: &uimodel.About{Description: &empty}, Settings: &uimodel.RepositorySettings{General: &uimodel.General{Features: uimodel.Features{Issues: &disabled}}}}
 			got, err := NewCheckout(work).Declaration()
 			if err != nil || !reflect.DeepEqual(got, want) {
 				t.Fatalf("declaration=%+v error=%v, want %+v", got, err, want)
@@ -57,7 +57,7 @@ func TestCheckoutDeclaration(t *testing.T) {
 
 func TestCheckoutDeclarationOutsideGit(t *testing.T) {
 	got, err := NewCheckout(t.TempDir()).Declaration()
-	if err == nil || !strings.Contains(err.Error(), "locate .github/settings.yml: current directory is not in a Git repository") || !reflect.DeepEqual(got, settings.Declaration{}) {
+	if err == nil || !strings.Contains(err.Error(), "locate .github/settings.yml: current directory is not in a Git repository") || !reflect.DeepEqual(got, uimodel.Repository{}) {
 		t.Fatalf("declaration=%+v error=%v", got, err)
 	}
 }
@@ -126,10 +126,10 @@ func TestCheckoutPrepareSaveBindsResolvedRoot(t *testing.T) {
 	other := t.TempDir()
 	t.Chdir(other)
 	disabled := false
-	if err := save(settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}}); err != nil {
+	if err := save(uimodel.Repository{Settings: &uimodel.RepositorySettings{General: &uimodel.General{Features: uimodel.Features{Issues: &disabled}}}}); err != nil {
 		t.Fatal(err)
 	}
-	want := "schemaVersion: 1\nsettings:\n    repository:\n        has_issues: false\n"
+	want := "version: daiksud/gh-settings@v0\nrepository:\n    settings:\n        general:\n            features:\n                issues: false\n"
 	if data, err := os.ReadFile(path); err != nil || string(data) != want {
 		t.Fatalf("saved=%q error=%v, want %q", data, err, want)
 	}

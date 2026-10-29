@@ -12,11 +12,11 @@ The repository policy applies to new checks (suites/runs/annotations), workflow 
 
 ## Declaration and complete observation
 
-`settings.actions.artifact_and_log_retention_days` is an optional native integer in 1–400. Omission/empty mapping is unmanaged; zero, negative, null, float, string and other types fail locally. A lower current maximum narrows the valid desired range; read-only metadata cannot be declared or exported as intent. Ordinary export and existing opt-ins retain their requests; `--retention` composes independently and completes both integer reads before saving.
+`repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention` is an optional native integer in 1–400. Omission/empty mapping is unmanaged; zero, negative, null, float, string and other types fail locally. A lower current maximum narrows the valid desired range; read-only metadata cannot be declared or exported as intent. Ordinary export and existing opt-ins retain their requests; `--retention` composes independently and completes both integer reads before saving.
 
 A zero observation is unacquired, not default 90/400 or zero. Both fields must be present with exact keys and integer types; incomplete, denied, malformed and redirected responses fail. Complete configured days may exceed a newly lowered maximum; observation does not invent a correlation or clamp the value. Desired comparisons/preflight reject above-cap intent, including matching values. Export fails when the current value cannot form a valid declaration rather than promising a zero-plan round-trip. An allowed lower declaration can reconcile a known over-cap current value.
 
-Test mapping: [TestRetentionAcquisitionBoundsAndReadOnlyMaximum](../../internal/settings/retention_test.go), [TestRetentionYAML](../../internal/workspace/retention_test.go), [TestRetentionReadsRequireBothIntegers](../../internal/github/retention_test.go), [TestRetentionExportOptInAndComposition](../../internal/cli/retention_test.go).
+Test mapping: [TestRetentionAcquisitionBoundsAndReadOnlyMaximum](../../internal/settings/retention_test.go), [Actions UI codec](../../internal/workspace/ui_actions_test.go), [TestRetentionReadsRequireBothIntegers](../../internal/github/retention_test.go), [TestRetentionExportOptInAndComposition](../../internal/cli/retention_test.go).
 
 ## Read-only plan and direct apply
 
@@ -28,7 +28,7 @@ Test mapping: [TestRetentionFreshCapNarrowPUTAndReadback](../../internal/github/
 
 ## Native reports and process evidence
 
-The closed Actions comparison registry adds `actions.artifact_and_log_retention_days`, one of fourteen current-source policy fields. Report reconstruction normalizes bounded whole JSON numbers to native integers; null/unavailable before values, fractions, strings, wrong fields and no-op changes are rejected. Other field/type decoding is unchanged. CLI and credential-free Summary share unquoted numeric output, and the current managed bound is fifty-one. Reports remain presentation data and never enter apply.
+The private comparison protocol retains internal `actions.artifact_and_log_retention_days`, not a public YAML alias. Report reconstruction normalizes bounded whole JSON numbers to native integers; null/unavailable before values, fractions, strings, wrong fields and no-op changes are rejected. Other field/type decoding is unchanged. CLI and credential-free Summary share unquoted numeric output, while identifiers/bounds retain the existing private protocol pending #481. Reports remain presentation data and never enter apply.
 
 Test mapping: [TestRetentionNativeReportNumbersAreClosed](../../internal/settings/retention_test.go), [TestRetentionSummaryHasNativeIntegerValues](../../internal/actions/retention_test.go), [TestRetentionExportPlanApplyAndSummary](../../tests/acceptance/retention_test.go). The process case covers ordinary/selected export→zero plan→edit→apply, upper-cap reduction, over-cap correction, policy refusal/unchanged readback, file preservation, GET/PUT redirect rejection, choice composition and retained earlier workflow writes. API owner fixtures separately permit a changing, still-compatible maximum.
 

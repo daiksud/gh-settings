@@ -13,15 +13,12 @@ import (
 	"github.com/daiksud/gh-settings/internal/actions"
 	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func TestActionsNativePlanAndSummaryUnavailableValues(t *testing.T) {
-	d, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings: {actions: {allowed_actions: selected, selected_actions: {github_owned_allowed: false, verified_allowed: false, patterns_allowed: ['org/*', '!org/<blocked>@*', 'org/*']}}}`))
-	if err != nil {
-		t.Fatal(err)
-	}
+	selected, githubOwned, verified := "selected", false, false
+	patterns := []string{"org/*", "!org/<blocked>@*", "org/*"}
+	d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{AllowedActions: &selected, SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: &githubOwned, VerifiedAllowed: &verified, PatternsAllowed: &patterns}}}
 	managed, changes, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{AllowedActions: "all"}, d.Actions)
 	if err != nil {
 		t.Fatal(err)

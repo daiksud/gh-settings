@@ -11,7 +11,7 @@ sources:
 
 ## Preparation boundary
 
-This reference covers internal preparation for [Issue #487](https://github.com/daiksud/gh-settings/issues/487). Public YAML, export, plan/apply and reporting retain their current contract. [#479](https://github.com/daiksud/gh-settings/issues/479) activates the whole schema; [#480](https://github.com/daiksud/gh-settings/issues/480) owns normalization/warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns reporting integration. No compatibility aliases, migration or new feature family is added.
+This Environment mapping was prepared for [#487](https://github.com/daiksud/gh-settings/issues/487) and is now composed by current-source UI YAML activation in [#479](https://github.com/daiksud/gh-settings/issues/479). The [public contract](../settings.md#environments) retains API-controlled omissions and separate pattern ownership. [#480](https://github.com/daiksud/gh-settings/issues/480) normalization/warnings and [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remain separate. No compatibility alias, migration or new family is added.
 
 The [UI model](../../internal/settings/uimodel/environments.go) has display terminology without transport tags. [Adapter conversions](../../internal/github/ui_environments.go) translate desired values through the existing declaration validator. Acquired conversion uses observation values directly, never the desired constructor. `PreparedEnvironment.ID` and its pattern states retain acquired numeric IDs outside desired UI fields.
 
@@ -19,9 +19,9 @@ The [UI model](../../internal/settings/uimodel/environments.go) has display term
 
 English controls were inspected on 2026-10-28 in an existing gh-settings Environment. The Required reviewers and Wait timer groups were revealed in an unsaved form; a reload confirmed their original unchecked state. The deployment mode menu and an empty Add deployment branch or tag rule dialog were inspected without selecting a new policy, adding a rule or saving. Secrets/variables are unrelated to this mapping and no values are included here.[^environments-ui]
 
-The prepared prefix `E` means `repository.settings.environments[]`.
+The UI prefix `E` means `repository.settings.environments[]`.
 
-| UI location / control | Prepared path below `E` | Internal API conversion |
+| UI location / control | UI path below `E` | Internal API conversion |
 | --- | --- | --- |
 | Selected Environment name | `name` | Name-addressed resource identity; never numeric environment ID |
 | Deployment protection rules / Wait timer; Time to wait (minutes) | `deployment_protection_rules.wait_timer` | Integer `wait_timer`; zero encodes the unchecked group, positive values the displayed minutes |
@@ -65,9 +65,9 @@ Readback verifies requested members without claiming that omitted built-ins reta
 
 ## Validation and activation handoff
 
-Independent [builtin/reviewer fixtures](../../internal/github/ui_environments_test.go), [menu/pattern fixtures](../../internal/github/ui_environments_patterns_test.go), [acquired collection fixtures](../../internal/github/ui_environments_observation_test.go) and [literal raw/exact transport fixtures](../../internal/github/ui_environments_composition_test.go) cover all supported controls and choices. They assert omission, explicit false/zero/[]/null, copied ownership, typed identities, folded name ordering, matching metadata, exact narrow/full PUT, API-controlled omissions, create-before-remove and partial failure without rollback. Existing [Environment](../../internal/github/environments_test.go), [bypass](../../internal/github/environment_bypass_test.go) and [pattern](../../internal/github/environment_patterns_test.go) matrices retain pagination, unknown/custom protections, identity, permissions and uncertain-effect checks.
+Independent [builtin/reviewer fixtures](../../internal/github/ui_environments_test.go), [menu/pattern fixtures](../../internal/github/ui_environments_patterns_test.go), [acquired collection fixtures](../../internal/github/ui_environments_observation_test.go) and [literal raw/exact transport fixtures](../../internal/github/ui_environments_composition_test.go) cover all supported controls and choices. They assert omission, explicit false/zero/[], raw API-null policy versus the UI no-restriction choice, copied ownership, typed identities, folded name ordering, matching metadata, exact narrow/full PUT, API-controlled omissions, create-before-remove and partial failure without rollback. Existing [Environment](../../internal/github/environments_test.go), [bypass](../../internal/github/environment_bypass_test.go) and [pattern](../../internal/github/environment_patterns_test.go) matrices retain pagination, unknown/custom protections, identity, permissions and uncertain-effect checks.
 
-Issue #479 must connect actual UI paths while retaining root and per-field presence plus separate pattern ownership. #480 must preserve raw typed identity/provenance when normalizing finite choices; #481 must retain API-controlled omission and partial-operation diagnostics. User documentation continues to describe only the active public contract.
+Current activation connects UI paths while retaining root/per-field presence and separate pattern ownership. #480 must preserve raw typed identity/provenance when normalizing finite choices; #481 must retain API-controlled omission and partial-operation diagnostics. User documentation describes the active UI contract; API null and raw report policy are not public YAML aliases.
 
 [^environments-ui]: GitHub, Environments / Configure environment and conditional protection/pattern forms, unsaved inspection, 2026-10-28.
-[^current-contract]: Current repository documentation, Environment settings, consulted 2026-10-28.
+[^current-contract]: Current repository documentation, Environment settings, consulted 2026-10-28 before public YAML activation; the current link now reflects the activated contract.

@@ -19,7 +19,7 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	} else {
 		for _, change := range comparison.Changes {
 			line := func(before, after string) {
-				fmt.Fprintf(&output, "settings.%s: %s → %s\n", change.Field().Path(), before, after)
+				fmt.Fprintf(&output, "%s: %s → %s\n", presentation.SettingPath(change.Field().Path()), before, after)
 			}
 			change.Visit(
 				func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },

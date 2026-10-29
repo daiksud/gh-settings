@@ -17,7 +17,7 @@ sources:
 
 ## Internal preparation
 
-This is the internal Ruleset mapping for [Issue #483](https://github.com/daiksud/gh-settings/issues/483), not accepted new YAML. The current parser, public configuration, API adapters and reports retain their existing behavior. [Issue #479](https://github.com/daiksud/gh-settings/issues/479) owns activation; [#480](https://github.com/daiksud/gh-settings/issues/480) owns normalization/warnings, and [#481](https://github.com/daiksud/gh-settings/issues/481) owns reporting.
+This Ruleset mapping was prepared for [#483](https://github.com/daiksud/gh-settings/issues/483) and is consumed by [#479](https://github.com/daiksud/gh-settings/issues/479) in current-source UI YAML. The [public reference](../settings.md#rulesets) defines the accepted contract. [#480](https://github.com/daiksud/gh-settings/issues/480) normalization and [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remain separate; native internal object reports retain their existing protocol.
 
 The current write-only `dismissal_restriction` now has a verified UI mapping from GitHub's official release screenshot. The checkbox is **Restrict who can dismiss pull request reviews**, and its collection heading is **People, teams, or apps that can dismiss reviews**. This completes the control inventory without removing support or requiring an unsupported-setting decision. Existing export, plan and unverified-apply limits remain unchanged; UI wording does not establish stored/read-comparable enforcement.[^dismissal-ui][^dismissal-api]
 
@@ -33,7 +33,7 @@ The visible bypass options' DOM identities map Repository admin to `RepositoryRo
 
 In these tables `R` means `repository.settings.rulesets[]`. The [model](../../internal/settings/uimodel/rulesets.go) has no serialization tags; these paths are the preparation handoff. The `ui_ruleset_*.go` files in [the adapter](../../internal/github/) contain the transport identifiers and conversions.
 
-| UI control | Prepared path | Internal API representation |
+| UI control | UI path | Internal API representation |
 | --- | --- | --- |
 | Selected Ruleset identity | `R.id` | Numeric ID selects an existing resource; no ID remains create-only; never a writable payload field |
 | Ruleset Name | `R.ruleset_name` | `name` |
@@ -116,7 +116,7 @@ The model supplies separate observation defaults for #480. They match the inspec
 | Scanning Security alerts | `high_or_higher` (`DefaultCodeScanningSecurityAlerts`) |
 | Quality Severity | `errors` (`DefaultCodeQualitySeverity`) |
 
-Actor/reviewer/source/tool identities and naming/file patterns are not closed enums with a synthetic identity default. The UI starts with no bypass actor selected; preparation never substitutes a repository administrator, another ID or another pattern for an unrepresentable value. Personal-repository UI has no OrganizationAdmin actor, and Evaluate was absent from the inspected enforcement menu. Their existing API support is preserved in the current public path; the prepared UI converter fails explicitly. #480 must retain raw identity/provenance and warning information for any adopted normalization, rather than quietly removing protection or granting bypass.
+Actor/reviewer/source/tool identities and naming/file patterns are not closed enums with a synthetic identity default. The UI starts with no bypass actor selected; preparation never substitutes a repository administrator, another ID or another pattern for an unrepresentable value. Personal-repository UI has no OrganizationAdmin actor, and Evaluate was absent from the inspected enforcement menu. The raw domain/API layer can represent them, but they are outside accepted UI intent and the current UI projection fails explicitly pending #480. #480 must retain raw identity/provenance and warning information for any adopted normalization, rather than quietly removing protection or granting bypass.
 
 Correctly typed booleans have no out-of-UI value. Missing fields, invalid types, failed reads and incomplete pagination remain acquisition errors. These observation fallback values never fill omitted desired declarations. Existing whole-object declaration defaults are a separate contract: selected Rulesets own their rule lists, nil/false simple checkboxes leave a rule unselected, and selecting a parameterized rule uses the existing declared-object normalization. Required tool thresholds, quality severity and team entry approvals/patterns still require explicit values.
 
@@ -124,7 +124,7 @@ Correctly typed booleans have no out-of-UI value. Missing fields, invalid types,
 
 `RulesetsDeclaration` preserves omitted versus empty collections and uses the existing constructor only for desired objects. IDs remain selectors; entries without IDs are create-only. Reconciliation updates only listed resources and does not delete unlisted Rulesets.
 
-`RulesetsObservation` requires a complete acquisition, uses `RulesetState.ID` rather than a possibly absent policy ID, and returns stable name order. It never applies declaration defaults to observations or strips dismissal state to manufacture success. Failure in any entry returns no partial UI collection. `PreparedRulesets.ExcludedPush` retains the existing excluded-push diagnostic; activation/reporting must carry it forward. Existing transport still excludes inherited/push Rulesets and performs its complete pagination, ownership, mutation-response and independent readback checks.
+`RulesetsObservation` requires a complete acquisition, uses `RulesetState.ID` rather than a possibly absent policy ID, and returns stable name order. It never applies declaration defaults to observations or strips dismissal state to manufacture success. Failure in any entry returns no partial UI collection. `PreparedRulesets.ExcludedPush` retains the existing excluded-push diagnostic; the existing reader/export diagnostic remains responsible for carrying it forward; #481 owns complete reporting. Existing transport still excludes inherited/push Rulesets and performs its complete pagination, ownership, mutation-response and independent readback checks.
 
 The observed UI also contains Restrict creations, Restrict updates, Require deployments to succeed, Restrict code coverage and Automatically request Copilot code review. This preparation does not adopt those unsupported controls, inherited/push rules, legacy branch protection or organization-wide policy. The verified dismissal mapping retains the documented write-only limitation at activation.
 

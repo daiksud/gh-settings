@@ -56,6 +56,20 @@ func check(binary string, test scenario) error {
 		if !reflect.DeepEqual(actual, test.expected) {
 			return fmt.Errorf("YAML=%#v, want %#v", actual, test.expected)
 		}
+		reads := fixture.reads.Load()
+		validated, err := executeCLI(binary, work, root, fixtureEnv(cfg), []string{"validate"}, false)
+		if err != nil {
+			return err
+		}
+		if validated.runErr != nil || validated.stdout.Len() != 0 || validated.stderr.Len() != 0 {
+			return fmt.Errorf("validate exported YAML: %v, stdout=%q stderr=%q", validated.runErr, validated.stdout.String(), validated.stderr.String())
+		}
+		if fixture.reads.Load() != reads {
+			return fmt.Errorf("validate exported YAML made API requests")
+		}
+		if err := checkSettingsUnchanged(work, string(data)); err != nil {
+			return err
+		}
 	} else {
 		exit, ok := result.runErr.(*exec.ExitError)
 		if !ok || exit.ExitCode() == 0 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), test.errorText) {

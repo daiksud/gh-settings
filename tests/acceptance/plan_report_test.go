@@ -22,7 +22,7 @@ func TestActionPlanChangedReport(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := repositoryInput("description: after\nhas_issues: false\n")
+	input := repositoryInput("about: {description: after}\nsettings: {general: {features: {issues: false}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestActionPlanReadFailureReport(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := repositoryInput("has_issues: false\n")
+	input := generalInput("features: {issues: false}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestActionPlanInvalidConfigReport(t *testing.T) {
 	if err := initGitCheckout(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := repositoryInput("description: [secret-sentinel\n")
+	input := aboutInput("description: [secret-sentinel\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestActionPlanUnmanagedReport(t *testing.T) {
 	if err := initGitCheckout(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := "schemaVersion: 1\n"
+	input := "version: daiksud/gh-settings@v0\n"
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}

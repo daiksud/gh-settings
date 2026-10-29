@@ -118,17 +118,32 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 	if err := yaml.Unmarshal(exported, &doc); err != nil {
 		t.Fatal(err)
 	}
-	policies := doc["settings"].(map[string]any)["rulesets"].([]any)
-	if len(policies) != 1 {
-		t.Fatal(policies)
+	actualPolicies := doc["repository"].(map[string]any)["settings"].(map[string]any)["rulesets"].([]any)
+	policy := map[string]any{
+		"id": 26024001, "ruleset_name": "default", "enforcement_status": "active",
+		"target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}},
+		"bypass_list":     []any{},
+		"rules": map[string]any{
+			"restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": true,
+			"require_a_pull_request_before_merging": map[string]any{
+				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
+				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,
+				"require_review_from_code_owners":                                       true,
+				"require_an_additional_approval_for_unattributed_copilot_pull_requests": true,
+				"require_approval_of_the_most_recent_reviewable_push":                   false,
+				"require_conversation_resolution_before_merging":                        true,
+			},
+			"require_code_scanning_results": map[string]any{"code_scanning_tools": []any{map[string]any{"tool_name": "CodeQL", "security_alerts": "high_or_higher", "alerts": "errors"}}},
+			"require_code_quality_results":  map[string]any{"severity": "errors"},
+		},
 	}
-	policy := policies[0].(map[string]any)
-	if policy["id"] != 26024001 || len(policy["rules"].([]any)) != 7 {
-		t.Fatal("export lost identity or rules", policy)
+	policies := []any{policy}
+	if !reflect.DeepEqual(actualPolicies, policies) {
+		t.Fatalf("export=%v want=%v", actualPolicies, policies)
 	}
-	// Keep this apply selected only to Rulesets; ordinary exported scalars use
-	// independent direct PATCH semantics and are outside this regression.
-	focused, err := yaml.Marshal(map[string]any{"schemaVersion": 1, "settings": map[string]any{"rulesets": policies}})
+	// Focus the independent UI declaration on Rulesets; ordinary scalar apply is separate.
+	document := map[string]any{"version": "daiksud/gh-settings@v0", "repository": map[string]any{"settings": map[string]any{"rulesets": policies}}}
+	focused, err := yaml.Marshal(document)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,9 +157,9 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 	if count != 0 {
 		t.Fatal("unchanged Ruleset export wrote", count)
 	}
-	acceptanceRuleParams(t, policy, "code_quality")["severity"] = "warnings"
-	acceptanceRuleParams(t, policy, "code_scanning")["code_scanning_tools"].([]any)[0].(map[string]any)["security_alerts_threshold"] = "critical"
-	edited, err := yaml.Marshal(map[string]any{"schemaVersion": 1, "settings": map[string]any{"rulesets": policies}})
+	policy["rules"].(map[string]any)["require_code_quality_results"].(map[string]any)["severity"] = "warnings_and_higher"
+	policy["rules"].(map[string]any)["require_code_scanning_results"].(map[string]any)["code_scanning_tools"].([]any)[0].(map[string]any)["security_alerts"] = "critical"
+	edited, err := yaml.Marshal(document)
 	if err != nil {
 		t.Fatal(err)
 	}

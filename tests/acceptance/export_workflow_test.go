@@ -44,7 +44,36 @@ func TestExportExistingFile(t *testing.T) {
 				if result.runErr != nil || result.stderr.Len() != 0 {
 					t.Fatalf("execution=%v stderr=%q", result.runErr, result.stderr.String())
 				}
-				want = "schemaVersion: 1\nsettings:\n    repository:\n        description: old\n        homepage: old-url\n        default_branch: main\n        has_issues: true\n        has_projects: true\n        has_wiki: true\n        has_discussions: false\n        web_commit_signoff_required: false\n        is_template: false\n        allow_merge_commit: false\n        allow_squash_merge: false\n        allow_rebase_merge: false\n        delete_branch_on_merge: false\n        allow_auto_merge: false\n        allow_update_branch: false\n        squash_merge_commit_title: COMMIT_OR_PR_TITLE\n        squash_merge_commit_message: COMMIT_MESSAGES\n        has_pull_requests: false\n        pull_request_creation_policy: ALL\n        issue_creation_policy: ALL\n        has_sponsorships: false\n    topics:\n        names: []\n    labels: []\n"
+				want = `version: daiksud/gh-settings@v0
+repository:
+    about:
+        description: old
+        website: old-url
+        topics: []
+    labels: []
+    settings:
+        general:
+            template_repository: false
+            default_branch: main
+            features:
+                wikis: true
+                issues: true
+                sponsorships: false
+                discussions: false
+                projects: true
+                pull_requests: false
+                issue_permissions:
+                    creation_allowed_by: all_users
+            pull_requests:
+                allow_merge_commits: false
+                allow_squash_merging: false
+                allow_rebase_merging: false
+                always_suggest_updating_pull_request_branches: false
+                allow_auto_merge: false
+                automatically_delete_head_branches: false
+            commits:
+                require_contributors_to_sign_off_on_web_based_commits: false
+`
 			} else {
 				exit, ok := result.runErr.(*exec.ExitError)
 				if !ok || exit.ExitCode() != 1 || !strings.Contains(result.stderr.String(), test.wantError) {
@@ -101,7 +130,7 @@ func TestExportLinkedWorktree(t *testing.T) {
 		t.Fatalf("execution=%v result=%+v", err, result)
 	}
 	data, err := os.ReadFile(filepath.Join(worktree, ".github", "settings.yml"))
-	if err != nil || !strings.Contains(string(data), "has_issues: true") {
+	if err != nil || !strings.Contains(string(data), "issues: true") {
 		t.Fatalf("worktree configuration=%q error=%v", data, err)
 	}
 	if err := checkSettingsUnchanged(fixture.work, base); err != nil {

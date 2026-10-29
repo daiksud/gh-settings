@@ -351,7 +351,7 @@ func TestTopicsSummaryNativeAndJSONLists(t *testing.T) {
 	} {
 		report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{change}}
 		content, err := actions.RenderSummary(report, summaryMetadata())
-		if err != nil || !strings.Contains(content, `settings.topics.names: [&#34;old&#34;] → []`) {
+		if err != nil || !strings.Contains(content, `repository.about.topics: [&#34;old&#34;] → []`) {
 			t.Fatalf("content=%s error=%v", content, err)
 		}
 	}

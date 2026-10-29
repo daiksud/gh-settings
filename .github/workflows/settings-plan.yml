@@ -10,7 +10,8 @@ concurrency:
 jobs:
   settings-plan:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-slim
+    # The pinned public Action requires a fresh Ubuntu 24.04 x64 VM, not a container.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions: {contents: read}
     steps:
@@ -19,11 +20,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Install Go
-        uses: jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e # v5.2.3
+      - name: Validate operational settings with their pinned consumer
+        uses: daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e # v0.23.0
         with:
-          version: 2026.10.8
-          install_args: go
-          cache: false
-      - name: Validate candidate settings without remote credentials
-        run: go run . validate
+          command: validate

@@ -12,19 +12,17 @@ Manage repository feature enablement only. Exclude alert contents or dismissal, 
 
 ## Planned declaration and ownership
 
-The schema version remains 1. Under optional `settings.security`, use these exact optional boolean keys:
+Current source uses the exact marker `version: daiksud/gh-settings@v0`. Optional booleans under `repository.settings.security_and_quality.advanced_security` are:
 
-| Key | Implementation | Decision |
+| Public UI key | Implementation | Scope |
 | --- | --- | --- |
-| `dependabot_alerts` | #344 | Adopt subject to the disabled-read gate below. |
-| `dependabot_security_updates` | #344 | Same gate; paused state is separate operational metadata. |
-| `secret_scanning` | #345 | Adopt the repository feature, not partner notifications. |
-| `secret_scanning_push_protection` | #345 | Adopt repository push protection, not user-level push protection. |
-| `code_security` | #346 | Reserved candidate; not adopted for implementation yet. |
-| `advanced_security` | #346 | Distinct reserved legacy-product candidate; not an alias. |
-| `private_vulnerability_reporting` | #347 | Adopt for public repositories only. |
+| `secret_protection` | #345 | Repository Secret Protection feature, not partner notifications |
+| `push_protection` | #345 | Repository push protection, not user-level protection |
+| `private_vulnerability_reporting` | #347 | Public repositories only |
 
-Omitted group/key means unmanaged. `security: {}` manages nothing and performs no security reads. Explicit false means disable; true means enable. Null at the group or any key, strings such as `enabled`, sequences, duplicate/unknown keys, and wrong types are invalid before remote work. There are no security collections: empty mappings do not mean disable all or clear anything. Only `secret_scanning`, `secret_scanning_push_protection`, `private_vulnerability_reporting` and `immutable_releases` are currently accepted. The separate [immutable release contract](immutable-releases.feature.md) owns its scoped GET-404-as-disabled decision and owner-enforcement semantics; this does not change the deferred Dependabot authorization gates. Other planned/reserved keys remain unknown to the executable until their separate implementation/adoption.
+Release immutability belongs separately at `repository.settings.general.releases.enable_release_immutability`; its [contract](immutable-releases.feature.md) owns the explicit GET-404 tradeoff and owner enforcement.
+
+Omitted groups/keys are unmanaged; empty mappings manage nothing. False disables, true enables, and null/wrong types/duplicate/unknown keys fail before remote work. The old security root and API-shaped aliases are not accepted. Empty mappings do not disable all. Dependabot and product candidates below are future API concepts and adoption gates, not accepted YAML or CLI families. Their future UI paths need their own inventory; this change does not implement them.
 
 Plan reads only declared families and the prerequisite/companion observations needed to establish a safe transition. Unrelated hidden security fields do not prevent private vulnerability reporting or an ordinary repository-only plan. API response-only metadata, including pause, entitlement, and enforcement evidence, cannot be declared as desired state.
 
@@ -54,15 +52,15 @@ Before claiming full #344 disabled-state support, establish and document an endp
 
 ### Product candidate gate
 
-For #346, retain separate reserved boolean names. A future adoption must identify the existing product model from authoritative evidence, define the exact supported visibility/entitlement cases, and establish companion effects for both enable and disable. Do not infer a model solely from a missing field or attempt the other product after a failed request. Reject both candidate keys in one declaration; neither requests conversion or purchase. Unknown applicability blocks that family, not independent security features.
+For #346, retain separate product concepts and inventory UI paths before adoption. A future adoption must identify the existing product model from authoritative evidence, define the exact supported visibility/entitlement cases, and establish companion effects for both enable and disable. Do not infer a model solely from a missing field or attempt the other product after a failed request. Reject both candidate keys in one declaration; neither requests conversion or purchase. Unknown applicability blocks that family, not independent security features.
 
 A product-level toggle can affect subordinate security features. Before adoption, specify which companions must be observed and explicitly declared for each destructive transition, and test preservation or acknowledged intrinsic effects. The current design deliberately does not adopt an unverified product mutation. #346 remains pending this evidence/adoption decision; #345 and #347 do not depend on it.
 
 ## Explicit export selection
 
-Choose proposed repeatable `--security FAMILY` with exact implemented family values `dependabot`, `secret-scanning`, and `private-vulnerability-reporting`. Only `secret-scanning` and `private-vulnerability-reporting` are currently implemented. Each future family selects its adopted keys in its table row(s), not every security setting. Reserve no accepted `all` value or product option. Reject unknown, missing, or duplicate family values before reads or destination changes. Compose distinct families with existing `--rulesets`, `--actions`, and `--workflow-permissions` choices without making security selection implicit.
+Repeatable `--security FAMILY` accepts exactly the implemented `secret-scanning`, `private-vulnerability-reporting` and `immutable-releases` selections. Dependabot/product options and `all` are not accepted. Distinct families compose with other export options; unknown/missing/duplicate values fail before reads or file changes.
 
-Ordinary export preserves all existing requests and credential requirements. Selected security reads follow the existing resources in table-family order: Dependabot, Secret scanning, private vulnerability reporting. Complete all selected reads and serialization before opening/replacing the destination. Selection is an explicit request: unavailable/inapplicable/unknown data fails, rather than being omitted with success. Export false values when authoritatively observed, omit unselected families, and exclude operational metadata. An unchanged export must yield zero differences for exported booleans; zero does not prove writable access, active scans, or an unlocked policy.
+Ordinary export adds no security requests. Secret protection/Push protection reads precede private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied, incomplete or unknown values fail instead of being omitted with success. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. A supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. #480 normalization and #481 complete reporting remain separate.
 
 ## State and failure table
 
@@ -73,7 +71,7 @@ Ordinary export preserves all existing requests and credential requirements. Sel
 | Any other complete `enabled`/`paused` boolean pair | Compare enabled independently and retain pause metadata; warn whenever paused. Do not invent a correlation between the two booleans that the API schema does not establish. |
 | Missing/null/wrong-type enabled or pause metadata | Reject incomplete state; do not discard pause to manufacture a usable observation. |
 | Missing/null/invalid requested response field | Fail that read; no successful empty/false comparison or export. |
-| 401/403, unqualified 404, redirect, transport failure, invalid JSON | Fail read as unknown/denied as evidenced; never infer disabled or follow a changed target. |
+| 401/403, unqualified 404 (except the separate immutable-policy decision), redirect, transport failure, invalid JSON | Fail read as unknown/denied as evidenced; never infer disabled or follow a changed target. |
 | Confirmed unsupported visibility/entitlement | Report inapplicable/unavailable as evidenced; never false. Do not guess licensing from arbitrary 403/404 text. |
 | Authoritative upper-policy conflict known before write | Fail before mutation of that security family; no detach or policy bypass. |
 | Fresh prerequisite read/preflight fails | Record a confirmed pre-write read failure, preserving prior completed operations. |
@@ -95,7 +93,7 @@ These rules constrain transition preflight; they do not introduce a saved-plan t
 | Push protection true with secret scanning false | Reject contradiction locally. |
 | Push protection true; scanning omitted | Require fresh known-enabled scanning; no implicit parent enable or product enrollment. |
 | Scanning true and push protection true | Enable/verify scanning before enabling/verifying push protection, with narrow sequential nested PATCHes. |
-| Scanning false | Observe push protection; if currently enabled, require explicit secret_scanning_push_protection=false and disable/verify it first. Unknown child blocks the transition. |
+| Scanning false | Observe push protection; if currently enabled, require explicit `push_protection: false` and disable/verify it first. Unknown child blocks the transition. |
 | Child false alone | Update only the declared child when a change is needed; never send omitted parent fields. |
 | Private vulnerability reporting true/false | Verify public target and complete current boolean, then PUT/DELETE only if different and GET-verify; independent of paid products and other families. |
 
@@ -127,7 +125,7 @@ The [private vulnerability reporting guide](https://docs.github.com/en/code-secu
 The [public configuration contract](../settings.md#secret-scanning-and-push-protection) owns current-source usage. The Secret scanning subset uses its two booleans and `--security secret-scanning`, independently of private vulnerability reporting below. Other families and product candidates remain unsupported.
 
 - Declaration/observation/transition/forged-change boundaries: [TestSecretScanningObservationAndTransitions](../../internal/settings/security_test.go) and [TestSecurityComparisonsRejectForgedValues](../../internal/settings/security_test.go).
-- Strict YAML, explicit false and omission round-trip: [TestSecurityYAMLContract](../../internal/workspace/security_test.go).
+- Strict YAML, explicit false and omission round-trip: [Security UI codec](../../internal/workspace/ui_security_test.go).
 - Complete API reads, unknown/denied/redirect responses, fresh prerequisites, narrow payload and readback/companion failures: [TestSecretScanningCompleteReads](../../internal/github/security_test.go) and [TestSecretScanningNarrowPayloadReadbackAndFreshPreflight](../../internal/github/security_test.go).
 - Dependency order, read certainty, matching state and confirmed partial progress: [TestSecretScanningApplyOrderAndPartialProgress](../../internal/app/security_test.go) and [TestSecretScanningReadFailureAndOmission](../../internal/app/security_test.go).
 - Export selection/composition and forged native Summary values: [TestSecurityExportSelectionIsExplicitAndComposable](../../internal/cli/security_test.go) and [TestSecuritySummaryHasNativeClosedValues](../../internal/actions/security_test.go).
@@ -137,10 +135,10 @@ Fixtures use dummy credentials and local modeled responses. A read-only observat
 
 ## Implemented private vulnerability reporting test mappings
 
-The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Dependabot and product candidates remain gated/unsupported.
+The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Dependabot and product candidates remain gated/unsupported.
 
 - Acquired observations, omitted/false/true comparison and independent field domains: [TestPrivateReportingObservationAndIndependentDeclaration](../../internal/settings/private_reporting_test.go).
-- Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [TestPrivateReportingYAML](../../internal/workspace/private_reporting_test.go).
+- Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [Security UI codec](../../internal/workspace/ui_security_test.go).
 - Public/private/internal applicability, missing/null/wrong-case/type responses and API errors: [TestPrivateReportingReadApplicabilityAndCompleteBoolean](../../internal/github/private_reporting_test.go).
 - Fresh preflight, body-free PUT/DELETE, matching state, upper-policy no-change and readback certainty: [TestPrivateReportingToggleAndCertainty](../../internal/github/private_reporting_test.go). [TestSecurityClientsRejectCrossFamilyChangesBeforeRequests](../../internal/github/private_reporting_test.go) guards both concrete clients.
 - Independent reads, matching apply, confirmed progress and pre-/post-write failure: [TestPrivateReportingIndependentPlanAndMatchingApply](../../internal/app/private_reporting_test.go) and [TestPrivateReportingFailureRetainsOnlyConfirmedWrites](../../internal/app/private_reporting_test.go).
@@ -148,3 +146,5 @@ The [public configuration contract](../settings.md#private-vulnerability-reporti
 - Built-CLI export→zero-plan→edit→apply, native credential-free Summary, false/idempotence, nonpublic applicability, file preservation, GET/PUT/DELETE redirects and partial writes after Secret scanning: [TestPrivateReportingExportPlanApplyAndSummary](../../tests/acceptance/private_reporting_test.go).
 
 Fixtures use dummy credentials and local modeled responses. A read-only GET on this public repository returned enabled=true; no live PUT/DELETE, report/advisory/notification operation, permission expansion, upper-policy change or release was performed. These checks do not establish live update compatibility or other credential grants.
+
+The private same-version security report retains native API member identifiers/booleans and existing bounds. Current CLI/Summary component paths remain internal pending #481; they are not public YAML aliases.

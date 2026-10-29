@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
 
 func TestTopicsPlanApplyAcceptance(t *testing.T) {
@@ -21,15 +23,15 @@ func TestTopicsPlanApplyAcceptance(t *testing.T) {
 		name, command, input, body, want, errorText string
 		status                                      int
 	}{
-		{name: "sorted plan", command: "plan", input: "names: [z, a]", body: `{"names":["old"]}`, want: "settings.topics.names: [\"old\"] → [\"a\",\"z\"]\n"},
-		{name: "order independent", command: "plan", input: "names: [z, a]", body: `{"names":["a","z"]}`, want: "No differences for managed repository settings.\n"},
-		{name: "clear plan", command: "plan", input: "names: []", body: `{"names":["old"]}`, want: "settings.topics.names: [\"old\"] → []\n"},
-		{name: "exact sorted PUT", command: "apply", input: "names: [z, a]", want: `{"names":["a","z"]}`},
-		{name: "exact empty PUT", command: "apply", input: "names: []", want: `{"names":[]}`},
-		{name: "forbidden", command: "apply", input: "names: []", status: 403, errorText: "403"},
-		{name: "redirect rejected", command: "apply", input: "names: []", status: 302, errorText: "302"},
-		{name: "null rejected", command: "apply", input: "names: null", errorText: "array of strings"},
-		{name: "invalid entry", command: "plan", input: "names: [true]", errorText: "array of strings"},
+		{name: "sorted plan", command: "plan", input: "[z, a]", body: `{"names":["old"]}`, want: "repository.about.topics: [\"old\"] → [\"a\",\"z\"]\n"},
+		{name: "order independent", command: "plan", input: "[z, a]", body: `{"names":["a","z"]}`, want: "No differences for managed repository settings.\n"},
+		{name: "clear plan", command: "plan", input: "[]", body: `{"names":["old"]}`, want: "repository.about.topics: [\"old\"] → []\n"},
+		{name: "exact sorted PUT", command: "apply", input: "[z, a]", want: `{"names":["a","z"]}`},
+		{name: "exact empty PUT", command: "apply", input: "[]", want: `{"names":[]}`},
+		{name: "forbidden", command: "apply", input: "[]", status: 403, errorText: "403"},
+		{name: "redirect rejected", command: "apply", input: "[]", status: 302, errorText: "302"},
+		{name: "null rejected", command: "apply", input: "null", errorText: "repository.about.topics must be a string array"},
+		{name: "invalid entry", command: "plan", input: "[true]", errorText: "repository.about.topics must contain strings"},
 		{name: "empty group", command: "apply", input: "", want: "No managed repository settings.\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -64,7 +66,10 @@ func TestTopicsPlanApplyAcceptance(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "schemaVersion: 1\nsettings:\n  topics: {" + test.input + "}\n"
+			input := repositoryInput("about: {}\n")
+			if test.input != "" {
+				input = aboutInput("topics: " + test.input + "\n")
+			}
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -191,10 +196,24 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 				t.Fatalf("result=%+v", result)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
-			if err != nil || !strings.Contains(string(data), "names:\n            - a\n            - z") {
-				t.Fatalf("export=%s error=%v", data, err)
+			if err != nil {
+				t.Fatal(err)
 			}
-			input := "schemaVersion: 1\nsettings: {topics: {names: []}}\n"
+			var document struct {
+				Version    string `yaml:"version"`
+				Repository struct {
+					About struct {
+						Topics []string `yaml:"topics"`
+					} `yaml:"about"`
+				} `yaml:"repository"`
+			}
+			if err := yaml.Unmarshal(data, &document); err != nil {
+				t.Fatal(err)
+			}
+			if document.Version != "daiksud/gh-settings@v0" || !reflect.DeepEqual(document.Repository.About.Topics, []string{"a", "z"}) {
+				t.Fatalf("About topics export=%s", data)
+			}
+			input := aboutInput("topics: []\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}

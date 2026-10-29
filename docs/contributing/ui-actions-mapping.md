@@ -11,7 +11,7 @@ sources:
 
 ## Preparation boundary
 
-This is the internal mapping for [Issue #484](https://github.com/daiksud/gh-settings/issues/484). The current YAML codec, export, comparison, plan/apply and reports keep their current contract. [#479](https://github.com/daiksud/gh-settings/issues/479) activates the prepared schema together; [#480](https://github.com/daiksud/gh-settings/issues/480) owns out-of-UI normalization/default warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns reporting integration. There is no old-format compatibility or migration layer.
+This Actions mapping was prepared for [#484](https://github.com/daiksud/gh-settings/issues/484) and is now composed into current-source YAML by [#479](https://github.com/daiksud/gh-settings/issues/479). The [public reference](../settings.md#actions-execution-policy) owns accepted choices. [#480](https://github.com/daiksud/gh-settings/issues/480) normalization/default warnings and [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remain unfinished. Native internal reports remain separate from UI intent; there is no compatibility or migration layer.
 
 The [internal UI model](../../internal/settings/uimodel/actions.go) has typed control choices without transport enums or serialization tags. [Declaration conversion](../../internal/github/ui_actions.go) supplies existing validated adapter inputs. Observation helpers consume acquired values directly, retaining raw latent policy and retention caps outside the UI model. They never call declaration normalization. Overlay helpers preserve unrelated incoming UI fields; they copy newly acquired values rather than claiming a deep copy of the whole incoming tree.
 
@@ -19,9 +19,9 @@ The [internal UI model](../../internal/settings/uimodel/actions.go) has typed co
 
 English controls were inspected on 2026-10-28 in Actions / General. Public controls were inspected on gh-settings. Private-only controls were inspected in an authorized private repository; its identity and current values are intentionally excluded from this public reference. Conditional controls were revealed without saving, and unsaved edits were discarded. This establishes wording and visible choices, not effective live policy changes or permission coverage.[^actions-ui][^actions-settings]
 
-The prepared prefix `A` below means `repository.settings.actions.general`. Labels are converted to snake_case. A repository owner's changing name is represented by the stable word `owner` in radio choices.
+The UI prefix `A` below means `repository.settings.actions.general`. Labels are converted to snake_case. A repository owner's changing name is represented by the stable word `owner` in radio choices.
 
-| UI label | Prepared path below `A` | Internal API member |
+| UI label | UI path below `A` | Internal API member |
 | --- | --- | --- |
 | Actions permissions | `actions_permissions` | `enabled` and, when enabled, `allowed_actions` |
 | Require actions to be pinned to a full-length commit SHA | `require_actions_to_be_pinned_to_a_full_length_commit_sha` | `sha_pinning_required` |
@@ -75,7 +75,7 @@ Retention displays the acquired configured `days`, even when it exceeds the acqu
 
 Independent [permission fixtures](../../internal/github/ui_actions_execution_test.go), [selected fixtures](../../internal/github/ui_actions_selected_test.go), [workflow fixtures](../../internal/github/ui_actions_workflow_test.go), [retention fixtures](../../internal/github/ui_actions_retention_test.go), [public fork fixtures](../../internal/github/ui_actions_public_fork_test.go), [private fork fixtures](../../internal/github/ui_actions_private_fork_test.go) and [composition fixtures](../../internal/github/ui_actions_composition_test.go) specify expected values without deriving expectations from production mappings. They exercise exact payloads, independent raw readback, hidden/raw acquisition, unchanged required companions, state prerequisites and acquisition failures.
 
-Activation must wire the complete family through parser, exporter, application and reporting together. It must carry raw acquisition/provenance and cap metadata into #480/#481, preserve existing endpoint applicability and dependency sequencing, and avoid widening ownership or treating normalization as an observed change. This preparation neither enables new controls nor changes live settings.
+Current root composition wires the family through the one UI codec, desired conversion and complete export projection while retaining native application sequencing/private reports. Existing acquisition/provenance and cap metadata stay outside desired intent for #480/#481. Full UI reporting is not completed here. This activation adds no feature control, live setting change or normalization-derived observed change.
 
 [^actions-ui]: GitHub, Actions / General, read-only UI inspection, 2026-10-28.
 [^actions-settings]: GitHub Docs, managing GitHub Actions settings for a repository, consulted 2026-10-28.

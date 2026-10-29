@@ -119,10 +119,10 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 		t.Fatal(got)
 	}
 	exported, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(exported), "has_pull_requests: true") || !strings.Contains(string(exported), "pull_request_creation_policy: ALL") {
+	if err != nil || !strings.Contains(string(exported), "pull_requests: true") || !strings.Contains(string(exported), "pull_request_permissions:\n                    creation_allowed_by: all_users\n") {
 		t.Fatal(string(exported), err)
 	}
-	input := repositoryInput("has_pull_requests: false\npull_request_creation_policy: COLLABORATORS_ONLY\n")
+	input := generalInput("features: {pull_requests: true, pull_request_permissions: {creation_allowed_by: collaborators_only}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	if fixture.reads.Load() != beforeValidate {
 		t.Fatal("validate requested API")
 	}
-	wantPlan := "settings.repository.has_pull_requests: true → false\nsettings.repository.pull_request_creation_policy: \"ALL\" → \"COLLABORATORS_ONLY\"\n"
+	wantPlan := "settings.repository.pull_request_creation_policy: \"ALL\" → \"COLLABORATORS_ONLY\"\n"
 	if got := run("plan"); got != wantPlan {
 		t.Fatal(got)
 	}
@@ -145,7 +145,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	if err := json.Unmarshal(data, &typed); err != nil {
 		t.Fatal(err)
 	}
-	wantReport := map[string]any{"outcome": "changed", "target": "owner/current", "managed": float64(2), "changes": []any{map[string]any{"field": "repository.has_pull_requests", "before": true, "after": false}, map[string]any{"field": "repository.pull_request_creation_policy", "before": "ALL", "after": "COLLABORATORS_ONLY"}}}
+	wantReport := map[string]any{"outcome": "changed", "target": "owner/current", "managed": float64(2), "changes": []any{map[string]any{"field": "repository.pull_request_creation_policy", "before": "ALL", "after": "COLLABORATORS_ONLY"}}}
 	if !reflect.DeepEqual(typed, wantReport) {
 		t.Fatal(string(data))
 	}
@@ -164,7 +164,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	}
 	run("apply")
 	mu.Lock()
-	if len(writes) != 1 || !reflect.DeepEqual(writes[0], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": false, "pullRequestCreationPolicy": "COLLABORATORS_ONLY"}) {
+	if len(writes) != 1 || !reflect.DeepEqual(writes[0], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": true, "pullRequestCreationPolicy": "COLLABORATORS_ONLY"}) {
 		t.Fatal(writes)
 	}
 	mu.Unlock()
@@ -173,17 +173,20 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	}
 	// Scalars retain direct-apply semantics: matching declarations are still sent.
 	run("apply")
-	writeSettingsFile(fixture.work, repositoryInput("has_pull_requests: true\n"))
+	writeSettingsFile(fixture.work, generalInput("features: {pull_requests: false}\n"))
+	if got := run("plan"); got != "repository.settings.general.features.pull_requests: true → false\n" {
+		t.Fatal(got)
+	}
 	run("apply")
-	writeSettingsFile(fixture.work, repositoryInput("pull_request_creation_policy: ALL\n"))
+	writeSettingsFile(fixture.work, generalInput("features: {pull_request_permissions: {creation_allowed_by: all_users}}\n"))
 	run("apply")
 	mu.Lock()
 	defer mu.Unlock()
-	if len(writes) != 4 || !reflect.DeepEqual(writes[2], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": true}) || !reflect.DeepEqual(writes[3], map[string]any{"repositoryId": "opaque-id", "pullRequestCreationPolicy": "ALL"}) || !enabled || policy != "ALL" {
+	if len(writes) != 4 || !reflect.DeepEqual(writes[2], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": false}) || !reflect.DeepEqual(writes[3], map[string]any{"repositoryId": "opaque-id", "pullRequestCreationPolicy": "ALL"}) || enabled || policy != "ALL" {
 		t.Fatal(writes, enabled, policy)
 	}
-	suffix := operations[len(operations)-6:]
-	if !reflect.DeepEqual(suffix, []string{"lookup identity", "mutate PR policy", "lookup identity", "mutate PR policy", "lookup identity", "mutate PR policy"}) {
+	suffix := operations[len(operations)-7:]
+	if !reflect.DeepEqual(suffix, []string{"lookup identity", "mutate PR policy", "read PR policy", "lookup identity", "mutate PR policy", "lookup identity", "mutate PR policy"}) {
 		t.Fatal("direct apply compared current policy", suffix)
 	}
 }
@@ -193,15 +196,15 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 		name, command, input, want string
 		requests                   int
 	}{
-		{"partial read", "plan", "has_issues: false\nhas_pull_requests: false\n", "partial read denied", 2},
+		{"partial read", "plan", "features: {issues: false, pull_requests: false}\n", "partial read denied", 2},
 		{"null export", "export", "", "pullRequestCreationPolicy", 3},
-		{"lookup wrong target", "apply", "has_pull_requests: false\n", "target does not match", 1},
-		{"mutation ignored", "apply", "has_pull_requests: false\n", "did not retain", 2},
-		{"mutation partial errors", "apply", "has_pull_requests: false\n", "writes may already have applied", 2},
-		{"mutation redirect", "apply", "has_pull_requests: false\n", "307", 2},
-		{"REST then lookup denied", "apply", "has_issues: false\nhas_pull_requests: false\n", "earlier repository writes remain applied", 2},
-		{"REST then mutation denied", "apply", "has_issues: false\nhas_pull_requests: false\n", "earlier repository writes remain applied", 3},
-		{"invalid local enum", "apply", "pull_request_creation_policy: unknown\n", "must be ALL or COLLABORATORS_ONLY", 0},
+		{"lookup wrong target", "apply", "features: {pull_requests: false}\n", "target does not match", 1},
+		{"mutation ignored", "apply", "features: {pull_requests: false}\n", "did not retain", 2},
+		{"mutation partial errors", "apply", "features: {pull_requests: false}\n", "writes may already have applied", 2},
+		{"mutation redirect", "apply", "features: {pull_requests: false}\n", "307", 2},
+		{"REST then lookup denied", "apply", "features: {issues: false, pull_requests: false}\n", "earlier repository writes remain applied", 2},
+		{"REST then mutation denied", "apply", "features: {issues: false, pull_requests: false}\n", "earlier repository writes remain applied", 3},
+		{"invalid local enum", "apply", "features: {pull_request_permissions: {creation_allowed_by: unknown}}\n", `unsupported general.features.pull_request_permissions.creation_allowed_by "unknown"`, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
@@ -279,11 +282,9 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			original := repositoryInput(tt.input)
+			original := repositoryInput("about: {topics: []}\nsettings:\n  general:\n" + indentInput(tt.input, 4))
 			if tt.command == "export" {
 				original = "previous file must survive incomplete PR policy\n"
-			} else {
-				original += "  topics: {names: []}\n"
 			}
 			writeSettingsFile(fixture.work, original)
 			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{tt.command}, false)
@@ -328,7 +329,7 @@ func TestPRAccessPlanRejectsStaleOrigin(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := repositoryInput("has_pull_requests: false\n")
+	input := generalInput("features: {pull_requests: false}\n")
 	writeSettingsFile(fixture.work, input)
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
 	if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "stale checkout origin") || calls.Load() != 1 {

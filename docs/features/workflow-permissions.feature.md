@@ -1,14 +1,18 @@
-# Default workflow token and approval permissions
+---
+type: Feature
+title: Default workflow permissions
+description: Select independent UI workflow permission and PR approval controls.
+---
 
 Status: implemented in current source, supported. The [configuration contract](../settings.md#default-workflow-permissions) is authoritative.
 
 ## Rule: Declare independent optional native values
 
-- `settings.actions.default_workflow_permissions` accepts exact read/write strings; `can_approve_pull_request_reviews` accepts booleans.
+- Under `repository.settings.actions.general`, `workflow_permissions` accepts `read_and_write_permissions` or `read_repository_contents_and_packages_permissions`; `allow_github_actions_to_create_and_approve_pull_requests` accepts booleans.
 - Omitted fields remain unmanaged; false is explicit. Null, unknown/case-varied enums and wrong types fail locally before API access.
 - Either field can be declared alone without managing or querying execution policy. Empty declarations remain local no-ops.
 
-Test mapping: [TestWorkflowPermissionsStrictYAMLRoundtrip](../../internal/workspace/workflow_permissions_test.go), [TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
+Test mapping: [Actions UI codec](../../internal/workspace/ui_actions_test.go), [TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
 
 ## Rule: Acquire complete policy only when requested
 
@@ -20,7 +24,7 @@ Test mapping: [TestWorkflowPermissionsCompleteReads](../../internal/github/workf
 
 ## Rule: Show permission changes explicitly
 
-- Read-to-write and false-to-true changes remain native enums and booleans in CLI/report/Summary.
+- Public YAML choices translate to internal read/write tokens. Current CLI/Summary and serialized private reports retain native component tokens/identifiers pending #481; API tokens are not YAML aliases. False-to-true remains a native boolean.
 - The closed report registry validates both sides; workflow values cannot use unavailable before values.
 - Summary uses existing report data without credentials, origin resolution or API calls.
 

@@ -13,6 +13,20 @@ type PreparedActionsPrivateFork struct {
 	Raw     [4]bool
 }
 
+func WithActionsPrivateForkPolicyUI(ui uimodel.ActionsGeneral, policy settings.PrivateForkDeclaration) (uimodel.ActionsGeneral, error) {
+	if policy.Empty() {
+		return ui, nil
+	}
+	var values [4]bool
+	for i, value := range policy.Values() {
+		if value == nil {
+			return uimodel.ActionsGeneral{}, fmt.Errorf("private fork policy requires all four workflow values")
+		}
+		values[i] = *value
+	}
+	return withActionsPrivateForkValues(ui, values), nil
+}
+
 func declareUIActionsPrivateFork(ui *uimodel.ForkPullRequestWorkflows) (settings.PrivateForkDeclaration, error) {
 	if ui == nil {
 		return settings.PrivateForkDeclaration{}, nil
@@ -33,6 +47,10 @@ func WithActionsPrivateForkObservation(ui uimodel.ActionsGeneral, observation se
 	if err != nil {
 		return PreparedActionsPrivateFork{}, err
 	}
+	return PreparedActionsPrivateFork{General: withActionsPrivateForkValues(ui, values), Raw: values}, nil
+}
+
+func withActionsPrivateForkValues(ui uimodel.ActionsGeneral, values [4]bool) uimodel.ActionsGeneral {
 	controls := &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: copyUIActionsValue(&values[0])}
 	if values[0] {
 		controls.SendWriteTokensToWorkflowsFromForkPullRequests = copyUIActionsValue(&values[1])
@@ -40,5 +58,5 @@ func WithActionsPrivateForkObservation(ui uimodel.ActionsGeneral, observation se
 		controls.RequireApprovalForForkPullRequestWorkflows = copyUIActionsValue(&values[3])
 	}
 	ui.ForkPullRequestWorkflows = controls
-	return PreparedActionsPrivateFork{General: ui, Raw: values}, nil
+	return ui
 }

@@ -1,17 +1,21 @@
-# Repository auto-merge and branch-update options
+---
+type: Feature
+title: Repository auto-merge and branch-update options
+description: Manage repository-level General Pull Requests options.
+---
 
 ## Status and scope
 
-CLI and Action support optional `settings.repository.allow_auto_merge` and `allow_update_branch` under `schemaVersion: 1`. This extends the existing repository group, with no new resource family or credential permissions.
+Current source supports optional `repository.settings.general.pull_requests.allow_auto_merge` and `always_suggest_updating_pull_request_branches`. This extends the existing repository group, with no new resource family or credential permissions.
 
-The [configuration reference](../settings.md#auto-merge-and-branch-updates) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. `allow_update_branch` permits behind-head branch updates; it performs no branch operation or protection change.
+The [configuration reference](../settings.md#auto-merge-and-branch-updates) owns values, omission and GitHub plan availability. `allow_auto_merge` permits PR auto-merge at repository level; it never schedules individual PRs or bypasses reviews/checks. The UI branch-update checkbox permits behind-head branch updates; it performs no branch operation or protection change.
 
 ## API and execution contract
 
 | YAML boolean | GraphQL Repository field | Write |
 | --- | --- | --- |
 | `allow_auto_merge` | `autoMergeAllowed: Boolean!` | `allow_auto_merge` in repository REST PATCH |
-| `allow_update_branch` | `allowUpdateBranch: Boolean!` | `allow_update_branch` in repository REST PATCH |
+| `always_suggest_updating_pull_request_branches` | `allowUpdateBranch: Boolean!` | `allow_update_branch` in repository REST PATCH |
 
 The [REST update endpoint](https://docs.github.com/en/rest/repos/repos#update-a-repository) accepts both booleans using existing Administration write. The [GraphQL public schema](https://docs.github.com/en/graphql/overview/public-schema) defines both observations. There is no PR auto-merge mutation, update-branch call, privilege fallback or permission expansion.
 
@@ -21,7 +25,7 @@ The shared `MergeMethodsState`, fixed query and deferred read retain their names
 
 Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 
-Current-source ordinary export saves twenty-three repository fields, plus complete topics and all label pages after every read and serialization succeeds. Archive and private forking remain separate, mutually incompatible opt-in selections. Repository comparison retains registry order, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once; current-source report/Summary supports a fifty-one-unit validation bound across all adopted resources. Older packages retain their documented lower limits. Boolean changes remain native booleans, and Summary rejects wrong-typed values.
+Ordinary export saves observed visible About/General controls, Topics and complete Labels only after every read/conversion succeeds. Archive requires its explicit opt-in; repository forking policy is unsupported. Comparisons keep stable internal order and native booleans, with current UI paths for these unambiguous controls. Private reports retain closed value validation and existing bounds; complete UI count/report integration remains #481.
 
 ## Hosted read evidence
 
@@ -32,7 +36,7 @@ An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/ru
 | Layer | Tests |
 | --- | --- |
 | Boolean presence, omission, order and equality | [Settings comparison](../../internal/settings/merge_methods_test.go) |
-| Strict types/spelling, aliases and round trips | [YAML codec](../../internal/workspace/merge_methods_test.go) |
+| Strict types/spelling, aliases and round trips | [YAML codec](../../internal/workspace/ui_general_test.go) |
 | Complete fixed GraphQL read, missing/null/type failures, partial errors and declared-only PATCH | [Shared adapter boundary](../../internal/github/merge_methods_test.go), [new boolean reads](../../internal/github/pr_options_test.go) |
 | Deferred read, direct write, local validation and export preservation | [PR options](../../internal/app/pr_options_test.go), [shared failures](../../internal/app/merge_methods_test.go), [export](../../internal/app/export_test.go) |
 | Native boolean report/Summary, wrong types and managed bound | [Boolean presentation](../../internal/actions/merge_methods_test.go), [count validation](../../internal/actions/squash_commit_test.go) |

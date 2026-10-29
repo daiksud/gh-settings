@@ -13,7 +13,6 @@ import (
 	"github.com/daiksud/gh-settings/internal/actions"
 	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func TestPrivatePlanHidesErrors(t *testing.T) {
@@ -58,8 +57,7 @@ func TestDetailedPathNamedStatusOnlyKeepsDiagnostics(t *testing.T) {
 }
 
 func TestPrivateSummaryHidesCompleteRulesetPolicy(t *testing.T) {
-	d, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings: {rulesets: [{name: 'CANARY-hidden-policy', target: branch, enforcement: active, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, bypass_actors: [{actor_type: Integration, actor_id: 987654321, bypass_mode: always}], rules: [{type: deletion}]}]}`))
+	d, err := rulesetReportFixture([]byte(`[{name: 'CANARY-hidden-policy', target: branch, enforcement: active, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, bypass_actors: [{actor_type: Integration, actor_id: 987654321, bypass_mode: always}], rules: [{type: deletion}]}]`))
 	if err != nil {
 		t.Fatal(err)
 	}

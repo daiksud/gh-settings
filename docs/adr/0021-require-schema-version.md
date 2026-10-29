@@ -6,6 +6,8 @@ description: Identify the YAML file format independently of the CLI release.
 
 ## Status
 
+The public version marker decision is superseded by [Issue #479](https://github.com/daiksud/gh-settings/issues/479). The [current configuration reference](../settings.md) defines the required marker. Identifying the file format independently of the CLI release remains applicable. The original adoption status follows for historical context.
+
 Accepted — implemented by export and validate.
 
 ## Context

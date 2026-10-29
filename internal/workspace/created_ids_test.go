@@ -23,7 +23,7 @@ func writebackFixture(t *testing.T, input string) (string, string) {
 }
 
 func TestCreatedIDWritebackRetainsExistingValuesCommentsAndEarlierIDs(t *testing.T) {
-	input := "# consumer configuration\nschemaVersion: 1\nsettings:\n  repository: {description: keep}\n  labels:\n    - name: old\n      id: 4\n      color: abcdef\n    - name: new # keep this comment\n      color: '123456'\n    - {name: later, color: fedcba}\n"
+	input := "# consumer configuration\nversion: daiksud/gh-settings@v0\nrepository:\n  about: {description: keep}\n  labels:\n    - name: old\n      id: 4\n      color: '#abcdef'\n    - name: new # keep this comment\n      color: '#123456'\n    - {name: later, color: '#fedcba'}\n"
 	root, path := writebackFixture(t, input)
 	record := createdIDRecorder(root, []byte(input))
 	if err := record("labels", "new", 17); err != nil {
@@ -42,9 +42,9 @@ func TestCreatedIDWritebackRetainsExistingValuesCommentsAndEarlierIDs(t *testing
 		}
 	}
 	var document struct {
-		Settings struct {
-			Repository map[string]string
-			Labels     []struct {
+		Repository struct {
+			About  map[string]string
+			Labels []struct {
 				Name  string
 				ID    int64
 				Color string
@@ -54,16 +54,16 @@ func TestCreatedIDWritebackRetainsExistingValuesCommentsAndEarlierIDs(t *testing
 	if err := yaml.Unmarshal(data, &document); err != nil {
 		t.Fatal(err)
 	}
-	if document.Settings.Repository["description"] != "keep" {
+	if document.Repository.About["description"] != "keep" {
 		t.Fatal(document)
 	}
 	for i, want := range []int64{4, 17, 18} {
-		if document.Settings.Labels[i].ID != want {
-			t.Fatal(document.Settings.Labels)
+		if document.Repository.Labels[i].ID != want {
+			t.Fatal(document.Repository.Labels)
 		}
 	}
-	if document.Settings.Labels[0].Color != "abcdef" || document.Settings.Labels[1].Color != "123456" || document.Settings.Labels[2].Color != "fedcba" {
-		t.Fatal(document.Settings.Labels)
+	if document.Repository.Labels[0].Color != "#abcdef" || document.Repository.Labels[1].Color != "#123456" || document.Repository.Labels[2].Color != "#fedcba" {
+		t.Fatal(document.Repository.Labels)
 	}
 	info, err := os.Stat(path)
 	if err != nil || info.Mode().Perm() != 0600 {
@@ -77,15 +77,15 @@ func TestCreatedIDWritebackFailurePreservesSettings(t *testing.T) {
 		id                              int64
 		edit                            bool
 	}{
-		{"existing ID", "settings: {labels: [{name: x, id: 4}]}\n", "labels", "x", 7, false},
-		{"missing object", "settings: {labels: [{name: x}]}\n", "labels", "absent", 7, false},
-		{"ambiguous object", "settings: {labels: [{name: x}, {name: x}]}\n", "labels", "x", 7, false},
-		{"invalid ID", "settings: {labels: [{name: x}]}\n", "labels", "x", 0, false},
-		{"wrong collection", "settings: {labels: [{name: x}]}\n", "repository", "x", 7, false},
-		{"environment name identity", "settings: {labels: [{name: x}]}\n", "environments", "x", 7, false},
-		{"concurrent edit", "settings: {labels: [{name: x}]}\n", "labels", "x", 7, true},
-		{"aliased collection", "value: &items [{name: x}]\nsettings: {labels: *items}\n", "labels", "x", 7, false},
-		{"aliased entry", "value: &item {name: x}\nsettings: {labels: [*item]}\n", "labels", "x", 7, false},
+		{"existing ID", "repository: {labels: [{name: x, id: 4}]}\n", "labels", "x", 7, false},
+		{"missing object", "repository: {labels: [{name: x}]}\n", "labels", "absent", 7, false},
+		{"ambiguous object", "repository: {labels: [{name: x}, {name: x}]}\n", "labels", "x", 7, false},
+		{"invalid ID", "repository: {labels: [{name: x}]}\n", "labels", "x", 0, false},
+		{"wrong collection", "repository: {labels: [{name: x}]}\n", "repository", "x", 7, false},
+		{"environment name identity", "repository: {labels: [{name: x}]}\n", "environments", "x", 7, false},
+		{"concurrent edit", "repository: {labels: [{name: x}]}\n", "labels", "x", 7, true},
+		{"aliased collection", "value: &items [{name: x}]\nrepository: {labels: *items}\n", "labels", "x", 7, false},
+		{"aliased entry", "value: &item {name: x}\nrepository: {labels: [*item]}\n", "labels", "x", 7, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root, path := writebackFixture(t, tc.input)
@@ -109,7 +109,7 @@ func TestCreatedIDWritebackFailurePreservesSettings(t *testing.T) {
 }
 
 func TestCreatedIDWritebackRejectsSymlinks(t *testing.T) {
-	input := "settings: {labels: [{name: x}]}\n"
+	input := "repository: {labels: [{name: x}]}\n"
 	for _, directory := range []bool{false, true} {
 		t.Run(map[bool]string{false: "file", true: "directory"}[directory], func(t *testing.T) {
 			root, path := writebackFixture(t, input)
@@ -136,6 +136,95 @@ func TestCreatedIDWritebackRejectsSymlinks(t *testing.T) {
 			data, err := os.ReadFile(path)
 			if err != nil || string(data) != input {
 				t.Fatalf("linked target changed: %s %v", data, err)
+			}
+		})
+	}
+}
+
+func TestCreatedIDWritebackRulesetsAndLabelsRetainsBothSnapshots(t *testing.T) {
+	input := `# current consumer configuration
+version: daiksud/gh-settings@v0
+repository:
+  about: {description: keep}
+  labels:
+    - name: new # label comment
+      color: '#abcdef'
+  settings:
+    general: {features: {issues: false}}
+    rulesets:
+      - {id: 7, ruleset_name: existing, enforcement_status: active, target_branches: {}}
+      - ruleset_name: main # ruleset comment
+        enforcement_status: active
+        target_branches: {include_default_branch: true}
+        rules: {restrict_deletions: false}
+      - {ruleset_name: later, enforcement_status: disabled, target_tags: {include_all_tags: true}}
+`
+	root, path := writebackFixture(t, input)
+	record := createdIDRecorder(root, []byte(input))
+	for _, created := range []struct {
+		collection, name string
+		id               int64
+	}{{"labels", "new", 17}, {"rulesets", "main", 31}, {"rulesets", "later", 32}} {
+		if err := record(created.collection, created.name, created.id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, comment := range []string{"# current consumer configuration", "# label comment", "# ruleset comment"} {
+		if !strings.Contains(string(data), comment) {
+			t.Fatalf("lost comment %s: %s", comment, data)
+		}
+	}
+	got, err := DecodeConfig(data)
+	if err != nil || got.About == nil || got.About.Description == nil || *got.About.Description != "keep" || got.Labels == nil || (*got.Labels)[0].ID == nil || *(*got.Labels)[0].ID != 17 || *(*got.Labels)[0].Color != "#abcdef" || got.Settings == nil || got.Settings.General == nil || got.Settings.General.Features.Issues == nil || *got.Settings.General.Features.Issues || got.Settings.Rulesets == nil {
+		t.Fatalf("mixed writeback changed unrelated values: %s, %v", data, err)
+	}
+	for i, id := range []int64{7, 31, 32} {
+		if (*got.Settings.Rulesets)[i].ID == nil || *(*got.Settings.Rulesets)[i].ID != id {
+			t.Fatalf("earlier Ruleset ID lost: %s", data)
+		}
+	}
+	main := (*got.Settings.Rulesets)[1]
+	if main.RulesetName != "main" || main.EnforcementStatus == nil || *main.EnforcementStatus != "active" || main.TargetBranches.IncludeDefaultBranch == nil || !*main.TargetBranches.IncludeDefaultBranch || main.Rules.RestrictDeletions == nil || *main.Rules.RestrictDeletions {
+		t.Fatalf("Ruleset intent changed: %s", data)
+	}
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0600 {
+		t.Fatalf("writeback mode changed: %v, %v", info, err)
+	}
+}
+
+func TestCreatedIDRulesetWritebackGuardsPreserveSnapshot(t *testing.T) {
+	for _, test := range []struct {
+		name, input string
+		edit        bool
+	}{
+		{"existing ID", "repository: {settings: {rulesets: [{ruleset_name: main, id: 7}]}}\n", false},
+		{"missing object", "repository: {settings: {rulesets: [{ruleset_name: other}]}}\n", false},
+		{"obsolete name alias", "repository: {settings: {rulesets: [{name: main}]}}\n", false},
+		{"ambiguous name", "repository: {settings: {rulesets: [{ruleset_name: main}, {ruleset_name: main}]}}\n", false},
+		{"aliased collection", "value: &items [{ruleset_name: main}]\nrepository: {settings: {rulesets: *items}}\n", false},
+		{"aliased entry", "value: &item {ruleset_name: main}\nrepository: {settings: {rulesets: [*item]}}\n", false},
+		{"merged entry", "repository: {settings: {rulesets: [{ruleset_name: main, <<: {enforcement_status: active}}]}}\n", false},
+		{"concurrent edit", "repository: {settings: {rulesets: [{ruleset_name: main}]}}\n", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root, path := writebackFixture(t, test.input)
+			record := createdIDRecorder(root, []byte(test.input))
+			want := test.input
+			if test.edit {
+				want += "# concurrent user edit\n"
+				if err := os.WriteFile(path, []byte(want), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := record("rulesets", "main", 31); err == nil {
+				t.Fatal("unsafe Ruleset writeback succeeded")
+			}
+			if data, err := os.ReadFile(path); err != nil || string(data) != want {
+				t.Fatalf("failed writeback changed snapshot: %s, %v", data, err)
 			}
 		})
 	}

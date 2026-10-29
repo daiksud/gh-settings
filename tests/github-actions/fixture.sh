@@ -7,7 +7,7 @@ trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/repo/.github"
 cp -R "$repo_root/examples" "$fixture/repo/"
 cd "$fixture/repo"
-printf 'schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n' > .github/settings.yml
+printf 'version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: false}}}}\n' > .github/settings.yml
 git init -q
 git remote add origin https://github.com/owner/repo
 git add .

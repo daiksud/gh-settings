@@ -1,5 +1,4 @@
-// Package uimodel contains internal preparation for UI-oriented settings.
-// The current public YAML codec does not consume these types.
+// Package uimodel contains UI-oriented repository settings.
 package uimodel
 
 type EnforcementStatus string

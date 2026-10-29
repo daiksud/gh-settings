@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -132,17 +133,42 @@ func TestWriteOnlyDismissalContract(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if strings.Contains(string(data), "dismissal_restriction") {
+			if strings.Contains(string(data), "dismissal_restriction") || strings.Contains(string(data), "restrict_who_can_dismiss_pull_request_reviews") || strings.Contains(string(data), "people_teams_or_apps_that_can_dismiss_reviews") {
 				t.Fatal("export included unsupported write-only field", string(data))
 			}
 			var document map[string]any
 			if err := yaml.Unmarshal(data, &document); err != nil {
 				t.Fatal(err)
 			}
-			members := document["settings"].(map[string]any)["rulesets"].([]any)
-			desired := members[0].(map[string]any)
-			parameters := acceptanceRuleParams(t, desired, "pull_request")
-			document = map[string]any{"schemaVersion": 1, "settings": map[string]any{"rulesets": members}}
+			members := document["repository"].(map[string]any)["settings"].(map[string]any)["rulesets"].([]any)
+			desired := map[string]any{
+				"id": 7, "ruleset_name": "default", "enforcement_status": "active",
+				"target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}},
+				"bypass_list":     []any{},
+				"rules": map[string]any{
+					"restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": false,
+					"require_a_pull_request_before_merging": map[string]any{
+						"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
+						"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,
+						"require_review_from_code_owners":                                       true,
+						"require_an_additional_approval_for_unattributed_copilot_pull_requests": false,
+						"require_approval_of_the_most_recent_reviewable_push":                   false,
+						"require_conversation_resolution_before_merging":                        true,
+						"require_review_from_specific_teams":                                    []any{map[string]any{"reviewer": 22, "approvals": 1, "file_patterns": []any{"**", "!docs/**", "docs/README.md", "**"}}},
+					},
+					"require_status_checks_to_pass": map[string]any{
+						"required_status_checks":                           []any{map[string]any{"check": "gh-settings", "source": map[string]any{"app": 15368}}, map[string]any{"check": "pass", "source": map[string]any{"app": 15368}}},
+						"require_branches_to_be_up_to_date_before_merging": true,
+						"do_not_require_status_checks_on_creation":         false,
+					},
+				},
+			}
+			if !reflect.DeepEqual(members, []any{desired}) {
+				t.Fatalf("export=%v want=%v", members, desired)
+			}
+			parameters := desired["rules"].(map[string]any)["require_a_pull_request_before_merging"].(map[string]any)
+			document = map[string]any{"version": "daiksud/gh-settings@v0", "repository": map[string]any{"settings": map[string]any{"rulesets": []any{desired}}}}
+
 			save := func() string {
 				t.Helper()
 				data, err := yaml.Marshal(document)
@@ -153,9 +179,6 @@ func TestWriteOnlyDismissalContract(t *testing.T) {
 					t.Fatal(err)
 				}
 				return string(data)
-			}
-			if mode == "observed explicit" {
-				delete(parameters, "dismissal_restriction")
 			}
 			save()
 			run("validate")
@@ -172,12 +195,13 @@ func TestWriteOnlyDismissalContract(t *testing.T) {
 			if err := json.Unmarshal(reportData, &report); err != nil || report["outcome"] != "no-difference" {
 				t.Fatalf("observable plan report: %s %v", reportData, err)
 			}
-			desired["enforcement"] = "disabled"
+			desired["enforcement_status"] = "disabled"
 			if strings.HasPrefix(mode, "false") || strings.HasPrefix(mode, "true") || mode == "explicit mismatch" {
-				parameters["dismissal_restriction"] = map[string]any{"enabled": !strings.HasPrefix(mode, "false"), "allowed_actors": []any{}}
+				parameters["restrict_who_can_dismiss_pull_request_reviews"] = !strings.HasPrefix(mode, "false")
+				parameters["people_teams_or_apps_that_can_dismiss_reviews"] = []any{}
 			}
 			input := save()
-			explicit := parameters["dismissal_restriction"] != nil
+			explicit := parameters["restrict_who_can_dismiss_pull_request_reviews"] != nil
 			if explicit {
 				for _, args := range [][]string{{"plan"}, {"action", "plan", reportPath}} {
 					r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)

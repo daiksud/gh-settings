@@ -6,7 +6,7 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 ## Feature: Export repository settings as YAML
 
-A repository maintainer can capture all twenty-two current-source repository fields, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+A repository maintainer can capture supported visible About/General controls, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds silently. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
 
 The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
 
@@ -52,7 +52,8 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - And its settings are description "Example repository", homepage "https://example.com", issues enabled, projects disabled, wiki enabled, and Discussions disabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And `.github/settings.yml` has root `schemaVersion: 1` and `settings.repository` containing all nine REST fields, the ten merge-related fields and three PR/Issue access fields, each with its completely observed value
+- And `.github/settings.yml` uses `version: daiksud/gh-settings@v0` with About, Labels and General at their UI locations
+- And visible controls retain completely observed typed values while hidden conditional menus are omitted after raw validation
 - And topics and complete labels are present, while response metadata and unsupported settings are absent
 - And standard error is empty
 - And standard output is empty
@@ -64,9 +65,10 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - And issues, projects, wiki, and Discussions are disabled
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And all nine REST keys, all ten merge-related keys and all three PR/Issue access keys are present in the YAML output
+- And supported observed booleans remain present under their UI keys
+- And creation-permission and merge-message menus hidden by false parents are omitted
 - And the two string values remain empty strings
-- And the six REST boolean values retain their observed values (including explicit false)
+- And boolean controls retain their observed values, including explicit false
 
 #### Scenario: Export unset strings as empty strings
 
@@ -74,7 +76,7 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - And the other string is null or an empty string
 - When the maintainer runs `gh settings export`
 - Then the command succeeds
-- And description and homepage are present as YAML empty strings, not YAML null values
+- And About description and website are present as YAML empty strings, not YAML null values
 - And the boolean settings retain their values
 
 #### Scenario: Ignore a repository override
@@ -127,7 +129,7 @@ These origin-support changes are supported and do not change settings YAML synta
 - Given the current checkout has ordinary settings or explicit false/empty values with a valid existing default branch
 - When the maintainer runs `gh settings export`
 - And runs `gh settings validate` with the same executable
-- Then the exported document contains `schemaVersion: 1`, all twenty-two supported `settings.repository` values, `settings.topics.names`, and the complete `settings.labels` list
+- Then the document contains the exact current version, supported visible General controls, direct `repository.about.topics`, and complete `repository.labels`
 - And validation succeeds without output or changing the saved file bytes
 - And export reads repository settings, topics, and all label pages while validation makes no additional API request
 
@@ -214,7 +216,7 @@ Export changes the local configuration but only reads GitHub settings; [apply](.
 
 - Given repository settings and topic names can be read.
 - When export runs.
-- Then repository fields and sorted topic names are saved with schemaVersion 1.
+- Then repository fields and sorted topic names are saved with the exact current version marker and UI paths.
 - And a failed topics read leaves an existing destination unchanged.
 
 Test mapping: [TestExportReadFailure/topics](../../internal/app/export_test.go) and [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).
@@ -227,6 +229,15 @@ Current source reads every label page after repository settings and topics befor
 
 Current source keeps ordinary export unchanged and adds explicit `--actions`, composing with `--rulesets`. The [Actions policy specification](actions-execution-policy.feature.md#rule-export-only-complete-observable-policy) owns complete active/inactive reads, preserved destinations and test mappings.
 
-Ordinary export reads the non-opt-in repository fields, topics and labels. Each explicit selection adds only its independent resource: `--rulesets`, `--actions`, `--workflow-permissions`, `--retention`, `--fork-approval`, `--private-fork-workflows`, repeatable distinct `--security` families, `--archive` and `--pages`. Duplicate/unknown selections fail before export. Complete all requested observations and serialization before opening the destination; an inapplicable/denied/partial selection fails without plausible defaults or a successful partial save. Unchanged supported exports validate and plan with zero differences. Resource applicability can prevent combining otherwise independently parsed choices; public and private fork choices cannot both apply to a fixed target.
+Ordinary export reads the non-opt-in repository fields, topics and labels. Each explicit selection adds only its independent resource: `--rulesets`, `--actions`, `--workflow-permissions`, `--retention`, `--fork-approval`, `--private-fork-workflows`, repeatable distinct `--security` families, `--archive`, `--pages` and `--environments`. Duplicate/unknown selections fail before export. Complete all requested observations and serialization before opening the destination; an inapplicable/denied/partial selection fails without plausible defaults or a successful partial save. Unchanged supported exports validate and plan with zero differences. Resource applicability can prevent combining otherwise independently parsed choices; public and private fork choices cannot both apply to a fixed target.
 
 The dedicated [Rulesets](rulesets.feature.md), [workflow permissions](workflow-permissions.feature.md), [retention](retention.feature.md), [security](security.feature.md), [fork workflow](fork-workflows.feature.md), [PR access](pull-request-access.feature.md) and [Issue policy](issue-creation-policy.feature.md) specifications own complete-read and payload details. Existing process coverage includes [Rulesets](../../tests/acceptance/rulesets_test.go), [workflow permissions](../../tests/acceptance/workflow_permissions_test.go), [retention](../../tests/acceptance/retention_test.go), [Secret scanning](../../tests/acceptance/security_test.go), [private reporting](../../tests/acceptance/private_reporting_test.go), [fork workflows](../../tests/acceptance/fork_workflows_test.go) [PR access](../../tests/acceptance/pr_access_test.go) and [Issue policy](../../tests/acceptance/issue_creation_policy_test.go). These test mappings prove modeled current-source behavior; publication evidence remains separate from fixture verification.
+
+### Rule: Convert completely before replacing the destination
+
+- Requested family mappings compose into one current UI document without reimplementing their converters.
+- Unknown/out-of-UI values currently fail pending #480; no fallback is inserted into desired intent.
+- Raw latent conditional state is not replayed as selected UI controls.
+- Complete UI report integration remains #481; an export success does not claim that work is complete.
+
+Test mapping: [UI export aggregation](../../internal/github/ui_export_test.go), [root deferred save](../../checkout_config_test.go), and the independent current-YAML maps/string goldens in the process files above.

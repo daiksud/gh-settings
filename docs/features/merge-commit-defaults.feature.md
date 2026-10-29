@@ -1,42 +1,64 @@
-# Normal merge commit title and message defaults
+---
+type: Feature
+title: Merge commit message menu
+description: Select one UI merge message choice and retain disabled-method prerequisites.
+sources:
+  - id: ui-inventory
+    resource: ../contributing/ui-repository-mapping.md
+  - id: repository-api
+    resource: https://docs.github.com/en/rest/repos/repos#update-a-repository
+  - id: graphql-schema
+    resource: https://docs.github.com/en/graphql/overview/public-schema
+  - id: hosted-read-proof
+    resource: https://github.com/daiksud/gh-settings/actions/runs/39120474618
+---
 
 ## Status and scope
 
-CLI and Action support optional `settings.repository.merge_commit_title` and `merge_commit_message` under `schemaVersion: 1`. They extend the existing repository group without enabling normal merge commits, changing squash defaults, or performing a merge.
-
-The [configuration reference](../settings.md#merge-commit-defaults) owns declaration/value semantics. GitHub rejects these defaults while normal merges are disabled. An explicit `allow_merge_commit: false` combination therefore fails local validation. When the allow flag is omitted, local validation does not guess an unmanaged value; plan checks the observed effective setting and fails if it is false. An explicit true value satisfies the prerequisite without synthesizing another declaration.
+Current source accepts optional `repository.settings.general.pull_requests.merge_commit.default_commit_message`. It selects one UI menu item; it does not merge a PR, edit PR contents or implicitly enable a merge method. The [configuration reference](../settings.md#merge-commit-defaults) owns adoption and presence semantics.[^ui-inventory]
 
 ## API contract
 
-| Declaration | Exact values | GraphQL Repository observation |
+| Public UI choice | Internal API title | Internal API message |
 | --- | --- | --- |
-| `merge_commit_title` | `PR_TITLE`, `MERGE_MESSAGE` | `mergeCommitTitle: MergeCommitTitle!` |
-| `merge_commit_message` | `PR_BODY`, `PR_TITLE`, `BLANK` | `mergeCommitMessage: MergeCommitMessage!` |
+| `default_message` | `MERGE_MESSAGE` | `PR_TITLE` |
+| `pull_request_title` | `PR_TITLE` | `BLANK` |
+| `pull_request_title_and_description` | `PR_TITLE` | `PR_BODY` |
 
-The [REST repository update API](https://docs.github.com/en/rest/repos/repos#update-a-repository) requires title when message is specified. Local validation therefore rejects message-only declarations before target/authentication/API access, while title-only is valid. Each omitted field remains unmanaged. A squash title is not a substitute for a normal merge title. Null, empty, unknown and wrong-typed enums fail locally; `BLANK` is a literal enum.
+The [repository REST contract](https://docs.github.com/en/rest/repos/repos#update-a-repository) and [GraphQL public schema](https://docs.github.com/en/graphql/overview/public-schema) define the underlying API fields.[^repository-api][^graphql-schema]
 
-The [GraphQL public schema](https://docs.github.com/en/graphql/overview/public-schema) defines the non-null enums. The existing fixed query/deferred `MergeMethods` read now observes six booleans and four enums. Declaring only a new enum skips the base REST read; omitting every merge-related field skips GraphQL. Missing/null/invalid values, HTTP/transport/JSON errors and partial GraphQL errors discard the whole observation, preserving an existing export file and rejecting earlier partial plan comparisons.
+A declared menu converts to both API members together. Omission leaves the menu unmanaged. Separate title/message fields, API tokens, null, empty/unknown choices and wrong types are not public YAML. Explicit `allow_merge_commits: false` with the menu fails before origin/authentication/API access. An omitted enabling checkbox remains omitted.
 
-Apply includes declared fields only in the existing Administration-write REST PATCH. It adds no preliminary read, inferred companion value, merge-method update or new permission. A direct apply with an omitted allow flag cannot pre-resolve the remote prerequisite; configurations that enable normal merges should declare the true allow flag with their defaults. Existing redirect/timeout/target and direct-apply race/partial-failure behavior remains unchanged. No PR mutation or branch-protection change is introduced.
+With the checkbox omitted, plan also checks observed merge availability and fails if disabled. Explicit true satisfies that prerequisite without synthesizing intent. Direct apply cannot pre-resolve an omitted allow checkbox; declare true when enabling the method with its menu.
 
-Current-source ordinary export saves up to twenty-three repository fields plus complete topics/all label pages after all reads and serialization succeed. When normal merges are disabled, export omits the two retained inactive normal-merge defaults so its output passes validation. Archive and private forking remain separate, mutually incompatible opt-in selections. Stable comparison order appends normal merge title/message after squash title/message and before later repository fields and resources. Each declared scalar counts once and each managed collection once; current-source report/Summary supports a fifty-one-unit validation bound across all adopted resources. Older packages retain their documented lower limits. CLI/Summary quote enum strings, typed reports retain strings, and unsupported report enum values/types are rejected.
+The existing fixed GraphQL query uses only checkout-selected owner/name and complete native observations. Missing/null/invalid values, transport/HTTP/JSON failures and GraphQL errors including partial data discard the observation. There is no privileged read fallback. Export hides the menu behind an observed disabled method only after raw validation; out-of-UI pairs currently fail pending #480 rather than becoming new choices.
+
+Apply sends the translated pair in the existing Administration-write repository PATCH. No companion is borrowed from live state and no enabling checkbox is synthesized. Other undeclared fields are omitted. Existing target, timeout, redirect rejection and nontransactional partial-failure semantics remain.
+
+## Export, ordering and presentation
+
+Visible acquired menu choices export under UI paths after all requested reads/conversion succeed. Plan retains stable native comparison order; one menu can produce two component changes. Complete UI menu rendering is #481: current CLI/Summary and the private same-version report can still show native component paths/tokens. They are not YAML aliases or saved apply input. Report type validation remains closed; this change does not claim the UI count/report audit complete.
 
 ## Read-only hosted evidence
 
-An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/runs/39120474618) returned `mergeCommitTitle: MERGE_MESSAGE` and `mergeCommitMessage: PR_TITLE` with all prior fields and the existing squash-only booleans. Effective permissions were Contents read and Metadata read only, with no checkout, App credentials, Environment or writes. Its temporary workflow is removed from the final diff. This proves access for that token/repository, not every credential.
+An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/runs/39120474618)[^hosted-read-proof] returned `mergeCommitTitle: MERGE_MESSAGE` and `mergeCommitMessage: PR_TITLE` with all prior fields and the existing squash-only booleans. Effective permissions were Contents read and Metadata read only, with no checkout, App credentials, Environment or writes. Its temporary workflow is removed from the final diff. This proves access for that token/repository, not every credential.
 
 ## Test mapping
 
-| Layer | Evidence |
+| Boundary | Evidence |
 | --- | --- |
-| Declaration/model | [Merge codec](../../internal/workspace/merge_commit_test.go): enum combinations, title-only, message-only rejection, null/type/value matrices, aliases and round trips. [Comparison](../../internal/settings/merge_commit_test.go): omission/equality/order and strings. |
-| GitHub adapter | [Merge enum reads/PATCH](../../internal/github/merge_commit_test.go), [shared boundary](../../internal/github/merge_methods_test.go): incomplete/invalid/partial-error reads, declared-only title/pair PATCH and no GET. |
-| Application | [Merge sequencing](../../internal/app/merge_commit_test.go), [shared failures](../../internal/app/merge_methods_test.go), [export](../../internal/app/export_test.go): selective reads, local validation, direct writes and file preservation. |
-| Actions | [Merge report/Summary](../../internal/actions/merge_commit_test.go): native strings, quoted output, invalid enums/types and the current-source fifty-one-unit bound. |
-| Installed binary | [Process acceptance](../../tests/acceptance/merge_methods_test.go): explicit invalid validate/plan, effective-state plan rejection and explicit-enable override, title-only/pair plan, equality, shared representative read failures, exact direct PATCH, full export, typed reports and credential-free Summary. [Export then validate](../../tests/acceptance/export_validate_test.go) verifies disabled-method exports omit inactive defaults and remain valid. Existing tests retain unmanaged/no-op and prior settings behavior. |
+| Public YAML omission/types/roundtrip/API-alias rejection | [General UI codec](../../internal/workspace/ui_general_test.go) |
+| Every menu choice, exact pair and disabled/unknown rejection | [UI menu conversion](../../internal/github/ui_commit_message_test.go) |
+| Internal API enum reads and declared-only payloads | [Squash transport](../../internal/github/squash_commit_test.go), [merge transport](../../internal/github/merge_commit_test.go), [shared GraphQL boundary](../../internal/github/merge_methods_test.go) |
+| Existing native dependency/comparison behavior | [Commit dependencies](../../internal/settings/commit_dependencies_test.go), [merge application](../../internal/app/merge_commit_test.go), [squash application](../../internal/app/squash_commit_test.go) |
+| Private native report validation | [Merge Summary](../../internal/actions/merge_commit_test.go), [squash Summary](../../internal/actions/squash_commit_test.go) |
+| Built CLI current choices, exact paired PATCH, disabled-method failure, hidden export and Summary boundary | [Process acceptance](../../tests/acceptance/merge_methods_test.go), [export/validate](../../tests/acceptance/export_validate_test.go) |
 
-Detailed local validation stays at its owning layers. The former process case `merge unknown rejected` maps to `TestMergeCommitCodec` in the workspace tests, whose invalid-value matrix explicitly rejects `COMMIT_OR_PR_TITLE` for normal merge defaults. The former `merge message-only rejected` case maps to the `squash title cannot satisfy merge message` subtest of `TestCommitMessageDependencies` in the [settings tests](../../internal/settings/commit_dependencies_test.go). Representative executable enum and dependency failures remain in the [squash acceptance mapping](squash-commit-defaults.feature.md#test-mapping), including zero API calls and unchanged input bytes; successful merge cases and representative API response failures remain at the process boundary.
+The process menu cases use independently expected API pairs, not a test translator or production-derived expectations. Obsolete API-key rejection, unknown UI choice and explicit/observed disabled prerequisites retain zero-network or exact-read boundaries and unchanged source bytes. Native transport tests remain internal protocol coverage, not an alternate public codec.
 
-`TestMergeCommitReadRejectsIncompleteEnums` owns the per-field response matrix formerly repeated by `merge missing title` and `merge null message`. The complete-data-with-errors fixture in `TestReadMergeMethodsGraphQLBoundary` covers the former `merge partial error`; the [shared process read-failure cases](merge-methods.feature.md#test-mapping) retain failed-plan and export-preservation evidence.
+Local fixtures use dummy credentials without live mutations. Hosted read evidence establishes only its observed token/repository access. Published package identity and release authorization remain separate.
 
-Local fixtures use dummy credentials, not live mutations. Hosted proof establishes access for its observed token/repository. Native release acceptance and published Action smoke establish the separate package identity boundary.
+[^ui-inventory]: Existing read-only UI wording inventory from 2026-10-28; current local fixtures check UI/API translation.
+[^repository-api]: Original primary REST reference retained for underlying request fields; API tokens are not public YAML choices.
+[^graphql-schema]: Original primary schema reference retained for native observation fields and types.
+[^hosted-read-proof]: Previously cited historical read-only run, not rerun or reclassified as new live verification by YAML activation.
