@@ -172,7 +172,10 @@ func validateRule(r RulesetRule, complete bool) error {
 			}
 		}
 	case "code_quality":
-		if p == nil || p.Severity == nil || !slices.Contains([]string{"errors", "warnings", "notes", "all"}, *p.Severity) {
+		if p == nil || p.Severity == nil {
+			return fmt.Errorf("code_quality requires supported severity")
+		}
+		if _, valid := RulesetQualitySeverityChoiceForValue(*p.Severity); !valid {
 			return fmt.Errorf("code_quality requires supported severity")
 		}
 		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil {
