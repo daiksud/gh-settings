@@ -47,6 +47,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	for _, change := range comparison.Environments {
 		fmt.Fprintln(&output, presentation.EnvironmentLine(change))
 	}
+	for _, change := range comparison.ActionsExecution {
+		fmt.Fprintln(&output, presentation.ActionsExecutionLine(change))
+	}
 	for _, change := range comparison.Actions {
 		fmt.Fprintln(&output, presentation.ActionsPolicyLine(change))
 	}
