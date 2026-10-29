@@ -13,7 +13,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-type EnvironmentsClient struct{ rest *api.RESTClient }
+type EnvironmentsClient struct {
+	rest                 *api.RESTClient
+	NormalizationWarning func(string, settings.EnvironmentDeploymentNormalization)
+}
 
 type environmentPreWriteFailure struct{ cause error }
 
@@ -350,6 +353,13 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if fresh != initial {
 		return pre(fmt.Errorf("repository identity or archive state changed before environment update"))
 	}
+	states, err := current.Values()
+	if err != nil {
+		return pre(err)
+	}
+	for _, state := range states {
+		c.warnDeploymentNormalization(state, *expected)
+	}
 	var raw map[string]json.RawMessage
 	if err := c.rest.Put(environmentPath(repo, expected.Name), bytes.NewReader(body), &raw); err != nil {
 		return false, fmt.Errorf("update environment %q (write may have applied): %w", expected.Name, err)
@@ -364,6 +374,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 		if err != nil {
 			return false, fmt.Errorf("read patterns after environment PUT (write may have applied): %w", err)
 		}
+		c.warnDeploymentNormalization(state, *expected)
 		if state.Policy.DeploymentBranchPolicy == nil || !state.Policy.DeploymentBranchPolicy.CustomBranchPolicies {
 			return false, fmt.Errorf("environment is not in custom mode after PUT (write may have applied)")
 		}
@@ -375,6 +386,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if err != nil {
 		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
+	c.warnDeploymentNormalization(actual, *expected)
 	if err := verifyEnvironmentRequestedState(actual, *expected); err != nil {
 		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
