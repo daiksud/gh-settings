@@ -80,9 +80,10 @@ type EnvironmentBranchPolicy struct {
 
 type EnvironmentDeclarations struct{ entries []EnvironmentDeclaration }
 type EnvironmentState struct {
-	ID       int64
-	Policy   EnvironmentDeclaration
-	Patterns []EnvironmentPatternState
+	ID                          int64
+	Policy                      EnvironmentDeclaration
+	Patterns                    []EnvironmentPatternState
+	DeploymentModeNormalization EnvironmentDeploymentNormalization
 }
 type EnvironmentObservation struct{ entries []EnvironmentState }
 type EnvironmentChange struct {
@@ -219,7 +220,7 @@ func NewEnvironmentObservation(entries []EnvironmentState) (EnvironmentObservati
 	result := EnvironmentObservation{entries: make([]EnvironmentState, 0, len(entries))}
 	seenNames, seenIDs := map[string]bool{}, map[int64]bool{}
 	for _, entry := range entries {
-		if err := validateEnvironment(entry.Policy, true); err != nil {
+		if err := entry.validateDeploymentNormalization(); err != nil {
 			return EnvironmentObservation{}, err
 		}
 		key := EnvironmentIdentity(entry.Policy.Name)
@@ -227,7 +228,7 @@ func NewEnvironmentObservation(entries []EnvironmentState) (EnvironmentObservati
 			return EnvironmentObservation{}, fmt.Errorf("ambiguous environment observation")
 		}
 		seenNames[key], seenIDs[entry.ID] = true, true
-		result.entries = append(result.entries, EnvironmentState{ID: entry.ID, Policy: cloneEnvironment(entry.Policy), Patterns: slices.Clone(entry.Patterns)})
+		result.entries = append(result.entries, EnvironmentState{ID: entry.ID, Policy: cloneEnvironment(entry.Policy), Patterns: slices.Clone(entry.Patterns), DeploymentModeNormalization: entry.DeploymentModeNormalization})
 	}
 	return result, nil
 }
@@ -238,7 +239,7 @@ func (o EnvironmentObservation) Values() ([]EnvironmentState, error) {
 	}
 	out := make([]EnvironmentState, 0, len(o.entries))
 	for _, v := range o.entries {
-		out = append(out, EnvironmentState{ID: v.ID, Policy: cloneEnvironment(v.Policy), Patterns: slices.Clone(v.Patterns)})
+		out = append(out, EnvironmentState{ID: v.ID, Policy: cloneEnvironment(v.Policy), Patterns: slices.Clone(v.Patterns), DeploymentModeNormalization: v.DeploymentModeNormalization})
 	}
 	return out, nil
 }
