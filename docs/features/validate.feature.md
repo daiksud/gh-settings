@@ -114,156 +114,81 @@ Test mapping: the [Pages UI codec tests](../../internal/workspace/ui_pages_test.
 
 Test mapping: the [Environment UI codec tests](../../internal/workspace/ui_environments_test.go).
 
-### Rule: Accept only supported fields with the update API's value types
-
-#### Scenario: Validate all supported settings
-
-- Given `.github/settings.yml` declares `schemaVersion: 1` and supported fields under `settings.repository` with their required strings, booleans and validated enums
-- When the maintainer runs `gh settings validate`
-- Then validation succeeds without output
-- And no GitHub API request is made
+### Rule: Validate typed UI intent without remote work
 
 #### Scenario: Preserve partial declarations and zero values
 
-- Given `.github/settings.yml` declares only `settings.repository.description: ''` and `settings.repository.has_issues: false`
+- Given the exact current version marker
+- And `repository.about.description: ''` and `repository.settings.general.features.issues: false`
 - When the maintainer runs `gh settings validate`
-- Then validation succeeds without adding omitted fields or changing either declared value
+- Then validation succeeds silently without adding omitted values or changing the file
+- And no origin, authentication or API request is needed
 
-#### Scenario: Resolve an alias or merge key
+#### Scenario: Resolve safe aliases, merges and string styles
 
-- Given `.github/settings.yml` uses an alias or merge key within `settings.repository` that resolves to supported keys and values
-- When the maintainer runs `gh settings validate`
-- Then validation succeeds using the resolved values
+- Given aliases or merge keys resolve to supported UI fields and typed values
+- When the document is validated and encoded
+- Then resolved values preserve explicit false, empty strings and ordered collections
+- And quoted `null` and quoted boolean-looking About text remain strings
 
-### Rule: Reject unsupported keys, values, and document shapes
+#### Scenario: Reject unsafe document shapes without partial intent
 
-#### Scenario: An unknown key is declared
+- Given an unknown, duplicate or non-string key, unsupported tag, contradictory mapping tag, wrong type, malformed YAML or multiple documents
+- When the maintainer validates the document
+- Then validation fails with the specific local cause and no API request or file change
+- And no partly decoded declaration is used
 
-- Given `.github/settings.yml` declares `settings.repository.visibility: private`
-- When the maintainer runs `gh settings validate`
-- Then validation fails with an unknown-setting diagnostic
+#### Scenario: Distinguish null from omission
 
-#### Scenario: A key is declared twice
+- Given About description or a General boolean is explicitly null
+- When validation runs
+- Then it fails rather than treating null as omission, false or an empty string
+- But Pages `custom_domain: null` remains the explicit scalar removal operation
 
-- Given `.github/settings.yml` declares `settings.repository.has_issues` twice
-- When the maintainer runs `gh settings validate`
-- Then validation fails with a duplicate-setting diagnostic
+#### Scenario: Require the exact version string
 
-#### Scenario: A value has the wrong type
+- Given the version is missing, a different string or a non-string value
+- When validation runs
+- Then it fails instead of guessing a file format
+- And the old envelope and root settings alias are not migrated
 
-- Given `.github/settings.yml` declares `settings.repository.has_issues: 'false'`
-- When the maintainer runs `gh settings validate`
-- Then validation fails because the value is a string rather than a boolean
+#### Scenario: Empty documents are local no-ops
 
-#### Scenario: Explicit null is not a typed value
+- Given a version-only document, `repository: {}` or `repository: {settings: {}}`
+- When validate, plan or apply runs
+- Then no origin, authentication or API access is needed
+- And plan/apply report no managed settings
 
-- Given `.github/settings.yml` declares `settings.repository.description: null` or `settings.repository.has_issues: null`
-- When the maintainer runs `gh settings validate`
-- Then validation fails for the field's required string or boolean type
-- And null is not treated as omission or an empty string
+#### Scenario: A missing file is a file-read failure
 
-#### Scenario: Quoted null is a string
+- Given the checkout has no `.github/settings.yml`
+- When validation runs
+- Then it fails before any remote work
 
-- Given `.github/settings.yml` declares `settings.repository.description: 'null'`
-- When the maintainer runs `gh settings validate`
-- Then validation succeeds because the value is a string
+### Rule: Preserve each resource's ownership and collection semantics
 
-#### Scenario: YAML is malformed or has more than one document
-
-- Given `.github/settings.yml` contains malformed YAML or multiple documents
-- When the maintainer runs `gh settings validate`
-- Then validation fails with a document diagnostic
-
-#### Scenario: Old flat configuration is rejected
-
-- Given `.github/settings.yml` declares `schemaVersion: 1` and `has_issues: false` at the root
-- When the maintainer runs `gh settings validate`
-- Then validation fails with an unknown-root-key diagnostic
-- And the maintainer must move the field under `settings.repository`
-
-#### Scenario: The schema version is missing or unsupported
-
-- Given `.github/settings.yml` omits `schemaVersion` or declares `schemaVersion: 2`
-- When the maintainer runs `gh settings validate`
-- Then validation fails instead of guessing a file format
-
-#### Scenario: Invalid YAML key and scalar tags are rejected
-
-- Given `.github/settings.yml` contains a null key, a duplicate alias key, an alias of a merge key, a binary-tagged description, or a legacy boolean spelling
-- When the maintainer runs `gh settings validate`
-- Then validation fails without a GitHub API request
-
-#### Scenario: A mapping or merge source has a contradictory YAML tag
-
-- Given a root, `settings`, `repository`, or merge-source mapping is explicitly tagged as a string
-- When the maintainer runs `gh settings validate`
-- Then validation fails because the value is not a YAML mapping
-
-#### Scenario: The configuration file is missing
-
-- Given the current Git checkout has no `.github/settings.yml`
-- When the maintainer runs `gh settings validate`
-- Then validation fails with a file-read diagnostic
+- About Topics omission is unmanaged; `topics: []` is an authoritative empty set and `topics: {}` is invalid.
+- Labels and Rulesets select only listed objects; empty root lists select nothing.
+- Ruleset omitted rule groups follow whole-object defaults, not remote retention.
+- Environment omitted built-ins remain API-controlled without invented defaults or numeric-ID writeback.
+- Actions UI radios select explicit execution state/policy; omitted radios never enable implicitly.
+- Unknown controls such as organization custom properties and General forking policy fail at their current paths.
+- Current-state prerequisites, entitlement, caps and upper-policy checks belong to observation/apply, not local validation.
 
 ### Test mapping
 
-The scenarios map to ordinary Go tests and [process acceptance cases](../../tests/acceptance/scenarios_validate.go). The process cases launch the already-built executable and verify that validation makes no request to the local API fixture. Detailed YAML parser cases remain in `TestParseConfigValidation` in the [workspace codec tests](../../internal/workspace/config_test.go). File-reading outcomes have [workspace file tests](../../internal/workspace/config_file_test.go). The [application tests](../../internal/app/validate_test.go) check injected declarations and loading errors without Git or files. The [checkout tests](../../internal/workspace/checkout_test.go) cover explicit directories, nested/trailing-space roots, unchanged bytes, and Git lookup errors. The process cases retain the CLI, file, Git, output, and request-observation checks.
+The supplied-binary [validation scenarios](../../tests/acceptance/scenarios_validate.go) cover current literals, exact local causes, aliases/merges, types, marker/obsolete envelopes, malformed/tagged mappings, missing files and three no-op forms. They launch the already-built executable, preserve source bytes and observe zero fixture API requests.
 
-| Scenario | Go test | Process acceptance case |
-| --- | --- | --- |
-| Validate all supported settings | `TestParseConfigValues/all_fields` | `validate-all-fields` |
-| Preserve partial declarations and zero values | `TestParseConfigValues/partial_zero_values`, `TestCheckoutDeclaration` | `validate-partial-zero-values` |
-| Resolve an alias or merge key | `TestParseConfigValidation/alias_value`, `TestParseConfigValidation/merge_key` | `validate-alias`, `validate-merge` |
-| An unknown key is declared | `TestParseConfigValidation/unknown_field` | `validate-unknown-key` |
-| A key is declared twice | `TestParseConfigValidation/duplicate_field` | `validate-duplicate-key` |
-| A value has the wrong type | `TestParseConfigValidation/string_instead_of_boolean` | `validate-wrong-type` |
-| Explicit null is not a typed value | `TestParseConfigValidation/null_instead_of_string`, `TestParseConfigValidation/null_instead_of_boolean` | `validate-null-boolean` |
-| Quoted null is a string | `TestParseConfigValidation/quoted_null_is_a_string` | — |
-| YAML is malformed or has more than one document | `TestParseConfigValidation/malformed_YAML`, `TestParseConfigValidation/two_documents` | `validate-malformed` |
-| Old flat configuration is rejected | `TestParseConfigValidation/old_flat_format` | — |
-| The schema version is missing or unsupported | `TestParseConfigValidation/missing_schema_version`, `TestParseConfigValidation/unsupported_schema_version` | `validate-missing-schema-version`, `validate-unsupported-schema-version` |
-| Invalid YAML key and scalar tags are rejected | `TestParseConfigValidation/null_key`, `TestParseConfigValidation/duplicate_alias_key`, `TestParseConfigValidation/alias_merge_key`, `TestParseConfigValidation/binary_instead_of_string`, `TestParseConfigValidation/legacy_boolean_yes` | `validate-legacy-tagged-boolean` |
-| A mapping or merge source has a contradictory YAML tag | `TestParseConfigValidation/tagged_settings_mapping_as_string`, `TestParseConfigValidation/mistagged_merge_mapping` | `validate-mistagged-mapping` |
-| The configuration file is missing | `TestReadConfigErrors/missing_file` | `validate-missing-file` |
-
-The Go table also checks a versioned document with no settings, empty `settings` and `repository` mappings, wrong mapping shapes, nested values, non-string keys, an unsupported bare `repository` wrapper, invalid version types, and a quoted `"null"` string. Alias and merge values are checked after YAML v4 resolves them; duplicate explicit keys remain errors. Explicit null rejection follows [ADR 0019](../adr/0019-reject-explicit-null.md) for the original five update-request fields; the same non-null rule applies to later fields, including Discussions. It does not establish how GitHub handles live null updates.
-
-### Rule: Distinguish omitted topics from explicit empty names
-
-- Given topics is omitted or an empty mapping.
-- Then topics remains unmanaged.
-- Given names is an explicit empty string array.
-- Then validation accepts an authoritative empty set.
-- Given names is null, not a string array, duplicated or outside the documented naming limits.
-- Then validation fails before API access.
-
-Test mapping: [TestTopicsConfigPresenceAndRoundTrip and TestTopicsConfigRejectsInvalidLists](../../internal/workspace/topics_test.go), [TestTopicNames](../../internal/settings/topics_test.go).
-
-### Rule: Validate label declarations
-
-Current unreleased source validates listed whole label objects with positive optional IDs, required names/colors and optional descriptions. Empty selections manage nothing; duplicate IDs/names, null and unknown fields fail before API access. The [Labels specification](labels.feature.md#rule-select-objects-never-delete-unlisted-labels) owns the contract.
-
-### Rule: Validate the optional Discussions field
-
-Omission remains unmanaged; false remains declared. Null, quoted booleans, numbers, collections and legacy boolean spellings fail before origin/authentication/API access. The [Discussions specification](discussions.feature.md) owns its behavior and test boundaries.
-
-Test mapping: [TestDiscussionsDeclaration](../../internal/workspace/discussions_test.go) and [TestApplyAcceptance](../../tests/acceptance/apply_test.go).
-
-### Rule: Actions execution policy validation
-
-Current source accepts only the strict optional `actions` mapping. The [Actions policy specification](actions-execution-policy.feature.md#rule-validate-only-explicit-native-values) owns omission/false/empty/null semantics and zero-network failure cases.
-
-Validation accepts twenty-four repository fields, ID-selected whole-object Rulesets, fourteen Actions policy fields, three adopted security booleans, five Pages fields. Omission remains unmanaged; false and supported empty collections remain explicit; Pages cname null is the endpoint-specific clear operation; other nulls follow their resource contracts. Unknown fields/types/enums fail locally before origin/authentication/API access. Current-state prerequisites, entitlement/applicability and upper-policy checks belong to read/compare/apply, not local validation. Pages lifecycle/visibility, organization-only settings and other gated candidates are not accepted.
-
-| Subset | Existing owning tests and specification |
+| Boundary | Current owning tests |
 | --- | --- |
-| Branch/template/sign-off | [Default branch](default-branch.feature.md), [template](template-repository.feature.md), [sign-off](web-commit-signoff.feature.md) |
-| PR and Issue policies | [PR codec](../../internal/workspace/pr_access_test.go), [Issue codec](../../internal/workspace/issue_creation_policy_test.go) |
-| Rulesets and nested identities | [Ruleset codec](../../internal/workspace/rulesets_test.go), [Ruleset contract](rulesets.feature.md) |
-| Workflow permissions and retention | [Workflow codec](../../internal/workspace/workflow_permissions_test.go), [retention codec](../../internal/workspace/retention_test.go) |
-| Secret scanning and public reporting | [Security codec](../../internal/workspace/security_test.go), [security contract](security.feature.md) |
-| Fork workflow policies | [Fork codec](../../internal/workspace/fork_workflows_test.go), [fork contract](fork-workflows.feature.md) |
-| Archive and Sponsor | [Archive codec](../../internal/workspace/archive_test.go), [Sponsor codec](../../internal/workspace/sponsorships_test.go) |
-| Existing-site Pages and removed settings | [Pages codec](../../internal/workspace/pages_test.go), [removed settings](../../internal/workspace/removed_settings_test.go) |
+| About, marker, obsolete aliases and organization-only controls | [UI config](../../internal/workspace/ui_config_test.go) |
+| Safe aliases/merges/styles and unsafe zero-result decoding | [YAML safety](../../internal/workspace/ui_yaml_safety_test.go) |
+| General choices and types | [General UI codec](../../internal/workspace/ui_general_test.go), [General API conversion](../../internal/github/ui_general_test.go) |
+| Label identity/color/omission | [Labels UI codec](../../internal/workspace/ui_labels_test.go), [composition](../../internal/github/ui_declaration_test.go) |
+| Ruleset nested controls/identities | [Ruleset UI codec](../../internal/workspace/ui_rulesets_test.go), [independent HTTP requests](../../internal/github/ui_config_rulesets_test.go) |
+| Actions, Security, Pages, Environment types | [Actions](../../internal/workspace/ui_actions_test.go), [Security](../../internal/workspace/ui_security_test.go), [Pages](../../internal/workspace/ui_pages_test.go), [Environments](../../internal/workspace/ui_environments_test.go) |
+| No partial semantic intent and snapshot composition | [Root composition](../../checkout_config_test.go) |
+| File, checkout and injected application failures | [Files](../../internal/workspace/config_file_test.go), [Checkout](../../internal/workspace/checkout_test.go), [application](../../internal/app/validate_test.go) |
+| Resource semantics beyond YAML types | [Topics model](../../internal/settings/topics_test.go) and each linked family specification |
 
-Dedicated process cases exercise the same supplied CLI through these interfaces; detailed type matrices remain with the codec/model owners. Validation success does not establish remote policy, grants, applicability or published availability.
+`TestUIConfigYAMLUnsafeShapesReturnNoPartialValues` owns the parser safety matrix. `TestCheckoutUICompositionNoOpDocuments` and `TestCheckoutUIInvalidDomainReturnsNoPartialIntent` cover root wiring. There is one current public codec; no retained legacy parser is an alternate contract. Validation success does not establish live grants, effective protection, applicability or published availability.

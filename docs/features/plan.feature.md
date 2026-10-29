@@ -11,7 +11,7 @@ description: Observe differences for declared repository fields without mutation
 - Read `.github/settings.yml` from the Git root, including from a subdirectory.
 - Reject missing files and invalid configuration before API access.
 - For declared fields, resolve the same GitHub.com origin as export and ignore `GH_REPO`.
-- When any REST-backed repository field is declared, read the complete six-field REST state, including `has_discussions`, using the existing GET normalization and validation. Merge-related fields use the selective [GraphQL read](merge-methods.feature.md); topics and labels use their own reads below.
+- When any REST-backed repository field is declared, read the complete supported typed REST state, including Discussions, using the existing GET normalization and validation. Merge-related fields use the selective [GraphQL read](merge-methods.feature.md); topics and labels use their own reads below.
 - Never send a mutation request or change the configuration file.
 
 ### Rule: Empty declarations are local no-ops
@@ -20,7 +20,7 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 #### Scenario: A version-only declaration without origin or credentials
 
-- Given a Git checkout with `.github/settings.yml` containing only `schemaVersion: 1`
+- Given a Git checkout with `.github/settings.yml` containing only `version: daiksud/gh-settings@v0`
 - And no origin or authentication
 - When the maintainer runs plan
 - Then it prints `No managed repository settings.` and exits 0
@@ -28,7 +28,7 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 #### Scenario: Empty settings without origin or credentials
 
-- Given a Git checkout with a version-1 declaration and `settings: {}`
+- Given a Git checkout with the current marker and `repository: {settings: {}}`
 - And no origin or authentication
 - When the maintainer runs plan
 - Then it prints `No managed repository settings.` and exits 0
@@ -36,7 +36,7 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 #### Scenario: An empty repository declaration without origin or credentials
 
-- Given a Git checkout with a version-1 declaration and `settings.repository: {}`
+- Given a Git checkout with the current marker and `repository: {}`
 - And no origin or authentication
 - When the maintainer runs plan
 - Then it prints `No managed repository settings.` and exits 0
@@ -46,8 +46,8 @@ A valid document without managed fields succeeds before origin resolution, authe
 
 - Omitted fields are unmanaged and produce no difference.
 - Explicit false and empty strings are managed values.
-- Show changed REST fields in description, homepage, has_issues, has_projects, has_wiki, has_discussions order, followed by the [merge-related fields](../commands.md#plan-behavior), topics and labels.
-- Each line uses `settings.repository.FIELD: CURRENT → DESIRED`.
+- Retain stable existing comparison order for About/General fields, then Topics and selected-object operations; see [current output](../commands.md#plan-behavior).
+- Unambiguous About/General scalar and Topics lines use current UI paths with `CURRENT → DESIRED`; compound/other-family rendering remains under #481.
 - Strings are double-quoted with Go string escaping; booleans use `true` or `false`.
 - Equal managed values produce `No differences for managed repository settings.`
 - A valid document without managed fields produces `No managed repository settings.`
@@ -72,7 +72,7 @@ Focused application tests record declaration loading, target resolution, and rea
 | Necessary REST/GraphQL reads in REST-first order; complete response validation and partial-error rejection | [TestObserveRepositorySelectsReads, TestObserveRepositoryDiscardsPartialRead and TestObserveRepositoryRetainsCompleteResponseValidation](../../internal/github/observation_test.go) |
 | Acquired values versus unread values, native pairs and stable ordering | [TestCompareRepositoryObservationRequiresAcquiredFields and TestCompareRepositoryObservationPreservesOrderAndNativeValues](../../internal/settings/requested_observation_test.go) |
 | Typed target/comparison, changes/no differences, load → target → read order | [TestPlanResults](../../internal/app/plan_test.go) |
-| Unmanaged declaration returns a zero result without target resolution or reads; explicit empty topics/labels remain managed | [TestPlanNoManagedSettings and TestPlanManagedEmptyCollectionsResolveTarget](../../internal/app/plan_test.go) |
+| Unmanaged declaration returns a zero result without target resolution or reads; explicit empty Topics remain managed while empty Labels select nothing | [TestPlanNoManagedSettings and TestPlanManagedEmptyCollectionsResolveTarget](../../internal/app/plan_test.go) |
 | Direct origin syntax, configuration scope and overrides; multiple explicit Checkout directories | [TestCurrentRepositoryFormats and TestCurrentRepositoryIgnoresUnscopedOrigins](../../internal/workspace/repository_test.go), [TestCheckoutRepositoryUsesItsDirectory](../../internal/workspace/checkout_test.go) |
 | Omitted fields versus each explicit false/empty field | [TestRepositoryDeclarationEmpty](../../internal/settings/repository_test.go) |
 | Validation before target/read, target failure before read, read failures | [TestPlanValidatesBeforeRead, TestPlanTargetFailureBeforeRead and TestPlanReadFailure](../../internal/app/plan_test.go) |
@@ -86,7 +86,7 @@ Focused application tests record declaration loading, target resolution, and rea
 - Then no topic difference is reported.
 - And omitted resources are not read.
 - Given the topic sets differ.
-- Then one settings.topics.names change shows sorted arrays with native string values.
+- Then one `repository.about.topics` change shows sorted arrays with native string values.
 
 Test mapping: [TestTopicsSetComparison](../../internal/settings/topics_test.go), [TestTopicsOnlyPlanAndApply](../../internal/app/topics_test.go), [TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
 
@@ -98,7 +98,7 @@ Current unreleased source reads nonempty label selections and reports typed crea
 
 Current source compares six independent managed fields and explicitly marks inactive selected before values unavailable. The [Actions policy specification](actions-execution-policy.feature.md#rule-plan-inactive-values-honestly) owns native comparisons, Summary validation and error boundaries.
 
-Plan reads only declared resources, retaining registry order for repository fields and resource order for collections/policies. Current source supports twenty-five scalar repository fields, topics, labels, Rulesets, fourteen Actions fields, three security fields, five Pages fields and custom properties. Each scalar counts once and each managed resource collection according to its selection contract. Report validation and a valid explicit-unarchive declaration have a closed upper bound of fifty-one. All resources retain closed native before/after values. Unknown, denied, inapplicable or incomplete observations fail and discard earlier partial comparisons. A zero plan covers only successfully observed managed intent; it proves neither write permission nor future drift protection.
+Plan reads only managed resources, retaining existing field/resource ordering and native comparison semantics. A UI menu can expand to two internal members; the private same-version report keeps its existing typed protocol and bounds. Complete UI paths/choices/count audits belong to #481. Collections count according to their ownership contracts. Unknown, denied, inapplicable or incomplete observations fail and discard earlier partial comparisons; #480 normalization is separate. A zero plan covers only successfully observed managed intent and proves neither write permission nor future drift protection.
 
 | Subset | Existing application and supplied-binary coverage |
 | --- | --- |
