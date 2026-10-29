@@ -135,6 +135,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		}
 		comparison.Managed += actionsComparison.Managed
 		comparison.Actions = actionsComparison.Changes
+		comparison.ActionsExecution = actionsComparison.Execution
 	}
 	if !desired.Actions.WorkflowPermissionsEmpty() {
 		observed, err := read.WorkflowPermissions(repo)
