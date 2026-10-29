@@ -2,14 +2,17 @@ package github
 
 import "github.com/daiksud/gh-settings/internal/settings"
 
-func (c *PagesClient) warnFolderNormalization(o settings.PagesObservation, d settings.PagesDeclaration) {
-	if d.Source == nil || c.NormalizationWarning == nil {
+func (c *PagesClient) warnPagesNormalizations(o settings.PagesObservation, d settings.PagesDeclaration) {
+	if c.NormalizationWarning == nil {
 		return
 	}
 	if _, err := o.Values(); err != nil {
 		return
 	}
-	if record := o.FolderNormalization(); record != (settings.ObservationNormalization{}) {
+	if record := o.ModeNormalization(); d.BuildType != nil && record != (settings.ObservationNormalization{}) {
+		c.NormalizationWarning(record)
+	}
+	if record := o.FolderNormalization(); d.Source != nil && record != (settings.ObservationNormalization{}) {
 		c.NormalizationWarning(record)
 	}
 }

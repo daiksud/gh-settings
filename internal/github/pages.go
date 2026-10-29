@@ -83,7 +83,7 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	if err != nil {
 		return pre(err)
 	}
-	c.warnFolderNormalization(observed, d)
+	c.warnPagesNormalizations(observed, d)
 	_, changes, err := settings.ComparePages(observed, d)
 	if err != nil {
 		return pre(err)
@@ -131,7 +131,7 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	if err != nil {
 		return false, fmt.Errorf("verify Pages (write may have applied): %w", err)
 	}
-	c.warnFolderNormalization(actual, d)
+	c.warnPagesNormalizations(actual, d)
 	retained, err := samePagesVerificationState(expected, actual)
 	if err != nil || !retained {
 		return false, fmt.Errorf("Pages readback did not retain requested values, omitted companions or visibility (write may have applied)")
