@@ -19,15 +19,19 @@ func TestRemovedOrganizationSettingsRejectBeforeRemoteWork(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	for _, body := range []string{"custom_properties: {}", "custom_properties: null", "custom_properties: {service: api}", "repository: {allow_forking: false}", "repository: {allow_forking: true}"} {
-		config := "schemaVersion: 1\nsettings:\n  " + body + "\n"
+	for _, body := range []string{"custom_properties: {}", "custom_properties: null", "custom_properties: {service: api}", "general: {allow_forking: false}", "general: {allow_forking: true}"} {
+		config := repositoryInput("settings:\n  " + body + "\n")
+		unknownKey := "custom_properties"
+		if strings.HasPrefix(body, "general:") {
+			unknownKey = "allow_forking"
+		}
 		if err := writeSettingsFile(fixture.work, config); err != nil {
 			t.Fatal(err)
 		}
 		before := fixture.reads.Load()
 		for _, command := range []string{"validate", "plan", "apply"} {
 			r, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{command}, false)
-			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || !strings.Contains(r.stderr.String(), "unknown") {
+			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || (!strings.Contains(r.stderr.String(), "unknown") || !strings.Contains(r.stderr.String(), unknownKey)) {
 				t.Fatalf("%s %s: error=%v stderr=%s", command, body, err, r.stderr.String())
 			}
 		}

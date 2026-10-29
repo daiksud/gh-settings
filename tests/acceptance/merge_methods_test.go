@@ -26,41 +26,41 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		requests                                    []string
 		patch                                       map[string]any // nil means no PATCH; otherwise the complete expected object.
 	}{
-		{name: "merge-only plan", command: "plan", input: "allow_rebase_merge: false\nallow_squash_merge: true\nallow_merge_commit: false\n", body: observedMergeMethods, want: "settings.repository.allow_merge_commit: true → false\nsettings.repository.allow_squash_merge: false → true\nsettings.repository.allow_rebase_merge: true → false\n", requests: []string{"POST /graphql"}},
-		{name: "false stays false", command: "plan", input: "allow_squash_merge: false\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "mixed read order", command: "plan", input: "has_issues: false\nallow_merge_commit: false\n", body: observedMergeMethods, want: "settings.repository.has_issues: true → false\nsettings.repository.allow_merge_commit: true → false\n", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
-		{name: "missing not false", command: "plan", input: "allow_merge_commit: false\n", body: `{"data":{"repository":{"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"autoMergeAllowed":false,"allowUpdateBranch":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`, errorText: "missing mergeCommitAllowed", requests: []string{"POST /graphql"}},
-		{name: "partial errors discard earlier REST comparison", command: "plan", input: "has_issues: false\nallow_merge_commit: false\n", body: `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":true,"rebaseMergeAllowed":true,"deleteBranchOnMerge":false,"autoMergeAllowed":false,"allowUpdateBranch":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}},"errors":[{"message":"fixture permission denied"}]}`, errorText: "fixture permission denied", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
-		{name: "permission failure", command: "plan", input: "allow_merge_commit: false\n", body: `{"data":{"repository":null},"errors":[{"message":"Resource not accessible by integration"}]}`, errorText: "Resource not accessible", requests: []string{"POST /graphql"}},
-		{name: "direct false PATCH", command: "apply", input: "allow_merge_commit: false\nallow_squash_merge: true\nallow_rebase_merge: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_merge_commit": false, "allow_squash_merge": true, "allow_rebase_merge": false}},
-		{name: "partial PATCH", command: "apply", input: "allow_rebase_merge: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_rebase_merge": false}},
-		{name: "deletion-only plan", command: "plan", input: "delete_branch_on_merge: false\n", body: observedMergeMethods, want: "settings.repository.delete_branch_on_merge: true → false\n", requests: []string{"POST /graphql"}},
-		{name: "deletion true equality", command: "plan", input: "delete_branch_on_merge: true\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "deletion false equality", command: "plan", input: "delete_branch_on_merge: false\n", body: strings.Replace(observedMergeMethods, `"deleteBranchOnMerge":true`, `"deleteBranchOnMerge":false`, 1), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "deletion direct false", command: "apply", input: "delete_branch_on_merge: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": false}},
-		{name: "deletion direct true", command: "apply", input: "delete_branch_on_merge: true\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": true}},
-		{name: "squash title-only plan", command: "plan", input: "squash_merge_commit_title: PR_TITLE\n", body: observedMergeMethods, want: "settings.repository.squash_merge_commit_title: \"COMMIT_OR_PR_TITLE\" → \"PR_TITLE\"\n", requests: []string{"POST /graphql"}},
-		{name: "squash pair equality", command: "plan", input: "squash_merge_commit_title: COMMIT_OR_PR_TITLE\nsquash_merge_commit_message: COMMIT_MESSAGES\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "squash title direct", command: "apply", input: "squash_merge_commit_title: PR_TITLE\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"squash_merge_commit_title": "PR_TITLE"}},
-		{name: "squash pair direct", command: "apply", input: "squash_merge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"squash_merge_commit_title": "PR_TITLE", "squash_merge_commit_message": "BLANK"}},
-		{name: "squash message-only rejected", command: "apply", input: "squash_merge_commit_message: BLANK\n", errorText: "requires squash_merge_commit_title"},
-		{name: "squash unknown rejected", command: "plan", input: "squash_merge_commit_title: UNKNOWN\n", errorText: "must be PR_TITLE"},
-		{name: "PR options plan", command: "plan", input: "allow_update_branch: true\nallow_auto_merge: true\n", body: observedMergeMethods, want: "settings.repository.allow_auto_merge: false → true\nsettings.repository.allow_update_branch: false → true\n", requests: []string{"POST /graphql"}},
-		{name: "PR options false equality", command: "plan", input: "allow_auto_merge: false\nallow_update_branch: false\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "PR options true equality", command: "plan", input: "allow_auto_merge: true\nallow_update_branch: true\n", body: strings.ReplaceAll(strings.ReplaceAll(observedMergeMethods, `"autoMergeAllowed":false`, `"autoMergeAllowed":true`), `"allowUpdateBranch":false`, `"allowUpdateBranch":true`), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "PR auto direct false", command: "apply", input: "allow_auto_merge: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": false}},
-		{name: "PR update direct false", command: "apply", input: "allow_update_branch: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_update_branch": false}},
-		{name: "PR options direct pair", command: "apply", input: "allow_auto_merge: true\nallow_update_branch: false\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": true, "allow_update_branch": false}},
-		{name: "PR update invalid local", command: "apply", input: "allow_update_branch: 'false'\n", errorText: "must be a boolean"},
-		{name: "merge title plan", command: "plan", input: "merge_commit_title: PR_TITLE\n", body: observedMergeMethods, want: "settings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\n", requests: []string{"POST /graphql"}},
-		{name: "disabled merge title rejected by validate", command: "validate", input: "allow_merge_commit: false\nmerge_commit_title: PR_TITLE\n", errorText: "require allow_merge_commit: true"},
-		{name: "disabled merge title rejected by plan", command: "plan", input: "allow_merge_commit: false\nmerge_commit_title: PR_TITLE\n", errorText: "require allow_merge_commit: true"},
-		{name: "observed disabled merge title rejected by plan", command: "plan", input: "merge_commit_title: PR_TITLE\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), errorText: "require allow_merge_commit: true", requests: []string{"POST /graphql"}},
-		{name: "explicit merge enable overrides observed disabled", command: "plan", input: "allow_merge_commit: true\nmerge_commit_title: PR_TITLE\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), want: "settings.repository.allow_merge_commit: false → true\nsettings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\n", requests: []string{"POST /graphql"}},
-		{name: "merge pair equality", command: "plan", input: "merge_commit_title: MERGE_MESSAGE\nmerge_commit_message: PR_TITLE\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "merge title direct", command: "apply", input: "merge_commit_title: PR_TITLE\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"merge_commit_title": "PR_TITLE"}},
-		{name: "merge pair direct", command: "apply", input: "merge_commit_title: PR_TITLE\nmerge_commit_message: BLANK\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"merge_commit_title": "PR_TITLE", "merge_commit_message": "BLANK"}},
-		{name: "invalid local", command: "plan", input: "allow_merge_commit: null\n", errorText: "must be a boolean"},
+		{name: "merge-only plan", command: "plan", input: "pull_requests: {allow_rebase_merging: false, allow_squash_merging: true, allow_merge_commits: false}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.allow_merge_commits: true → false\nrepository.settings.general.pull_requests.allow_squash_merging: false → true\nrepository.settings.general.pull_requests.allow_rebase_merging: true → false\n", requests: []string{"POST /graphql"}},
+		{name: "false stays false", command: "plan", input: "pull_requests: {allow_squash_merging: false}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "mixed read order", command: "plan", input: "features: {issues: false}\npull_requests: {allow_merge_commits: false}\n", body: observedMergeMethods, want: "repository.settings.general.features.issues: true → false\nrepository.settings.general.pull_requests.allow_merge_commits: true → false\n", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
+		{name: "missing not false", command: "plan", input: "pull_requests: {allow_merge_commits: false}\n", body: `{"data":{"repository":{"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"autoMergeAllowed":false,"allowUpdateBranch":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`, errorText: "missing mergeCommitAllowed", requests: []string{"POST /graphql"}},
+		{name: "partial errors discard earlier REST comparison", command: "plan", input: "features: {issues: false}\npull_requests: {allow_merge_commits: false}\n", body: `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":true,"rebaseMergeAllowed":true,"deleteBranchOnMerge":false,"autoMergeAllowed":false,"allowUpdateBranch":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}},"errors":[{"message":"fixture permission denied"}]}`, errorText: "fixture permission denied", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
+		{name: "permission failure", command: "plan", input: "pull_requests: {allow_merge_commits: false}\n", body: `{"data":{"repository":null},"errors":[{"message":"Resource not accessible by integration"}]}`, errorText: "Resource not accessible", requests: []string{"POST /graphql"}},
+		{name: "direct false PATCH", command: "apply", input: "pull_requests: {allow_merge_commits: false, allow_squash_merging: true, allow_rebase_merging: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_merge_commit": false, "allow_squash_merge": true, "allow_rebase_merge": false}},
+		{name: "partial PATCH", command: "apply", input: "pull_requests: {allow_rebase_merging: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_rebase_merge": false}},
+		{name: "deletion-only plan", command: "plan", input: "pull_requests: {automatically_delete_head_branches: false}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.automatically_delete_head_branches: true → false\n", requests: []string{"POST /graphql"}},
+		{name: "deletion true equality", command: "plan", input: "pull_requests: {automatically_delete_head_branches: true}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "deletion false equality", command: "plan", input: "pull_requests: {automatically_delete_head_branches: false}\n", body: strings.Replace(observedMergeMethods, `"deleteBranchOnMerge":true`, `"deleteBranchOnMerge":false`, 1), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "deletion direct false", command: "apply", input: "pull_requests: {automatically_delete_head_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": false}},
+		{name: "deletion direct true", command: "apply", input: "pull_requests: {automatically_delete_head_branches: true}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": true}},
+		{name: "squash commit details plan", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title_and_commit_details}}\n", body: observedMergeMethods, want: "settings.repository.squash_merge_commit_title: \"COMMIT_OR_PR_TITLE\" → \"PR_TITLE\"\n", requests: []string{"POST /graphql"}},
+		{name: "squash pair equality", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: default_message}}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "squash commit details direct", command: "apply", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title_and_commit_details}}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"squash_merge_commit_title": "PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES"}},
+		{name: "squash pair direct", command: "apply", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title}}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"squash_merge_commit_title": "PR_TITLE", "squash_merge_commit_message": "BLANK"}},
+		{name: "obsolete API message key rejected", command: "apply", input: "squash_merge_commit_message: BLANK\n", errorText: `unknown repository.settings.general key "squash_merge_commit_message"`},
+		{name: "squash unknown rejected", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: UNKNOWN}}\n", errorText: `unsupported general.pull_requests.squash_merge.default_commit_message "UNKNOWN"`},
+		{name: "PR options plan", command: "plan", input: "pull_requests: {always_suggest_updating_pull_request_branches: true, allow_auto_merge: true}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.allow_auto_merge: false → true\nrepository.settings.general.pull_requests.always_suggest_updating_pull_request_branches: false → true\n", requests: []string{"POST /graphql"}},
+		{name: "PR options false equality", command: "plan", input: "pull_requests: {allow_auto_merge: false, always_suggest_updating_pull_request_branches: false}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "PR options true equality", command: "plan", input: "pull_requests: {allow_auto_merge: true, always_suggest_updating_pull_request_branches: true}\n", body: strings.ReplaceAll(strings.ReplaceAll(observedMergeMethods, `"autoMergeAllowed":false`, `"autoMergeAllowed":true`), `"allowUpdateBranch":false`, `"allowUpdateBranch":true`), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "PR auto direct false", command: "apply", input: "pull_requests: {allow_auto_merge: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": false}},
+		{name: "PR update direct false", command: "apply", input: "pull_requests: {always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_update_branch": false}},
+		{name: "PR options direct pair", command: "apply", input: "pull_requests: {allow_auto_merge: true, always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": true, "allow_update_branch": false}},
+		{name: "PR update invalid local", command: "apply", input: "pull_requests: {always_suggest_updating_pull_request_branches: 'false'}\n", errorText: "must be a boolean"},
+		{name: "merge menu plan", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", body: observedMergeMethods, want: "settings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\nsettings.repository.merge_commit_message: \"PR_TITLE\" → \"BLANK\"\n", requests: []string{"POST /graphql"}},
+		{name: "disabled merge title rejected by validate", command: "validate", input: "pull_requests: {allow_merge_commits: false, merge_commit: {default_commit_message: pull_request_title}}\n", errorText: "general.pull_requests.merge_commit.default_commit_message requires the merge method to be enabled"},
+		{name: "disabled merge title rejected by plan", command: "plan", input: "pull_requests: {allow_merge_commits: false, merge_commit: {default_commit_message: pull_request_title}}\n", errorText: "general.pull_requests.merge_commit.default_commit_message requires the merge method to be enabled"},
+		{name: "observed disabled merge title rejected by plan", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), errorText: "require allow_merge_commit: true", requests: []string{"POST /graphql"}},
+		{name: "explicit merge enable overrides observed disabled", command: "plan", input: "pull_requests: {allow_merge_commits: true, merge_commit: {default_commit_message: pull_request_title}}\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), want: "repository.settings.general.pull_requests.allow_merge_commits: false → true\nsettings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\nsettings.repository.merge_commit_message: \"PR_TITLE\" → \"BLANK\"\n", requests: []string{"POST /graphql"}},
+		{name: "merge pair equality", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: default_message}}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
+		{name: "merge description menu direct", command: "apply", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title_and_description}}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"merge_commit_title": "PR_TITLE", "merge_commit_message": "PR_BODY"}},
+		{name: "merge pair direct", command: "apply", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"merge_commit_title": "PR_TITLE", "merge_commit_message": "BLANK"}},
+		{name: "invalid local", command: "plan", input: "pull_requests: {allow_merge_commits: null}\n", errorText: "repository.settings.general.pull_requests.allow_merge_commits must not be null"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var mu sync.Mutex
@@ -100,7 +100,7 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := repositoryInput(test.input)
+			input := generalInput(test.input)
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -200,11 +200,37 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			if err := yaml.Unmarshal(data, &document); err != nil {
 				t.Fatal(err)
 			}
-			fields := document["settings"].(map[string]any)["repository"].(map[string]any)
-			if fields["allow_merge_commit"] != true || fields["allow_squash_merge"] != false || fields["allow_rebase_merge"] != true || fields["delete_branch_on_merge"] != true || fields["squash_merge_commit_title"] != "COMMIT_OR_PR_TITLE" || fields["squash_merge_commit_message"] != "COMMIT_MESSAGES" || fields["allow_auto_merge"] != false || fields["allow_update_branch"] != false || fields["merge_commit_title"] != "MERGE_MESSAGE" || fields["merge_commit_message"] != "PR_TITLE" || fields["has_discussions"] != false || fields["web_commit_signoff_required"] != false || fields["is_template"] != false || fields["default_branch"] != "main" || fields["has_sponsorships"] != false || len(fields) != 23 {
-				t.Fatalf("fields=%v", fields)
+			wantExport := map[string]any{
+				"version": "daiksud/gh-settings@v0",
+				"repository": map[string]any{
+					"about":  map[string]any{"description": "old", "website": "old-url", "topics": []any{}},
+					"labels": []any{},
+					"settings": map[string]any{"general": map[string]any{
+						"template_repository": false, "default_branch": "main",
+						"features":      map[string]any{"wikis": true, "issues": true, "sponsorships": false, "discussions": false, "projects": true, "pull_requests": false, "issue_permissions": map[string]any{"creation_allowed_by": "all_users"}},
+						"pull_requests": map[string]any{"allow_merge_commits": true, "allow_squash_merging": false, "allow_rebase_merging": true, "automatically_delete_head_branches": true, "allow_auto_merge": false, "always_suggest_updating_pull_request_branches": false, "merge_commit": map[string]any{"default_commit_message": "default_message"}},
+						"commits":       map[string]any{"require_contributors_to_sign_off_on_web_based_commits": false},
+					}},
+				},
 			}
-			input := repositoryInput("merge_commit_message: BLANK\nmerge_commit_title: PR_TITLE\nsquash_merge_commit_message: BLANK\nsquash_merge_commit_title: PR_TITLE\nallow_update_branch: true\nallow_auto_merge: true\ndelete_branch_on_merge: false\nallow_rebase_merge: false\nallow_squash_merge: true\nallow_merge_commit: true\nhas_discussions: true\nhas_wiki: false\nhas_projects: false\nhas_issues: false\nhomepage: https://example.com/new\ndescription: ''\n")
+			if !reflect.DeepEqual(document, wantExport) {
+				t.Fatalf("export=%v want=%v", document, wantExport)
+			}
+			input := repositoryInput(`about: {description: '', website: https://example.com/new}
+settings:
+  general:
+    features: {discussions: true, wikis: false, projects: false, issues: false}
+    pull_requests:
+      merge_commit: {default_commit_message: pull_request_title}
+      squash_merge: {default_commit_message: pull_request_title}
+      always_suggest_updating_pull_request_branches: true
+      allow_auto_merge: true
+      automatically_delete_head_branches: false
+      allow_rebase_merging: false
+      allow_squash_merging: true
+      allow_merge_commits: true
+`)
+
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -256,17 +282,17 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			}
 			visible := html.UnescapeString(string(data))
 			for _, line := range []string{
-				`settings.repository.description: "old" → ""`,
-				`settings.repository.homepage: "old-url" → "https://example.com/new"`,
-				"settings.repository.has_issues: true → false",
-				"settings.repository.has_projects: true → false",
-				"settings.repository.has_wiki: true → false",
-				"settings.repository.has_discussions: false → true",
-				"settings.repository.allow_squash_merge: false → true",
-				"settings.repository.allow_rebase_merge: true → false",
-				"settings.repository.delete_branch_on_merge: true → false",
-				"settings.repository.allow_auto_merge: false → true",
-				"settings.repository.allow_update_branch: false → true",
+				`repository.about.description: "old" → ""`,
+				`repository.about.website: "old-url" → "https://example.com/new"`,
+				"repository.settings.general.features.issues: true → false",
+				"repository.settings.general.features.projects: true → false",
+				"repository.settings.general.features.wikis: true → false",
+				"repository.settings.general.features.discussions: false → true",
+				"repository.settings.general.pull_requests.allow_squash_merging: false → true",
+				"repository.settings.general.pull_requests.allow_rebase_merging: true → false",
+				"repository.settings.general.pull_requests.automatically_delete_head_branches: true → false",
+				"repository.settings.general.pull_requests.allow_auto_merge: false → true",
+				"repository.settings.general.pull_requests.always_suggest_updating_pull_request_branches: false → true",
 				`settings.repository.squash_merge_commit_title: "COMMIT_OR_PR_TITLE" → "PR_TITLE"`,
 				`settings.repository.squash_merge_commit_message: "COMMIT_MESSAGES" → "BLANK"`,
 				`settings.repository.merge_commit_title: "MERGE_MESSAGE" → "PR_TITLE"`,

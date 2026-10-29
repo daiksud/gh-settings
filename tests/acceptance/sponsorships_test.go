@@ -104,14 +104,14 @@ func TestSponsorshipsExportPlanApplyAndFundingIsolation(t *testing.T) {
 		t.Fatal(got)
 	}
 	exported, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(exported), "has_sponsorships: false") {
+	if err != nil || !strings.Contains(string(exported), "sponsorships: false") {
 		t.Fatal(string(exported), err)
 	}
-	config := repositoryInput("has_sponsorships: true\n")
+	config := generalInput("features: {sponsorships: true}\n")
 	if err := writeSettingsFile(fixture.work, config); err != nil {
 		t.Fatal(err)
 	}
-	want := "settings.repository.has_sponsorships: false → true\n"
+	want := "repository.settings.general.features.sponsorships: false → true\n"
 	if got := run("plan"); got != want {
 		t.Fatal(got)
 	}
@@ -153,7 +153,7 @@ func TestSponsorshipsExportPlanApplyAndFundingIsolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	run("apply")
-	config = repositoryInput("has_sponsorships: false\n")
+	config = generalInput("features: {sponsorships: false}\n")
 	if err := writeSettingsFile(fixture.work, config); err != nil {
 		t.Fatal(err)
 	}
@@ -182,15 +182,15 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 		name, command, fields, want string
 		requests                    int
 	}{
-		{"missing read", "plan", "has_sponsorships: false\n", "hasSponsorshipsEnabled", 1},
-		{"partial read", "plan", "has_sponsorships: true\n", "sponsorship read denied", 1},
+		{"missing read", "plan", "features: {sponsorships: false}\n", "hasSponsorshipsEnabled", 1},
+		{"partial read", "plan", "features: {sponsorships: true}\n", "sponsorship read denied", 1},
 		{"incomplete export", "export", "", "hasSponsorshipsEnabled", 5},
-		{"wrong target", "apply", "has_sponsorships: true\n", "target does not match", 1},
-		{"ignored mutation", "apply", "has_sponsorships: true\n", "did not retain requested hasSponsorshipsEnabled", 2},
-		{"partial mutation", "apply", "has_sponsorships: true\n", "sponsorship write denied", 2},
-		{"redirect", "apply", "has_sponsorships: true\n", "307", 2},
-		{"earlier REST write", "apply", "has_issues: false\nhas_sponsorships: true\n", "earlier repository writes remain applied", 3},
-		{"invalid local", "apply", "has_sponsorships: 'false'\n", "must be a boolean", 0},
+		{"wrong target", "apply", "features: {sponsorships: true}\n", "target does not match", 1},
+		{"ignored mutation", "apply", "features: {sponsorships: true}\n", "did not retain requested hasSponsorshipsEnabled", 2},
+		{"partial mutation", "apply", "features: {sponsorships: true}\n", "sponsorship write denied", 2},
+		{"redirect", "apply", "features: {sponsorships: true}\n", "307", 2},
+		{"earlier REST write", "apply", "features: {issues: false, sponsorships: true}\n", "earlier repository writes remain applied", 3},
+		{"invalid local", "apply", "features: {sponsorships: 'false'}\n", "must be a boolean", 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var mu sync.Mutex
@@ -264,7 +264,7 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			config := repositoryInput(test.fields) + "  topics:\n    names: [must-not-be-written]\n"
+			config := repositoryInput("about: {topics: [must-not-be-written]}\nsettings:\n  general:\n" + indentInput(test.fields, 4))
 			if err := writeSettingsFile(fixture.work, config); err != nil {
 				t.Fatal(err)
 			}

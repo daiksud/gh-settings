@@ -55,10 +55,10 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 			operations = append(operations, "REST write")
 			var input map[string]any
 			json.NewDecoder(r.Body).Decode(&input)
-			if !reflect.DeepEqual(input, map[string]any{"has_issues": false}) {
+			if !reflect.DeepEqual(input, map[string]any{"has_projects": false}) {
 				t.Error("extra REST values", input)
 			}
-			issues = input["has_issues"].(bool)
+			// This unrelated feature write must not enable Issues.
 			fmt.Fprint(w, `{}`)
 			return
 		}
@@ -125,10 +125,10 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 		t.Fatal(got)
 	}
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "has_issues: false") || !strings.Contains(string(data), "issue_creation_policy: ALL") {
+	if err != nil || !strings.Contains(string(data), "issues: false") || strings.Contains(string(data), "issue_permissions:") {
 		t.Fatal(string(data), err)
 	}
-	input := repositoryInput("issue_creation_policy: COLLABORATORS_ONLY\n")
+	input := generalInput("features: {issue_permissions: {creation_allowed_by: collaborators_only}}\n")
 	writeSettingsFile(fixture.work, input)
 	run("validate")
 	want := `settings.repository.issue_creation_policy: "ALL" → "COLLABORATORS_ONLY"` + "\n"
@@ -160,11 +160,11 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 		t.Fatal(got)
 	}
 	run("apply")
-	writeSettingsFile(fixture.work, repositoryInput("issue_creation_policy: ALL\n"))
+	writeSettingsFile(fixture.work, generalInput("features: {issue_permissions: {creation_allowed_by: all_users}}\n"))
 	run("apply")
-	writeSettingsFile(fixture.work, repositoryInput("has_pull_requests: false\nissue_creation_policy: COLLABORATORS_ONLY\n"))
+	writeSettingsFile(fixture.work, generalInput("features: {pull_requests: false, issue_permissions: {creation_allowed_by: collaborators_only}}\n"))
 	run("apply")
-	mixed := repositoryInput("has_issues: false\nissue_creation_policy: ALL\n")
+	mixed := generalInput("features: {projects: false, issue_permissions: {creation_allowed_by: all_users}}\n")
 	writeSettingsFile(fixture.work, mixed)
 	run("apply")
 	if err := checkSettingsUnchanged(fixture.work, mixed); err != nil {
@@ -197,14 +197,14 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 		name, command, input, want string
 		requests                   int
 	}{
-		{"partial read", "plan", "has_issues: false\nissue_creation_policy: ALL\n", "Issue policy hidden", 2},
+		{"partial read", "plan", "features: {projects: false, issue_permissions: {creation_allowed_by: all_users}}\n", "Issue policy hidden", 2},
 		{"unknown export", "export", "", "unsupported issueCreationPolicy", 4},
-		{"ignored mutation", "apply", "issue_creation_policy: COLLABORATORS_ONLY\n", "did not retain requested issueCreationPolicy", 2},
-		{"partial mutation", "apply", "issue_creation_policy: ALL\n", "partial Issue mutation denied", 2},
-		{"redirect", "apply", "issue_creation_policy: ALL\n", "307", 2},
-		{"mixed write denied", "apply", "has_issues: false\nissue_creation_policy: ALL\n", "earlier repository writes remain applied", 3},
-		{"invalid local", "apply", "has_issues: false\nissue_creation_policy: unknown\n", "must be ALL or COLLABORATORS_ONLY", 0},
-		{"stale origin", "plan", "issue_creation_policy: ALL\n", "stale checkout origin", 1},
+		{"ignored mutation", "apply", "features: {issue_permissions: {creation_allowed_by: collaborators_only}}\n", "did not retain requested issueCreationPolicy", 2},
+		{"partial mutation", "apply", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "partial Issue mutation denied", 2},
+		{"redirect", "apply", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "307", 2},
+		{"mixed write denied", "apply", "features: {projects: false, issue_permissions: {creation_allowed_by: all_users}}\n", "earlier repository writes remain applied", 3},
+		{"invalid local", "apply", "features: {issue_permissions: {creation_allowed_by: unknown}}\n", `unsupported general.features.issue_permissions.creation_allowed_by "unknown"`, 0},
+		{"stale origin", "plan", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "stale checkout origin", 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
@@ -239,7 +239,7 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 				if r.Method == "PATCH" && r.URL.Path == "/repos/owner/current" {
 					var patch map[string]any
 					json.NewDecoder(r.Body).Decode(&patch)
-					if !reflect.DeepEqual(patch, map[string]any{"has_issues": false}) {
+					if !reflect.DeepEqual(patch, map[string]any{"has_projects": false}) {
 						t.Error(patch)
 					}
 					fmt.Fprint(w, `{}`)
@@ -278,7 +278,7 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := repositoryInput(tt.input) + "  topics: {names: []}\n"
+			input := repositoryInput("about: {topics: []}\nsettings:\n  general:\n" + indentInput(tt.input, 4))
 			if tt.command == "export" {
 				input = "previous configuration must survive incomplete Issue policy\n"
 			}
