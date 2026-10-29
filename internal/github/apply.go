@@ -14,15 +14,22 @@ import (
 
 // NewWriteClient retains the write timeout and rejects redirects for writes.
 func NewWriteClient(host string) (*Client, error) {
-	rest, err := api.NewRESTClient(api.ClientOptions{
-		Host: host, Timeout: 30 * time.Second,
-		// Redirects can convert writes to GET and report success without updating.
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	})
+	return newWriteClient(api.ClientOptions{Host: host})
+}
+
+func newWriteClient(options api.ClientOptions) (*Client, error) {
+	options.Timeout = 30 * time.Second
+	// Redirects can change the target or convert writes to GET.
+	options.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	rest, err := api.NewRESTClient(options)
 	if err != nil {
 		return nil, fmt.Errorf("configure GitHub API client: %w", err)
 	}
-	return &Client{rest: rest}, nil
+	graphql, err := api.NewGraphQLClient(options)
+	if err != nil {
+		return nil, fmt.Errorf("configure GitHub commit message client: %w", err)
+	}
+	return &Client{rest: rest, commitMessages: &MergeMethodsClient{graphql: graphql}}, nil
 }
 
 func (client *Client) ApplyRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
@@ -57,6 +64,18 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 	if err != nil {
 		return fmt.Errorf("encode repository settings: %w", err)
 	}
+	menusManaged := desired.SquashMergeCommitTitle != nil || desired.SquashMergeCommitMessage != nil || desired.MergeCommitTitle != nil || desired.MergeCommitMessage != nil
+	var before repositoryCommitObservations
+	if menusManaged {
+		if client.commitMessages == nil || client.commitMessages.graphql == nil {
+			return &commitMessagePreWriteFailure{fmt.Errorf("repository commit message verification client is not configured")}
+		}
+		before, err = client.commitMessages.readCommitMessages(repo, desired)
+		if err != nil {
+			return &commitMessagePreWriteFailure{err}
+		}
+		client.reportCommitMessageNormalizations(before)
+	}
 	var response map[string]json.RawMessage
 	var result any
 	if desired.HasDiscussions != nil || desired.DefaultBranch != nil {
@@ -85,5 +104,32 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 			return fmt.Errorf("apply repository settings: GitHub returned default_branch=%q, expected %q (repository writes may already have applied)", *actual, *desired.DefaultBranch)
 		}
 	}
+	if menusManaged {
+		actual, err := client.commitMessages.readCommitMessages(repo, desired)
+		if err != nil {
+			return fmt.Errorf("verify repository commit messages (repository writes may already have applied): %w", err)
+		}
+		client.reportCommitMessageNormalizations(actual)
+		if !repositoryCommitMessagesMatch(before, actual, desired) {
+			return fmt.Errorf("GitHub commit message readback does not match declared values or preserved companions (repository writes may already have applied)")
+		}
+	}
 	return nil
+}
+
+type commitMessagePreWriteFailure struct{ cause error }
+
+func (failure *commitMessagePreWriteFailure) Error() string  { return failure.cause.Error() }
+func (failure *commitMessagePreWriteFailure) Unwrap() error  { return failure.cause }
+func (*commitMessagePreWriteFailure) ReadFailedBeforeWrite() {}
+
+func (client *Client) reportCommitMessageNormalizations(observed repositoryCommitObservations) {
+	if client.CommitMessageNormalizationWarning == nil {
+		return
+	}
+	for _, menu := range []settings.CommitMessageMenu{settings.SquashCommitMenu, settings.MergeCommitMenu} {
+		if normalization := observed[menu].Normalization; normalization != (settings.CommitMessageNormalization{}) {
+			client.CommitMessageNormalizationWarning(normalization)
+		}
+	}
 }

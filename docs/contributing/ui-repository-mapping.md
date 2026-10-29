@@ -65,13 +65,13 @@ The loaded General page stylesheet confirms that Issue permissions and Pull requ
 
 Desired conversion rejects an explicitly false Issues/Pull requests checkbox with a declared corresponding creation policy, just as it rejects a default-message choice with an explicitly disabled merge method. A true or omitted enabling checkbox preserves the existing independent declaration behavior. False feature controls without a policy remain valid; there is no implicit enabling.
 
-`GeneralObservation` returns `PreparedGeneral`, embedding the visible UI model plus `RawConditionalValues`. The latter owns six API string pointers: both creation policies and the title/message pair for both merge menus. All acquired choices are validated before conditional hiding. Explicitly false enabling controls hide their UI choices while retaining the exact owned raw values. An omitted enabling control remains independently unacquired, so partial projection is not treated as proof that a control is disabled. Missing values remain nil; unknown raw choices still fail pending #480. Metadata never supplies desired intent or invents an observed default.
+`GeneralObservation` returns `PreparedGeneral`, embedding the visible UI model plus `NativeConditionalValues`. The latter owns six supplied native string pointers: both creation policies and the title/message pair for both merge menus. All acquired choices are validated before conditional hiding. Explicitly false enabling controls hide their UI choices while retaining the supplied native values. Those values may already contain effective projections; original wire evidence belongs to normalization sidecars. An omitted enabling control remains independently unacquired, so partial projection is not treated as proof that a control is disabled. Missing values remain nil. Complete merge/squash pairs normalize before this projection, retaining original raw strings in observation sidecars; unknown creation policies still fail pending the remaining #480 work. Conditional metadata never supplies desired intent or proves exact wire equality.
 
-Current export consumes the visible General UI projection; mapping helpers retain owned raw conditional metadata outside it for #480/#481. Hiding a control cannot silently discard latent policy, replay it as newly selected intent, or report normalization as an observed change.
+Current export consumes the visible General UI projection. Mapping helpers separately retain owned supplied native conditional values; original wire evidence remains in observation sidecars for #480/#481. Hiding a control cannot silently discard latent policy, replay it as newly selected intent, or report normalization as an observed change.
 
 ### Menu choices and observation defaults
 
-The following literals are independent of API field names. The API pairs are owned by [the menu adapter](../../internal/github/ui_commit_message.go).
+The following literals are independent of API field names. The API pairs are owned by [the domain menu table](../../internal/settings/commit_message.go); the [adapter](../../internal/github/ui_commit_message.go) uses those closed mappings.
 
 | Menu | UI choice | Prepared choice | API title / message |
 | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ The [model constants](../../internal/settings/uimodel/general.go) provide explic
 | Issue permissions / Creation allowed by | `all_users` (`DefaultIssueCreationAllowedBy`) |
 | Pull request permissions / Creation allowed by | `all_users` (`DefaultPullRequestCreationAllowedBy`) |
 
-These fallbacks are planned normalization policy, not the currently selected values of the inspected repositories. They never populate an omitted desired field. Current observation conversion rejects incomplete pairs and out-of-UI pairs/tokens; #480 must add warning/provenance handling before the overall new contract is complete. Known API-only combinations such as `COMMIT_OR_PR_TITLE` / `BLANK` must not become new UI choices.
+These named fallbacks do not describe the currently selected values of the inspected repositories and never populate omitted desired fields. Current complete merge/squash acquisition uses its adopted fallback with raw-pair provenance and scoped warnings. Incomplete pairs remain errors. Creation-policy normalization is still pending #480, so the overall new contract remains incomplete. Known API-only combinations such as `COMMIT_OR_PR_TITLE` / `BLANK` must not become new UI choices.
 
 Correctly typed booleans have no out-of-UI values. Free text, branch names, topics, label names/IDs/colors and descriptions do not have finite selectable enums requiring an unknown-choice fallback. Their existing validation, nullable-string acquisition semantics and identity rules remain authoritative. Invalid types, missing required fields, failed requests and incomplete pagination remain errors; they are not candidates for these defaults.
 
@@ -110,7 +110,7 @@ Releases / Enable release immutability is an already supported setting prepared 
 
 Label lists keep ID-selected, listed-object ownership. An empty list does not delete unlisted labels; no-ID entries are create-only. Topics retain authoritative set membership. Each converter owns returned values so later caller changes cannot alter its intent.
 
-The [test specification](testing.md#internal-ui-repository-preparation) records independent fixtures and reused owner checks. These mapping fixtures prove internal conversion; the current codec/root/process tests described there separately prove public YAML activation. Neither establishes normalized reporting, effective repository protection or live mutations.
+The [test specification](testing.md#internal-ui-repository-preparation) records independent fixtures and reused owner checks. These mapping fixtures prove internal conversion; the current codec/root/process tests described there separately prove public YAML activation. The dedicated [normalization process fixtures](../../tests/acceptance/normalization_commit_message_test.go) additionally check raw-aware menu reporting and verification. These fixtures do not establish effective repository protection or live mutations.
 
 [^repository-ui]: General settings UI inspected read-only on gh-settings, 2026-10-28.
 [^about-ui]: Edit repository details dialog: Description, Website, Topics and unsupported home-page controls, 2026-10-28.
