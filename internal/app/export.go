@@ -113,8 +113,10 @@ func Export(checkout ExportCheckout, read Reader) error {
 			}
 			slices.SortFunc(values, func(a, b settings.RulesetState) int { return strings.Compare(a.Policy.Name, b.Policy.Name) })
 			for _, value := range values {
-				if record := value.EnforcementNormalization; record != (settings.ObservationNormalization{}) {
-					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
+				for _, record := range []settings.ObservationNormalization{value.EnforcementNormalization, value.QualitySeverityNormalization} {
+					if record != (settings.ObservationNormalization{}) {
+						checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
+					}
 				}
 			}
 		}
