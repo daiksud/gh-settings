@@ -39,11 +39,11 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
-	result.IssueCreationPolicy, err = declareCreationPolicy(general.Features.IssuePermissions.CreationAllowedBy, "issue_permissions")
+	result.IssueCreationPolicy, err = declareCreationPolicy(general.Features.IssuePermissions.CreationAllowedBy, settings.IssuePermissionsControl)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
-	result.PullRequestCreationPolicy, err = declareCreationPolicy(general.Features.PullRequestPermissions.CreationAllowedBy, "pull_request_permissions")
+	result.PullRequestCreationPolicy, err = declareCreationPolicy(general.Features.PullRequestPermissions.CreationAllowedBy, settings.PullRequestPermissionsControl)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
@@ -89,11 +89,11 @@ func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, 
 	if err != nil {
 		return PreparedGeneral{}, err
 	}
-	result.Features.IssuePermissions.CreationAllowedBy, err = observeCreationPolicy(state.IssueCreationPolicy, "issue_permissions")
+	result.Features.IssuePermissions.CreationAllowedBy, err = observeCreationPolicy(state.IssueCreationPolicy, settings.IssuePermissionsControl)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}
-	result.Features.PullRequestPermissions.CreationAllowedBy, err = observeCreationPolicy(state.PullRequestCreationPolicy, "pull_request_permissions")
+	result.Features.PullRequestPermissions.CreationAllowedBy, err = observeCreationPolicy(state.PullRequestCreationPolicy, settings.PullRequestPermissionsControl)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}

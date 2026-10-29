@@ -131,10 +131,12 @@ func ValidMergeCommitMessage(value string) bool {
 type PRAccessState struct {
 	HasPullRequests           bool
 	PullRequestCreationPolicy string
+	Normalization             ObservationNormalization
 }
 
 func ValidPullRequestCreationPolicy(value string) bool {
-	return value == "ALL" || value == "COLLABORATORS_ONLY"
+	_, valid := CreationPolicyChoiceForValue(value)
+	return valid
 }
 func (d RepositoryDeclaration) PRAccessEmpty() bool {
 	return d.HasPullRequests == nil && d.PullRequestCreationPolicy == nil
@@ -146,10 +148,14 @@ func (d RepositoryDeclaration) WithPRAccess(state PRAccessState) RepositoryDecla
 }
 
 // IssueCreationPolicyState contains a complete independently acquired policy.
-type IssueCreationPolicyState struct{ Policy string }
+type IssueCreationPolicyState struct {
+	Policy        string
+	Normalization ObservationNormalization
+}
 
 func ValidIssueCreationPolicy(value string) bool {
-	return value == "ALL" || value == "COLLABORATORS_ONLY"
+	_, valid := CreationPolicyChoiceForValue(value)
+	return valid
 }
 func (d RepositoryDeclaration) RepositoryAccessEmpty() bool {
 	return d.PRAccessEmpty() && d.IssueCreationPolicy == nil && d.HasSponsorships == nil

@@ -5,9 +5,11 @@ import "fmt"
 // RepositoryObservation retains acquired scalar values independently of omission
 // in a desired declaration. A missing observation is never an observed zero value.
 type RepositoryObservation struct {
-	values                    RepositoryDeclaration
-	squashCommitNormalization CommitMessageNormalization
-	mergeCommitNormalization  CommitMessageNormalization
+	values                     RepositoryDeclaration
+	squashCommitNormalization  CommitMessageNormalization
+	mergeCommitNormalization   CommitMessageNormalization
+	prCreationNormalization    ObservationNormalization
+	issueCreationNormalization ObservationNormalization
 }
 
 // NewRepositoryObservation copies only complete observations supplied by readers.
@@ -28,6 +30,9 @@ func NewRepositoryObservation(base *RepositoryState, merge *MergeMethodsState, p
 		observation.squashCommitNormalization = merge.SquashCommitNormalization
 		observation.mergeCommitNormalization = merge.MergeCommitNormalization
 	}
+	if pr != nil {
+		observation.prCreationNormalization = pr.Normalization
+	}
 	return observation
 }
 
@@ -37,6 +42,17 @@ func (observation RepositoryObservation) CommitMessageNormalizations() []CommitM
 	var records []CommitMessageNormalization
 	for _, normalization := range [...]CommitMessageNormalization{observation.squashCommitNormalization, observation.mergeCommitNormalization} {
 		if normalization != (CommitMessageNormalization{}) {
+			records = append(records, normalization)
+		}
+	}
+	return records
+}
+
+// CreationPolicyNormalizations returns owned records in native field order.
+func (observation RepositoryObservation) CreationPolicyNormalizations() []ObservationNormalization {
+	var records []ObservationNormalization
+	for _, normalization := range [...]ObservationNormalization{observation.prCreationNormalization, observation.issueCreationNormalization} {
+		if normalization != (ObservationNormalization{}) {
 			records = append(records, normalization)
 		}
 	}
@@ -122,10 +138,10 @@ func CompareRepositoryObservation(observed RepositoryObservation, desired Reposi
 	if err := compareObservedFields(&result, prAccessBoolFields[:], observed.values, desired, boolChange); err != nil {
 		return Comparison{}, err
 	}
-	if err := compareObservedFields(&result, prAccessStringFields[:], observed.values, desired, stringChange); err != nil {
+	if err := compareObservedCreationPolicy(&result, prAccessStringFields[:], observed.values, desired, observed.prCreationNormalization); err != nil {
 		return Comparison{}, err
 	}
-	if err := compareObservedFields(&result, issuePolicyStringFields[:], observed.values, desired, stringChange); err != nil {
+	if err := compareObservedCreationPolicy(&result, issuePolicyStringFields[:], observed.values, desired, observed.issueCreationNormalization); err != nil {
 		return Comparison{}, err
 	}
 	if err := compareObservedFields(&result, sponsorshipBoolFields[:], observed.values, desired, boolChange); err != nil {
@@ -221,5 +237,6 @@ func copyObservedFields[S any, V bool | string](result *RepositoryDeclaration, f
 // WithIssueCreationPolicy returns a copied observation with the acquired policy.
 func (observation RepositoryObservation) WithIssueCreationPolicy(state IssueCreationPolicyState) RepositoryObservation {
 	declareRepositoryFields(issuePolicyStringFields[:], state, &observation.values)
+	observation.issueCreationNormalization = state.Normalization
 	return observation
 }

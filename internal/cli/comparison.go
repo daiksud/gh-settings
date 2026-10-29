@@ -18,6 +18,10 @@ func RenderComparison(comparison settings.Comparison) []byte {
 		output.WriteString("No differences for managed repository settings.\n")
 	} else {
 		for _, change := range comparison.Changes {
+			if change.Normalization() != (settings.ObservationNormalization{}) {
+				fmt.Fprintln(&output, presentation.CreationPolicyLine(change))
+				continue
+			}
 			line := func(before, after string) {
 				fmt.Fprintf(&output, "%s: %s → %s\n", presentation.SettingPath(change.Field().Path()), before, after)
 			}
