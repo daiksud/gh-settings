@@ -17,6 +17,24 @@ func decodeUISettings(node *yaml.Node) (uimodel.RepositorySettings, error) {
 	}
 	var result uimodel.RepositorySettings
 	for key, value := range fields {
+		if key == "security_and_quality" {
+			if err := decodeUIControl(&value, reflect.ValueOf(&result.SecurityAndQuality).Elem(), "repository.settings.security_and_quality"); err != nil {
+				return uimodel.RepositorySettings{}, err
+			}
+			continue
+		}
+		if key == "actions" {
+			if err := decodeUIControl(&value, reflect.ValueOf(&result.Actions).Elem(), "repository.settings.actions"); err != nil {
+				return uimodel.RepositorySettings{}, err
+			}
+			continue
+		}
+		if key == "rulesets" {
+			if err := decodeUIControl(&value, reflect.ValueOf(&result.Rulesets).Elem(), "repository.settings.rulesets"); err != nil {
+				return uimodel.RepositorySettings{}, err
+			}
+			continue
+		}
 		if key != "general" {
 			return uimodel.RepositorySettings{}, fmt.Errorf("unknown repository.settings key %q", key)
 		}
@@ -37,6 +55,27 @@ func encodeUISettings(settings uimodel.RepositorySettings) (*yaml.Node, error) {
 			return nil, err
 		}
 		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "general"}, node)
+	}
+	if settings.Rulesets != nil {
+		node, err := encodeUIControl(reflect.ValueOf(settings.Rulesets))
+		if err != nil {
+			return nil, err
+		}
+		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "rulesets"}, node)
+	}
+	if settings.Actions != nil {
+		node, err := encodeUIControl(reflect.ValueOf(settings.Actions))
+		if err != nil {
+			return nil, err
+		}
+		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "actions"}, node)
+	}
+	if settings.SecurityAndQuality != nil {
+		node, err := encodeUIControl(reflect.ValueOf(settings.SecurityAndQuality))
+		if err != nil {
+			return nil, err
+		}
+		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "security_and_quality"}, node)
 	}
 	return result, nil
 }
@@ -80,15 +119,15 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 			}
 		}
 		target.Set(values)
-	case reflect.Int64:
+	case reflect.Int, reflect.Int64:
 		if node.Kind != yaml.ScalarNode || node.Tag != "!!int" {
 			return fmt.Errorf("%s must be an integer", path)
 		}
-		var value int64
-		if err := node.Decode(&value); err != nil {
+		value := reflect.New(target.Type())
+		if err := node.Decode(value.Interface()); err != nil {
 			return fmt.Errorf("%s must be a supported integer: %w", path, err)
 		}
-		target.SetInt(value)
+		target.Set(value.Elem())
 	case reflect.Struct:
 		fields, err := loadMapping(node, path)
 		if err != nil {
@@ -155,7 +194,7 @@ func encodeUIControl(value reflect.Value) (*yaml.Node, error) {
 		}
 		return result, nil
 	}
-	if value.Kind() != reflect.Bool && value.Kind() != reflect.String && value.Kind() != reflect.Int64 {
+	if value.Kind() != reflect.Bool && value.Kind() != reflect.String && value.Kind() != reflect.Int64 && value.Kind() != reflect.Int {
 		return nil, fmt.Errorf("unsupported UI control type %s", value.Type())
 	}
 	var result yaml.Node

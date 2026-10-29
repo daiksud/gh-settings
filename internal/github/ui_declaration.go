@@ -30,5 +30,31 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 		return settings.Declaration{}, fmt.Errorf("repository.labels: %w", err)
 	}
 	result.Labels = labels
+	if repository.Settings != nil {
+		securityUI := uimodel.SecuritySettings{}
+		if repository.Settings.General != nil {
+			securityUI.GeneralReleases = repository.Settings.General.Releases
+		}
+		if repository.Settings.SecurityAndQuality != nil {
+			securityUI.AdvancedSecurity = repository.Settings.SecurityAndQuality.AdvancedSecurity
+		}
+		security, err := SecurityDeclaration(securityUI)
+		if err != nil {
+			return settings.Declaration{}, fmt.Errorf("repository.settings: %w", err)
+		}
+		result.Security = security
+		rulesets, err := RulesetsDeclaration(repository.Settings.Rulesets)
+		if err != nil {
+			return settings.Declaration{}, fmt.Errorf("repository.settings.rulesets: %w", err)
+		}
+		result.Rulesets = rulesets
+		if repository.Settings.Actions != nil && repository.Settings.Actions.General != nil {
+			actions, err := ActionsDeclaration(*repository.Settings.Actions.General)
+			if err != nil {
+				return settings.Declaration{}, fmt.Errorf("repository.settings.actions.general: %w", err)
+			}
+			result.Actions = actions
+		}
+	}
 	return result, nil
 }

@@ -9,6 +9,7 @@ type General struct {
 	PullRequests       PullRequests
 	Commits            Commits
 	DangerZone         DangerZone
+	Releases           *SecurityGeneralReleases
 }
 
 type Features struct {

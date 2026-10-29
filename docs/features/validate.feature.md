@@ -59,6 +59,39 @@ Test mapping: the [Labels UI codec tests](../../internal/workspace/ui_labels_tes
 
 Colors require the UI `#rrggbb` form; selected IDs and names retain their existing whole-object ownership rules. Invalid colors or duplicate selected IDs fail locally without using a partial declaration. The [UI declaration composition tests](../../internal/github/ui_declaration_test.go) cover this adapter boundary independently of YAML syntax.
 
+#### Scenario: Preserve Ruleset controls and selected identity
+
+- Given `repository.settings.rulesets` declares selected IDs or create-only entries using `ruleset_name`
+- And branch or tag targets use UI include controls and short name patterns
+- When the document is read and exported
+- Then enforcement, target choices, simple rule checkboxes and explicit false values retain their UI names and types
+- And omitted and empty collections remain distinct
+- And obsolete API-shaped keys and incorrectly typed controls are rejected
+
+Test mapping: the [Ruleset UI codec tests](../../internal/workspace/ui_rulesets_test.go).
+
+Ruleset PR controls preserve explicit zero approvals, false checkboxes, and selected merge methods. Typed actor collections retain selected IDs, and team-review file patterns retain ordering, repetition and negation. Status checks distinguish Any source from a selected App. Code scanning and code quality use UI choice names. Wrong types, null collections and transport-shaped nested keys fail locally. The [Ruleset request tests](../../internal/github/ui_config_rulesets_test.go) independently check new YAML against exact create/update HTTP payloads and selected-ID URLs.
+
+#### Scenario: Preserve Actions General controls
+
+- Given `repository.settings.actions.general` declares UI permission choices and nested fork workflow controls
+- When the document is read and exported
+- Then explicit false values, ordered action patterns and omitted controls remain distinct
+- And UI control names use snake_case, including `github` and `sha`
+- And API-shaped aliases, null controls and incorrectly typed values are rejected
+
+Test mapping: the [Actions UI codec tests](../../internal/workspace/ui_actions_test.go).
+
+#### Scenario: Keep Security controls at their UI locations
+
+- Given Secret Protection, Push protection and Private vulnerability reporting are declared under `repository.settings.security_and_quality.advanced_security`
+- And release immutability is declared under `repository.settings.general.releases`
+- When the document is read and exported
+- Then each explicit boolean stays at its UI location and omitted controls remain unmanaged
+- And API aliases, the internal `general_releases` container and owner enforcement metadata are rejected
+
+Test mapping: the [Security UI codec tests](../../internal/workspace/ui_security_test.go).
+
 ### Rule: Accept only supported fields with the update API's value types
 
 #### Scenario: Validate all supported settings

@@ -8,5 +8,11 @@ type Repository struct {
 }
 
 type RepositorySettings struct {
-	General *General
+	General            *General
+	Rulesets           *[]Ruleset
+	Actions            *ActionsSettings
+	SecurityAndQuality *SecurityAndQuality
 }
+
+type ActionsSettings struct{ General *ActionsGeneral }
+type SecurityAndQuality struct{ AdvancedSecurity *AdvancedSecurity }

@@ -96,3 +96,114 @@ func TestDeclarationFromUILabelInvalidIntentIsAtomic(t *testing.T) {
 		}
 	}
 }
+
+func TestDeclarationFromUIRulesetWholeObject(t *testing.T) {
+	entries := []uimodel.Ruleset{{ID: rulesetPtr(int64(7)), RulesetName: "main", EnforcementStatus: rulesetPtr(uimodel.Active), TargetBranches: &uimodel.BranchTargets{IncludeDefaultBranch: rulesetPtr(true), IncludeByPattern: rulesetPtr([]string{"release/*"})}, Rules: uimodel.RulesetRules{RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(true)}}, {RulesetName: "tags", EnforcementStatus: rulesetPtr(uimodel.Disabled), TargetTags: &uimodel.TagTargets{IncludeAllTags: rulesetPtr(true)}}}
+	got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Rulesets: &entries}})
+	if err != nil || got.Rulesets == nil {
+		t.Fatalf("missing rulesets: %v", err)
+	}
+	want := []settings.RulesetDeclaration{
+		{ID: rulesetPtr(int64(7)), Name: "main", Target: rulesetPtr("branch"), Enforcement: rulesetPtr("active"), Conditions: &settings.RulesetConditions{RefName: &settings.RefNameCondition{Include: rulesetPtr([]string{"refs/heads/release/*", "~DEFAULT_BRANCH"}), Exclude: rulesetPtr([]string{})}}, BypassActors: rulesetPtr([]settings.BypassActor{}), Rules: rulesetPtr([]settings.RulesetRule{{Type: "non_fast_forward"}})},
+		{Name: "tags", Target: rulesetPtr("tag"), Enforcement: rulesetPtr("disabled"), Conditions: &settings.RulesetConditions{RefName: &settings.RefNameCondition{Include: rulesetPtr([]string{"~ALL"}), Exclude: rulesetPtr([]string{})}}, BypassActors: rulesetPtr([]settings.BypassActor{}), Rules: rulesetPtr([]settings.RulesetRule{})},
+	}
+	if !reflect.DeepEqual(got.Rulesets.Values(), want) {
+		t.Fatalf("rulesets %#v; want %#v", got.Rulesets.Values(), want)
+	}
+}
+
+func TestDeclarationFromUIRulesetCollectionPresence(t *testing.T) {
+	empty := []uimodel.Ruleset{}
+	for _, entries := range []*[]uimodel.Ruleset{nil, &empty} {
+		got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Rulesets: entries}})
+		if err != nil || (got.Rulesets != nil) != (entries != nil) || (got.Rulesets != nil && len(got.Rulesets.Values()) != 0) {
+			t.Fatalf("rulesets presence changed: %#v, %v", got.Rulesets, err)
+		}
+	}
+}
+
+func TestDeclarationFromUIRulesetInvalidIntentIsAtomic(t *testing.T) {
+	description := "valid About"
+	for _, entry := range []uimodel.Ruleset{
+		{RulesetName: "missing enforcement", TargetBranches: &uimodel.BranchTargets{}},
+		{RulesetName: "missing target", EnforcementStatus: rulesetPtr(uimodel.Active)},
+	} {
+		entries := []uimodel.Ruleset{entry}
+		got, err := DeclarationFromUI(uimodel.Repository{About: &uimodel.About{Description: &description}, Settings: &uimodel.RepositorySettings{Rulesets: &entries}})
+		if err == nil || !got.Empty() {
+			t.Fatalf("accepted invalid rulesets or partial intent: %#v, %v", got, err)
+		}
+	}
+}
+
+func TestDeclarationFromUIActions(t *testing.T) {
+	ui := uimodel.ActionsGeneral{
+		ActionsPermissions: rulesetPtr(uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows),
+		RequireActionsToBePinnedToAFullLengthCommitSHA: rulesetPtr(true), AllowActionsCreatedByGitHub: rulesetPtr(false), AllowActionsByMarketplaceVerifiedCreators: rulesetPtr(true),
+		AllowOrBlockSpecifiedActionsAndReusableWorkflows: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"}),
+		WorkflowPermissions: rulesetPtr(uimodel.ReadAndWritePermissions), AllowGitHubActionsToCreateAndApprovePullRequests: rulesetPtr(false),
+		CheckWorkflowRunStatusArtifactAndLogRetention: rulesetPtr(30), ApprovalForRunningForkPullRequestWorkflowsFromContributors: rulesetPtr(uimodel.RequireApprovalForAllExternalContributors),
+		ForkPullRequestWorkflows: &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: rulesetPtr(true), SendWriteTokensToWorkflowsFromForkPullRequests: rulesetPtr(false)},
+	}
+	want := settings.ActionsPolicyDeclaration{Enabled: rulesetPtr(true), AllowedActions: rulesetPtr("selected"), SHAPinningRequired: rulesetPtr(true), SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: rulesetPtr(false), VerifiedAllowed: rulesetPtr(true), PatternsAllowed: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"})}, DefaultWorkflowPermissions: rulesetPtr("write"), CanApprovePullRequestReviews: rulesetPtr(false), RetentionDays: rulesetPtr(30), ForkApprovalPolicy: rulesetPtr("all_external_contributors"), PrivateFork: settings.PrivateForkDeclaration{Run: rulesetPtr(true), WriteTokens: rulesetPtr(false)}}
+	got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Actions: &uimodel.ActionsSettings{General: &ui}}})
+	if err != nil || !reflect.DeepEqual(got.Actions, want) {
+		t.Fatalf("Actions %#v; want %#v; error=%v", got.Actions, want, err)
+	}
+	for _, actions := range []*uimodel.ActionsSettings{nil, {}, {General: &uimodel.ActionsGeneral{}}} {
+		got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Actions: actions}})
+		if err != nil || !got.Empty() {
+			t.Fatalf("empty Actions became intent: %#v, %v", got, err)
+		}
+	}
+}
+
+func TestDeclarationFromUIActionsInvalidIntentIsAtomic(t *testing.T) {
+	description := "valid About"
+	for _, actions := range []uimodel.ActionsGeneral{
+		{WorkflowPermissions: rulesetPtr(uimodel.WorkflowPermissionChoice("write"))},
+		{CheckWorkflowRunStatusArtifactAndLogRetention: rulesetPtr(0)},
+		{CheckWorkflowRunStatusArtifactAndLogRetention: rulesetPtr(401)},
+		{ActionsPermissions: rulesetPtr(uimodel.AllowAllActionsAndReusableWorkflows), AllowActionsCreatedByGitHub: rulesetPtr(false)},
+	} {
+		got, err := DeclarationFromUI(uimodel.Repository{About: &uimodel.About{Description: &description}, Settings: &uimodel.RepositorySettings{Actions: &uimodel.ActionsSettings{General: &actions}}})
+		if err == nil || !got.Empty() {
+			t.Fatalf("invalid Actions accepted or partial intent returned: %#v, %v", got, err)
+		}
+	}
+}
+
+func TestDeclarationFromUISecurityComposition(t *testing.T) {
+	description, branch := "About retained", "main"
+	advanced := &uimodel.AdvancedSecurity{SecretProtection: rulesetPtr(true), PushProtection: rulesetPtr(false), PrivateVulnerabilityReporting: rulesetPtr(true)}
+	releases := &uimodel.SecurityGeneralReleases{EnableReleaseImmutability: rulesetPtr(false)}
+	for _, test := range []struct {
+		name     string
+		general  *uimodel.General
+		security *uimodel.SecurityAndQuality
+		want     settings.SecurityDeclaration
+	}{
+		{"both", &uimodel.General{DefaultBranch: &branch, Releases: releases}, &uimodel.SecurityAndQuality{AdvancedSecurity: advanced}, settings.SecurityDeclaration{ImmutableReleases: rulesetPtr(false), SecretScanning: rulesetPtr(true), PushProtection: rulesetPtr(false), PrivateVulnerabilityReporting: rulesetPtr(true)}},
+		{"release only", &uimodel.General{Releases: releases}, nil, settings.SecurityDeclaration{ImmutableReleases: rulesetPtr(false)}},
+		{"security only", nil, &uimodel.SecurityAndQuality{AdvancedSecurity: advanced}, settings.SecurityDeclaration{SecretScanning: rulesetPtr(true), PushProtection: rulesetPtr(false), PrivateVulnerabilityReporting: rulesetPtr(true)}},
+		{"empty", &uimodel.General{Releases: &uimodel.SecurityGeneralReleases{}}, &uimodel.SecurityAndQuality{}, settings.SecurityDeclaration{}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := DeclarationFromUI(uimodel.Repository{About: &uimodel.About{Description: &description}, Settings: &uimodel.RepositorySettings{General: test.general, SecurityAndQuality: test.security}})
+			if err != nil || !reflect.DeepEqual(got.Security, test.want) || got.Repository.Description == nil || *got.Repository.Description != description {
+				t.Fatalf("Security composition changed: %#v, %v", got, err)
+			}
+			if test.name == "both" && (got.Repository.DefaultBranch == nil || *got.Repository.DefaultBranch != branch) {
+				t.Fatal("Security composition dropped General")
+			}
+		})
+	}
+}
+
+func TestDeclarationFromUISecurityInvalidIntentIsAtomic(t *testing.T) {
+	description := "valid About"
+	got, err := DeclarationFromUI(uimodel.Repository{About: &uimodel.About{Description: &description}, Settings: &uimodel.RepositorySettings{SecurityAndQuality: &uimodel.SecurityAndQuality{AdvancedSecurity: &uimodel.AdvancedSecurity{SecretProtection: rulesetPtr(false), PushProtection: rulesetPtr(true)}}}})
+	if err == nil || !got.Empty() {
+		t.Fatalf("invalid Security accepted or partial intent returned: %#v, %v", got, err)
+	}
+}
