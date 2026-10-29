@@ -38,6 +38,31 @@ Apply sends the translated pair in the existing Administration-write repository 
 
 Visible acquired menu choices export under UI paths after all requested reads/conversion succeed. Plan retains stable native comparison order; one menu can produce two component changes. Complete UI menu rendering is #481: current CLI/Summary and the private same-version report can still show native component paths/tokens. They are not YAML aliases or saved apply input. Report type validation remains closed; this change does not claim the UI count/report audit complete.
 
+## Feature: Project complete out-of-UI squash observations with provenance
+
+### Rule: One UI menu retains its complete raw title and message
+
+#### Scenario: A known API-only pair uses the adopted default
+
+- Given a successful complete read returns title `COMMIT_OR_PR_TITLE` and message `BLANK`
+- When the squash menu is projected to UI choices
+- Then the effective choice is `default_message`
+- And its effective title/message pair is `COMMIT_OR_PR_TITLE` and `COMMIT_MESSAGES`
+- And one provenance record retains the new YAML field, both exact raw strings and the fallback
+
+#### Scenario: Unknown and empty typed strings are acquired observations
+
+- Given a successful complete read contains a previously unseen or empty title/message string
+- When that pair is outside the UI choices
+- Then the same adopted default is projected with both raw strings retained
+- But missing/null members, invalid types or failed acquisition are not fallback observations
+
+#### Scenario: An unacquired menu does not become a default
+
+- Given no squash menu observation was acquired
+- When UI choices are prepared
+- Then the menu remains unacquired without a fallback or warning record
+
 ## Read-only hosted evidence
 
 An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/runs/39108650790)[^hosted-read-proof] returned `squashMergeCommitTitle: COMMIT_OR_PR_TITLE` and `squashMergeCommitMessage: COMMIT_MESSAGES` alongside the existing four booleans. The job had effective Contents read and Metadata read only, with no checkout, App credential, Environment or write permission. Its temporary workflow is removed from the final implementation diff. This establishes access for that token/repository, not every possible credential.
