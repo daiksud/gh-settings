@@ -121,6 +121,7 @@ func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d s
 	if err != nil {
 		return err
 	}
+	c.warnExecutionNormalization(current, d)
 	enableAfterSelection := d.Enabled != nil && *d.Enabled && !current.Enabled && !d.SelectedActions.Empty()
 	if d.Enabled != nil || d.AllowedActions != nil || d.SHAPinningRequired != nil {
 		enabled := current.Enabled
@@ -154,6 +155,7 @@ func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d s
 	if err != nil {
 		return fmt.Errorf("verify Actions policy (writes may already have applied): %w", err)
 	}
+	c.warnExecutionNormalization(actual, d)
 	retained, err := sameActionsExecutionVerification(expected, actual)
 	if err != nil || !retained {
 		return fmt.Errorf("GitHub did not retain requested Actions policy (writes may already have applied)")
