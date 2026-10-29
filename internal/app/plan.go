@@ -71,6 +71,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
 		comparison.Managed += otherComparison.Managed
+		comparison.CommitMessages = append(comparison.CommitMessages, otherComparison.CommitMessages...)
 		// An explicit unarchive precedes normal writes; archive is always last.
 		if desired.Repository.Archived != nil && !*desired.Repository.Archived {
 			comparison.Changes = append(comparison.Changes, otherComparison.Changes...)

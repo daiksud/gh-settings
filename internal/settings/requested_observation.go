@@ -4,7 +4,11 @@ import "fmt"
 
 // RepositoryObservation retains acquired scalar values independently of omission
 // in a desired declaration. A missing observation is never an observed zero value.
-type RepositoryObservation struct{ values RepositoryDeclaration }
+type RepositoryObservation struct {
+	values                    RepositoryDeclaration
+	squashCommitNormalization CommitMessageNormalization
+	mergeCommitNormalization  CommitMessageNormalization
+}
 
 // NewRepositoryObservation copies only complete observations supplied by readers.
 // A nil group means that group was not read.
@@ -19,7 +23,24 @@ func NewRepositoryObservation(base *RepositoryState, merge *MergeMethodsState, p
 	if pr != nil {
 		values = values.WithPRAccess(*pr)
 	}
-	return RepositoryObservation{values: values}
+	observation := RepositoryObservation{values: values}
+	if merge != nil {
+		observation.squashCommitNormalization = merge.SquashCommitNormalization
+		observation.mergeCommitNormalization = merge.MergeCommitNormalization
+	}
+	return observation
+}
+
+// CommitMessageNormalizations returns acquired provenance in scalar-field order.
+// It remains separate from declarations and owns the returned records.
+func (observation RepositoryObservation) CommitMessageNormalizations() []CommitMessageNormalization {
+	var records []CommitMessageNormalization
+	for _, normalization := range [...]CommitMessageNormalization{observation.squashCommitNormalization, observation.mergeCommitNormalization} {
+		if normalization != (CommitMessageNormalization{}) {
+			records = append(records, normalization)
+		}
+	}
+	return records
 }
 
 // Fields returns the acquired field identities in stable comparison order.
@@ -81,7 +102,11 @@ func CompareRepositoryObservation(observed RepositoryObservation, desired Reposi
 			return Comparison{}, err
 		}
 	}
-	var result Comparison
+	result, remaining, err := compareNormalizedCommitMessages(observed, desired)
+	if err != nil {
+		return Comparison{}, err
+	}
+	desired = remaining
 	if err := compareObservedFields(&result, repositoryStringFields[:], observed.values, desired, stringChange); err != nil {
 		return Comparison{}, err
 	}

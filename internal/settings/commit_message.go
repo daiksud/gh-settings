@@ -34,9 +34,10 @@ type CommitMessagePair struct{ Title, Message string }
 // CommitMessageNormalization retains both acquired members of one UI menu.
 // The effective pair is separate; neither raw member becomes desired intent.
 type CommitMessageNormalization struct {
-	Path                 string
-	RawTitle, RawMessage string
-	Fallback             uimodel.CommitMessageChoice
+	Path       string                      `json:"path"`
+	RawTitle   string                      `json:"raw_title"`
+	RawMessage string                      `json:"raw_message"`
+	Fallback   uimodel.CommitMessageChoice `json:"fallback"`
 }
 
 type commitMessageOption struct {
