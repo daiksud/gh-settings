@@ -8,31 +8,28 @@ import (
 
 	"github.com/daiksud/gh-settings/internal/actions"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func TestRulesetReviewReportPreservesOrderFalseAndZero(t *testing.T) {
-	d, e := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings:
-  rulesets:
-    - name: '<review>'
-      target: branch
-      enforcement: active
-      conditions: {ref_name: {include: ['~ALL'], exclude: []}}
-      bypass_actors: []
-      rules:
-        - type: pull_request
-          parameters:
-            dismiss_stale_reviews_on_push: true
-            require_code_owner_review: true
-            require_last_push_approval: false
-            required_approving_review_count: 1
-            required_review_thread_resolution: true
-            required_reviewers: [{reviewer: {type: Team, id: 21}, minimum_approvals: 0, file_patterns: ['**', '!docs/**', '**']}]
-        - type: required_status_checks
-          parameters:
-            required_status_checks: [{context: '<ci>', integration_id: 9}]
-            strict_required_status_checks_policy: true
+	d, e := rulesetReportFixture([]byte(`
+- name: '<review>'
+  target: branch
+  enforcement: active
+  conditions: {ref_name: {include: ['~ALL'], exclude: []}}
+  bypass_actors: []
+  rules:
+    - type: pull_request
+      parameters:
+        dismiss_stale_reviews_on_push: true
+        require_code_owner_review: true
+        require_last_push_approval: false
+        required_approving_review_count: 1
+        required_review_thread_resolution: true
+        required_reviewers: [{reviewer: {type: Team, id: 21}, minimum_approvals: 0, file_patterns: ['**', '!docs/**', '**']}]
+    - type: required_status_checks
+      parameters:
+        required_status_checks: [{context: '<ci>', integration_id: 9}]
+        strict_required_status_checks_policy: true
 `))
 	if e != nil {
 		t.Fatal(e)

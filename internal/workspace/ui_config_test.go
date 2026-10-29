@@ -55,3 +55,16 @@ func TestUIConfigRejectsObsoleteEnvelopeAndInvalidAbout(t *testing.T) {
 		})
 	}
 }
+
+func TestUIConfigRejectsOrganizationOnlyControlsAtCurrentPaths(t *testing.T) {
+	for _, settings := range []string{
+		"custom_properties: {}", "custom_properties: null", "custom_properties: {service: api}",
+		"general: {allow_forking: false}", "general: {allow_forking: true}", "general: {allow_forking: null}",
+	} {
+		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {" + settings + "}}\n"
+		got, err := DecodeUIConfig([]byte(input))
+		if err == nil || !strings.Contains(err.Error(), "unknown") || !reflect.DeepEqual(got, uimodel.Repository{}) {
+			t.Fatalf("unsupported current-path setting accepted or partially decoded: %s, %#v, %v", settings, got, err)
+		}
+	}
+}

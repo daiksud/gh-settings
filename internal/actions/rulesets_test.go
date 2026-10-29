@@ -13,12 +13,24 @@ import (
 	"github.com/daiksud/gh-settings/internal/actions"
 	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
+	"go.yaml.in/yaml/v4"
 )
 
+// rulesetReportFixture constructs internal API policy for report tests, not public YAML.
+func rulesetReportFixture(body []byte) (settings.Declaration, error) {
+	var policies []settings.RulesetDeclaration
+	if err := yaml.Unmarshal(body, &policies); err != nil {
+		return settings.Declaration{}, err
+	}
+	declarations, err := settings.NewRulesetDeclarations(policies)
+	if err != nil {
+		return settings.Declaration{}, err
+	}
+	return settings.Declaration{Rulesets: &declarations}, nil
+}
+
 func TestRulesetPlanReportAndSummary(t *testing.T) {
-	d, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings: {rulesets: [{name: '<policy>', target: branch, enforcement: active, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, bypass_actors: [], rules: [{type: deletion}]}]}`))
+	d, err := rulesetReportFixture([]byte(`[{name: '<policy>', target: branch, enforcement: active, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, bypass_actors: [], rules: [{type: deletion}]}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,22 +86,18 @@ settings: {rulesets: [{name: '<policy>', target: branch, enforcement: active, co
 }
 
 func TestRulesetPlanReportAndSummaryShowSelectedWholeObjects(t *testing.T) {
-	current, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings:
-  rulesets:
-    - name: default
-      target: branch
-      enforcement: active
-      conditions: {ref_name: {include: ['refs/heads/CANARY-selected-condition'], exclude: []}}
-      bypass_actors: [{actor_type: Team, actor_id: 987654321, bypass_mode: always}]
-      rules: [{type: deletion}, {type: non_fast_forward}]
+	current, err := rulesetReportFixture([]byte(`
+- name: default
+  target: branch
+  enforcement: active
+  conditions: {ref_name: {include: ['refs/heads/CANARY-selected-condition'], exclude: []}}
+  bypass_actors: [{actor_type: Team, actor_id: 987654321, bypass_mode: always}]
+  rules: [{type: deletion}, {type: non_fast_forward}]
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
-	desired, err := workspace.DecodeConfig([]byte(`schemaVersion: 1
-settings: {rulesets: [{id: 7, name: default, enforcement: disabled, conditions: {ref_name: {include: ['~ALL']}}}]}
-`))
+	desired, err := rulesetReportFixture([]byte(`[{id: 7, name: default, enforcement: disabled, conditions: {ref_name: {include: ['~ALL']}}}]`))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/actions"
-	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func TestRulesetCodeAnalysisReportRetainsThresholdsAndEscapesTools(t *testing.T) {
@@ -20,11 +19,11 @@ func TestRulesetCodeAnalysisReportRetainsThresholdsAndEscapesTools(t *testing.T)
 	json.Unmarshal(data, &policy)
 	delete(policy, "source")
 	delete(policy, "source_type")
-	data, err = json.Marshal(map[string]any{"schemaVersion": 1, "settings": map[string]any{"rulesets": []any{policy}}})
+	data, err = json.Marshal([]any{policy})
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err := workspace.DecodeConfig(data)
+	d, err := rulesetReportFixture(data)
 	if err != nil {
 		t.Fatal(err)
 	}

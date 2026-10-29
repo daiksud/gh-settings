@@ -7,18 +7,60 @@ import (
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
+	"go.yaml.in/yaml/v4"
 )
 
+// pinnedManagedPolicy describes only the policy assertions for the tracked
+// v0.23 Action consumer. It is not a decoder for the current public YAML schema.
+type pinnedManagedPolicy struct {
+	SchemaVersion yaml.Node `yaml:"schemaVersion"`
+	Settings      struct {
+		Repository struct {
+			Archived        *bool `yaml:"archived"`
+			HasSponsorships *bool `yaml:"has_sponsorships"`
+		} `yaml:"repository"`
+		Labels   []settings.LabelDeclaration       `yaml:"labels"`
+		Rulesets []settings.RulesetDeclaration     `yaml:"rulesets"`
+		Actions  settings.ActionsPolicyDeclaration `yaml:"actions"`
+		Security settings.SecurityDeclaration      `yaml:"security"`
+		Pages    yaml.Node                         `yaml:"pages"`
+	} `yaml:"settings"`
+}
+
+func readPinnedManagedPolicy(t *testing.T) pinnedManagedPolicy {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document pinnedManagedPolicy
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	if document.SchemaVersion.Kind != yaml.ScalarNode || document.SchemaVersion.Tag != "!!int" || document.SchemaVersion.Value != "1" {
+		t.Fatal("pinned released Action configuration marker changed; adoption is Issue #382")
+	}
+	labels, err := settings.NewLabelDeclarations(document.Settings.Labels)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document.Settings.Labels = labels.Values()
+	rulesets, err := settings.NewRulesetDeclarations(document.Settings.Rulesets)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document.Settings.Rulesets = rulesets.Values()
+	if err := document.Settings.Actions.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if err := document.Settings.Security.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	return document
+}
+
 func TestManagedLabelsPreserveExistingIDsNamesAndColors(t *testing.T) {
-	config, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	desired, err := workspace.DecodeConfig(config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	desired := readPinnedManagedPolicy(t)
 	// Preserve the independent pre-unification API observation. The intended
 	// policy change updates descriptions, not existing label identity or color.
 	data, err := os.ReadFile("testdata/managed-label-baseline.json")
@@ -32,14 +74,14 @@ func TestManagedLabelsPreserveExistingIDsNamesAndColors(t *testing.T) {
 	if _, err := settings.NewLabelObservation(labels); err != nil {
 		t.Fatal(err)
 	}
-	if len(labels) != desired.Labels.Len() {
-		t.Fatalf("managed labels = %d, observed labels = %d", desired.Labels.Len(), len(labels))
+	if len(labels) != len(desired.Settings.Labels) {
+		t.Fatalf("managed labels = %d, observed labels = %d", len(desired.Settings.Labels), len(labels))
 	}
 	observedByID := map[int64]settings.LabelState{}
 	for _, label := range labels {
 		observedByID[label.ID] = label
 	}
-	for _, label := range desired.Labels.Values() {
+	for _, label := range desired.Settings.Labels {
 		if label.ID == nil || label.Color == nil {
 			t.Fatalf("managed label lacks ID or color: %+v", label)
 		}
@@ -51,19 +93,12 @@ func TestManagedLabelsPreserveExistingIDsNamesAndColors(t *testing.T) {
 }
 
 func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	desired, err := workspace.DecodeConfig(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if desired.Labels == nil || desired.Labels.Len() != 20 {
+	desired := readPinnedManagedPolicy(t)
+	if desired.Settings.Labels == nil || len(desired.Settings.Labels) != 20 {
 		t.Fatal("restore exactly the twenty existing ID-owned labels")
 	}
 	ids := map[int64]bool{}
-	for _, label := range desired.Labels.Values() {
+	for _, label := range desired.Settings.Labels {
 		if label.ID == nil || *label.ID <= 0 || ids[*label.ID] || label.Color == nil || label.Description == nil {
 			t.Fatalf("all labels must retain unique existing IDs and complete values: %+v", label)
 		}
@@ -80,11 +115,11 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 		compare func() (int, int, error)
 	}{
 		{"execution", 3, func() (int, int, error) {
-			n, changes, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{Enabled: true, AllowedActions: "all", SHAPinningRequired: true}, desired.Actions)
+			n, changes, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{Enabled: true, AllowedActions: "all", SHAPinningRequired: true}, desired.Settings.Actions)
 			return n, len(changes), err
 		}},
 		{"workflow token", 2, func() (int, int, error) {
-			n, changes, err := settings.CompareWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: "read", CanApprovePullRequestReviews: true}, desired.Actions)
+			n, changes, err := settings.CompareWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: "read", CanApprovePullRequestReviews: true}, desired.Settings.Actions)
 			return n, len(changes), err
 		}},
 		{"retention", 1, func() (int, int, error) {
@@ -92,7 +127,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 			if err != nil {
 				return 0, 0, err
 			}
-			n, changes, err := settings.CompareRetention(observation, desired.Actions)
+			n, changes, err := settings.CompareRetention(observation, desired.Settings.Actions)
 			return n, len(changes), err
 		}},
 		{"public fork approval", 1, func() (int, int, error) {
@@ -100,11 +135,11 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 			if err != nil {
 				return 0, 0, err
 			}
-			n, changes, err := settings.CompareForkApproval(observation, desired.Actions)
+			n, changes, err := settings.CompareForkApproval(observation, desired.Settings.Actions)
 			return n, len(changes), err
 		}},
 		{"secret scanning", 2, func() (int, int, error) {
-			n, changes, err := settings.CompareSecretScanning(settings.NewSecretScanningObservation(true, true), desired.Security)
+			n, changes, err := settings.CompareSecretScanning(settings.NewSecretScanningObservation(true, true), desired.Settings.Security)
 			return n, len(changes), err
 		}},
 	}
@@ -116,16 +151,16 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 			}
 		})
 	}
-	if desired.Repository.Archived == nil || *desired.Repository.Archived || desired.Repository.HasSponsorships == nil || *desired.Repository.HasSponsorships {
+	if desired.Settings.Repository.Archived == nil || *desired.Settings.Repository.Archived || desired.Settings.Repository.HasSponsorships == nil || *desired.Settings.Repository.HasSponsorships {
 		t.Fatal("observed false lifecycle/Sponsor values must be explicitly managed")
 	}
-	if !desired.Pages.Empty() || !desired.Actions.SelectedActions.Empty() || !desired.Actions.PrivateFork.Empty() {
+	if (desired.Settings.Pages.Kind != 0 && (desired.Settings.Pages.Kind != yaml.MappingNode || desired.Settings.Pages.Tag != "!!map" || len(desired.Settings.Pages.Content) != 0)) || !desired.Settings.Actions.SelectedActions.Empty() || !desired.Settings.Actions.PrivateFork.Empty() {
 		t.Fatal("unadopted, unsupported or inactive resources must remain unmanaged")
 	}
-	if desired.Rulesets == nil || desired.Rulesets.Len() != 1 {
+	if desired.Settings.Rulesets == nil || len(desired.Settings.Rulesets) != 1 {
 		t.Fatal("manage only the existing main-branch Ruleset")
 	}
-	ruleset := desired.Rulesets.Values()[0]
+	ruleset := desired.Settings.Rulesets[0]
 	if ruleset.ID == nil || *ruleset.ID != 24911852 || ruleset.Name != "default" ||
 		ruleset.BypassActors == nil || len(*ruleset.BypassActors) != 0 {
 		t.Fatalf("select the existing Ruleset and remove every bypass actor: %+v", ruleset)
@@ -166,7 +201,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.
-	managed, changes, err := settings.CompareWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: "write", CanApprovePullRequestReviews: false}, desired.Actions)
+	managed, changes, err := settings.CompareWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: "write", CanApprovePullRequestReviews: false}, desired.Settings.Actions)
 	if err != nil || managed != 2 || len(changes) != 2 {
 		t.Fatalf("workflow drift was not detected: managed=%d, changes=%v, error=%v", managed, changes, err)
 	}

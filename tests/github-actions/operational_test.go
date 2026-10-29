@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/settings"
-	"github.com/daiksud/gh-settings/internal/workspace"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -21,14 +20,35 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d, err := workspace.DecodeConfig(data)
-	if err != nil {
+	// This policy is consumed by the pinned released Action. Issue #382 owns
+	// its later adoption; this inspection does not claim current-codec acceptance.
+	var document struct {
+		Settings struct {
+			Environments []yaml.Node `yaml:"environments"`
+		} `yaml:"settings"`
+	}
+	if err := yaml.Unmarshal(data, &document); err != nil {
 		t.Fatal(err)
 	}
-	if d.Environments == nil || len(d.Environments.Values()) != 2 {
+	if len(document.Settings.Environments) != 2 {
 		t.Fatal("both existing named Environments must be declared")
 	}
-	for _, p := range d.Environments.Values() {
+	seenNames := map[string]bool{}
+	for _, node := range document.Settings.Environments {
+		var p settings.EnvironmentDeclaration
+		if err := node.Decode(&p); err != nil {
+			t.Fatal(err)
+		}
+		fields, err := settingsYAMLMap(&node)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p.DeploymentBranchPolicyDeclared = fields["deployment_branch_policy"] != nil
+		identity := settings.EnvironmentIdentity(p.Name)
+		if seenNames[identity] {
+			t.Fatalf("duplicate managed Environment %q", p.Name)
+		}
+		seenNames[identity] = true
 		if settings.EnvironmentHasAPIOmissions(p) || *p.WaitTimer != 0 || *p.PreventSelfReview || len(*p.Reviewers) != 0 {
 			t.Fatalf("Environment policy must retain complete observed values: %+v", p)
 		}
