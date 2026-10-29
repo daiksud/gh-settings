@@ -22,14 +22,14 @@ func TestRenderComparison(t *testing.T) {
 				comparisonChange(t, "repository.has_projects", true, false),
 				comparisonChange(t, "repository.has_wiki", true, false),
 			}},
-			want: "settings.repository.description: \"old\" → \"\"\nsettings.repository.homepage: \"old-url\" → \"\"\nsettings.repository.has_issues: true → false\nsettings.repository.has_projects: true → false\nsettings.repository.has_wiki: true → false\n",
+			want: "repository.about.description: \"old\" → \"\"\nrepository.about.website: \"old-url\" → \"\"\nrepository.settings.general.features.issues: true → false\nrepository.settings.general.features.projects: true → false\nrepository.settings.general.features.wikis: true → false\n",
 		},
 		{
 			name: "escaped strings",
 			comparison: settings.Comparison{Managed: 1, Changes: []settings.Change{
 				comparisonChange(t, "repository.description", "old", "quote\"\n\t\\\x1b"),
 			}},
-			want: "settings.repository.description: \"old\" → \"quote\\\"\\n\\t\\\\\\x1b\"\n",
+			want: "repository.about.description: \"old\" → \"quote\\\"\\n\\t\\\\\\x1b\"\n",
 		},
 		{
 			name: "no differences", comparison: settings.Comparison{Managed: 2},
@@ -49,7 +49,7 @@ func TestRenderComparison(t *testing.T) {
 
 func TestRenderTopicsComparison(t *testing.T) {
 	got := string(RenderComparison(settings.Comparison{Managed: 1, Changes: []settings.Change{comparisonChange(t, "topics.names", []string{"old"}, []string{})}}))
-	if got != "settings.topics.names: [\"old\"] → []\n" {
+	if got != "repository.about.topics: [\"old\"] → []\n" {
 		t.Fatalf("output=%q", got)
 	}
 }
@@ -73,7 +73,7 @@ func TestRenderMergeMethodComparison(t *testing.T) {
 		comparisonChange(t, "repository.allow_squash_merge", false, true),
 		comparisonChange(t, "repository.allow_rebase_merge", true, false),
 	}}))
-	want := "settings.repository.allow_merge_commit: true → false\nsettings.repository.allow_squash_merge: false → true\nsettings.repository.allow_rebase_merge: true → false\n"
+	want := "repository.settings.general.pull_requests.allow_merge_commits: true → false\nrepository.settings.general.pull_requests.allow_squash_merging: false → true\nrepository.settings.general.pull_requests.allow_rebase_merging: true → false\n"
 	if got != want {
 		t.Fatalf("got=%q", got)
 	}

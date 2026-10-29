@@ -14,7 +14,7 @@ func TestPRAccessReportRequiresNativeBooleanAndKnownPolicy(t *testing.T) {
 		t.Fatal(err)
 	}
 	visible := html.UnescapeString(content)
-	for _, want := range []string{"settings.repository.has_pull_requests: true → false", `settings.repository.pull_request_creation_policy: "ALL" → "COLLABORATORS_ONLY"`} {
+	for _, want := range []string{"repository.settings.general.features.pull_requests: true → false", `settings.repository.pull_request_creation_policy: "ALL" → "COLLABORATORS_ONLY"`} {
 		if !strings.Contains(visible, want) {
 			t.Fatal(visible)
 		}

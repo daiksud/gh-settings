@@ -57,7 +57,7 @@ func TestLabelsCreatedIDWritebackAndRepeatApply(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "# original comment\nschemaVersion: 1\nsettings:\n  labels:\n    - name: new # consumer intent\n      color: ABCDEF\n"
+			input := "# original comment\nversion: daiksud/gh-settings@v0\nrepository:\n  labels:\n    - name: new # consumer intent\n      color: '#ABCDEF'\n"
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -147,7 +147,7 @@ func TestLabelsPartialFailureRetainsRecoverableCreatedIDs(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input = "schemaVersion: 1\nsettings:\n  labels:\n    - {name: a, color: abcdef}\n    - {name: b, color: abcdef}\n"
+			input = "version: daiksud/gh-settings@v0\nrepository:\n  labels:\n    - {name: a, color: '#abcdef'}\n    - {name: b, color: '#abcdef'}\n"
 			path = filepath.Join(fixture.work, ".github", "settings.yml")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)

@@ -132,16 +132,21 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if exported.runErr != nil || exported.stdout.Len() != 0 || exported.stderr.Len() != 0 {
 		t.Fatalf("export: %v stderr=%q", exported.runErr, exported.stderr.String())
 	}
-	// Edit the exported YAML's issues value and preserve all other fields.
+	// Disable Issues and remove its conditional permission; preserve every other field.
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	original := string(data)
-	edited := strings.Replace(original, "has_issues: true", "has_issues: false", 1)
+	edited := strings.Replace(original, "issues: true", "issues: false", 1)
 	if original == edited {
 		t.Fatal("export did not contain expected issues field")
 	}
+	permission := "                issue_permissions:\n                    creation_allowed_by: all_users\n"
+	if !strings.Contains(edited, permission) {
+		t.Fatal("export did not contain the expected Issues permission")
+	}
+	edited = strings.Replace(edited, permission, "", 1)
 	if err := writeSettingsFile(fixture.work, edited); err != nil {
 		t.Fatal(err)
 	}
@@ -156,8 +161,8 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The exported empty label selection needs no label read during plan.
-	if planned.runErr != nil || planned.stdout.String() != "settings.repository.has_issues: true → false\n" || planned.stderr.Len() != 0 || fixture.reads.Load() != 13 {
+	// Empty labels need no read; the removed Issue policy is also unmanaged.
+	if planned.runErr != nil || planned.stdout.String() != "repository.settings.general.features.issues: true → false\n" || planned.stderr.Len() != 0 || fixture.reads.Load() != 12 {
 		t.Fatalf("plan: %v stdout=%q stderr=%q reads=%d", planned.runErr, planned.stdout.String(), planned.stderr.String(), fixture.reads.Load())
 	}
 	if err := fixture.checkRequests(false); err != nil {

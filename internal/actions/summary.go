@@ -123,7 +123,7 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	}
 	for _, change := range report.comparison.Changes {
 		line := func(before, after string) {
-			fmt.Fprintf(&content, "settings.%s: %s → %s\n", quoteHTML(change.Field().Path()), quoteHTML(before), quoteHTML(after))
+			fmt.Fprintf(&content, "%s: %s → %s\n", quoteHTML(presentation.SettingPath(change.Field().Path())), quoteHTML(before), quoteHTML(after))
 		}
 		change.Visit(
 			func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },

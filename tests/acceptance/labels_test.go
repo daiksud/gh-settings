@@ -30,20 +30,20 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 		{name: "omitted", command: "apply", declaration: `{}`, want: "No managed repository settings.\n"},
 		{name: "empty plan", command: "plan", declaration: `{labels: []}`, want: "No managed repository settings.\n"},
 		{name: "empty apply", command: "apply", declaration: `{labels: []}`, want: "No managed repository settings.\n"},
-		{name: "create plan leaves siblings", command: "plan", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, want: "settings.labels: create \"new\" color=\"abcdef\" description=\"\"\n", requests: []string{"GET /repos/owner/current/labels "}},
-		{name: "collision", command: "apply", declaration: `{labels: [{name: KEEP, color: abcdef}]}`, body: current, errorText: "specify id: 7", requests: []string{"GET /repos/owner/current/labels "}},
-		{name: "missing ID", command: "apply", declaration: `{labels: [{id: 99, name: new, color: abcdef}]}`, body: current, errorText: "refusing create fallback", requests: []string{"GET /repos/owner/current/labels "}},
-		{name: "defaults clear description", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: abcdef}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
-		{name: "same ID rename", command: "apply", declaration: `{labels: [{id: 7, name: renamed, color: abcdef}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"renamed","color":"abcdef","description":""}`}},
-		{name: "invalid null before API", command: "apply", declaration: `{labels: null}`, errorText: "array of label mappings"},
-		{name: "missing color before API", command: "apply", declaration: `{labels: [{name: new}]}`, errorText: "requires color"},
-		{name: "duplicate before API", command: "plan", declaration: `{labels: [{name: bug, color: abcdef}, {name: BUG, color: abcdef}]}`, errorText: "duplicate label"},
-		{name: "malformed ID before API", command: "apply", declaration: `{labels: [{id: null, name: new, color: abcdef}]}`, errorText: "positive integer"},
-		{name: "create denied", command: "apply", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, failMethod: "POST", status: 403, errorText: "403", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new","color":"abcdef","description":""}`}},
-		{name: "update denied", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: abcdef}]}`, body: current, failMethod: "PATCH", status: 422, errorText: "422", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
-		{name: "create redirect", command: "apply", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, failMethod: "POST", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new","color":"abcdef","description":""}`}},
-		{name: "read redirect", command: "apply", declaration: `{labels: [{name: new, color: abcdef}]}`, body: current, failMethod: "GET", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels "}},
-		{name: "missing observed ID", command: "plan", declaration: `{labels: [{name: new, color: abcdef}]}`, body: `[{"name":"x","color":"abcdef","description":""}]`, errorText: "positive id", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "create plan leaves siblings", command: "plan", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: current, want: "settings.labels: create \"new\" color=\"abcdef\" description=\"\"\n", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "collision", command: "apply", declaration: `{labels: [{name: KEEP, color: "#abcdef"}]}`, body: current, errorText: "specify id: 7", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "missing ID", command: "apply", declaration: `{labels: [{id: 99, name: new, color: "#abcdef"}]}`, body: current, errorText: "refusing create fallback", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "defaults clear description", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: "#abcdef"}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
+		{name: "same ID rename", command: "apply", declaration: `{labels: [{id: 7, name: renamed, color: "#abcdef"}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"renamed","color":"abcdef","description":""}`}},
+		{name: "invalid null before API", command: "apply", declaration: `{labels: null}`, errorText: "repository.labels must not be null"},
+		{name: "missing color before API", command: "apply", declaration: `{labels: [{name: new}]}`, errorText: "labels color requires # followed by six hexadecimal characters"},
+		{name: "duplicate before API", command: "plan", declaration: `{labels: [{name: bug, color: "#abcdef"}, {name: BUG, color: "#abcdef"}]}`, errorText: "duplicate label"},
+		{name: "malformed ID before API", command: "apply", declaration: `{labels: [{id: null, name: new, color: "#abcdef"}]}`, errorText: "repository.labels[0].id must not be null"},
+		{name: "create denied", command: "apply", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: current, failMethod: "POST", status: 403, errorText: "403", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new","color":"abcdef","description":""}`}},
+		{name: "update denied", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: "#abcdef"}]}`, body: current, failMethod: "PATCH", status: 422, errorText: "422", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
+		{name: "create redirect", command: "apply", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: current, failMethod: "POST", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels ", `POST /repos/owner/current/labels {"name":"new","color":"abcdef","description":""}`}},
+		{name: "read redirect", command: "apply", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: current, failMethod: "GET", status: 302, errorText: "302", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "missing observed ID", command: "plan", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: `[{"name":"x","color":"abcdef","description":""}]`, errorText: "positive id", requests: []string{"GET /repos/owner/current/labels "}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var mu sync.Mutex
@@ -86,7 +86,7 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "schemaVersion: 1\nsettings: " + tc.declaration + "\n"
+			input := "version: daiksud/gh-settings@v0\nrepository: " + tc.declaration + "\n"
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
@@ -194,18 +194,19 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 					t.Fatal(err)
 				}
 				var document struct {
-					Settings struct {
+					Version    string `yaml:"version"`
+					Repository struct {
 						Labels []map[string]any `yaml:"labels"`
-					} `yaml:"settings"`
+					} `yaml:"repository"`
 				}
 				if err := yaml.Unmarshal(data, &document); err != nil {
 					t.Fatal(err)
 				}
-				if len(document.Settings.Labels) != 100 {
-					t.Fatalf("labels=%d", len(document.Settings.Labels))
+				if document.Version != "daiksud/gh-settings@v0" || len(document.Repository.Labels) != 100 {
+					t.Fatalf("labels=%d", len(document.Repository.Labels))
 				}
-				for i, label := range document.Settings.Labels {
-					if !reflect.DeepEqual(label, map[string]any{"id": 100 - i, "name": fmt.Sprintf("label-%03d", i), "color": "abcdef", "description": ""}) {
+				for i, label := range document.Repository.Labels {
+					if !reflect.DeepEqual(label, map[string]any{"id": 100 - i, "name": fmt.Sprintf("label-%03d", i), "color": "#abcdef", "description": ""}) {
 						t.Fatalf("label=%v", label)
 					}
 				}
@@ -239,7 +240,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {labels: [{name: '<new>', color: abcdef, description: ''}]}\n"); err != nil {
+	if err := writeSettingsFile(fixture.work, "version: daiksud/gh-settings@v0\nrepository: {labels: [{name: '<new>', color: '#abcdef', description: ''}]}\n"); err != nil {
 		t.Fatal(err)
 	}
 	report := filepath.Join(fixture.root, "plan.json")

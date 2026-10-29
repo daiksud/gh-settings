@@ -20,18 +20,36 @@ func TestExportThenValidate(t *testing.T) {
 		{
 			name:     "ordinary-values",
 			response: `{"default_branch":"release/v2","description":"Example repository","homepage":"https://example.com","has_issues":true,"has_projects":false,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":true,"is_template":true,"id":123}`,
-			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
-				"description": "Example repository", "homepage": "https://example.com",
-				"has_issues": true, "has_projects": false, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": true, "is_template": true, "default_branch": "release/v2", "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "has_pull_requests": false, "pull_request_creation_policy": "ALL", "issue_creation_policy": "ALL", "has_sponsorships": false,
-			}}},
+			want: map[string]any{
+				"version": "daiksud/gh-settings@v0",
+				"repository": map[string]any{
+					"about":  map[string]any{"description": "Example repository", "website": "https://example.com", "topics": []any{}},
+					"labels": []any{},
+					"settings": map[string]any{"general": map[string]any{
+						"template_repository": true, "default_branch": "release/v2",
+						"features":      map[string]any{"wikis": true, "issues": true, "sponsorships": false, "discussions": false, "projects": false, "pull_requests": false, "issue_permissions": map[string]any{"creation_allowed_by": "all_users"}},
+						"pull_requests": map[string]any{"allow_merge_commits": false, "allow_squash_merging": false, "allow_rebase_merging": false, "always_suggest_updating_pull_request_branches": false, "allow_auto_merge": false, "automatically_delete_head_branches": false},
+						"commits":       map[string]any{"require_contributors_to_sign_off_on_web_based_commits": true},
+					}},
+				},
+			},
 		},
 		{
 			name:     "zero-and-null-strings",
 			response: `{"default_branch":"main","description":null,"homepage":"","has_issues":false,"has_projects":false,"has_wiki":false,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`,
-			want: map[string]any{"schemaVersion": 1, "settings": map[string]any{"labels": []any{}, "topics": map[string]any{"names": []any{}}, "repository": map[string]any{
-				"description": "", "homepage": "",
-				"has_issues": false, "has_projects": false, "has_wiki": false, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false, "default_branch": "main", "allow_merge_commit": false, "allow_squash_merge": false, "allow_rebase_merge": false, "delete_branch_on_merge": false, "allow_auto_merge": false, "allow_update_branch": false, "squash_merge_commit_title": "COMMIT_OR_PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES", "has_pull_requests": false, "pull_request_creation_policy": "ALL", "issue_creation_policy": "ALL", "has_sponsorships": false,
-			}}},
+			want: map[string]any{
+				"version": "daiksud/gh-settings@v0",
+				"repository": map[string]any{
+					"about":  map[string]any{"description": "", "website": "", "topics": []any{}},
+					"labels": []any{},
+					"settings": map[string]any{"general": map[string]any{
+						"template_repository": false, "default_branch": "main",
+						"features":      map[string]any{"wikis": false, "issues": false, "sponsorships": false, "discussions": false, "projects": false, "pull_requests": false},
+						"pull_requests": map[string]any{"allow_merge_commits": false, "allow_squash_merging": false, "allow_rebase_merging": false, "always_suggest_updating_pull_request_branches": false, "allow_auto_merge": false, "automatically_delete_head_branches": false},
+						"commits":       map[string]any{"require_contributors_to_sign_off_on_web_based_commits": false},
+					}},
+				},
+			},
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

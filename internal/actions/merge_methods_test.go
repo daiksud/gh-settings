@@ -34,14 +34,25 @@ func TestMergeMethodTypedReportAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, change := range report.Changes {
+	wantPaths := []string{
+		"repository.settings.general.pull_requests.allow_merge_commits",
+		"repository.settings.general.pull_requests.allow_squash_merging",
+		"repository.settings.general.pull_requests.allow_rebase_merging",
+		"repository.settings.general.pull_requests.automatically_delete_head_branches",
+		"repository.settings.general.pull_requests.allow_auto_merge",
+		"repository.settings.general.pull_requests.always_suggest_updating_pull_request_branches",
+	}
+	if len(report.Changes) != len(wantPaths) {
+		t.Fatalf("lost report fields: %s", data)
+	}
+	for i, change := range report.Changes {
 		if _, ok := change.Before.(bool); !ok {
 			t.Fatalf("lost before bool: %s", data)
 		}
 		if _, ok := change.After.(bool); !ok {
 			t.Fatalf("lost after bool: %s", data)
 		}
-		if !strings.Contains(html.UnescapeString(rendered), "settings."+change.Field+": ") {
+		if !strings.Contains(html.UnescapeString(rendered), wantPaths[i]+": ") {
 			t.Fatalf("missing field: %s", rendered)
 		}
 	}
