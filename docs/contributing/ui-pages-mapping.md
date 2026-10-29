@@ -13,7 +13,7 @@ sources:
 
 ## Preparation boundary
 
-This reference covers the internal preparation for [Issue #486](https://github.com/daiksud/gh-settings/issues/486), limited to the currently supported existing-site subset. Public YAML, export, application and reports remain unchanged. [#479](https://github.com/daiksud/gh-settings/issues/479) activates the complete schema; [#480](https://github.com/daiksud/gh-settings/issues/480) owns unknown-choice normalization/warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns reporting integration. No compatibility aliases, migration, site lifecycle or DNS management is introduced.
+This existing-site Pages mapping was prepared for [#486](https://github.com/daiksud/gh-settings/issues/486) and is now used by current-source UI YAML activation in [#479](https://github.com/daiksud/gh-settings/issues/479). The [public contract](../settings.md#existing-pages-configuration) retains existing-site-only scope. [#480](https://github.com/daiksud/gh-settings/issues/480) normalization/warnings and [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remain unfinished. No migration, site lifecycle or DNS management is added.
 
 The [UI model](../../internal/settings/uimodel/pages.go) contains display terminology and typed choices without serialization tags. The [adapter](../../internal/github/ui_pages.go) translates desired fields into existing validated Pages inputs and projects acquired configured state directly. `PreparedPages.Public` retains unowned visibility metadata outside desired UI values.
 
@@ -21,9 +21,9 @@ The [UI model](../../internal/settings/uimodel/pages.go) contains display termin
 
 English Pages controls were inspected on 2026-10-28. The Source menu was inspected on an existing gh-qw site, and Custom domain / Enforce HTTPS on gh-qw and the deployed docfw-cmp site. gh-settings currently has no configured Pages site; its branch form was used only to inspect the conditional folder menu. A local branch selection revealed the menu without saving; reloading confirmed None and disabled. None/disabled is inspection context, not a newly supported declaration or absent-site observation.[^pages-ui][^existing-pages-ui][^deployed-pages-ui]
 
-The prepared prefix `P` means `repository.settings.pages`.
+The UI prefix `P` means `repository.settings.pages`.
 
-| UI label / location | Prepared path below `P` | Internal API conversion |
+| UI label / location | UI path below `P` | Internal API conversion |
 | --- | --- | --- |
 | Build and deployment / Source | `build_and_deployment.source` | `github_actions` → `build_type=workflow`; `deploy_from_a_branch` → `build_type=legacy` |
 | Build and deployment / Branch | `build_and_deployment.branch` | Literal branch to `source.branch` |
@@ -53,7 +53,7 @@ HTTP 404 and permission failures mean unavailable, never an absent site or false
 
 Independent [choice/dependency fixtures](../../internal/github/ui_pages_test.go), [nullable-domain/HTTPS fixtures](../../internal/github/ui_pages_domain_test.go), [acquired projection fixtures](../../internal/github/ui_pages_observation_test.go) and [literal raw/exact PUT fixtures](../../internal/github/ui_pages_composition_test.go) cover every supported control and choice. They verify omission, explicit false/null, source atomicity, ownership, inactive source, raw read conversions, exact writes, unowned visibility preservation and unavailable/malformed data. Existing [Pages transport tests](../../internal/github/pages_test.go) retain archive, identity, companion mismatch and uncertain-effect matrices.
 
-Issue #479 must connect all UI paths together without widening the existing-site scope. #480 must retain provenance when converting unknown choices and leave required-source/acquisition failures explicit. #481 must preserve inactive-source, nullable-domain and visibility diagnostics at reporting boundaries. User-facing docs intentionally describe the current public contract until activation.
+Current activation connects the UI paths without widening existing-site scope. #480 must retain provenance when converting unknown choices and leave required-source/acquisition failures explicit. #481 must preserve inactive-source, nullable-domain and visibility diagnostics at reporting boundaries. The public reference now documents UI YAML; native report structures remain until #481.
 
 [^pages-ui]: GitHub, gh-settings Pages settings, unsaved conditional-form inspection, 2026-10-28.
 [^existing-pages-ui]: GitHub, gh-qw Pages settings and Source menu, read-only inspection, 2026-10-28.

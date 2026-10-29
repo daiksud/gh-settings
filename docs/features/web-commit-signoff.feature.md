@@ -1,8 +1,12 @@
-# Web commit sign-off requirement
+---
+type: Feature
+title: Web commit sign-off requirement
+description: Manage the General Commits sign-off checkbox.
+---
 
 ## Status
 
-supported and implemented in current source. The field is an optional boolean under `schemaVersion: 1`, not a new resource group. The [settings reference](../settings.md#web-commit-sign-off) owns adoption and usage guidance.
+supported and implemented in current source. The field is `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` in the current UI document. The [settings reference](../settings.md#web-commit-sign-off) owns adoption and usage guidance.
 
 ## Behavior
 
@@ -11,7 +15,7 @@ supported and implemented in current source. The field is an optional boolean un
 - Export includes the observed boolean only after all required reads succeed. A failed read preserves the destination. Exported false remains an explicit declaration.
 - Plan is read-only, compares declared values only, and places this field after `has_discussions` and before merge-related fields. This field alone needs no GraphQL request.
 - Apply sends only declared fields through one repository PATCH, with no preliminary GET. An explicit false is sent as native JSON false; omission does not add the key or alter other fields. Existing API errors stop later resources and do not imply rollback.
-- CLI output and Actions report/Summary use `settings.repository.web_commit_signoff_required` with native boolean values. The source report maximum is twenty-one: nineteen repository fields, topics and labels.
+- CLI output and rendered Summary use `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` with native booleans. The serialized private same-version report retains raw internal identifiers and bounds pending #481.
 - The setting applies to web-based commit sign-off. It does not require cryptographic signatures, install a DCO check, rewrite commits or change protections.
 
 ## API and evidence boundaries
@@ -22,7 +26,7 @@ Local HTTP fixtures and dummy credentials verify the requested transitions and f
 
 ## Test mapping
 
-- [Codec](../../internal/workspace/web_commit_signoff_test.go): true/false, omission, invalid types and encode/decode round trip.
+- [Codec](../../internal/workspace/ui_general_test.go): true/false, omission, invalid types and encode/decode round trip.
 - [Model](../../internal/settings/web_commit_signoff_test.go) and [field definitions](../../internal/settings/repository_fields_test.go): managed values, comparisons, field identity and types.
 - [REST](../../internal/github/web_commit_signoff_test.go): complete boolean observations and exact declared-only PATCH for omission, false, true, mixed declarations and forbidden writes.
 - [Plan](../../internal/app/web_commit_signoff_test.go) and [export](../../internal/app/export_test.go): requested REST field and complete state-to-declaration export.

@@ -1,4 +1,8 @@
-# Repository immutable release policy
+---
+type: Feature
+title: Repository immutable release policy
+description: Declare the General Releases UI toggle while preserving explicit 404 and owner-enforcement semantics.
+---
 
 The [configuration reference](../settings.md#immutable-release-policy) owns the
 public contract. This specification covers #348's repository policy only; the
@@ -6,7 +10,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 
 ## Declaration and observation
 
-- `settings.security.immutable_releases` is an optional boolean. Omission is
+- `repository.settings.general.releases.enable_release_immutability` is an optional boolean. Omission is
   unmanaged, false is explicit, and null/type/key/duplicate errors fail locally.
 - Opted-in `export --security immutable-releases` acquires only this additional
   family. Ordinary export retains its existing scope and permissions; failed
@@ -36,7 +40,8 @@ release publisher and individual releases/tags/assets are outside ownership.
   failed readback or refused write fails with uncertain-write diagnostics and
   retains any confirmed earlier operations. No retries or rollback occur.
 - CLI and credential-free Action Summary render
-  `settings.security.immutable_releases: false → true`. The existing closed
+  `settings.security.immutable_releases: false → true` through the existing
+  internal component renderer pending #481; that path is not a YAML alias. The closed
   security report registry accepts only distinct native boolean changes, not
   owner metadata, unavailable values, guessed defaults or arbitrary fields.
 
@@ -44,7 +49,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 
 - [Model](../../internal/settings/immutable_releases_test.go): acquired versus
   unknown metadata, omission, comparisons and owner enforcement.
-- [YAML](../../internal/workspace/immutable_releases_test.go) and
+- [Security/General Releases UI codec](../../internal/workspace/ui_security_test.go) and
   [CLI options](../../internal/cli/immutable_releases_test.go): false round trip,
   invalid types/duplicates, independent selections and duplicate-option failure.
 - [API](../../internal/github/immutable_releases_test.go): complete/incomplete

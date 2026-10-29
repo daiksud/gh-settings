@@ -1,4 +1,8 @@
-# Feature: Declarative Pages configuration
+---
+type: Feature
+title: Declarative Pages configuration
+description: Manage existing-site UI controls with explicit nullable domain and complete identity verification.
+---
 
 Status: accepted design in [ADR 0028](../adr/0028-declarative-pages-settings.md), Issue #349. The existing-site subset of #350 is supported. Creation/deletion and visibility mutation remain deferred and #350 remains open for those criteria. No live deployment or setting was used as release evidence.
 
@@ -25,53 +29,54 @@ Private publication requires an eligible Enterprise Cloud organization project s
 
 ## Declaration and ownership
 
+All public paths below are relative to `repository.settings.pages`; the exact current version marker is required.
+
 ```yaml
-schemaVersion: 1
-settings:
-  pages:
-    build_type: legacy
-    source:
-      branch: main
-      path: /docs
-    cname: null
-    https_enforced: true
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    pages:
+      build_and_deployment:
+        source: deploy_from_a_branch
+        branch: main
+        select_folder: docs
+      custom_domain: null
+      enforce_https: true
 ```
 
 | Input | Meaning |
 | --- | --- |
-| Omitted `pages`, or `pages: {}` | Unmanaged; no Pages read or write |
-| `pages: null`, scalar or sequence | Invalid locally; not deletion |
-| Omitted member | Preserve that configured value; never send a default for it |
-| `build_type` | Exactly `legacy` or `workflow`; null/empty/other enum invalid |
-| `source` | If present, a mapping containing exactly nonempty `branch` and `path`; path `/` or `/docs`; no aliases to default branch or branch creation |
-| Omitted `source` | Preserve an existing legacy source; inactive workflow source is not managed |
-| Empty/partial/null `source` | Invalid locally; no guessed tuple companion or source removal |
-| `cname: null` (including an explicit empty YAML scalar) | Manage removal of the custom domain; distinct from omission |
-| String `cname` | ASCII DNS hostname with at least two nonempty labels, compared case-insensitively and exported lowercase; no URL, port, slash, wildcard, whitespace or automatic IDNA conversion |
-| `cname: ""`, quoted `"null"`, wrong type | Invalid domain; empty string is not a second clearing syntax |
-| `https_enforced: false` | Explicit request to disable HTTPS enforcement; never equivalent to omission |
-| `public`, `enabled`, `state`, unknown keys | Unsupported; no visibility mutation or implicit lifecycle operation |
+| Omitted Pages or `{}` | Unmanaged; no Pages request |
+| `build_and_deployment.source` | `deploy_from_a_branch` or `github_actions`, internally legacy/workflow |
+| `build_and_deployment.branch` and `select_folder` | Complete tuple when declared; literal nonempty branch and `root`/`docs` folder |
+| Omitted branch/folder | Preserve applicable existing branch source; workflow source remains inactive |
+| Empty/partial/null tuple | Invalid; no guessed companion or source deletion |
+| `custom_domain: null`, including bare empty scalar | Explicit domain removal, distinct from omission |
+| String `custom_domain` | ASCII DNS hostname with at least two labels, lowercase comparison/export; no URL/port/slash/wildcard/whitespace/IDNA conversion |
+| Empty string, quoted `null`, internal `{value: ...}` | Invalid domain/shape |
+| `enforce_https: false` | Explicit disable; not omission |
+| API aliases, visibility/lifecycle/unknown keys | Rejected; no site creation/deletion/visibility mutation |
 
-Accept case-insensitive ASCII domain labels with normal DNS label/hostname length limits; reject a trailing dot rather than silently changing intent. Domain ownership, DNS validity and certificate eligibility are server/operational checks, not guarantees of local syntax validation. An unknown response field is unowned metadata; it never becomes accepted YAML automatically. Strict duplicate/merge/alias checks and schemaVersion handling retain existing workspace rules.
+Accept normal ASCII DNS length limits and reject trailing dots. DNS ownership, certificate readiness and server eligibility are not guaranteed by local validation. Unknown response metadata never becomes accepted YAML. Existing strict duplicate/merge/alias/type validation applies.
 
 ### Publishing mode
 
-- For an observed legacy site, omitted mode/source preserves the publishing tuple. An explicit source is a complete replacement tuple.
-- For an observed workflow site, any declared source is incompatible unless an explicit transition to legacy also declares the full source. Source metadata returned for workflow mode is inactive, not evidence to select legacy.
-- An explicit transition to legacy requires both source members, even if a stale tuple is returned. An explicit workflow mode rejects a source declaration. Missing source for a known legacy-to-workflow transition is intentional deactivation of branch-source ownership, not an inferred empty branch.
+- For an observed branch-publishing site, omitted source choice and branch/folder controls leave its tuple unmanaged. Declared branch/folder controls form a complete replacement tuple.
+- For an observed workflow site, branch/folder intent requires an explicit `source: deploy_from_a_branch` transition with both controls. Inactive API source metadata never selects a mode.
+- A transition to branch publishing needs the complete tuple even if stale source metadata exists. `source: github_actions` rejects branch/folder declarations and intentionally deactivates branch-source ownership without inventing an empty branch.
 - Do not create branches, commit site content, edit workflows or call a build/deployment endpoint. GitHub itself can publish after configuration changes. Domain setup in branch publishing can involve a GitHub-created CNAME commit; do not promise a settings-only remote effect or attempt to undo that commit.
 
 ## Observation, export and comparison
 
 Use one API-neutral acquired observation for a positively observed existing site, with separate configured values and read-only operational metadata. Its zero value is unknown. Require valid `build_type`, `cname` (a present string or explicit null), `https_enforced` and `public`; require a complete source in legacy mode. Missing mode is not inferred from a source or build status. Missing/null booleans and unsupported enums fail the read. Workflow mode may omit or return null for its inactive source; do not export or compare that source as an active branch. Validate returned strings/tuples before export.
 
-`export --pages` composes with other explicit selections and rejects duplicate options. Include build mode, legacy source when active, explicit nullable cname, and the HTTPS boolean. Exclude visibility, endpoint/site URLs, build state, certificate state, timestamps and DNS verification metadata. Fail an opted-in 404/incomplete read without replacing the settings file; ordinary export gains no Pages request. A supported complete existing export must produce zero configured differences when immediately planned against unchanged fixture state.
+`export --pages` composes with other explicit selections and rejects duplicate options. Project the UI source choice, active branch/select-folder controls, scalar nullable `custom_domain` and `enforce_https`. Exclude visibility, endpoint/site URLs, build state, certificate state, timestamps and DNS verification metadata. Fail an opted-in 404/incomplete read without replacing the settings file; ordinary export gains no Pages request. A supported complete existing export must produce zero configured differences when immediately planned against unchanged fixture state.
 
-Use up to five managed leaf fields: `pages.build_type`, `pages.source.branch`, `pages.source.path`, `pages.cname`, `pages.https_enforced`. A declared complete source manages both leaves. Native comparisons retain booleans, strings and the cname-only null; stable display order follows that list. Render null distinctly from empty string/omission. Count configured differences only. Changing a build/certificate status alone must not produce a desired setting or a perpetual plan difference.
+The existing private protocol uses up to five internal managed leaves: `pages.build_type`, `pages.source.branch`, `pages.source.path`, `pages.cname`, `pages.https_enforced`. A declared complete source manages both leaves. Native comparisons retain booleans, strings and the cname-only null; stable display order follows that list. Render null distinctly from empty string/omission. Count configured differences only. Changing a build/certificate status alone must not produce a desired setting or a perpetual plan difference.
 
 For a workflow-to-legacy transition, the source's before side is explicitly inactive, not an unknown branch or an empty string. Represent that structural state separately from the configured value in the typed report; render it as inactive and require the declared after tuple. Only a verified workflow observation permits an inactive source. Do not reuse cname's nullable value to represent an inactive source or missing data. A legacy-to-workflow transition reports the mode change and its source-deactivation consequence without inventing source declarations or extra managed leaves.
 
-CLI and Action reports need closed Pages-specific field/type validation and their managed-count bounds. Do not broaden existing repository string/boolean constructors to accept null. Credential-free Summary must reconstruct the same comparisons and escape data; private mode must not expose domain, branch or raw server diagnostics to stdout/stderr/Summary or outputs.
+Current CLI/Summary and serialized private reports retain these internal component paths/values pending #481; they are not YAML aliases. Reports keep closed Pages-specific field/type validation and existing bounds. Do not broaden existing repository string/boolean constructors to accept null. Credential-free Summary must reconstruct the same comparisons and escape data; private mode must not expose domain, branch or raw server diagnostics to stdout/stderr/Summary or outputs.
 
 ## Direct apply and failures
 
@@ -95,7 +100,7 @@ The existing-site implementation verifies these criteria with local fixtures. Li
 
 | Layer | Required cases |
 | --- | --- |
-| Model/codec | Omission/group-empty; explicit false; null only for cname; source pair validation; invalid domains/mode/source combinations; unacquired observations; defensive copies |
+| Model/codec | Omission/group-empty; explicit false; null only for the public custom-domain scalar; source pair validation; invalid domains/mode/source combinations; unacquired observations; defensive copies |
 | HTTP read/export | Legacy/workflow complete states; present null versus missing cname; incomplete/unknown mode; 401/403/404/redirect; failed export preserves file; opt-in composition; ordinary export unchanged |
 | Reconciliation/update | Match no write; full source tuple; legacy/workflow transitions; declared-only PUT; real JSON null; fresh state changes; omitted companions/public preserved; 204 plus verified readback; 400/409/422 and uncertain/partial verification failures |
 | Readiness | Changing pending build/DNS/certificate metadata produces no config diff; server refusal stops without fallback, polling, hidden build, rollback or HTTPS disabling |
@@ -107,7 +112,7 @@ Use the existing CI and representative actual-binary acceptance harness; record 
 ### Executed existing-site test mappings
 
 - Model ownership, defensive copies, nullable-domain comparison, mode/source transitions and inactive-source validation: `TestPagesOwnershipTransitionsAndCopies` in [model tests](../../internal/settings/pages_test.go).
-- YAML omission/empty mapping, null-only domain clearing, false preservation, complete source and strict unknown/duplicate/type checks: `TestPagesYAMLNullableDomainAndStrictSource` in [workspace tests](../../internal/workspace/pages_test.go).
+- YAML omission/empty mapping, null-only domain clearing, false preservation, complete source and strict unknown/duplicate/type checks: `TestUIConfigPagesControls`, `TestUIConfigPagesDomainPresence` and `TestUIConfigPagesRejectsInvalidSyntax` in [UI workspace tests](../../internal/workspace/ui_pages_test.go).
 - Complete reads, denied/ambiguous404 responses, declared-only PUT, repository identity, preserved companions/public visibility, no retries, matching state and uncertain writes: [API tests](../../internal/github/pages_test.go).
 - Independent plan, honest earlier-write progress, no unmanaged reads, explicit unarchive/Pages/final-archive order: [application tests](../../internal/app/pages_test.go).
 - Closed native null/boolean/string report handling, missing-versus-null JSON fields and inactive-source structure: [Summary tests](../../internal/actions/pages_test.go); explicit composable export: [CLI tests](../../internal/cli/pages_test.go).

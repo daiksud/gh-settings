@@ -13,7 +13,7 @@ sources:
 
 ## Preparation boundary
 
-This reference records the internal preparation for [Issue #485](https://github.com/daiksud/gh-settings/issues/485). The public YAML codec, export, application sequencing and reports retain their current behavior. [#479](https://github.com/daiksud/gh-settings/issues/479) activates the complete new contract; [#480](https://github.com/daiksud/gh-settings/issues/480) owns normalization and warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns reporting integration. No compatibility aliases, migration or new product entitlement is added.
+This Security mapping was prepared for [#485](https://github.com/daiksud/gh-settings/issues/485) and is composed at its real UI locations by current-source [#479](https://github.com/daiksud/gh-settings/issues/479). See the [public reference](../settings.md#secret-scanning-and-push-protection). [#480](https://github.com/daiksud/gh-settings/issues/480) normalization/warnings and [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remain separate. No compatibility alias, migration or entitlement is added.
 
 The [UI model](../../internal/settings/uimodel/security.go) contains optional booleans with display terminology. The [GitHub adapter](../../internal/github/ui_security.go) translates those controls to existing validated security declarations and consumes acquired observations without declaration normalization. A complete inconsistent source remains visible as acquired state and fails conversion to a desired declaration; it is not silently repaired.
 
@@ -21,14 +21,14 @@ The [UI model](../../internal/settings/uimodel/security.go) contains optional bo
 
 English UI headings and labels were inspected read-only on 2026-10-28. Current navigation is Security and quality / Advanced Security. The repository feature formerly represented by API `secret_scanning` appears as **Secret Protection**, with Enable/Disable actions. Push protection is the adjacent toggle beneath that heading. Private vulnerability reporting is a separate control on the same page. Release immutability is located under General / Releases. No control was changed.[^advanced-security-ui][^general-ui]
 
-| UI location / control | Prepared public path for #479 | Internal API read / write |
+| UI location / control | Current public UI path | Internal API read / write |
 | --- | --- | --- |
 | Security and quality / Advanced Security / Secret Protection | `repository.settings.security_and_quality.advanced_security.secret_protection` | Repository GET `security_and_analysis.secret_scanning.status`; narrow PATCH same member, `enabled` / `disabled` |
 | Security and quality / Advanced Security / Push protection | `repository.settings.security_and_quality.advanced_security.push_protection` | Repository GET `security_and_analysis.secret_scanning_push_protection.status`; narrow PATCH same member |
 | Security and quality / Advanced Security / Private vulnerability reporting | `repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting` | Public applicability GET, then endpoint boolean `enabled`; bodyless PUT / DELETE |
 | General / Releases / Enable release immutability | `repository.settings.general.releases.enable_release_immutability` | Immutable-releases endpoint `enabled`; bodyless PUT / DELETE |
 
-The internal `SecuritySettings.GeneralReleases` member is an adapter-family preparation container, not a literal public path. #479 must compose it into General / Releases beside the separately prepared General fields from #482. Security owns this control's API conversion; it does not move the control into an invented Security page.
+The internal `SecuritySettings.GeneralReleases` member remains a family adapter container, not a literal public path. Current composition places its control in General / Releases beside General fields from #482. Security owns this control's API conversion; it does not move the control into an invented Security page.
 
 Secret Protection and Push protection are sibling boolean fields under Advanced Security: the first control itself is boolean, so no invented inner `enabled` UI label is needed. The navigation heading does not adopt Advanced Security product enrollment. Dependency Scanning, Dependabot, Code Security, AI scanning, user-level protection, partner notifications, bypasses, alert patterns and other candidates remain unsupported.
 
@@ -50,8 +50,8 @@ Private vulnerability reporting remains public-repository-only; unavailable or i
 
 Independent [boolean/dependency tests](../../internal/github/ui_security_test.go), [reporting fixtures](../../internal/github/ui_security_reporting_test.go), [immutable fixtures](../../internal/github/ui_security_immutable_test.go) and [raw/PATCH composition fixtures](../../internal/github/ui_security_composition_test.go) specify expected values separately from production mappings. They cover all supported controls both ways, omission, copied ownership, raw inconsistency, missing acquisition, fresh visibility, exact payload/bodyless toggles, 404 owner-unknown and enforced-owner rejection. Existing [scanning](../../internal/github/security_test.go), [reporting](../../internal/github/private_reporting_test.go) and [immutability](../../internal/github/immutable_releases_test.go) endpoint matrices continue covering malformed/null data, permission failures and uncertain writes.
 
-Issue #479 must compose actual UI paths into the complete schema and preserve narrow ownership, applicability and dependency order. #480 must distinguish raw string statuses from UI boolean values before applying normalization and warnings; acquired boolean and owner-known metadata must survive into #481. Public user documentation intentionally continues to describe only the active contract.
+Current UI composition preserves actual paths, narrow ownership, applicability and dependency order. #480 must distinguish raw string statuses from UI boolean values before applying normalization and warnings; acquired boolean and owner-known metadata must survive into #481. Public user documentation now describes this UI YAML while keeping the published-package and unfinished-reporting boundaries explicit.
 
 [^advanced-security-ui]: GitHub, Advanced Security settings, read-only UI inspection, 2026-10-28.
 [^general-ui]: GitHub, General / Releases settings, read-only UI inspection, 2026-10-28.
-[^current-contract]: Current repository documentation, Security settings and immutable release policy, consulted 2026-10-28.
+[^current-contract]: Current repository documentation, Security settings and immutable release policy, consulted 2026-10-28 before public YAML activation; the current link now reflects the activated contract.

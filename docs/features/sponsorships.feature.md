@@ -6,21 +6,21 @@ description: Manage the Sponsorships boolean without managing funding destinatio
 
 ## Feature: Manage repository Sponsor button visibility
 
-Current source supports `settings.repository.has_sponsorships` under `schemaVersion: 1`. It maps to GraphQL `hasSponsorshipsEnabled`.
+Current source supports `repository.settings.general.features.sponsorships`. It maps to GraphQL `hasSponsorshipsEnabled`.
 
 ### Rule: Preserve omission and native booleans
 
 #### Scenario: Disable the button setting explicitly
 
 - Given the complete observed Sponsorships value is true
-- And the declaration contains `has_sponsorships: false`
+- And the declaration contains `repository.settings.general.features.sponsorships: false`
 - When plan runs
 - Then it reports one native true-to-false change
 - And CLI and credential-free Action Summary retain the boolean values
 
 #### Scenario: Omit or invalidate the setting
 
-- Given `has_sponsorships` is omitted
+- Given the Sponsorships checkbox is omitted
 - When another declared field is planned or applied
 - Then no Sponsorships read or update is added to that operation
 - And a locally declared null, string, number, sequence or mapping fails before remote work
@@ -31,7 +31,7 @@ Current source supports `settings.repository.has_sponsorships` under `schemaVers
 
 - Given a successful authenticated query returns false
 - When full export completes
-- Then the source file contains explicit false among twenty-three ordinarily exported repository fields
+- Then the source file contains `repository.settings.general.features.sponsorships: false` among the visible exported UI controls
 - And validation followed by plan reports no differences for unchanged values
 - And an unread, null or malformed value is not substituted for false
 
@@ -82,7 +82,7 @@ Current source supports `settings.repository.has_sponsorships` under `schemaVers
 
 ### Verification
 
-[Model tests](../../internal/settings/sponsorships_test.go) own acquired-state, omission, native false and partial-export behavior. [Codec tests](../../internal/workspace/sponsorships_test.go) own strict scalar types and round trips. [Adapter tests](../../internal/github/sponsorships_test.go) inspect exact queries/variables, field selection, declared-only combined mutations, response identity/boolean checks, partial errors and read routing. Existing adapter tests retain authorization, rename, redirect and unrelated-field boundaries.
+[Model tests](../../internal/settings/sponsorships_test.go) own acquired-state, omission, native false and partial-export behavior. [Codec tests](../../internal/workspace/ui_general_test.go) own strict scalar types and round trips. [Adapter tests](../../internal/github/sponsorships_test.go) inspect exact queries/variables, field selection, declared-only combined mutations, response identity/boolean checks, partial errors and read routing. Existing adapter tests retain authorization, rename, redirect and unrelated-field boundaries.
 
 [Process acceptance](../../tests/acceptance/sponsorships_test.go) executes the supplied binary through export, validate, plan, Action report/Summary and direct apply with an isolated Unix-socket API. It verifies false export, native output, repeat updates, absent/unchanged funding files, incomplete reads/exports, wrong targets, ignored or partial mutations, redirects, earlier REST writes and prevention of later writes. [Report tests](../../internal/actions/sponsorships_test.go) reject non-boolean presentation values. Existing full-export fixtures and report-count boundaries include the new scalar.
 

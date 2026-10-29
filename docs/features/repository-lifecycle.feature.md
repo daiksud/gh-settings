@@ -12,11 +12,11 @@ The target stays the checkout's GitHub.com origin. There is no repository creati
 
 ## Archive declaration and observation
 
-`settings.repository.archived` is an optional strict boolean. Omission acquires no new lifecycle read and performs no lifecycle work; explicit null, strings, and numbers are rejected locally. False requests an active repository; true requests an archived repository. This is not a declaration of individual issue, release, or collaborator states.
+`repository.settings.general.danger_zone.archive_this_repository` is an optional strict boolean. Omission acquires no new lifecycle read and performs no lifecycle work; explicit null, strings, and numbers are rejected locally. False requests an active repository; true requests an archived repository. This is not a declaration of individual issue, release, or collaborator states.
 
 A declared archive plan/apply and `export --archive` require a complete fresh repository identity: positive numeric ID, canonical owner/name matching the selected target, and a present boolean `archived`. Missing/null/incorrect types, 401/403/404, redirects, wrong IDs, and unavailable canonical names fail. Absence is never interpreted as active, archived, or a missing repository to create.
 
-Plan adds one native boolean comparison and preserves current nonzero error behavior. When the transition changes state, both CLI and Action Summary explicitly state unarchive-before-other-settings or archive-after-other-settings ordering. An already archived target with `archived: true` plus other managed resources remains readable: plan completely observes those resources and reports an honest matching, changed, or failed result without attempting to make them writable. Apply still rejects that combination before any write because changing an archived repository requires explicit `archived: false`. A failed or partial observation never becomes a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export omits archive; opted-in export writes it only after all selected reads complete and preserves the previous file on failure.
+Plan adds one native boolean comparison and preserves current nonzero error behavior. When the transition changes state, both CLI and Action Summary explicitly state unarchive-before-other-settings or archive-after-other-settings ordering. An already archived target with `archive_this_repository: true` plus other managed resources remains readable: plan completely observes those resources and reports an honest matching, changed, or failed result without attempting to make them writable. Apply still rejects that combination before any write because changing an archived repository requires explicit `archive_this_repository: false`. A failed or partial observation never becomes a complete plan. The Action Summary uses the same boolean and escapes identifiers. Ordinary export omits archive; opted-in export writes it only after all selected reads complete and preserves the previous file on failure.
 
 ## Transition and operation order
 
@@ -52,14 +52,15 @@ Permission loss or an inaccessible repository after a transition is an unknown r
 ## Examples of the intended interface
 
 ```yaml
-schemaVersion: 1
-settings:
-  repository:
-    archived: false
-    description: Active maintenance has resumed
+version: daiksud/gh-settings@v0
+repository:
+  about: {description: Active maintenance has resumed}
+  settings:
+    general:
+      danger_zone: {archive_this_repository: false}
 ```
 
-A plan for an archived target shows `repository.archived: true -> false` and identifies that unarchive precedes the description update. Applying it performs the isolated unarchive first. With `archived: true` on an active target, the description update precedes archival. With both fields on an already archived target, plan reads and reports whether the description matches or differs, but the unchanged boolean does not imply that the description is writable: apply rejects and requires explicit unarchive intent.
+A plan for an archived target shows `repository.settings.general.danger_zone.archive_this_repository: true → false` and identifies that unarchive precedes the description update. Applying it performs the isolated unarchive first. With `archive_this_repository: true` on an active target, the description update precedes archival. With both fields on an already archived target, plan reads and reports whether the description matches or differs, but the unchanged boolean does not imply that the description is writable: apply rejects and requires explicit unarchive intent.
 
 A source CLI/Action failure identifies `repository.archive` progress without inventing success for later operations. Status-only reporting must retain its existing bounded outcomes and confidentiality: do not expose hidden values merely to explain a lifecycle failure.
 

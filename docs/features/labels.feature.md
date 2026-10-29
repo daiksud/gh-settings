@@ -6,7 +6,7 @@ description: Create ID-less labels and reconcile whole supported ID-selected obj
 
 ## Feature: Manage repository labels
 
-Current source adopts ID-based ownership; this is unreleased. The [settings reference](../settings.md#labels) owns the schema and migration instructions.
+Current source uses `repository.labels` with ID-selected ownership. The [settings reference](../settings.md#labels) owns the current UI schema and published-package boundary; there is no legacy migration.
 
 ### Rule: Select objects, never delete unlisted labels
 
@@ -14,7 +14,7 @@ Current source adopts ID-based ownership; this is unreleased. The [settings refe
 - A positive ID selects only an existing label in the target repository. Missing/wrong IDs fail before label mutation.
 - No ID means create-only. A colliding name is an error showing the existing ID, not auto-adoption.
 - Duplicate IDs and names under Unicode simple case folding fail. Case-only spelling is retained; a different noncolliding name with the same ID renames without deletion.
-- Name and color are required; description omission is the fixed empty-string default on both create and update. Null is invalid.
+- Name and quoted UI color (`#` plus six hex digits) are required; description omission is the fixed empty-string default on both create and update. Null is invalid.
 - Complete selected object values are managed. Unlisted objects, assignments, archive state and server metadata are not removed or replayed.
 
 ### Rule: Observe complete identity and report honest failures
@@ -49,7 +49,7 @@ Credentials and caller permissions remain the owner's responsibility. This sourc
 | Validated declaration ownership, independent retrieved values and operations | [Declaration collection tests](../../internal/settings/label_declarations_test.go) |
 | Completed observation ownership, invalid state, missing versus empty read | [Observation collection tests](../../internal/settings/label_observation_test.go) |
 | Closed operations, canonical attributes, unique sequence and independent visitor values | [Operation model tests](../../internal/settings/label_operations_test.go) |
-| Strict schema, aliases/merges, null rejection, stable serialization | [Workspace codec tests](../../internal/workspace/labels_test.go) |
+| Strict schema, aliases/merges, null rejection, stable serialization | [Workspace codec tests](../../internal/workspace/ui_labels_test.go) |
 | Pagination/completeness, exact payloads, escaped paths | [GitHub adapter tests](../../internal/github/labels_test.go), [individual request tests](../../internal/github/label_operations_test.go) |
 | Fresh read, conditional resources, sequencing and partial failures | [Application tests](../../internal/app/labels_test.go), [operation sequence tests](../../internal/app/label_sequence_test.go) |
 | Typed report, attribute presence, escaped Summary, malformed-report preservation | [Actions tests](../../internal/actions/labels_test.go) |

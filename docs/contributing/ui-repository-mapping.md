@@ -17,17 +17,17 @@ sources:
 
 ## Preparation boundary
 
-This is the internal mapping prepared for [Issue #482](https://github.com/daiksud/gh-settings/issues/482). It does not describe accepted YAML yet. The current codec, export, plan/apply and reports continue using their current contract. [Issue #479](https://github.com/daiksud/gh-settings/issues/479) activates the prepared mappings together; [#480](https://github.com/daiksud/gh-settings/issues/480) owns out-of-UI normalization and warnings, and [#481](https://github.com/daiksud/gh-settings/issues/481) owns reporting integration.
+The mapping originally prepared for [Issue #482](https://github.com/daiksud/gh-settings/issues/482) is now consumed by current-source UI YAML activation in [#479](https://github.com/daiksud/gh-settings/issues/479). The [public reference](../settings.md) defines accepted paths. [#480](https://github.com/daiksud/gh-settings/issues/480) still owns out-of-UI normalization/warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns complete UI reporting. There is no legacy codec, alias or migration.
 
-The [UI model](../../internal/settings/uimodel/) contains display terminology without transport enums or serialization tags. The `ui_*.go` files in [the GitHub adapter](../../internal/github/) translate it to and from the existing validated adapter inputs. These are temporary internal preparation boundaries, not another public configuration format or compatibility API.
+The [UI model](../../internal/settings/uimodel/) contains display terminology without transport enums or serialization tags. The `ui_*.go` files in [the GitHub adapter](../../internal/github/) translate it to and from the existing validated adapter inputs. These are internal family conversion boundaries, not an alternate public format or compatibility API.
 
 ## UI inventory and paths
 
 The English Web UI headings, control labels and menu choices below were inspected read-only on 2026-10-28. About and Labels were inspected on gh-settings. General was inspected on gh-settings; the already-enabled merge method on agents exposed its otherwise conditional menu. No values were saved. These observations verify wording and visible choices, not live API mutation behavior or permission coverage.[^repository-ui][^about-ui][^labels-ui][^merge-ui]
 
-Prepared paths use the exact UI wording converted to snake_case. In this table `A` means `repository.about` and `G` means `repository.settings.general`. Each listed control is supported internally. About and Labels are siblings of Settings.
+UI paths use the exact UI wording converted to snake_case. In this table `A` means `repository.about` and `G` means `repository.settings.general`. Each listed control is supported internally. About and Labels are siblings of Settings.
 
-| UI location / label | Prepared path | Internal API conversion |
+| UI location / label | UI path | Internal API conversion |
 | --- | --- | --- |
 | About / Description | `A.description` | Repository REST `description`; GET null becomes empty through the existing reader |
 | About / Website | `A.website` | Repository REST `homepage`; GET null becomes empty |
@@ -67,7 +67,7 @@ Desired conversion rejects an explicitly false Issues/Pull requests checkbox wit
 
 `GeneralObservation` returns `PreparedGeneral`, embedding the visible UI model plus `RawConditionalValues`. The latter owns six API string pointers: both creation policies and the title/message pair for both merge menus. All acquired choices are validated before conditional hiding. Explicitly false enabling controls hide their UI choices while retaining the exact owned raw values. An omitted enabling control remains independently unacquired, so partial projection is not treated as proof that a control is disabled. Missing values remain nil; unknown raw choices still fail pending #480. Metadata never supplies desired intent or invents an observed default.
 
-Issue #479 must consume the embedded General UI values and carry raw conditional metadata into #480/#481. Hiding a control cannot silently discard latent policy, replay it as newly selected intent, or report normalization as an observed change.
+Current export consumes the visible General UI projection; mapping helpers retain owned raw conditional metadata outside it for #480/#481. Hiding a control cannot silently discard latent policy, replay it as newly selected intent, or report normalization as an observed change.
 
 ### Menu choices and observation defaults
 
@@ -94,7 +94,7 @@ The [model constants](../../internal/settings/uimodel/general.go) provide explic
 | Issue permissions / Creation allowed by | `all_users` (`DefaultIssueCreationAllowedBy`) |
 | Pull request permissions / Creation allowed by | `all_users` (`DefaultPullRequestCreationAllowedBy`) |
 
-These fallbacks are planned normalization policy, not the currently selected values of the inspected repositories. They never populate an omitted desired field. At this preparation stage, observation conversion rejects incomplete pairs and out-of-UI pairs/tokens; #480 must add warning/provenance handling before the overall new contract is complete. Known API-only combinations such as `COMMIT_OR_PR_TITLE` / `BLANK` must not become new UI choices.
+These fallbacks are planned normalization policy, not the currently selected values of the inspected repositories. They never populate an omitted desired field. Current observation conversion rejects incomplete pairs and out-of-UI pairs/tokens; #480 must add warning/provenance handling before the overall new contract is complete. Known API-only combinations such as `COMMIT_OR_PR_TITLE` / `BLANK` must not become new UI choices.
 
 Correctly typed booleans have no out-of-UI values. Free text, branch names, topics, label names/IDs/colors and descriptions do not have finite selectable enums requiring an unknown-choice fallback. Their existing validation, nullable-string acquisition semantics and identity rules remain authoritative. Invalid types, missing required fields, failed requests and incomplete pagination remain errors; they are not candidates for these defaults.
 
@@ -106,11 +106,11 @@ Releases / Enable release immutability is an already supported setting prepared 
 
 ## Activation and validation handoff
 
-Issue #479 should consume `AboutDeclaration` / `AboutObservation`, `GeneralDeclaration` / `GeneralObservation`, and `LabelsDeclaration` / `LabelsObservation`, preserving which independently requested values were acquired. Existing readers remain responsible for complete raw data; a projection is not proof of acquisition. Existing application sequencing, resource selection, lifecycle checks, declared-only writes and honest partial failure remain required.
+`DeclarationFromUI` composes desired family converters. `UIFromExportDeclaration` projects actual already-acquired export values using the existing conversions and pure policy helpers such as `LabelPolicyUI`; it does not fabricate acquisition markers or identities. Existing readers remain responsible for complete raw data; a projection is not proof of acquisition. Existing application sequencing, resource selection, lifecycle checks, declared-only writes and honest partial failure remain required.
 
 Label lists keep ID-selected, listed-object ownership. An empty list does not delete unlisted labels; no-ID entries are create-only. Topics retain authoritative set membership. Each converter owns returned values so later caller changes cannot alter its intent.
 
-The [test specification](testing.md#internal-ui-repository-preparation) records independent fixtures and reused owner checks. These local fixtures prove internal conversion and current-interface regression behavior. They do not prove a new YAML parser, normalized reporting, effective repository protections or live mutations.
+The [test specification](testing.md#internal-ui-repository-preparation) records independent fixtures and reused owner checks. These mapping fixtures prove internal conversion; the current codec/root/process tests described there separately prove public YAML activation. Neither establishes normalized reporting, effective repository protection or live mutations.
 
 [^repository-ui]: General settings UI inspected read-only on gh-settings, 2026-10-28.
 [^about-ui]: Edit repository details dialog: Description, Website, Topics and unsupported home-page controls, 2026-10-28.

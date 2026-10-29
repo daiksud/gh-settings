@@ -6,22 +6,24 @@ description: Read three merge-method booleans through GraphQL and apply declared
 
 ## Feature: Manage repository merge-method settings
 
-CLI and Action support three optional booleans under the existing `settings.repository` group and retain `schemaVersion: 1`. No new resource group, auto-merge, merge queue, or commit-message policy is introduced.
+Current source supports three optional booleans under `repository.settings.general.pull_requests`. No new resource group, auto-merge, merge queue, or commit-message policy is introduced.
 
 ```yaml
-schemaVersion: 1
-settings:
-  repository:
-    allow_merge_commit: false
-    allow_squash_merge: true
-    allow_rebase_merge: false
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    general:
+      pull_requests:
+        allow_merge_commits: false
+        allow_squash_merging: true
+        allow_rebase_merging: false
 ```
 
 ### Rule: Preserve declaration presence and strict types
 
 - Omitted fields remain unmanaged. Explicit false is a declared value and is included in PATCH; GitHub defaults never fill omitted fields.
 - Values must be YAML booleans spelled true or false under the existing parser rules. Null, strings, numbers, collections, duplicate keys and unsupported settings fail validation before API access. Aliases and merge keys retain their existing behavior.
-- Base fields compare first, followed by `allow_merge_commit`, `allow_squash_merge`, `allow_rebase_merge`, then the `delete_branch_on_merge` field supported, then current-source auto-merge and branch-update booleans, then the squash and normal merge commit title/message enums, then topics and labels. Each declared boolean counts as one managed field.
+- About/General fields retain existing comparison order, then merge-method/PR-option booleans, internal menu components, Topics and selected objects. Unambiguous booleans display current UI paths; compound menu reporting remains #481.
 
 ### Rule: Read merge methods without write permissions
 
@@ -31,14 +33,14 @@ The source read adapter instead sends a fixed GraphQL **query** to `POST /graphq
 
 | Declaration | GraphQL read field |
 | --- | --- |
-| `allow_merge_commit` | `mergeCommitAllowed: Boolean!` |
-| `allow_squash_merge` | `squashMergeAllowed: Boolean!` |
-| `allow_rebase_merge` | `rebaseMergeAllowed: Boolean!` |
-| `delete_branch_on_merge` | `deleteBranchOnMerge: Boolean!` |
+| `allow_merge_commits` | `mergeCommitAllowed: Boolean!` |
+| `allow_squash_merging` | `squashMergeAllowed: Boolean!` |
+| `allow_rebase_merging` | `rebaseMergeAllowed: Boolean!` |
+| `automatically_delete_head_branches` | `deleteBranchOnMerge: Boolean!` |
 
 An [isolated Actions experiment](https://github.com/daiksud/gh-settings/actions/runs/39086857913) on this public repository verified all three values with the ordinary token's effective Contents read and Metadata read permissions. The job used no App secrets, Environment, write scopes, checkout, or exported credentials. Its temporary workflow is excluded from the implementation. This is hosted read-access evidence for that token/repository; fixtures alone do not establish another credential's access.
 
-- Plan calls this deferred read only when a merge-related field is declared. Existing declarations that omit all four source fields retain their existing API reads and credentials.
+- Plan calls this deferred read only when a merge-related field is declared. Existing declarations that omit all merge-related controls retain their existing API reads and credentials.
 - A merge-method-only plan needs only GraphQL; the base repository REST read is skipped. Metadata, Summary and unmanaged local no-ops do not initialize a GraphQL client.
 All reads and serialization finish before opening the destination.
 - The adapter retains the existing gh host/authentication, Unix-socket fixture support and 30-second read timeout through the already-used go-gh dependency. There is no caller-supplied query, target or mutation path.
@@ -50,20 +52,20 @@ Apply uses the existing `PATCH /repos/{owner}/{repo}` and [Administration write 
 
 Existing target resolution, write timeout, redirect rejection, failure propagation and partial-failure behavior remain unchanged. This feature does not change root managed configuration, live merge policy, App grants, PR token permissions, consumer pins, or release selection. GitHub may reject combinations that pass local boolean validation; no additional merge policy is inferred locally.
 
-CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. The maximum current-source managed count is fifty-one across the complete adopted resource set. Reports remain presentation data, never apply input.
+CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. Private report bounds remain internal; complete UI reporting/count integration is #481. Reports remain presentation data, never apply input.
 
 ### Test mapping
 
 | Boundary | Evidence |
 | --- | --- |
 | Presence, base/merge read selection, stable typed comparison | [Settings tests](../../internal/settings/merge_methods_test.go) |
-| Strict booleans, null rejection, omission, aliases/merges, round trips | [Workspace tests](../../internal/workspace/merge_methods_test.go) |
+| Strict booleans, null rejection, omission, aliases/merges, round trips | [Workspace tests](../../internal/workspace/ui_general_test.go) |
 | Fixed GraphQL query/target, complete booleans, errors/partial data, exact PATCH | [GitHub adapter tests](../../internal/github/merge_methods_test.go) |
 | Conditional reads, direct apply, failed comparison/export preservation | [Application tests](../../internal/app/merge_methods_test.go) |
 | Native booleans, report validation and Summary rendering | [Actions tests](../../internal/actions/merge_methods_test.go) |
 | Built executable: read order, no extra read for apply, representative local validation, permission/incomplete/partial-error read failures, export preservation, report and credential-free Summary | [Process acceptance](../../tests/acceptance/merge_methods_test.go) |
 
-Input validation matrices stay at their owning layers. `TestMergeMethodBooleanCodec` in the workspace tests rejects null and wrong-typed values for all six merge-related booleans, including the former process cases `deletion invalid local` and `PR auto invalid local`. The process cases `invalid local` (plan with null) and `PR update invalid local` (apply with a quoted boolean) retain representative checks for nonzero exit status, diagnostics, zero API requests, and unchanged input bytes. The same process assertions cover the retained squash enum and message/title dependency failures described in the [squash test mapping](squash-commit-defaults.feature.md#test-mapping).
+Input validation matrices stay at their owning layers. `TestUIConfigGeneralRejectsUnknownAndWrongTypes` in the workspace tests rejects null and wrong-typed values for all six merge-related booleans, including the former process cases `deletion invalid local` and `PR auto invalid local`. The process cases `invalid local` (plan with null) and `PR update invalid local` (apply with a quoted boolean) retain representative checks for nonzero exit status, diagnostics, zero API requests, and unchanged input bytes. The same process assertions cover the current squash-menu choice and disabled-method failures described in the [squash test mapping](squash-commit-defaults.feature.md#test-mapping).
 
 Response completeness matrices belong to the GitHub adapter. `TestReadMergeMethodsGraphQLBoundary` and `TestMergeMethodBooleanResponseValidation` cover missing/null/wrong-typed booleans; `TestPROptionsCompleteGraphQLRead` covers both PR options, and the squash/normal merge enum adapter tests cover missing/null/invalid enum values. `TestObserveRepositoryRetainsCompleteResponseValidation` in the [observation tests](../../internal/github/observation_test.go) also rejects a missing GraphQL field that was not declared, returning no observation. Process acceptance retains `missing not false`, `permission failure`, and `partial errors discard earlier REST comparison` to verify failed-plan diagnostics, empty stdout, nonzero status, request order, and unchanged input. Its export read-failure case preserves the existing destination. Repeated response failures for individual fields stay in the adapter tests rather than being repeated through the executable.
 

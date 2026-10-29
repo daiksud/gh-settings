@@ -25,9 +25,9 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 | --- | --- |
 | Install development tools, build, and extend the implementation | [Development](contributing/development.md) |
 | Understand the current design and code boundaries | [Architecture](contributing/architecture.md) |
-| Inspect the prepared About, General and Labels UI/API boundary | [Repository UI mapping](contributing/ui-repository-mapping.md) |
+| Inspect the About, General and Labels UI/API boundary | [Repository UI mapping](contributing/ui-repository-mapping.md) |
 | Look up declaration, observed-state, and comparison terminology | [Model glossary](contributing/glossary.md) |
-| Inspect the prepared Ruleset UI/API boundary and write-only provenance | [Ruleset UI mapping](contributing/ui-ruleset-mapping.md) |
+| Inspect the Ruleset UI/API boundary and write-only provenance | [Ruleset UI mapping](contributing/ui-ruleset-mapping.md) |
 | Select checks and understand local/CI evidence | [Testing](contributing/testing.md) |
 | Review PR scope, squash messages, compatibility, and implementation | [Code-review policy](../.agents/skills/code-review/SKILL.md) |
 | Change the private metadata, plan-report, or Summary protocol | [Actions internals](contributing/actions-internals.md) |
@@ -38,10 +38,10 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 
 The user guides stay directly under `docs/`; contributor guides live under `docs/contributing/`. ADRs and behavior specifications keep their established paths as contributor reference material.
 
-Internal preparation: [Actions UI mappings](contributing/ui-actions-mapping.md).
+UI/API boundary: [Actions UI mappings](contributing/ui-actions-mapping.md).
 
-Internal preparation: [Security UI mappings](contributing/ui-security-mapping.md).
+UI/API boundary: [Security UI mappings](contributing/ui-security-mapping.md).
 
-Internal preparation: [Pages UI mappings](contributing/ui-pages-mapping.md).
+UI/API boundary: [Pages UI mappings](contributing/ui-pages-mapping.md).
 
-Internal preparation: [Environment UI mappings](contributing/ui-environments-mapping.md).
+UI/API boundary: [Environment UI mappings](contributing/ui-environments-mapping.md).
