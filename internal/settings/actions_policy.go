@@ -346,8 +346,36 @@ func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (Act
 	}
 	managed := 0
 	changes := []ActionsPolicyChange{}
+	var execution []ActionsExecutionChange
+	radioIntent := false
+	if s.AllowedActionsNormalization != (ObservationNormalization{}) {
+		if d.AllowedActions != nil && (d.Enabled == nil || !*d.Enabled) {
+			return ActionsPolicyComparison{}, fmt.Errorf("normalized Actions policy intent requires a complete enabling radio choice")
+		}
+		radioIntent = d.Enabled != nil && (d.AllowedActions != nil || !*d.Enabled)
+		if radioIntent {
+			allowed := ""
+			if d.AllowedActions != nil {
+				allowed = *d.AllowedActions
+			}
+			choice, valid := ActionsPermissionsChoiceForValue(*d.Enabled, allowed)
+			if !valid {
+				return ActionsPolicyComparison{}, fmt.Errorf("invalid desired Actions radio choice")
+			}
+			if s.Enabled || choice != uimodel.DisableActions {
+				change, err := NewActionsExecutionChange(s, choice)
+				if err != nil {
+					return ActionsPolicyComparison{}, err
+				}
+				execution = append(execution, change)
+			}
+		}
+	}
 	add := func(field string, before, after any) {
 		managed++
+		if radioIntent && (field == "actions.enabled" || field == "actions.allowed_actions") {
+			return
+		}
 		if !reflect.DeepEqual(before, after) {
 			changes = append(changes, ActionsPolicyChange{field: field, before: copyActionValue(before), after: copyActionValue(after)})
 		}
@@ -374,5 +402,8 @@ func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (Act
 	if v := d.SelectedActions.PatternsAllowed; v != nil {
 		add("actions.selected_actions.patterns_allowed", patterns, *v)
 	}
-	return ActionsPolicyComparison{Managed: managed, Changes: changes}, nil
+	if err := ValidateActionsPolicyChanges(changes, execution...); err != nil {
+		return ActionsPolicyComparison{}, err
+	}
+	return ActionsPolicyComparison{Managed: managed, Changes: changes, Execution: execution}, nil
 }
