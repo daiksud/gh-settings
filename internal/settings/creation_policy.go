@@ -9,6 +9,26 @@ const (
 	PullRequestPermissionsControl CreationPolicyControl = "pull_request_permissions"
 )
 
+func (control CreationPolicyControl) Field() FieldID {
+	switch control {
+	case IssuePermissionsControl:
+		return FieldID{path: "repository.issue_creation_policy"}
+	case PullRequestPermissionsControl:
+		return FieldID{path: "repository.pull_request_creation_policy"}
+	default:
+		return FieldID{}
+	}
+}
+
+func creationPolicyControlForField(field FieldID) (CreationPolicyControl, bool) {
+	for _, control := range [...]CreationPolicyControl{IssuePermissionsControl, PullRequestPermissionsControl} {
+		if control.Field() == field {
+			return control, true
+		}
+	}
+	return "", false
+}
+
 func (control CreationPolicyControl) Path() string {
 	switch control {
 	case IssuePermissionsControl, PullRequestPermissionsControl:

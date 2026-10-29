@@ -10,14 +10,18 @@ func TestCreationPolicyMappingIsClosed(t *testing.T) {
 	for _, test := range []struct {
 		control CreationPolicyControl
 		path    string
+		field   string
 	}{
-		{IssuePermissionsControl, "repository.settings.general.features.issue_permissions.creation_allowed_by"},
-		{PullRequestPermissionsControl, "repository.settings.general.features.pull_request_permissions.creation_allowed_by"},
+		{IssuePermissionsControl, "repository.settings.general.features.issue_permissions.creation_allowed_by", "repository.issue_creation_policy"},
+		{PullRequestPermissionsControl, "repository.settings.general.features.pull_request_permissions.creation_allowed_by", "repository.pull_request_creation_policy"},
 	} {
 		choice, ok := test.control.DefaultChoice()
-		if !ok || choice != "all_users" || test.control.Path() != test.path {
+		if !ok || choice != "all_users" || test.control.Path() != test.path || test.control.Field().Path() != test.field {
 			t.Fatal("control identity/default changed", test, choice, ok)
 		}
+	}
+	if CreationPolicyControl("future").Field() != (FieldID{}) {
+		t.Fatal("unknown control invented native identity")
 	}
 	for _, test := range []struct {
 		choice uimodel.CreationAllowedBy

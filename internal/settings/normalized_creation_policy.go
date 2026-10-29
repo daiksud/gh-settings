@@ -5,13 +5,8 @@ import "fmt"
 // NewCreationPolicyChangeWithNormalization retains a required policy write when
 // equal effective values cannot establish equality with the acquired raw token.
 func NewCreationPolicyChangeWithNormalization(field FieldID, before, after string, normalization ObservationNormalization) (Change, error) {
-	var control CreationPolicyControl
-	switch field.path {
-	case "repository.pull_request_creation_policy":
-		control = PullRequestPermissionsControl
-	case "repository.issue_creation_policy":
-		control = IssuePermissionsControl
-	default:
+	control, known := creationPolicyControlForField(field)
+	if !known {
 		return Change{}, fmt.Errorf("field %q cannot describe creation policy normalization", field.path)
 	}
 	fallback, valid := control.DefaultChoice()

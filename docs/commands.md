@@ -70,7 +70,7 @@ Export uses the [repository and authentication rules](#repository-and-authentica
 
 Export creates `.github` when missing and always overwrites an existing regular `.github/settings.yml`, without a confirmation or overwrite flag. Symlinks at `.github` or `settings.yml`, including dangling links, and other non-regular destinations are rejected. A read or serialization failure leaves the destination untouched. A write failure can leave it truncated or partially written; use Git to restore tracked configuration.
 
-Success writes no stdout and exits 0. Explicit observation-normalization warnings and excluded push Ruleset diagnostics can appear on stderr; see the [workflow](settings.md#default-workflow-permissions) and [commit-message](settings.md#commit-message-observation-normalization) field semantics. Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
+Success writes no stdout and exits 0. Explicit observation-normalization warnings and excluded push Ruleset diagnostics can appear on stderr; see the [workflow](settings.md#default-workflow-permissions), [commit-message](settings.md#commit-message-observation-normalization) and [creation-policy](settings.md#creation-policy-observation-normalization) field semantics. Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
 
 ```sh
 gh settings export
@@ -112,9 +112,9 @@ repository.settings.general.features.issues: true → false
 repository.about.topics: ["old"] → ["github-cli","settings-as-code"]
 ```
 
-One exact UI menu choice can produce two internal component comparisons. An out-of-UI merge/squash pair instead retains one warning and menu-level write-required decision with both raw strings, even if the declared choice equals its projected default. Complete UI rendering of compound choices and other families is deferred to [#481](https://github.com/daiksud/gh-settings/issues/481). Their existing internal display paths/values are not accepted YAML aliases. Workflow permissions and merge/squash menu pairs have explicit normalization policies; remaining families stay strict under [#480](https://github.com/daiksud/gh-settings/issues/480).
+One exact UI menu choice can produce two internal component comparisons. An out-of-UI merge/squash pair instead retains one warning and menu-level write-required decision with both raw strings, even if the declared choice equals its projected default. Complete UI rendering of compound choices and other families is deferred to [#481](https://github.com/daiksud/gh-settings/issues/481). Their existing internal display paths/values are not accepted YAML aliases. Workflow permissions, creation policies and merge/squash menu pairs have explicit normalization policies; remaining families stay strict under [#480](https://github.com/daiksud/gh-settings/issues/480).
 
-Strings are double-quoted with Go string escaping, including quotes, backslashes, newlines and control characters. Booleans use `true` or `false`; topics use sorted JSON arrays. Equal managed values are omitted. When all managed values match, output is `No differences for managed repository settings.`
+Strings are double-quoted with Go string escaping, including quotes, backslashes, newlines and control characters. Booleans use `true` or `false`; topics use sorted JSON arrays. Equal exact managed values are omitted; normalized projections retain their explicit write-required decisions. When all managed values match, output is `No differences for managed repository settings.`
 
 Label creates and updates appear in stable identity order, with no implicit deletes. Names and attribute values are quoted and escaped. For example:
 
@@ -143,7 +143,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 
 | Resource | Request |
 | --- | --- |
-| `repository.about` and `repository.settings.general` scalars | Declared REST members use repository PATCH.[^github-update-repository] Declared merge/squash message menus additionally require selective complete GraphQL preflight and fresh raw readback; failed verification can retain other members in that PATCH. PR access, Issue permissions and Sponsorships share identity-checked, declared-only GraphQL updates; GraphQL-only intent skips PATCH. |
+| `repository.about` and `repository.settings.general` scalars | Declared REST members use repository PATCH.[^github-update-repository] Declared merge/squash message menus additionally require selective complete GraphQL preflight and fresh raw readback; failed verification can retain other members in that PATCH. PR access, Issue permissions and Sponsorships share identity-checked, declared-only GraphQL updates; declared creation policies also use selective preflight and fresh same-ID raw readback. Earlier REST success remains partial progress if the later access substep fails; GraphQL-only intent skips PATCH. |
 | `repository.about.topics` | Topics PUT with the complete sorted set; `[]` clears it. |
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |

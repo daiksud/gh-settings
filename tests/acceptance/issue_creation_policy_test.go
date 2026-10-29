@@ -76,7 +76,11 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 		}
 		if strings.HasPrefix(request.Query, "query") {
 			operations = append(operations, "lookup")
-			fmt.Fprint(w, prIdentityResponse)
+			fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
+			if strings.Contains(request.Query, "issueCreationPolicy") {
+				fields["issueCreationPolicy"] = policy
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"repository": fields}})
 			return
 		}
 		operations = append(operations, "mutation")
@@ -187,7 +191,7 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 			t.Fatal("over-broad mutation", i, input, want)
 		}
 	}
-	if !reflect.DeepEqual(operations[len(operations)-3:], []string{"REST write", "lookup", "mutation"}) {
+	if !reflect.DeepEqual(operations[len(operations)-4:], []string{"REST write", "lookup", "mutation", "lookup"}) {
 		t.Fatal(operations)
 	}
 }
@@ -198,7 +202,7 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 		requests                   int
 	}{
 		{"partial read", "plan", "features: {projects: false, issue_permissions: {creation_allowed_by: all_users}}\n", "Issue policy hidden", 2},
-		{"unknown export", "export", "", "unsupported issueCreationPolicy", 4},
+		{"malformed export", "export", "", "invalid issueCreationPolicy policy string", 4},
 		{"ignored mutation", "apply", "features: {issue_permissions: {creation_allowed_by: collaborators_only}}\n", "did not retain requested issueCreationPolicy", 2},
 		{"partial mutation", "apply", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "partial Issue mutation denied", 2},
 		{"redirect", "apply", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "307", 2},
@@ -216,8 +220,8 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				if isIssueCreationPolicyFixtureRead(r) {
 					switch tt.name {
-					case "unknown export":
-						fmt.Fprint(w, `{"data":{"repository":{"issueCreationPolicy":"UNKNOWN"}}}`)
+					case "malformed export":
+						fmt.Fprint(w, `{"data":{"repository":{"issueCreationPolicy":false}}}`)
 					case "stale origin":
 						fmt.Fprint(w, `{"data":{"repository":null},"errors":[{"message":"stale checkout origin"}]}`)
 					default:
@@ -249,7 +253,7 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 					var request struct{ Query string }
 					json.NewDecoder(r.Body).Decode(&request)
 					if strings.HasPrefix(request.Query, "query") {
-						fmt.Fprint(w, prIdentityResponse)
+						fmt.Fprint(w, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","issueCreationPolicy":"ALL"}}}`)
 						return
 					}
 					switch tt.name {

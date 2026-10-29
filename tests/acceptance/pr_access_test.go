@@ -72,7 +72,11 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 			if !reflect.DeepEqual(request.Variables, map[string]any{"owner": "owner", "name": "current"}) {
 				t.Error(request)
 			}
-			fmt.Fprint(w, prIdentityResponse)
+			fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
+			if strings.Contains(request.Query, "pullRequestCreationPolicy") {
+				fields["pullRequestCreationPolicy"] = policy
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"repository": fields}})
 			return
 		}
 		operations = append(operations, "mutate PR policy")
@@ -185,9 +189,9 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	if len(writes) != 4 || !reflect.DeepEqual(writes[2], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": false}) || !reflect.DeepEqual(writes[3], map[string]any{"repositoryId": "opaque-id", "pullRequestCreationPolicy": "ALL"}) || enabled || policy != "ALL" {
 		t.Fatal(writes, enabled, policy)
 	}
-	suffix := operations[len(operations)-7:]
-	if !reflect.DeepEqual(suffix, []string{"lookup identity", "mutate PR policy", "read PR policy", "lookup identity", "mutate PR policy", "lookup identity", "mutate PR policy"}) {
-		t.Fatal("direct apply compared current policy", suffix)
+	suffix := operations[len(operations)-9:]
+	if !reflect.DeepEqual(suffix, []string{"lookup identity", "mutate PR policy", "lookup identity", "read PR policy", "lookup identity", "mutate PR policy", "lookup identity", "mutate PR policy", "lookup identity"}) {
+		t.Fatal("checked direct apply order changed", suffix)
 	}
 }
 func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
