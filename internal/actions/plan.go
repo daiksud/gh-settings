@@ -115,7 +115,11 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, c := range result.Comparison.Pages {
 		b, a := c.Values()
-		report.Pages = append(report.Pages, PagesPlanChange{Field: c.Field(), Before: b, After: a, BeforeInactive: c.BeforeInactive()})
+		entry := PagesPlanChange{Field: c.Field(), Before: b, After: a, BeforeInactive: c.BeforeInactive()}
+		if record := c.FolderNormalization(); record != (settings.ObservationNormalization{}) {
+			entry.Normalization = &record
+		}
+		report.Pages = append(report.Pages, entry)
 	}
 	data, err := json.Marshal(report)
 	if err != nil {

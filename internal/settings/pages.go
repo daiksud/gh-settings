@@ -45,7 +45,7 @@ func (s PagesSource) Validate() error {
 	if !ValidDefaultBranch(s.Branch) {
 		return fmt.Errorf("pages.source.branch must be a nonempty literal branch name")
 	}
-	if s.Path != "/" && s.Path != "/docs" {
+	if _, valid := PagesFolderChoiceForValue(s.Path); !valid {
 		return fmt.Errorf("pages.source.path must be / or /docs")
 	}
 	return nil
@@ -76,8 +76,9 @@ type PagesState struct {
 	Public        bool
 }
 type PagesObservation struct {
-	acquired bool
-	state    PagesState
+	acquired            bool
+	state               PagesState
+	folderNormalization ObservationNormalization
 }
 
 func copyPagesState(s PagesState) PagesState {
@@ -110,7 +111,7 @@ func NewPagesObservation(s PagesState) (PagesObservation, error) {
 			return PagesObservation{}, err
 		}
 	}
-	return PagesObservation{true, copyPagesState(s)}, nil
+	return PagesObservation{acquired: true, state: copyPagesState(s)}, nil
 }
 func (o PagesObservation) Values() (PagesState, error) {
 	if !o.acquired {
@@ -160,14 +161,16 @@ func PreparePages(o PagesObservation, d PagesDeclaration) (PagesState, error) {
 
 // PagesChange owns the nullable-domain and inactive-source report boundaries.
 type PagesChange struct {
-	field         string
-	before, after any
-	inactive      bool
+	field               string
+	before, after       any
+	inactive            bool
+	folderNormalization ObservationNormalization
 }
 
-func (c PagesChange) Field() string        { return c.field }
-func (c PagesChange) Values() (any, any)   { return c.before, c.after }
-func (c PagesChange) BeforeInactive() bool { return c.inactive }
+func (c PagesChange) Field() string                                 { return c.field }
+func (c PagesChange) Values() (any, any)                            { return c.before, c.after }
+func (c PagesChange) BeforeInactive() bool                          { return c.inactive }
+func (c PagesChange) FolderNormalization() ObservationNormalization { return c.folderNormalization }
 func NewPagesChange(field string, before, after any, inactive bool) (PagesChange, error) {
 	valid := func(v any, previous bool) bool {
 		if previous && inactive {
@@ -198,7 +201,7 @@ func NewPagesChange(field string, before, after any, inactive bool) (PagesChange
 	if !valid(before, true) || !valid(after, false) || reflect.DeepEqual(before, after) || inactive && field != "pages.source.branch" && field != "pages.source.path" {
 		return PagesChange{}, fmt.Errorf("invalid Pages comparison %q", field)
 	}
-	return PagesChange{field, before, after, inactive}, nil
+	return PagesChange{field: field, before: before, after: after, inactive: inactive}, nil
 }
 func ValidatePagesChanges(changes []PagesChange) error {
 	seen := map[string]PagesChange{}
@@ -206,7 +209,13 @@ func ValidatePagesChanges(changes []PagesChange) error {
 		if _, ok := seen[c.field]; ok {
 			return fmt.Errorf("duplicate Pages comparison")
 		}
-		if _, err := NewPagesChange(c.field, c.before, c.after, c.inactive); err != nil {
+		var err error
+		if c.folderNormalization != (ObservationNormalization{}) {
+			_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.folderNormalization)
+		} else {
+			_, err = NewPagesChange(c.field, c.before, c.after, c.inactive)
+		}
+		if err != nil {
 			return err
 		}
 		seen[c.field] = c
@@ -258,7 +267,16 @@ func ComparePages(o PagesObservation, d PagesDeclaration) (int, []PagesChange, e
 			branch, path = before.Source.Branch, before.Source.Path
 		}
 		add("pages.source.branch", branch, after.Source.Branch, before.Source == nil)
-		add("pages.source.path", path, after.Source.Path, before.Source == nil)
+		if o.folderNormalization != (ObservationNormalization{}) {
+			managed++
+			change, err := NewPagesChangeWithNormalization("pages.source.path", path, after.Source.Path, before.Source == nil, o.folderNormalization)
+			if err != nil {
+				return 0, nil, err
+			}
+			changes = append(changes, change)
+		} else {
+			add("pages.source.path", path, after.Source.Path, before.Source == nil)
+		}
 	}
 	if d.CNAME != nil {
 		var b, a any
