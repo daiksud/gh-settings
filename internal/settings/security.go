@@ -27,9 +27,10 @@ func (d SecurityDeclaration) Validate() error {
 
 // SecretScanningObservation cannot turn an unacquired response into disabled.
 type SecretScanningObservation struct {
-	acquired bool
-	scanning bool
-	push     bool
+	acquired       bool
+	scanning       bool
+	push           bool
+	normalizations [2]SecurityStatusNormalization
 }
 
 func NewSecretScanningObservation(scanning, push bool) SecretScanningObservation {
@@ -57,10 +58,12 @@ func (o SecretScanningObservation) Declaration() (SecurityDeclaration, error) {
 type SecurityChange struct {
 	field         string
 	before, after bool
+	normalization SecurityStatusNormalization
 }
 
-func (c SecurityChange) Field() string        { return c.field }
-func (c SecurityChange) Values() (bool, bool) { return c.before, c.after }
+func (c SecurityChange) Field() string                              { return c.field }
+func (c SecurityChange) Values() (bool, bool)                       { return c.before, c.after }
+func (c SecurityChange) Normalization() SecurityStatusNormalization { return c.normalization }
 func NewSecurityChange(field string, before, after any) (SecurityChange, error) {
 	b, bok := before.(bool)
 	a, aok := after.(bool)
@@ -73,7 +76,13 @@ func ValidateSecurityChanges(changes []SecurityChange) error {
 	seen := map[string]bool{}
 	var d SecurityDeclaration
 	for _, c := range changes {
-		if _, err := NewSecurityChange(c.field, c.before, c.after); err != nil || seen[c.field] {
+		var err error
+		if c.normalization != (SecurityStatusNormalization{}) {
+			_, err = NewSecurityChangeWithNormalization(c.field, c.before, c.after, c.normalization)
+		} else {
+			_, err = NewSecurityChange(c.field, c.before, c.after)
+		}
+		if err != nil || seen[c.field] {
 			return fmt.Errorf("invalid or duplicate security comparison")
 		}
 		seen[c.field] = true
@@ -104,15 +113,22 @@ func CompareSecretScanning(o SecretScanningObservation, d SecurityDeclaration) (
 	managed := 0
 	changes := []SecurityChange{}
 	for _, f := range []struct {
-		key     string
-		before  bool
-		desired *bool
-	}{{"security.secret_scanning", s, d.SecretScanning}, {"security.secret_scanning_push_protection", p, d.PushProtection}} {
+		key           string
+		before        bool
+		desired       *bool
+		normalization SecurityStatusNormalization
+	}{{"security.secret_scanning", s, d.SecretScanning, o.normalizations[0]}, {"security.secret_scanning_push_protection", p, d.PushProtection, o.normalizations[1]}} {
 		if f.desired == nil {
 			continue
 		}
 		managed++
-		if f.before != *f.desired {
+		if f.normalization != (SecurityStatusNormalization{}) {
+			change, err := NewSecurityChangeWithNormalization(f.key, f.before, *f.desired, f.normalization)
+			if err != nil {
+				return 0, nil, err
+			}
+			changes = append(changes, change)
+		} else if f.before != *f.desired {
 			c, _ := NewSecurityChange(f.key, f.before, *f.desired)
 			changes = append(changes, c)
 		}
@@ -126,11 +142,14 @@ func SecretScanningTransitions(o SecretScanningObservation, d SecurityDeclaratio
 	if err != nil {
 		return nil, err
 	}
-	s, p, _ := o.Values()
-	if d.PushProtection != nil && *d.PushProtection && d.SecretScanning == nil && !s {
+	s, p, _ := o.RawStatuses()
+	if d.PushProtection != nil && *d.PushProtection && d.SecretScanning == nil && s != "enabled" {
 		return nil, fmt.Errorf("push protection requires already enabled secret_scanning or an explicit true declaration")
 	}
-	if d.SecretScanning != nil && !*d.SecretScanning && p && (d.PushProtection == nil || *d.PushProtection) {
+	if d.SecretScanning != nil && !*d.SecretScanning && p != "disabled" && (d.PushProtection == nil || *d.PushProtection) {
+		if _, supported := SecurityValueForStatus(p); !supported {
+			return nil, fmt.Errorf("disabling secret_scanning requires explicitly disabling unverified push protection")
+		}
 		return nil, fmt.Errorf("disabling secret_scanning requires explicitly disabling active push protection")
 	}
 	if d.SecretScanning != nil && !*d.SecretScanning && len(changes) == 2 {
@@ -141,25 +160,30 @@ func SecretScanningTransitions(o SecretScanningObservation, d SecurityDeclaratio
 
 // AfterSecretScanningChange checks fresh prerequisites for a single narrow write.
 func AfterSecretScanningChange(o SecretScanningObservation, c SecurityChange) (SecretScanningObservation, error) {
-	if _, err := NewSecurityChange(c.field, c.before, c.after); err != nil {
+	if err := ValidateSecurityChanges([]SecurityChange{c}); err != nil {
 		return SecretScanningObservation{}, err
 	}
-	s, p, err := o.Values()
+	s, p, err := o.RawStatuses()
 	if err != nil {
 		return SecretScanningObservation{}, err
 	}
 	if c.field == "security.secret_scanning" {
-		if !c.after && p {
+		if !c.after && p != "disabled" {
+			if _, supported := SecurityValueForStatus(p); !supported {
+				return SecretScanningObservation{}, fmt.Errorf("unverified push protection prevents disabling secret_scanning")
+			}
 			return SecretScanningObservation{}, fmt.Errorf("active push protection prevents disabling secret_scanning")
 		}
-		s = c.after
+		o.scanning = c.after
+		o.normalizations[0] = SecurityStatusNormalization{}
 	} else if c.field == "security.secret_scanning_push_protection" {
-		if c.after && !s {
+		if c.after && s != "enabled" {
 			return SecretScanningObservation{}, fmt.Errorf("secret_scanning must be enabled before push protection")
 		}
-		p = c.after
+		o.push = c.after
+		o.normalizations[1] = SecurityStatusNormalization{}
 	} else {
 		return SecretScanningObservation{}, fmt.Errorf("change does not belong to Secret scanning")
 	}
-	return NewSecretScanningObservation(s, p), nil
+	return o, nil
 }

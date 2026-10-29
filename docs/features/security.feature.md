@@ -40,7 +40,7 @@ Paths below are relative to `/repos/{owner}/{repo}`. Permission names are the do
 | Legacy Advanced Security candidate | GET repository, `security_and_analysis.advanced_security.status` if completely visible | Candidate nested `advanced_security.status` PATCH | Same repository visibility / Administration write boundary, subject to adoption evidence | Legacy/bundled product. API explicitly disallows this parameter for standalone Code Scanning or Secret Protection products. Never substitute it for `code_security`. |
 | Private vulnerability reporting | GET `/private-vulnerability-reporting`: 200 with required boolean `enabled` | PUT / DELETE same path: 204 | Metadata read / Administration write; admin access for update | Public repositories; private/internal target is inapplicable even when desired false. No paid-product prerequisite. Do not alter advisory/report data. |
 
-The permission matrix records the [repository REST reference](https://docs.github.com/en/rest/repos/repos) and the [official OpenAPI description](https://github.com/github/rest-api-description/blob/755ee33b4a81d51f6f07a902cce26cbec3b822f2/descriptions/api.github.com/api.github.com.json) reviewed on 2026-10-20. The latter separately specifies both product PATCH fields, visibility requirements, and Dependabot response shapes. Repository endpoint permission is necessary but does not guarantee visibility of each nested feature. A missing/null `security_and_analysis`, missing/null requested child/status, unknown status string, or wrong type is incomplete observation, never disabled. Unknown unrequested sibling fields are not replayed into requests.
+The permission matrix records the [repository REST reference](https://docs.github.com/en/rest/repos/repos) and the [official OpenAPI description](https://github.com/github/rest-api-description/blob/755ee33b4a81d51f6f07a902cce26cbec3b822f2/descriptions/api.github.com/api.github.com.json) reviewed on 2026-10-20. The latter separately specifies both product PATCH fields, visibility requirements, and Dependabot response shapes. Repository endpoint permission is necessary but does not guarantee visibility of each nested feature. A missing/null `security_and_analysis`, missing/null requested child/status or wrong type is incomplete observation, never disabled. Complete Secret Protection/Push protection strings outside UI choices follow the typed normalization rules below; unknown unrequested sibling fields are not replayed into requests.
 
 For plan/entitlement boundaries see [GitHub security features](https://docs.github.com/en/code-security/getting-started/github-security-features) and [Advanced Security products](https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security). Basic dependency security is distinct from premium product capabilities. Do not purchase, trial, enroll, or switch products to make a failed read/write succeed. Existing organization entitlement is a prerequisite, not something gh-settings provisions.
 
@@ -60,17 +60,18 @@ A product-level toggle can affect subordinate security features. Before adoption
 
 Repeatable `--security FAMILY` accepts exactly the implemented `secret-scanning`, `private-vulnerability-reporting` and `immutable-releases` selections. Dependabot/product options and `all` are not accepted. Distinct families compose with other export options; unknown/missing/duplicate values fail before reads or file changes.
 
-Ordinary export adds no security requests. Secret protection/Push protection reads precede private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied, incomplete or unknown values fail instead of being omitted with success. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. A supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. #480 normalization and #481 complete reporting remain separate.
+Ordinary export adds no security requests. Secret protection/Push protection reads precede private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied or incomplete observations fail instead of being omitted with success. Complete out-of-UI status strings retain provenance and normalize to the named false fallback; inconsistent projected declarations fail without saving. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. An exact supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. #480 normalization is active for these two status strings; remaining families and #481 complete reporting remain pending.
 
 ## State and failure table
 
 | Observation or event | Required result |
 | --- | --- |
-| Complete enabled/disabled boolean or supported status enum | Compare native booleans; equal yields no difference. |
+| Complete enabled/disabled boolean or supported status enum | Compare native booleans; exact equality yields no difference. |
+| Complete out-of-UI Secret Protection/Push protection status string | Retain raw provenance and named false fallback; declared equality remains write-required, never independent proof of raw equality. |
 | Updates `enabled: true, paused: true` | Preserve enabled=true and pause metadata; emit a diagnostic in plan/export/apply. Do not report running/healthy, synthesize false, or disable/re-enable to resume. |
 | Any other complete `enabled`/`paused` boolean pair | Compare enabled independently and retain pause metadata; warn whenever paused. Do not invent a correlation between the two booleans that the API schema does not establish. |
 | Missing/null/wrong-type enabled or pause metadata | Reject incomplete state; do not discard pause to manufacture a usable observation. |
-| Missing/null/invalid requested response field | Fail that read; no successful empty/false comparison or export. |
+| Missing/null/wrong-type requested response field | Fail that read; no successful empty/false comparison or export. |
 | 401/403, unqualified 404 (except the separate immutable-policy decision), redirect, transport failure, invalid JSON | Fail read as unknown/denied as evidenced; never infer disabled or follow a changed target. |
 | Confirmed unsupported visibility/entitlement | Report inapplicable/unavailable as evidenced; never false. Do not guess licensing from arbitrary 403/404 text. |
 | Authoritative upper-policy conflict known before write | Fail before mutation of that security family; no detach or policy bypass. |
@@ -93,7 +94,7 @@ These rules constrain transition preflight; they do not introduce a saved-plan t
 | Push protection true with secret scanning false | Reject contradiction locally. |
 | Push protection true; scanning omitted | Require fresh known-enabled scanning; no implicit parent enable or product enrollment. |
 | Scanning true and push protection true | Enable/verify scanning before enabling/verifying push protection, with narrow sequential nested PATCHes. |
-| Scanning false | Observe push protection; if currently enabled, require explicit `push_protection: false` and disable/verify it first. Unknown child blocks the transition. |
+| Scanning false | Observe push protection; if currently enabled, require explicit `push_protection: false` and disable/verify it first. Unknown child blocks the transition when the companion is omitted; explicit push protection=false must be written and verified first. |
 | Child false alone | Update only the declared child when a change is needed; never send omitted parent fields. |
 | Private vulnerability reporting true/false | Verify public target and complete current boolean, then PUT/DELETE only if different and GET-verify; independent of paid products and other families. |
 
@@ -115,7 +116,7 @@ The matrix remains the acceptance plan for all families; the implemented family 
 | #345 | Public and entitled/nonentitled private/internal fixtures; hidden/null/unknown status; parent/child combinations and fresh drift; no omitted fields in nested PATCH; enforced 2xx/no-change must fail verification; no bypass/pattern/configuration writes. |
 | #346 | Separate adoption evidence first; distinct model/entitlement fixtures, both-key rejection, no alias/fallback/conversion, complete companion effects and lossless supported-state round-trip. No implementation completion while product behavior remains unverified. |
 | #347 | Public true/false/equal/omitted, private/internal inapplicability, Metadata-only read shape, missing/null/wrong enabled value, 422/permission errors, PUT/DELETE+readback, no advisory/report/notification operations. |
-| Export/process | Ordinary requests unchanged; explicit family composition and invalid options; complete export→unchanged plan zero; requested unavailable state leaves destination untouched; false retained; pause diagnostic; no stdout changes. |
+| Export/process | Ordinary requests unchanged; explicit family composition and invalid options; complete exact supported export→unchanged plan zero; normalized export retains raw-versus-fallback decisions; requested unavailable state leaves destination untouched; false retained; pause diagnostic; no stdout changes. |
 | CLI/Action | Native boolean differences, strict report reconstruction and bounds, read/write failure and partial-progress output, escaping of untrusted diagnostics; published pinned CLI must reject unsupported additions rather than pretend source support is released. |
 
 The [private vulnerability reporting guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository) establishes public-repository scope. The source/runtime privilege boundary and fixture limitations belong in the public references and testing guide at implementation time. API schema inspection and local fixtures do not prove all token types, billing availability, upper enforcement, or real scan outcomes.
@@ -126,7 +127,7 @@ The [public configuration contract](../settings.md#secret-scanning-and-push-prot
 
 - Declaration/observation/transition/forged-change boundaries: [TestSecretScanningObservationAndTransitions](../../internal/settings/security_test.go) and [TestSecurityComparisonsRejectForgedValues](../../internal/settings/security_test.go).
 - Strict YAML, explicit false and omission round-trip: [Security UI codec](../../internal/workspace/ui_security_test.go).
-- Complete API reads, unknown/denied/redirect responses, fresh prerequisites, narrow payload and readback/companion failures: [TestSecretScanningCompleteReads](../../internal/github/security_test.go) and [TestSecretScanningNarrowPayloadReadbackAndFreshPreflight](../../internal/github/security_test.go).
+- Complete API reads, malformed/denied/redirect responses, fresh prerequisites, narrow payload and readback/companion failures: [TestSecretScanningCompleteReads](../../internal/github/security_test.go) and [TestSecretScanningNarrowPayloadReadbackAndFreshPreflight](../../internal/github/security_test.go).
 - Dependency order, read certainty, matching state and confirmed partial progress: [TestSecretScanningApplyOrderAndPartialProgress](../../internal/app/security_test.go) and [TestSecretScanningReadFailureAndOmission](../../internal/app/security_test.go).
 - Export selection/composition and forged native Summary values: [TestSecurityExportSelectionIsExplicitAndComposable](../../internal/cli/security_test.go) and [TestSecuritySummaryHasNativeClosedValues](../../internal/actions/security_test.go).
 - Built-CLI ordinary/explicit export, zero plan, native Action report/Summary, enable/disable/idempotence, unavailable reads preserving files, redirect rejection and enforced/partial writes: [TestSecretScanningExportPlanApplyAndSummary](../../tests/acceptance/security_test.go).
@@ -147,4 +148,48 @@ The [public configuration contract](../settings.md#private-vulnerability-reporti
 
 Fixtures use dummy credentials and local modeled responses. A read-only GET on this public repository returned enabled=true; no live PUT/DELETE, report/advisory/notification operation, permission expansion, upper-policy change or release was performed. These checks do not establish live update compatibility or other credential grants.
 
-The private same-version security report retains native API member identifiers/booleans and existing bounds. Current CLI/Summary component paths remain internal pending #481; they are not public YAML aliases.
+The private same-version security report retains native API member identifiers/booleans and existing bounds. Exact-observation CLI/Summary component paths remain internal pending #481; they are not public YAML aliases. Normalized status decisions instead retain typed raw provenance and use their UI paths with boolean write-required decisions.
+
+## Feature: Retain provenance for out-of-UI security statuses
+
+### Rule: Complete typed statuses remain distinct from their effective UI booleans
+
+#### Scenario: A complete successful status is outside the adopted choices
+
+- Given both required Secret Protection and Push protection status strings are acquired
+- When one status is outside `enabled` and `disabled`, including empty or whitespace strings
+- Then its effective UI value is the named boolean fallback `false`
+- And one owned record retains the exact raw string, UI field and typed boolean fallback
+- And the supported companion remains unchanged
+- But missing/null members, wrong types and failed reads remain acquisition errors
+- And an inconsistent projected declaration remains a consistency error
+
+#### Scenario: Managed intent equals or differs from the normalized fallback
+
+- Given a complete normalized observation and an explicitly declared boolean
+- When plan compares the declaration with its effective value
+- Then it retains one write-required decision with raw provenance even for false-to-false
+- And omitted controls remain unmanaged without replaying their defaults
+- And malformed managed provenance discards the entire comparison
+
+### Rule: Raw prerequisites and independent readback govern apply
+
+#### Scenario: A companion has an unknown raw status
+
+- Given a complete acquired companion outside the supported status choices
+- When its raw state is required to prove a prerequisite
+- Then its effective false fallback cannot establish that prerequisite
+- And explicit intent must resolve the dependency through safe ordered narrow writes
+- But safely unmodified companion raw evidence remains exact through fresh readback
+- And unrelated unmanaged raw values are not printed
+
+#### Scenario: Fresh raw confirmation follows a normalized write decision
+
+- Given a declared normalized false-to-false or false-to-true decision
+- When apply rereads the complete family before and after the narrow PATCH
+- Then fresh canonical target equality can skip a write
+- And otherwise the declared member is written and exact raw target/companion values are verified
+- And retained unknown target or changed companion status fails with possible write effects
+- And earlier completed writes remain applied without rollback
+
+Test mapping: [closed observations](../../internal/settings/security_status_observation_test.go), [typed changes](../../internal/settings/security_status_change_test.go), [comparison](../../internal/settings/security_status_comparison_test.go), [raw dependencies](../../internal/settings/security_status_transitions_test.go), [typed decoder](../../internal/settings/security_status_json_test.go), [private reports and presentation](../../internal/actions/normalization_security_status_test.go), [scoped export](../../internal/app/normalization_security_export_test.go), [raw pair verification](../../internal/github/security_status_verification_test.go), [HTTP normalization/apply](../../internal/github/security_status_apply_test.go), and [executable commands](../../tests/acceptance/normalization_security_status_test.go).

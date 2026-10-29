@@ -7,23 +7,24 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
-	IncludeArchive                    bool
-	IncludePages                      bool
-	IncludeForkApproval               bool
-	IncludePrivateFork                bool
-	Repository                        TargetResolver
-	IncludeActions                    bool
-	IncludeWorkflowPermissions        bool
-	IncludeRulesets                   bool
-	IncludeEnvironments               bool
-	IncludeSecretScanning             bool
-	IncludePrivateReporting           bool
-	IncludeImmutableReleases          bool
-	IncludeRetention                  bool
-	ExcludedRulesets                  func(int)
-	NormalizationWarning              func(settings.ObservationNormalization)
-	CommitMessageNormalizationWarning func(settings.CommitMessageNormalization)
-	PrepareSave                       func() (func(settings.Declaration) error, error)
+	IncludeArchive                     bool
+	IncludePages                       bool
+	IncludeForkApproval                bool
+	IncludePrivateFork                 bool
+	Repository                         TargetResolver
+	IncludeActions                     bool
+	IncludeWorkflowPermissions         bool
+	IncludeRulesets                    bool
+	IncludeEnvironments                bool
+	IncludeSecretScanning              bool
+	IncludePrivateReporting            bool
+	IncludeImmutableReleases           bool
+	IncludeRetention                   bool
+	ExcludedRulesets                   func(int)
+	NormalizationWarning               func(settings.ObservationNormalization)
+	CommitMessageNormalizationWarning  func(settings.CommitMessageNormalization)
+	SecurityStatusNormalizationWarning func(settings.SecurityStatusNormalization)
+	PrepareSave                        func() (func(settings.Declaration) error, error)
 }
 
 // Export saves all observed fields only after a complete read.
@@ -187,6 +188,14 @@ func Export(checkout ExportCheckout, read Reader) error {
 		observed, err := read.SecretScanning(repo)
 		if err != nil {
 			return err
+		}
+		if _, _, err := observed.Values(); err != nil {
+			return err
+		}
+		if checkout.SecurityStatusNormalizationWarning != nil {
+			for _, record := range observed.Normalizations() {
+				checkout.SecurityStatusNormalizationWarning(record)
+			}
 		}
 		declaration.Security, err = observed.Declaration()
 		if err != nil {
