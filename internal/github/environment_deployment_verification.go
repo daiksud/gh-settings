@@ -1,6 +1,7 @@
 package github
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -21,6 +22,25 @@ func verifyEnvironmentRequestedState(actual settings.EnvironmentState, requested
 	}
 	if !settings.EnvironmentMatchesRequest(actual.Policy, requested) {
 		return fmt.Errorf("environment readback differs from requested policy")
+	}
+	return nil
+}
+
+// verifyEnvironmentUpdateResponse validates preliminary detail data without
+// inventing pattern acquisition or certifying API-controlled omitted outcomes.
+func verifyEnvironmentUpdateResponse(raw map[string]json.RawMessage, requested settings.EnvironmentDeclaration) error {
+	actual, record, err := decodeObservedEnvironment(raw)
+	if err != nil {
+		return err
+	}
+	if requested.DeploymentBranchPolicyDeclared || requested.DeploymentBranchPolicy != nil {
+		rawMode := actual.Policy.DeploymentBranchPolicy
+		if record != (settings.EnvironmentDeploymentNormalization{}) {
+			rawMode = &record.RawPolicy
+		}
+		if !reflect.DeepEqual(rawMode, requested.DeploymentBranchPolicy) {
+			return fmt.Errorf("environment acknowledgment raw deployment mode differs from requested policy")
+		}
 	}
 	return nil
 }
