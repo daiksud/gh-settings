@@ -10,25 +10,26 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
-	IncludeArchive                     bool
-	IncludePages                       bool
-	IncludeForkApproval                bool
-	IncludePrivateFork                 bool
-	Repository                         TargetResolver
-	IncludeActions                     bool
-	IncludeWorkflowPermissions         bool
-	IncludeRulesets                    bool
-	IncludeEnvironments                bool
-	IncludeSecretScanning              bool
-	IncludePrivateReporting            bool
-	IncludeImmutableReleases           bool
-	IncludeRetention                   bool
-	ExcludedRulesets                   func(int)
-	NormalizationWarning               func(settings.ObservationNormalization)
-	CommitMessageNormalizationWarning  func(settings.CommitMessageNormalization)
-	SecurityStatusNormalizationWarning func(settings.SecurityStatusNormalization)
-	RulesetNormalizationWarning        func(int64, string, settings.ObservationNormalization)
-	PrepareSave                        func() (func(settings.Declaration) error, error)
+	IncludeArchive                               bool
+	IncludePages                                 bool
+	IncludeForkApproval                          bool
+	IncludePrivateFork                           bool
+	Repository                                   TargetResolver
+	IncludeActions                               bool
+	IncludeWorkflowPermissions                   bool
+	IncludeRulesets                              bool
+	IncludeEnvironments                          bool
+	IncludeSecretScanning                        bool
+	IncludePrivateReporting                      bool
+	IncludeImmutableReleases                     bool
+	IncludeRetention                             bool
+	ExcludedRulesets                             func(int)
+	NormalizationWarning                         func(settings.ObservationNormalization)
+	CommitMessageNormalizationWarning            func(settings.CommitMessageNormalization)
+	SecurityStatusNormalizationWarning           func(settings.SecurityStatusNormalization)
+	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
+	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	PrepareSave                                  func() (func(settings.Declaration) error, error)
 }
 
 // Export saves all observed fields only after a complete read.
@@ -106,17 +107,21 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Rulesets = &desired
-		if checkout.RulesetNormalizationWarning != nil {
+		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil {
 			values, err := observed.Values()
 			if err != nil {
 				return err
 			}
 			slices.SortFunc(values, func(a, b settings.RulesetState) int { return strings.Compare(a.Policy.Name, b.Policy.Name) })
 			for _, value := range values {
-				for _, record := range []settings.ObservationNormalization{value.EnforcementNormalization, value.QualitySeverityNormalization} {
-					if record != (settings.ObservationNormalization{}) {
-						checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
-					}
+				if record := value.EnforcementNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {
+					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
+				}
+				if record := value.RequiredApprovalsNormalization; record != (settings.RulesetRequiredApprovalsNormalization{}) && checkout.RulesetRequiredApprovalsNormalizationWarning != nil {
+					checkout.RulesetRequiredApprovalsNormalizationWarning(value.ID, value.Policy.Name, record)
+				}
+				if record := value.QualitySeverityNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {
+					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
 				}
 			}
 		}
