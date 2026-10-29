@@ -6,7 +6,58 @@ description: Specify local validation of supported YAML settings and its Go test
 
 ## Feature: Validate repository settings locally
 
-`validate` reads `.github/settings.yml` from the current Git checkout's root, including when invoked from a subdirectory. The document requires root integer `schemaVersion: 1`; `settings.repository` is optional. It does not require a GitHub origin or authentication, make API requests, change the file, or write repository settings. Success has exit status zero and no output; failure has a nonzero status, a diagnostic on standard error, and no standard output.
+`validate` reads `.github/settings.yml` from the current Git checkout's root, including when invoked from a subdirectory. The document requires the string marker `version: daiksud/gh-settings@v0` and groups supported intent beneath `repository.about`, `repository.labels`, and `repository.settings`. It does not require a GitHub origin or authentication, make API requests, change the file, or write repository settings. Success has exit status zero and no output; failure has a nonzero status, a diagnostic on standard error, and no standard output.
+
+### Rule: Use the UI-oriented versioned repository document
+
+#### Scenario: Preserve About intent in the new envelope
+
+- Given the document uses `version: daiksud/gh-settings@v0`
+- And `repository.about` declares an empty description, a website and an empty topics list
+- When the document is read and exported
+- Then those explicit values remain present under the same UI field names
+- And omitted About fields remain unmanaged
+
+#### Scenario: Reject obsolete envelopes instead of migrating them
+
+- Given a document uses `schemaVersion`, root `settings`, or the obsolete About field `homepage`
+- When the maintainer validates the document
+- Then validation fails without network access or changing the document
+
+These scenarios map to `TestUIConfigAboutRoundTrip`, `TestUIConfigAboutOmission`, and `TestUIConfigRejectsObsoleteEnvelopeAndInvalidAbout` in the [UI codec tests](../../internal/workspace/ui_config_test.go).
+
+#### Scenario: Preserve General controls and selected menu wording
+
+- Given `repository.settings.general` contains supported nested controls with explicit false values and snake_case menu choices
+- When the document is read and exported
+- Then the selected values retain their UI names and types
+- And omitted controls do not become desired defaults
+- And API-shaped keys, unknown controls, duplicate keys and incorrectly typed values are rejected
+
+#### Scenario: Reject transport choices and invalid dependent controls
+
+- Given a General commit-message menu contains the API token `PR_TITLE` instead of a supported UI choice
+- Or Issues is explicitly disabled together with an explicit creation-permission choice
+- When the maintainer validates the document
+- Then validation fails before API access
+- And no partial declaration is used
+
+Test mapping: the [General UI codec tests](../../internal/workspace/ui_general_test.go).
+
+The [UI declaration composition tests](../../internal/github/ui_declaration_test.go) check independent expected adapter values and local domain validation.
+
+#### Scenario: Preserve the Labels collection and selected identity
+
+- Given `repository.labels` contains selected numeric IDs and create-only entries without IDs
+- When the document is read and exported
+- Then names, quoted `#rrggbb` colors and explicit empty descriptions remain present
+- And omitted IDs and descriptions remain omitted
+- And an omitted collection remains distinct from an explicit empty list
+- And unknown keys, nulls, non-string label values and incorrectly typed or overflowing IDs are rejected
+
+Test mapping: the [Labels UI codec tests](../../internal/workspace/ui_labels_test.go).
+
+Colors require the UI `#rrggbb` form; selected IDs and names retain their existing whole-object ownership rules. Invalid colors or duplicate selected IDs fail locally without using a partial declaration. The [UI declaration composition tests](../../internal/github/ui_declaration_test.go) cover this adapter boundary independently of YAML syntax.
 
 ### Rule: Accept only supported fields with the update API's value types
 
