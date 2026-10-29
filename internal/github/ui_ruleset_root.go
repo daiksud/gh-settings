@@ -13,7 +13,11 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 	if (ui.TargetBranches == nil) == (ui.TargetTags == nil) {
 		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset requires exactly one of target_branches or target_tags")
 	}
-	if ui.EnforcementStatus == nil || (*ui.EnforcementStatus != uimodel.Active && *ui.EnforcementStatus != uimodel.Disabled) {
+	if ui.EnforcementStatus == nil {
+		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active or disabled")
+	}
+	enforcement, valid := settings.RulesetEnforcementValueForChoice(*ui.EnforcementStatus)
+	if !valid {
 		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active or disabled")
 	}
 	var patternLists []*[]string
@@ -50,7 +54,6 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 		include = appendUITargetPatterns(include, ui.TargetTags.IncludeByPattern, prefix)
 		exclude = appendUITargetPatterns(exclude, ui.TargetTags.ExcludeByPattern, prefix)
 	}
-	enforcement := string(*ui.EnforcementStatus)
 	result := settings.RulesetDeclaration{ID: copyUIRulesetValue(ui.ID), Name: ui.RulesetName, Target: &target, Enforcement: &enforcement, Conditions: &settings.RulesetConditions{RefName: &settings.RefNameCondition{Include: &include, Exclude: &exclude}}}
 	var err error
 	result.BypassActors, err = declareUIRulesetBypass(ui.BypassList)
@@ -89,8 +92,8 @@ func RulesetObservation(policy settings.RulesetDeclaration) (PreparedRuleset, er
 	if err := settings.ValidateRuleset(policy, true); err != nil {
 		return PreparedRuleset{}, err
 	}
-	status := uimodel.EnforcementStatus(*policy.Enforcement)
-	if status != uimodel.Active && status != uimodel.Disabled {
+	status, valid := settings.RulesetEnforcementChoiceForValue(*policy.Enforcement)
+	if !valid {
 		return PreparedRuleset{}, fmt.Errorf("ruleset enforcement_status is outside UI choices")
 	}
 	result := uimodel.Ruleset{ID: copyUIRulesetValue(policy.ID), RulesetName: policy.Name, EnforcementStatus: &status}
