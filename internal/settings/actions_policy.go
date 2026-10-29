@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 const ActionsPolicyFieldCount = 14
@@ -265,7 +267,35 @@ func NewActionsPolicyChange(field string, before, after any) (ActionsPolicyChang
 }
 
 // ValidateActionsPolicyChanges also verifies the only legal unobservable transition.
-func ValidateActionsPolicyChanges(changes []ActionsPolicyChange) error {
+func ValidateActionsPolicyChanges(changes []ActionsPolicyChange, execution ...ActionsExecutionChange) error {
+	if len(execution) > 1 {
+		return fmt.Errorf("duplicate Actions execution radio decision")
+	}
+	if len(execution) == 1 {
+		radio := execution[0]
+		_, err := NewActionsExecutionChange(ActionsPolicyState{Enabled: radio.beforeEnabled, AllowedActions: "all", AllowedActionsNormalization: radio.normalization}, radio.after)
+		if err != nil {
+			return err
+		}
+		selectedTarget := radio.after == uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows
+		for _, change := range changes {
+			if change.field == "actions.enabled" || change.field == "actions.allowed_actions" {
+				return fmt.Errorf("Actions radio overlaps native execution policy evidence")
+			}
+			if !selectedTarget && strings.HasPrefix(change.field, "actions.selected_actions.") {
+				return fmt.Errorf("nonselected Actions radio cannot contain selected companion changes")
+			}
+		}
+		if selectedTarget {
+			transition, err := NewActionsPolicyChange("actions.allowed_actions", "all", "selected")
+			if err != nil {
+				return err
+			}
+			// This local component supplies structural transition evidence only;
+			// it is never another rendered decision or desired declaration.
+			changes = append(append([]ActionsPolicyChange{}, changes...), transition)
+		}
+	}
 	seen := map[string]bool{}
 	unknown := 0
 	transition := false
