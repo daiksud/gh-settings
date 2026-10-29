@@ -24,7 +24,7 @@ func prAccessTestClient(t *testing.T, transport http.RoundTripper) *RepositoryAc
 }
 func TestReadPRAccessCompleteAndRejectsUnknownData(t *testing.T) {
 	const valid = `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`
-	for _, body := range []string{valid, strings.Replace(valid, `"hasPullRequestsEnabled":false,`, "", 1), strings.Replace(valid, `false`, `null`, 1), strings.Replace(valid, `false`, `"false"`, 1), strings.Replace(valid, `"ALL"`, `null`, 1), strings.Replace(valid, `"ALL"`, `"UNKNOWN"`, 1), strings.Replace(valid, `"ALL"`, `"all"`, 1), `{"data":{"repository":null}}`, `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}},"errors":[{"message":"partial data denied"}]}`} {
+	for _, body := range []string{valid, strings.Replace(valid, `"hasPullRequestsEnabled":false,`, "", 1), strings.Replace(valid, `false`, `null`, 1), strings.Replace(valid, `false`, `"false"`, 1), strings.Replace(valid, `"ALL"`, `null`, 1), strings.Replace(valid, `"ALL"`, `false`, 1), strings.Replace(valid, `"ALL"`, `0`, 1), `{"data":{"repository":null}}`, `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}},"errors":[{"message":"partial data denied"}]}`} {
 		client := prAccessTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 			data, _ := io.ReadAll(req.Body)
 			var request struct {
@@ -60,11 +60,20 @@ func TestPRAccessWriteOnlyDeclaredValues(t *testing.T) {
 				Variables map[string]any
 			}
 			json.Unmarshal(data, &request)
-			if calls == 1 {
+			if calls == 1 || calls == 3 {
 				if strings.Contains(request.Query, "mutation") || !reflect.DeepEqual(request.Variables, map[string]any{"owner": "owner", "name": "current"}) {
 					t.Fatal(string(data))
 				}
-				return labelsResponse(req, 200, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"OWNER/CURRENT"}}}`), nil
+				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "OWNER/CURRENT"}
+				if desired.PullRequestCreationPolicy != nil {
+					value := "ALL"
+					if calls == 3 {
+						value = *desired.PullRequestCreationPolicy
+					}
+					fields["pullRequestCreationPolicy"] = value
+				}
+				body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": fields}})
+				return labelsResponse(req, 200, string(body)), nil
 			}
 			want := map[string]any{"repositoryId": "opaque-id"}
 			response := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
@@ -86,7 +95,11 @@ func TestPRAccessWriteOnlyDeclaredValues(t *testing.T) {
 			body, _ := json.Marshal(map[string]any{"data": map[string]any{"updateRepository": map[string]any{"repository": response}}})
 			return labelsResponse(req, 200, string(body)), nil
 		}))
-		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 2 {
+		wantCalls := 2
+		if desired.PullRequestCreationPolicy != nil {
+			wantCalls = 3
+		}
+		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != wantCalls {
 			t.Fatal(calls, err)
 		}
 	}
@@ -96,7 +109,7 @@ func TestPRAccessWriteOnlyDeclaredValues(t *testing.T) {
 	}
 }
 func TestPRAccessIdentityAndMutationFailures(t *testing.T) {
-	const lookup = `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current"}}}`
+	const lookup = `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","pullRequestCreationPolicy":"ALL"}}}`
 	const applied = `{"data":{"updateRepository":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}}`
 	for _, tt := range []struct {
 		name, first, second string

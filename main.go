@@ -51,36 +51,23 @@ func main() {
 }
 
 func writeRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
-	restDesired := desired
-	restDesired.Archived = nil
-	restDesired.HasPullRequests = nil
-	restDesired.PullRequestCreationPolicy = nil
-	restDesired.IssueCreationPolicy = nil
-	restDesired.HasSponsorships = nil
-	if !restDesired.Empty() {
-		client, err := github.NewWriteClient(repo.Host)
-		if err != nil {
-			return err
-		}
-		client.CommitMessageNormalizationWarning = warnCommitMessageNormalization
-		if err := client.ApplyRepository(repo, restDesired); err != nil {
-			return err
-		}
-	}
-	if desired.RepositoryAccessEmpty() {
-		return nil
-	}
-	client, err := github.NewRepositoryAccessClient(repo.Host)
-	if err == nil {
-		err = client.ApplyRepositoryAccess(repo, desired)
-	}
-	if err != nil && !restDesired.Empty() {
-		if desired.IssueCreationPolicy != nil || desired.HasSponsorships != nil {
-			return fmt.Errorf("apply repository access (earlier repository writes remain applied): %w", err)
-		}
-		return fmt.Errorf("apply PR access (earlier repository writes remain applied): %w", err)
-	}
-	return err
+	return writeRepositoryWithWriters(repo, desired,
+		func(repo repository.Repository, restDesired settings.RepositoryDeclaration) error {
+			client, err := github.NewWriteClient(repo.Host)
+			if err != nil {
+				return err
+			}
+			client.CommitMessageNormalizationWarning = warnCommitMessageNormalization
+			return client.ApplyRepository(repo, restDesired)
+		},
+		func(repo repository.Repository, accessDesired settings.RepositoryDeclaration) error {
+			client, err := github.NewRepositoryAccessClient(repo.Host)
+			if err != nil {
+				return err
+			}
+			client.NormalizationWarning = warnNormalization
+			return client.ApplyRepositoryAccess(repo, accessDesired)
+		})
 }
 
 func readTopics(repo repository.Repository) ([]string, error) {

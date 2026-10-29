@@ -19,7 +19,10 @@ const repositoryAccessIdentityQuery = `query($owner: String!, $name: String!) {
  repository(owner: $owner, name: $name, followRenames: false) { id nameWithOwner }
 }`
 
-type RepositoryAccessClient struct{ graphql *api.GraphQLClient }
+type RepositoryAccessClient struct {
+	graphql              *api.GraphQLClient
+	NormalizationWarning func(settings.ObservationNormalization)
+}
 
 // NewRepositoryAccessClient shares gh authentication without broadening grants. Queries
 // and mutations are bounded and never follow redirects to a different target.
@@ -57,14 +60,15 @@ func (client *RepositoryAccessClient) ReadPRAccess(repo repository.Repository) (
 	if json.Unmarshal(fields["hasPullRequestsEnabled"], &enabled) != nil || enabled == nil {
 		return settings.PRAccessState{}, fmt.Errorf("GitHub returned missing/null or invalid hasPullRequestsEnabled")
 	}
-	policy, err := accessString(fields, "pullRequestCreationPolicy")
+	policy, err := acquiredCreationPolicy(fields, "pullRequestCreationPolicy")
 	if err != nil {
 		return settings.PRAccessState{}, err
 	}
-	if !settings.ValidPullRequestCreationPolicy(policy) {
-		return settings.PRAccessState{}, fmt.Errorf("GitHub returned unsupported pullRequestCreationPolicy %q", policy)
+	prepared, err := prepareCreationPolicyObservation(policy, settings.PullRequestPermissionsControl)
+	if err != nil {
+		return settings.PRAccessState{}, err
 	}
-	return settings.PRAccessState{HasPullRequests: *enabled, PullRequestCreationPolicy: policy}, nil
+	return settings.PRAccessState{HasPullRequests: *enabled, PullRequestCreationPolicy: *prepared.Value, Normalization: prepared.Normalization}, nil
 }
 func validateAccessTarget(fields map[string]json.RawMessage, repo repository.Repository, label string) (string, error) {
 	id, err := accessString(fields, "id")
@@ -91,18 +95,11 @@ func (client *RepositoryAccessClient) ApplyRepositoryAccess(repo repository.Repo
 		return fmt.Errorf("unsupported issue_creation_policy")
 	}
 	label := repositoryAccessLabel(desired)
-	var lookup map[string]json.RawMessage
-	if err := client.graphql.Do(repositoryAccessIdentityQuery, map[string]any{"owner": repo.Owner, "name": repo.Name}, &lookup); err != nil {
-		return fmt.Errorf("resolve %s repository ID: %w", label, err)
-	}
-	fields, err := accessObject(lookup["repository"], label+" repository identity")
+	id, before, err := client.readAccessPrerequisites(repo, desired)
 	if err != nil {
-		return err
+		return &repositoryAccessPreWriteFailure{cause: fmt.Errorf("resolve %s repository prerequisites: %w", label, err)}
 	}
-	id, err := validateAccessTarget(fields, repo, label)
-	if err != nil {
-		return err
-	}
+	client.reportCreationPolicyNormalizations(before)
 	input := map[string]any{"repositoryId": id}
 	selected := "id nameWithOwner"
 	if desired.HasPullRequests != nil {
@@ -129,7 +126,37 @@ func (client *RepositoryAccessClient) ApplyRepositoryAccess(repo repository.Repo
 	if err := verifyAccessMutation(response, repo, id, desired); err != nil {
 		return fmt.Errorf("verify %s response (repository writes may already have applied): %w", label, err)
 	}
+	if desired.PullRequestCreationPolicy != nil || desired.IssueCreationPolicy != nil {
+		actualID, actual, err := client.readAccessPrerequisites(repo, desired)
+		if err != nil {
+			return fmt.Errorf("verify %s readback (repository writes may already have applied): %w", label, err)
+		}
+		if actualID != id {
+			return fmt.Errorf("verify %s readback: repository ID changed (repository writes may already have applied)", label)
+		}
+		client.reportCreationPolicyNormalizations(actual)
+		if !repositoryCreationPoliciesMatch(actual, desired) {
+			return fmt.Errorf("verify %s raw readback: GitHub did not retain declared creation policies (repository writes may already have applied)", label)
+		}
+	}
 	return nil
+}
+
+type repositoryAccessPreWriteFailure struct{ cause error }
+
+func (failure *repositoryAccessPreWriteFailure) Error() string  { return failure.cause.Error() }
+func (failure *repositoryAccessPreWriteFailure) Unwrap() error  { return failure.cause }
+func (*repositoryAccessPreWriteFailure) ReadFailedBeforeWrite() {}
+
+func (client *RepositoryAccessClient) reportCreationPolicyNormalizations(observed repositoryCreationObservations) {
+	if client.NormalizationWarning == nil {
+		return
+	}
+	for _, control := range [...]settings.CreationPolicyControl{settings.PullRequestPermissionsControl, settings.IssuePermissionsControl} {
+		if normalization := observed[control].Normalization; normalization != (settings.ObservationNormalization{}) {
+			client.NormalizationWarning(normalization)
+		}
+	}
 }
 func verifyAccessMutation(response map[string]json.RawMessage, repo repository.Repository, id string, desired settings.RepositoryDeclaration) error {
 	label := repositoryAccessLabel(desired)
@@ -210,12 +237,13 @@ func (client *RepositoryAccessClient) ReadIssueCreationPolicy(repo repository.Re
 	if err != nil {
 		return settings.IssueCreationPolicyState{}, err
 	}
-	policy, err := accessString(fields, "issueCreationPolicy")
+	policy, err := acquiredCreationPolicy(fields, "issueCreationPolicy")
 	if err != nil {
 		return settings.IssueCreationPolicyState{}, err
 	}
-	if !settings.ValidIssueCreationPolicy(policy) {
-		return settings.IssueCreationPolicyState{}, fmt.Errorf("GitHub returned unsupported issueCreationPolicy %q", policy)
+	prepared, err := prepareCreationPolicyObservation(policy, settings.IssuePermissionsControl)
+	if err != nil {
+		return settings.IssueCreationPolicyState{}, err
 	}
-	return settings.IssueCreationPolicyState{Policy: policy}, nil
+	return settings.IssueCreationPolicyState{Policy: *prepared.Value, Normalization: prepared.Normalization}, nil
 }

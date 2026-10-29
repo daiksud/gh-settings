@@ -72,10 +72,15 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		if err := write.Repository(repo, other); err != nil {
 			status := OperationFailedUnknown
 			var readFailure PreWriteReadFailure
-			if errors.As(err, &readFailure) {
+			var writeEffects RepositoryWriteEffectsFailure
+			hasWriteEffects := errors.As(err, &writeEffects)
+			if !hasWriteEffects && errors.As(err, &readFailure) {
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
+			if hasWriteEffects {
+				result.Outcome = ApplyPartialFailure
+			}
 			return result, err
 		}
 		result.Operations[index].Status = OperationCompleted

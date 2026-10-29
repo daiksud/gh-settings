@@ -13,7 +13,7 @@ import (
 )
 
 func TestReadIssueCreationPolicyCompleteAndSelective(t *testing.T) {
-	for _, value := range []string{`"ALL"`, `"COLLABORATORS_ONLY"`, `null`, `"UNKNOWN"`, `"all"`, `false`, `0`} {
+	for _, value := range []string{`"ALL"`, `"COLLABORATORS_ONLY"`, `null`, `[]`, `{}`, `false`, `0`} {
 		client := prAccessTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 			data, _ := io.ReadAll(req.Body)
 			var request struct {
@@ -53,11 +53,23 @@ func TestIssuePolicyWriteOnlyDeclaredValuesAndSharedMutation(t *testing.T) {
 				Variables map[string]any
 			}
 			json.Unmarshal(data, &request)
-			if calls == 1 {
-				if !strings.Contains(request.Query, "followRenames: false") || strings.Contains(request.Query, "issueCreationPolicy") || strings.Contains(request.Query, "hasIssuesEnabled") {
+			if calls == 1 || calls == 3 {
+				if !strings.Contains(request.Query, "followRenames: false") || !strings.Contains(request.Query, "issueCreationPolicy") || strings.Contains(request.Query, "hasIssuesEnabled") {
 					t.Fatal("companion lookup or rename following", string(data))
 				}
-				return labelsResponse(req, 200, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current"}}}`), nil
+				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current", "issueCreationPolicy": "ALL"}
+				if calls == 3 {
+					fields["issueCreationPolicy"] = *desired.IssueCreationPolicy
+				}
+				if desired.PullRequestCreationPolicy != nil {
+					value := "ALL"
+					if calls == 3 {
+						value = *desired.PullRequestCreationPolicy
+					}
+					fields["pullRequestCreationPolicy"] = value
+				}
+				body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": fields}})
+				return labelsResponse(req, 200, string(body)), nil
 			}
 			want := map[string]any{"repositoryId": "opaque-id", "issueCreationPolicy": *desired.IssueCreationPolicy}
 			result := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current", "issueCreationPolicy": *desired.IssueCreationPolicy}
@@ -75,7 +87,7 @@ func TestIssuePolicyWriteOnlyDeclaredValuesAndSharedMutation(t *testing.T) {
 			body, _ := json.Marshal(map[string]any{"data": map[string]any{"updateRepository": map[string]any{"repository": result}}})
 			return labelsResponse(req, 200, string(body)), nil
 		}))
-		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 2 {
+		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 3 {
 			t.Fatal(calls, err)
 		}
 	}
@@ -86,7 +98,7 @@ func TestIssuePolicyMutationRequiresMatchingResponse(t *testing.T) {
 		client := prAccessTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 			calls++
 			if calls == 1 {
-				return labelsResponse(req, 200, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current"}}}`), nil
+				return labelsResponse(req, 200, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","issueCreationPolicy":"ALL"}}}`), nil
 			}
 			field := `,"issueCreationPolicy":` + value
 			if value == "MISSING" {

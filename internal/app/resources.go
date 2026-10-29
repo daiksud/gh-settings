@@ -12,6 +12,14 @@ type PreWriteReadFailure interface {
 	ReadFailedBeforeWrite()
 }
 
+// RepositoryWriteEffectsFailure marks a composite repository operation whose
+// earlier write substep completed before a later failure. It takes precedence
+// over an inner substep's PreWriteReadFailure without discarding that cause.
+type RepositoryWriteEffectsFailure interface {
+	error
+	RepositoryWritesMayHaveApplied()
+}
+
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
 	ImmutableReleases   func(repository.Repository) (settings.ImmutableReleasesObservation, error)

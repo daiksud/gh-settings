@@ -65,11 +65,20 @@ func TestSponsorshipsApplyOnlyDeclaredBooleanAndCombinedFields(t *testing.T) {
 			if req.Method != "POST" || req.URL.Path != "/graphql" {
 				t.Fatal("unexpected method or path", req.Method, req.URL)
 			}
-			if calls == 1 {
+			if calls == 1 || calls == 3 {
 				if !strings.Contains(request.Query, "followRenames: false") || strings.Contains(request.Query, "hasSponsorshipsEnabled") || !reflect.DeepEqual(request.Variables, map[string]any{"owner": "owner", "name": "current"}) {
 					t.Fatal("broad lookup", string(data))
 				}
-				return labelsResponse(req, 200, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current"}}}`), nil
+				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
+				if d.IssueCreationPolicy != nil {
+					value := "ALL"
+					if calls == 3 {
+						value = *d.IssueCreationPolicy
+					}
+					fields["issueCreationPolicy"] = value
+				}
+				body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": fields}})
+				return labelsResponse(req, 200, string(body)), nil
 			}
 			want := map[string]any{"repositoryId": "opaque-id", "hasSponsorshipsEnabled": *d.HasSponsorships}
 			result := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current", "hasSponsorshipsEnabled": *d.HasSponsorships}
@@ -90,7 +99,11 @@ func TestSponsorshipsApplyOnlyDeclaredBooleanAndCombinedFields(t *testing.T) {
 			}
 			return labelsResponse(req, 200, string(body)), nil
 		}))
-		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, d); err != nil || calls != 2 {
+		wantCalls := 2
+		if d.IssueCreationPolicy != nil {
+			wantCalls = 3
+		}
+		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, d); err != nil || calls != wantCalls {
 			t.Fatal(calls, err)
 		}
 	}
