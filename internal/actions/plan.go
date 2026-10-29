@@ -94,7 +94,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.Rulesets {
 		display := change.Display()
 		entry := RulesetPlanChange{Operation: display.Operation(), Before: display.Before(), After: display.After()}
-		if record := display.EnforcementNormalization(); record != (settings.ObservationNormalization{}) {
+		if record := display.Normalizations().Enforcement; record != (settings.ObservationNormalization{}) {
 			entry.EnforcementNormalization = &record
 		}
 		report.Rulesets = append(report.Rulesets, entry)

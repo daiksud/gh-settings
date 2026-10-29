@@ -296,7 +296,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	}
 	path := rulesetsPath(repo)
 	var response map[string]json.RawMessage
-	if record := change.EnforcementNormalization(); record != (settings.ObservationNormalization{}) && client.RulesetNormalizationWarning != nil {
+	if record := change.Normalizations().Enforcement; record != (settings.ObservationNormalization{}) && client.RulesetNormalizationWarning != nil {
 		client.RulesetNormalizationWarning(change.ID(), change.Name(), record)
 	}
 	if change.Operation() == "create" {
@@ -329,7 +329,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
 	}
-	needsReadback := change.EnforcementNormalization() != (settings.ObservationNormalization{})
+	needsReadback := change.Normalizations().Enforcement != (settings.ObservationNormalization{})
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {

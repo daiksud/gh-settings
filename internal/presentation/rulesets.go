@@ -14,7 +14,7 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 	before, _ := json.Marshal(prior)
 	after, _ := json.Marshal(desired)
 	line := fmt.Sprintf("settings.rulesets: %s %q: %s → %s", change.Operation(), change.Name(), before, after)
-	if record := change.EnforcementNormalization(); record != (settings.ObservationNormalization{}) {
+	if record := change.Normalizations().Enforcement; record != (settings.ObservationNormalization{}) {
 		id := *prior.ID
 		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s (write required)", record.Path, id, change.Name(), strconv.Quote(record.Fallback), strconv.Quote(*desired.Enforcement))
 		return RulesetNormalizationLine(id, change.Name(), record) + "\n" + decision + "\nEffective policy: " + line

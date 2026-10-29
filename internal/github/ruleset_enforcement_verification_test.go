@@ -28,7 +28,7 @@ func rulesetEnforcementChange(t *testing.T, desired string, normalized bool) set
 	after.ID = &afterID
 	var change settings.RulesetChange
 	if normalized {
-		change, err = settings.NewRulesetChangeWithEnforcementNormalization("update", 7, &before, &after, settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"})
+		change, err = settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, settings.RulesetNormalizations{Enforcement: settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}})
 	} else {
 		change, err = settings.NewRulesetChange("update", 7, &before, &after)
 	}

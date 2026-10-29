@@ -73,7 +73,7 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 		var change settings.RulesetDisplayChange
 		var err error
 		if e.EnforcementNormalization != nil {
-			change, err = settings.NewRulesetDisplayChangeWithEnforcementNormalization(e.Operation, e.Before, e.After, *e.EnforcementNormalization)
+			change, err = settings.NewRulesetDisplayChangeWithNormalizations(e.Operation, e.Before, e.After, settings.RulesetNormalizations{Enforcement: *e.EnforcementNormalization})
 		} else {
 			change, err = settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)
 		}
