@@ -24,13 +24,12 @@ func declareUIActionsForkApproval(choice *uimodel.ForkApprovalChoice) (*string, 
 	return &value, nil
 }
 
-func WithActionsForkApprovalObservation(ui uimodel.ActionsGeneral, observation settings.ForkApprovalObservation) (uimodel.ActionsGeneral, error) {
-	value, err := observation.Value()
-	if err != nil {
-		return uimodel.ActionsGeneral{}, err
+func WithActionsForkApprovalPolicyUI(ui uimodel.ActionsGeneral, policy *string) (uimodel.ActionsGeneral, error) {
+	if policy == nil {
+		return ui, nil
 	}
 	var choice uimodel.ForkApprovalChoice
-	switch value {
+	switch *policy {
 	case "first_time_contributors_new_to_github":
 		choice = uimodel.RequireApprovalForFirstTimeContributorsWhoAreNewToGitHub
 	case "first_time_contributors":
@@ -42,4 +41,13 @@ func WithActionsForkApprovalObservation(ui uimodel.ActionsGeneral, observation s
 	}
 	ui.ApprovalForRunningForkPullRequestWorkflowsFromContributors = &choice
 	return ui, nil
+
+}
+
+func WithActionsForkApprovalObservation(ui uimodel.ActionsGeneral, observation settings.ForkApprovalObservation) (uimodel.ActionsGeneral, error) {
+	value, err := observation.Value()
+	if err != nil {
+		return uimodel.ActionsGeneral{}, err
+	}
+	return WithActionsForkApprovalPolicyUI(ui, &value)
 }

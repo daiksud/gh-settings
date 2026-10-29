@@ -106,3 +106,66 @@ func TestActionsRetentionPolicyUI(t *testing.T) {
 		}
 	}
 }
+
+func TestActionsForkApprovalPolicyUI(t *testing.T) {
+	base := uimodel.ActionsGeneral{AllowGitHubActionsToCreateAndApprovePullRequests: rulesetPtr(false)}
+	for _, test := range []struct {
+		api string
+		ui  uimodel.ForkApprovalChoice
+	}{
+		{"first_time_contributors_new_to_github", uimodel.RequireApprovalForFirstTimeContributorsWhoAreNewToGitHub},
+		{"first_time_contributors", uimodel.RequireApprovalForFirstTimeContributors},
+		{"all_external_contributors", uimodel.RequireApprovalForAllExternalContributors},
+	} {
+		got, err := WithActionsForkApprovalPolicyUI(base, &test.api)
+		want := uimodel.ActionsGeneral{AllowGitHubActionsToCreateAndApprovePullRequests: rulesetPtr(false), ApprovalForRunningForkPullRequestWorkflowsFromContributors: &test.ui}
+		if err != nil || !reflect.DeepEqual(got, want) {
+			t.Fatalf("fork approval projection %#v; want %#v; error=%v", got, want, err)
+		}
+	}
+	got, err := WithActionsForkApprovalPolicyUI(base, nil)
+	if err != nil || !reflect.DeepEqual(got, base) {
+		t.Fatalf("omitted fork approval changed controls: %#v, %v", got, err)
+	}
+	got, err = WithActionsForkApprovalPolicyUI(base, rulesetPtr("unknown"))
+	if err == nil || !reflect.DeepEqual(got, uimodel.ActionsGeneral{}) {
+		t.Fatalf("unknown fork approval projected: %#v, %v", got, err)
+	}
+}
+
+func TestActionsPrivateForkPolicyUI(t *testing.T) {
+	base := uimodel.ActionsGeneral{ActionsPermissions: rulesetPtr(uimodel.DisableActions)}
+	policy := settings.PrivateForkDeclaration{Run: rulesetPtr(true), WriteTokens: rulesetPtr(false), Secrets: rulesetPtr(true), Approval: rulesetPtr(false)}
+	want := uimodel.ActionsGeneral{ActionsPermissions: rulesetPtr(uimodel.DisableActions), ForkPullRequestWorkflows: &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: rulesetPtr(true), SendWriteTokensToWorkflowsFromForkPullRequests: rulesetPtr(false), SendSecretsAndVariablesToWorkflowsFromForkPullRequests: rulesetPtr(true), RequireApprovalForForkPullRequestWorkflows: rulesetPtr(false)}}
+	got, err := WithActionsPrivateForkPolicyUI(base, policy)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("private fork projection %#v; want %#v; error=%v", got, want, err)
+	}
+	*got.ForkPullRequestWorkflows.SendSecretsAndVariablesToWorkflowsFromForkPullRequests = false
+	if !*policy.Secrets {
+		t.Fatal("private fork projection aliases policy")
+	}
+	*policy.Run = false
+	got, err = WithActionsPrivateForkPolicyUI(base, policy)
+	want.ForkPullRequestWorkflows = &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: rulesetPtr(false)}
+	if err != nil || !reflect.DeepEqual(got, want) || !*policy.Secrets {
+		t.Fatalf("disabled private fork companions became visible: %#v, %v", got, err)
+	}
+	got, err = WithActionsPrivateForkPolicyUI(base, settings.PrivateForkDeclaration{})
+	if err != nil || !reflect.DeepEqual(got, base) {
+		t.Fatalf("omitted private fork changed controls: %#v, %v", got, err)
+	}
+	for _, mutate := range []func(*settings.PrivateForkDeclaration){
+		func(p *settings.PrivateForkDeclaration) { p.Run = nil },
+		func(p *settings.PrivateForkDeclaration) { p.WriteTokens = nil },
+		func(p *settings.PrivateForkDeclaration) { p.Secrets = nil },
+		func(p *settings.PrivateForkDeclaration) { p.Approval = nil },
+	} {
+		partial := policy
+		mutate(&partial)
+		got, err := WithActionsPrivateForkPolicyUI(base, partial)
+		if err == nil || !reflect.DeepEqual(got, uimodel.ActionsGeneral{}) {
+			t.Fatalf("incomplete private fork projected: %#v, %v", got, err)
+		}
+	}
+}
