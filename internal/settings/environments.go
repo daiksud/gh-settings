@@ -87,8 +87,9 @@ type EnvironmentState struct {
 }
 type EnvironmentObservation struct{ entries []EnvironmentState }
 type EnvironmentChange struct {
-	operation     string
-	before, after *EnvironmentDeclaration
+	operation                   string
+	before, after               *EnvironmentDeclaration
+	deploymentModeNormalization EnvironmentDeploymentNormalization
 }
 
 // Client name equivalence uses Unicode simple folding, without trimming.
@@ -307,11 +308,23 @@ func (c EnvironmentChange) After() *EnvironmentDeclaration {
 // NewEnvironmentChange requires a complete observed before policy, but after
 // is the actual request, whose omissions intentionally defer to the API.
 func NewEnvironmentChange(operation string, before, after *EnvironmentDeclaration) (EnvironmentChange, error) {
+	return newEnvironmentChange(operation, before, after, EnvironmentDeploymentNormalization{})
+}
+
+func newEnvironmentChange(operation string, before, after *EnvironmentDeclaration, record EnvironmentDeploymentNormalization) (EnvironmentChange, error) {
 	if after == nil {
 		return EnvironmentChange{}, fmt.Errorf("environment change requires after policy")
 	}
 	if err := validateEnvironment(*after, false); err != nil {
 		return EnvironmentChange{}, err
+	}
+	if record != (EnvironmentDeploymentNormalization{}) {
+		if operation != "update" || before == nil || (!after.DeploymentBranchPolicyDeclared && after.DeploymentBranchPolicy == nil) {
+			return EnvironmentChange{}, fmt.Errorf("normalized environment mode requires one explicit update request")
+		}
+		if err := validateEnvironmentDeploymentRecord(*before, record); err != nil {
+			return EnvironmentChange{}, err
+		}
 	}
 	switch operation {
 	case "create":
@@ -325,13 +338,13 @@ func NewEnvironmentChange(operation string, before, after *EnvironmentDeclaratio
 		if err := validateEnvironment(*before, true); err != nil {
 			return EnvironmentChange{}, err
 		}
-		if before.Name != after.Name || reflect.DeepEqual(cloneEnvironment(*before), cloneEnvironment(*after)) {
+		if before.Name != after.Name || (record == (EnvironmentDeploymentNormalization{}) && reflect.DeepEqual(cloneEnvironment(*before), cloneEnvironment(*after))) {
 			return EnvironmentChange{}, fmt.Errorf("invalid environment update identity or unchanged policy")
 		}
 	default:
 		return EnvironmentChange{}, fmt.Errorf("unsupported environment operation %q", operation)
 	}
-	result := EnvironmentChange{operation: operation}
+	result := EnvironmentChange{operation: operation, deploymentModeNormalization: record}
 	value := cloneEnvironment(*after)
 	result.after = &value
 	if before != nil {

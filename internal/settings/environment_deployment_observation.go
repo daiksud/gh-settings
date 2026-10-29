@@ -22,12 +22,8 @@ func (state EnvironmentState) validateDeploymentNormalization() error {
 		return fmt.Errorf("environment observation requires a positive ID")
 	}
 	record := state.DeploymentModeNormalization
-	if record == (EnvironmentDeploymentNormalization{}) {
-		return nil
-	}
-	_, supported := EnvironmentDeploymentChoiceForPolicy(&record.RawPolicy)
-	if record.Path != EnvironmentDeploymentModePath || record.Fallback != DefaultEnvironmentDeploymentChoice || supported || state.Policy.DeploymentBranchPolicy != nil || !state.Policy.DeploymentBranchPolicyDeclared || state.Policy.DeploymentBranchPatterns != nil {
-		return fmt.Errorf("invalid environment deployment mode observation provenance")
+	if err := validateEnvironmentDeploymentRecord(state.Policy, record); err != nil {
+		return err
 	}
 	if record.RawPolicy.CustomBranchPolicies {
 		if state.Patterns == nil {
@@ -52,4 +48,28 @@ func (state EnvironmentState) RawDeploymentBranchPolicy() (*EnvironmentBranchPol
 		return &raw, nil
 	}
 	return copyRuleValue(state.Policy.DeploymentBranchPolicy), nil
+}
+
+// validateEnvironmentDeploymentRecord checks scalar presentation evidence only;
+// it does not reconstruct pattern acquisition from a plan report.
+func validateEnvironmentDeploymentRecord(policy EnvironmentDeclaration, record EnvironmentDeploymentNormalization) error {
+	if record == (EnvironmentDeploymentNormalization{}) {
+		return nil
+	}
+	_, supported := EnvironmentDeploymentChoiceForPolicy(&record.RawPolicy)
+	if record.Path != EnvironmentDeploymentModePath || record.Fallback != DefaultEnvironmentDeploymentChoice || supported || policy.DeploymentBranchPolicy != nil || !policy.DeploymentBranchPolicyDeclared || policy.DeploymentBranchPatterns != nil {
+		return fmt.Errorf("invalid environment deployment mode observation provenance")
+	}
+	return nil
+}
+
+func (change EnvironmentChange) DeploymentModeNormalization() EnvironmentDeploymentNormalization {
+	return change.deploymentModeNormalization
+}
+
+func NewEnvironmentChangeWithDeploymentNormalization(operation string, before, after *EnvironmentDeclaration, record EnvironmentDeploymentNormalization) (EnvironmentChange, error) {
+	if record == (EnvironmentDeploymentNormalization{}) {
+		return EnvironmentChange{}, fmt.Errorf("normalized environment change requires provenance")
+	}
+	return newEnvironmentChange(operation, before, after, record)
 }
