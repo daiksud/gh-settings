@@ -53,8 +53,13 @@ func (c *ActionsPolicyClient) ReadActionsPolicy(repo repository.Repository, sele
 	if s.SHAPinningRequired, err = actionsBool(fields, "sha_pinning_required"); err != nil {
 		return settings.ActionsPolicyState{}, err
 	}
-	if json.Unmarshal(fields["allowed_actions"], &s.AllowedActions) != nil || !settings.ValidAllowedActions(s.AllowedActions) {
-		return settings.ActionsPolicyState{}, fmt.Errorf("GitHub returned missing/null or unsupported Actions allowed_actions")
+	var allowed *string
+	if json.Unmarshal(fields["allowed_actions"], &allowed) != nil || allowed == nil {
+		return settings.ActionsPolicyState{}, fmt.Errorf("GitHub returned missing/null or invalid Actions allowed_actions")
+	}
+	s, err = prepareActionsExecutionObservation(&s.Enabled, allowed, &s.SHAPinningRequired)
+	if err != nil {
+		return settings.ActionsPolicyState{}, err
 	}
 	if selected && s.AllowedActions == "selected" {
 		value, err := c.readSelectedActions(repo)
@@ -63,7 +68,10 @@ func (c *ActionsPolicyClient) ReadActionsPolicy(repo repository.Repository, sele
 		}
 		s.Selected = &value
 	}
-	return s, s.Validate()
+	if err := s.Validate(); err != nil {
+		return settings.ActionsPolicyState{}, err
+	}
+	return s, nil
 }
 
 func (c *ActionsPolicyClient) readSelectedActions(repo repository.Repository) (settings.SelectedActionsState, error) {
