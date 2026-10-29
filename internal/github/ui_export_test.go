@@ -306,3 +306,26 @@ func TestUIFromExportDeclarationEnvironments(t *testing.T) {
 		t.Fatalf("incomplete Environment returned partial export: %#v, %v", got, err)
 	}
 }
+
+func TestUIFromExportDeclarationSortsLabelsWithoutChangingSource(t *testing.T) {
+	labels, err := settings.NewLabelDeclarations([]settings.LabelDeclaration{
+		{ID: rulesetPtr(int64(17)), Name: "z", Color: rulesetPtr("fedcba"), Description: rulesetPtr("")},
+		{ID: rulesetPtr(int64(18)), Name: "a", Color: rulesetPtr("abcdef"), Description: rulesetPtr("first")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := uiExportBase()
+	source.Labels = &labels
+	want := []uimodel.Label{
+		{ID: rulesetPtr(int64(18)), Name: "a", Color: rulesetPtr("#abcdef"), Description: rulesetPtr("first")},
+		{ID: rulesetPtr(int64(17)), Name: "z", Color: rulesetPtr("#fedcba"), Description: rulesetPtr("")},
+	}
+	got, err := UIFromExportDeclaration(source)
+	if err != nil || got.Labels == nil || !reflect.DeepEqual(*got.Labels, want) {
+		t.Fatalf("label export order %#v; want %#v; error=%v", got.Labels, want, err)
+	}
+	if source.Labels.Values()[0].Name != "z" || source.Labels.Values()[1].Name != "a" {
+		t.Fatal("label export sorted the source in place")
+	}
+}

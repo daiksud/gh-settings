@@ -24,7 +24,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	}
 	if source.Labels != nil {
 		labels := make([]uimodel.Label, 0, source.Labels.Len())
-		for _, policy := range source.Labels.Values() {
+		for _, policy := range settings.SortedLabels(source.Labels.Values()) {
 			label, err := LabelPolicyUI(policy)
 			if err != nil {
 				return uimodel.Repository{}, fmt.Errorf("export Labels: %w", err)
