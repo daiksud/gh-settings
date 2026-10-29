@@ -530,10 +530,16 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior.ID = &id
 		comparableBefore := cloneRuleset(prior)
 		omitDismissalRestriction(&comparableBefore)
-		if !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
+		if before.EnforcementNormalization == (ObservationNormalization{}) && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
 			continue
 		}
-		change, err := NewRulesetChange("update", id, &prior, &after)
+		var change RulesetChange
+		var err error
+		if before.EnforcementNormalization != (ObservationNormalization{}) {
+			change, err = NewRulesetChangeWithEnforcementNormalization("update", id, &prior, &after, before.EnforcementNormalization)
+		} else {
+			change, err = NewRulesetChange("update", id, &prior, &after)
+		}
 		if err != nil {
 			return nil, err
 		}
