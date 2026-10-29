@@ -221,7 +221,13 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	}
 	comparison := settings.Comparison{Managed: report.Managed, Labels: labels, Environments: environments}
 	for _, raw := range report.Actions {
-		change, err := settings.NewActionsPolicyChange(raw.Field, raw.Before, raw.After)
+		var change settings.ActionsPolicyChange
+		var err error
+		if raw.Normalization != nil {
+			change, err = settings.NewActionsPolicyChangeWithNormalization(raw.Field, raw.Before, raw.After, *raw.Normalization)
+		} else {
+			change, err = settings.NewActionsPolicyChange(raw.Field, raw.Before, raw.After)
+		}
 		if err != nil {
 			return validatedPlanReport{}, err
 		}
@@ -231,6 +237,9 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 		return validatedPlanReport{}, err
 	}
 	for _, raw := range report.Security {
+		if raw.Normalization != nil {
+			return validatedPlanReport{}, fmt.Errorf("workflow normalization cannot describe a security comparison")
+		}
 		change, err := settings.NewSecurityChange(raw.Field, raw.Before, raw.After)
 		if err != nil {
 			return validatedPlanReport{}, err
@@ -261,6 +270,9 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 }
 
 func parseReportChange(raw PlanChange) (settings.Change, error) {
+	if raw.Normalization != nil {
+		return settings.Change{}, fmt.Errorf("workflow normalization cannot describe a repository comparison")
+	}
 	field, err := settings.ParseFieldID(raw.Field)
 	if err != nil {
 		return settings.Change{}, fmt.Errorf("invalid plan report change")

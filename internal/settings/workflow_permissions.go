@@ -1,13 +1,32 @@
 package settings
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
+)
 
 type WorkflowPermissionsState struct {
 	DefaultWorkflowPermissions   string
 	CanApprovePullRequestReviews bool
+	Normalization                ObservationNormalization
 }
 
 func ValidDefaultWorkflowPermissions(value string) bool { return value == "read" || value == "write" }
+
+// NewActionsPolicyChangeWithNormalization records a required write even when a
+// UI fallback equals desired intent. Only consistent acquired provenance can
+// authorize this otherwise invalid equal-value comparison.
+func NewActionsPolicyChangeWithNormalization(field string, before, after any, normalization ObservationNormalization) (ActionsPolicyChange, error) {
+	if field != "actions.default_workflow_permissions" || before != "read" || normalization.Path != WorkflowPermissionsPath || normalization.Fallback != string(uimodel.DefaultActionsWorkflowPermissions) || ValidDefaultWorkflowPermissions(normalization.RawValue) {
+		return ActionsPolicyChange{}, fmt.Errorf("invalid workflow permission normalization provenance")
+	}
+	value, err := actionValue(field, after)
+	if err != nil {
+		return ActionsPolicyChange{}, err
+	}
+	return ActionsPolicyChange{field: field, before: before, after: value, normalization: normalization}, nil
+}
 func (d ActionsPolicyDeclaration) WorkflowPermissionsEmpty() bool {
 	return d.DefaultWorkflowPermissions == nil && d.CanApprovePullRequestReviews == nil
 }
@@ -36,7 +55,13 @@ func CompareWorkflowPermissions(current WorkflowPermissionsState, desired Action
 	changes := []ActionsPolicyChange{}
 	if value := desired.DefaultWorkflowPermissions; value != nil {
 		managed++
-		if *value != current.DefaultWorkflowPermissions {
+		if current.Normalization != (ObservationNormalization{}) {
+			change, err := NewActionsPolicyChangeWithNormalization("actions.default_workflow_permissions", current.DefaultWorkflowPermissions, *value, current.Normalization)
+			if err != nil {
+				return 0, nil, err
+			}
+			changes = append(changes, change)
+		} else if *value != current.DefaultWorkflowPermissions {
 			changes = append(changes, ActionsPolicyChange{field: "actions.default_workflow_permissions", before: current.DefaultWorkflowPermissions, after: *value})
 		}
 	}

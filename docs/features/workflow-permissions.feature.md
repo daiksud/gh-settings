@@ -43,3 +43,49 @@ Test mapping: [TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification an
 ## Evidence boundary
 
 Mutation tests use isolated local transports/HTTP fixtures and dummy credentials. A read-only live observation confirmed the two response fields; no live partial PUT, organization behavior, token/App grants, workflow permissions, Rulesets bypass or security configuration was changed or established by those tests. Publication requires separate authorization; no release or pin change is included.
+
+## Feature: Retain provenance for out-of-UI workflow permissions
+
+Repository maintainers can use a defined UI choice when a successful, complete
+read returns a correctly typed permission token outside the UI menu, while
+distinguishing that projection from independently observed remote equality.
+
+### Rule: A fallback is a projection of an acquired value
+
+#### Scenario: An unknown permission token is projected with its provenance
+
+- Given a complete workflow policy with permission token `FUTURE` and approval disabled
+- When the policy is converted to UI choices
+- Then the permission choice is `read_repository_contents_and_packages_permissions`
+- And the exact raw token, new YAML field and selected fallback remain available for a warning
+- And approval remains disabled
+
+#### Scenario: An exact permission choice does not require a fallback
+
+- Given a complete workflow policy with permission token `write`
+- When the policy is converted to UI choices
+- Then the permission choice remains `read_and_write_permissions`
+- And no normalization provenance is added
+
+### Rule: A fallback cannot establish remote equality
+
+#### Scenario: The requested choice equals the projected fallback
+
+- Given a successful read returns an out-of-UI permission token
+- And the requested choice is `read_repository_contents_and_packages_permissions`
+- When a plan compares the policy
+- Then the output retains the warning and does not claim independently observed zero drift
+- When apply runs against isolated API fixtures
+- Then it writes the explicitly requested permission and verifies a fresh raw readback
+- And an unchanged out-of-UI readback fails with possible write effects retained
+
+#### Scenario: An omitted permission remains unmanaged
+
+- Given an out-of-UI permission token and an explicitly requested approval boolean
+- When apply updates the approval boolean
+- Then the payload contains only the approval boolean
+- And readback verifies the preserved raw permission companion without replaying the fallback
+
+Missing or null members, wrong types, denied requests and failed acquisition do
+not trigger this projection. The implementation and executable test mappings for
+these scenarios are developed under [Issue #480](https://github.com/daiksud/gh-settings/issues/480).

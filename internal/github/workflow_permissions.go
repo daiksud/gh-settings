@@ -45,14 +45,11 @@ func (c *ActionsPolicyClient) ApplyWorkflowPermissions(repo repository.Repositor
 	if err != nil {
 		return &workflowPermissionsReadFailure{cause: err}
 	}
-	expected := current
 	payload := map[string]any{}
 	if value := desired.DefaultWorkflowPermissions; value != nil {
-		expected.DefaultWorkflowPermissions = *value
 		payload["default_workflow_permissions"] = *value
 	}
 	if value := desired.CanApprovePullRequestReviews; value != nil {
-		expected.CanApprovePullRequestReviews = *value
 		payload["can_approve_pull_request_reviews"] = *value
 	}
 	if err := c.putActionsPolicy(actionsPolicyPath(repo)+"/workflow", payload); err != nil {
@@ -62,8 +59,25 @@ func (c *ActionsPolicyClient) ApplyWorkflowPermissions(repo repository.Repositor
 	if err != nil {
 		return fmt.Errorf("verify default workflow permissions (writes may already have applied): %w", err)
 	}
-	if actual != expected {
+	if !workflowPermissionsMatch(current, actual, desired) {
 		return fmt.Errorf("GitHub did not retain requested/default workflow permission companions (writes may already have applied)")
 	}
 	return nil
+}
+
+func workflowPermissionsMatch(before, actual settings.WorkflowPermissionsState, desired settings.ActionsPolicyDeclaration) bool {
+	raw := func(state settings.WorkflowPermissionsState) string {
+		if state.Normalization.Path != "" {
+			return state.Normalization.RawValue
+		}
+		return state.DefaultWorkflowPermissions
+	}
+	permission, approval := raw(before), before.CanApprovePullRequestReviews
+	if desired.DefaultWorkflowPermissions != nil {
+		permission = *desired.DefaultWorkflowPermissions
+	}
+	if desired.CanApprovePullRequestReviews != nil {
+		approval = *desired.CanApprovePullRequestReviews
+	}
+	return raw(actual) == permission && actual.CanApprovePullRequestReviews == approval
 }

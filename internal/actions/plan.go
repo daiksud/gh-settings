@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/daiksud/gh-settings/internal/app"
+	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 const (
@@ -32,9 +33,10 @@ type PlanReport struct {
 
 // PlanChange retains the native string, boolean, integer or string-list comparison values.
 type PlanChange struct {
-	Field  string `json:"field"`
-	Before any    `json:"before"`
-	After  any    `json:"after"`
+	Field         string                             `json:"field"`
+	Before        any                                `json:"before"`
+	After         any                                `json:"after"`
+	Normalization *settings.ObservationNormalization `json:"normalization,omitempty"`
 }
 
 func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
@@ -88,7 +90,11 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, change := range result.Comparison.Actions {
 		before, after := change.Values()
-		report.Actions = append(report.Actions, PlanChange{Field: change.Field(), Before: before, After: after})
+		entry := PlanChange{Field: change.Field(), Before: before, After: after}
+		if normalization := change.Normalization(); normalization != (settings.ObservationNormalization{}) {
+			entry.Normalization = &normalization
+		}
+		report.Actions = append(report.Actions, entry)
 	}
 	for _, change := range result.Comparison.Security {
 		before, after := change.Values()
