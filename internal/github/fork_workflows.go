@@ -10,7 +10,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-type ForkWorkflowsClient struct{ rest *api.RESTClient }
+type ForkWorkflowsClient struct {
+	rest                 *api.RESTClient
+	NormalizationWarning func(settings.ObservationNormalization)
+}
 type forkWorkflowsPreWriteFailure struct{ cause error }
 
 func (e *forkWorkflowsPreWriteFailure) Error() string        { return e.cause.Error() }
@@ -21,7 +24,15 @@ func NewForkWorkflowsClient(host string) (*ForkWorkflowsClient, error) {
 	if err != nil {
 		return nil, &forkWorkflowsPreWriteFailure{err}
 	}
-	return &ForkWorkflowsClient{c}, nil
+	return &ForkWorkflowsClient{rest: c}, nil
+}
+func (c *ForkWorkflowsClient) warnApprovalNormalization(observed settings.ForkApprovalObservation) {
+	if _, err := observed.Value(); err != nil {
+		return
+	}
+	if record := observed.Normalization(); record.Path != "" && c.NormalizationWarning != nil {
+		c.NormalizationWarning(record)
+	}
 }
 func (c *ForkWorkflowsClient) requireVisibility(repo repository.Repository, want string) error {
 	var fields map[string]json.RawMessage
@@ -55,7 +66,7 @@ func (c *ForkWorkflowsClient) ReadApproval(repo repository.Repository) (settings
 	if json.Unmarshal(fields["approval_policy"], &v) != nil || v == nil {
 		return settings.ForkApprovalObservation{}, fmt.Errorf("missing/null or invalid fork approval_policy")
 	}
-	return settings.NewForkApprovalObservation(*v)
+	return prepareForkApprovalObservation(v)
 }
 func (c *ForkWorkflowsClient) ReadPrivate(repo repository.Repository) (settings.PrivateForkObservation, error) {
 	if err := c.requireVisibility(repo, "private"); err != nil {
@@ -83,7 +94,11 @@ func (c *ForkWorkflowsClient) UpdateApproval(repo repository.Repository, policy 
 	if err != nil {
 		return false, &forkWorkflowsPreWriteFailure{err}
 	}
-	v, _ := o.Value()
+	v, err := o.RawValue()
+	if err != nil {
+		return false, &forkWorkflowsPreWriteFailure{err}
+	}
+	c.warnApprovalNormalization(o)
 	if v == policy {
 		return false, nil
 	}
@@ -95,7 +110,10 @@ func (c *ForkWorkflowsClient) UpdateApproval(repo repository.Repository, policy 
 	if err != nil {
 		return false, fmt.Errorf("verify fork approval policy (write effects may already have applied): %w", err)
 	}
-	actual, err := a.Value()
+	actual, err := a.RawValue()
+	if err == nil {
+		c.warnApprovalNormalization(a)
+	}
 	if err != nil || actual != policy {
 		return false, fmt.Errorf("fork approval policy was not retained (write effects may already have applied)")
 	}
