@@ -82,6 +82,7 @@ type PagesObservation struct {
 	acquired            bool
 	state               PagesState
 	folderNormalization ObservationNormalization
+	modeNormalization   ObservationNormalization
 }
 
 func copyPagesState(s PagesState) PagesState {
