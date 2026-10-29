@@ -218,7 +218,11 @@ func ValidatePagesChanges(changes []PagesChange) error {
 		}
 		var err error
 		if c.normalization != (ObservationNormalization{}) {
-			_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.normalization)
+			if c.field == "pages.build_type" {
+				_, err = NewPagesModeChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.normalization)
+			} else {
+				_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.normalization)
+			}
 		} else {
 			_, err = NewPagesChange(c.field, c.before, c.after, c.inactive)
 		}
@@ -236,7 +240,7 @@ func ValidatePagesChanges(changes []PagesChange) error {
 		}
 	}
 	if mode, ok := seen["pages.build_type"]; ok {
-		if mode.after == "legacy" && (!seen["pages.source.branch"].inactive || !seen["pages.source.path"].inactive) {
+		if mode.before == "workflow" && mode.after == "legacy" && (!seen["pages.source.branch"].inactive || !seen["pages.source.path"].inactive) {
 			return fmt.Errorf("transition to legacy Pages requires both inactive source comparisons")
 		}
 		if mode.after == "workflow" {

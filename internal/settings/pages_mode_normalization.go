@@ -44,3 +44,15 @@ func validatePagesModeNormalization(effective string, record ObservationNormaliz
 	}
 	return nil
 }
+
+func NewPagesModeChangeWithNormalization(field string, before, after any, inactive bool, record ObservationNormalization) (PagesChange, error) {
+	b, beforeValid := before.(string)
+	a, afterValid := after.(string)
+	if field != "pages.build_type" || !beforeValid || !afterValid || inactive || !validPagesMode(a) {
+		return PagesChange{}, fmt.Errorf("invalid Pages mode comparison normalization")
+	}
+	if err := validatePagesModeNormalization(b, record); err != nil {
+		return PagesChange{}, err
+	}
+	return PagesChange{field: field, before: b, after: a, normalization: record}, nil
+}
