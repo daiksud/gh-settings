@@ -304,9 +304,15 @@ func ValidateActionsPolicyChanges(changes []ActionsPolicyChange) error {
 	return nil
 }
 
-func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (int, []ActionsPolicyChange, error) {
+type ActionsPolicyComparison struct {
+	Managed   int
+	Changes   []ActionsPolicyChange
+	Execution []ActionsExecutionChange
+}
+
+func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (ActionsPolicyComparison, error) {
 	if err := PrepareActions(s, d); err != nil {
-		return 0, nil, err
+		return ActionsPolicyComparison{}, err
 	}
 	managed := 0
 	changes := []ActionsPolicyChange{}
@@ -338,5 +344,5 @@ func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (int
 	if v := d.SelectedActions.PatternsAllowed; v != nil {
 		add("actions.selected_actions.patterns_allowed", patterns, *v)
 	}
-	return managed, changes, nil
+	return ActionsPolicyComparison{Managed: managed, Changes: changes}, nil
 }

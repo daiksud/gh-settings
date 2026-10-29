@@ -129,12 +129,12 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
-		managed, changes, err := settings.CompareActionsPolicy(observed, desired.Actions)
+		actionsComparison, err := settings.CompareActionsPolicy(observed, desired.Actions)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Target: repo, Err: err}
 		}
-		comparison.Managed += managed
-		comparison.Actions = changes
+		comparison.Managed += actionsComparison.Managed
+		comparison.Actions = actionsComparison.Changes
 	}
 	if !desired.Actions.WorkflowPermissionsEmpty() {
 		observed, err := read.WorkflowPermissions(repo)

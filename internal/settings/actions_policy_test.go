@@ -11,7 +11,8 @@ func actionsTestPointer[T any](v T) *T { return &v }
 func TestActionsPolicyObservationAndTransition(t *testing.T) {
 	current := ActionsPolicyState{Enabled: false, AllowedActions: "all", SHAPinningRequired: true}
 	full := ActionsPolicyDeclaration{AllowedActions: actionsTestPointer("selected"), SelectedActions: SelectedActionsDeclaration{GitHubOwnedAllowed: actionsTestPointer(false), VerifiedAllowed: actionsTestPointer(false), PatternsAllowed: actionsTestPointer([]string{})}}
-	managed, changes, err := CompareActionsPolicy(current, full)
+	comparison, err := CompareActionsPolicy(current, full)
+	managed, changes := comparison.Managed, comparison.Changes
 	if err != nil || managed != 4 || len(changes) != 4 || ValidateActionsPolicyChanges(changes) != nil {
 		t.Fatalf("managed=%d changes=%v error=%v", managed, changes, err)
 	}
@@ -27,16 +28,17 @@ func TestActionsPolicyObservationAndTransition(t *testing.T) {
 		{SelectedActions: full.SelectedActions},
 		{AllowedActions: actionsTestPointer("all"), SelectedActions: full.SelectedActions},
 	} {
-		if _, _, err := CompareActionsPolicy(current, d); err == nil {
+		if _, err := CompareActionsPolicy(current, d); err == nil {
 			t.Fatal("incomplete/inconsistent transition accepted", d)
 		}
 	}
 	current.AllowedActions = "selected"
-	if _, _, err := CompareActionsPolicy(current, full); err == nil {
+	if _, err := CompareActionsPolicy(current, full); err == nil {
 		t.Fatal("missing acquired selected state accepted")
 	}
 	current.Selected = &SelectedActionsState{PatternsAllowed: []string{}}
-	managed, changes, err = CompareActionsPolicy(current, full)
+	comparison, err = CompareActionsPolicy(current, full)
+	managed, changes = comparison.Managed, comparison.Changes
 	if err != nil || managed != 4 || len(changes) != 0 {
 		t.Fatal(managed, changes, err)
 	}
@@ -67,12 +69,14 @@ func TestActionsPatternsAreExactSequences(t *testing.T) {
 	patterns := []string{"org/*", "!org/bad@*", "org/*"}
 	current := ActionsPolicyState{AllowedActions: "selected", Selected: &SelectedActionsState{PatternsAllowed: append([]string{}, patterns...)}}
 	d := ActionsPolicyDeclaration{SelectedActions: SelectedActionsDeclaration{PatternsAllowed: &patterns}}
-	managed, changes, err := CompareActionsPolicy(current, d)
+	comparison, err := CompareActionsPolicy(current, d)
+	managed, changes := comparison.Managed, comparison.Changes
 	if err != nil || managed != 1 || len(changes) != 0 {
 		t.Fatal(managed, changes, err)
 	}
 	patterns[0], patterns[1] = patterns[1], patterns[0]
-	_, changes, err = CompareActionsPolicy(current, d)
+	comparison, err = CompareActionsPolicy(current, d)
+	changes = comparison.Changes
 	if err != nil || len(changes) != 1 {
 		t.Fatal(changes, err)
 	}

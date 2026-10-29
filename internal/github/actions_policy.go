@@ -172,8 +172,8 @@ func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d s
 	if err != nil {
 		return fmt.Errorf("verify Actions policy (writes may already have applied): %w", err)
 	}
-	_, changes, err := settings.CompareActionsPolicy(actual, verify)
-	if err != nil || len(changes) > 0 {
+	comparison, err := settings.CompareActionsPolicy(actual, verify)
+	if err != nil || len(comparison.Changes) > 0 || len(comparison.Execution) > 0 {
 		return fmt.Errorf("GitHub did not retain requested Actions policy (writes may already have applied)")
 	}
 	return nil
