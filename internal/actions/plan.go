@@ -106,7 +106,11 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		report.Rulesets = append(report.Rulesets, entry)
 	}
 	for _, change := range result.Comparison.Environments {
-		report.Environments = append(report.Environments, EnvironmentPlanChange{Operation: change.Operation(), Before: change.Before(), After: change.After()})
+		entry := EnvironmentPlanChange{Operation: change.Operation(), Before: change.Before(), After: change.After()}
+		if record := change.DeploymentModeNormalization(); record != (settings.EnvironmentDeploymentNormalization{}) {
+			entry.DeploymentModeNormalization = &record
+		}
+		report.Environments = append(report.Environments, entry)
 	}
 	for _, change := range result.Comparison.Actions {
 		before, after := change.Values()
