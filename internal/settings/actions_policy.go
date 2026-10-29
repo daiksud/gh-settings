@@ -52,7 +52,8 @@ func (d ActionsPolicyDeclaration) ExecutionEmpty() bool {
 	return d.Enabled == nil && d.AllowedActions == nil && d.SHAPinningRequired == nil && d.SelectedActions.Empty()
 }
 func ValidAllowedActions(value string) bool {
-	return value == "all" || value == "local_only" || value == "selected"
+	_, valid := ActionsPermissionsChoiceForValue(true, value)
+	return valid
 }
 
 func ValidateActionPatterns(values []string) error {
