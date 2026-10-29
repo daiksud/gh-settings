@@ -40,9 +40,10 @@ type RulesetRule struct {
 // RulesetState contains the observed supported policy and its transport ID.
 // An omitted optional dismissal restriction remains unknown, never disabled.
 type RulesetState struct {
-	ID                       int64
-	Policy                   RulesetDeclaration
-	EnforcementNormalization ObservationNormalization
+	ID                           int64
+	Policy                       RulesetDeclaration
+	EnforcementNormalization     ObservationNormalization
+	QualitySeverityNormalization ObservationNormalization
 }
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
 type RulesetObservation struct {
@@ -307,7 +308,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 		}
 		ids[v.ID] = true
 		names[v.Policy.Name] = true
-		out.entries = append(out.entries, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization})
+		out.entries = append(out.entries, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization, QualitySeverityNormalization: v.QualitySeverityNormalization})
 	}
 	return out, nil
 }
@@ -317,7 +318,7 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 	}
 	out := make([]RulesetState, 0, len(o.entries))
 	for _, v := range o.entries {
-		out = append(out, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization})
+		out = append(out, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization, QualitySeverityNormalization: v.QualitySeverityNormalization})
 	}
 	return out, nil
 }
