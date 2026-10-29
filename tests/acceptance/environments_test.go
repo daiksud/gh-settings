@@ -88,12 +88,24 @@ func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "# preserve caller YAML\nschemaVersion: 1\nsettings:\n  environments:\n    - name: production # name is identity\n      wait_timer: 0\n      prevent_self_review: false\n      can_admins_bypass: false\n      reviewers: []\n      deployment_branch_policy: null\n"
+			input := `# preserve caller YAML
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    environments:
+      - name: production # name is identity
+        deployment_protection_rules:
+          wait_timer: 0
+          prevent_self_review: false
+          allow_administrators_to_bypass_configured_protection_rules: false
+          required_reviewers: []
+        deployment_branches_and_tags: no_restriction
+`
 			if mode == "admin-bypass" {
-				input = strings.Replace(input, "can_admins_bypass: false", "can_admins_bypass: true", 1)
+				input = strings.Replace(input, "allow_administrators_to_bypass_configured_protection_rules: false", "allow_administrators_to_bypass_configured_protection_rules: true", 1)
 			}
 			if mode == "omitted" {
-				input = "schemaVersion: 1\nsettings:\n  environments:\n    - name: production\n"
+				input = repositoryInput("settings: {environments: [{name: production}]}\n")
 			}
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)

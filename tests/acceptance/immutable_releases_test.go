@@ -130,7 +130,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write := func(value string) {
 		t.Helper()
-		if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {security: {immutable_releases: "+value+"}}\n"); err != nil {
+		if err := writeSettingsFile(fixture.work, generalInput("releases: {enable_release_immutability: "+value+"}\n")); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -144,7 +144,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	}
 	run("export", "--security", "immutable-releases")
 	data, err := os.ReadFile(path)
-	if err != nil || !strings.Contains(string(data), "immutable_releases: false") || strings.Contains(string(data), "enforced_by_owner") {
+	if err != nil || !strings.Contains(string(data), "enable_release_immutability: false") || strings.Contains(string(data), "enforced_by_owner") {
 		t.Fatal(string(data), err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
@@ -222,7 +222,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	enabled = false
 	before := len(writes)
 	mu.Unlock()
-	if err := writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings:\n  repository: {description: earlier}\n  security: {immutable_releases: true}\n"); err != nil {
+	if err := writeSettingsFile(fixture.work, repositoryInput("about: {description: earlier}\nsettings: {general: {releases: {enable_release_immutability: true}}}\n")); err != nil {
 		t.Fatal(err)
 	}
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)

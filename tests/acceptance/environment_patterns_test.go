@@ -81,20 +81,20 @@ func TestEnvironmentPatternBinaryTypedReconciliationAndRepeat(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	input := `schemaVersion: 1
-settings:
-  environments:
-    - name: production
-      wait_timer: 0
-      prevent_self_review: false
-      can_admins_bypass: false
-      reviewers: []
-      deployment_branch_policy:
-        protected_branches: false
-        custom_branch_policies: true
-      deployment_branch_patterns:
-        - {type: branch, name: same}
-        - {type: tag, name: same}
+	input := `version: daiksud/gh-settings@v0
+repository:
+  settings:
+    environments:
+      - name: production
+        deployment_protection_rules:
+          wait_timer: 0
+          prevent_self_review: false
+          allow_administrators_to_bypass_configured_protection_rules: false
+          required_reviewers: []
+        deployment_branches_and_tags: selected_branches_and_tags
+        deployment_branch_or_tag_rules:
+          - {ref_type: branch, name_pattern: same}
+          - {ref_type: tag, name_pattern: same}
 `
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
