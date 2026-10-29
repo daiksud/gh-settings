@@ -144,6 +144,11 @@ func isMergeMethodsFixtureRead(r *http.Request) bool {
 	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { mergeCommitAllowed squashMergeAllowed rebaseMergeAllowed deleteBranchOnMerge autoMergeAllowed allowUpdateBranch squashMergeCommitTitle squashMergeCommitMessage mergeCommitTitle mergeCommitMessage } }`)
 }
 
+func isCommitMessageFixtureRead(r *http.Request) bool {
+	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { squashMergeCommitTitle squashMergeCommitMessage } }`) ||
+		isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { mergeCommitTitle mergeCommitMessage } }`)
+}
+
 const prAccessFixtureResponse = `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`
 
 func isPRAccessFixtureRead(r *http.Request) bool {

@@ -8,6 +8,8 @@ The Action removes ephemeral reports in an `always()` step after success or ordi
 
 Normalized workflow changes carry optional `normalization` metadata with required string `path`, `raw_value` and `fallback` members. The closed workflow constructor validates the field, projected value, fallback and raw token before allowing effective-value equality to remain actionable. Metadata on unrelated comparisons is rejected. Detailed CLI/Summary display the UI field and choices with a projection warning and write-required note; status-only reduction retains only its existing outcome/count boundary. These observations are presentation data, never apply input.
 
+Normalized merge/squash observations use a separate `commit_messages` array with closed `menu`, UI `after` and paired `normalization` metadata (`path`, `raw_title`, `raw_message`, `fallback`). All metadata strings are required, including explicitly empty acquired raw members. Validation reconstructs one typed menu decision, rejects unsupported or inconsistent provenance, duplicates and overlapping native component changes, and counts two managed native members per menu. Equal effective before/after values remain actionable. Detailed Summary uses the same UI warning and decision as CLI, HTML-escaped; status-only exposes only its existing outcome/count boundary. This remains same-version presentation data and does not finish the wider UI count/report audit in #481.
+
 ## Scope
 
 This page is for contributors changing the composite Action or its Go adapters. Consumers should use the [public Action guide](../github-actions.md) and the four [settings commands](../commands.md); the internal interfaces below are same-version wiring, not an independent compatibility API.

@@ -97,7 +97,7 @@ func TestUIGeneralRawMergeObservation(t *testing.T) {
 	declaration := settings.RepositoryDeclaration{}.WithMergeMethods(state)
 	got, err := GeneralObservation(declaration)
 	want := uimodel.General{PullRequests: uimodel.PullRequests{AllowMergeCommits: pointer(false), AllowSquashMerging: pointer(true), AllowRebaseMerging: pointer(false), AutomaticallyDeleteHeadBranches: pointer(true), AllowAutoMerge: pointer(false), AlwaysSuggestUpdatingPullRequestBranches: pointer(true), SquashMerge: uimodel.CommitMessage{DefaultCommitMessage: pointer(uimodel.CommitMessageChoice("pull_request_title_and_description"))}}}
-	if err != nil || !reflect.DeepEqual(got.General, want) || got.RawConditionalValues.MergeCommitTitle == nil || *got.RawConditionalValues.MergeCommitTitle != "MERGE_MESSAGE" || got.RawConditionalValues.MergeCommitMessage == nil || *got.RawConditionalValues.MergeCommitMessage != "PR_TITLE" {
+	if err != nil || !reflect.DeepEqual(got.General, want) || got.NativeConditionalValues.MergeCommitTitle == nil || *got.NativeConditionalValues.MergeCommitTitle != "MERGE_MESSAGE" || got.NativeConditionalValues.MergeCommitMessage == nil || *got.NativeConditionalValues.MergeCommitMessage != "PR_TITLE" {
 		t.Fatalf("observation=%+v err=%v want %+v", got, err, want)
 	}
 }

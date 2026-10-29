@@ -29,7 +29,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
+			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -62,6 +62,7 @@ func writeRepository(repo repository.Repository, desired settings.RepositoryDecl
 		if err != nil {
 			return err
 		}
+		client.CommitMessageNormalizationWarning = warnCommitMessageNormalization
 		if err := client.ApplyRepository(repo, restDesired); err != nil {
 			return err
 		}
@@ -319,4 +320,8 @@ func writePages(repo repository.Repository, d settings.PagesDeclaration) (bool, 
 
 func warnNormalization(normalization settings.ObservationNormalization) {
 	fmt.Fprintln(os.Stderr, presentation.NormalizationLine(normalization))
+}
+
+func warnCommitMessageNormalization(normalization settings.CommitMessageNormalization) {
+	fmt.Fprintln(os.Stderr, presentation.CommitMessageNormalizationLine(normalization))
 }

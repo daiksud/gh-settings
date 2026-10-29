@@ -15,10 +15,7 @@ import (
 func TestMergeCommitReadRejectsIncompleteEnums(t *testing.T) {
 	base := map[string]any{"mergeCommitAllowed": false, "squashMergeAllowed": true, "rebaseMergeAllowed": false, "deleteBranchOnMerge": true, "autoMergeAllowed": false, "allowUpdateBranch": false, "squashMergeCommitTitle": "PR_TITLE", "squashMergeCommitMessage": "BLANK", "mergeCommitTitle": "MERGE_MESSAGE", "mergeCommitMessage": "PR_TITLE"}
 	for _, field := range []string{"mergeCommitTitle", "mergeCommitMessage"} {
-		for _, value := range []any{nil, "", true, float64(0), "unknown", "COMMIT_MESSAGES", "PR_BODY", "MERGE_MESSAGE", "missing"} {
-			if field == "mergeCommitTitle" && (value == "PR_TITLE" || value == "MERGE_MESSAGE") || field == "mergeCommitMessage" && value == "PR_BODY" {
-				continue
-			}
+		for _, value := range []any{nil, true, float64(0), "missing"} {
 			t.Run(field+"/"+stringValue(value), func(t *testing.T) {
 				fields := make(map[string]any)
 				for k, v := range base {
@@ -52,6 +49,17 @@ func TestMergeCommitDeclaredOnlyPATCH(t *testing.T) {
 			}
 			calls := 0
 			client := writeTestClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+				if r.Method == "POST" && r.URL.Path == "/graphql" {
+					actualTitle, actualMessage := "FUTURE_TITLE", "FUTURE_MESSAGE"
+					if calls > 0 {
+						actualTitle = title
+						if message != "" {
+							actualMessage = message
+						}
+					}
+					body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{"mergeCommitTitle": actualTitle, "mergeCommitMessage": actualMessage}}})
+					return labelsResponse(r, 200, string(body)), nil
+				}
 				calls++
 				var got map[string]any
 				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {

@@ -76,20 +76,32 @@ func (client *MergeMethodsClient) ReadMergeMethods(repo repository.Repository) (
 	for _, field := range []struct {
 		name   string
 		target *string
-		valid  func(string) bool
 	}{
-		{"squashMergeCommitTitle", &result.SquashMergeCommitTitle, settings.ValidSquashMergeCommitTitle},
-		{"squashMergeCommitMessage", &result.SquashMergeCommitMessage, settings.ValidSquashMergeCommitMessage},
-		{"mergeCommitTitle", &result.MergeCommitTitle, settings.ValidMergeCommitTitle},
-		{"mergeCommitMessage", &result.MergeCommitMessage, settings.ValidMergeCommitMessage},
+		{"squashMergeCommitTitle", &result.SquashMergeCommitTitle},
+		{"squashMergeCommitMessage", &result.SquashMergeCommitMessage},
+		{"mergeCommitTitle", &result.MergeCommitTitle},
+		{"mergeCommitMessage", &result.MergeCommitMessage},
 	} {
 		value, present := (*response.Repository)[field.name]
 		if !present {
 			return settings.MergeMethodsState{}, fmt.Errorf("GitHub merge methods response is missing %s", field.name)
 		}
-		if err := json.Unmarshal(value, field.target); err != nil || !field.valid(*field.target) {
-			return settings.MergeMethodsState{}, fmt.Errorf("GitHub merge method %s must be a supported string enum, not null or another value", field.name)
+		var acquired *string
+		if err := json.Unmarshal(value, &acquired); err != nil || acquired == nil {
+			return settings.MergeMethodsState{}, fmt.Errorf("GitHub merge method %s must be an acquired string, not null or another type", field.name)
 		}
+		*field.target = *acquired
 	}
+	squash, err := prepareCommitMessageObservation(&result.SquashMergeCommitTitle, &result.SquashMergeCommitMessage, settings.SquashCommitMenu)
+	if err != nil {
+		return settings.MergeMethodsState{}, err
+	}
+	merge, err := prepareCommitMessageObservation(&result.MergeCommitTitle, &result.MergeCommitMessage, settings.MergeCommitMenu)
+	if err != nil {
+		return settings.MergeMethodsState{}, err
+	}
+	result.SquashMergeCommitTitle, result.SquashMergeCommitMessage = squash.Pair.Title, squash.Pair.Message
+	result.MergeCommitTitle, result.MergeCommitMessage = merge.Pair.Title, merge.Pair.Message
+	result.SquashCommitNormalization, result.MergeCommitNormalization = squash.Normalization, merge.Normalization
 	return result, nil
 }

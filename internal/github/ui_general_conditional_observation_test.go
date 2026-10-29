@@ -20,7 +20,7 @@ func TestUIGeneralConditionalObservationVisibilityAndRaw(t *testing.T) {
 		if !hidden && (string(*view.Features.IssuePermissions.CreationAllowedBy) != "all_users" || string(*view.Features.PullRequestPermissions.CreationAllowedBy) != "collaborators_only" || string(*view.PullRequests.MergeCommit.DefaultCommitMessage) != "pull_request_title_and_description" || string(*view.PullRequests.SquashMerge.DefaultCommitMessage) != "pull_request_title") {
 			t.Fatal(view)
 		}
-		raw := view.RawConditionalValues
+		raw := view.NativeConditionalValues
 		expected := GeneralConditionalValues{IssueCreationPolicy: pointer("ALL"), PullRequestCreationPolicy: pointer("COLLABORATORS_ONLY"), MergeCommitTitle: pointer("PR_TITLE"), MergeCommitMessage: pointer("PR_BODY"), SquashMergeCommitTitle: pointer("PR_TITLE"), SquashMergeCommitMessage: pointer("BLANK")}
 		if !reflect.DeepEqual(raw, expected) {
 			t.Fatal("latent or unacquired state lost", raw)
@@ -28,7 +28,7 @@ func TestUIGeneralConditionalObservationVisibilityAndRaw(t *testing.T) {
 		for _, value := range []*string{source.IssueCreationPolicy, source.PullRequestCreationPolicy, source.MergeCommitTitle, source.MergeCommitMessage, source.SquashMergeCommitTitle, source.SquashMergeCommitMessage} {
 			*value = "changed"
 		}
-		if !reflect.DeepEqual(view.RawConditionalValues, expected) {
+		if !reflect.DeepEqual(view.NativeConditionalValues, expected) {
 			t.Fatal("raw metadata aliases source")
 		}
 	}
@@ -38,7 +38,7 @@ func TestUIGeneralConditionalObservationVisibilityAndRaw(t *testing.T) {
 		t.Fatal("independent conditional gates crossed", mixed, err)
 	}
 	empty, err := GeneralObservation(settings.RepositoryDeclaration{})
-	if err != nil || !reflect.DeepEqual(empty.RawConditionalValues, GeneralConditionalValues{}) {
+	if err != nil || !reflect.DeepEqual(empty.NativeConditionalValues, GeneralConditionalValues{}) {
 		t.Fatal("unacquired values defaulted", empty, err)
 	}
 	for _, source := range []settings.RepositoryDeclaration{{HasIssues: pointer(false), IssueCreationPolicy: pointer("UNKNOWN")}, {AllowMergeCommit: pointer(false), MergeCommitTitle: pointer("UNKNOWN"), MergeCommitMessage: pointer("BLANK")}} {
