@@ -176,3 +176,7 @@ Inspect the relevant workflow run for hosted or publication evidence. A successf
 ## Prepared Actions UI mapping
 
 [Actions mapping fixtures](../../internal/github/ui_actions_composition_test.go) connect literal UI declarations to existing exact request/readback behavior. The [mapping reference](ui-actions-mapping.md) links the owning enum, singleton, acquisition, retention and fork tests. Current public YAML/process behavior remains covered by its existing tests; prepared helpers are not activated by this change.
+
+## Prepared Security UI mapping
+
+[Security mapping fixtures](../../internal/github/ui_security_composition_test.go) connect literal UI booleans with existing acquired raw status, narrow PATCH and readback behavior. The [mapping reference](ui-security-mapping.md) identifies reporting and immutability endpoint fixtures, presence, dependency, applicability and owner-known metadata checks. Public activation remains separate.
