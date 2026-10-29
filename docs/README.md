@@ -41,3 +41,5 @@ The user guides stay directly under `docs/`; contributor guides live under `docs
 Internal preparation: [Actions UI mappings](contributing/ui-actions-mapping.md).
 
 Internal preparation: [Security UI mappings](contributing/ui-security-mapping.md).
+
+Internal preparation: [Pages UI mappings](contributing/ui-pages-mapping.md).
