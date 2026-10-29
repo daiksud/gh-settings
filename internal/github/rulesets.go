@@ -326,7 +326,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
 	}
-	needsReadback := false
+	needsReadback := change.EnforcementNormalization() != (settings.ObservationNormalization{})
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
