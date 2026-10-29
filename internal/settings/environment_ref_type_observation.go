@@ -25,6 +25,28 @@ func (state EnvironmentPatternState) RawPattern() (EnvironmentPattern, error) {
 	return raw, nil
 }
 
+// EffectivePolicy projects normalized active patterns without turning latent
+// state or canonical nil metadata into acquisition evidence.
+func (state EnvironmentState) EffectivePolicy() (EnvironmentDeclaration, error) {
+	if err := state.validateDeploymentNormalization(); err != nil {
+		return EnvironmentDeclaration{}, err
+	}
+	policy := cloneEnvironment(state.Policy)
+	if mode := policy.DeploymentBranchPolicy; mode != nil && mode.CustomBranchPolicies {
+		for _, pattern := range state.Patterns {
+			if pattern.RefTypeNormalization != (ObservationNormalization{}) {
+				effective, err := EffectiveEnvironmentPatterns(state.Patterns)
+				if err != nil {
+					return EnvironmentDeclaration{}, err
+				}
+				policy.DeploymentBranchPatterns = &effective
+				break
+			}
+		}
+	}
+	return policy, nil
+}
+
 // Only normalized collections add acquisition invariants here. Canonical
 // construction retains its existing adapter-level materialization checks.
 func (state EnvironmentState) validateRefTypeNormalizations() error {
