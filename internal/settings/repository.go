@@ -91,6 +91,7 @@ func (d RepositoryDeclaration) MergeMethodsEmpty() bool {
 type MergeMethodsState struct {
 	AllowMergeCommit, AllowSquashMerge, AllowRebaseMerge, DeleteBranchOnMerge, AllowAutoMerge, AllowUpdateBranch bool
 	SquashMergeCommitTitle, SquashMergeCommitMessage, MergeCommitTitle, MergeCommitMessage                       string
+	SquashCommitNormalization, MergeCommitNormalization                                                          CommitMessageNormalization
 }
 
 // WithMergeMethods explicitly includes the complete merge observation and preserves the base fields.

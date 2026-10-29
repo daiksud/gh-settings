@@ -138,6 +138,9 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 			fmt.Fprintf(&content, "%s\n", quoteHTML(note))
 		}
 	}
+	for _, change := range report.comparison.CommitMessages {
+		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.CommitMessageLine(change)))
+	}
 	for _, change := range report.comparison.Labels.Values() {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))
 	}
@@ -169,10 +172,11 @@ type validatedPlanReport struct {
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
 	maxManaged := settings.RepositoryFieldCount() + 4 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
-	if report.Changes == nil || report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security)+len(report.Pages) || report.Managed > maxManaged {
+	scalarChanges := len(report.Changes) + 2*len(report.CommitMessages) + len(report.Actions) + len(report.Security) + len(report.Pages)
+	if report.Changes == nil || report.Managed < scalarChanges || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}
-	if len(report.Labels) > 0 && report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security)+len(report.Pages)+1 {
+	if len(report.Labels) > 0 && report.Managed < scalarChanges+1 {
 		return validatedPlanReport{}, fmt.Errorf("invalid label report managed count")
 	}
 	labels, err := validateLabelReport(report.Labels)
@@ -197,10 +201,10 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if len(environments) > 0 {
 		collections++
 	}
-	if report.Managed < len(report.Changes)+len(report.Actions)+len(report.Security)+len(report.Pages)+collections {
+	if report.Managed < scalarChanges+collections {
 		return validatedPlanReport{}, fmt.Errorf("invalid collection managed count")
 	}
-	hasChanges := len(report.Changes) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(environments) > 0 || len(report.Actions) > 0 || len(report.Security) > 0 || len(report.Pages) > 0
+	hasChanges := len(report.Changes) > 0 || len(report.CommitMessages) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(environments) > 0 || len(report.Actions) > 0 || len(report.Security) > 0 || len(report.Pages) > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
@@ -219,7 +223,11 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if !valid {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report state")
 	}
-	comparison := settings.Comparison{Managed: report.Managed, Labels: labels, Environments: environments}
+	commitMessages, err := validateCommitMessageReport(report.CommitMessages, report.Changes)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	comparison := settings.Comparison{Managed: report.Managed, CommitMessages: commitMessages, Labels: labels, Environments: environments}
 	for _, raw := range report.Actions {
 		var change settings.ActionsPolicyChange
 		var err error
