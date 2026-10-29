@@ -17,8 +17,9 @@ type EnvironmentPattern struct {
 }
 
 type EnvironmentPatternState struct {
-	ID      int64
-	Pattern EnvironmentPattern
+	ID                   int64
+	Pattern              EnvironmentPattern
+	RefTypeNormalization ObservationNormalization
 }
 
 type EnvironmentPatternChange struct {
