@@ -1,5 +1,11 @@
 package settings
 
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+)
+
 // RulesetRequiredApprovalsNormalization retains the acquired integer separately
 // from the UI fallback. It is evidence, never desired policy or mutation input.
 type RulesetRequiredApprovalsNormalization struct {
@@ -33,5 +39,25 @@ func rulesetRequiredApprovals(policy RulesetDeclaration) *int {
 			}
 		}
 	}
+	return nil
+}
+
+// UnmarshalJSON distinguishes an explicitly acquired integer and zero fallback
+// from omitted or null private report metadata. Semantic checks remain separate.
+func (record *RulesetRequiredApprovalsNormalization) UnmarshalJSON(data []byte) error {
+	var fields struct {
+		Path     *string `json:"path"`
+		RawValue *int    `json:"raw_value"`
+		Fallback *int    `json:"fallback"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fields); err != nil {
+		return fmt.Errorf("decode Ruleset required approvals normalization: %w", err)
+	}
+	if fields.Path == nil || fields.RawValue == nil || fields.Fallback == nil {
+		return fmt.Errorf("Ruleset required approvals normalization requires string path and integer raw_value/fallback")
+	}
+	*record = RulesetRequiredApprovalsNormalization{Path: *fields.Path, RawValue: *fields.RawValue, Fallback: *fields.Fallback}
 	return nil
 }
