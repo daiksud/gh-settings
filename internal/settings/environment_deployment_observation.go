@@ -1,6 +1,8 @@
 package settings
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
@@ -72,4 +74,27 @@ func NewEnvironmentChangeWithDeploymentNormalization(operation string, before, a
 		return EnvironmentChange{}, fmt.Errorf("normalized environment change requires provenance")
 	}
 	return newEnvironmentChange(operation, before, after, record)
+}
+
+// UnmarshalJSON requires both acquired booleans, retaining false separately from
+// omission or null, and assigns only after the complete structure is decoded.
+func (record *EnvironmentDeploymentNormalization) UnmarshalJSON(data []byte) error {
+	var fields struct {
+		Path      *string `json:"path"`
+		RawPolicy *struct {
+			ProtectedBranches    *bool `json:"protected_branches"`
+			CustomBranchPolicies *bool `json:"custom_branch_policies"`
+		} `json:"raw_policy"`
+		Fallback *uimodel.EnvironmentDeploymentChoice `json:"fallback"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fields); err != nil {
+		return fmt.Errorf("decode environment deployment normalization: %w", err)
+	}
+	if fields.Path == nil || fields.Fallback == nil || fields.RawPolicy == nil || fields.RawPolicy.ProtectedBranches == nil || fields.RawPolicy.CustomBranchPolicies == nil {
+		return fmt.Errorf("environment deployment normalization requires string path/fallback and complete boolean raw_policy")
+	}
+	*record = EnvironmentDeploymentNormalization{Path: *fields.Path, RawPolicy: EnvironmentBranchPolicy{ProtectedBranches: *fields.RawPolicy.ProtectedBranches, CustomBranchPolicies: *fields.RawPolicy.CustomBranchPolicies}, Fallback: *fields.Fallback}
+	return nil
 }
