@@ -31,12 +31,11 @@ func (state EnvironmentState) validateDeploymentNormalization() error {
 		if state.Patterns == nil {
 			return fmt.Errorf("normalized raw custom mode requires acquired deployment patterns")
 		}
-		empty := []EnvironmentPattern{}
-		if _, err := ReconcileEnvironmentPatterns(state.Patterns, &empty); err != nil {
+		if err := ValidateEnvironmentPatternObservation(state.Patterns); err != nil {
 			return err
 		}
 	}
-	return nil
+	return state.validateRefTypeNormalizations()
 }
 
 // RawDeploymentBranchPolicy distinguishes acquired null from an acquired pair.
