@@ -24,7 +24,10 @@ type PagesDeclaration struct {
 func (d PagesDeclaration) Empty() bool {
 	return d.BuildType == nil && d.Source == nil && d.CNAME == nil && d.HTTPSEnforced == nil
 }
-func validPagesMode(s string) bool { return s == "legacy" || s == "workflow" }
+func validPagesMode(s string) bool {
+	_, valid := PagesModeChoiceForValue(s)
+	return valid
+}
 func ValidatePagesDomain(s string) error {
 	if len(s) == 0 || len(s) > 253 || !strings.Contains(s, ".") {
 		return fmt.Errorf("pages.cname must be an ASCII DNS hostname or null")
