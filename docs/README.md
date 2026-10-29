@@ -37,3 +37,5 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 | Find detailed scenarios and their Go test mappings | [Behavior specifications](features/README.md) |
 
 The user guides stay directly under `docs/`; contributor guides live under `docs/contributing/`. ADRs and behavior specifications keep their established paths as contributor reference material.
+
+Internal preparation: [Actions UI mappings](contributing/ui-actions-mapping.md).
