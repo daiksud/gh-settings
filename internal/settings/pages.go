@@ -270,7 +270,16 @@ func ComparePages(o PagesObservation, d PagesDeclaration) (int, []PagesChange, e
 		}
 	}
 	if d.BuildType != nil {
-		add("pages.build_type", before.BuildType, after.BuildType, false)
+		if o.modeNormalization != (ObservationNormalization{}) {
+			managed++
+			change, err := NewPagesModeChangeWithNormalization("pages.build_type", before.BuildType, after.BuildType, false, o.modeNormalization)
+			if err != nil {
+				return 0, nil, err
+			}
+			changes = append(changes, change)
+		} else {
+			add("pages.build_type", before.BuildType, after.BuildType, false)
+		}
 	}
 	if d.Source != nil {
 		var branch, path any
