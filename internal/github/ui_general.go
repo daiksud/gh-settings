@@ -31,11 +31,11 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 		Archived:                 copyUIValue(general.DangerZone.ArchiveThisRepository),
 	}
 	var err error
-	result.MergeCommitTitle, result.MergeCommitMessage, err = declareCommitMessage(general.PullRequests.MergeCommit.DefaultCommitMessage, general.PullRequests.AllowMergeCommits, mergeCommitMenu[:], "merge_commit")
+	result.MergeCommitTitle, result.MergeCommitMessage, err = declareCommitMessage(general.PullRequests.MergeCommit.DefaultCommitMessage, general.PullRequests.AllowMergeCommits, settings.MergeCommitMenu)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
-	result.SquashMergeCommitTitle, result.SquashMergeCommitMessage, err = declareCommitMessage(general.PullRequests.SquashMerge.DefaultCommitMessage, general.PullRequests.AllowSquashMerging, squashCommitMenu[:], "squash_merge")
+	result.SquashMergeCommitTitle, result.SquashMergeCommitMessage, err = declareCommitMessage(general.PullRequests.SquashMerge.DefaultCommitMessage, general.PullRequests.AllowSquashMerging, settings.SquashCommitMenu)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
@@ -80,11 +80,11 @@ func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, 
 		DangerZone: uimodel.DangerZone{ArchiveThisRepository: copyUIValue(state.Archived)},
 	}
 	var err error
-	result.PullRequests.MergeCommit.DefaultCommitMessage, err = observeCommitMessage(state.MergeCommitTitle, state.MergeCommitMessage, mergeCommitMenu[:], "merge_commit")
+	result.PullRequests.MergeCommit.DefaultCommitMessage, err = observeCommitMessage(state.MergeCommitTitle, state.MergeCommitMessage, settings.MergeCommitMenu)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}
-	result.PullRequests.SquashMerge.DefaultCommitMessage, err = observeCommitMessage(state.SquashMergeCommitTitle, state.SquashMergeCommitMessage, squashCommitMenu[:], "squash_merge")
+	result.PullRequests.SquashMerge.DefaultCommitMessage, err = observeCommitMessage(state.SquashMergeCommitTitle, state.SquashMergeCommitMessage, settings.SquashCommitMenu)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}

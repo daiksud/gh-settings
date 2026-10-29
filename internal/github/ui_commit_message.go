@@ -2,53 +2,32 @@ package github
 
 import (
 	"fmt"
+	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-type commitMenuOption struct {
-	choice         uimodel.CommitMessageChoice
-	title, message string
-}
-
-var mergeCommitMenu = [...]commitMenuOption{
-	{uimodel.DefaultMessage, "MERGE_MESSAGE", "PR_TITLE"},
-	{uimodel.PullRequestTitle, "PR_TITLE", "BLANK"},
-	{uimodel.PullRequestTitleAndDescription, "PR_TITLE", "PR_BODY"},
-}
-
-var squashCommitMenu = [...]commitMenuOption{
-	{uimodel.DefaultMessage, "COMMIT_OR_PR_TITLE", "COMMIT_MESSAGES"},
-	{uimodel.PullRequestTitle, "PR_TITLE", "BLANK"},
-	{uimodel.PullRequestTitleAndCommitDetails, "PR_TITLE", "COMMIT_MESSAGES"},
-	{uimodel.PullRequestTitleAndDescription, "PR_TITLE", "PR_BODY"},
-}
-
-func declareCommitMessage(choice *uimodel.CommitMessageChoice, allowed *bool, menu []commitMenuOption, path string) (*string, *string, error) {
+func declareCommitMessage(choice *uimodel.CommitMessageChoice, allowed *bool, menu settings.CommitMessageMenu) (*string, *string, error) {
 	if choice == nil {
 		return nil, nil, nil
 	}
 	if allowed != nil && !*allowed {
-		return nil, nil, fmt.Errorf("general.pull_requests.%s.default_commit_message requires the merge method to be enabled", path)
+		return nil, nil, fmt.Errorf("general.pull_requests.%s.default_commit_message requires the merge method to be enabled", menu)
 	}
-	for _, option := range menu {
-		if option.choice == *choice {
-			return &option.title, &option.message, nil
-		}
+	if pair, ok := settings.CommitMessagePairForChoice(menu, *choice); ok {
+		return &pair.Title, &pair.Message, nil
 	}
-	return nil, nil, fmt.Errorf("unsupported general.pull_requests.%s.default_commit_message %q", path, *choice)
+	return nil, nil, fmt.Errorf("unsupported general.pull_requests.%s.default_commit_message %q", menu, *choice)
 }
 
-func observeCommitMessage(title, message *string, menu []commitMenuOption, path string) (*uimodel.CommitMessageChoice, error) {
+func observeCommitMessage(title, message *string, menu settings.CommitMessageMenu) (*uimodel.CommitMessageChoice, error) {
 	if title == nil && message == nil {
 		return nil, nil
 	}
 	if title == nil || message == nil {
-		return nil, fmt.Errorf("incomplete %s default commit message observation", path)
+		return nil, fmt.Errorf("incomplete %s default commit message observation", menu)
 	}
-	for _, option := range menu {
-		if option.title == *title && option.message == *message {
-			return &option.choice, nil
-		}
+	if choice, ok := settings.CommitMessageChoiceForPair(menu, settings.CommitMessagePair{Title: *title, Message: *message}); ok {
+		return &choice, nil
 	}
-	return nil, fmt.Errorf("%s default commit message pair is outside UI choices", path)
+	return nil, fmt.Errorf("%s default commit message pair is outside UI choices", menu)
 }
