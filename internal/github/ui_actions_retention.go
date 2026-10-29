@@ -5,6 +5,17 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
+func WithActionsRetentionPolicyUI(ui uimodel.ActionsGeneral, days *int) (uimodel.ActionsGeneral, error) {
+	if days == nil {
+		return ui, nil
+	}
+	if err := settings.ValidateRetentionDays(*days); err != nil {
+		return uimodel.ActionsGeneral{}, err
+	}
+	ui.CheckWorkflowRunStatusArtifactAndLogRetention = copyUIActionsValue(days)
+	return ui, nil
+}
+
 // PreparedActionsRetention preserves the unowned cap independently of configured
 // days. Applying/exporting the value still requires existing cap validation.
 type PreparedActionsRetention struct {

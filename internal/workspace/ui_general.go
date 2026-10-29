@@ -11,73 +11,15 @@ import (
 )
 
 func decodeUISettings(node *yaml.Node) (uimodel.RepositorySettings, error) {
-	fields, err := loadMapping(node, "repository.settings")
-	if err != nil {
-		return uimodel.RepositorySettings{}, err
-	}
 	var result uimodel.RepositorySettings
-	for key, value := range fields {
-		if key == "security_and_quality" {
-			if err := decodeUIControl(&value, reflect.ValueOf(&result.SecurityAndQuality).Elem(), "repository.settings.security_and_quality"); err != nil {
-				return uimodel.RepositorySettings{}, err
-			}
-			continue
-		}
-		if key == "actions" {
-			if err := decodeUIControl(&value, reflect.ValueOf(&result.Actions).Elem(), "repository.settings.actions"); err != nil {
-				return uimodel.RepositorySettings{}, err
-			}
-			continue
-		}
-		if key == "rulesets" {
-			if err := decodeUIControl(&value, reflect.ValueOf(&result.Rulesets).Elem(), "repository.settings.rulesets"); err != nil {
-				return uimodel.RepositorySettings{}, err
-			}
-			continue
-		}
-		if key != "general" {
-			return uimodel.RepositorySettings{}, fmt.Errorf("unknown repository.settings key %q", key)
-		}
-		var general uimodel.General
-		if err := decodeUIControl(&value, reflect.ValueOf(&general).Elem(), "repository.settings.general"); err != nil {
-			return uimodel.RepositorySettings{}, err
-		}
-		result.General = &general
+	if err := decodeUIControl(node, reflect.ValueOf(&result).Elem(), "repository.settings"); err != nil {
+		return uimodel.RepositorySettings{}, err
 	}
 	return result, nil
 }
 
 func encodeUISettings(settings uimodel.RepositorySettings) (*yaml.Node, error) {
-	result := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	if settings.General != nil {
-		node, err := encodeUIControl(reflect.ValueOf(*settings.General))
-		if err != nil {
-			return nil, err
-		}
-		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "general"}, node)
-	}
-	if settings.Rulesets != nil {
-		node, err := encodeUIControl(reflect.ValueOf(settings.Rulesets))
-		if err != nil {
-			return nil, err
-		}
-		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "rulesets"}, node)
-	}
-	if settings.Actions != nil {
-		node, err := encodeUIControl(reflect.ValueOf(settings.Actions))
-		if err != nil {
-			return nil, err
-		}
-		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "actions"}, node)
-	}
-	if settings.SecurityAndQuality != nil {
-		node, err := encodeUIControl(reflect.ValueOf(settings.SecurityAndQuality))
-		if err != nil {
-			return nil, err
-		}
-		result.Content = append(result.Content, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "security_and_quality"}, node)
-	}
-	return result, nil
+	return encodeUIControl(reflect.ValueOf(settings))
 }
 
 var uiInitialismBoundary = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
@@ -95,6 +37,18 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 	node, err := resolveAlias(node)
 	if err != nil {
 		return err
+	}
+	if target.Type() == reflect.TypeFor[*uimodel.PagesCustomDomain]() {
+		domain := &uimodel.PagesCustomDomain{}
+		if node.Kind != yaml.ScalarNode || (node.Tag != "!!str" && node.Tag != "!!null") {
+			return fmt.Errorf("%s must be a string or null", path)
+		}
+		if node.Tag == "!!str" {
+			value := node.Value
+			domain.Value = &value
+		}
+		target.Set(reflect.ValueOf(domain))
+		return nil
 	}
 	if node.Tag == "!!null" {
 		return fmt.Errorf("%s must not be null", path)
@@ -165,6 +119,13 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 }
 
 func encodeUIControl(value reflect.Value) (*yaml.Node, error) {
+	if value.Type() == reflect.TypeFor[*uimodel.PagesCustomDomain]() {
+		domain := value.Interface().(*uimodel.PagesCustomDomain)
+		if domain.Value == nil {
+			return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}, nil
+		}
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: *domain.Value}, nil
+	}
 	if value.Kind() == reflect.Pointer {
 		return encodeUIControl(value.Elem())
 	}

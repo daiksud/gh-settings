@@ -12,6 +12,8 @@ type RepositorySettings struct {
 	Rulesets           *[]Ruleset
 	Actions            *ActionsSettings
 	SecurityAndQuality *SecurityAndQuality
+	Pages              *Pages
+	Environments       *[]Environment
 }
 
 type ActionsSettings struct{ General *ActionsGeneral }

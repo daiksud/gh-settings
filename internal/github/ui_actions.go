@@ -12,6 +12,30 @@ type PreparedActionsExecution struct {
 	Raw     settings.ActionsPolicyState
 }
 
+// ActionsExecutionPolicyUI projects exported execution values without fabricating acquisition.
+func ActionsExecutionPolicyUI(policy settings.ActionsPolicyDeclaration) (uimodel.ActionsGeneral, error) {
+	if policy.ExecutionEmpty() {
+		return uimodel.ActionsGeneral{}, nil
+	}
+	if policy.Enabled == nil || policy.AllowedActions == nil || policy.SHAPinningRequired == nil {
+		return uimodel.ActionsGeneral{}, fmt.Errorf("Actions execution policy requires complete enabled, allowed actions and SHA pinning values")
+	}
+	state := settings.ActionsPolicyState{Enabled: *policy.Enabled, AllowedActions: *policy.AllowedActions, SHAPinningRequired: *policy.SHAPinningRequired}
+	if *policy.AllowedActions == "selected" {
+		if !policy.SelectedActions.Complete() {
+			return uimodel.ActionsGeneral{}, fmt.Errorf("selected Actions policy requires complete companion values")
+		}
+		state.Selected = &settings.SelectedActionsState{GitHubOwnedAllowed: *policy.SelectedActions.GitHubOwnedAllowed, VerifiedAllowed: *policy.SelectedActions.VerifiedAllowed, PatternsAllowed: *policy.SelectedActions.PatternsAllowed}
+	} else if !policy.SelectedActions.Empty() {
+		return uimodel.ActionsGeneral{}, fmt.Errorf("selected Actions companions require selected policy")
+	}
+	prepared, err := ActionsExecutionObservation(state)
+	if err != nil {
+		return uimodel.ActionsGeneral{}, err
+	}
+	return prepared.General, nil
+}
+
 func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclaration, error) {
 	result := settings.ActionsPolicyDeclaration{SHAPinningRequired: copyUIActionsValue(ui.RequireActionsToBePinnedToAFullLengthCommitSHA)}
 	if ui.ActionsPermissions != nil {

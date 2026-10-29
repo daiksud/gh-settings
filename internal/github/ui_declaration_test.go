@@ -207,3 +207,71 @@ func TestDeclarationFromUISecurityInvalidIntentIsAtomic(t *testing.T) {
 		t.Fatalf("invalid Security accepted or partial intent returned: %#v, %v", got, err)
 	}
 }
+
+func TestDeclarationFromUIPages(t *testing.T) {
+	for _, domain := range []*string{nil, rulesetPtr("docs.example.com")} {
+		pages := &uimodel.Pages{BuildAndDeployment: &uimodel.PagesBuildAndDeployment{Source: rulesetPtr(uimodel.DeployFromABranch), Branch: rulesetPtr("pages"), SelectFolder: rulesetPtr(uimodel.PagesDocs)}, CustomDomain: &uimodel.PagesCustomDomain{Value: domain}, EnforceHTTPS: rulesetPtr(false)}
+		want := settings.PagesDeclaration{BuildType: rulesetPtr("legacy"), Source: &settings.PagesSource{Branch: "pages", Path: "/docs"}, CNAME: &settings.PagesDomain{Value: domain}, HTTPSEnforced: rulesetPtr(false)}
+		got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Pages: pages}})
+		if err != nil || !reflect.DeepEqual(got.Pages, want) {
+			t.Fatalf("Pages %#v; want %#v; error=%v", got.Pages, want, err)
+		}
+	}
+	for _, pages := range []*uimodel.Pages{nil, {}} {
+		got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Pages: pages}})
+		if err != nil || !got.Empty() {
+			t.Fatalf("empty Pages became intent: %#v, %v", got, err)
+		}
+	}
+}
+
+func TestDeclarationFromUIPagesInvalidIntentIsAtomic(t *testing.T) {
+	description := "valid About"
+	for _, pages := range []uimodel.Pages{
+		{BuildAndDeployment: &uimodel.PagesBuildAndDeployment{Source: rulesetPtr(uimodel.PagesSourceChoice("workflow"))}},
+		{CustomDomain: &uimodel.PagesCustomDomain{Value: rulesetPtr("")}},
+		{BuildAndDeployment: &uimodel.PagesBuildAndDeployment{Branch: rulesetPtr("main")}},
+		{BuildAndDeployment: &uimodel.PagesBuildAndDeployment{Source: rulesetPtr(uimodel.GitHubActions), Branch: rulesetPtr("main"), SelectFolder: rulesetPtr(uimodel.PagesRoot)}},
+	} {
+		got, err := DeclarationFromUI(uimodel.Repository{About: &uimodel.About{Description: &description}, Settings: &uimodel.RepositorySettings{Pages: &pages}})
+		if err == nil || !got.Empty() {
+			t.Fatalf("invalid Pages accepted or partial intent returned: %#v, %v", got, err)
+		}
+	}
+}
+
+func TestDeclarationFromUIEnvironments(t *testing.T) {
+	entries := []uimodel.Environment{
+		{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: rulesetPtr(0), RequiredReviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Person: rulesetPtr(int64(11))}, {Team: rulesetPtr(int64(12))}}), PreventSelfReview: rulesetPtr(false), AllowAdministratorsToBypassConfiguredProtectionRules: rulesetPtr(true)}, DeploymentBranchesAndTags: rulesetPtr(uimodel.SelectedBranchesAndTags), DeploymentBranchOrTagRules: rulesetPtr([]uimodel.EnvironmentDeploymentRule{{RefType: uimodel.EnvironmentBranch, NamePattern: "Release/*"}, {RefType: uimodel.EnvironmentTag, NamePattern: "Release/*"}})},
+		{Name: "Open", DeploymentBranchesAndTags: rulesetPtr(uimodel.NoRestriction)},
+	}
+	want := []settings.EnvironmentDeclaration{
+		{Name: "Open", DeploymentBranchPolicyDeclared: true},
+		{Name: "Production", WaitTimer: rulesetPtr(0), Reviewers: rulesetPtr([]settings.EnvironmentReviewer{{Type: "Team", ID: 12}, {Type: "User", ID: 11}}), PreventSelfReview: rulesetPtr(false), CanAdminsBypass: rulesetPtr(true), DeploymentBranchPolicyDeclared: true, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: rulesetPtr([]settings.EnvironmentPattern{{Type: "branch", Name: "Release/*"}, {Type: "tag", Name: "Release/*"}})},
+	}
+	got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Environments: &entries}})
+	if err != nil || got.Environments == nil || !reflect.DeepEqual(got.Environments.Values(), want) {
+		t.Fatalf("Environment composition changed: %#v, %v", got.Environments, err)
+	}
+	empty := []uimodel.Environment{}
+	for _, collection := range []*[]uimodel.Environment{nil, &empty} {
+		got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Environments: collection}})
+		if err != nil || (got.Environments != nil) != (collection != nil) || (got.Environments != nil && got.Environments.Len() != 0) {
+			t.Fatalf("Environment collection presence changed: %#v, %v", got.Environments, err)
+		}
+	}
+}
+
+func TestDeclarationFromUIEnvironmentsInvalidIntentIsAtomic(t *testing.T) {
+	description := "valid About"
+	for _, entries := range [][]uimodel.Environment{
+		{{Name: "one", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: rulesetPtr([]uimodel.EnvironmentReviewer{{Person: rulesetPtr(int64(11)), Team: rulesetPtr(int64(12))}})}}},
+		{{Name: "Production"}, {Name: "production"}},
+		{{Name: "one", DeploymentBranchesAndTags: rulesetPtr(uimodel.NoRestriction), DeploymentBranchOrTagRules: rulesetPtr([]uimodel.EnvironmentDeploymentRule{})}},
+	} {
+		got, err := DeclarationFromUI(uimodel.Repository{About: &uimodel.About{Description: &description}, Settings: &uimodel.RepositorySettings{Environments: &entries}})
+		if err == nil || !got.Empty() {
+			t.Fatalf("invalid Environment accepted or partial intent returned: %#v, %v", got, err)
+		}
+	}
+}

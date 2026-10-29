@@ -92,6 +92,28 @@ Test mapping: the [Actions UI codec tests](../../internal/workspace/ui_actions_t
 
 Test mapping: the [Security UI codec tests](../../internal/workspace/ui_security_test.go).
 
+#### Scenario: Preserve Pages controls and domain removal
+
+- Given `repository.settings.pages` declares Build and deployment choices, a custom domain and Enforce HTTPS
+- When the document is read and exported
+- Then source choices, branch, folder and explicit false values retain their UI names and types
+- And an omitted custom domain remains unmanaged while `custom_domain: null` selects removal
+- And `custom_domain` is a scalar, without an internal `value` member
+- And API aliases, owner metadata and nulls in other controls are rejected
+
+Test mapping: the [Pages UI codec tests](../../internal/workspace/ui_pages_test.go).
+
+#### Scenario: Preserve Environment names and separately owned patterns
+
+- Given `repository.settings.environments` contains name-addressed environments with deployment protection controls
+- And deployment branches and tags use UI choices and typed branch/tag patterns
+- When the document is read and exported
+- Then zero timers, false flags, selected person/team IDs and explicit empty reviewer lists remain present
+- And omitted and empty root collections remain distinct
+- And numeric environment IDs, API-shaped aliases, null collections and incorrectly typed values are rejected
+
+Test mapping: the [Environment UI codec tests](../../internal/workspace/ui_environments_test.go).
+
 ### Rule: Accept only supported fields with the update API's value types
 
 #### Scenario: Validate all supported settings

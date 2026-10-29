@@ -43,6 +43,18 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 			return settings.Declaration{}, fmt.Errorf("repository.settings: %w", err)
 		}
 		result.Security = security
+		environments, err := EnvironmentCollectionDeclaration(repository.Settings.Environments)
+		if err != nil {
+			return settings.Declaration{}, fmt.Errorf("repository.settings.environments: %w", err)
+		}
+		result.Environments = environments
+		if repository.Settings.Pages != nil {
+			pages, err := PagesDeclaration(*repository.Settings.Pages)
+			if err != nil {
+				return settings.Declaration{}, fmt.Errorf("repository.settings.pages: %w", err)
+			}
+			result.Pages = pages
+		}
 		rulesets, err := RulesetsDeclaration(repository.Settings.Rulesets)
 		if err != nil {
 			return settings.Declaration{}, fmt.Errorf("repository.settings.rulesets: %w", err)
