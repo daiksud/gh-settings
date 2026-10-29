@@ -133,6 +133,9 @@ func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 	if err := d.Validate(); err != nil {
 		return err
 	}
+	if !s.Enabled && d.Enabled != nil && *d.Enabled && d.AllowedActions == nil && s.AllowedActionsNormalization != (ObservationNormalization{}) {
+		return fmt.Errorf("enabling Actions from an unknown policy requires an explicit canonical allowed_actions policy")
+	}
 	if s.AllowedActions != "selected" && d.AllowedActions != nil && *d.AllowedActions == "selected" && !d.SelectedActions.Complete() {
 		return fmt.Errorf("transition to selected requires all three selected_actions values; inactive values cannot be read")
 	}
