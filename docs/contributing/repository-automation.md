@@ -13,7 +13,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
 | [`labeler.yml`](../../.github/workflows/labeler.yml) | PR-target events suggest add-only labels for unambiguous all-files path categories without executing candidate code |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
-| [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Credential-free PR merge-candidate validation through the required `settings-plan` check |
+| [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Credential-free validation of the merge declaration with its pinned operational consumer |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
 | [`settings-env.yml`](../../.github/workflows/settings-env.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-env` |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or successful PR CI completion; conditionally create a bot approval |
@@ -39,7 +39,7 @@ The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rul
 | --- | --- | --- |
 | `ci-pr` | [PR code CI](../../.github/workflows/ci-pr.yml) aggregates the build and acceptance stages | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
 | `prlint` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
-| `settings-plan` | [Settings plan workflow](../../.github/workflows/settings-plan.yml) checks the PR declaration without write credentials | Live differences are observed by the separate privileged settings-pr workflow when relevant |
+| `settings-plan` | [Settings plan workflow](../../.github/workflows/settings-plan.yml) checks the PR declaration with its pinned operational consumer, without write credentials | Live differences are observed by the separate privileged settings-pr workflow when relevant |
 | `settings-env` | The [trusted guard](../../.github/workflows/settings-env.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
@@ -94,12 +94,24 @@ When evaluating enforcement, inspect the applicable required checks and allowed 
 ## Local PR settings validation
 
 The required `settings-plan` job in [settings-plan.yml](../../.github/workflows/settings-plan.yml)
-runs local `validate` against the PR merge checkout. It has only Contents read,
-does not select an Environment or create an App token, and cannot be manually
-dispatched. Its result establishes local configuration validity, not live App
-visibility or drift. The separate [trusted PR plan](#active-settings-workflows)
-performs the existing authenticated observation; neither check authorizes a
-later apply or locks remote state.
+validates `.github/settings.yml` from the PR merge checkout with the same immutable
+public Action pin used by [settings-pr.yml](../../.github/workflows/settings-pr.yml)
+and [settings-main.yml](../../.github/workflows/settings-main.yml). It calls only
+`command: validate`, with no token. The job uses the public Action's supported
+fresh Ubuntu 24.04 x64 VM, has only Contents read, selects no Environment and
+creates no App token. A validation failure fails the required check.
+
+This checks the operational declaration against its actual package contract.
+The separate required `ci-pr` builds and tests the candidate source, including
+current-format process and public Action fixtures. The candidate decoder still
+rejects obsolete configuration; no compatibility decoder or translation is used.
+[#382](https://github.com/daiksud/gh-settings/issues/382) owns the repository's
+new-format declaration and compatible package adoption. This validation split
+does not rewrite or apply that declaration.
+
+Neither check establishes live App visibility or drift. The separate
+[trusted PR plan](#active-settings-workflows) performs authenticated observation;
+no validation result authorizes a later apply or locks remote state.
 
 ## Codex approval control
 

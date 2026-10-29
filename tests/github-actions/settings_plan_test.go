@@ -23,11 +23,37 @@ func TestSettingsPlanRemainsUnprivilegedPRValidation(t *testing.T) {
 		t.Fatal("settings-plan must contain only unprivileged PR validation")
 	}
 	j, present := w.Jobs[settingsPlanCheckName]
-	if !present || j.Runner != "ubuntu-slim" || j.If != "github.event_name == 'pull_request'" || j.Timeout != 10 || j.Environment != "" || j.Needs != "" || j.Continue || len(j.Env) != 0 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) {
-		t.Fatal("required settings-plan check cannot acquire privileged credentials or an Environment")
+	if !present || j.Runner != "ubuntu-24.04" || j.If != "github.event_name == 'pull_request'" || j.Timeout != 10 || j.Environment != "" || j.Needs != "" || j.Continue || len(j.Env) != 0 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) {
+		t.Fatal("settings-plan must preserve its read-only PR boundary and use the supported validator runner")
 	}
-	if len(j.Steps) != 3 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(j.Steps[0].With, map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}) || j.Steps[1].Uses != "jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e" || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"version": "2026.10.8", "install_args": "go", "cache": "false"}) || j.Steps[2].Run != "go run . validate" {
-		t.Fatal("preserve credential-free checkout, pinned Go and local validation")
+	const consumer = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
+	if len(j.Steps) != 2 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(j.Steps[0].With, map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}) || j.Steps[1].Uses != consumer || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"command": "validate"}) || j.Steps[1].If != "" {
+		t.Fatal("validate the merge declaration with its pinned operational consumer, without a token or conditional skip")
+	}
+	for _, caller := range []struct{ file, job, command string }{
+		{"settings-pr.yml", "plan", "plan"},
+		{"settings-main.yml", "apply", "apply"},
+	} {
+		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", caller.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var operational workflow
+		if err := yaml.Unmarshal(data, &operational); err != nil {
+			t.Fatal(err)
+		}
+		matches := 0
+		for _, step := range operational.Jobs[caller.job].Steps {
+			if strings.HasPrefix(step.Uses, "daiksud/gh-settings@") {
+				if step.Uses != consumer || step.With["command"] != caller.command {
+					t.Fatal("settings validation must match both operational consumers")
+				}
+				matches++
+			}
+		}
+		if matches != 1 {
+			t.Fatalf("expected one pinned consumer in %s", caller.file)
+		}
 	}
 	for _, step := range j.Steps {
 		if step.Continue || len(step.Env) != 0 {
