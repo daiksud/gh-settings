@@ -138,6 +138,9 @@ func PreparePages(o PagesObservation, d PagesDeclaration) (PagesState, error) {
 	if err != nil {
 		return PagesState{}, err
 	}
+	if d.Source != nil && d.BuildType == nil && o.modeNormalization != (ObservationNormalization{}) {
+		return PagesState{}, fmt.Errorf("Pages source requires explicit legacy mode when the observed mode is outside UI choices")
+	}
 	if d.BuildType != nil && *d.BuildType == "legacy" && s.BuildType != "legacy" && d.Source == nil {
 		return PagesState{}, fmt.Errorf("transition to legacy Pages requires a complete source")
 	}
