@@ -168,16 +168,16 @@ func PreparePages(o PagesObservation, d PagesDeclaration) (PagesState, error) {
 
 // PagesChange owns the nullable-domain and inactive-source report boundaries.
 type PagesChange struct {
-	field               string
-	before, after       any
-	inactive            bool
-	folderNormalization ObservationNormalization
+	field         string
+	before, after any
+	inactive      bool
+	normalization ObservationNormalization
 }
 
-func (c PagesChange) Field() string                                 { return c.field }
-func (c PagesChange) Values() (any, any)                            { return c.before, c.after }
-func (c PagesChange) BeforeInactive() bool                          { return c.inactive }
-func (c PagesChange) FolderNormalization() ObservationNormalization { return c.folderNormalization }
+func (c PagesChange) Field() string                           { return c.field }
+func (c PagesChange) Values() (any, any)                      { return c.before, c.after }
+func (c PagesChange) BeforeInactive() bool                    { return c.inactive }
+func (c PagesChange) Normalization() ObservationNormalization { return c.normalization }
 func NewPagesChange(field string, before, after any, inactive bool) (PagesChange, error) {
 	valid := func(v any, previous bool) bool {
 		if previous && inactive {
@@ -217,8 +217,8 @@ func ValidatePagesChanges(changes []PagesChange) error {
 			return fmt.Errorf("duplicate Pages comparison")
 		}
 		var err error
-		if c.folderNormalization != (ObservationNormalization{}) {
-			_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.folderNormalization)
+		if c.normalization != (ObservationNormalization{}) {
+			_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.normalization)
 		} else {
 			_, err = NewPagesChange(c.field, c.before, c.after, c.inactive)
 		}

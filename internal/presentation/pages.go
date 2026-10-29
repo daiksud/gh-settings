@@ -9,7 +9,7 @@ import (
 
 func PagesLine(c settings.PagesChange) string {
 	b, a := c.Values()
-	if record := c.FolderNormalization(); record != (settings.ObservationNormalization{}) {
+	if record := c.Normalization(); record != (settings.ObservationNormalization{}) {
 		value, _ := a.(string)
 		choice, _ := settings.PagesFolderChoiceForValue(value)
 		return NormalizationLine(record) + "\n" + fmt.Sprintf("%s: %s (normalized observation) → %s (write required)", record.Path, strconv.Quote(record.Fallback), strconv.Quote(string(choice)))
