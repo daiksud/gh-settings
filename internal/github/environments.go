@@ -354,7 +354,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if err := c.rest.Put(environmentPath(repo, expected.Name), bytes.NewReader(body), &raw); err != nil {
 		return false, fmt.Errorf("update environment %q (write may have applied): %w", expected.Name, err)
 	}
-	if _, err := decodeEnvironment(raw); err != nil {
+	if err := verifyEnvironmentUpdateResponse(raw, *expected); err != nil {
 		return false, fmt.Errorf("verify environment update response (write may have applied): %w", err)
 	}
 	if expected.DeploymentBranchPatterns != nil {
@@ -375,8 +375,8 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if err != nil {
 		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
-	if !settings.EnvironmentMatchesRequest(actual.Policy, *expected) {
-		return false, fmt.Errorf("environment readback differs from requested policy (write may have applied)")
+	if err := verifyEnvironmentRequestedState(actual, *expected); err != nil {
+		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
 	return true, nil
 }
