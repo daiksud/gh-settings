@@ -133,15 +133,37 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 	if out := run("plan"); out != "No differences for managed repository settings.\n" {
 		t.Fatal("unchanged export differs", out)
 	}
-	members := exported["settings"].(map[string]any)["rulesets"].([]any)
-	if len(members) != 1 {
-		t.Fatal("inherited policy exported", members)
+	members := exported["repository"].(map[string]any)["settings"].(map[string]any)["rulesets"].([]any)
+	desired := map[string]any{
+		"id": 7, "ruleset_name": "default", "enforcement_status": "active",
+		"target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}},
+		"bypass_list":     []any{},
+		"rules": map[string]any{
+			"restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": false,
+			"require_a_pull_request_before_merging": map[string]any{
+				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
+				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,
+				"require_review_from_code_owners":                                       true,
+				"require_an_additional_approval_for_unattributed_copilot_pull_requests": false,
+				"require_approval_of_the_most_recent_reviewable_push":                   false,
+				"require_conversation_resolution_before_merging":                        true,
+				"require_review_from_specific_teams":                                    []any{map[string]any{"reviewer": 22, "approvals": 1, "file_patterns": []any{"**", "!docs/**", "docs/README.md", "**"}}},
+			},
+			"require_status_checks_to_pass": map[string]any{
+				"required_status_checks":                           []any{map[string]any{"check": "gh-settings", "source": map[string]any{"app": 15368}}, map[string]any{"check": "pass", "source": map[string]any{"app": 15368}}},
+				"require_branches_to_be_up_to_date_before_merging": true,
+				"do_not_require_status_checks_on_creation":         false,
+			},
+		},
 	}
-	desired := members[0].(map[string]any)
-	pr := acceptanceRuleParams(t, desired, "pull_request")
-	reviewer := pr["required_reviewers"].([]any)[0].(map[string]any)
+	if !reflect.DeepEqual(members, []any{desired}) {
+		t.Fatalf("exported=%v want=%v", members, desired)
+	}
+	pr := desired["rules"].(map[string]any)["require_a_pull_request_before_merging"].(map[string]any)
+	reviewer := pr["require_review_from_specific_teams"].([]any)[0].(map[string]any)
 	reviewer["file_patterns"] = []any{"!docs/**", "**", "docs/README.md", "**"}
-	document := map[string]any{"schemaVersion": 1, "settings": map[string]any{"rulesets": members}}
+	document := map[string]any{"version": "daiksud/gh-settings@v0", "repository": map[string]any{"settings": map[string]any{"rulesets": []any{desired}}}}
+
 	save := func() {
 		t.Helper()
 		bytes, e := yaml.Marshal(document)
@@ -188,27 +210,26 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		t.Fatal("order repeat apply wrote")
 	}
 	// Edit only selected attributes; retained rules and reviewer identity keep companions.
-	partial := `schemaVersion: 1
-settings:
-  rulesets:
-    - id: 7
-      name: default
-      enforcement: active
-      conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
-      rules:
-        - type: deletion
-        - type: non_fast_forward
-        - type: required_linear_history
-        - type: pull_request
-          parameters:
-            required_approving_review_count: 0
-            dismiss_stale_reviews_on_push: false
-            require_code_owner_review: false
-            required_reviewers: [{reviewer: {type: Team, id: 22}, minimum_approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]
-        - type: required_status_checks
-          parameters:
-            required_status_checks: [{context: pass}]
-            strict_required_status_checks_policy: false
+	partial := `version: daiksud/gh-settings@v0
+repository:
+  settings:
+    rulesets:
+      - id: 7
+        ruleset_name: default
+        enforcement_status: active
+        target_branches: {include_default_branch: true}
+        rules:
+          restrict_deletions: true
+          block_force_pushes: true
+          require_linear_history: true
+          require_a_pull_request_before_merging:
+            required_approvals: 0
+            dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: false
+            require_review_from_code_owners: false
+            require_review_from_specific_teams: [{reviewer: 22, approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]
+          require_status_checks_to_pass:
+            required_status_checks: [{check: pass}]
+            require_branches_to_be_up_to_date_before_merging: false
 `
 	if e := writeSettingsFile(fixture.work, partial); e != nil {
 		t.Fatal(e)
@@ -241,8 +262,8 @@ settings:
 		t.Fatal("repeat parameter apply wrote", count)
 	}
 	// Empty reviewer/check memberships remove their members; absent scalar flags stay intact.
-	clear := strings.Replace(partial, "required_reviewers: [{reviewer: {type: Team, id: 22}, minimum_approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]", "required_reviewers: []", 1)
-	clear = strings.Replace(clear, "required_status_checks: [{context: pass}]", "required_status_checks: []", 1)
+	clear := strings.Replace(partial, "require_review_from_specific_teams: [{reviewer: 22, approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]", "require_review_from_specific_teams: []", 1)
+	clear = strings.Replace(clear, "required_status_checks: [{check: pass}]", "required_status_checks: []", 1)
 	writeSettingsFile(fixture.work, clear)
 	run("apply")
 	mu.Lock()
@@ -254,7 +275,7 @@ settings:
 		t.Fatal(out)
 	}
 	// Removing the rule type from declared membership removes that rule, not the Ruleset.
-	writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: [{type: deletion}]}]}\n")
+	writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {restrict_deletions: true}}]}\n"))
 	run("apply")
 	run("apply")
 	mu.Lock()
@@ -268,7 +289,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 	for _, tt := range []struct {
 		name, detail, desired string
 		status                int
-	}{{"unknown PR flag", strings.Replace(acceptanceReviewRuleset, `"require_code_owner_review":true`, `"require_code_owner_review":true,"future_flag":false`, 1), `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: []}]`, 200}, {"null optional flag", strings.Replace(acceptanceReviewRuleset, `"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`, 1), `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}}]`, 200}, {"new reviewer incomplete", acceptanceReviewRuleset, `[{name: default, rules: [{type: pull_request, parameters: {required_reviewers: [{reviewer: {type: Team, id: 99}}]}}]}]`, 200}, {"write denied", acceptanceReviewRuleset, `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: []}]`, 403}, {"write redirect", acceptanceReviewRuleset, `[{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: []}]`, 307}} {
+	}{{"unknown PR flag", strings.Replace(acceptanceReviewRuleset, `"require_code_owner_review":true`, `"require_code_owner_review":true,"future_flag":false`, 1), `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {}}]`, 200}, {"null optional flag", strings.Replace(acceptanceReviewRuleset, `"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`, 1), `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}}]`, 200}, {"new reviewer incomplete", acceptanceReviewRuleset, `[{ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {require_a_pull_request_before_merging: {require_review_from_specific_teams: [{reviewer: 99}]}}}]`, 200}, {"write denied", acceptanceReviewRuleset, `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {}}]`, 403}, {"write redirect", acceptanceReviewRuleset, `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {}}]`, 307}} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var methods []string
@@ -300,7 +321,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 			if e := setupOrdinaryOrigin(fixture.work, env); e != nil {
 				t.Fatal(e)
 			}
-			writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: "+tt.desired+"}\n")
+			writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: "+tt.desired+"}\n"))
 			result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 			if e != nil || result.runErr == nil || result.stdout.Len() != 0 {
 				t.Fatal(e, result)
@@ -309,6 +330,9 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 			defer mu.Unlock()
 			want := []string{"GET", "GET"}
 			if tt.name == "new reviewer incomplete" {
+				if !strings.Contains(result.stderr.String(), "team reviewer requires approvals and file_patterns") {
+					t.Fatal(result.stderr.String())
+				}
 				want = nil
 			}
 			if tt.status != 200 {
@@ -364,23 +388,23 @@ func TestRulesetPRResponseMismatchStopsLaterWrites(t *testing.T) {
 			if e := setupOrdinaryOrigin(fixture.work, env); e != nil {
 				t.Fatal(e)
 			}
-			writeSettingsFile(fixture.work, `schemaVersion: 1
-settings:
-  rulesets:
-    - id: 7
-      name: default
-      enforcement: active
-      conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}
-      rules:
-        - type: deletion
-        - type: non_fast_forward
-        - type: required_linear_history
-        - type: pull_request
-          parameters: {required_approving_review_count: 0}
-        - type: required_status_checks
+			writeSettingsFile(fixture.work, `version: daiksud/gh-settings@v0
+repository:
+  settings:
+    rulesets:
+      - id: 7
+        ruleset_name: default
+        enforcement_status: active
+        target_branches: {include_default_branch: true}
+        rules:
+          restrict_deletions: true
+          block_force_pushes: true
+          require_linear_history: true
+          require_a_pull_request_before_merging: {required_approvals: 0}
+          require_status_checks_to_pass: {}
 `)
 			if removeAll {
-				writeSettingsFile(fixture.work, "schemaVersion: 1\nsettings: {rulesets: [{id: 7, name: default, enforcement: active, conditions: {ref_name: {include: ['~DEFAULT_BRANCH']}}, rules: [{type: deletion}]}]}\n")
+				writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {restrict_deletions: true}}]}\n"))
 			}
 			result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 			if e != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "writes may already have applied") {

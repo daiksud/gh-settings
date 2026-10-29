@@ -54,11 +54,11 @@ func TestActionChangedSummary(t *testing.T) {
 		"Original actor", "original-user", "Initiating / rerun actor", "rerun-user", "Event", "push", "Run / attempt", "123", "2",
 		"Workflow path / ref", workflowRef, "Workflow revision", workflowSHA, "Target repository", "config-owner/config-repo", "Configuration revision", configSHA,
 		"Action repository", "action-owner/action-repo", "Action ref", actionRef, "CLI version", "v0.6.1", "CLI SHA-256", checksum,
-		"description", `"old-description"`, `"new-description"`, "has_issues", "true", "false", "Observed before", "desired after",
+		"description", `"old-description"`, `"new-description"`, "repository.settings.general.features.issues", "true", "false", "Observed before", "desired after",
 		"https://github.com/workflow-owner/workflows/actions/runs/123",
 		"https://github.com/workflow-owner/workflows/blob/" + workflowSHA + "/.github/workflows/settings-main.yml",
 		"https://github.com/config-owner/config-repo/blob/" + configSHA + "/.github/settings.yml",
-		`settings.topics.names: ["old"] → []`, "can overwrite intervening remote changes", "does not prove publication",
+		`repository.about.topics: ["old"] → []`, "can overwrite intervening remote changes", "does not prove publication",
 	} {
 		if !strings.Contains(visible, expected) {
 			t.Errorf("Summary missing %q: %s", expected, visible)

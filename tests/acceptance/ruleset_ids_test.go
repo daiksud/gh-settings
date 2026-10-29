@@ -13,7 +13,15 @@ import (
 	"testing"
 )
 
-const newRulesetInput = "# consumer configuration\nschemaVersion: 1\nsettings:\n  rulesets:\n    - name: new # preserve intent\n      enforcement: active\n      conditions: {ref_name: {include: ['~ALL']}}\n"
+const newRulesetInput = `# consumer configuration
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    rulesets:
+      - ruleset_name: new # preserve intent
+        enforcement_status: active
+        target_branches: {include_all_branches: true}
+`
 
 func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 	for _, mode := range []string{"writeback", "no-writeback", "actions"} {
@@ -151,7 +159,7 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input = "schemaVersion: 1\nsettings:\n  rulesets:\n    - {name: a, enforcement: active, conditions: {ref_name: {include: ['~ALL']}}}\n    - {name: b, enforcement: active, conditions: {ref_name: {include: ['~ALL']}}}\n"
+			input = repositoryInput("settings:\n  rulesets:\n    - {ruleset_name: a, enforcement_status: active, target_branches: {include_all_branches: true}}\n    - {ruleset_name: b, enforcement_status: active, target_branches: {include_all_branches: true}}\n")
 			path = filepath.Join(fixture.work, ".github/settings.yml")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
