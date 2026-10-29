@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -14,12 +15,29 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 	before, _ := json.Marshal(prior)
 	after, _ := json.Marshal(desired)
 	line := fmt.Sprintf("settings.rulesets: %s %q: %s → %s", change.Operation(), change.Name(), before, after)
-	if record := change.Normalizations().Enforcement; record != (settings.ObservationNormalization{}) {
-		id := *prior.ID
-		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s (write required)", record.Path, id, change.Name(), strconv.Quote(record.Fallback), strconv.Quote(*desired.Enforcement))
-		return RulesetNormalizationLine(id, change.Name(), record) + "\n" + decision + "\nEffective policy: " + line
+	records := change.Normalizations()
+	if records == (settings.RulesetNormalizations{}) {
+		return line
 	}
-	return line
+	id := *prior.ID
+	var details []string
+	if record := records.Enforcement; record != (settings.ObservationNormalization{}) {
+		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s (write required)", record.Path, id, change.Name(), strconv.Quote(record.Fallback), strconv.Quote(*desired.Enforcement))
+		details = append(details, RulesetNormalizationLine(id, change.Name(), record), decision)
+	}
+	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) {
+		afterChoice := "inactive (rule removed; write required)"
+		for _, rule := range *desired.Rules {
+			if rule.Type == "code_quality" {
+				choice, _ := settings.RulesetQualitySeverityChoiceForValue(*rule.Parameters.Severity)
+				afterChoice = strconv.Quote(string(choice)) + " (write required)"
+				break
+			}
+		}
+		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s", record.Path, id, change.Name(), strconv.Quote(record.Fallback), afterChoice)
+		details = append(details, RulesetNormalizationLine(id, change.Name(), record), decision)
+	}
+	return strings.Join(details, "\n") + "\nEffective policy: " + line
 }
 
 func RulesetNormalizationLine(id int64, name string, record settings.ObservationNormalization) string {
