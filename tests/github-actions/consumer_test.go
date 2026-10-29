@@ -26,7 +26,7 @@ func TestPRConsumerPlan(t *testing.T) {
 				t.Fatal(err)
 			}
 			if test.status != 0 {
-				f.write(filepath.Join(f.caller, ".github/settings.yml"), "schemaVersion: [\n")
+				f.write(filepath.Join(f.caller, ".github/settings.yml"), "version: [\n")
 				f.git("add", ".github/settings.yml")
 				f.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.test", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "invalid configuration")
 				f.sha = f.git("rev-parse", "HEAD")

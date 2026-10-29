@@ -371,7 +371,7 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 	poison := "#!/usr/bin/env bash\ntouch \"$GITHUB_WORKSPACE/injected\"\nexit 99\n"
 	write(filepath.Join(caller, "action", "install-cli.sh"), poison)
 	write(filepath.Join(bin, "gh-settings"), poison)
-	write(filepath.Join(caller, ".github/settings.yml"), "schemaVersion: 1\n")
+	write(filepath.Join(caller, ".github/settings.yml"), "version: daiksud/gh-settings@v0\n")
 	asset := `#!/usr/bin/env bash
 set -euo pipefail
 case "$1" in

@@ -43,22 +43,25 @@ case "${1:-}" in
       *) exit 1 ;;
     esac
     cat > .github/settings.yml <<'YAML'
-schemaVersion: 1
-settings:
-  repository:
+version: daiksud/gh-settings@v0
+repository:
+  about:
     description: |-
       after <script>alert("fixture")</script>
       line
-    has_issues: false
+  settings:
+    general:
+      features:
+        issues: false
 YAML
     if [[ "$scenario" == apply* ]]; then
-      printf 'schemaVersion: 1\nsettings:\n  repository:\n    description: ""\n    has_issues: false\n' > .github/settings.yml
+      printf 'version: daiksud/gh-settings@v0\nrepository:\n  about: {description: ""}\n  settings: {general: {features: {issues: false}}}\n' > .github/settings.yml
     fi
     if [[ "$scenario" == invalid-config || "$scenario" == apply-invalid ]]; then
-      printf 'schemaVersion: 1\nsettings:\n  repository:\n    has_issues: "invalid"\n' > .github/settings.yml
+      printf 'version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: "invalid"}}}}\n' > .github/settings.yml
     fi
     if [[ "$scenario" == apply-empty ]]; then
-      printf 'schemaVersion: 1\nsettings: {}\n' > .github/settings.yml
+      printf 'version: daiksud/gh-settings@v0\nrepository: {}\n' > .github/settings.yml
     fi
     git add .github/settings.yml
     if ! git diff --cached --quiet; then
@@ -163,7 +166,7 @@ YAML
     grep -Fq 'example-owner/settings-fixture' "$summary"
     if [[ "$scenario" == normal ]]; then
       grep -Fq 'Observed before → desired after.' "$summary"
-      grep -Fq 'settings.repository.has_issues: true → false' "$summary"
+      grep -Fq 'repository.settings.general.features.issues: true → false' "$summary"
       grep -Fq '&lt;b&gt;bold&lt;/b&gt;\nline' "$summary"
       grep -Fq '&lt;script&gt;alert(\&#34;fixture\&#34;)&lt;/script&gt;\nline' "$summary"
     else
