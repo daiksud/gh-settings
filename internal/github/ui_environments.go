@@ -40,13 +40,8 @@ func EnvironmentDeclaration(ui uimodel.Environment) (settings.EnvironmentDeclara
 	if ui.DeploymentBranchOrTagRules != nil {
 		patterns := make([]settings.EnvironmentPattern, 0, len(*ui.DeploymentBranchOrTagRules))
 		for _, rule := range *ui.DeploymentBranchOrTagRules {
-			var kind string
-			switch rule.RefType {
-			case uimodel.EnvironmentBranch:
-				kind = "branch"
-			case uimodel.EnvironmentTag:
-				kind = "tag"
-			default:
+			kind, supported := settings.EnvironmentRefTypeValueForChoice(rule.RefType)
+			if !supported {
 				return settings.EnvironmentDeclaration{}, fmt.Errorf("unsupported UI deployment rule ref type")
 			}
 			patterns = append(patterns, settings.EnvironmentPattern{Type: kind, Name: rule.NamePattern})
@@ -129,13 +124,8 @@ func EnvironmentPolicyUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 		}
 		patterns := make([]uimodel.EnvironmentDeploymentRule, 0, len(*p.DeploymentBranchPatterns))
 		for _, pattern := range *p.DeploymentBranchPatterns {
-			var kind uimodel.EnvironmentRefType
-			switch pattern.Type {
-			case "branch":
-				kind = uimodel.EnvironmentBranch
-			case "tag":
-				kind = uimodel.EnvironmentTag
-			default:
+			kind, supported := settings.EnvironmentRefTypeChoiceForValue(pattern.Type)
+			if !supported {
 				return uimodel.Environment{}, fmt.Errorf("environment pattern ref type is outside UI choices")
 			}
 			patterns = append(patterns, uimodel.EnvironmentDeploymentRule{RefType: kind, NamePattern: pattern.Name})
