@@ -40,8 +40,9 @@ type RulesetRule struct {
 // RulesetState contains the observed supported policy and its transport ID.
 // An omitted optional dismissal restriction remains unknown, never disabled.
 type RulesetState struct {
-	ID     int64
-	Policy RulesetDeclaration
+	ID                       int64
+	Policy                   RulesetDeclaration
+	EnforcementNormalization ObservationNormalization
 }
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
 type RulesetObservation struct {
@@ -298,7 +299,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 	names := map[string]bool{}
 	ids := map[int64]bool{}
 	for _, v := range entries {
-		if err := ValidateRuleset(v.Policy, true); err != nil {
+		if _, err := v.RawEnforcement(); err != nil {
 			return RulesetObservation{}, err
 		}
 		if v.ID <= 0 || ids[v.ID] || names[v.Policy.Name] {
@@ -306,7 +307,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 		}
 		ids[v.ID] = true
 		names[v.Policy.Name] = true
-		out.entries = append(out.entries, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy)})
+		out.entries = append(out.entries, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization})
 	}
 	return out, nil
 }
@@ -316,7 +317,7 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 	}
 	out := make([]RulesetState, 0, len(o.entries))
 	for _, v := range o.entries {
-		out = append(out, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy)})
+		out = append(out, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization})
 	}
 	return out, nil
 }
