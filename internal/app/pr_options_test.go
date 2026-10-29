@@ -8,7 +8,11 @@ import (
 
 func TestPROptionsDeferredReadAndDirectWrite(t *testing.T) {
 	for _, field := range []string{"allow_auto_merge", "allow_update_branch"} {
-		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+field+": false}}", true)
+		uiField := field
+		if field == "allow_update_branch" {
+			uiField = "always_suggest_updating_pull_request_branches"
+		}
+		appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {"+uiField+": false}}}}", true)
 		calls := 0
 		got, err := Plan(checkoutDeclaration, checkoutRepository, Reader{ObserveRepository: observeMergeFixture(func(repository.Repository) (settings.MergeMethodsState, error) {
 			calls++
@@ -31,7 +35,7 @@ func TestPROptionsDeferredReadAndDirectWrite(t *testing.T) {
 		if err != nil || !result.Completed() || calls != 2 {
 			t.Fatalf("apply=%+v err=%v", result, err)
 		}
-		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {"+field+": null}}", false)
+		appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {"+uiField+": null}}}}", false)
 		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached read")
 		}

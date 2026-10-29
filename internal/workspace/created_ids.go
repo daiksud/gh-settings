@@ -7,24 +7,24 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 	"go.yaml.in/yaml/v4"
 )
 
 // PrepareApply reads one declaration snapshot. Its recorder adds only confirmed
 // creation IDs to that same file, never a Git commit or a replacement declaration.
-func (checkout Checkout) PrepareApply() (settings.Declaration, func(string, string, int64) error, error) {
+func (checkout Checkout) PrepareApply() (uimodel.Repository, func(string, string, int64) error, error) {
 	root, err := gitRoot(checkout.directory)
 	if err != nil {
-		return settings.Declaration{}, nil, fmt.Errorf("locate %s: %w", SettingsPath, err)
+		return uimodel.Repository{}, nil, fmt.Errorf("locate %s: %w", SettingsPath, err)
 	}
 	data, err := os.ReadFile(filepath.Join(root, SettingsPath))
 	if err != nil {
-		return settings.Declaration{}, nil, fmt.Errorf("read %s: %w", SettingsPath, err)
+		return uimodel.Repository{}, nil, fmt.Errorf("read %s: %w", SettingsPath, err)
 	}
 	desired, err := DecodeConfig(data)
 	if err != nil {
-		return settings.Declaration{}, nil, fmt.Errorf("validate %s: %w", SettingsPath, err)
+		return uimodel.Repository{}, nil, fmt.Errorf("validate %s: %w", SettingsPath, err)
 	}
 	return desired, createdIDRecorder(root, data), nil
 }
@@ -53,9 +53,15 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		if len(document.Content) != 1 {
 			return fmt.Errorf("invalid original settings document")
 		}
-		entries := mappingValue(mappingValue(document.Content[0], "settings"), collection)
+		repository := mappingValue(document.Content[0], "repository")
+		entries := mappingValue(repository, "labels")
+		nameKey, path := "name", "repository.labels"
+		if collection == "rulesets" {
+			entries = mappingValue(mappingValue(repository, "settings"), "rulesets")
+			nameKey, path = "ruleset_name", "repository.settings.rulesets"
+		}
 		if entries == nil || entries.Kind != yaml.SequenceNode {
-			return fmt.Errorf("cannot write ID into aliased or missing settings.%s", collection)
+			return fmt.Errorf("cannot write ID into aliased or missing %s", path)
 		}
 		var selected *yaml.Node
 		for _, entry := range entries.Content {
@@ -67,7 +73,7 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 					return fmt.Errorf("cannot write IDs into merged collection entries")
 				}
 			}
-			n := mappingValue(entry, "name")
+			n := mappingValue(entry, nameKey)
 			if n != nil && n.Kind == yaml.ScalarNode && n.Value == name {
 				if selected != nil {
 					return fmt.Errorf("ambiguous created object %q", name)

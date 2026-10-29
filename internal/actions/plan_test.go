@@ -12,6 +12,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/actions"
 	"github.com/daiksud/gh-settings/internal/app"
+	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
@@ -72,7 +73,7 @@ func TestPlanTargetFailureReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	config := filepath.Join(".github", "settings.yml")
-	input := "schemaVersion: 1\nsettings:\n  repository:\n    has_issues: false\n"
+	input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: false}}}}\n"
 	if err := os.WriteFile(config, []byte(input), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +82,14 @@ func TestPlanTargetFailureReport(t *testing.T) {
 	calls := 0
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
 		checkout := workspace.NewCheckout(".")
-		return app.Plan(checkout.Declaration, checkout.Repository, app.Reader{ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
+		load := func() (settings.Declaration, error) {
+			ui, err := checkout.Declaration()
+			if err != nil {
+				return settings.Declaration{}, err
+			}
+			return github.DeclarationFromUI(ui)
+		}
+		return app.Plan(load, checkout.Repository, app.Reader{ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
 			calls++
 			return settings.RepositoryObservation{}, nil
 		}})

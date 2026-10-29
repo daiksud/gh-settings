@@ -7,12 +7,17 @@ import (
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func checkoutDeclaration() (settings.Declaration, error) {
-	return workspace.NewCheckout(".").Declaration()
+	ui, err := workspace.NewCheckout(".").Declaration()
+	if err != nil {
+		return settings.Declaration{}, err
+	}
+	return github.DeclarationFromUI(ui)
 }
 
 func checkoutRepository() (repository.Repository, error) {

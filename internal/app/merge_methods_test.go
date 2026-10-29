@@ -65,7 +65,7 @@ func TestPlanMixedRepositoryObservationFailureDiscardsComparison(t *testing.T) {
 }
 
 func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {allow_rebase_merge: false}}\n", true)
+	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {allow_rebase_merging: false}}}}\n", true)
 	calls := 0
 	result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
 		calls++
@@ -78,7 +78,7 @@ func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 		t.Fatalf("result=%+v calls=%d err=%v", result, calls, err)
 	}
 	for _, input := range []string{"null", "'false'", "[]"} {
-		appCheckout(t, "schemaVersion: 1\nsettings: {repository: {allow_merge_commit: "+input+"}}\n", false)
+		appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {allow_merge_commits: "+input+"}}}}\n", false)
 		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal("invalid plan reached remote")
 		}
@@ -89,7 +89,7 @@ func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 }
 
 func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings: {repository: {delete_branch_on_merge: false}}\n", true)
+	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {automatically_delete_head_branches: false}}}}\n", true)
 	calls := 0
 	result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{ObserveRepository: observeMergeFixture(func(repo repository.Repository) (settings.MergeMethodsState, error) {
 		calls++

@@ -38,15 +38,15 @@ repository:
         rules:
           restrict_deletions: true
 `
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil || got.Settings == nil || got.Settings.Rulesets == nil || !reflect.DeepEqual(*got.Settings.Rulesets, want) {
 		t.Fatalf("Ruleset control/identity changed: %#v, %v", got.Settings, err)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(encoded)
+	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("Ruleset round trip changed intent: %s, %v", encoded, err)
 	}
@@ -54,7 +54,7 @@ repository:
 
 func TestUIConfigRulesetCollectionPresence(t *testing.T) {
 	for _, input := range []string{"{}", "{rulesets: []}"} {
-		got, err := DecodeUIConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: " + input + "}\n"))
+		got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: " + input + "}\n"))
 		if err != nil || got.Settings == nil || (got.Settings.Rulesets != nil) != (input != "{}") {
 			t.Fatalf("Ruleset collection presence changed: %#v, %v", got.Settings, err)
 		}
@@ -71,7 +71,7 @@ func TestUIConfigRulesetsRejectsObsoleteAndMistypedControls(t *testing.T) {
 	} {
 		t.Run(entry, func(t *testing.T) {
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {rulesets: [{" + entry + "}]}}\n"
-			if _, err := DecodeUIConfig([]byte(input)); err == nil {
+			if _, err := DecodeConfig([]byte(input)); err == nil {
 				t.Fatal("accepted obsolete or mistyped Ruleset control")
 			}
 		})
@@ -100,18 +100,18 @@ repository:
 		RequireApprovalOfTheMostRecentReviewablePush: uiConfigPtr(false), RequireConversationResolutionBeforeMerging: uiConfigPtr(true),
 		RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: uiConfigPtr(false),
 	}
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual((*got.Settings.Rulesets)[0].Rules.RequireAPullRequestBeforeMerging, want) {
 		t.Fatalf("PR controls changed: %#v", (*got.Settings.Rulesets)[0].Rules)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(encoded)
+	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("PR round trip changed intent: %s, %v", encoded, err)
 	}
@@ -124,7 +124,7 @@ func TestUIConfigRulesetPullRequestRejectsInvalidTypesAndAPIKeys(t *testing.T) {
 		"require_review_from_code_owners: 'true'", "require_conversation_resolution_before_merging: null",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {rulesets: [{rules: {require_a_pull_request_before_merging: {" + controls + "}}}]}}\n"
-		if _, err := DecodeUIConfig([]byte(input)); err == nil {
+		if _, err := DecodeConfig([]byte(input)); err == nil {
 			t.Fatalf("accepted invalid PR controls: %s", controls)
 		}
 	}
@@ -175,15 +175,15 @@ repository:
 		}}},
 		{RulesetName: "empty", BypassList: uiConfigPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{PeopleTeamsOrAppsThatCanDismissReviews: uiConfigPtr([]uimodel.ReviewDismissalActor{}), RequireReviewFromSpecificTeams: uiConfigPtr([]uimodel.TeamReview{})}}},
 	}
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil || !reflect.DeepEqual(*got.Settings.Rulesets, want) {
 		t.Fatalf("identity collections changed: %#v, %v", got.Settings, err)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(encoded)
+	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("identity collection round trip: %s, %v", encoded, err)
 	}
@@ -198,7 +198,7 @@ func TestUIConfigRulesetIdentityCollectionsRejectInvalidSyntax(t *testing.T) {
 		"rules: {require_a_pull_request_before_merging: {require_review_from_specific_teams: [{file_patterns: [true]}]}}",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {rulesets: [{" + entry + "}]}}\n"
-		if _, err := DecodeUIConfig([]byte(input)); err == nil {
+		if _, err := DecodeConfig([]byte(input)); err == nil {
 			t.Fatalf("accepted invalid identity syntax: %s", entry)
 		}
 	}
@@ -235,15 +235,15 @@ repository:
 		}},
 		{RulesetName: "empty", Rules: uimodel.RulesetRules{RequireStatusChecksToPass: &uimodel.StatusChecksRule{RequiredStatusChecks: uiConfigPtr([]uimodel.StatusCheck{})}, RequireCodeScanningResults: &uimodel.CodeScanningRule{CodeScanningTools: uiConfigPtr([]uimodel.CodeScanningTool{})}}},
 	}
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil || !reflect.DeepEqual(*got.Settings.Rulesets, want) {
 		t.Fatalf("status/analysis controls changed: %#v, %v", got.Settings, err)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(encoded)
+	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("status/analysis round trip: %s, %v", encoded, err)
 	}
@@ -261,7 +261,7 @@ func TestUIConfigRulesetStatusAndAnalysisRejectInvalidSyntax(t *testing.T) {
 		"require_code_quality_results: {severity: null}",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {rulesets: [{rules: {" + rule + "}}]}}\n"
-		if _, err := DecodeUIConfig([]byte(input)); err == nil {
+		if _, err := DecodeConfig([]byte(input)); err == nil {
 			t.Fatalf("accepted invalid analysis syntax: %s", rule)
 		}
 	}

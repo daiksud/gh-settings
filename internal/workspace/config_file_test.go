@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 func TestReadConfigAtRoot(t *testing.T) {
@@ -17,7 +17,7 @@ func TestReadConfigAtRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(root, ".github", "settings.yml")
-	input := []byte(repositoryYAML("description: ''\nhas_issues: false\n"))
+	input := []byte("version: daiksud/gh-settings@v0\nrepository: {about: {description: ''}, settings: {general: {features: {issues: false}}}}\n")
 	if err := os.WriteFile(path, input, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestReadConfigAtRoot(t *testing.T) {
 	}
 	t.Chdir(nested)
 	empty, disabled := "", false
-	want := settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &empty, HasIssues: &disabled}}
+	want := uimodel.Repository{About: &uimodel.About{Description: &empty}, Settings: &uimodel.RepositorySettings{General: &uimodel.General{Features: uimodel.Features{Issues: &disabled}}}}
 	got, err := ReadConfig(root)
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("declaration=%+v error=%v, want %+v", got, err, want)
@@ -41,7 +41,7 @@ func TestReadConfigAtRoot(t *testing.T) {
 func TestReadConfigErrors(t *testing.T) {
 	tests := []struct{ name, input, want string }{
 		{"missing file", "", "read .github/settings.yml"},
-		{"invalid YAML", "settings: {}\n", "validate .github/settings.yml: missing schemaVersion"},
+		{"invalid YAML", "repository: {}\n", "validate .github/settings.yml: missing version"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestReadConfigErrors(t *testing.T) {
 				}
 			}
 			got, err := ReadConfig(root)
-			if err == nil || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, settings.Declaration{Repository: settings.RepositoryDeclaration{}}) {
+			if err == nil || !strings.Contains(err.Error(), test.want) || !reflect.DeepEqual(got, uimodel.Repository{}) {
 				t.Fatalf("declaration=%+v error=%v, want zero declaration and %q", got, err, test.want)
 			}
 		})
@@ -84,7 +84,7 @@ func TestWriteConfigAtRoot(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Chdir(nested)
-			input := []byte(repositoryYAML("has_issues: false\n"))
+			input := []byte("version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: false}}}}\n")
 			if err := WriteConfig(root, input); err != nil {
 				t.Fatal(err)
 			}
@@ -139,9 +139,11 @@ func TestWriteConfigRejectsUnsafeDestination(t *testing.T) {
 			}
 			disabled := false
 			for _, save := range []func() error{
-				func() error { return WriteConfig(root, []byte(repositoryYAML("has_issues: false\n"))) },
 				func() error {
-					return saveDeclaration(root, settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}})
+					return WriteConfig(root, []byte("version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: false}}}}\n"))
+				},
+				func() error {
+					return saveDeclaration(root, uimodel.Repository{Settings: &uimodel.RepositorySettings{General: &uimodel.General{Features: uimodel.Features{Issues: &disabled}}}})
 				},
 			} {
 				err = save()

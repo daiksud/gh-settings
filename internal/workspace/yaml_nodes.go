@@ -1,0 +1,110 @@
+package workspace
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+
+	"go.yaml.in/yaml/v4"
+)
+
+func loadYAMLRoot(data []byte) (*yaml.Node, error) {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	var document yaml.Node
+	if err := decoder.Decode(&document); err != nil {
+		return nil, fmt.Errorf("decode YAML: %w", err)
+	}
+	var extra yaml.Node
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err != nil {
+			return nil, fmt.Errorf("decode YAML: %w", err)
+		}
+		return nil, fmt.Errorf("expected one YAML document")
+	}
+	if len(document.Content) != 1 || document.Content[0].Kind != yaml.MappingNode || document.Content[0].Tag != "!!map" {
+		return nil, fmt.Errorf("expected a root mapping")
+	}
+	return document.Content[0], nil
+}
+
+func loadMapping(node *yaml.Node, name string) (map[string]yaml.Node, error) {
+	node, err := resolveAlias(node)
+	if err != nil {
+		return nil, err
+	}
+	if node.Kind != yaml.MappingNode || node.Tag != "!!map" {
+		return nil, fmt.Errorf("%s must be a mapping", name)
+	}
+	var values map[string]yaml.Node
+	if err := node.Load(&values, yaml.WithUniqueKeys()); err != nil {
+		return nil, fmt.Errorf("decode %s: %w", name, err)
+	}
+	return values, nil
+}
+
+func resolveAlias(node *yaml.Node) (*yaml.Node, error) {
+	seen := make(map[*yaml.Node]bool)
+	for node.Kind == yaml.AliasNode {
+		if node.Alias == nil || seen[node] {
+			return nil, fmt.Errorf("invalid YAML alias")
+		}
+		seen[node] = true
+		node = node.Alias
+	}
+	return node, nil
+}
+
+func checkMappingKeys(node *yaml.Node, visited map[*yaml.Node]bool) error {
+	node, err := resolveAlias(node)
+	if err != nil {
+		return err
+	}
+	if visited[node] {
+		return nil
+	}
+	visited[node] = true
+	if node.Kind == yaml.MappingNode {
+		if node.Tag != "!!map" {
+			return fmt.Errorf("mapping must have YAML map tag at line %d", node.Line)
+		}
+		seen := make(map[string]bool)
+		for i := 0; i < len(node.Content); i += 2 {
+			rawKey := node.Content[i]
+			key, err := resolveAlias(rawKey)
+			if err != nil {
+				return err
+			}
+			if rawKey.Kind == yaml.AliasNode && key.Tag == "!!merge" {
+				return fmt.Errorf("merge key cannot be an alias at line %d", rawKey.Line)
+			}
+			if key.Kind != yaml.ScalarNode || (key.Tag != "!!str" && key.Tag != "!!merge") {
+				return fmt.Errorf("mapping keys must be strings at line %d", key.Line)
+			}
+			if key.Tag == "!!str" {
+				if seen[key.Value] {
+					return fmt.Errorf("duplicate key %q at line %d", key.Value, key.Line)
+				}
+				seen[key.Value] = true
+			}
+			if err := checkMappingKeys(node.Content[i+1], visited); err != nil {
+				return err
+			}
+		}
+	} else if node.Kind == yaml.SequenceNode {
+		if node.Tag != "!!seq" {
+			return fmt.Errorf("sequence must have YAML sequence tag at line %d", node.Line)
+		}
+		for _, child := range node.Content {
+			if err := checkMappingKeys(child, visited); err != nil {
+				return err
+			}
+		}
+	} else if node.Kind == yaml.DocumentNode {
+		for _, child := range node.Content {
+			if err := checkMappingKeys(child, visited); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

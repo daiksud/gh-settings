@@ -52,7 +52,7 @@ func TestUIConfigRulesetExactRequests(t *testing.T) {
 			if update {
 				input = strings.Replace(input, "      - ruleset_name: Policy", "      - id: 7\n        ruleset_name: Policy", 1)
 			}
-			ui, err := workspace.DecodeUIConfig([]byte(input))
+			ui, err := workspace.DecodeConfig([]byte(input))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -36,7 +36,7 @@ repository:
 		AllowOrBlockSpecifiedActionsAndReusableWorkflows: uiConfigPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"}),
 		WorkflowPermissions: uiConfigPtr(uimodel.ReadRepositoryContentsAndPackagesPermissions), AllowGitHubActionsToCreateAndApprovePullRequests: uiConfigPtr(false),
 	}
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,11 +44,11 @@ repository:
 	if got.Settings == nil || got.Settings.Actions == nil || !reflect.DeepEqual(got.Settings.Actions.General, want) {
 		t.Fatalf("Actions controls changed: %#v", got.Settings)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(encoded)
+	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("Actions round trip changed intent: %s, %v", encoded, err)
 	}
@@ -62,7 +62,7 @@ func TestUIConfigActionsRejectInvalidSyntax(t *testing.T) {
 		"allow_or_block_specified_actions_and_reusable_workflows: [false]",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {general: {" + controls + "}}}}\n"
-		if _, err := DecodeUIConfig([]byte(input)); err == nil {
+		if _, err := DecodeConfig([]byte(input)); err == nil {
 			t.Fatalf("accepted invalid Actions syntax: %s", controls)
 		}
 	}

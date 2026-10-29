@@ -16,7 +16,7 @@ repository:
     - name: new
       color: '#123456'
 `
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,11 +27,11 @@ repository:
 	if first.ID == nil || *first.ID != 17 || first.Name != "renamed" || first.Color == nil || *first.Color != "#abcdef" || first.Description == nil || *first.Description != "" || second.ID != nil || second.Name != "new" || second.Color == nil || *second.Color != "#123456" || second.Description != nil {
 		t.Fatalf("label identity or presence changed: %#v", *got.Labels)
 	}
-	data, err := EncodeUIConfig(got)
+	data, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(data)
+	again, err := DecodeConfig(data)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("label round trip changed intent: %s, %v", data, err)
 	}
@@ -42,15 +42,15 @@ func TestUIConfigLabelsCollectionPresence(t *testing.T) {
 		body string
 		want bool
 	}{{"{}", false}, {"{labels: []}", true}} {
-		got, err := DecodeUIConfig([]byte("version: daiksud/gh-settings@v0\nrepository: " + tc.body + "\n"))
+		got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: " + tc.body + "\n"))
 		if err != nil || (got.Labels != nil) != tc.want || (got.Labels != nil && len(*got.Labels) != 0) {
 			t.Fatalf("collection presence changed: %#v, %v", got.Labels, err)
 		}
-		encoded, err := EncodeUIConfig(got)
+		encoded, err := EncodeConfig(got)
 		if err != nil {
 			t.Fatal(err)
 		}
-		again, err := DecodeUIConfig(encoded)
+		again, err := DecodeConfig(encoded)
 		if err != nil || (again.Labels != nil) != tc.want {
 			t.Fatalf("encoded presence changed: %s, %v", encoded, err)
 		}
@@ -66,7 +66,7 @@ func TestUIConfigLabelsRejectsMistypedDeclarations(t *testing.T) {
 	} {
 		t.Run(value, func(t *testing.T) {
 			input := "version: daiksud/gh-settings@v0\nrepository: {labels: " + value + "}\n"
-			if _, err := DecodeUIConfig([]byte(input)); err == nil {
+			if _, err := DecodeConfig([]byte(input)); err == nil {
 				t.Fatal("accepted unknown or mistyped label control")
 			}
 		})

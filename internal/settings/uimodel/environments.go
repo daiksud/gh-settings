@@ -1,4 +1,4 @@
-// Package uimodel prepares UI-oriented values without activating public YAML.
+// Package uimodel contains UI-oriented repository settings.
 package uimodel
 
 type EnvironmentDeploymentChoice string

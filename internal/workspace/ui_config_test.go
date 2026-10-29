@@ -10,25 +10,25 @@ import (
 
 func TestUIConfigAboutRoundTrip(t *testing.T) {
 	want := "version: daiksud/gh-settings@v0\nrepository:\n    about:\n        description: \"\"\n        website: https://example.com\n        topics: []\n"
-	got, err := DecodeUIConfig([]byte(want))
+	got, err := DecodeConfig([]byte(want))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.About == nil || got.About.Description == nil || *got.About.Description != "" || got.About.Website == nil || *got.About.Website != "https://example.com" || got.About.Topics == nil || !reflect.DeepEqual(*got.About.Topics, []string{}) {
 		t.Fatalf("lost explicit About intent: %#v", got.About)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil || string(encoded) != want {
 		t.Fatalf("encoded %q, error %v; want %q", encoded, err, want)
 	}
 }
 
 func TestUIConfigAboutOmission(t *testing.T) {
-	got, err := DecodeUIConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {about: {website: ''}}\n"))
+	got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {about: {website: ''}}\n"))
 	if err != nil || got.About == nil || got.About.Description != nil || got.About.Topics != nil || got.About.Website == nil || *got.About.Website != "" {
 		t.Fatalf("omission changed: %#v, %v", got.About, err)
 	}
-	encoded, err := EncodeUIConfig(uimodel.Repository{})
+	encoded, err := EncodeConfig(uimodel.Repository{})
 	if err != nil || string(encoded) != "version: daiksud/gh-settings@v0\nrepository: {}\n" {
 		t.Fatalf("empty document: %q, %v", encoded, err)
 	}
@@ -49,7 +49,7 @@ func TestUIConfigRejectsObsoleteEnvelopeAndInvalidAbout(t *testing.T) {
 		"version: 0\n", "version: daiksud/gh-settings@v1\n", "repository: {}\n",
 	} {
 		t.Run(strings.TrimSpace(data), func(t *testing.T) {
-			if _, err := DecodeUIConfig([]byte(data)); err == nil {
+			if _, err := DecodeConfig([]byte(data)); err == nil {
 				t.Fatal("accepted invalid or obsolete declaration")
 			}
 		})
@@ -62,7 +62,7 @@ func TestUIConfigRejectsOrganizationOnlyControlsAtCurrentPaths(t *testing.T) {
 		"general: {allow_forking: false}", "general: {allow_forking: true}", "general: {allow_forking: null}",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {" + settings + "}}\n"
-		got, err := DecodeUIConfig([]byte(input))
+		got, err := DecodeConfig([]byte(input))
 		if err == nil || !strings.Contains(err.Error(), "unknown") || !reflect.DeepEqual(got, uimodel.Repository{}) {
 			t.Fatalf("unsupported current-path setting accepted or partially decoded: %s, %#v, %v", settings, got, err)
 		}

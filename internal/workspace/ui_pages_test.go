@@ -20,15 +20,15 @@ repository:
       enforce_https: false
 `
 	want := &uimodel.Pages{BuildAndDeployment: &uimodel.PagesBuildAndDeployment{Source: uiConfigPtr(uimodel.DeployFromABranch), Branch: uiConfigPtr("main"), SelectFolder: uiConfigPtr(uimodel.PagesRoot)}, CustomDomain: &uimodel.PagesCustomDomain{Value: uiConfigPtr("docs.example.com")}, EnforceHTTPS: uiConfigPtr(false)}
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil || !reflect.DeepEqual(got.Settings.Pages, want) {
 		t.Fatalf("Pages controls changed: %#v, %v", got, err)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(encoded)
+	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("Pages round trip: %s, %v", encoded, err)
 	}
@@ -43,11 +43,11 @@ func TestUIConfigPagesDomainPresence(t *testing.T) {
 		{"{custom_domain: null}", "version: daiksud/gh-settings@v0\nrepository:\n    settings:\n        pages:\n            custom_domain: null\n", &uimodel.PagesCustomDomain{}},
 		{"{custom_domain: ''}", "version: daiksud/gh-settings@v0\nrepository:\n    settings:\n        pages:\n            custom_domain: \"\"\n", &uimodel.PagesCustomDomain{Value: uiConfigPtr("")}},
 	} {
-		got, err := DecodeUIConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {pages: " + test.input + "}}\n"))
+		got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {pages: " + test.input + "}}\n"))
 		if err != nil || !reflect.DeepEqual(got.Settings.Pages.CustomDomain, test.want) {
 			t.Fatalf("domain presence %s: %#v, %v", test.input, got, err)
 		}
-		encoded, err := EncodeUIConfig(got)
+		encoded, err := EncodeConfig(got)
 		if err != nil || string(encoded) != test.encoded {
 			t.Fatalf("domain golden: %s, %v", encoded, err)
 		}
@@ -60,7 +60,7 @@ func TestUIConfigPagesRejectsInvalidSyntax(t *testing.T) {
 		"custom_domain: {value: example.com}", "custom_domain: false", "enforce_https: null",
 		"build_and_deployment: {source: null}", "build_and_deployment: {select_folder: false}",
 	} {
-		if _, err := DecodeUIConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {pages: {" + controls + "}}}\n")); err == nil {
+		if _, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {pages: {" + controls + "}}}\n")); err == nil {
 			t.Fatalf("accepted invalid Pages syntax: %s", controls)
 		}
 	}

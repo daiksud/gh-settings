@@ -1,4 +1,4 @@
-// Package uimodel prepares UI-oriented values without activating public YAML.
+// Package uimodel contains UI-oriented repository settings.
 package uimodel
 
 // These are candidates for out-of-UI observation normalization in #480,

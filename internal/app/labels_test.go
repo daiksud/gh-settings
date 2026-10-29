@@ -18,7 +18,7 @@ func appLabelDeclarations(t *testing.T, values ...settings.LabelDeclaration) set
 	return result
 }
 func TestLabelsEmptySelectionIsLocalNoop(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings: {labels: []}\n", false)
+	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {labels: []}\n", false)
 	if got, err := Plan(checkoutDeclaration, func() (repository.Repository, error) {
 		t.Fatal("resolved empty selection")
 		return repository.Repository{}, nil
@@ -45,8 +45,8 @@ func TestLabelsApplyReadsFreshStateAndSkipsUnchangedWrites(t *testing.T) {
 	}
 }
 func TestInvalidLabelsBeforeTargetAndRemoteAccess(t *testing.T) {
-	for _, input := range []string{"null", "[{name: bug}]", "[{id: 0, name: bug, color: abcdef}]", "[{name: bug, color: abcdef}, {name: BUG, color: abcdef}]", "[{name: bug, color: false}]"} {
-		appCheckout(t, "schemaVersion: 1\nsettings: {labels: "+input+"}", false)
+	for _, input := range []string{"null", "[{name: bug}]", "[{id: 0, name: bug, color: '#abcdef'}]", "[{name: bug, color: '#abcdef'}, {name: BUG, color: '#abcdef'}]", "[{name: bug, color: false}]"} {
+		appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {labels: "+input+"}", false)
 		if _, err := Plan(checkoutDeclaration, checkoutRepository, Reader{}); err == nil {
 			t.Fatal(input)
 		}
@@ -56,7 +56,7 @@ func TestInvalidLabelsBeforeTargetAndRemoteAccess(t *testing.T) {
 	}
 }
 func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings:\n  repository: {has_issues: false}\n  labels: [{name: new, color: abcdef}]\n", true)
+	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository:\n  settings: {general: {features: {issues: false}}}\n  labels: [{name: new, color: '#abcdef'}]\n", true)
 	for _, failureMode := range []string{"later-page", "ambiguous", "missing"} {
 		result, err := Plan(checkoutDeclaration, checkoutRepository, Reader{
 			ObserveRepository: observeBaseFixture(func(repository.Repository) (settings.RepositoryState, error) {
@@ -79,7 +79,7 @@ func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
 	}
 }
 func TestMissingLabelObservationPreventsExportAndApplyWrites(t *testing.T) {
-	appCheckout(t, "schemaVersion: 1\nsettings: {labels: [{name: new, color: abcdef}]}\n", true)
+	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {labels: [{name: new, color: '#abcdef'}]}\n", true)
 	missing := func(repository.Repository) (settings.LabelObservation, error) {
 		return settings.LabelObservation{}, nil
 	}

@@ -40,7 +40,7 @@ repository:
 `
 
 func TestUIConfigGeneralRoundTrip(t *testing.T) {
-	got, err := DecodeUIConfig([]byte(uiGeneralConfig))
+	got, err := DecodeConfig([]byte(uiGeneralConfig))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestUIConfigGeneralRoundTrip(t *testing.T) {
 	if g.TemplateRepository == nil || *g.TemplateRepository || g.Features.Wikis == nil || *g.Features.Wikis || g.PullRequests.AllowAutoMerge == nil || *g.PullRequests.AllowAutoMerge || g.PullRequests.MergeCommit.DefaultCommitMessage == nil || *g.PullRequests.MergeCommit.DefaultCommitMessage != "pull_request_title_and_description" {
 		t.Fatalf("lost nested General intent: %#v", g)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil || string(encoded) != uiGeneralConfig {
 		t.Fatalf("encoded %q, error %v; want %q", encoded, err, uiGeneralConfig)
 	}
@@ -59,7 +59,7 @@ func TestUIConfigGeneralRoundTrip(t *testing.T) {
 
 func TestUIConfigGeneralOmission(t *testing.T) {
 	input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {features: {issues: false}}}}\n"
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil || got.Settings == nil || got.Settings.General == nil {
 		t.Fatalf("missing General: %#v, %v", got, err)
 	}
@@ -79,12 +79,12 @@ func TestUIConfigGeneralRejectsUnknownAndWrongTypes(t *testing.T) {
 	} {
 		t.Run(fields, func(t *testing.T) {
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {" + fields + "}}}\n"
-			if _, err := DecodeUIConfig([]byte(input)); err == nil {
+			if _, err := DecodeConfig([]byte(input)); err == nil {
 				t.Fatal("accepted unknown or mistyped General control")
 			}
 		})
 	}
-	if _, err := DecodeUIConfig([]byte(strings.Replace(uiGeneralConfig, "issues: true", "issues: true\n                issues: false", 1))); err == nil {
+	if _, err := DecodeConfig([]byte(strings.Replace(uiGeneralConfig, "issues: true", "issues: true\n                issues: false", 1))); err == nil {
 		t.Fatal("accepted duplicate nested General key")
 	}
 }

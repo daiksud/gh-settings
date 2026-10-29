@@ -33,15 +33,15 @@ repository:
 		{Name: "Staging", DeploymentBranchesAndTags: uiConfigPtr(uimodel.ProtectedBranchesOnly)},
 		{Name: "Open", DeploymentBranchesAndTags: uiConfigPtr(uimodel.NoRestriction), DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{RequiredReviewers: uiConfigPtr([]uimodel.EnvironmentReviewer{})}},
 	}
-	got, err := DecodeUIConfig([]byte(input))
+	got, err := DecodeConfig([]byte(input))
 	if err != nil || !reflect.DeepEqual(*got.Settings.Environments, want) {
 		t.Fatalf("Environment controls changed: %#v, %v", got, err)
 	}
-	encoded, err := EncodeUIConfig(got)
+	encoded, err := EncodeConfig(got)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, err := DecodeUIConfig(encoded)
+	again, err := DecodeConfig(encoded)
 	if err != nil || !reflect.DeepEqual(again, got) {
 		t.Fatalf("Environment round trip: %s, %v", encoded, err)
 	}
@@ -49,7 +49,7 @@ repository:
 
 func TestUIConfigEnvironmentCollectionPresence(t *testing.T) {
 	for _, input := range []string{"{}", "{environments: []}"} {
-		got, err := DecodeUIConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: " + input + "}\n"))
+		got, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: " + input + "}\n"))
 		if err != nil || (got.Settings.Environments != nil) != (input != "{}") {
 			t.Fatalf("Environment collection presence changed: %#v, %v", got, err)
 		}
@@ -62,7 +62,7 @@ func TestUIConfigEnvironmentsRejectsInvalidSyntax(t *testing.T) {
 		"deployment_protection_rules: {wait_timer: '0'}", "deployment_protection_rules: {required_reviewers: [{type: User, id: 11}]}",
 		"deployment_protection_rules: {required_reviewers: null}", "deployment_branch_or_tag_rules: [{type: branch, name: main}]",
 	} {
-		if _, err := DecodeUIConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {environments: [{" + entry + "}]}}\n")); err == nil {
+		if _, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {environments: [{" + entry + "}]}}\n")); err == nil {
 			t.Fatalf("accepted invalid Environment syntax: %s", entry)
 		}
 	}

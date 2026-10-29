@@ -56,14 +56,14 @@ func TestRulesetCodeAnalysisExportRetainsCompleteProtection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	yaml, err := workspace.EncodeUIConfig(ui)
+	yaml, err := workspace.EncodeConfig(ui)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(yaml), "version: daiksud/gh-settings@v0") || !strings.Contains(string(yaml), "require_code_scanning_results:") || !strings.Contains(string(yaml), "ruleset_name: default") || strings.Contains(string(yaml), "schemaVersion") {
 		t.Fatalf("export did not use the UI configuration boundary: %s", yaml)
 	}
-	decoded, err := workspace.DecodeUIConfig(yaml)
+	decoded, err := workspace.DecodeConfig(yaml)
 	if err != nil {
 		t.Fatal(string(yaml), err)
 	}

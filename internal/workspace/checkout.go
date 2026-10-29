@@ -3,7 +3,7 @@ package workspace
 import (
 	"fmt"
 
-	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 // Checkout scopes local operations to an explicit working directory.
@@ -13,22 +13,22 @@ type Checkout struct{ directory string }
 func NewCheckout(directory string) Checkout { return Checkout{directory: directory} }
 
 // Declaration loads the fixed settings file from this directory's Git root.
-func (checkout Checkout) Declaration() (settings.Declaration, error) {
+func (checkout Checkout) Declaration() (uimodel.Repository, error) {
 	root, err := gitRoot(checkout.directory)
 	if err != nil {
-		return settings.Declaration{}, fmt.Errorf("locate %s: current directory is not in a Git repository: %w", SettingsPath, err)
+		return uimodel.Repository{}, fmt.Errorf("locate %s: current directory is not in a Git repository: %w", SettingsPath, err)
 	}
 	return ReadConfig(root)
 }
 
 // PrepareSave resolves the Git root without modifying the destination. The saver
 // encodes completely before applying the existing guarded file-writing policy.
-func (checkout Checkout) PrepareSave() (func(settings.Declaration) error, error) {
+func (checkout Checkout) PrepareSave() (func(uimodel.Repository) error, error) {
 	root, err := gitRoot(checkout.directory)
 	if err != nil {
 		return nil, fmt.Errorf("locate %s: %w", SettingsPath, err)
 	}
-	return func(declaration settings.Declaration) error {
+	return func(declaration uimodel.Repository) error {
 		return saveDeclaration(root, declaration)
 	}, nil
 }

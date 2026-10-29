@@ -22,15 +22,15 @@ func TestUIConfigYAMLAliasesMergesAndStringStyles(t *testing.T) {
 		{"list element alias", "version: daiksud/gh-settings@v0\nrepository: {about: {description: &topic github, topics: [*topic, settings]}}\n", uimodel.Repository{About: &uimodel.About{Description: uiConfigPtr("github"), Topics: uiConfigPtr([]string{"github", "settings"})}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := DecodeUIConfig([]byte(test.input))
+			got, err := DecodeConfig([]byte(test.input))
 			if err != nil || !reflect.DeepEqual(got, test.want) {
 				t.Fatalf("decoded %#v; want %#v; error=%v", got, test.want, err)
 			}
-			encoded, err := EncodeUIConfig(got)
+			encoded, err := EncodeConfig(got)
 			if err != nil {
 				t.Fatal(err)
 			}
-			again, err := DecodeUIConfig(encoded)
+			again, err := DecodeConfig(encoded)
 			if err != nil || !reflect.DeepEqual(again, test.want) {
 				t.Fatalf("string style/alias round trip: %s, %v", encoded, err)
 			}
@@ -60,7 +60,7 @@ func TestUIConfigYAMLUnsafeShapesReturnNoPartialValues(t *testing.T) {
 		"- version: daiksud/gh-settings@v0\n", "true\n", "", "version: [\n",
 		"version: daiksud/gh-settings@v0\n---\nversion: daiksud/gh-settings@v0\n",
 	} {
-		got, err := DecodeUIConfig([]byte(input))
+		got, err := DecodeConfig([]byte(input))
 		if err == nil || !reflect.DeepEqual(got, uimodel.Repository{}) {
 			t.Fatalf("unsafe YAML returned partial values: %q, %#v, %v", input, got, err)
 		}
@@ -77,7 +77,7 @@ func TestUIConfigStringEncodingGoldens(t *testing.T) {
 		{"multiline string", uimodel.About{Description: uiConfigPtr("first line\nsecond line\n")}, "version: daiksud/gh-settings@v0\nrepository:\n    about:\n        description: |\n            first line\n            second line\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := EncodeUIConfig(uimodel.Repository{About: &test.about})
+			got, err := EncodeConfig(uimodel.Repository{About: &test.about})
 			if err != nil || string(got) != test.want {
 				t.Fatalf("encoded %q; want %q; error=%v", got, test.want, err)
 			}
