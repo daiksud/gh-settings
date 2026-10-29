@@ -10,20 +10,11 @@ func (client *Client) warnRulesetReadbackNormalizations(id int64, raw map[string
 	if client.RulesetNormalizationWarning == nil {
 		return
 	}
-	rules, quality, err := prepareRulesetQualityRules(raw["rules"])
+	policy, records, err := decodeObservedRulesetPolicy(raw)
 	if err != nil {
 		return
 	}
-	projected := make(map[string]json.RawMessage, len(raw))
-	for key, value := range raw {
-		projected[key] = value
-	}
-	projected["rules"] = rules
-	policy, enforcement, err := decodeObservedRulesetPolicy(projected)
-	if err != nil {
-		return
-	}
-	for _, record := range []settings.ObservationNormalization{enforcement, quality} {
+	for _, record := range []settings.ObservationNormalization{records.Enforcement, records.QualitySeverity} {
 		if record != (settings.ObservationNormalization{}) {
 			client.RulesetNormalizationWarning(id, policy.Name, record)
 		}

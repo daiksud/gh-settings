@@ -125,11 +125,11 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		if target != "branch" && target != "tag" {
 			return settings.RulesetObservation{}, fmt.Errorf("unsupported Ruleset target %q", target)
 		}
-		policy, normalization, err := decodeObservedRulesetPolicy(raw)
+		policy, normalizations, err := decodeObservedRulesetPolicy(raw)
 		if err != nil {
 			return settings.RulesetObservation{}, fmt.Errorf("read Ruleset %d: %w", id, err)
 		}
-		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalization})
+		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity})
 	}
 	return settings.NewRulesetObservation(values, push)
 }
