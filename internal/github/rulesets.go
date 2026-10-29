@@ -296,6 +296,9 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	}
 	path := rulesetsPath(repo)
 	var response map[string]json.RawMessage
+	if record := change.EnforcementNormalization(); record != (settings.ObservationNormalization{}) && client.RulesetNormalizationWarning != nil {
+		client.RulesetNormalizationWarning(change.ID(), change.Name(), record)
+	}
 	if change.Operation() == "create" {
 		err = client.rest.Post(path, bytes.NewReader(data), &response)
 	} else {
@@ -355,6 +358,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 		if !owned {
 			return fail(fmt.Errorf("Ruleset readback ownership is not the selected repository"))
 		}
+		client.warnRulesetEnforcementReadback(id, readback)
 		if err := verifyReviewRulesetResponse(*after, readback); err != nil {
 			return fail(fmt.Errorf("Ruleset readback differs from requested observable policy: %w", err))
 		}

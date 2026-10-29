@@ -15,6 +15,7 @@ type Client struct {
 	rest                              *api.RESTClient
 	commitMessages                    *MergeMethodsClient
 	CommitMessageNormalizationWarning func(settings.CommitMessageNormalization)
+	RulesetNormalizationWarning       func(int64, string, settings.ObservationNormalization)
 }
 
 // NewReadClient configures the existing gh authentication and read timeout.
