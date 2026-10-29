@@ -6,6 +6,8 @@ Detailed Ruleset presentation includes only declaration-owned fields. Its creden
 
 The Action removes ephemeral reports in an `always()` step after success or ordinary failure, before publishing any successful Action outputs. Cleanup failure withholds all public success outputs. File/report failures remain failures, and a nonzero original plan status takes precedence over presentation errors. Tests cover hidden Ruleset policy, canary diagnostics, malformed reports, output/storage failures, old-package refusal before authentication, all three successful outcomes and cleanup. Hosted candidate scenarios exercise private changed, read-failure and invalid-config paths through the real same-source composite. This is not publication or live credential evidence.
 
+Normalized workflow changes carry optional `normalization` metadata with required string `path`, `raw_value` and `fallback` members. The closed workflow constructor validates the field, projected value, fallback and raw token before allowing effective-value equality to remain actionable. Metadata on unrelated comparisons is rejected. Detailed CLI/Summary display the UI field and choices with a projection warning and write-required note; status-only reduction retains only its existing outcome/count boundary. These observations are presentation data, never apply input.
+
 ## Scope
 
 This page is for contributors changing the composite Action or its Go adapters. Consumers should use the [public Action guide](../github-actions.md) and the four [settings commands](../commands.md); the internal interfaces below are same-version wiring, not an independent compatibility API.

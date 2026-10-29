@@ -12,7 +12,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-type ActionsPolicyClient struct{ rest *api.RESTClient }
+type ActionsPolicyClient struct {
+	rest                 *api.RESTClient
+	NormalizationWarning func(settings.ObservationNormalization)
+}
 
 func newActionsPolicyRESTClient(host string) (*api.RESTClient, error) {
 	return api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})

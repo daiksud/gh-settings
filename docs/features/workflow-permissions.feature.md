@@ -17,15 +17,15 @@ Test mapping: [Actions UI codec](../../internal/workspace/ui_actions_test.go), [
 ## Rule: Acquire complete policy only when requested
 
 - Ordinary export and `--actions` retain their existing scope. `--workflow-permissions` independently includes both complete values and composes with other opt-ins.
-- Missing/null/unknown fields and denied reads fail without invented defaults or replacing the destination.
-- Exported values roundtrip to zero differences. Workflow-only plan reads only its own policy endpoint.
+- Missing/null/malformed members and denied reads fail without invented defaults or replacing the destination. Complete correctly typed out-of-UI permission strings use the defined fallback and retain their raw provenance.
+- Supported exact values roundtrip to zero differences. A normalized export does not prove raw equality. Workflow-only plan reads only its own policy endpoint.
 
 Test mapping: [TestWorkflowPermissionsCompleteReads](../../internal/github/workflow_permissions_test.go), [TestWorkflowExportOptionsAndDuplicateRejection](../../internal/cli/actions_policy_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
 
 ## Rule: Show permission changes explicitly
 
-- Public YAML choices translate to internal read/write tokens. Current CLI/Summary and serialized private reports retain native component tokens/identifiers pending #481; API tokens are not YAML aliases. False-to-true remains a native boolean.
-- The closed report registry validates both sides; workflow values cannot use unavailable before values.
+- Public YAML choices translate to internal read/write tokens. Normalized comparisons use the new YAML path and UI choices, with a warning and write-required note even when the desired choice equals the fallback. Exact observations still use native component display pending #481; API tokens are not YAML aliases. False-to-true remains a native boolean.
+- The closed report registry validates both sides. Normalized equality requires consistent acquired raw provenance; unavailable before values and missing/null/malformed normalization metadata are invalid.
 - Summary uses existing report data without credentials, origin resolution or API calls.
 
 Test mapping: [TestWorkflowPermissionSummaryTypes](../../internal/actions/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
@@ -36,7 +36,7 @@ Test mapping: [TestWorkflowPermissionSummaryTypes](../../internal/actions/workfl
 - Fresh complete readback verifies desired and preserved companion values. Direct repeated apply still writes.
 - Workflow policy is a distinct operation after execution policy; organization conflicts and other failures retain earlier completed progress and never trigger rollback or permission expansion.
 - A preflight read failure records a confirmed read failure before any PUT. PUT and readback errors retain uncertain write effects; wrapped errors preserve this distinction.
-- Redirects, denied/conflicting writes, unknown/missing readback and mismatches fail honestly.
+- Redirects, denied/conflicting writes, missing/malformed readback and mismatches fail honestly. An out-of-UI raw readback never confirms a declared permission, even when its fallback equals the request. An omitted permission is verified against its exact raw preflight companion and is not replayed or printed.
 
 Test mapping: [TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification and TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionFailureRetainsEarlierExecutionProgress and TestWorkflowPreflightReadFailureHasNoUncertainWrite](../../internal/app/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
 
@@ -87,5 +87,13 @@ distinguishing that projection from independently observed remote equality.
 - And readback verifies the preserved raw permission companion without replaying the fallback
 
 Missing or null members, wrong types, denied requests and failed acquisition do
-not trigger this projection. The implementation and executable test mappings for
-these scenarios are developed under [Issue #480](https://github.com/daiksud/gh-settings/issues/480).
+not trigger this projection. Export and apply warnings use stderr; plan shows the
+warning with the comparison. Status-only Action output retains the changed
+outcome without exposing policy values or raw diagnostics.
+
+Test mapping: [raw projection and verification](../../internal/github/normalization_test.go),
+[complete HTTP acquisition](../../internal/github/normalization_read_test.go),
+[HTTP apply and uncertain effects](../../internal/github/normalization_apply_test.go),
+[scoped export](../../internal/app/normalization_test.go),
+[closed reports and safe presentation](../../internal/actions/normalization_test.go),
+and [built-binary commands](../../tests/acceptance/normalization_test.go).

@@ -3,14 +3,17 @@ package actions_test
 import (
 	"bytes"
 	"encoding/json"
+	"html"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/actions"
 	"github.com/daiksud/gh-settings/internal/app"
+	"github.com/daiksud/gh-settings/internal/cli"
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -55,6 +58,41 @@ func TestWorkflowNormalizationReportRetainsEvidence(t *testing.T) {
 		invalid.Actions[0].Normalization = provenance
 		if _, err := actions.RenderSummary(invalid, summaryMetadata()); err == nil {
 			t.Fatalf("forged or missing normalization accepted: %+v", provenance)
+		}
+	}
+}
+
+func TestWorkflowNormalizationPresentationShowsProjection(t *testing.T) {
+	raw := "<script>CANARY</script>\n::warning::untrusted&value"
+	observed := github.NormalizeWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: raw})
+	for _, desired := range []struct{ api, ui string }{{"read", "read_repository_contents_and_packages_permissions"}, {"write", "read_and_write_permissions"}} {
+		managed, changes, err := settings.CompareWorkflowPermissions(observed, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: &desired.api})
+		if err != nil {
+			t.Fatal(err)
+		}
+		comparison := settings.Comparison{Managed: managed, Actions: changes}
+		output := string(cli.RenderComparison(comparison))
+		if !strings.Contains(output, "Warning:") || !strings.Contains(output, "repository.settings.actions.general.workflow_permissions") || !strings.Contains(output, strconv.Quote(raw)) || !strings.Contains(output, `"read_repository_contents_and_packages_permissions"`) || !strings.Contains(output, strconv.Quote(desired.ui)) || !strings.Contains(output, "write required") || strings.Contains(output, "No differences") || strings.Contains(output, "\n::warning::") {
+			t.Fatalf("projection was presented as exact equality or unsafe text: %s", output)
+		}
+		before, after := changes[0].Values()
+		report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: managed, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: changes[0].Field(), Before: before, After: after, Normalization: &observed.Normalization}}}
+		summary, err := actions.RenderSummary(report, summaryMetadata())
+		if err != nil || !strings.Contains(html.UnescapeString(summary), output[:len(output)-1]) || strings.Contains(summary, "<script>") || !strings.Contains(summary, "&lt;script&gt;") {
+			t.Fatal("detailed Summary lost safe projection warning", summary, err)
+		}
+		path := filepath.Join(t.TempDir(), "plan.json")
+		data, _ := json.Marshal(report)
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("SETTINGS_TARGET", "owner/current")
+		var stdout, stderr bytes.Buffer
+		privatePath := filepath.Join(t.TempDir(), "summary.md")
+		status := actions.Run([]string{"summary", path, privatePath, "status-only"}, &stdout, &stderr, "dev", nil)
+		private, err := os.ReadFile(privatePath)
+		if err != nil || status != 0 || stderr.Len() != 0 || stdout.String() != "plan-outcome=changed\n" || !strings.Contains(string(private), "Outcome: changed") || strings.Contains(string(private), "CANARY") || strings.Contains(string(private), observed.Normalization.Path) || strings.Contains(string(private), observed.Normalization.Fallback) {
+			t.Fatal("status-only Summary disclosed normalized policy", status, string(private), stdout.String(), stderr.String(), err)
 		}
 	}
 }
