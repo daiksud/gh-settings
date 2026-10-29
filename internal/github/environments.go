@@ -194,7 +194,7 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 	if err := c.rest.Get(environmentPath(repo, name), &raw); err != nil {
 		return settings.EnvironmentState{}, fmt.Errorf("read environment %q (unavailable is not absent): %w", name, err)
 	}
-	state, err := decodeEnvironment(raw)
+	state, record, err := decodeObservedEnvironment(raw)
 	if err != nil {
 		return state, fmt.Errorf("read environment %q: %w", name, err)
 	}
@@ -216,7 +216,8 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 	if count != 0 || len(rules) != 0 {
 		return state, fmt.Errorf("custom environment protection rules are not supported; no environment write is safe")
 	}
-	if policy := state.Policy.DeploymentBranchPolicy; policy != nil && policy.CustomBranchPolicies {
+	effectiveCustom := state.Policy.DeploymentBranchPolicy != nil && state.Policy.DeploymentBranchPolicy.CustomBranchPolicies
+	if effectiveCustom || record.RawPolicy.CustomBranchPolicies {
 		patterns, err := c.readPatterns(repo, name)
 		if err != nil {
 			return state, err
@@ -226,9 +227,20 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 		for _, pattern := range patterns {
 			values = append(values, pattern.Pattern)
 		}
-		state.Policy.DeploymentBranchPatterns = &values
+		if effectiveCustom {
+			state.Policy.DeploymentBranchPatterns = &values
+		}
 	}
-	return state, nil
+	state.DeploymentModeNormalization = record
+	observed, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{state})
+	if err != nil {
+		return settings.EnvironmentState{}, err
+	}
+	states, err := observed.Values()
+	if err != nil {
+		return settings.EnvironmentState{}, err
+	}
+	return states[0], nil
 }
 
 // Read inventories names completely before selecting detail reads. A nil names
