@@ -16,7 +16,7 @@ import (
 )
 
 func actionsPolicyInput(body string) string {
-	return "schemaVersion: 1\nsettings:\n  actions: " + body + "\n"
+	return repositoryInput("settings: {actions: {general: " + body + "}}\n")
 }
 
 func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
@@ -127,18 +127,18 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	run("export", "--actions")
 	run("validate")
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "enabled: false") || strings.Contains(string(data), "selected_actions:") {
+	if err != nil || !strings.Contains(string(data), "actions_permissions: disable_actions\n") || !strings.Contains(string(data), "require_actions_to_be_pinned_to_a_full_length_commit_sha: true") || strings.Contains(string(data), "allow_actions_created_by_github:") || strings.Contains(string(data), "allow_actions_by_marketplace_verified_creators:") || strings.Contains(string(data), "allow_or_block_specified_actions_and_reusable_workflows:") {
 		t.Fatal(string(data), err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	full := actionsPolicyInput(`{allowed_actions: selected, selected_actions: {github_owned_allowed: false, verified_allowed: false, patterns_allowed: ['org/*', '!org/bad@*', 'org/*']}}`)
+	full := actionsPolicyInput(`{actions_permissions: allow_owner_and_select_non_owner_actions_and_reusable_workflows, allow_actions_created_by_github: false, allow_actions_by_marketplace_verified_creators: false, allow_or_block_specified_actions_and_reusable_workflows: ['org/*', '!org/bad@*', 'org/*']}`)
 	if err := writeSettingsFile(fixture.work, full); err != nil {
 		t.Fatal(err)
 	}
 	plan := run("plan")
-	if !strings.Contains(plan, `settings.actions.allowed_actions: "all" → "selected"`) || strings.Count(plan, "unavailable while policy is not selected") != 3 {
+	if !strings.Contains(plan, `settings.actions.enabled: false → true`) || !strings.Contains(plan, `settings.actions.allowed_actions: "all" → "selected"`) || strings.Count(plan, "unavailable while policy is not selected") != 3 {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "actions-plan.json")
@@ -148,11 +148,11 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	if err := json.Unmarshal(data, &native); err != nil {
 		t.Fatal(err)
 	}
-	if native["managed"] != float64(4) || native["outcome"] != "changed" {
+	if native["managed"] != float64(5) || native["outcome"] != "changed" {
 		t.Fatal(string(data))
 	}
 	entries := native["actions"].([]any)
-	if entries[1].(map[string]any)["before"] != nil || entries[1].(map[string]any)["after"] != false {
+	if entries[2].(map[string]any)["field"] != "actions.selected_actions.github_owned_allowed" || entries[2].(map[string]any)["before"] != nil || entries[2].(map[string]any)["after"] != false {
 		t.Fatal(string(data))
 	}
 	summary := filepath.Join(fixture.root, "actions-summary.md")
@@ -176,23 +176,23 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 		t.Fatal(got)
 	}
 	mu.Lock()
-	if base["enabled"] != false || len(writes) != 2 || !reflect.DeepEqual(writes[0], map[string]any{"enabled": false, "allowed_actions": "selected"}) || !reflect.DeepEqual(writes[1], map[string]any{"github_owned_allowed": false, "verified_allowed": false, "patterns_allowed": []any{"org/*", "!org/bad@*", "org/*"}}) {
+	if base["enabled"] != true || len(writes) != 3 || !reflect.DeepEqual(writes[0], map[string]any{"enabled": false, "allowed_actions": "selected"}) || !reflect.DeepEqual(writes[1], map[string]any{"github_owned_allowed": false, "verified_allowed": false, "patterns_allowed": []any{"org/*", "!org/bad@*", "org/*"}}) || !reflect.DeepEqual(writes[2], map[string]any{"enabled": true}) {
 		t.Fatal("inferred/overbroad values", base, writes)
 	}
 	mu.Unlock()
 	// Partial selected updates preserve fresh companions and exact sequence order.
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{selected_actions: {patterns_allowed: []}}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{allow_or_block_specified_actions_and_reusable_workflows: []}`))
 	run("apply")
 	run("apply")
 	mu.Lock()
-	if selected["github_owned_allowed"] != false || selected["verified_allowed"] != false || !reflect.DeepEqual(selected["patterns_allowed"], []any{}) || len(writes) != 4 {
+	if selected["github_owned_allowed"] != false || selected["verified_allowed"] != false || !reflect.DeepEqual(selected["patterns_allowed"], []any{}) || len(writes) != 5 {
 		t.Fatal(selected, writes)
 	}
 	mu.Unlock()
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{allowed_actions: local_only, sha_pinning_required: false}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{actions_permissions: allow_owner_actions_and_reusable_workflows, require_actions_to_be_pinned_to_a_full_length_commit_sha: false}`))
 	run("apply")
 	// An incomplete transition fails before any write; errors do not invent defaults.
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{allowed_actions: selected}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{actions_permissions: allow_owner_and_select_non_owner_actions_and_reusable_workflows}`))
 	mu.Lock()
 	beforeWrites := len(writes)
 	mu.Unlock()
@@ -245,7 +245,7 @@ func TestActionsInvalidDeclarationsNeverContactAPI(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	for _, body := range []string{`{enabled: null}`, `{allowed_actions: unknown}`, `{selected_actions: {patterns_allowed: null}}`, `{allowed_actions: all, selected_actions: {verified_allowed: false}}`} {
+	for _, body := range []string{`{actions_permissions: null}`, `{actions_permissions: unknown}`, `{allow_or_block_specified_actions_and_reusable_workflows: null}`, `{actions_permissions: allow_all_actions_and_reusable_workflows, allow_actions_by_marketplace_verified_creators: false}`} {
 		writeSettingsFile(fixture.work, actionsPolicyInput(body))
 		for _, command := range []string{"validate", "plan", "apply"} {
 			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
@@ -308,7 +308,7 @@ func TestActionsReadFailuresDiscardPlansAndKeepEarlierWrites(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := "schemaVersion: 1\nsettings:\n  repository: {description: changed}\n  actions: {enabled: false}\n"
+			input := repositoryInput("about: {description: changed}\nsettings: {actions: {general: {actions_permissions: disable_actions}}}\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
