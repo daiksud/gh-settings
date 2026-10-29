@@ -12,9 +12,10 @@ import (
 // RulesetPlanChange carries selected whole supported objects and their declared
 // identity. It is presentation data, never apply input.
 type RulesetPlanChange struct {
-	Operation string                       `json:"operation"`
-	Before    *settings.RulesetDeclaration `json:"before,omitempty"`
-	After     *settings.RulesetDeclaration `json:"after,omitempty"`
+	Operation                string                             `json:"operation"`
+	Before                   *settings.RulesetDeclaration       `json:"before,omitempty"`
+	After                    *settings.RulesetDeclaration       `json:"after,omitempty"`
+	EnforcementNormalization *settings.ObservationNormalization `json:"enforcement_normalization,omitempty"`
 }
 
 func (c *RulesetPlanChange) UnmarshalJSON(data []byte) error {
@@ -69,7 +70,13 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 				return nil, fmt.Errorf("Ruleset plan report does not support write-only dismissal_restriction")
 			}
 		}
-		change, err := settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)
+		var change settings.RulesetDisplayChange
+		var err error
+		if e.EnforcementNormalization != nil {
+			change, err = settings.NewRulesetDisplayChangeWithEnforcementNormalization(e.Operation, e.Before, e.After, *e.EnforcementNormalization)
+		} else {
+			change, err = settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)
+		}
 		if err != nil {
 			return nil, err
 		}
