@@ -36,10 +36,11 @@ type SelectedActionsState struct {
 
 // A nil Selected means inactive or not acquired, never an empty selected policy.
 type ActionsPolicyState struct {
-	Enabled            bool
-	AllowedActions     string
-	SHAPinningRequired bool
-	Selected           *SelectedActionsState
+	Enabled                     bool
+	AllowedActions              string
+	SHAPinningRequired          bool
+	Selected                    *SelectedActionsState
+	AllowedActionsNormalization ObservationNormalization
 }
 
 func (d SelectedActionsDeclaration) Empty() bool {
@@ -99,6 +100,12 @@ func (s ActionsPolicyState) Validate() error {
 	if !ValidAllowedActions(s.AllowedActions) {
 		return fmt.Errorf("unsupported observed actions.allowed_actions value")
 	}
+	if record := s.AllowedActionsNormalization; record != (ObservationNormalization{}) {
+		_, fallback, _ := ActionsPermissionsValueForChoice(DefaultActionsPermissionsChoice)
+		if s.AllowedActions != *fallback || record.Path != ActionsPermissionsPath || record.Fallback != string(DefaultActionsPermissionsChoice) || ValidAllowedActions(record.RawValue) || s.Selected != nil {
+			return fmt.Errorf("invalid Actions permission normalization provenance")
+		}
+	}
 	if s.Selected != nil {
 		if s.AllowedActions != "selected" || s.Selected.PatternsAllowed == nil {
 			return fmt.Errorf("invalid acquired selected Actions policy")
@@ -106,6 +113,16 @@ func (s ActionsPolicyState) Validate() error {
 		return ValidateActionPatterns(s.Selected.PatternsAllowed)
 	}
 	return nil
+}
+
+func (s ActionsPolicyState) RawAllowedActions() (string, error) {
+	if err := s.Validate(); err != nil {
+		return "", err
+	}
+	if s.AllowedActionsNormalization != (ObservationNormalization{}) {
+		return s.AllowedActionsNormalization.RawValue, nil
+	}
+	return s.AllowedActions, nil
 }
 
 // PrepareActions validates all observable prerequisites before any resource write.
