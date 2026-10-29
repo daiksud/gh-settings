@@ -253,13 +253,14 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 	if err != nil {
 		return nil, err
 	}
-	byName := map[string]EnvironmentDeclaration{}
+	byName := map[string]EnvironmentState{}
 	for _, state := range current {
-		byName[EnvironmentIdentity(state.Policy.Name)] = state.Policy
+		byName[EnvironmentIdentity(state.Policy.Name)] = state
 	}
 	changes := []EnvironmentChange{}
 	for _, policy := range desired.Values() {
-		before, exists := byName[EnvironmentIdentity(policy.Name)]
+		state, exists := byName[EnvironmentIdentity(policy.Name)]
+		before := state.Policy
 		if policy.DeploymentBranchPatterns != nil && policy.DeploymentBranchPolicy == nil && !policy.DeploymentBranchPolicyDeclared {
 			if !exists || before.DeploymentBranchPolicy == nil || !before.DeploymentBranchPolicy.CustomBranchPolicies {
 				return nil, fmt.Errorf("environment %q deployment patterns require explicit custom mode or an existing custom-mode environment", policy.Name)
@@ -271,11 +272,25 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 			continue
 		}
 		policy.Name = before.Name
-		if !EnvironmentHasAPIOmissions(policy) && EnvironmentMatchesRequest(before, policy) {
+		record := EnvironmentDeploymentNormalization{}
+		if policy.DeploymentBranchPolicyDeclared || policy.DeploymentBranchPolicy != nil {
+			record = state.DeploymentModeNormalization
+		}
+		if record == (EnvironmentDeploymentNormalization{}) && !EnvironmentHasAPIOmissions(policy) && EnvironmentMatchesRequest(before, policy) {
 			continue
 		}
 		prior, after := cloneEnvironment(before), cloneEnvironment(policy)
-		changes = append(changes, EnvironmentChange{operation: "update", before: &prior, after: &after})
+		var change EnvironmentChange
+		var err error
+		if record != (EnvironmentDeploymentNormalization{}) {
+			change, err = NewEnvironmentChangeWithDeploymentNormalization("update", &prior, &after, record)
+		} else {
+			change, err = NewEnvironmentChange("update", &prior, &after)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change)
 	}
 	return changes, nil
 }
