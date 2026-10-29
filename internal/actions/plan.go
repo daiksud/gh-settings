@@ -97,6 +97,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		if record := display.Normalizations().Enforcement; record != (settings.ObservationNormalization{}) {
 			entry.EnforcementNormalization = &record
 		}
+		if record := display.Normalizations().QualitySeverity; record != (settings.ObservationNormalization{}) {
+			entry.QualitySeverityNormalization = &record
+		}
 		report.Rulesets = append(report.Rulesets, entry)
 	}
 	for _, change := range result.Comparison.Environments {

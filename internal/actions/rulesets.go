@@ -12,10 +12,11 @@ import (
 // RulesetPlanChange carries selected whole supported objects and their declared
 // identity. It is presentation data, never apply input.
 type RulesetPlanChange struct {
-	Operation                string                             `json:"operation"`
-	Before                   *settings.RulesetDeclaration       `json:"before,omitempty"`
-	After                    *settings.RulesetDeclaration       `json:"after,omitempty"`
-	EnforcementNormalization *settings.ObservationNormalization `json:"enforcement_normalization,omitempty"`
+	Operation                    string                             `json:"operation"`
+	Before                       *settings.RulesetDeclaration       `json:"before,omitempty"`
+	After                        *settings.RulesetDeclaration       `json:"after,omitempty"`
+	EnforcementNormalization     *settings.ObservationNormalization `json:"enforcement_normalization,omitempty"`
+	QualitySeverityNormalization *settings.ObservationNormalization `json:"quality_severity_normalization,omitempty"`
 }
 
 func (c *RulesetPlanChange) UnmarshalJSON(data []byte) error {
@@ -72,8 +73,20 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 		}
 		var change settings.RulesetDisplayChange
 		var err error
+		for _, record := range []*settings.ObservationNormalization{e.EnforcementNormalization, e.QualitySeverityNormalization} {
+			if record != nil && *record == (settings.ObservationNormalization{}) {
+				return nil, fmt.Errorf("present Ruleset normalization metadata cannot be empty")
+			}
+		}
+		records := settings.RulesetNormalizations{}
 		if e.EnforcementNormalization != nil {
-			change, err = settings.NewRulesetDisplayChangeWithNormalizations(e.Operation, e.Before, e.After, settings.RulesetNormalizations{Enforcement: *e.EnforcementNormalization})
+			records.Enforcement = *e.EnforcementNormalization
+		}
+		if e.QualitySeverityNormalization != nil {
+			records.QualitySeverity = *e.QualitySeverityNormalization
+		}
+		if records != (settings.RulesetNormalizations{}) {
+			change, err = settings.NewRulesetDisplayChangeWithNormalizations(e.Operation, e.Before, e.After, records)
 		} else {
 			change, err = settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)
 		}
