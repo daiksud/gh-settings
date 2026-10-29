@@ -21,12 +21,15 @@ func (comparison Comparison) HasChanges() bool {
 
 // Change contains a supported field identifier and a matching typed value pair.
 type Change struct {
-	field  FieldID
-	values changeValues
+	field         FieldID
+	values        changeValues
+	normalization ObservationNormalization
 }
 
 // Field returns the validated field identity without exposing a mutable path.
 func (change Change) Field() FieldID { return change.field }
+
+func (change Change) Normalization() ObservationNormalization { return change.normalization }
 
 // CompareRepository compares the REST-observed base fields without rendering them.
 func CompareRepository(current RepositoryState, desired RepositoryDeclaration) Comparison {

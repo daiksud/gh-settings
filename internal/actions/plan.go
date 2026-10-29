@@ -72,6 +72,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, change := range result.Comparison.Changes {
 		entry := PlanChange{Field: change.Field().Path()}
+		if normalization := change.Normalization(); normalization != (settings.ObservationNormalization{}) {
+			entry.Normalization = &normalization
+		}
 		change.Visit(
 			func(before, after bool) { entry.Before, entry.After = before, after },
 			func(before, after string) { entry.Before, entry.After = before, after },

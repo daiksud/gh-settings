@@ -2,37 +2,26 @@ package github
 
 import (
 	"fmt"
+	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-func declareCreationPolicy(choice *uimodel.CreationAllowedBy, path string) (*string, error) {
+func declareCreationPolicy(choice *uimodel.CreationAllowedBy, control settings.CreationPolicyControl) (*string, error) {
 	if choice == nil {
 		return nil, nil
 	}
-	switch *choice {
-	case uimodel.AllUsers:
-		v := "ALL"
-		return &v, nil
-	case uimodel.CollaboratorsOnly:
-		v := "COLLABORATORS_ONLY"
-		return &v, nil
-	default:
-		return nil, fmt.Errorf("unsupported general.features.%s.creation_allowed_by %q", path, *choice)
+	if value, ok := settings.CreationPolicyValueForChoice(*choice); ok {
+		return &value, nil
 	}
+	return nil, fmt.Errorf("unsupported general.features.%s.creation_allowed_by %q", control, *choice)
 }
 
-func observeCreationPolicy(value *string, path string) (*uimodel.CreationAllowedBy, error) {
+func observeCreationPolicy(value *string, control settings.CreationPolicyControl) (*uimodel.CreationAllowedBy, error) {
 	if value == nil {
 		return nil, nil
 	}
-	var choice uimodel.CreationAllowedBy
-	switch *value {
-	case "ALL":
-		choice = uimodel.AllUsers
-	case "COLLABORATORS_ONLY":
-		choice = uimodel.CollaboratorsOnly
-	default:
-		return nil, fmt.Errorf("general.features.%s.creation_allowed_by is outside UI choices", path)
+	if choice, ok := settings.CreationPolicyChoiceForValue(*value); ok {
+		return &choice, nil
 	}
-	return &choice, nil
+	return nil, fmt.Errorf("general.features.%s.creation_allowed_by is outside UI choices", control)
 }

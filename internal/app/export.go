@@ -44,6 +44,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 	if err != nil {
 		return err
 	}
+	if checkout.NormalizationWarning != nil {
+		for _, normalization := range observed.CreationPolicyNormalizations() {
+			if normalization.Path == settings.IssuePermissionsControl.Path() && !*repositoryDeclaration.HasIssues {
+				continue
+			}
+			if normalization.Path == settings.PullRequestPermissionsControl.Path() && !*repositoryDeclaration.HasPullRequests {
+				continue
+			}
+			checkout.NormalizationWarning(normalization)
+		}
+	}
 	if checkout.CommitMessageNormalizationWarning != nil {
 		for _, normalization := range observed.CommitMessageNormalizations() {
 			if normalization.Path == settings.SquashCommitMenu.Path() && !*repositoryDeclaration.AllowSquashMerge {
