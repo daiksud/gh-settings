@@ -11,16 +11,16 @@ func TestNormalizedPagesFolderChangeKeepsRequiredWrites(t *testing.T) {
 				t.Fatal(err)
 			}
 			before, after := change.Values()
-			if change.Field() != "pages.source.path" || before != "/" || after != desired || change.BeforeInactive() || change.FolderNormalization() != record {
+			if change.Field() != "pages.source.path" || before != "/" || after != desired || change.BeforeInactive() || change.Normalization() != record {
 				t.Fatal(change)
 			}
 			if err := ValidatePagesChanges([]PagesChange{change}); err != nil {
 				t.Fatal(err)
 			}
 			record.RawValue = "mutated input"
-			owned := change.FolderNormalization()
+			owned := change.Normalization()
 			owned.RawValue = "mutated output"
-			if change.FolderNormalization().RawValue != raw {
+			if change.Normalization().RawValue != raw {
 				t.Fatal("aliased metadata")
 			}
 		}
@@ -55,7 +55,7 @@ func TestNormalizedPagesFolderChangeRejectsWrongScopeAndEvidence(t *testing.T) {
 		{"pages.cname", nil, "site.example.com", false, record},
 	} {
 		change, err := NewPagesChangeWithNormalization(test.field, test.before, test.after, test.inactive, test.record)
-		if err == nil || change.Field() != "" || change.FolderNormalization() != (ObservationNormalization{}) {
+		if err == nil || change.Field() != "" || change.Normalization() != (ObservationNormalization{}) {
 			t.Fatal(test, change, err)
 		}
 	}

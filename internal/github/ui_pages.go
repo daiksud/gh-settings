@@ -10,13 +10,8 @@ func PagesDeclaration(ui uimodel.Pages) (settings.PagesDeclaration, error) {
 	var result settings.PagesDeclaration
 	if b := ui.BuildAndDeployment; b != nil {
 		if b.Source != nil {
-			var mode string
-			switch *b.Source {
-			case uimodel.GitHubActions:
-				mode = "workflow"
-			case uimodel.DeployFromABranch:
-				mode = "legacy"
-			default:
+			mode, valid := settings.PagesModeValueForChoice(*b.Source)
+			if !valid {
 				return settings.PagesDeclaration{}, fmt.Errorf("unsupported UI Pages source choice")
 			}
 			result.BuildType = &mode
@@ -64,13 +59,8 @@ func PagesPolicyUI(policy settings.PagesDeclaration) (uimodel.Pages, error) {
 	if err := policy.Validate(); err != nil {
 		return uimodel.Pages{}, err
 	}
-	var source uimodel.PagesSourceChoice
-	switch *policy.BuildType {
-	case "legacy":
-		source = uimodel.DeployFromABranch
-	case "workflow":
-		source = uimodel.GitHubActions
-	default:
+	source, valid := settings.PagesModeChoiceForValue(*policy.BuildType)
+	if !valid {
 		return uimodel.Pages{}, fmt.Errorf("Pages build type is outside UI choices")
 	}
 	b := &uimodel.PagesBuildAndDeployment{Source: &source}

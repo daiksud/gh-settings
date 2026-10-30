@@ -50,7 +50,11 @@ func validatePagesReport(raw []PagesPlanChange) ([]settings.PagesChange, error) 
 		var c settings.PagesChange
 		var err error
 		if r.Normalization != nil {
-			c, err = settings.NewPagesChangeWithNormalization(r.Field, r.Before, r.After, r.BeforeInactive, *r.Normalization)
+			if r.Field == "pages.build_type" {
+				c, err = settings.NewPagesModeChangeWithNormalization(r.Field, r.Before, r.After, r.BeforeInactive, *r.Normalization)
+			} else {
+				c, err = settings.NewPagesChangeWithNormalization(r.Field, r.Before, r.After, r.BeforeInactive, *r.Normalization)
+			}
 		} else {
 			c, err = settings.NewPagesChange(r.Field, r.Before, r.After, r.BeforeInactive)
 		}
@@ -66,7 +70,7 @@ func validatePagesReport(raw []PagesPlanChange) ([]settings.PagesChange, error) 
 }
 
 func minimumPagesReportFields(entries []PagesPlanChange) int {
-	hasBranch, normalizedFolder := false, false
+	hasBranch, hasFolder, normalizedFolder, normalizedMode := false, false, false, false
 	for _, entry := range entries {
 		if entry.Field == "pages.source.branch" {
 			hasBranch = true
@@ -74,9 +78,15 @@ func minimumPagesReportFields(entries []PagesPlanChange) int {
 		if entry.Field == "pages.source.path" && entry.Normalization != nil {
 			normalizedFolder = true
 		}
+		if entry.Field == "pages.source.path" {
+			hasFolder = true
+		}
+		if entry.Field == "pages.build_type" && entry.Normalization != nil {
+			normalizedMode = true
+		}
 	}
 	minimum := len(entries)
-	if normalizedFolder && !hasBranch {
+	if (normalizedFolder || normalizedMode) && hasBranch != hasFolder {
 		minimum++
 	}
 	return minimum

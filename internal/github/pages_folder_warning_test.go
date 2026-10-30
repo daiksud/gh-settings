@@ -30,7 +30,7 @@ func TestPagesFolderWarningRequiresOwnedAcquiredSource(t *testing.T) {
 			if test.declared {
 				desired.Source = &settings.PagesSource{Branch: "main", Path: "/docs"}
 			}
-			client.warnFolderNormalization(test.observed, desired)
+			client.warnPagesNormalizations(test.observed, desired)
 			var want []settings.ObservationNormalization
 			if test.want {
 				want = []settings.ObservationNormalization{test.observed.FolderNormalization()}

@@ -42,7 +42,11 @@ func (c *PagesClient) Read(repo repository.Repository) (settings.PagesObservatio
 	if json.Unmarshal(raw["build_type"], &mode) != nil || mode == nil || json.Unmarshal(raw["https_enforced"], &https) != nil || https == nil || json.Unmarshal(raw["public"], &public) != nil || public == nil || raw["cname"] == nil || json.Unmarshal(raw["cname"], &cname) != nil {
 		return settings.PagesObservation{}, fmt.Errorf("GitHub returned incomplete or invalid Pages configured state")
 	}
-	s := settings.PagesState{BuildType: *mode, CNAME: cname, HTTPSEnforced: *https, Public: *public}
+	preparedMode, err := preparePagesModeValue(mode)
+	if err != nil {
+		return settings.PagesObservation{}, err
+	}
+	s := settings.PagesState{BuildType: preparedMode.BuildType, CNAME: cname, HTTPSEnforced: *https, Public: *public}
 	var record settings.ObservationNormalization
 	if s.BuildType == "legacy" {
 		var source map[string]json.RawMessage
@@ -55,6 +59,9 @@ func (c *PagesClient) Read(repo repository.Repository) (settings.PagesObservatio
 			return settings.PagesObservation{}, err
 		}
 		s.Source, record = &prepared.Source, prepared.Normalization
+	}
+	if preparedMode.Normalization != (settings.ObservationNormalization{}) {
+		return settings.NewPagesObservationWithModeNormalization(s, preparedMode.Normalization, record)
 	}
 	if record != (settings.ObservationNormalization{}) {
 		return settings.NewPagesObservationWithFolderNormalization(s, record)
@@ -83,7 +90,7 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	if err != nil {
 		return pre(err)
 	}
-	c.warnFolderNormalization(observed, d)
+	c.warnPagesNormalizations(observed, d)
 	_, changes, err := settings.ComparePages(observed, d)
 	if err != nil {
 		return pre(err)
@@ -131,7 +138,7 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	if err != nil {
 		return false, fmt.Errorf("verify Pages (write may have applied): %w", err)
 	}
-	c.warnFolderNormalization(actual, d)
+	c.warnPagesNormalizations(actual, d)
 	retained, err := samePagesVerificationState(expected, actual)
 	if err != nil || !retained {
 		return false, fmt.Errorf("Pages readback did not retain requested values, omitted companions or visibility (write may have applied)")

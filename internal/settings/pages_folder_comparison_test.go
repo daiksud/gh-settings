@@ -15,14 +15,14 @@ func TestPagesComparisonKeepsNormalizedFolderAndAtomicSourceCount(t *testing.T) 
 			if branch != "main" {
 				wantChanges = 2
 			}
-			if err != nil || managed != 2 || len(changes) != wantChanges || changes[len(changes)-1].Field() != "pages.source.path" || changes[len(changes)-1].FolderNormalization() != record {
+			if err != nil || managed != 2 || len(changes) != wantChanges || changes[len(changes)-1].Field() != "pages.source.path" || changes[len(changes)-1].Normalization() != record {
 				t.Fatal(branch, path, managed, changes, err)
 			}
 			before, after := changes[len(changes)-1].Values()
 			if before != "/" || after != path {
 				t.Fatal(before, after)
 			}
-			if branch != "main" && (changes[0].Field() != "pages.source.branch" || changes[0].FolderNormalization() != (ObservationNormalization{})) {
+			if branch != "main" && (changes[0].Field() != "pages.source.branch" || changes[0].Normalization() != (ObservationNormalization{})) {
 				t.Fatal("branch order or ownership changed", changes)
 			}
 		}
@@ -37,7 +37,7 @@ func TestPagesComparisonKeepsNormalizedFolderAndAtomicSourceCount(t *testing.T) 
 			t.Fatal("omitted source managed", managed, changes, err)
 		}
 		for _, change := range changes {
-			if change.FolderNormalization() != (ObservationNormalization{}) {
+			if change.Normalization() != (ObservationNormalization{}) {
 				t.Fatal("unmanaged folder printed", change)
 			}
 		}
@@ -58,7 +58,7 @@ func TestPagesComparisonKeepsNormalizedFolderAndAtomicSourceCount(t *testing.T) 
 		t.Fatal("inactive transition changed", managed, changes, err)
 	}
 	for _, change := range changes {
-		if change.FolderNormalization() != (ObservationNormalization{}) {
+		if change.Normalization() != (ObservationNormalization{}) {
 			t.Fatal(change)
 		}
 	}

@@ -36,7 +36,7 @@ func TestPagesFolderHTTPReadRequiresCompleteTypedLegacyState(t *testing.T) {
 				case "https_enforced", "public":
 					state[invalid] = nil
 				case "mode":
-					state["build_type"] = "future"
+					state["build_type"] = false
 				}
 				body, _ := json.Marshal(state)
 				client := &PagesClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
