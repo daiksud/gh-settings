@@ -20,6 +20,21 @@ func verifyEnvironmentRequestedState(actual settings.EnvironmentState, requested
 			return fmt.Errorf("environment raw deployment mode differs from requested policy")
 		}
 	}
+	if requested.DeploymentBranchPatterns != nil {
+		if rawMode == nil || rawMode.ProtectedBranches || !rawMode.CustomBranchPolicies {
+			return fmt.Errorf("requested deployment patterns require acquired selected mode")
+		}
+		if err := settings.ValidateEnvironmentPatternObservation(actual.Patterns); err != nil {
+			return err
+		}
+		changes, err := settings.ReconcileEnvironmentPatterns(actual.Patterns, requested.DeploymentBranchPatterns)
+		if err != nil {
+			return err
+		}
+		if len(changes) != 0 {
+			return fmt.Errorf("environment raw deployment patterns differ from requested patterns")
+		}
+	}
 	if !settings.EnvironmentMatchesRequest(actual.Policy, requested) {
 		return fmt.Errorf("environment readback differs from requested policy")
 	}
