@@ -1,6 +1,9 @@
 package settings
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestRulesetRequiredApprovalsReconciliationKeepsSelectedWholeObjectIntent(t *testing.T) {
 	for _, both := range []bool{false, true} {
@@ -23,7 +26,7 @@ func TestRulesetRequiredApprovalsReconciliationKeepsSelectedWholeObjectIntent(t 
 			}
 			changes, err := ReconcileRulesets(observed, rsDesired(t, after))
 			want := RulesetNormalizations{Enforcement: state.EnforcementNormalization, QualitySeverity: state.QualitySeverityNormalization, RequiredApprovals: state.RequiredApprovalsNormalization}
-			if err != nil || len(changes) != 1 || changes[0].ID() != 7 || changes[0].Normalizations() != want || changes[0].Display().Normalizations() != want {
+			if err != nil || len(changes) != 1 || changes[0].ID() != 7 || !reflect.DeepEqual(changes[0].Normalizations(), want) || !reflect.DeepEqual(changes[0].Display().Normalizations(), want) {
 				t.Fatal("selected whole update/evidence lost", changes, err)
 			}
 			got, err := (RulesetState{ID: 7, Policy: *changes[0].After()}).RawRequiredApprovals()

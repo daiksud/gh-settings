@@ -26,7 +26,7 @@ func TestRulesetNormalizationAggregateOwnsIndependentAndCombinedDecisions(t *tes
 			}
 			records := RulesetNormalizations{Enforcement: state.EnforcementNormalization, QualitySeverity: state.QualitySeverityNormalization}
 			change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)
-			if err != nil || change.Operation() != "update" || change.ID() != 7 || change.Normalizations() != records || change.Display().Normalizations() != records {
+			if err != nil || change.Operation() != "update" || change.ID() != 7 || !reflect.DeepEqual(change.Normalizations(), records) || !reflect.DeepEqual(change.Display().Normalizations(), records) {
 				t.Fatal(change, err)
 			}
 			if desired == "errors" {
@@ -42,7 +42,7 @@ func TestRulesetNormalizationAggregateOwnsIndependentAndCombinedDecisions(t *tes
 			copy.QualitySeverity.RawValue = "mutated record"
 			returned := change.After()
 			returned.Name = "mutated returned policy"
-			if change.Normalizations() != records || change.Display().Normalizations() != records || !reflect.DeepEqual(change.Before(), &wantBefore) || !reflect.DeepEqual(change.After(), &wantAfter) || !reflect.DeepEqual(change.Display().After(), &wantAfter) {
+			if !reflect.DeepEqual(change.Normalizations(), records) || !reflect.DeepEqual(change.Display().Normalizations(), records) || !reflect.DeepEqual(change.Before(), &wantBefore) || !reflect.DeepEqual(change.After(), &wantAfter) || !reflect.DeepEqual(change.Display().After(), &wantAfter) {
 				t.Fatal("aggregate/policy alias", change)
 			}
 			if desired == "removed" {
@@ -122,7 +122,7 @@ func TestRulesetNormalizationAggregatePreservesDismissalOnQualityRemoval(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !change.Before().HasWriteOnlyDismissal() || !change.After().HasWriteOnlyDismissal() || change.Display().Before().HasWriteOnlyDismissal() || change.Display().After().HasWriteOnlyDismissal() || change.Display().Normalizations() != records {
+	if !change.Before().HasWriteOnlyDismissal() || !change.After().HasWriteOnlyDismissal() || change.Display().Before().HasWriteOnlyDismissal() || change.Display().After().HasWriteOnlyDismissal() || !reflect.DeepEqual(change.Display().Normalizations(), records) {
 		t.Fatal("dismissal or simultaneous evidence lost", change)
 	}
 }

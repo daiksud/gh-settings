@@ -103,6 +103,13 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		if record := display.Normalizations().RequiredApprovals; record != (settings.RulesetRequiredApprovalsNormalization{}) {
 			entry.RequiredApprovalsNormalization = &record
 		}
+		if records := display.Normalizations().BypassModes; len(records) > 0 {
+			values := make([]RulesetBypassModeNormalization, 0, len(records))
+			for _, record := range records {
+				values = append(values, RulesetBypassModeNormalization{ActorType: record.ActorType, ActorID: record.ActorID, Normalization: record.Normalization})
+			}
+			entry.BypassModeNormalizations = &values
+		}
 		report.Rulesets = append(report.Rulesets, entry)
 	}
 	for _, change := range result.Comparison.Environments {

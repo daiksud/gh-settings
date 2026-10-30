@@ -129,7 +129,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		if err != nil {
 			return settings.RulesetObservation{}, fmt.Errorf("read Ruleset %d: %w", id, err)
 		}
-		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity, RequiredApprovalsNormalization: normalizations.RequiredApprovals})
+		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity, RequiredApprovalsNormalization: normalizations.RequiredApprovals, BypassModeNormalizations: normalizations.BypassModes})
 	}
 	return settings.NewRulesetObservation(values, push)
 }
@@ -327,7 +327,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
 	}
-	needsReadback := change.Normalizations().Enforcement != (settings.ObservationNormalization{})
+	needsReadback := !change.Normalizations().IsZero()
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {

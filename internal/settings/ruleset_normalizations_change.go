@@ -2,22 +2,37 @@ package settings
 
 import "fmt"
 
-// RulesetNormalizations owns the concrete scalar observation records independently.
+// RulesetNormalizations owns the concrete observation records independently.
 // It is validation/presentation evidence and never a writable policy payload.
 type RulesetNormalizations struct {
 	Enforcement       ObservationNormalization
 	QualitySeverity   ObservationNormalization
 	RequiredApprovals RulesetRequiredApprovalsNormalization
+	BypassModes       []RulesetBypassModeNormalization
 }
 
-func (c RulesetChange) Normalizations() RulesetNormalizations        { return c.normalizations }
-func (c RulesetDisplayChange) Normalizations() RulesetNormalizations { return c.normalizations }
+// IsZero reports whether the aggregate contains no observation evidence.
+func (records RulesetNormalizations) IsZero() bool {
+	return records.Enforcement == (ObservationNormalization{}) && records.QualitySeverity == (ObservationNormalization{}) && records.RequiredApprovals == (RulesetRequiredApprovalsNormalization{}) && len(records.BypassModes) == 0
+}
+
+func (c RulesetChange) Normalizations() RulesetNormalizations {
+	return cloneRulesetNormalizations(c.normalizations)
+}
+func (c RulesetDisplayChange) Normalizations() RulesetNormalizations {
+	return cloneRulesetNormalizations(c.normalizations)
+}
+
+func cloneRulesetNormalizations(records RulesetNormalizations) RulesetNormalizations {
+	records.BypassModes = cloneRulesetBypassModeNormalizations(records.BypassModes)
+	return records
+}
 
 func validateRulesetNormalizationChange(operation string, id int64, before, after *RulesetDeclaration, records RulesetNormalizations) error {
-	if operation != "update" || id <= 0 || before == nil || after == nil || before.ID == nil || after.ID == nil || *before.ID != id || *after.ID != id || records == (RulesetNormalizations{}) {
+	if operation != "update" || id <= 0 || before == nil || after == nil || before.ID == nil || after.ID == nil || *before.ID != id || *after.ID != id || records.IsZero() {
 		return fmt.Errorf("normalized Ruleset change requires one selected update ID")
 	}
-	state := RulesetState{ID: id, Policy: *before, EnforcementNormalization: records.Enforcement, QualitySeverityNormalization: records.QualitySeverity, RequiredApprovalsNormalization: records.RequiredApprovals}
+	state := RulesetState{ID: id, Policy: *before, EnforcementNormalization: records.Enforcement, QualitySeverityNormalization: records.QualitySeverity, RequiredApprovalsNormalization: records.RequiredApprovals, BypassModeNormalizations: records.BypassModes}
 	if err := state.validateNormalizationEvidence(); err != nil {
 		return err
 	}
@@ -40,14 +55,14 @@ func validateRulesetNormalizationChange(operation string, id int64, before, afte
 }
 
 func NewRulesetChangeWithNormalizations(operation string, id int64, before, after *RulesetDeclaration, records RulesetNormalizations) (RulesetChange, error) {
-	if records == (RulesetNormalizations{}) {
+	if records.IsZero() {
 		return RulesetChange{}, fmt.Errorf("normalized Ruleset change requires provenance")
 	}
 	return newRulesetChange(operation, id, before, after, records)
 }
 
 func NewRulesetDisplayChangeWithNormalizations(operation string, before, after *RulesetDeclaration, records RulesetNormalizations) (RulesetDisplayChange, error) {
-	if records == (RulesetNormalizations{}) {
+	if records.IsZero() {
 		return RulesetDisplayChange{}, fmt.Errorf("normalized Ruleset display requires provenance")
 	}
 	return newRulesetDisplayChange(operation, before, after, records)

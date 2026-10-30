@@ -17,6 +17,7 @@ type Client struct {
 	CommitMessageNormalizationWarning            func(settings.CommitMessageNormalization)
 	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
 }
 
 // NewReadClient configures the existing gh authentication and read timeout.

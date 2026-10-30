@@ -45,6 +45,7 @@ type RulesetState struct {
 	EnforcementNormalization       ObservationNormalization
 	QualitySeverityNormalization   ObservationNormalization
 	RequiredApprovalsNormalization RulesetRequiredApprovalsNormalization
+	BypassModeNormalizations       []RulesetBypassModeNormalization
 }
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
 type RulesetObservation struct {
@@ -135,7 +136,7 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 				return fmt.Errorf("new bypass actor requires bypass_mode")
 			}
 			if a.BypassMode != nil {
-				if !slices.Contains([]string{"always", "pull_request", "exempt"}, *a.BypassMode) {
+				if _, supported := RulesetBypassModeChoiceForValue(*a.BypassMode); !supported {
 					return fmt.Errorf("unsupported bypass_mode %q", *a.BypassMode)
 				}
 				if *a.BypassMode == "pull_request" && (a.ActorType == "DeployKey" || (d.Target != nil && *d.Target != "branch")) {
@@ -309,7 +310,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 		}
 		ids[v.ID] = true
 		names[v.Policy.Name] = true
-		out.entries = append(out.entries, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization, QualitySeverityNormalization: v.QualitySeverityNormalization, RequiredApprovalsNormalization: v.RequiredApprovalsNormalization})
+		out.entries = append(out.entries, cloneRulesetState(v))
 	}
 	return out, nil
 }
@@ -319,7 +320,7 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 	}
 	out := make([]RulesetState, 0, len(o.entries))
 	for _, v := range o.entries {
-		out = append(out, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization, QualitySeverityNormalization: v.QualitySeverityNormalization, RequiredApprovalsNormalization: v.RequiredApprovalsNormalization})
+		out = append(out, cloneRulesetState(v))
 	}
 	return out, nil
 }
@@ -390,7 +391,7 @@ func NewRulesetDisplayChange(operation string, before, after *RulesetDeclaration
 }
 
 func newRulesetDisplayChange(operation string, before, after *RulesetDeclaration, normalizations RulesetNormalizations) (RulesetDisplayChange, error) {
-	if normalizations != (RulesetNormalizations{}) {
+	if !normalizations.IsZero() {
 		if before == nil || before.ID == nil {
 			return RulesetDisplayChange{}, fmt.Errorf("normalized Ruleset display requires selected ID")
 		}
@@ -406,11 +407,11 @@ func newRulesetDisplayChange(operation string, before, after *RulesetDeclaration
 		}
 	}
 	valid := (operation == "create" && before == nil && after != nil && after.ID == nil) ||
-		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || normalizations != (RulesetNormalizations{})))
+		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || !normalizations.IsZero()))
 	if !valid {
 		return RulesetDisplayChange{}, fmt.Errorf("invalid ruleset display operation")
 	}
-	out := RulesetDisplayChange{operation: operation, normalizations: normalizations}
+	out := RulesetDisplayChange{operation: operation, normalizations: cloneRulesetNormalizations(normalizations)}
 	if before != nil {
 		v := cloneRuleset(*before)
 		omitDismissalRestriction(&v)
@@ -450,14 +451,14 @@ func (c RulesetChange) After() *RulesetDeclaration {
 	return &v
 }
 func (c RulesetChange) Display() RulesetDisplayChange {
-	return RulesetDisplayChange{operation: c.display.operation, before: c.display.Before(), after: c.display.After(), normalizations: c.display.normalizations}
+	return RulesetDisplayChange{operation: c.display.operation, before: c.display.Before(), after: c.display.After(), normalizations: cloneRulesetNormalizations(c.display.normalizations)}
 }
 func NewRulesetChange(operation string, id int64, before, after *RulesetDeclaration) (RulesetChange, error) {
 	return newRulesetChange(operation, id, before, after, RulesetNormalizations{})
 }
 
 func newRulesetChange(operation string, id int64, before, after *RulesetDeclaration, normalizations RulesetNormalizations) (RulesetChange, error) {
-	if normalizations != (RulesetNormalizations{}) {
+	if !normalizations.IsZero() {
 		if err := validateRulesetNormalizationChange(operation, id, before, after, normalizations); err != nil {
 			return RulesetChange{}, err
 		}
@@ -469,11 +470,11 @@ func newRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 			}
 		}
 	}
-	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || normalizations != (RulesetNormalizations{})))
+	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || !normalizations.IsZero()))
 	if !valid {
 		return RulesetChange{}, fmt.Errorf("invalid ruleset operation")
 	}
-	c := RulesetChange{operation: operation, id: id, normalizations: normalizations}
+	c := RulesetChange{operation: operation, id: id, normalizations: cloneRulesetNormalizations(normalizations)}
 	if before != nil {
 		v := cloneRuleset(*before)
 		v.ID = copyRuleValue(&id)
@@ -532,13 +533,13 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior.ID = &id
 		comparableBefore := cloneRuleset(prior)
 		omitDismissalRestriction(&comparableBefore)
-		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization}
-		if normalizations == (RulesetNormalizations{}) && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
+		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, BypassModes: before.BypassModeNormalizations}
+		if normalizations.IsZero() && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
 			continue
 		}
 		var change RulesetChange
 		var err error
-		if normalizations != (RulesetNormalizations{}) {
+		if !normalizations.IsZero() {
 			change, err = NewRulesetChangeWithNormalizations("update", id, &prior, &after, normalizations)
 		} else {
 			change, err = NewRulesetChange("update", id, &prior, &after)

@@ -38,7 +38,7 @@ func TestUnifiedRulesetObservationDecoderOwnsSimultaneousProvenance(t *testing.T
 				t.Fatal("decoder lost evidence or mutated input", policy, records, want, err)
 			}
 			verifyErr := verifyReviewRulesetResponse(policy, raw)
-			if (verifyErr != nil) != (want != (settings.RulesetNormalizations{})) {
+			if (verifyErr != nil) != (!want.IsZero()) {
 				t.Fatal("strict verification consumed projection", verifyErr)
 			}
 		}

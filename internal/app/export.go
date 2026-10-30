@@ -30,6 +30,7 @@ type ExportCheckout struct {
 	SecurityStatusNormalizationWarning           func(settings.SecurityStatusNormalization)
 	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
 	EnvironmentDeploymentNormalizationWarning    func(string, settings.EnvironmentDeploymentNormalization)
 	EnvironmentRefTypeNormalizationWarning       func(string, settings.EnvironmentPatternState)
 	PrepareSave                                  func() (func(settings.Declaration) error, error)
@@ -110,7 +111,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Rulesets = &desired
-		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil {
+		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil {
 			values, err := observed.Values()
 			if err != nil {
 				return err
@@ -125,6 +126,11 @@ func Export(checkout ExportCheckout, read Reader) error {
 				}
 				if record := value.QualitySeverityNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {
 					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
+				}
+				if checkout.RulesetBypassModeNormalizationWarning != nil {
+					for _, record := range settings.OrderedRulesetBypassModeNormalizations(value.BypassModeNormalizations) {
+						checkout.RulesetBypassModeNormalizationWarning(value.ID, value.Policy.Name, record)
+					}
 				}
 			}
 		}

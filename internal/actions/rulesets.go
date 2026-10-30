@@ -18,6 +18,13 @@ type RulesetPlanChange struct {
 	EnforcementNormalization       *settings.ObservationNormalization              `json:"enforcement_normalization,omitempty"`
 	QualitySeverityNormalization   *settings.ObservationNormalization              `json:"quality_severity_normalization,omitempty"`
 	RequiredApprovalsNormalization *settings.RulesetRequiredApprovalsNormalization `json:"required_approvals_normalization,omitempty"`
+	BypassModeNormalizations       *[]RulesetBypassModeNormalization               `json:"bypass_mode_normalizations,omitempty"`
+}
+
+type RulesetBypassModeNormalization struct {
+	ActorType     string                            `json:"actor_type"`
+	ActorID       *int64                            `json:"actor_id,omitempty"`
+	Normalization settings.ObservationNormalization `json:"normalization"`
 }
 
 func (c *RulesetPlanChange) UnmarshalJSON(data []byte) error {
@@ -92,7 +99,17 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 			}
 			records.RequiredApprovals = *e.RequiredApprovalsNormalization
 		}
-		if records != (settings.RulesetNormalizations{}) {
+		if e.BypassModeNormalizations != nil {
+			if len(*e.BypassModeNormalizations) == 0 {
+				return nil, fmt.Errorf("present Ruleset bypass mode normalization metadata cannot be empty")
+			}
+			for _, record := range *e.BypassModeNormalizations {
+				records.BypassModes = append(records.BypassModes, settings.RulesetBypassModeNormalization{
+					ActorType: record.ActorType, ActorID: record.ActorID, Normalization: record.Normalization,
+				})
+			}
+		}
+		if !records.IsZero() {
 			change, err = settings.NewRulesetDisplayChangeWithNormalizations(e.Operation, e.Before, e.After, records)
 		} else {
 			change, err = settings.NewRulesetDisplayChange(e.Operation, e.Before, e.After)

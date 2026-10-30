@@ -7,7 +7,7 @@ import (
 )
 
 func (client *Client) warnRulesetReadbackNormalizations(id int64, raw map[string]json.RawMessage) {
-	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil {
+	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil && client.RulesetBypassModeNormalizationWarning == nil {
 		return
 	}
 	policy, records, err := decodeObservedRulesetPolicy(raw)
@@ -26,5 +26,10 @@ func (client *Client) warnRulesetNormalizations(id int64, name string, records s
 	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) && client.RulesetNormalizationWarning != nil {
 		client.RulesetNormalizationWarning(id, name, record)
+	}
+	if client.RulesetBypassModeNormalizationWarning != nil {
+		for _, record := range settings.OrderedRulesetBypassModeNormalizations(records.BypassModes) {
+			client.RulesetBypassModeNormalizationWarning(id, name, record)
+		}
 	}
 }

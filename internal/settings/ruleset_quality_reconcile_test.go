@@ -1,6 +1,9 @@
 package settings
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestRulesetQualityReconciliationRetainsWholeObjectIntent(t *testing.T) {
 	for _, simultaneous := range []bool{false, true} {
@@ -22,7 +25,7 @@ func TestRulesetQualityReconciliationRetainsWholeObjectIntent(t *testing.T) {
 				}
 				changes, err := ReconcileRulesets(observed, rsDesired(t, after))
 				want := RulesetNormalizations{Enforcement: state.EnforcementNormalization, QualitySeverity: state.QualitySeverityNormalization}
-				if err != nil || len(changes) != 1 || changes[0].ID() != 7 || changes[0].Normalizations() != want || changes[0].Display().Normalizations() != want {
+				if err != nil || len(changes) != 1 || changes[0].ID() != 7 || !reflect.DeepEqual(changes[0].Normalizations(), want) || !reflect.DeepEqual(changes[0].Display().Normalizations(), want) {
 					t.Fatal("whole update/evidence lost", changes, err)
 				}
 				actual, err := (RulesetState{ID: 7, Policy: *changes[0].After()}).RawQualitySeverity()

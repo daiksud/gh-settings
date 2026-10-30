@@ -57,7 +57,7 @@ func TestUnifiedRulesetObservationDecoderOwnsTypedApprovalProvenance(t *testing.
 				want.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
 				want.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
 			}
-			if err != nil || records != want || !reflect.DeepEqual(raw, original) || policy.Rules == nil {
+			if err != nil || !reflect.DeepEqual(records, want) || !reflect.DeepEqual(raw, original) || policy.Rules == nil {
 				t.Fatal("aggregate or immutable source lost", policy, records, want, err)
 			}
 			found := false
@@ -73,7 +73,7 @@ func TestUnifiedRulesetObservationDecoderOwnsTypedApprovalProvenance(t *testing.
 				t.Fatal("PR rule lost")
 			}
 			verifyErr := verifyReviewRulesetResponse(policy, raw)
-			if (verifyErr != nil) != (want != (settings.RulesetNormalizations{})) {
+			if (verifyErr != nil) != (!want.IsZero()) {
 				t.Fatal("verification consumed projection", verifyErr)
 			}
 		}
@@ -172,7 +172,7 @@ func TestRulesetRequiredApprovalsHTTPReaderRejectsLaterMalformedPolicyWithoutPar
 			original[k] = bytes.Clone(v)
 		}
 		policy, records, err := decodeObservedRulesetPolicy(raw)
-		if err == nil || !reflect.DeepEqual(policy, settings.RulesetDeclaration{}) || records != (settings.RulesetNormalizations{}) || !reflect.DeepEqual(raw, original) {
+		if err == nil || !reflect.DeepEqual(policy, settings.RulesetDeclaration{}) || !records.IsZero() || !reflect.DeepEqual(raw, original) {
 			t.Fatal("partialdecoderescape", string(rules), policy, records, err)
 		}
 		calls := 0
