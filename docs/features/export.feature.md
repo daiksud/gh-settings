@@ -236,7 +236,7 @@ The dedicated [Rulesets](rulesets.feature.md), [workflow permissions](workflow-p
 ### Rule: Convert completely before replacing the destination
 
 - Requested family mappings compose into one current UI document without reimplementing their converters.
-- Complete typed Actions execution/workflow permissions, public-fork approval, Security status strings, creation policies, merge/squash menu pairs, complete Pages modes and legacy folders, Ruleset enforcement/Quality severity strings and Required approvals integers use their named fallback with original provenance and warnings; other unknown/out-of-UI values still fail pending the remaining #480 work. Observations never populate omitted desired intent.
+- Complete typed Actions execution/workflow permissions, public-fork approval, Security status strings, creation policies, merge/squash menu pairs, complete Pages modes and legacy folders, Ruleset enforcement/Quality severity strings, Required approvals integers and Environment deployment-mode pairs use their named fallback with original provenance and warnings; other unknown/out-of-UI values still fail pending the remaining #480 work. Observations never populate omitted desired intent.
 - Raw latent conditional state is not replayed as selected UI controls. Enabled unknown execution policies warn and export the named Allow all fallback; disabled unknown policy exports known Disable without a warning. Execution fallback equality remains actionable, while hidden Disable matches remain unchanged. Missing/null/type failures never supply either choice.
 - Complete UI report integration remains #481; an export success does not claim that work is complete.
 
@@ -258,3 +258,12 @@ Test mapping: [complete Reader](../../internal/github/ruleset_quality_read_test.
 - Selected fallback-equal intent remains actionable. Canonical equality without explicit write-only dismissal intent remains a no-op; unlisted IDs remain private.
 
 Test mapping: [Reader](../../internal/github/ruleset_required_approvals_read_test.go), [typed export](../../internal/app/normalization_ruleset_required_approvals_export_test.go) and [built executable](../../tests/acceptance/normalization_ruleset_required_approvals_test.go).
+
+### Rule: Export normalized Environment modes only after complete acquisition
+
+- A typed equal deployment-policy pair projects No restriction with exact pair provenance; valid null remains exact. Missing/null/wrong-type members, custom protections and failed/incomplete reads never become defaults.
+- Raw custom true requires all latent pattern pages even under the fallback. Keep latent IDs/values separate from effective policy and exported YAML; acquire known empty lists explicitly.
+- Emit contextual mode warnings in folded-name order after complete collection acquisition. Failed/partial acquisition emits none; a later conversion failure may retain legitimate warnings but preserves the destination.
+- Selected fallback-equal mode intent remains write-required. Omitted mode remains API-controlled without copying an observed pair or printing an unowned warning; unlisted names stay private.
+
+Test mapping: [reader completeness](../../internal/github/environment_deployment_read_test.go), [export scope/order](../../internal/app/normalization_environment_deployment_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_deployment_test.go). Environment ref-type normalization and full #481 reporting remain pending.

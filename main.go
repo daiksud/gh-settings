@@ -29,7 +29,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
+			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -146,6 +146,7 @@ func writeEnvironment(repo repository.Repository, desired settings.EnvironmentDe
 	if err != nil {
 		return false, err
 	}
+	client.NormalizationWarning = warnEnvironmentDeploymentNormalization
 	return client.Update(repo, desired)
 }
 func writeRuleset(repo repository.Repository, change settings.RulesetChange) (int64, error) {
@@ -378,4 +379,8 @@ func warnRulesetNormalization(id int64, name string, record settings.Observation
 
 func warnRulesetRequiredApprovalsNormalization(id int64, name string, record settings.RulesetRequiredApprovalsNormalization) {
 	fmt.Fprintln(os.Stderr, presentation.RulesetRequiredApprovalsNormalizationLine(id, name, record))
+}
+
+func warnEnvironmentDeploymentNormalization(name string, record settings.EnvironmentDeploymentNormalization) {
+	fmt.Fprintln(os.Stderr, presentation.EnvironmentDeploymentNormalizationLine(name, record))
 }

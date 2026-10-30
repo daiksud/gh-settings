@@ -13,7 +13,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-type EnvironmentsClient struct{ rest *api.RESTClient }
+type EnvironmentsClient struct {
+	rest                 *api.RESTClient
+	NormalizationWarning func(string, settings.EnvironmentDeploymentNormalization)
+}
 
 type environmentPreWriteFailure struct{ cause error }
 
@@ -191,7 +194,7 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 	if err := c.rest.Get(environmentPath(repo, name), &raw); err != nil {
 		return settings.EnvironmentState{}, fmt.Errorf("read environment %q (unavailable is not absent): %w", name, err)
 	}
-	state, err := decodeEnvironment(raw)
+	state, record, err := decodeObservedEnvironment(raw)
 	if err != nil {
 		return state, fmt.Errorf("read environment %q: %w", name, err)
 	}
@@ -213,7 +216,8 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 	if count != 0 || len(rules) != 0 {
 		return state, fmt.Errorf("custom environment protection rules are not supported; no environment write is safe")
 	}
-	if policy := state.Policy.DeploymentBranchPolicy; policy != nil && policy.CustomBranchPolicies {
+	effectiveCustom := state.Policy.DeploymentBranchPolicy != nil && state.Policy.DeploymentBranchPolicy.CustomBranchPolicies
+	if effectiveCustom || record.RawPolicy.CustomBranchPolicies {
 		patterns, err := c.readPatterns(repo, name)
 		if err != nil {
 			return state, err
@@ -223,9 +227,20 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 		for _, pattern := range patterns {
 			values = append(values, pattern.Pattern)
 		}
-		state.Policy.DeploymentBranchPatterns = &values
+		if effectiveCustom {
+			state.Policy.DeploymentBranchPatterns = &values
+		}
 	}
-	return state, nil
+	state.DeploymentModeNormalization = record
+	observed, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{state})
+	if err != nil {
+		return settings.EnvironmentState{}, err
+	}
+	states, err := observed.Values()
+	if err != nil {
+		return settings.EnvironmentState{}, err
+	}
+	return states[0], nil
 }
 
 // Read inventories names completely before selecting detail reads. A nil names
@@ -350,11 +365,18 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if fresh != initial {
 		return pre(fmt.Errorf("repository identity or archive state changed before environment update"))
 	}
+	states, err := current.Values()
+	if err != nil {
+		return pre(err)
+	}
+	for _, state := range states {
+		c.warnDeploymentNormalization(state, *expected)
+	}
 	var raw map[string]json.RawMessage
 	if err := c.rest.Put(environmentPath(repo, expected.Name), bytes.NewReader(body), &raw); err != nil {
 		return false, fmt.Errorf("update environment %q (write may have applied): %w", expected.Name, err)
 	}
-	if _, err := decodeEnvironment(raw); err != nil {
+	if err := verifyEnvironmentUpdateResponse(raw, *expected); err != nil {
 		return false, fmt.Errorf("verify environment update response (write may have applied): %w", err)
 	}
 	if expected.DeploymentBranchPatterns != nil {
@@ -364,6 +386,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 		if err != nil {
 			return false, fmt.Errorf("read patterns after environment PUT (write may have applied): %w", err)
 		}
+		c.warnDeploymentNormalization(state, *expected)
 		if state.Policy.DeploymentBranchPolicy == nil || !state.Policy.DeploymentBranchPolicy.CustomBranchPolicies {
 			return false, fmt.Errorf("environment is not in custom mode after PUT (write may have applied)")
 		}
@@ -375,8 +398,9 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if err != nil {
 		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
-	if !settings.EnvironmentMatchesRequest(actual.Policy, *expected) {
-		return false, fmt.Errorf("environment readback differs from requested policy (write may have applied)")
+	c.warnDeploymentNormalization(actual, *expected)
+	if err := verifyEnvironmentRequestedState(actual, *expected); err != nil {
+		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
 	return true, nil
 }

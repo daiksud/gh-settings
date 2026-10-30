@@ -31,15 +31,11 @@ func EnvironmentDeclaration(ui uimodel.Environment) (settings.EnvironmentDeclara
 	}
 	if ui.DeploymentBranchesAndTags != nil {
 		result.DeploymentBranchPolicyDeclared = true
-		switch *ui.DeploymentBranchesAndTags {
-		case uimodel.NoRestriction:
-		case uimodel.ProtectedBranchesOnly:
-			result.DeploymentBranchPolicy = &settings.EnvironmentBranchPolicy{ProtectedBranches: true}
-		case uimodel.SelectedBranchesAndTags:
-			result.DeploymentBranchPolicy = &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}
-		default:
+		policy, supported := settings.EnvironmentDeploymentPolicyForChoice(*ui.DeploymentBranchesAndTags)
+		if !supported {
 			return settings.EnvironmentDeclaration{}, fmt.Errorf("unsupported UI deployment branches and tags choice")
 		}
+		result.DeploymentBranchPolicy = policy
 	}
 	if ui.DeploymentBranchOrTagRules != nil {
 		patterns := make([]settings.EnvironmentPattern, 0, len(*ui.DeploymentBranchOrTagRules))
@@ -122,16 +118,9 @@ func EnvironmentPolicyUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 		}
 	}
 	ui.DeploymentProtectionRules.RequiredReviewers = &reviewers
-	choice := uimodel.NoRestriction
-	if mode := p.DeploymentBranchPolicy; mode != nil {
-		switch {
-		case mode.ProtectedBranches && !mode.CustomBranchPolicies:
-			choice = uimodel.ProtectedBranchesOnly
-		case !mode.ProtectedBranches && mode.CustomBranchPolicies:
-			choice = uimodel.SelectedBranchesAndTags
-		default:
-			return uimodel.Environment{}, fmt.Errorf("environment branch policy is outside UI choices")
-		}
+	choice, supported := settings.EnvironmentDeploymentChoiceForPolicy(p.DeploymentBranchPolicy)
+	if !supported {
+		return uimodel.Environment{}, fmt.Errorf("environment branch policy is outside UI choices")
 	}
 	ui.DeploymentBranchesAndTags = &choice
 	if choice == uimodel.SelectedBranchesAndTags {

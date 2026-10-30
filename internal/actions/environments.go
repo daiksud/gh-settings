@@ -10,9 +10,10 @@ import (
 )
 
 type EnvironmentPlanChange struct {
-	Operation string                           `json:"operation"`
-	Before    *settings.EnvironmentDeclaration `json:"before,omitempty"`
-	After     *settings.EnvironmentDeclaration `json:"after"`
+	Operation                   string                                       `json:"operation"`
+	Before                      *settings.EnvironmentDeclaration             `json:"before,omitempty"`
+	After                       *settings.EnvironmentDeclaration             `json:"after"`
+	DeploymentModeNormalization *settings.EnvironmentDeploymentNormalization `json:"deployment_mode_normalization,omitempty"`
 }
 
 func (c *EnvironmentPlanChange) UnmarshalJSON(data []byte) error {
@@ -84,7 +85,16 @@ func validateEnvironmentReport(entries []EnvironmentPlanChange) ([]settings.Envi
 	changes := []settings.EnvironmentChange{}
 	last := ""
 	for _, entry := range entries {
-		change, err := settings.NewEnvironmentChange(entry.Operation, entry.Before, entry.After)
+		var change settings.EnvironmentChange
+		var err error
+		if record := entry.DeploymentModeNormalization; record != nil {
+			if *record == (settings.EnvironmentDeploymentNormalization{}) {
+				return nil, fmt.Errorf("present environment deployment normalization cannot be empty")
+			}
+			change, err = settings.NewEnvironmentChangeWithDeploymentNormalization(entry.Operation, entry.Before, entry.After, *record)
+		} else {
+			change, err = settings.NewEnvironmentChange(entry.Operation, entry.Before, entry.After)
+		}
 		if err != nil {
 			return nil, err
 		}
