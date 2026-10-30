@@ -99,6 +99,7 @@ func OrderedRulesetBypassModeNormalizations(records []RulesetBypassModeNormaliza
 
 func cloneRulesetState(state RulesetState) RulesetState {
 	state.Policy = cloneRuleset(state.Policy)
+	state.MergeMethodsNormalization = cloneRulesetMergeMethodsNormalization(state.MergeMethodsNormalization)
 	state.BypassModeNormalizations = cloneRulesetBypassModeNormalizations(state.BypassModeNormalizations)
 	return state
 }

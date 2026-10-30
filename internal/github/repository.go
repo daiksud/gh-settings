@@ -17,6 +17,7 @@ type Client struct {
 	CommitMessageNormalizationWarning            func(settings.CommitMessageNormalization)
 	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	RulesetMergeMethodsNormalizationWarning      func(int64, string, settings.RulesetMergeMethodsNormalization)
 	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
 }
 

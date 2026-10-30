@@ -103,6 +103,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		if record := display.Normalizations().RequiredApprovals; record != (settings.RulesetRequiredApprovalsNormalization{}) {
 			entry.RequiredApprovalsNormalization = &record
 		}
+		if record := display.Normalizations().MergeMethods; !record.IsZero() {
+			entry.MergeMethodsNormalization = &RulesetMergeMethodsNormalization{Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback}
+		}
 		if records := display.Normalizations().BypassModes; len(records) > 0 {
 			values := make([]RulesetBypassModeNormalization, 0, len(records))
 			for _, record := range records {
