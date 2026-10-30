@@ -129,7 +129,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		if err != nil {
 			return settings.RulesetObservation{}, fmt.Errorf("read Ruleset %d: %w", id, err)
 		}
-		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity})
+		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity, RequiredApprovalsNormalization: normalizations.RequiredApprovals})
 	}
 	return settings.NewRulesetObservation(values, push)
 }
@@ -296,14 +296,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	}
 	path := rulesetsPath(repo)
 	var response map[string]json.RawMessage
-	if client.RulesetNormalizationWarning != nil {
-		records := change.Normalizations()
-		for _, record := range []settings.ObservationNormalization{records.Enforcement, records.QualitySeverity} {
-			if record != (settings.ObservationNormalization{}) {
-				client.RulesetNormalizationWarning(change.ID(), change.Name(), record)
-			}
-		}
-	}
+	client.warnRulesetNormalizations(change.ID(), change.Name(), change.Normalizations())
 	if change.Operation() == "create" {
 		err = client.rest.Post(path, bytes.NewReader(data), &response)
 	} else {

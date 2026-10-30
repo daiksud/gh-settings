@@ -100,6 +100,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		if record := display.Normalizations().QualitySeverity; record != (settings.ObservationNormalization{}) {
 			entry.QualitySeverityNormalization = &record
 		}
+		if record := display.Normalizations().RequiredApprovals; record != (settings.RulesetRequiredApprovalsNormalization{}) {
+			entry.RequiredApprovalsNormalization = &record
+		}
 		report.Rulesets = append(report.Rulesets, entry)
 	}
 	for _, change := range result.Comparison.Environments {
