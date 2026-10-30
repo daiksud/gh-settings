@@ -25,7 +25,7 @@ func ruleOf(t *testing.T, d RulesetDeclaration, kind string) *RuleParameters {
 }
 func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 	before := reviewPolicy()
-	current := rsObserved(t, RulesetState{7, before})
+	current := rsObserved(t, RulesetState{ID: 7, Policy: before})
 	desired := basicPolicy("default")
 	desired.ID = rsID(7)
 	desired.BypassActors = nil
@@ -48,7 +48,7 @@ func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 	if !reflect.DeepEqual(*pr.AllowedMergeMethods, []string{"merge", "rebase", "squash"}) {
 		t.Fatal("merge-method default", *pr.AllowedMergeMethods)
 	}
-	repeated, err := ReconcileRulesets(rsObserved(t, RulesetState{7, after}), rsDesired(t, desired))
+	repeated, err := ReconcileRulesets(rsObserved(t, RulesetState{ID: 7, Policy: after}), rsDesired(t, desired))
 	if err != nil || len(repeated) != 0 {
 		t.Fatal("not idempotent", repeated, err)
 	}
@@ -74,7 +74,7 @@ func TestRulesetReviewerPatternsOrderIsPolicy(t *testing.T) {
 	p := ruleOf(t, before, "pull_request")
 	p.DismissalRestriction = nil
 	*(*p.RequiredReviewers)[0].FilePatterns = []string{"**", "!docs/**", "docs/README.md", "**"}
-	current := rsObserved(t, RulesetState{7, before})
+	current := rsObserved(t, RulesetState{ID: 7, Policy: before})
 	before.ID = rsID(7)
 	desired := rsDesired(t, before)
 	if ops, e := ReconcileRulesets(current, desired); e != nil || len(ops) != 0 {
@@ -96,7 +96,7 @@ func TestRulesetCheckIdentityAndCollectionOrdering(t *testing.T) {
 	ruleOf(t, before, "pull_request").DismissalRestriction = nil
 	p := ruleOf(t, before, "required_status_checks")
 	p.RequiredStatusChecks = &[]RequiredStatusCheck{{Context: "build", IntegrationID: rsID(2)}, {Context: "build"}, {Context: "build", IntegrationID: rsID(1)}}
-	observed := rsObserved(t, RulesetState{7, before})
+	observed := rsObserved(t, RulesetState{ID: 7, Policy: before})
 	reordered := cloneRuleset(before)
 	reordered.ID = rsID(7)
 	p = ruleOf(t, reordered, "required_status_checks")
@@ -161,7 +161,7 @@ func TestRulesetReviewerAndDismissalMembership(t *testing.T) {
 		RequiredReviewers:    &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 99, Type: "Team"}, MinimumApprovals: paramInt(2), FilePatterns: rsList("**")}},
 		DismissalRestriction: &ReviewDismissalRestriction{AllowedActors: &[]ReviewActor{{ID: 45, Type: "User"}}},
 	}}}
-	ops, err := ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, desired))
+	ops, err := ReconcileRulesets(rsObserved(t, RulesetState{ID: 7, Policy: before}), rsDesired(t, desired))
 	if err != nil || len(ops) != 1 {
 		t.Fatal(ops, err)
 	}
@@ -182,7 +182,7 @@ func TestPullRequestRuleTargetUsesDeclaredObjectNotRetainedRules(t *testing.T) {
 	desired := basicPolicy("default")
 	desired.ID, desired.Target = rsID(7), &tag
 	desired.Rules, desired.BypassActors = nil, nil
-	changes, err := ReconcileRulesets(rsObserved(t, RulesetState{7, before}), rsDesired(t, desired))
+	changes, err := ReconcileRulesets(rsObserved(t, RulesetState{ID: 7, Policy: before}), rsDesired(t, desired))
 	if err != nil || len(changes) != 1 || len(*changes[0].After().Rules) != 0 || *changes[0].After().Target != "tag" {
 		t.Fatal("target edit retained undeclared PR rule", changes, err)
 	}

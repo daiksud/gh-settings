@@ -48,7 +48,7 @@ func TestRulesetsRequireProtectionIntent(t *testing.T) {
 	}
 }
 func TestRulesetsCreationValidationAndOrdering(t *testing.T) {
-	current := rsObserved(t, RulesetState{4, basicPolicy("old")}, RulesetState{8, basicPolicy("z")})
+	current := rsObserved(t, RulesetState{ID: 4, Policy: basicPolicy("old")}, RulesetState{ID: 8, Policy: basicPolicy("z")})
 	changes, err := ReconcileRulesets(current, rsDesired(t, basicPolicy("new"), basicPolicy("A")))
 	if err != nil {
 		t.Fatal(err)
@@ -86,20 +86,20 @@ func TestRulesetsRejectInvalidAndIncompleteState(t *testing.T) {
 	if _, err := ReconcileRulesets(RulesetObservation{}, rsDesired(t, basicPolicy("selected"))); err == nil || !strings.Contains(err.Error(), "missing") {
 		t.Fatal(err)
 	}
-	if _, err := NewRulesetObservation([]RulesetState{{1, basicPolicy("a")}, {2, basicPolicy("a")}}, 0); err == nil {
+	if _, err := NewRulesetObservation([]RulesetState{{ID: 1, Policy: basicPolicy("a")}, {ID: 2, Policy: basicPolicy("a")}}, 0); err == nil {
 		t.Fatal("ambiguous names accepted")
 	}
 	for _, mutate := range []func(*RulesetDeclaration){func(d *RulesetDeclaration) { d.Rules = nil }, func(d *RulesetDeclaration) { d.BypassActors = nil }, func(d *RulesetDeclaration) { d.Conditions.RefName.Exclude = nil }} {
 		d := basicPolicy("a")
 		mutate(&d)
-		if _, err := NewRulesetObservation([]RulesetState{{1, d}}, 0); err == nil {
+		if _, err := NewRulesetObservation([]RulesetState{{ID: 1, Policy: d}}, 0); err == nil {
 			t.Fatal("incomplete observation accepted")
 		}
 	}
 }
 func TestRulesetsCanonicalCopiesAndNoop(t *testing.T) {
 	d := basicPolicy("a")
-	a := rsObserved(t, RulesetState{1, d})
+	a := rsObserved(t, RulesetState{ID: 1, Policy: d})
 	d.ID = rsID(1)
 	desired := rsDesired(t, d)
 	(*d.Rules)[0].Type = "required_signatures"

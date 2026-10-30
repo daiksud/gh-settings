@@ -40,8 +40,9 @@ type RulesetRule struct {
 // RulesetState contains the observed supported policy and its transport ID.
 // An omitted optional dismissal restriction remains unknown, never disabled.
 type RulesetState struct {
-	ID     int64
-	Policy RulesetDeclaration
+	ID                       int64
+	Policy                   RulesetDeclaration
+	EnforcementNormalization ObservationNormalization
 }
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
 type RulesetObservation struct {
@@ -298,7 +299,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 	names := map[string]bool{}
 	ids := map[int64]bool{}
 	for _, v := range entries {
-		if err := ValidateRuleset(v.Policy, true); err != nil {
+		if _, err := v.RawEnforcement(); err != nil {
 			return RulesetObservation{}, err
 		}
 		if v.ID <= 0 || ids[v.ID] || names[v.Policy.Name] {
@@ -306,7 +307,7 @@ func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObs
 		}
 		ids[v.ID] = true
 		names[v.Policy.Name] = true
-		out.entries = append(out.entries, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy)})
+		out.entries = append(out.entries, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization})
 	}
 	return out, nil
 }
@@ -316,7 +317,7 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 	}
 	out := make([]RulesetState, 0, len(o.entries))
 	for _, v := range o.entries {
-		out = append(out, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy)})
+		out = append(out, RulesetState{ID: v.ID, Policy: cloneRuleset(v.Policy), EnforcementNormalization: v.EnforcementNormalization})
 	}
 	return out, nil
 }
@@ -342,17 +343,19 @@ func (o RulesetObservation) ExportDeclarations() (RulesetDeclarations, error) {
 
 // RulesetChange owns validated before/after policies; no arbitrary payload enters CRUD.
 type RulesetChange struct {
-	operation     string
-	id            int64
-	before, after *RulesetDeclaration
-	display       RulesetDisplayChange
+	operation                string
+	id                       int64
+	before, after            *RulesetDeclaration
+	display                  RulesetDisplayChange
+	enforcementNormalization ObservationNormalization
 }
 
 // RulesetDisplayChange contains the complete supported selected objects and IDs.
 // It is a closed presentation value, never apply input.
 type RulesetDisplayChange struct {
-	operation     string
-	before, after *RulesetDeclaration
+	operation                string
+	before, after            *RulesetDeclaration
+	enforcementNormalization ObservationNormalization
 }
 
 func (c RulesetDisplayChange) Operation() string { return c.operation }
@@ -381,6 +384,18 @@ func (c RulesetDisplayChange) After() *RulesetDeclaration {
 }
 
 func NewRulesetDisplayChange(operation string, before, after *RulesetDeclaration) (RulesetDisplayChange, error) {
+	return newRulesetDisplayChange(operation, before, after, ObservationNormalization{})
+}
+
+func newRulesetDisplayChange(operation string, before, after *RulesetDeclaration, normalization ObservationNormalization) (RulesetDisplayChange, error) {
+	if normalization != (ObservationNormalization{}) {
+		if before == nil || before.ID == nil {
+			return RulesetDisplayChange{}, fmt.Errorf("normalized Ruleset display requires selected ID")
+		}
+		if err := validateRulesetEnforcementChange(operation, *before.ID, before, after, normalization); err != nil {
+			return RulesetDisplayChange{}, err
+		}
+	}
 	for _, d := range []*RulesetDeclaration{before, after} {
 		if d != nil {
 			if err := ValidateRuleset(*d, true); err != nil {
@@ -389,11 +404,11 @@ func NewRulesetDisplayChange(operation string, before, after *RulesetDeclaration
 		}
 	}
 	valid := (operation == "create" && before == nil && after != nil && after.ID == nil) ||
-		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal()))
+		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || normalization != (ObservationNormalization{})))
 	if !valid {
 		return RulesetDisplayChange{}, fmt.Errorf("invalid ruleset display operation")
 	}
-	out := RulesetDisplayChange{operation: operation}
+	out := RulesetDisplayChange{operation: operation, enforcementNormalization: normalization}
 	if before != nil {
 		v := cloneRuleset(*before)
 		omitDismissalRestriction(&v)
@@ -433,9 +448,18 @@ func (c RulesetChange) After() *RulesetDeclaration {
 	return &v
 }
 func (c RulesetChange) Display() RulesetDisplayChange {
-	return RulesetDisplayChange{operation: c.display.operation, before: c.display.Before(), after: c.display.After()}
+	return RulesetDisplayChange{operation: c.display.operation, before: c.display.Before(), after: c.display.After(), enforcementNormalization: c.display.enforcementNormalization}
 }
 func NewRulesetChange(operation string, id int64, before, after *RulesetDeclaration) (RulesetChange, error) {
+	return newRulesetChange(operation, id, before, after, ObservationNormalization{})
+}
+
+func newRulesetChange(operation string, id int64, before, after *RulesetDeclaration, normalization ObservationNormalization) (RulesetChange, error) {
+	if normalization != (ObservationNormalization{}) {
+		if err := validateRulesetEnforcementChange(operation, id, before, after, normalization); err != nil {
+			return RulesetChange{}, err
+		}
+	}
 	for _, d := range []*RulesetDeclaration{before, after} {
 		if d != nil {
 			if err := ValidateRuleset(*d, true); err != nil {
@@ -443,11 +467,11 @@ func NewRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 			}
 		}
 	}
-	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal()))
+	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || normalization != (ObservationNormalization{})))
 	if !valid {
 		return RulesetChange{}, fmt.Errorf("invalid ruleset operation")
 	}
-	c := RulesetChange{operation: operation, id: id}
+	c := RulesetChange{operation: operation, id: id, enforcementNormalization: normalization}
 	if before != nil {
 		v := cloneRuleset(*before)
 		v.ID = copyRuleValue(&id)
@@ -460,7 +484,7 @@ func NewRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 		}
 		c.after = &v
 	}
-	display, err := NewRulesetDisplayChange(operation, c.before, c.after)
+	display, err := newRulesetDisplayChange(operation, c.before, c.after, normalization)
 	if err != nil {
 		return RulesetChange{}, err
 	}
@@ -506,10 +530,16 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior.ID = &id
 		comparableBefore := cloneRuleset(prior)
 		omitDismissalRestriction(&comparableBefore)
-		if !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
+		if before.EnforcementNormalization == (ObservationNormalization{}) && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
 			continue
 		}
-		change, err := NewRulesetChange("update", id, &prior, &after)
+		var change RulesetChange
+		var err error
+		if before.EnforcementNormalization != (ObservationNormalization{}) {
+			change, err = NewRulesetChangeWithEnforcementNormalization("update", id, &prior, &after, before.EnforcementNormalization)
+		} else {
+			change, err = NewRulesetChange("update", id, &prior, &after)
+		}
 		if err != nil {
 			return nil, err
 		}

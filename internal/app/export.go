@@ -1,6 +1,9 @@
 package app
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -24,6 +27,7 @@ type ExportCheckout struct {
 	NormalizationWarning               func(settings.ObservationNormalization)
 	CommitMessageNormalizationWarning  func(settings.CommitMessageNormalization)
 	SecurityStatusNormalizationWarning func(settings.SecurityStatusNormalization)
+	RulesetNormalizationWarning        func(int64, string, settings.ObservationNormalization)
 	PrepareSave                        func() (func(settings.Declaration) error, error)
 }
 
@@ -102,6 +106,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Rulesets = &desired
+		if checkout.RulesetNormalizationWarning != nil {
+			values, err := observed.Values()
+			if err != nil {
+				return err
+			}
+			slices.SortFunc(values, func(a, b settings.RulesetState) int { return strings.Compare(a.Policy.Name, b.Policy.Name) })
+			for _, value := range values {
+				if record := value.EnforcementNormalization; record != (settings.ObservationNormalization{}) {
+					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
+				}
+			}
+		}
 		if observed.ExcludedPush() > 0 && checkout.ExcludedRulesets != nil {
 			checkout.ExcludedRulesets(observed.ExcludedPush())
 		}
