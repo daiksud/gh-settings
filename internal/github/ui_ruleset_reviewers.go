@@ -15,7 +15,7 @@ func declareUIRulesetTeams(teams *[]uimodel.TeamReview) (*[]settings.RequiredRev
 		if team.Approvals == nil || team.FilePatterns == nil {
 			return nil, fmt.Errorf("team reviewer requires approvals and file_patterns")
 		}
-		if *team.Approvals < 0 || *team.Approvals > 10 {
+		if !settings.RulesetTeamApprovalsSupported(*team.Approvals) {
 			return nil, fmt.Errorf("team reviewer approvals must be a UI choice from 0 to 10")
 		}
 		patterns := append([]string{}, (*team.FilePatterns)...)

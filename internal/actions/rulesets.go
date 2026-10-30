@@ -19,6 +19,7 @@ type RulesetPlanChange struct {
 	QualitySeverityNormalization   *settings.ObservationNormalization              `json:"quality_severity_normalization,omitempty"`
 	RequiredApprovalsNormalization *settings.RulesetRequiredApprovalsNormalization `json:"required_approvals_normalization,omitempty"`
 	MergeMethodsNormalization      *RulesetMergeMethodsNormalization               `json:"merge_methods_normalization,omitempty"`
+	TeamApprovalsNormalizations    *[]RulesetTeamApprovalsNormalization            `json:"team_approvals_normalizations,omitempty"`
 	BypassModeNormalizations       *[]RulesetBypassModeNormalization               `json:"bypass_mode_normalizations,omitempty"`
 }
 
@@ -138,6 +139,14 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 				return nil, fmt.Errorf("present Ruleset merge-method normalization metadata cannot contain empty lists")
 			}
 			records.MergeMethods = settings.RulesetMergeMethodsNormalization{Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback}
+		}
+		if e.TeamApprovalsNormalizations != nil {
+			if len(*e.TeamApprovalsNormalizations) == 0 {
+				return nil, fmt.Errorf("present Ruleset team approvals normalization metadata cannot be empty")
+			}
+			for _, record := range *e.TeamApprovalsNormalizations {
+				records.TeamApprovals = append(records.TeamApprovals, settings.RulesetTeamApprovalsNormalization{ReviewerID: record.ReviewerID, Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback})
+			}
 		}
 		if e.BypassModeNormalizations != nil {
 			if len(*e.BypassModeNormalizations) == 0 {

@@ -106,6 +106,13 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		if record := display.Normalizations().MergeMethods; !record.IsZero() {
 			entry.MergeMethodsNormalization = &RulesetMergeMethodsNormalization{Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback}
 		}
+		if records := display.Normalizations().TeamApprovals; len(records) > 0 {
+			values := make([]RulesetTeamApprovalsNormalization, 0, len(records))
+			for _, record := range records {
+				values = append(values, RulesetTeamApprovalsNormalization{ReviewerID: record.ReviewerID, Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback})
+			}
+			entry.TeamApprovalsNormalizations = &values
+		}
 		if records := display.Normalizations().BypassModes; len(records) > 0 {
 			values := make([]RulesetBypassModeNormalization, 0, len(records))
 			for _, record := range records {

@@ -56,6 +56,24 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s", record.Path, id, change.Name(), fallback, afterChoice)
 		details = append(details, RulesetMergeMethodsNormalizationLine(id, change.Name(), record), decision)
 	}
+	for _, record := range settings.OrderedRulesetTeamApprovalsNormalizations(records.TeamApprovals) {
+		afterChoice := "inactive (rule removed; write required)"
+		for _, rule := range *desired.Rules {
+			if rule.Type != "pull_request" {
+				continue
+			}
+			afterChoice = "inactive (reviewer removed; write required)"
+			for _, reviewer := range *rule.Parameters.RequiredReviewers {
+				if reviewer.Reviewer.ID == record.ReviewerID {
+					afterChoice = strconv.Itoa(*reviewer.MinimumApprovals) + " (write required)"
+					break
+				}
+			}
+			break
+		}
+		decision := fmt.Sprintf("%s (Ruleset %d %q, reviewer=%d): %d (normalized observation) → %s", record.Path, id, change.Name(), record.ReviewerID, record.Fallback, afterChoice)
+		details = append(details, RulesetTeamApprovalsNormalizationLine(id, change.Name(), record), decision)
+	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) {
 		afterChoice := "inactive (rule removed; write required)"
 		for _, rule := range *desired.Rules {
@@ -108,4 +126,8 @@ func RulesetMergeMethodsNormalizationLine(id int64, name string, record settings
 	raw, _ := json.Marshal(record.RawValue)
 	fallback, _ := json.Marshal(record.Fallback)
 	return fmt.Sprintf("Warning: %s: observed %s is outside UI choices; using %s (projection only). Ruleset %d %q.", record.Path, raw, fallback, id, name)
+}
+
+func RulesetTeamApprovalsNormalizationLine(id int64, name string, record settings.RulesetTeamApprovalsNormalization) string {
+	return fmt.Sprintf("Warning: %s: observed %d is outside UI choices; using %d (projection only). Ruleset %d %q, reviewer=%d.", record.Path, record.RawValue, record.Fallback, id, name, record.ReviewerID)
 }

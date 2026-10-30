@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) warnRulesetReadbackNormalizations(id int64, raw map[string]json.RawMessage) {
-	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil && client.RulesetBypassModeNormalizationWarning == nil && client.RulesetMergeMethodsNormalizationWarning == nil {
+	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil && client.RulesetBypassModeNormalizationWarning == nil && client.RulesetMergeMethodsNormalizationWarning == nil && client.RulesetTeamApprovalsNormalizationWarning == nil {
 		return
 	}
 	policy, records, err := decodeObservedRulesetPolicy(raw)
@@ -28,6 +28,11 @@ func (client *Client) warnRulesetNormalizations(id int64, name string, records s
 	if record := records.MergeMethods; !record.IsZero() && client.RulesetMergeMethodsNormalizationWarning != nil {
 		record.RawValue, record.Fallback = slices.Clone(record.RawValue), slices.Clone(record.Fallback)
 		client.RulesetMergeMethodsNormalizationWarning(id, name, record)
+	}
+	if client.RulesetTeamApprovalsNormalizationWarning != nil {
+		for _, record := range settings.OrderedRulesetTeamApprovalsNormalizations(records.TeamApprovals) {
+			client.RulesetTeamApprovalsNormalizationWarning(id, name, record)
+		}
 	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) && client.RulesetNormalizationWarning != nil {
 		client.RulesetNormalizationWarning(id, name, record)

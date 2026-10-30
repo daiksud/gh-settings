@@ -1,6 +1,9 @@
 package settings
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 // RulesetNormalizations owns the concrete observation records independently.
 // It is validation/presentation evidence and never a writable policy payload.
@@ -9,12 +12,13 @@ type RulesetNormalizations struct {
 	QualitySeverity   ObservationNormalization
 	RequiredApprovals RulesetRequiredApprovalsNormalization
 	MergeMethods      RulesetMergeMethodsNormalization
+	TeamApprovals     []RulesetTeamApprovalsNormalization
 	BypassModes       []RulesetBypassModeNormalization
 }
 
 // IsZero reports whether the aggregate contains no observation evidence.
 func (records RulesetNormalizations) IsZero() bool {
-	return records.Enforcement == (ObservationNormalization{}) && records.QualitySeverity == (ObservationNormalization{}) && records.RequiredApprovals == (RulesetRequiredApprovalsNormalization{}) && records.MergeMethods.IsZero() && len(records.BypassModes) == 0
+	return records.Enforcement == (ObservationNormalization{}) && records.QualitySeverity == (ObservationNormalization{}) && records.RequiredApprovals == (RulesetRequiredApprovalsNormalization{}) && records.MergeMethods.IsZero() && len(records.TeamApprovals) == 0 && len(records.BypassModes) == 0
 }
 
 func (c RulesetChange) Normalizations() RulesetNormalizations {
@@ -26,6 +30,7 @@ func (c RulesetDisplayChange) Normalizations() RulesetNormalizations {
 
 func cloneRulesetNormalizations(records RulesetNormalizations) RulesetNormalizations {
 	records.MergeMethods = cloneRulesetMergeMethodsNormalization(records.MergeMethods)
+	records.TeamApprovals = slices.Clone(records.TeamApprovals)
 	records.BypassModes = cloneRulesetBypassModeNormalizations(records.BypassModes)
 	return records
 }
@@ -34,7 +39,7 @@ func validateRulesetNormalizationChange(operation string, id int64, before, afte
 	if operation != "update" || id <= 0 || before == nil || after == nil || before.ID == nil || after.ID == nil || *before.ID != id || *after.ID != id || records.IsZero() {
 		return fmt.Errorf("normalized Ruleset change requires one selected update ID")
 	}
-	state := RulesetState{ID: id, Policy: *before, EnforcementNormalization: records.Enforcement, QualitySeverityNormalization: records.QualitySeverity, RequiredApprovalsNormalization: records.RequiredApprovals, MergeMethodsNormalization: records.MergeMethods, BypassModeNormalizations: records.BypassModes}
+	state := RulesetState{ID: id, Policy: *before, EnforcementNormalization: records.Enforcement, QualitySeverityNormalization: records.QualitySeverity, RequiredApprovalsNormalization: records.RequiredApprovals, MergeMethodsNormalization: records.MergeMethods, TeamApprovalsNormalizations: records.TeamApprovals, BypassModeNormalizations: records.BypassModes}
 	if err := state.validateNormalizationEvidence(); err != nil {
 		return err
 	}
