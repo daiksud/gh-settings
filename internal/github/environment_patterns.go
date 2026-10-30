@@ -52,14 +52,13 @@ func (c *EnvironmentsClient) readPatterns(repo repository.Repository, name strin
 		}
 		expected = total
 		for _, entry := range entries {
-			state, err := decodeEnvironmentPattern(entry)
+			state, err := decodeObservedEnvironmentPattern(entry)
 			if err != nil {
 				return nil, err
 			}
 			states = append(states, state)
 		}
-		empty := []settings.EnvironmentPattern{}
-		if _, err := settings.ReconcileEnvironmentPatterns(states, &empty); err != nil {
+		if err := settings.ValidateEnvironmentPatternObservation(states); err != nil {
 			return nil, err
 		}
 		if len(states) > total {
@@ -103,11 +102,15 @@ func (c *EnvironmentsClient) applyPatterns(repo repository.Repository, name stri
 			if err := c.rest.Get(path, &raw); err != nil {
 				return fmt.Errorf("read pattern before removal: %w", err)
 			}
-			actual, err := decodeEnvironmentPattern(raw)
+			actual, err := decodeObservedEnvironmentPattern(raw)
 			if err != nil {
 				return err
 			}
-			if actual.ID != change.ID || actual.Pattern != change.Pattern {
+			identity, err := actual.RawPattern()
+			if err != nil {
+				return err
+			}
+			if actual.ID != change.ID || identity != change.Pattern {
 				return fmt.Errorf("deployment pattern identity changed before removal")
 			}
 			if err := c.rest.Delete(path, nil); err != nil {

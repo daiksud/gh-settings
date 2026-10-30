@@ -14,8 +14,9 @@ import (
 )
 
 type EnvironmentsClient struct {
-	rest                 *api.RESTClient
-	NormalizationWarning func(string, settings.EnvironmentDeploymentNormalization)
+	rest                        *api.RESTClient
+	NormalizationWarning        func(string, settings.EnvironmentDeploymentNormalization)
+	RefTypeNormalizationWarning func(string, settings.EnvironmentPatternState)
 }
 
 type environmentPreWriteFailure struct{ cause error }
@@ -223,12 +224,14 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 			return state, err
 		}
 		state.Patterns = patterns
-		values := make([]settings.EnvironmentPattern, 0, len(patterns))
-		for _, pattern := range patterns {
-			values = append(values, pattern.Pattern)
-		}
 		if effectiveCustom {
-			state.Policy.DeploymentBranchPatterns = &values
+			values, err := settings.EffectiveEnvironmentPatterns(patterns)
+			if err == nil {
+				state.Policy.DeploymentBranchPatterns = &values
+			}
+			// Raw acquisition was validated above. A projection collision keeps
+			// all identities outside the effective list; observation invariants
+			// below validate that representation before exposing it.
 		}
 	}
 	state.DeploymentModeNormalization = record
@@ -371,6 +374,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	}
 	for _, state := range states {
 		c.warnDeploymentNormalization(state, *expected)
+		c.warnRefTypeNormalizations(state, *expected)
 	}
 	var raw map[string]json.RawMessage
 	if err := c.rest.Put(environmentPath(repo, expected.Name), bytes.NewReader(body), &raw); err != nil {
@@ -387,6 +391,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 			return false, fmt.Errorf("read patterns after environment PUT (write may have applied): %w", err)
 		}
 		c.warnDeploymentNormalization(state, *expected)
+		c.warnRefTypeNormalizations(state, *expected)
 		if state.Policy.DeploymentBranchPolicy == nil || !state.Policy.DeploymentBranchPolicy.CustomBranchPolicies {
 			return false, fmt.Errorf("environment is not in custom mode after PUT (write may have applied)")
 		}
@@ -399,6 +404,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}
 	c.warnDeploymentNormalization(actual, *expected)
+	c.warnRefTypeNormalizations(actual, *expected)
 	if err := verifyEnvironmentRequestedState(actual, *expected); err != nil {
 		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
 	}

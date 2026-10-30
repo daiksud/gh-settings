@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"slices"
 	"strings"
 
@@ -30,6 +31,7 @@ type ExportCheckout struct {
 	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
 	EnvironmentDeploymentNormalizationWarning    func(string, settings.EnvironmentDeploymentNormalization)
+	EnvironmentRefTypeNormalizationWarning       func(string, settings.EnvironmentPatternState)
 	PrepareSave                                  func() (func(settings.Declaration) error, error)
 }
 
@@ -139,19 +141,32 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
-		if checkout.EnvironmentDeploymentNormalizationWarning != nil {
-			slices.SortFunc(values, func(a, b settings.EnvironmentState) int {
-				return strings.Compare(settings.EnvironmentIdentity(a.Policy.Name), settings.EnvironmentIdentity(b.Policy.Name))
-			})
-			for _, value := range values {
+		slices.SortFunc(values, func(a, b settings.EnvironmentState) int {
+			return strings.Compare(settings.EnvironmentIdentity(a.Policy.Name), settings.EnvironmentIdentity(b.Policy.Name))
+		})
+		for _, value := range values {
+			if checkout.EnvironmentDeploymentNormalizationWarning != nil {
 				if record := value.DeploymentModeNormalization; record != (settings.EnvironmentDeploymentNormalization{}) {
 					checkout.EnvironmentDeploymentNormalizationWarning(value.Policy.Name, record)
+				}
+			}
+			if mode := value.Policy.DeploymentBranchPolicy; mode != nil && mode.CustomBranchPolicies && checkout.EnvironmentRefTypeNormalizationWarning != nil {
+				patterns := slices.Clone(value.Patterns)
+				slices.SortFunc(patterns, func(a, b settings.EnvironmentPatternState) int { return cmp.Compare(a.ID, b.ID) })
+				for _, pattern := range patterns {
+					if record := pattern.RefTypeNormalization; record != (settings.ObservationNormalization{}) {
+						checkout.EnvironmentRefTypeNormalizationWarning(value.Policy.Name, pattern)
+					}
 				}
 			}
 		}
 		entries := make([]settings.EnvironmentDeclaration, 0, len(values))
 		for _, value := range values {
-			entries = append(entries, value.Policy)
+			policy, err := value.EffectivePolicy()
+			if err != nil {
+				return err
+			}
+			entries = append(entries, policy)
 		}
 		d, err := settings.NewEnvironmentDeclarations(entries)
 		if err != nil {
