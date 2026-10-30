@@ -16,7 +16,7 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 	after, _ := json.Marshal(desired)
 	line := fmt.Sprintf("settings.rulesets: %s %q: %s → %s", change.Operation(), change.Name(), before, after)
 	records := change.Normalizations()
-	if records == (settings.RulesetNormalizations{}) {
+	if records.IsZero() {
 		return line
 	}
 	id := *prior.ID
@@ -48,7 +48,32 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s", record.Path, id, change.Name(), strconv.Quote(record.Fallback), afterChoice)
 		details = append(details, RulesetNormalizationLine(id, change.Name(), record), decision)
 	}
+	for _, record := range settings.OrderedRulesetBypassModeNormalizations(records.BypassModes) {
+		afterChoice := "inactive (actor removed; write required)"
+		for _, actor := range *desired.BypassActors {
+			sameID := actor.ActorID == nil && record.ActorID == nil || actor.ActorID != nil && record.ActorID != nil && *actor.ActorID == *record.ActorID
+			if actor.ActorType == record.ActorType && sameID {
+				choice, _ := settings.RulesetBypassModeChoiceForValue(*actor.BypassMode)
+				afterChoice = strconv.Quote(string(choice)) + " (write required)"
+				break
+			}
+		}
+		decision := fmt.Sprintf("%s (Ruleset %d %q, %s): %s (normalized observation) → %s", record.Normalization.Path, id, change.Name(), rulesetBypassActorLabel(record), strconv.Quote(record.Normalization.Fallback), afterChoice)
+		details = append(details, RulesetBypassNormalizationLine(id, change.Name(), record), decision)
+	}
 	return strings.Join(details, "\n") + "\nEffective policy: " + line
+}
+
+func rulesetBypassActorLabel(record settings.RulesetBypassModeNormalization) string {
+	label := fmt.Sprintf("actor_type=%q", record.ActorType)
+	if record.ActorID != nil {
+		label += fmt.Sprintf(", actor_id=%d", *record.ActorID)
+	}
+	return label
+}
+
+func RulesetBypassNormalizationLine(id int64, name string, record settings.RulesetBypassModeNormalization) string {
+	return fmt.Sprintf("%s Ruleset %d %q, %s.", NormalizationLine(record.Normalization), id, name, rulesetBypassActorLabel(record))
 }
 
 func RulesetNormalizationLine(id int64, name string, record settings.ObservationNormalization) string {

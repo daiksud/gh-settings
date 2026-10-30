@@ -68,7 +68,7 @@ func TestObservedRulesetEnforcementDecoderRejectsIncompletePolicy(t *testing.T) 
 			before[key] = bytes.Clone(value)
 		}
 		policy, record, err := decodeObservedRulesetPolicy(raw)
-		if err == nil || !reflect.DeepEqual(policy, settings.RulesetDeclaration{}) || record != (settings.RulesetNormalizations{}) || !reflect.DeepEqual(raw, before) {
+		if err == nil || !reflect.DeepEqual(policy, settings.RulesetDeclaration{}) || !record.IsZero() || !reflect.DeepEqual(raw, before) {
 			t.Fatal("invalid partial policy escaped", policy, record, err)
 		}
 	}

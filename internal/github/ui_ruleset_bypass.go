@@ -46,13 +46,9 @@ func declareUIRulesetBypass(entries *[]uimodel.BypassEntry) (*[]settings.BypassA
 		if entry.BypassMode == nil {
 			return nil, fmt.Errorf("bypass entry requires bypass_mode")
 		}
-		mode := string(*entry.BypassMode)
-		switch *entry.BypassMode {
-		case uimodel.Always, uimodel.Exempt:
-		case uimodel.ForPullRequestsOnly:
-			mode = "pull_request"
-		default:
-			return nil, fmt.Errorf("unsupported UI bypass_mode %q", mode)
+		mode, supported := settings.RulesetBypassModeValueForChoice(*entry.BypassMode)
+		if !supported {
+			return nil, fmt.Errorf("unsupported UI bypass_mode %q", *entry.BypassMode)
 		}
 		actor.BypassMode = &mode
 		result = append(result, actor)
@@ -92,12 +88,8 @@ func observeUIRulesetBypass(actors []settings.BypassActor) (*[]uimodel.BypassEnt
 		if actor.BypassMode == nil {
 			return nil, fmt.Errorf("missing acquired bypass mode")
 		}
-		mode := uimodel.BypassMode(*actor.BypassMode)
-		switch *actor.BypassMode {
-		case "always", "exempt":
-		case "pull_request":
-			mode = uimodel.ForPullRequestsOnly
-		default:
+		mode, supported := settings.RulesetBypassModeChoiceForValue(*actor.BypassMode)
+		if !supported {
 			return nil, fmt.Errorf("bypass mode is outside UI choices")
 		}
 		entry.BypassMode = &mode
