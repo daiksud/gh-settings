@@ -3,6 +3,7 @@ package settings
 import (
 	"fmt"
 	"reflect"
+	"slices"
 )
 
 // RawPattern returns the acquired identity, never the UI fallback identity.
@@ -32,29 +33,40 @@ func (state EnvironmentState) EffectivePolicy() (EnvironmentDeclaration, error) 
 		return EnvironmentDeclaration{}, err
 	}
 	policy := cloneEnvironment(state.Policy)
-	if mode := policy.DeploymentBranchPolicy; mode != nil && mode.CustomBranchPolicies {
-		for _, pattern := range state.Patterns {
-			if pattern.RefTypeNormalization != (ObservationNormalization{}) {
-				effective, err := EffectiveEnvironmentPatterns(state.Patterns)
-				if err != nil {
-					return EnvironmentDeclaration{}, err
-				}
-				policy.DeploymentBranchPatterns = &effective
-				break
-			}
+	if mode := policy.DeploymentBranchPolicy; mode != nil && mode.CustomBranchPolicies && hasEnvironmentRefTypeNormalizations(state.Patterns) {
+		effective, err := EffectiveEnvironmentPatterns(state.Patterns)
+		if err != nil {
+			return EnvironmentDeclaration{}, err
 		}
+		policy.DeploymentBranchPatterns = &effective
 	}
 	return policy, nil
+}
+
+func hasEnvironmentRefTypeNormalizations(patterns []EnvironmentPatternState) bool {
+	for _, pattern := range patterns {
+		if pattern.RefTypeNormalization != (ObservationNormalization{}) {
+			return true
+		}
+	}
+	return false
+}
+
+func (change EnvironmentChange) PatternObservations() []EnvironmentPatternState {
+	return slices.Clone(change.patternObservations)
+}
+
+func NewEnvironmentChangeWithPatternNormalizations(operation string, before, after *EnvironmentDeclaration, patterns []EnvironmentPatternState) (EnvironmentChange, error) {
+	if patterns == nil {
+		return EnvironmentChange{}, fmt.Errorf("normalized environment pattern change requires provenance")
+	}
+	return newEnvironmentChange(operation, before, after, EnvironmentDeploymentNormalization{}, patterns)
 }
 
 // Only normalized collections add acquisition invariants here. Canonical
 // construction retains its existing adapter-level materialization checks.
 func (state EnvironmentState) validateRefTypeNormalizations() error {
-	normalized := false
-	for _, pattern := range state.Patterns {
-		normalized = normalized || pattern.RefTypeNormalization != (ObservationNormalization{})
-	}
-	if !normalized {
+	if !hasEnvironmentRefTypeNormalizations(state.Patterns) {
 		return nil
 	}
 	if err := ValidateEnvironmentPatternObservation(state.Patterns); err != nil {

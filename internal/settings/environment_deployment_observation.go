@@ -72,7 +72,7 @@ func NewEnvironmentChangeWithDeploymentNormalization(operation string, before, a
 	if record == (EnvironmentDeploymentNormalization{}) {
 		return EnvironmentChange{}, fmt.Errorf("normalized environment change requires provenance")
 	}
-	return newEnvironmentChange(operation, before, after, record)
+	return newEnvironmentChange(operation, before, after, record, nil)
 }
 
 // UnmarshalJSON requires both acquired booleans, retaining false separately from
