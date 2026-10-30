@@ -17,8 +17,9 @@ type EnvironmentPattern struct {
 }
 
 type EnvironmentPatternState struct {
-	ID      int64
-	Pattern EnvironmentPattern
+	ID                   int64
+	Pattern              EnvironmentPattern
+	RefTypeNormalization ObservationNormalization
 }
 
 type EnvironmentPatternChange struct {
@@ -67,13 +68,14 @@ func ReconcileEnvironmentPatterns(current []EnvironmentPatternState, desired *[]
 	observed := map[EnvironmentPattern]int64{}
 	ids := map[int64]bool{}
 	for _, entry := range current {
-		if _, err := normalizeEnvironmentPatterns([]EnvironmentPattern{entry.Pattern}); err != nil {
+		raw, err := entry.RawPattern()
+		if err != nil {
 			return nil, err
 		}
-		if entry.ID <= 0 || ids[entry.ID] || observed[entry.Pattern] != 0 {
+		if ids[entry.ID] || observed[raw] != 0 {
 			return nil, fmt.Errorf("ambiguous environment deployment pattern observation")
 		}
-		ids[entry.ID], observed[entry.Pattern] = true, entry.ID
+		ids[entry.ID], observed[raw] = true, entry.ID
 	}
 	wanted := map[EnvironmentPattern]bool{}
 	changes := []EnvironmentPatternChange{}

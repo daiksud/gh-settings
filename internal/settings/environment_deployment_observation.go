@@ -31,12 +31,11 @@ func (state EnvironmentState) validateDeploymentNormalization() error {
 		if state.Patterns == nil {
 			return fmt.Errorf("normalized raw custom mode requires acquired deployment patterns")
 		}
-		empty := []EnvironmentPattern{}
-		if _, err := ReconcileEnvironmentPatterns(state.Patterns, &empty); err != nil {
+		if err := ValidateEnvironmentPatternObservation(state.Patterns); err != nil {
 			return err
 		}
 	}
-	return nil
+	return state.validateRefTypeNormalizations()
 }
 
 // RawDeploymentBranchPolicy distinguishes acquired null from an acquired pair.
@@ -73,7 +72,7 @@ func NewEnvironmentChangeWithDeploymentNormalization(operation string, before, a
 	if record == (EnvironmentDeploymentNormalization{}) {
 		return EnvironmentChange{}, fmt.Errorf("normalized environment change requires provenance")
 	}
-	return newEnvironmentChange(operation, before, after, record)
+	return newEnvironmentChange(operation, before, after, record, nil)
 }
 
 // UnmarshalJSON requires both acquired booleans, retaining false separately from

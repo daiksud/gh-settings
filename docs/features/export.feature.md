@@ -266,4 +266,12 @@ Test mapping: [Reader](../../internal/github/ruleset_required_approvals_read_tes
 - Emit contextual mode warnings in folded-name order after complete collection acquisition. Failed/partial acquisition emits none; a later conversion failure may retain legitimate warnings but preserves the destination.
 - Selected fallback-equal mode intent remains write-required. Omitted mode remains API-controlled without copying an observed pair or printing an unowned warning; unlisted names stay private.
 
-Test mapping: [reader completeness](../../internal/github/environment_deployment_read_test.go), [export scope/order](../../internal/app/normalization_environment_deployment_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_deployment_test.go). Environment ref-type normalization and full #481 reporting remain pending.
+Test mapping: [reader completeness](../../internal/github/environment_deployment_read_test.go), [export scope/order](../../internal/app/normalization_environment_deployment_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_deployment_test.go). Full #481 reporting remains pending.
+
+### Rule: Export complete Environment ref-type projections
+
+Given a complete active Selected pattern with an unsupported string type, export warns with its Environment, ID, name and raw/fallback values, and writes the literal `branch` UI choice alongside unchanged canonical companions. IDs and normalization evidence remain outside YAML. Warnings occur only after complete acquisition and before effective materialization.
+
+If distinct raw identities collide after projection, emit scoped warnings and fail without replacing the existing file. If a later type is missing/null or acquisition fails, emit no partial normalization warnings and preserve the file. Patterns under effective No restriction remain latent; only applicable mode diagnostics and effective mode are exported. None of these paths writes repository settings.
+
+Test mapping: [owned export](../../internal/app/normalization_environment_ref_type_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_ref_type_test.go). The [Environment ref-type policy](../settings.md#environment-ref-type-observation-normalization) owns reconciliation and raw verification.

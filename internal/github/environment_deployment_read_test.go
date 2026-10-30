@@ -146,7 +146,11 @@ func TestEnvironmentDeploymentReaderDropsPartialResultsOnLaterAcquisitionFailure
 					}
 					entries := []any{}
 					for i := (page-1)*100 + 1; i <= 101 && i <= page*100; i++ {
-						entries = append(entries, map[string]any{"id": i, "type": "branch", "name": fmt.Sprintf("release-%d", i)})
+						kind := "branch"
+						if i == 1 {
+							kind = "future"
+						}
+						entries = append(entries, map[string]any{"id": i, "type": kind, "name": fmt.Sprintf("release-%d", i)})
 					}
 					total := 101
 					if mode == "pattern-partial" {
@@ -169,7 +173,7 @@ func TestEnvironmentDeploymentReaderDropsPartialResultsOnLaterAcquisitionFailure
 					t.Fatal("unexpected failure continuation", req.URL)
 					return nil, nil
 				}
-			}).rest, NormalizationWarning: func(string, settings.EnvironmentDeploymentNormalization) { t.Fatal("failed acquisition warned") }}
+			}).rest, NormalizationWarning: func(string, settings.EnvironmentDeploymentNormalization) { t.Fatal("failed acquisition warned") }, RefTypeNormalizationWarning: func(string, settings.EnvironmentPatternState) { t.Fatal("failed acquisition warned") }}
 			observed, err := client.Read(repository.Repository{Owner: "owner", Name: "current"}, nil)
 			expectedPages := 2
 			if mode == "pattern-denied" || mode == "pattern-null" || mode == "pattern-partial" {

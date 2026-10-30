@@ -13,7 +13,7 @@ import (
 )
 
 func TestEnvironmentPatternsCompleteTypedPagination(t *testing.T) {
-	for _, mode := range []string{"pages", "missing-type", "null", "partial", "duplicate-id", "duplicate-pair", "count-changed", "denied"} {
+	for _, mode := range []string{"pages", "missing-type", "null", "partial", "duplicate-id", "duplicate-pair", "unknown-duplicate-pair", "count-changed", "denied"} {
 		t.Run(mode, func(t *testing.T) {
 			calls := 0
 			c := &EnvironmentsClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
@@ -44,6 +44,9 @@ func TestEnvironmentPatternsCompleteTypedPagination(t *testing.T) {
 					}
 					if mode == "duplicate-pair" {
 						entries[1]["name"] = "release-1"
+					}
+					if mode == "unknown-duplicate-pair" {
+						entries[0]["type"], entries[1]["type"], entries[1]["name"] = "future", "future", "release-1"
 					}
 				} else {
 					entries = append(entries, map[string]any{"id": 101, "type": "tag", "name": "release-1"})

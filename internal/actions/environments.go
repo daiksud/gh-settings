@@ -14,6 +14,15 @@ type EnvironmentPlanChange struct {
 	Before                      *settings.EnvironmentDeclaration             `json:"before,omitempty"`
 	After                       *settings.EnvironmentDeclaration             `json:"after"`
 	DeploymentModeNormalization *settings.EnvironmentDeploymentNormalization `json:"deployment_mode_normalization,omitempty"`
+	PatternObservations         *[]EnvironmentPatternObservation             `json:"pattern_observations,omitempty"`
+}
+
+// EnvironmentPatternObservation is private rendering evidence, never apply
+// input or independent proof of complete API acquisition.
+type EnvironmentPatternObservation struct {
+	ID                   int64                              `json:"id"`
+	Pattern              settings.EnvironmentPattern        `json:"pattern"`
+	RefTypeNormalization *settings.ObservationNormalization `json:"ref_type_normalization,omitempty"`
 }
 
 func (c *EnvironmentPlanChange) UnmarshalJSON(data []byte) error {
@@ -87,7 +96,23 @@ func validateEnvironmentReport(entries []EnvironmentPlanChange) ([]settings.Envi
 	for _, entry := range entries {
 		var change settings.EnvironmentChange
 		var err error
-		if record := entry.DeploymentModeNormalization; record != nil {
+		if entry.PatternObservations != nil && entry.DeploymentModeNormalization != nil {
+			return nil, fmt.Errorf("environment mode and pattern normalization metadata cannot be combined")
+		}
+		if entry.PatternObservations != nil {
+			patterns := make([]settings.EnvironmentPatternState, 0, len(*entry.PatternObservations))
+			for _, value := range *entry.PatternObservations {
+				state := settings.EnvironmentPatternState{ID: value.ID, Pattern: value.Pattern}
+				if value.RefTypeNormalization != nil {
+					if *value.RefTypeNormalization == (settings.ObservationNormalization{}) {
+						return nil, fmt.Errorf("present environment ref type normalization cannot be empty")
+					}
+					state.RefTypeNormalization = *value.RefTypeNormalization
+				}
+				patterns = append(patterns, state)
+			}
+			change, err = settings.NewEnvironmentChangeWithPatternNormalizations(entry.Operation, entry.Before, entry.After, patterns)
+		} else if record := entry.DeploymentModeNormalization; record != nil {
 			if *record == (settings.EnvironmentDeploymentNormalization{}) {
 				return nil, fmt.Errorf("present environment deployment normalization cannot be empty")
 			}
