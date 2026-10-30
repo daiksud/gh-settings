@@ -12,11 +12,18 @@ import (
 func ActionsPolicyLine(change settings.ActionsPolicyChange) string {
 	before, after := change.Values()
 	if normalization := change.Normalization(); normalization.Path != "" {
-		choice := uimodel.ReadRepositoryContentsAndPackagesPermissions
-		if after == "write" {
-			choice = uimodel.ReadAndWritePermissions
+		choice := string(uimodel.ReadRepositoryContentsAndPackagesPermissions)
+		switch change.Field() {
+		case "actions.fork_pr_approval_policy":
+			value, _ := after.(string)
+			forkChoice, _ := settings.ForkApprovalChoiceForValue(value)
+			choice = string(forkChoice)
+		case "actions.default_workflow_permissions":
+			if after == "write" {
+				choice = string(uimodel.ReadAndWritePermissions)
+			}
 		}
-		return NormalizationLine(normalization) + "\n" + fmt.Sprintf("%s: %s (normalized observation) → %s (write required)", normalization.Path, strconv.Quote(normalization.Fallback), strconv.Quote(string(choice)))
+		return NormalizationLine(normalization) + "\n" + fmt.Sprintf("%s: %s (normalized observation) → %s (write required)", normalization.Path, strconv.Quote(normalization.Fallback), strconv.Quote(choice))
 	}
 	b, _ := json.Marshal(before)
 	a, _ := json.Marshal(after)

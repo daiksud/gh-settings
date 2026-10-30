@@ -54,7 +54,7 @@ func TestForkReadsRequireApplicableCompleteState(t *testing.T) {
 		}
 	}
 	for _, private := range []bool{false, true} {
-		bodies := []string{`{}`, `null`, `{"approval_policy":null}`, `{"approval_policy":false}`, `{"approval_policy":"never"}`, `{"Approval_policy":"first_time_contributors"}`}
+		bodies := []string{`{}`, `null`, `{"approval_policy":null}`, `{"approval_policy":false}`, `{"approval_policy":1}`, `{"Approval_policy":"first_time_contributors"}`}
 		if private {
 			bodies = []string{`{}`, `null`, `{"run_workflows_from_fork_pull_requests":false}`, `{"run_workflows_from_fork_pull_requests":null,"send_write_tokens_to_workflows":false,"send_secrets_and_variables":true,"require_approval_for_fork_pr_workflows":false}`, `{"run_workflows_from_fork_pull_requests":true,"send_write_tokens_to_workflows":"false","send_secrets_and_variables":true,"require_approval_for_fork_pr_workflows":false}`, `{"run_workflows_from_fork_pull_requests":true,"send_write_tokens_to_workflows":false,"send_secrets_and_variables":true,"Require_approval_for_fork_pr_workflows":false}`}
 		}

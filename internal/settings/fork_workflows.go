@@ -3,7 +3,8 @@ package settings
 import "fmt"
 
 func ValidForkApprovalPolicy(v string) bool {
-	return v == "first_time_contributors_new_to_github" || v == "first_time_contributors" || v == "all_external_contributors"
+	_, valid := ForkApprovalChoiceForValue(v)
+	return valid
 }
 
 // PrivateForkDeclaration never supplies an omitted required PUT parameter.
@@ -23,15 +24,37 @@ func PrivateForkKeys() [4]string {
 }
 
 type ForkApprovalObservation struct {
-	acquired bool
-	policy   string
+	acquired      bool
+	policy        string
+	normalization ObservationNormalization
 }
 
 func NewForkApprovalObservation(v string) (ForkApprovalObservation, error) {
 	if !ValidForkApprovalPolicy(v) {
 		return ForkApprovalObservation{}, fmt.Errorf("unsupported fork PR approval policy %q", v)
 	}
-	return ForkApprovalObservation{true, v}, nil
+	return ForkApprovalObservation{acquired: true, policy: v}, nil
+}
+
+func NewForkApprovalObservationWithNormalization(value string, normalization ObservationNormalization) (ForkApprovalObservation, error) {
+	fallback, valid := ForkApprovalValueForChoice(DefaultForkApprovalChoice)
+	if !valid || value != fallback || normalization.Path != ForkApprovalPath || normalization.Fallback != string(DefaultForkApprovalChoice) || ValidForkApprovalPolicy(normalization.RawValue) {
+		return ForkApprovalObservation{}, fmt.Errorf("invalid fork approval normalization provenance")
+	}
+	return ForkApprovalObservation{acquired: true, policy: value, normalization: normalization}, nil
+}
+
+func (o ForkApprovalObservation) Normalization() ObservationNormalization { return o.normalization }
+
+func (o ForkApprovalObservation) RawValue() (string, error) {
+	value, err := o.Value()
+	if err != nil {
+		return "", err
+	}
+	if o.normalization != (ObservationNormalization{}) {
+		return o.normalization.RawValue, nil
+	}
+	return value, nil
 }
 func (o ForkApprovalObservation) Value() (string, error) {
 	if !o.acquired {
@@ -51,7 +74,13 @@ func CompareForkApproval(o ForkApprovalObservation, d ActionsPolicyDeclaration) 
 	if d.ForkApprovalPolicy == nil {
 		return 0, changes, nil
 	}
-	if v != *d.ForkApprovalPolicy {
+	if o.normalization != (ObservationNormalization{}) {
+		change, err := NewActionsPolicyChangeWithNormalization("actions.fork_pr_approval_policy", v, *d.ForkApprovalPolicy, o.normalization)
+		if err != nil {
+			return 0, nil, err
+		}
+		changes = append(changes, change)
+	} else if v != *d.ForkApprovalPolicy {
 		c, _ := NewActionsPolicyChange("actions.fork_pr_approval_policy", v, *d.ForkApprovalPolicy)
 		changes = append(changes, c)
 	}

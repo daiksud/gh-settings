@@ -10,15 +10,8 @@ func declareUIActionsForkApproval(choice *uimodel.ForkApprovalChoice) (*string, 
 	if choice == nil {
 		return nil, nil
 	}
-	var value string
-	switch *choice {
-	case uimodel.RequireApprovalForFirstTimeContributorsWhoAreNewToGitHub:
-		value = "first_time_contributors_new_to_github"
-	case uimodel.RequireApprovalForFirstTimeContributors:
-		value = "first_time_contributors"
-	case uimodel.RequireApprovalForAllExternalContributors:
-		value = "all_external_contributors"
-	default:
+	value, valid := settings.ForkApprovalValueForChoice(*choice)
+	if !valid {
 		return nil, fmt.Errorf("unsupported UI fork workflow approval choice")
 	}
 	return &value, nil
@@ -28,15 +21,8 @@ func WithActionsForkApprovalPolicyUI(ui uimodel.ActionsGeneral, policy *string) 
 	if policy == nil {
 		return ui, nil
 	}
-	var choice uimodel.ForkApprovalChoice
-	switch *policy {
-	case "first_time_contributors_new_to_github":
-		choice = uimodel.RequireApprovalForFirstTimeContributorsWhoAreNewToGitHub
-	case "first_time_contributors":
-		choice = uimodel.RequireApprovalForFirstTimeContributors
-	case "all_external_contributors":
-		choice = uimodel.RequireApprovalForAllExternalContributors
-	default:
+	choice, valid := settings.ForkApprovalChoiceForValue(*policy)
+	if !valid {
 		return uimodel.ActionsGeneral{}, fmt.Errorf("fork workflow approval is outside UI choices")
 	}
 	ui.ApprovalForRunningForkPullRequestWorkflowsFromContributors = &choice
