@@ -110,6 +110,18 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		if record := change.DeploymentModeNormalization(); record != (settings.EnvironmentDeploymentNormalization{}) {
 			entry.DeploymentModeNormalization = &record
 		}
+		if states := change.PatternObservations(); states != nil {
+			patterns := make([]EnvironmentPatternObservation, 0, len(states))
+			for _, state := range states {
+				value := EnvironmentPatternObservation{ID: state.ID, Pattern: state.Pattern}
+				if state.RefTypeNormalization != (settings.ObservationNormalization{}) {
+					record := state.RefTypeNormalization
+					value.RefTypeNormalization = &record
+				}
+				patterns = append(patterns, value)
+			}
+			entry.PatternObservations = &patterns
+		}
 		report.Environments = append(report.Environments, entry)
 	}
 	for _, change := range result.Comparison.Actions {
