@@ -3,6 +3,7 @@ package presentation
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -35,6 +36,25 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 		}
 		decision := fmt.Sprintf("%s (Ruleset %d %q): %d (normalized observation) → %s", record.Path, id, change.Name(), record.Fallback, afterChoice)
 		details = append(details, RulesetRequiredApprovalsNormalizationLine(id, change.Name(), record), decision)
+	}
+	if record := records.MergeMethods; !record.IsZero() {
+		afterChoice := "inactive (rule removed; write required)"
+		for _, rule := range *desired.Rules {
+			if rule.Type == "pull_request" {
+				var ordered []string
+				for _, method := range settings.DefaultRulesetAllowedMergeMethods() {
+					if slices.Contains(*rule.Parameters.AllowedMergeMethods, method) {
+						ordered = append(ordered, method)
+					}
+				}
+				encoded, _ := json.Marshal(ordered)
+				afterChoice = string(encoded) + " (write required)"
+				break
+			}
+		}
+		fallback, _ := json.Marshal(record.Fallback)
+		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s", record.Path, id, change.Name(), fallback, afterChoice)
+		details = append(details, RulesetMergeMethodsNormalizationLine(id, change.Name(), record), decision)
 	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) {
 		afterChoice := "inactive (rule removed; write required)"
@@ -82,4 +102,10 @@ func RulesetNormalizationLine(id int64, name string, record settings.Observation
 
 func RulesetRequiredApprovalsNormalizationLine(id int64, name string, record settings.RulesetRequiredApprovalsNormalization) string {
 	return fmt.Sprintf("Warning: %s: observed %d is outside UI choices; using %d (projection only). Ruleset %d %q.", record.Path, record.RawValue, record.Fallback, id, name)
+}
+
+func RulesetMergeMethodsNormalizationLine(id int64, name string, record settings.RulesetMergeMethodsNormalization) string {
+	raw, _ := json.Marshal(record.RawValue)
+	fallback, _ := json.Marshal(record.Fallback)
+	return fmt.Sprintf("Warning: %s: observed %s is outside UI choices; using %s (projection only). Ruleset %d %q.", record.Path, raw, fallback, id, name)
 }

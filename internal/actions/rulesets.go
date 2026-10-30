@@ -18,6 +18,7 @@ type RulesetPlanChange struct {
 	EnforcementNormalization       *settings.ObservationNormalization              `json:"enforcement_normalization,omitempty"`
 	QualitySeverityNormalization   *settings.ObservationNormalization              `json:"quality_severity_normalization,omitempty"`
 	RequiredApprovalsNormalization *settings.RulesetRequiredApprovalsNormalization `json:"required_approvals_normalization,omitempty"`
+	MergeMethodsNormalization      *RulesetMergeMethodsNormalization               `json:"merge_methods_normalization,omitempty"`
 	BypassModeNormalizations       *[]RulesetBypassModeNormalization               `json:"bypass_mode_normalizations,omitempty"`
 }
 
@@ -25,6 +26,38 @@ type RulesetBypassModeNormalization struct {
 	ActorType     string                            `json:"actor_type"`
 	ActorID       *int64                            `json:"actor_id,omitempty"`
 	Normalization settings.ObservationNormalization `json:"normalization"`
+}
+
+// RulesetMergeMethodsNormalization is private presentation metadata, not acquisition proof.
+type RulesetMergeMethodsNormalization struct {
+	Path     string   `json:"path"`
+	RawValue []string `json:"raw_value"`
+	Fallback []string `json:"fallback"`
+}
+
+func (record *RulesetMergeMethodsNormalization) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	if invalidRulesetReportValue(raw) {
+		return fmt.Errorf("null or noncanonical merge-method normalization field")
+	}
+	var fields struct {
+		Path     *string   `json:"path"`
+		RawValue *[]string `json:"raw_value"`
+		Fallback *[]string `json:"fallback"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fields); err != nil {
+		return err
+	}
+	if fields.Path == nil || fields.RawValue == nil || fields.Fallback == nil {
+		return fmt.Errorf("merge-method normalization requires string path and string lists raw_value/fallback")
+	}
+	*record = RulesetMergeMethodsNormalization{Path: *fields.Path, RawValue: *fields.RawValue, Fallback: *fields.Fallback}
+	return nil
 }
 
 func (c *RulesetPlanChange) UnmarshalJSON(data []byte) error {
@@ -98,6 +131,13 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 				return nil, fmt.Errorf("present Ruleset required approvals normalization metadata cannot be empty")
 			}
 			records.RequiredApprovals = *e.RequiredApprovalsNormalization
+		}
+		if e.MergeMethodsNormalization != nil {
+			record := e.MergeMethodsNormalization
+			if len(record.RawValue) == 0 || len(record.Fallback) == 0 {
+				return nil, fmt.Errorf("present Ruleset merge-method normalization metadata cannot contain empty lists")
+			}
+			records.MergeMethods = settings.RulesetMergeMethodsNormalization{Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback}
 		}
 		if e.BypassModeNormalizations != nil {
 			if len(*e.BypassModeNormalizations) == 0 {

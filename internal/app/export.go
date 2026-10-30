@@ -30,6 +30,7 @@ type ExportCheckout struct {
 	SecurityStatusNormalizationWarning           func(settings.SecurityStatusNormalization)
 	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	RulesetMergeMethodsNormalizationWarning      func(int64, string, settings.RulesetMergeMethodsNormalization)
 	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
 	EnvironmentDeploymentNormalizationWarning    func(string, settings.EnvironmentDeploymentNormalization)
 	EnvironmentRefTypeNormalizationWarning       func(string, settings.EnvironmentPatternState)
@@ -111,7 +112,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Rulesets = &desired
-		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil {
+		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil || checkout.RulesetMergeMethodsNormalizationWarning != nil {
 			values, err := observed.Values()
 			if err != nil {
 				return err
@@ -123,6 +124,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 				}
 				if record := value.RequiredApprovalsNormalization; record != (settings.RulesetRequiredApprovalsNormalization{}) && checkout.RulesetRequiredApprovalsNormalizationWarning != nil {
 					checkout.RulesetRequiredApprovalsNormalizationWarning(value.ID, value.Policy.Name, record)
+				}
+				if record := value.MergeMethodsNormalization; !record.IsZero() && checkout.RulesetMergeMethodsNormalizationWarning != nil {
+					checkout.RulesetMergeMethodsNormalizationWarning(value.ID, value.Policy.Name, record)
 				}
 				if record := value.QualitySeverityNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {
 					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)

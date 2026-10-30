@@ -2,12 +2,13 @@ package github
 
 import (
 	"encoding/json"
+	"slices"
 
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 func (client *Client) warnRulesetReadbackNormalizations(id int64, raw map[string]json.RawMessage) {
-	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil && client.RulesetBypassModeNormalizationWarning == nil {
+	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil && client.RulesetBypassModeNormalizationWarning == nil && client.RulesetMergeMethodsNormalizationWarning == nil {
 		return
 	}
 	policy, records, err := decodeObservedRulesetPolicy(raw)
@@ -23,6 +24,10 @@ func (client *Client) warnRulesetNormalizations(id int64, name string, records s
 	}
 	if record := records.RequiredApprovals; record != (settings.RulesetRequiredApprovalsNormalization{}) && client.RulesetRequiredApprovalsNormalizationWarning != nil {
 		client.RulesetRequiredApprovalsNormalizationWarning(id, name, record)
+	}
+	if record := records.MergeMethods; !record.IsZero() && client.RulesetMergeMethodsNormalizationWarning != nil {
+		record.RawValue, record.Fallback = slices.Clone(record.RawValue), slices.Clone(record.Fallback)
+		client.RulesetMergeMethodsNormalizationWarning(id, name, record)
 	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) && client.RulesetNormalizationWarning != nil {
 		client.RulesetNormalizationWarning(id, name, record)
