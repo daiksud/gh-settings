@@ -47,7 +47,7 @@ func NewPagesChangeWithNormalization(field string, before, after any, inactive b
 	if err := validatePagesFolderNormalization(b, record); err != nil {
 		return PagesChange{}, err
 	}
-	return PagesChange{field: field, before: b, after: a, folderNormalization: record}, nil
+	return PagesChange{field: field, before: b, after: a, normalization: record}, nil
 }
 
 func validatePagesFolderNormalization(effective string, record ObservationNormalization) error {

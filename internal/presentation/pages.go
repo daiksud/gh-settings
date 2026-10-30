@@ -9,10 +9,21 @@ import (
 
 func PagesLine(c settings.PagesChange) string {
 	b, a := c.Values()
-	if record := c.FolderNormalization(); record != (settings.ObservationNormalization{}) {
+	if record := c.Normalization(); record != (settings.ObservationNormalization{}) {
 		value, _ := a.(string)
-		choice, _ := settings.PagesFolderChoiceForValue(value)
-		return NormalizationLine(record) + "\n" + fmt.Sprintf("%s: %s (normalized observation) → %s (write required)", record.Path, strconv.Quote(record.Fallback), strconv.Quote(string(choice)))
+		choice := ""
+		if c.Field() == "pages.build_type" {
+			mode, _ := settings.PagesModeChoiceForValue(value)
+			choice = string(mode)
+		} else {
+			folder, _ := settings.PagesFolderChoiceForValue(value)
+			choice = string(folder)
+		}
+		line := NormalizationLine(record) + "\n" + fmt.Sprintf("%s: %s (normalized observation) → %s (write required)", record.Path, strconv.Quote(record.Fallback), strconv.Quote(choice))
+		if c.Field() == "pages.build_type" && value == "workflow" {
+			line += " (branch source becomes inactive)"
+		}
+		return line
 	}
 	before, _ := json.Marshal(b)
 	after, _ := json.Marshal(a)

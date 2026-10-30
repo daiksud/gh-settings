@@ -24,7 +24,10 @@ type PagesDeclaration struct {
 func (d PagesDeclaration) Empty() bool {
 	return d.BuildType == nil && d.Source == nil && d.CNAME == nil && d.HTTPSEnforced == nil
 }
-func validPagesMode(s string) bool { return s == "legacy" || s == "workflow" }
+func validPagesMode(s string) bool {
+	_, valid := PagesModeChoiceForValue(s)
+	return valid
+}
 func ValidatePagesDomain(s string) error {
 	if len(s) == 0 || len(s) > 253 || !strings.Contains(s, ".") {
 		return fmt.Errorf("pages.cname must be an ASCII DNS hostname or null")
@@ -79,6 +82,7 @@ type PagesObservation struct {
 	acquired            bool
 	state               PagesState
 	folderNormalization ObservationNormalization
+	modeNormalization   ObservationNormalization
 }
 
 func copyPagesState(s PagesState) PagesState {
@@ -134,6 +138,9 @@ func PreparePages(o PagesObservation, d PagesDeclaration) (PagesState, error) {
 	if err != nil {
 		return PagesState{}, err
 	}
+	if d.Source != nil && d.BuildType == nil && o.modeNormalization != (ObservationNormalization{}) {
+		return PagesState{}, fmt.Errorf("Pages source requires explicit legacy mode when the observed mode is outside UI choices")
+	}
 	if d.BuildType != nil && *d.BuildType == "legacy" && s.BuildType != "legacy" && d.Source == nil {
 		return PagesState{}, fmt.Errorf("transition to legacy Pages requires a complete source")
 	}
@@ -161,16 +168,16 @@ func PreparePages(o PagesObservation, d PagesDeclaration) (PagesState, error) {
 
 // PagesChange owns the nullable-domain and inactive-source report boundaries.
 type PagesChange struct {
-	field               string
-	before, after       any
-	inactive            bool
-	folderNormalization ObservationNormalization
+	field         string
+	before, after any
+	inactive      bool
+	normalization ObservationNormalization
 }
 
-func (c PagesChange) Field() string                                 { return c.field }
-func (c PagesChange) Values() (any, any)                            { return c.before, c.after }
-func (c PagesChange) BeforeInactive() bool                          { return c.inactive }
-func (c PagesChange) FolderNormalization() ObservationNormalization { return c.folderNormalization }
+func (c PagesChange) Field() string                           { return c.field }
+func (c PagesChange) Values() (any, any)                      { return c.before, c.after }
+func (c PagesChange) BeforeInactive() bool                    { return c.inactive }
+func (c PagesChange) Normalization() ObservationNormalization { return c.normalization }
 func NewPagesChange(field string, before, after any, inactive bool) (PagesChange, error) {
 	valid := func(v any, previous bool) bool {
 		if previous && inactive {
@@ -210,8 +217,12 @@ func ValidatePagesChanges(changes []PagesChange) error {
 			return fmt.Errorf("duplicate Pages comparison")
 		}
 		var err error
-		if c.folderNormalization != (ObservationNormalization{}) {
-			_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.folderNormalization)
+		if c.normalization != (ObservationNormalization{}) {
+			if c.field == "pages.build_type" {
+				_, err = NewPagesModeChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.normalization)
+			} else {
+				_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.normalization)
+			}
 		} else {
 			_, err = NewPagesChange(c.field, c.before, c.after, c.inactive)
 		}
@@ -229,7 +240,7 @@ func ValidatePagesChanges(changes []PagesChange) error {
 		}
 	}
 	if mode, ok := seen["pages.build_type"]; ok {
-		if mode.after == "legacy" && (!seen["pages.source.branch"].inactive || !seen["pages.source.path"].inactive) {
+		if mode.before == "workflow" && mode.after == "legacy" && (!seen["pages.source.branch"].inactive || !seen["pages.source.path"].inactive) {
 			return fmt.Errorf("transition to legacy Pages requires both inactive source comparisons")
 		}
 		if mode.after == "workflow" {
@@ -259,7 +270,16 @@ func ComparePages(o PagesObservation, d PagesDeclaration) (int, []PagesChange, e
 		}
 	}
 	if d.BuildType != nil {
-		add("pages.build_type", before.BuildType, after.BuildType, false)
+		if o.modeNormalization != (ObservationNormalization{}) {
+			managed++
+			change, err := NewPagesModeChangeWithNormalization("pages.build_type", before.BuildType, after.BuildType, false, o.modeNormalization)
+			if err != nil {
+				return 0, nil, err
+			}
+			changes = append(changes, change)
+		} else {
+			add("pages.build_type", before.BuildType, after.BuildType, false)
+		}
 	}
 	if d.Source != nil {
 		var branch, path any
