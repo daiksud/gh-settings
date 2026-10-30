@@ -29,6 +29,7 @@ type ExportCheckout struct {
 	SecurityStatusNormalizationWarning           func(settings.SecurityStatusNormalization)
 	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	EnvironmentDeploymentNormalizationWarning    func(string, settings.EnvironmentDeploymentNormalization)
 	PrepareSave                                  func() (func(settings.Declaration) error, error)
 }
 
@@ -137,6 +138,16 @@ func Export(checkout ExportCheckout, read Reader) error {
 		values, err := observed.Values()
 		if err != nil {
 			return err
+		}
+		if checkout.EnvironmentDeploymentNormalizationWarning != nil {
+			slices.SortFunc(values, func(a, b settings.EnvironmentState) int {
+				return strings.Compare(settings.EnvironmentIdentity(a.Policy.Name), settings.EnvironmentIdentity(b.Policy.Name))
+			})
+			for _, value := range values {
+				if record := value.DeploymentModeNormalization; record != (settings.EnvironmentDeploymentNormalization{}) {
+					checkout.EnvironmentDeploymentNormalizationWarning(value.Policy.Name, record)
+				}
+			}
 		}
 		entries := make([]settings.EnvironmentDeclaration, 0, len(values))
 		for _, value := range values {

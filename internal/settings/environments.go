@@ -80,14 +80,16 @@ type EnvironmentBranchPolicy struct {
 
 type EnvironmentDeclarations struct{ entries []EnvironmentDeclaration }
 type EnvironmentState struct {
-	ID       int64
-	Policy   EnvironmentDeclaration
-	Patterns []EnvironmentPatternState
+	ID                          int64
+	Policy                      EnvironmentDeclaration
+	Patterns                    []EnvironmentPatternState
+	DeploymentModeNormalization EnvironmentDeploymentNormalization
 }
 type EnvironmentObservation struct{ entries []EnvironmentState }
 type EnvironmentChange struct {
-	operation     string
-	before, after *EnvironmentDeclaration
+	operation                   string
+	before, after               *EnvironmentDeclaration
+	deploymentModeNormalization EnvironmentDeploymentNormalization
 }
 
 // Client name equivalence uses Unicode simple folding, without trimming.
@@ -219,7 +221,7 @@ func NewEnvironmentObservation(entries []EnvironmentState) (EnvironmentObservati
 	result := EnvironmentObservation{entries: make([]EnvironmentState, 0, len(entries))}
 	seenNames, seenIDs := map[string]bool{}, map[int64]bool{}
 	for _, entry := range entries {
-		if err := validateEnvironment(entry.Policy, true); err != nil {
+		if err := entry.validateDeploymentNormalization(); err != nil {
 			return EnvironmentObservation{}, err
 		}
 		key := EnvironmentIdentity(entry.Policy.Name)
@@ -227,7 +229,7 @@ func NewEnvironmentObservation(entries []EnvironmentState) (EnvironmentObservati
 			return EnvironmentObservation{}, fmt.Errorf("ambiguous environment observation")
 		}
 		seenNames[key], seenIDs[entry.ID] = true, true
-		result.entries = append(result.entries, EnvironmentState{ID: entry.ID, Policy: cloneEnvironment(entry.Policy), Patterns: slices.Clone(entry.Patterns)})
+		result.entries = append(result.entries, EnvironmentState{ID: entry.ID, Policy: cloneEnvironment(entry.Policy), Patterns: slices.Clone(entry.Patterns), DeploymentModeNormalization: entry.DeploymentModeNormalization})
 	}
 	return result, nil
 }
@@ -238,7 +240,7 @@ func (o EnvironmentObservation) Values() ([]EnvironmentState, error) {
 	}
 	out := make([]EnvironmentState, 0, len(o.entries))
 	for _, v := range o.entries {
-		out = append(out, EnvironmentState{ID: v.ID, Policy: cloneEnvironment(v.Policy), Patterns: slices.Clone(v.Patterns)})
+		out = append(out, EnvironmentState{ID: v.ID, Policy: cloneEnvironment(v.Policy), Patterns: slices.Clone(v.Patterns), DeploymentModeNormalization: v.DeploymentModeNormalization})
 	}
 	return out, nil
 }
@@ -251,13 +253,14 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 	if err != nil {
 		return nil, err
 	}
-	byName := map[string]EnvironmentDeclaration{}
+	byName := map[string]EnvironmentState{}
 	for _, state := range current {
-		byName[EnvironmentIdentity(state.Policy.Name)] = state.Policy
+		byName[EnvironmentIdentity(state.Policy.Name)] = state
 	}
 	changes := []EnvironmentChange{}
 	for _, policy := range desired.Values() {
-		before, exists := byName[EnvironmentIdentity(policy.Name)]
+		state, exists := byName[EnvironmentIdentity(policy.Name)]
+		before := state.Policy
 		if policy.DeploymentBranchPatterns != nil && policy.DeploymentBranchPolicy == nil && !policy.DeploymentBranchPolicyDeclared {
 			if !exists || before.DeploymentBranchPolicy == nil || !before.DeploymentBranchPolicy.CustomBranchPolicies {
 				return nil, fmt.Errorf("environment %q deployment patterns require explicit custom mode or an existing custom-mode environment", policy.Name)
@@ -269,11 +272,25 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 			continue
 		}
 		policy.Name = before.Name
-		if !EnvironmentHasAPIOmissions(policy) && EnvironmentMatchesRequest(before, policy) {
+		record := EnvironmentDeploymentNormalization{}
+		if policy.DeploymentBranchPolicyDeclared || policy.DeploymentBranchPolicy != nil {
+			record = state.DeploymentModeNormalization
+		}
+		if record == (EnvironmentDeploymentNormalization{}) && !EnvironmentHasAPIOmissions(policy) && EnvironmentMatchesRequest(before, policy) {
 			continue
 		}
 		prior, after := cloneEnvironment(before), cloneEnvironment(policy)
-		changes = append(changes, EnvironmentChange{operation: "update", before: &prior, after: &after})
+		var change EnvironmentChange
+		var err error
+		if record != (EnvironmentDeploymentNormalization{}) {
+			change, err = NewEnvironmentChangeWithDeploymentNormalization("update", &prior, &after, record)
+		} else {
+			change, err = NewEnvironmentChange("update", &prior, &after)
+		}
+		if err != nil {
+			return nil, err
+		}
+		changes = append(changes, change)
 	}
 	return changes, nil
 }
@@ -306,11 +323,23 @@ func (c EnvironmentChange) After() *EnvironmentDeclaration {
 // NewEnvironmentChange requires a complete observed before policy, but after
 // is the actual request, whose omissions intentionally defer to the API.
 func NewEnvironmentChange(operation string, before, after *EnvironmentDeclaration) (EnvironmentChange, error) {
+	return newEnvironmentChange(operation, before, after, EnvironmentDeploymentNormalization{})
+}
+
+func newEnvironmentChange(operation string, before, after *EnvironmentDeclaration, record EnvironmentDeploymentNormalization) (EnvironmentChange, error) {
 	if after == nil {
 		return EnvironmentChange{}, fmt.Errorf("environment change requires after policy")
 	}
 	if err := validateEnvironment(*after, false); err != nil {
 		return EnvironmentChange{}, err
+	}
+	if record != (EnvironmentDeploymentNormalization{}) {
+		if operation != "update" || before == nil || (!after.DeploymentBranchPolicyDeclared && after.DeploymentBranchPolicy == nil) {
+			return EnvironmentChange{}, fmt.Errorf("normalized environment mode requires one explicit update request")
+		}
+		if err := validateEnvironmentDeploymentRecord(*before, record); err != nil {
+			return EnvironmentChange{}, err
+		}
 	}
 	switch operation {
 	case "create":
@@ -324,13 +353,13 @@ func NewEnvironmentChange(operation string, before, after *EnvironmentDeclaratio
 		if err := validateEnvironment(*before, true); err != nil {
 			return EnvironmentChange{}, err
 		}
-		if before.Name != after.Name || reflect.DeepEqual(cloneEnvironment(*before), cloneEnvironment(*after)) {
+		if before.Name != after.Name || (record == (EnvironmentDeploymentNormalization{}) && reflect.DeepEqual(cloneEnvironment(*before), cloneEnvironment(*after))) {
 			return EnvironmentChange{}, fmt.Errorf("invalid environment update identity or unchanged policy")
 		}
 	default:
 		return EnvironmentChange{}, fmt.Errorf("unsupported environment operation %q", operation)
 	}
-	result := EnvironmentChange{operation: operation}
+	result := EnvironmentChange{operation: operation, deploymentModeNormalization: record}
 	value := cloneEnvironment(*after)
 	result.after = &value
 	if before != nil {
