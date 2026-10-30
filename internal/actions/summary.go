@@ -122,6 +122,10 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 		content.WriteString(quoteHTML(report.diagnostic))
 	}
 	for _, change := range report.comparison.Changes {
+		if change.Normalization() != (settings.ObservationNormalization{}) {
+			fmt.Fprintln(&content, quoteHTML(presentation.CreationPolicyLine(change)))
+			continue
+		}
 		line := func(before, after string) {
 			fmt.Fprintf(&content, "%s: %s → %s\n", quoteHTML(presentation.SettingPath(change.Field().Path())), quoteHTML(before), quoteHTML(after))
 		}
@@ -278,12 +282,17 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 }
 
 func parseReportChange(raw PlanChange) (settings.Change, error) {
-	if raw.Normalization != nil {
-		return settings.Change{}, fmt.Errorf("workflow normalization cannot describe a repository comparison")
-	}
 	field, err := settings.ParseFieldID(raw.Field)
 	if err != nil {
 		return settings.Change{}, fmt.Errorf("invalid plan report change")
+	}
+	if raw.Normalization != nil {
+		before, beforeOK := raw.Before.(string)
+		after, afterOK := raw.After.(string)
+		if !beforeOK || !afterOK {
+			return settings.Change{}, fmt.Errorf("creation policy normalization requires string values")
+		}
+		return settings.NewCreationPolicyChangeWithNormalization(field, before, after, *raw.Normalization)
 	}
 	var change settings.Change
 	if field == settings.TopicsField() {
