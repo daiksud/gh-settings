@@ -19,14 +19,14 @@ func TestActionsNativePlanAndSummaryUnavailableValues(t *testing.T) {
 	selected, githubOwned, verified := "selected", false, false
 	patterns := []string{"org/*", "!org/<blocked>@*", "org/*"}
 	d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{AllowedActions: &selected, SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: &githubOwned, VerifiedAllowed: &verified, PatternsAllowed: &patterns}}}
-	managed, changes, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{AllowedActions: "all"}, d.Actions)
+	comparison, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{AllowedActions: "all"}, d.Actions)
 	if err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: managed, Actions: changes}}, nil
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: comparison.Managed, Actions: comparison.Changes}}, nil
 	})
 	data, err := os.ReadFile(path)
 	if status != 0 || err != nil {

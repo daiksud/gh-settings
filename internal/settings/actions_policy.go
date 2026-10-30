@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 const ActionsPolicyFieldCount = 14
@@ -36,10 +38,11 @@ type SelectedActionsState struct {
 
 // A nil Selected means inactive or not acquired, never an empty selected policy.
 type ActionsPolicyState struct {
-	Enabled            bool
-	AllowedActions     string
-	SHAPinningRequired bool
-	Selected           *SelectedActionsState
+	Enabled                     bool
+	AllowedActions              string
+	SHAPinningRequired          bool
+	Selected                    *SelectedActionsState
+	AllowedActionsNormalization ObservationNormalization
 }
 
 func (d SelectedActionsDeclaration) Empty() bool {
@@ -52,7 +55,8 @@ func (d ActionsPolicyDeclaration) ExecutionEmpty() bool {
 	return d.Enabled == nil && d.AllowedActions == nil && d.SHAPinningRequired == nil && d.SelectedActions.Empty()
 }
 func ValidAllowedActions(value string) bool {
-	return value == "all" || value == "local_only" || value == "selected"
+	_, valid := ActionsPermissionsChoiceForValue(true, value)
+	return valid
 }
 
 func ValidateActionPatterns(values []string) error {
@@ -98,6 +102,12 @@ func (s ActionsPolicyState) Validate() error {
 	if !ValidAllowedActions(s.AllowedActions) {
 		return fmt.Errorf("unsupported observed actions.allowed_actions value")
 	}
+	if record := s.AllowedActionsNormalization; record != (ObservationNormalization{}) {
+		_, fallback, _ := ActionsPermissionsValueForChoice(DefaultActionsPermissionsChoice)
+		if s.AllowedActions != *fallback || record.Path != ActionsPermissionsPath || record.Fallback != string(DefaultActionsPermissionsChoice) || ValidAllowedActions(record.RawValue) || s.Selected != nil {
+			return fmt.Errorf("invalid Actions permission normalization provenance")
+		}
+	}
 	if s.Selected != nil {
 		if s.AllowedActions != "selected" || s.Selected.PatternsAllowed == nil {
 			return fmt.Errorf("invalid acquired selected Actions policy")
@@ -107,6 +117,16 @@ func (s ActionsPolicyState) Validate() error {
 	return nil
 }
 
+func (s ActionsPolicyState) RawAllowedActions() (string, error) {
+	if err := s.Validate(); err != nil {
+		return "", err
+	}
+	if s.AllowedActionsNormalization != (ObservationNormalization{}) {
+		return s.AllowedActionsNormalization.RawValue, nil
+	}
+	return s.AllowedActions, nil
+}
+
 // PrepareActions validates all observable prerequisites before any resource write.
 func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 	if err := s.Validate(); err != nil {
@@ -114,6 +134,9 @@ func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 	}
 	if err := d.Validate(); err != nil {
 		return err
+	}
+	if !s.Enabled && d.Enabled != nil && *d.Enabled && d.AllowedActions == nil && s.AllowedActionsNormalization != (ObservationNormalization{}) {
+		return fmt.Errorf("enabling Actions from an unknown policy requires an explicit canonical allowed_actions policy")
 	}
 	if s.AllowedActions != "selected" && d.AllowedActions != nil && *d.AllowedActions == "selected" && !d.SelectedActions.Complete() {
 		return fmt.Errorf("transition to selected requires all three selected_actions values; inactive values cannot be read")
@@ -244,7 +267,35 @@ func NewActionsPolicyChange(field string, before, after any) (ActionsPolicyChang
 }
 
 // ValidateActionsPolicyChanges also verifies the only legal unobservable transition.
-func ValidateActionsPolicyChanges(changes []ActionsPolicyChange) error {
+func ValidateActionsPolicyChanges(changes []ActionsPolicyChange, execution ...ActionsExecutionChange) error {
+	if len(execution) > 1 {
+		return fmt.Errorf("duplicate Actions execution radio decision")
+	}
+	if len(execution) == 1 {
+		radio := execution[0]
+		_, err := NewActionsExecutionChange(ActionsPolicyState{Enabled: radio.beforeEnabled, AllowedActions: "all", AllowedActionsNormalization: radio.normalization}, radio.after)
+		if err != nil {
+			return err
+		}
+		selectedTarget := radio.after == uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows
+		for _, change := range changes {
+			if change.field == "actions.enabled" || change.field == "actions.allowed_actions" {
+				return fmt.Errorf("Actions radio overlaps native execution policy evidence")
+			}
+			if !selectedTarget && strings.HasPrefix(change.field, "actions.selected_actions.") {
+				return fmt.Errorf("nonselected Actions radio cannot contain selected companion changes")
+			}
+		}
+		if selectedTarget {
+			transition, err := NewActionsPolicyChange("actions.allowed_actions", "all", "selected")
+			if err != nil {
+				return err
+			}
+			// This local component supplies structural transition evidence only;
+			// it is never another rendered decision or desired declaration.
+			changes = append(append([]ActionsPolicyChange{}, changes...), transition)
+		}
+	}
 	seen := map[string]bool{}
 	unknown := 0
 	transition := false
@@ -283,14 +334,48 @@ func ValidateActionsPolicyChanges(changes []ActionsPolicyChange) error {
 	return nil
 }
 
-func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (int, []ActionsPolicyChange, error) {
+type ActionsPolicyComparison struct {
+	Managed   int
+	Changes   []ActionsPolicyChange
+	Execution []ActionsExecutionChange
+}
+
+func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (ActionsPolicyComparison, error) {
 	if err := PrepareActions(s, d); err != nil {
-		return 0, nil, err
+		return ActionsPolicyComparison{}, err
 	}
 	managed := 0
 	changes := []ActionsPolicyChange{}
+	var execution []ActionsExecutionChange
+	radioIntent := false
+	if s.AllowedActionsNormalization != (ObservationNormalization{}) {
+		if d.AllowedActions != nil && (d.Enabled == nil || !*d.Enabled) {
+			return ActionsPolicyComparison{}, fmt.Errorf("normalized Actions policy intent requires a complete enabling radio choice")
+		}
+		radioIntent = d.Enabled != nil && (d.AllowedActions != nil || !*d.Enabled)
+		if radioIntent {
+			allowed := ""
+			if d.AllowedActions != nil {
+				allowed = *d.AllowedActions
+			}
+			choice, valid := ActionsPermissionsChoiceForValue(*d.Enabled, allowed)
+			if !valid {
+				return ActionsPolicyComparison{}, fmt.Errorf("invalid desired Actions radio choice")
+			}
+			if s.Enabled || choice != uimodel.DisableActions {
+				change, err := NewActionsExecutionChange(s, choice)
+				if err != nil {
+					return ActionsPolicyComparison{}, err
+				}
+				execution = append(execution, change)
+			}
+		}
+	}
 	add := func(field string, before, after any) {
 		managed++
+		if radioIntent && (field == "actions.enabled" || field == "actions.allowed_actions") {
+			return
+		}
 		if !reflect.DeepEqual(before, after) {
 			changes = append(changes, ActionsPolicyChange{field: field, before: copyActionValue(before), after: copyActionValue(after)})
 		}
@@ -317,5 +402,8 @@ func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (int
 	if v := d.SelectedActions.PatternsAllowed; v != nil {
 		add("actions.selected_actions.patterns_allowed", patterns, *v)
 	}
-	return managed, changes, nil
+	if err := ValidateActionsPolicyChanges(changes, execution...); err != nil {
+		return ActionsPolicyComparison{}, err
+	}
+	return ActionsPolicyComparison{Managed: managed, Changes: changes, Execution: execution}, nil
 }

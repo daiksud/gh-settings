@@ -81,10 +81,10 @@ func TestUIActionsRawAcquisitionScopeAndFailures(t *testing.T) {
 			t.Fatal(calls)
 		}
 	}
-	for _, body := range []string{`{"enabled":false,"allowed_actions":"selected"}`, `{"enabled":false,"allowed_actions":"future","sha_pinning_required":false}`} {
+	for _, body := range []string{`{"enabled":false,"allowed_actions":"selected"}`, `{"enabled":false,"allowed_actions":42,"sha_pinning_required":false}`} {
 		client := actionsClient(t, func(req *http.Request) (*http.Response, error) { return labelsResponse(req, 200, body), nil })
 		if _, err := client.ReadActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, false); err == nil {
-			t.Fatal("incomplete/unknown observation accepted")
+			t.Fatal("incomplete/invalid observation accepted")
 		}
 	}
 	partial, err := ActionsDeclaration(uimodel.ActionsGeneral{ForkPullRequestWorkflows: &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: actionsUIPtr(true)}})

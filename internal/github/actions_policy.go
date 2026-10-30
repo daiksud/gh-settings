@@ -53,8 +53,13 @@ func (c *ActionsPolicyClient) ReadActionsPolicy(repo repository.Repository, sele
 	if s.SHAPinningRequired, err = actionsBool(fields, "sha_pinning_required"); err != nil {
 		return settings.ActionsPolicyState{}, err
 	}
-	if json.Unmarshal(fields["allowed_actions"], &s.AllowedActions) != nil || !settings.ValidAllowedActions(s.AllowedActions) {
-		return settings.ActionsPolicyState{}, fmt.Errorf("GitHub returned missing/null or unsupported Actions allowed_actions")
+	var allowed *string
+	if json.Unmarshal(fields["allowed_actions"], &allowed) != nil || allowed == nil {
+		return settings.ActionsPolicyState{}, fmt.Errorf("GitHub returned missing/null or invalid Actions allowed_actions")
+	}
+	s, err = prepareActionsExecutionObservation(&s.Enabled, allowed, &s.SHAPinningRequired)
+	if err != nil {
+		return settings.ActionsPolicyState{}, err
 	}
 	if selected && s.AllowedActions == "selected" {
 		value, err := c.readSelectedActions(repo)
@@ -63,7 +68,10 @@ func (c *ActionsPolicyClient) ReadActionsPolicy(repo repository.Repository, sele
 		}
 		s.Selected = &value
 	}
-	return s, s.Validate()
+	if err := s.Validate(); err != nil {
+		return settings.ActionsPolicyState{}, err
+	}
+	return s, nil
 }
 
 func (c *ActionsPolicyClient) readSelectedActions(repo repository.Repository) (settings.SelectedActionsState, error) {
@@ -117,10 +125,11 @@ func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d s
 	if err != nil {
 		return err
 	}
-	if err := settings.PrepareActions(current, d); err != nil {
+	expected, err := prepareActionsExecutionVerification(current, d)
+	if err != nil {
 		return err
 	}
-	verify := d
+	c.warnExecutionNormalization(current, d)
 	enableAfterSelection := d.Enabled != nil && *d.Enabled && !current.Enabled && !d.SelectedActions.Empty()
 	if d.Enabled != nil || d.AllowedActions != nil || d.SHAPinningRequired != nil {
 		enabled := current.Enabled
@@ -137,31 +146,13 @@ func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d s
 		if err := c.putActionsPolicy(actionsPolicyPath(repo), payload); err != nil {
 			return fmt.Errorf("write Actions policy (this and earlier writes may already have applied): %w", err)
 		}
-		// The mandatory transport companion must retain its freshly observed value.
-		if !enableAfterSelection {
-			verify.Enabled = &enabled
-		}
 	}
 	if !d.SelectedActions.Empty() {
-		var selected settings.SelectedActionsState
-		if current.Selected != nil {
-			selected = *current.Selected
-			selected.PatternsAllowed = append([]string{}, current.Selected.PatternsAllowed...)
-		}
-		if v := d.SelectedActions.GitHubOwnedAllowed; v != nil {
-			selected.GitHubOwnedAllowed = *v
-		}
-		if v := d.SelectedActions.VerifiedAllowed; v != nil {
-			selected.VerifiedAllowed = *v
-		}
-		if v := d.SelectedActions.PatternsAllowed; v != nil {
-			selected.PatternsAllowed = append([]string{}, (*v)...)
-		}
+		selected := expected.selected
 		payload := map[string]any{"github_owned_allowed": selected.GitHubOwnedAllowed, "verified_allowed": selected.VerifiedAllowed, "patterns_allowed": selected.PatternsAllowed}
 		if err := c.putActionsPolicy(actionsPolicyPath(repo)+"/selected-actions", payload); err != nil {
 			return fmt.Errorf("write selected Actions policy (this and earlier policy/resource writes may already have applied): %w", err)
 		}
-		verify.SelectedActions = settings.SelectedActionsDeclaration{GitHubOwnedAllowed: &selected.GitHubOwnedAllowed, VerifiedAllowed: &selected.VerifiedAllowed, PatternsAllowed: &selected.PatternsAllowed}
 	}
 	if enableAfterSelection {
 		if err := c.putActionsPolicy(actionsPolicyPath(repo), map[string]any{"enabled": true}); err != nil {
@@ -172,8 +163,9 @@ func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d s
 	if err != nil {
 		return fmt.Errorf("verify Actions policy (writes may already have applied): %w", err)
 	}
-	_, changes, err := settings.CompareActionsPolicy(actual, verify)
-	if err != nil || len(changes) > 0 {
+	c.warnExecutionNormalization(actual, d)
+	retained, err := sameActionsExecutionVerification(expected, actual)
+	if err != nil || !retained {
 		return fmt.Errorf("GitHub did not retain requested Actions policy (writes may already have applied)")
 	}
 	return nil
