@@ -268,7 +268,7 @@ func TestActionsReadFailuresDiscardPlansAndKeepEarlierWrites(t *testing.T) {
 		{"denied", `{"message":"organization policy denies access"}`, 403},
 		{"missing", `{"enabled":false,"allowed_actions":"all"}`, 200},
 		{"null", `{"enabled":false,"allowed_actions":"all","sha_pinning_required":null}`, 200},
-		{"unknown", `{"enabled":false,"allowed_actions":"unknown","sha_pinning_required":true}`, 200},
+		{"wrongtype", `{"enabled":false,"allowed_actions":42,"sha_pinning_required":true}`, 200},
 		{"redirect", `{}`, 301},
 	} {
 		t.Run(test.name, func(t *testing.T) {

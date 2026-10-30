@@ -134,6 +134,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
+		if observed.Enabled && observed.AllowedActionsNormalization != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
+			checkout.NormalizationWarning(observed.AllowedActionsNormalization)
+		}
 	}
 	if checkout.IncludeWorkflowPermissions {
 		state, err := read.WorkflowPermissions(repo)

@@ -115,8 +115,8 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 		compare func() (int, int, error)
 	}{
 		{"execution", 3, func() (int, int, error) {
-			n, changes, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{Enabled: true, AllowedActions: "all", SHAPinningRequired: true}, desired.Settings.Actions)
-			return n, len(changes), err
+			comparison, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{Enabled: true, AllowedActions: "all", SHAPinningRequired: true}, desired.Settings.Actions)
+			return comparison.Managed, len(comparison.Changes) + len(comparison.Execution), err
 		}},
 		{"workflow token", 2, func() (int, int, error) {
 			n, changes, err := settings.CompareWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: "read", CanApprovePullRequestReviews: true}, desired.Settings.Actions)

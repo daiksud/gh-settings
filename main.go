@@ -168,6 +168,7 @@ func writeActionsPolicy(repo repository.Repository, desired settings.ActionsPoli
 	if err != nil {
 		return err
 	}
+	client.NormalizationWarning = warnNormalization
 	return client.ApplyActionsPolicy(repo, desired)
 }
 

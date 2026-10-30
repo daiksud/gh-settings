@@ -18,18 +18,19 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
-	Outcome        string                    `json:"outcome"`
-	Target         string                    `json:"target,omitempty"`
-	Managed        int                       `json:"managed"`
-	Changes        []PlanChange              `json:"changes"`
-	CommitMessages []CommitMessagePlanChange `json:"commit_messages,omitempty"`
-	Diagnostic     string                    `json:"diagnostic,omitempty"`
-	Labels         []LabelPlanChange         `json:"labels,omitempty"`
-	Actions        []PlanChange              `json:"actions,omitempty"`
-	Security       []PlanChange              `json:"security,omitempty"`
-	Rulesets       []RulesetPlanChange       `json:"rulesets,omitempty"`
-	Environments   []EnvironmentPlanChange   `json:"environments,omitempty"`
-	Pages          []PagesPlanChange         `json:"pages,omitempty"`
+	Outcome          string                       `json:"outcome"`
+	Target           string                       `json:"target,omitempty"`
+	Managed          int                          `json:"managed"`
+	Changes          []PlanChange                 `json:"changes"`
+	CommitMessages   []CommitMessagePlanChange    `json:"commit_messages,omitempty"`
+	Diagnostic       string                       `json:"diagnostic,omitempty"`
+	Labels           []LabelPlanChange            `json:"labels,omitempty"`
+	Actions          []PlanChange                 `json:"actions,omitempty"`
+	ActionsExecution []ActionsExecutionPlanChange `json:"actions_execution,omitempty"`
+	Security         []PlanChange                 `json:"security,omitempty"`
+	Rulesets         []RulesetPlanChange          `json:"rulesets,omitempty"`
+	Environments     []EnvironmentPlanChange      `json:"environments,omitempty"`
+	Pages            []PagesPlanChange            `json:"pages,omitempty"`
 }
 
 // PlanChange retains the native string, boolean, integer or string-list comparison values.
@@ -104,6 +105,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 			entry.Normalization = &normalization
 		}
 		report.Actions = append(report.Actions, entry)
+	}
+	for _, change := range result.Comparison.ActionsExecution {
+		report.ActionsExecution = append(report.ActionsExecution, ActionsExecutionPlanChange{Before: change.Before(), After: change.After(), Normalization: change.Normalization()})
 	}
 	for _, change := range result.Comparison.Security {
 		before, after := change.Values()

@@ -39,24 +39,12 @@ func ActionsExecutionPolicyUI(policy settings.ActionsPolicyDeclaration) (uimodel
 func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclaration, error) {
 	result := settings.ActionsPolicyDeclaration{SHAPinningRequired: copyUIActionsValue(ui.RequireActionsToBePinnedToAFullLengthCommitSHA)}
 	if ui.ActionsPermissions != nil {
-		enabled := true
-		var allowed string
-		switch *ui.ActionsPermissions {
-		case uimodel.DisableActions:
-			enabled = false
-		case uimodel.AllowAllActionsAndReusableWorkflows:
-			allowed = "all"
-		case uimodel.AllowOwnerActionsAndReusableWorkflows:
-			allowed = "local_only"
-		case uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows:
-			allowed = "selected"
-		default:
+		enabled, allowed, valid := settings.ActionsPermissionsValueForChoice(*ui.ActionsPermissions)
+		if !valid {
 			return settings.ActionsPolicyDeclaration{}, fmt.Errorf("unsupported actions_permissions UI choice")
 		}
 		result.Enabled = &enabled
-		if enabled {
-			result.AllowedActions = &allowed
-		}
+		result.AllowedActions = allowed
 	}
 	result.SelectedActions.GitHubOwnedAllowed = copyUIActionsValue(ui.AllowActionsCreatedByGitHub)
 	result.SelectedActions.VerifiedAllowed = copyUIActionsValue(ui.AllowActionsByMarketplaceVerifiedCreators)
@@ -100,16 +88,9 @@ func ActionsExecutionObservation(state settings.ActionsPolicyState) (PreparedAct
 		selected.PatternsAllowed = append([]string{}, state.Selected.PatternsAllowed...)
 		raw.Selected = &selected
 	}
-	choice := uimodel.DisableActions
-	if state.Enabled {
-		switch state.AllowedActions {
-		case "all":
-			choice = uimodel.AllowAllActionsAndReusableWorkflows
-		case "local_only":
-			choice = uimodel.AllowOwnerActionsAndReusableWorkflows
-		case "selected":
-			choice = uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows
-		}
+	choice, valid := settings.ActionsPermissionsChoiceForValue(state.Enabled, state.AllowedActions)
+	if !valid {
+		return PreparedActionsExecution{}, fmt.Errorf("Actions execution policy is outside UI choices")
 	}
 	ui := uimodel.ActionsGeneral{ActionsPermissions: &choice, RequireActionsToBePinnedToAFullLengthCommitSHA: copyUIActionsValue(&state.SHAPinningRequired)}
 	if state.Enabled && state.AllowedActions == "selected" && state.Selected != nil {

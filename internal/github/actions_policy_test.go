@@ -28,7 +28,7 @@ func actionsResponse(req *http.Request, status int, body string) *http.Response 
 
 func TestActionsReadIsCompleteAndSelectedIsConditional(t *testing.T) {
 	base := `{"enabled":false,"allowed_actions":"all","sha_pinning_required":false,"selected_actions_url":"https://untrusted.invalid"}`
-	for _, body := range []string{base, strings.Replace(base, `"all"`, `"local_only"`, 1), strings.Replace(base, `"all"`, `"selected"`, 1), `{}`, `null`, strings.Replace(base, `"enabled":false`, `"enabled":null`, 1), strings.Replace(base, `"sha_pinning_required":false`, `"sha_pinning_required":"false"`, 1), strings.Replace(base, `"all"`, `"unknown"`, 1)} {
+	for _, body := range []string{base, strings.Replace(base, `"all"`, `"local_only"`, 1), strings.Replace(base, `"all"`, `"selected"`, 1), `{}`, `null`, strings.Replace(base, `"enabled":false`, `"enabled":null`, 1), strings.Replace(base, `"sha_pinning_required":false`, `"sha_pinning_required":"false"`, 1), strings.Replace(base, `"all"`, `42`, 1)} {
 		calls := []string{}
 		client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
 			calls = append(calls, req.URL.Path)
