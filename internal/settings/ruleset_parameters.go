@@ -88,7 +88,8 @@ func validateRule(r RulesetRule, complete bool) error {
 			}
 			seen := map[string]bool{}
 			for _, v := range *p.AllowedMergeMethods {
-				if !slices.Contains([]string{"merge", "squash", "rebase"}, v) || seen[v] {
+				_, supported := RulesetMergeMethodChoiceForValue(v)
+				if !supported || seen[v] {
 					return fmt.Errorf("invalid or duplicate merge method %q", v)
 				}
 				seen[v] = true

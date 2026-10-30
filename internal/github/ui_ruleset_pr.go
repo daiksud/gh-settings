@@ -21,16 +21,11 @@ func declareUIRulesetPR(ui uimodel.PullRequestRule) (*settings.RuleParameters, e
 	if ui.AllowedMergeMethods != nil {
 		methods := make([]string, 0, len(*ui.AllowedMergeMethods))
 		for _, choice := range *ui.AllowedMergeMethods {
-			switch choice {
-			case uimodel.Merge:
-				methods = append(methods, "merge")
-			case uimodel.Squash:
-				methods = append(methods, "squash")
-			case uimodel.Rebase:
-				methods = append(methods, "rebase")
-			default:
+			method, supported := settings.RulesetMergeMethodValueForChoice(choice)
+			if !supported {
 				return nil, fmt.Errorf("unsupported allowed_merge_methods UI choice")
 			}
+			methods = append(methods, method)
 		}
 		result.AllowedMergeMethods = &methods
 	}
@@ -63,16 +58,11 @@ func observeUIRulesetPR(p *settings.RuleParameters) (*uimodel.PullRequestRule, e
 	}
 	methods := make([]uimodel.MergeMethod, 0, len(*p.AllowedMergeMethods))
 	for _, method := range *p.AllowedMergeMethods {
-		switch method {
-		case "merge":
-			methods = append(methods, uimodel.Merge)
-		case "squash":
-			methods = append(methods, uimodel.Squash)
-		case "rebase":
-			methods = append(methods, uimodel.Rebase)
-		default:
+		choice, supported := settings.RulesetMergeMethodChoiceForValue(method)
+		if !supported {
 			return nil, fmt.Errorf("allowed merge methods outside UI choices")
 		}
+		methods = append(methods, choice)
 	}
 	result.AllowedMergeMethods = &methods
 	var err error
