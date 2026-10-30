@@ -212,3 +212,93 @@ func TestPlanRetainsNormalizedCommitMenuDecisions(t *testing.T) {
 		}
 	}
 }
+
+func TestExportForkNormalizationIsScopedToAcquiredOptIn(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		include bool
+		failure string
+		raw     string
+	}{
+		{"requested complete observation", true, "", "FUTURE"},
+		{"supported exact observation", true, "", "first_time_contributors"},
+		{"unrequested fork policy", false, "", "FUTURE"},
+		{"partial state accompanying failure", true, "read", "FUTURE"},
+		{"unacquired", true, "unacquired", "FUTURE"},
+		{"later private fork failure", true, "later", "FUTURE"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			observed, err := settings.NewForkApprovalObservation(test.raw)
+			if err != nil {
+				observed, err = settings.NewForkApprovalObservationWithNormalization("first_time_contributors", settings.ObservationNormalization{Path: settings.ForkApprovalPath, RawValue: test.raw, Fallback: string(settings.DefaultForkApprovalChoice)})
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			failure := errors.New("complete acquisition denied")
+			reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
+			reads := 0
+			reader.ForkApproval = func(repository.Repository) (settings.ForkApprovalObservation, error) {
+				reads++
+				if test.failure == "read" {
+					return observed, failure
+				}
+				if test.failure == "unacquired" {
+					return settings.ForkApprovalObservation{}, nil
+				}
+				return observed, nil
+			}
+			reader.PrivateFork = func(repository.Repository) (settings.PrivateForkObservation, error) {
+				return settings.PrivateForkObservation{}, failure
+			}
+			var warnings []settings.ObservationNormalization
+			saved := false
+			err = Export(ExportCheckout{
+				Repository:           checkoutRepository,
+				IncludeForkApproval:  test.include,
+				IncludePrivateFork:   test.failure == "later",
+				NormalizationWarning: func(normalization settings.ObservationNormalization) { warnings = append(warnings, normalization) },
+				PrepareSave: func() (func(settings.Declaration) error, error) {
+					return func(declaration settings.Declaration) error {
+						saved = true
+						ui, err := github.UIFromExportDeclaration(declaration)
+						if err != nil {
+							t.Fatal(err)
+						}
+						if test.include && (ui.Settings == nil || ui.Settings.Actions == nil || ui.Settings.Actions.General == nil || ui.Settings.Actions.General.ApprovalForRunningForkPullRequestWorkflowsFromContributors == nil || *ui.Settings.Actions.General.ApprovalForRunningForkPullRequestWorkflowsFromContributors != "require_approval_for_first_time_contributors") {
+							t.Fatal("fork fallback lost", ui)
+						}
+						return nil
+					}, nil
+				},
+			}, reader)
+			var wantErr error
+			wantReads, wantWarnings := 0, 0
+			if test.include {
+				wantReads = 1
+				if test.raw == "FUTURE" {
+					wantWarnings = 1
+				}
+			}
+			if test.failure == "read" {
+				wantErr, wantWarnings = failure, 0
+			}
+			if test.failure == "later" {
+				wantErr = failure
+			}
+			if test.failure == "unacquired" {
+				wantWarnings = 0
+				if err == nil {
+					t.Fatal("unacquired observation accepted")
+				}
+				wantErr = err
+			}
+			if !errors.Is(err, wantErr) || saved != (test.failure == "") || reads != wantReads || len(warnings) != wantWarnings {
+				t.Fatalf("export acquisition boundary lost: saved=%v reads=%d warnings=%+v error=%v", saved, reads, warnings, err)
+			}
+			if wantWarnings == 1 && warnings[0] != observed.Normalization() {
+				t.Fatal("warning lost raw provenance", warnings)
+			}
+		})
+	}
+}

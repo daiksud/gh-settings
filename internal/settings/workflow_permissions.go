@@ -2,8 +2,6 @@ package settings
 
 import (
 	"fmt"
-
-	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 type WorkflowPermissionsState struct {
@@ -14,19 +12,6 @@ type WorkflowPermissionsState struct {
 
 func ValidDefaultWorkflowPermissions(value string) bool { return value == "read" || value == "write" }
 
-// NewActionsPolicyChangeWithNormalization records a required write even when a
-// UI fallback equals desired intent. Only consistent acquired provenance can
-// authorize this otherwise invalid equal-value comparison.
-func NewActionsPolicyChangeWithNormalization(field string, before, after any, normalization ObservationNormalization) (ActionsPolicyChange, error) {
-	if field != "actions.default_workflow_permissions" || before != "read" || normalization.Path != WorkflowPermissionsPath || normalization.Fallback != string(uimodel.DefaultActionsWorkflowPermissions) || ValidDefaultWorkflowPermissions(normalization.RawValue) {
-		return ActionsPolicyChange{}, fmt.Errorf("invalid workflow permission normalization provenance")
-	}
-	value, err := actionValue(field, after)
-	if err != nil {
-		return ActionsPolicyChange{}, err
-	}
-	return ActionsPolicyChange{field: field, before: before, after: value, normalization: normalization}, nil
-}
 func (d ActionsPolicyDeclaration) WorkflowPermissionsEmpty() bool {
 	return d.DefaultWorkflowPermissions == nil && d.CanApprovePullRequestReviews == nil
 }

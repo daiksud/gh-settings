@@ -168,6 +168,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Actions.ForkApprovalPolicy = &v
+		if normalization := o.Normalization(); normalization.Path != "" && checkout.NormalizationWarning != nil {
+			checkout.NormalizationWarning(normalization)
+		}
 	}
 	if checkout.IncludePrivateFork {
 		o, err := read.PrivateFork(repo)
