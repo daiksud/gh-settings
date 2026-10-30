@@ -21,6 +21,7 @@ type ExportCheckout struct {
 	IncludeImmutableReleases   bool
 	IncludeRetention           bool
 	ExcludedRulesets           func(int)
+	NormalizationWarning       func(settings.ObservationNormalization)
 	PrepareSave                func() (func(settings.Declaration) error, error)
 }
 
@@ -118,6 +119,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 		declaration.Actions, err = declaration.Actions.WithWorkflowPermissions(state)
 		if err != nil {
 			return err
+		}
+		if state.Normalization.Path != "" && checkout.NormalizationWarning != nil {
+			checkout.NormalizationWarning(state.Normalization)
 		}
 	}
 	if checkout.IncludeRetention {

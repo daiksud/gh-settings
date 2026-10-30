@@ -33,9 +33,9 @@ repository:
       features: {issues: true}
 ```
 
-The exact string `version: daiksud/gh-settings@v0` is required. The old `schemaVersion`/root `settings` envelope and API-shaped aliases are rejected. There is no compatibility decoder, migration or fallback.
+The exact string `version: daiksud/gh-settings@v0` is required. The old `schemaVersion`/root `settings` envelope and API-shaped aliases are rejected. There is no compatibility decoder, migration or legacy-format fallback.
 
-This reference describes current source, not the contract of every published CLI or pinned Action. Read the [published package boundary](github-actions.md#published-package-and-consumer-pins) before adoption. This change does not upgrade a pin or publish a release. [#480](https://github.com/daiksud/gh-settings/issues/480) still owns out-of-UI observation normalization/warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns complete UI reporting. Unknown/out-of-UI observations currently fail; they are not silently replaced with desired defaults. Only unambiguous About/General scalar and Topics display paths have been wired here. Compound choices and other reports can still expose the existing internal paths/values pending #481; the overall new reporting contract is not complete.
+This reference describes current source, not the contract of every published CLI or pinned Action. Read the [published package boundary](github-actions.md#published-package-and-consumer-pins) before adoption. This change does not upgrade a pin or publish a release. [#480](https://github.com/daiksud/gh-settings/issues/480) still owns out-of-UI observation normalization/warnings; [#481](https://github.com/daiksud/gh-settings/issues/481) owns complete UI reporting. Out-of-UI workflow permission strings use the explicit observation policy below; other out-of-UI observations still fail pending the remaining normalization work. Observed fallbacks never populate omitted desired fields. Only unambiguous About/General scalar and Topics display paths have been wired here. Compound choices and other reports can still expose the existing internal paths/values pending #481; the overall new reporting contract is not complete.
 
 ## Supported fields
 
@@ -123,6 +123,8 @@ These fields belong to `repository.settings.actions.general`:
 | `allow_github_actions_to_create_and_approve_pull_requests` | boolean |
 
 Each is independent and optional. `export --workflow-permissions` includes both after complete acquisition without acquiring execution policy. Omission is unmanaged, false remains explicit, and unknown choices/null/wrong types fail locally. Apply uses declared-only workflow-policy members, complete fresh reads/readback and the existing direct-apply semantics. Organization refusal can leave an earlier execution-policy update applied. This declaration does not create tokens or waive a PR's approval requirements. See [workflow permissions](features/workflow-permissions.feature.md).
+
+A complete successful workflow-policy GET with a correctly typed permission string outside the UI choices uses `read_repository_contents_and_packages_permissions` and emits a warning naming the YAML field, raw token and fallback. Missing/null members, wrong types and failed reads remain acquisition errors. Export saves the UI fallback without changing GitHub. Plan retains an actionable write-required comparison even if the desired choice equals that fallback; it does not claim independently observed zero drift. Apply sends only declared members and confirms the requested permission against a fresh raw readback. An unchanged out-of-UI token fails verification with possible write effects retained. An omitted permission remains unmanaged and is verified as an unchanged raw companion during approval-only writes, without replaying or printing the fallback.
 
 ## Fork PR workflow policies
 
@@ -267,9 +269,9 @@ Scalar omission is unmanaged. Labels/Rulesets own only listed whole objects with
 
 ## Exported values
 
-Export completes every requested read and conversion before replacing the destination. Complete failures do not produce plausible partial/empty YAML. Unknown API-only choices and incomplete data currently fail pending #480. Ordinary export includes About, Labels and supported visible General controls; archive and additional settings require explicit options. Hidden conditional controls are omitted without replaying latent API values as selected intent. IDs, false/zero/empty values and nullable Pages domains retain their declared meanings.
+Export completes every requested read and conversion before replacing the destination. Complete failures do not produce plausible partial/empty YAML. Incomplete data remains an acquisition failure. Correctly typed out-of-UI workflow permission strings follow the [explicit fallback policy](#default-workflow-permissions); other unknown API-only choices still fail pending the remaining #480 work. Ordinary export includes About, Labels and supported visible General controls; archive and additional settings require explicit options. Hidden conditional controls are omitted without replaying latent API values as selected intent. IDs, false/zero/empty values and nullable Pages domains retain their declared meanings.
 
-An export followed by validate/plan roundtrips supported acquired values, subject to the write-only and API-controlled omission limits below. Export does not claim live entitlement, effective protection or transactional apply. It overwrites existing declaration content, including write-only intent it cannot export; review before adoption.
+An export followed by validate/plan roundtrips exact supported acquired values, subject to the write-only and API-controlled omission limits below. A normalized fallback does not establish raw equality. Export does not claim live entitlement, effective protection or transactional apply. It overwrites existing declaration content, including write-only intent it cannot export; review before adoption.
 
 ## Rulesets
 

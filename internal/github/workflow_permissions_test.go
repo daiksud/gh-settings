@@ -13,7 +13,7 @@ import (
 )
 
 func TestWorkflowPermissionsCompleteReads(t *testing.T) {
-	for _, body := range []string{`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`, `{"default_workflow_permissions":"write","can_approve_pull_request_reviews":true}`, `{}`, `null`, `{"default_workflow_permissions":"unknown","can_approve_pull_request_reviews":false}`, `{"default_workflow_permissions":"read","can_approve_pull_request_reviews":null}`, `{"default_workflow_permissions":null,"can_approve_pull_request_reviews":false}`} {
+	for _, body := range []string{`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`, `{"default_workflow_permissions":"write","can_approve_pull_request_reviews":true}`, `{}`, `null`, `{"default_workflow_permissions":"read","can_approve_pull_request_reviews":null}`, `{"default_workflow_permissions":null,"can_approve_pull_request_reviews":false}`} {
 		client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
 			if req.Method != "GET" || req.URL.Path != "/repos/owner/current/actions/permissions/workflow" {
 				t.Fatal(req.Method, req.URL)

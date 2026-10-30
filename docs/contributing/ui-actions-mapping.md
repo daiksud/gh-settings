@@ -61,7 +61,7 @@ The last two labels display the actual owner in GitHub. The selected radio revea
 | `require_approval_for_first_time_contributors` | `first_time_contributors` |
 | `require_approval_for_all_external_contributors` | `all_external_contributors` |
 
-API tokens are not accepted as UI choices. Unknown acquired API choices fail explicitly; their normalization belongs to #480. Named observation-default candidates are `allow_all_actions_and_reusable_workflows`, `read_repository_contents_and_packages_permissions` and `require_approval_for_first_time_contributors`. The official settings guide identifies first-time contributors as the default public-fork approval policy.[^actions-settings] These constants are handoff metadata, never automatic defaults for omitted declarations, missing responses or denied acquisition. There is no invented retention or private-fork default.
+API tokens are not accepted as UI choices. Complete out-of-UI workflow permission strings now use their defined fallback with raw provenance and warnings under #480; other unknown acquired API choices still fail pending the remaining work. Named observation-default candidates are `allow_all_actions_and_reusable_workflows`, `read_repository_contents_and_packages_permissions` and `require_approval_for_first_time_contributors`. The official settings guide identifies first-time contributors as the default public-fork approval policy.[^actions-settings] The workflow fallback is active; the other named constants remain handoff metadata. None supplies defaults for omitted declarations, missing responses or denied acquisition. There is no invented retention or private-fork default.
 
 ## Presence, hidden values and applicability
 

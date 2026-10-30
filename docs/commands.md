@@ -19,7 +19,7 @@ gh settings apply [--no-writeback]
 
 | Command | Contract |
 | --- | --- |
-| `export` | Read ordinary and explicitly selected settings and silently save `.github/settings.yml`. Existing configuration is not required. |
+| `export` | Read ordinary and explicitly selected settings and save `.github/settings.yml`. Existing configuration is not required. |
 | `validate` | Check the configuration locally against the supported schema. |
 | `plan` | Validate, then read managed resources and show comparisons/selected-object operations. |
 | `apply` | Validate, then execute the declared families in order with their existing reconciliation/preflight rules. |
@@ -70,7 +70,7 @@ Export uses the [repository and authentication rules](#repository-and-authentica
 
 Export creates `.github` when missing and always overwrites an existing regular `.github/settings.yml`, without a confirmation or overwrite flag. Symlinks at `.github` or `settings.yml`, including dangling links, and other non-regular destinations are rejected. A read or serialization failure leaves the destination untouched. A write failure can leave it truncated or partially written; use Git to restore tracked configuration.
 
-Success is silent and exits 0. Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
+Success writes no stdout and exits 0. Explicit observation-normalization warnings and excluded push Ruleset diagnostics can appear on stderr; see the [configured field semantics](settings.md#default-workflow-permissions). Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
 
 ```sh
 gh settings export

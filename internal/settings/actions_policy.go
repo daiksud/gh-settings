@@ -157,9 +157,11 @@ func (s ActionsPolicyState) Declaration() (ActionsPolicyDeclaration, error) {
 type ActionsPolicyChange struct {
 	field         string
 	before, after any
+	normalization ObservationNormalization
 }
 
-func (c ActionsPolicyChange) Field() string { return c.field }
+func (c ActionsPolicyChange) Field() string                           { return c.field }
+func (c ActionsPolicyChange) Normalization() ObservationNormalization { return c.normalization }
 func copyActionValue(v any) any {
 	if a, ok := v.([]string); ok {
 		return append([]string{}, a...)
@@ -253,7 +255,13 @@ func ValidateActionsPolicyChanges(changes []ActionsPolicyChange) error {
 			return fmt.Errorf("duplicate Actions change")
 		}
 		seen[c.field] = true
-		if _, err := NewActionsPolicyChange(c.field, c.before, c.after); err != nil {
+		var err error
+		if c.normalization != (ObservationNormalization{}) {
+			_, err = NewActionsPolicyChangeWithNormalization(c.field, c.before, c.after, c.normalization)
+		} else {
+			_, err = NewActionsPolicyChange(c.field, c.before, c.after)
+		}
+		if err != nil {
 			return err
 		}
 		if c.before == nil {
