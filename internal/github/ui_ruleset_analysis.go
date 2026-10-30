@@ -8,7 +8,6 @@ import (
 
 var uiRulesetScanningAlerts = map[uimodel.CodeScanningAlerts]string{"none": "none", "errors": "errors", "errors_and_warnings": "errors_and_warnings", "all": "all"}
 var uiRulesetSecurityAlerts = map[uimodel.CodeScanningSecurityAlerts]string{"none": "none", "critical": "critical", "high_or_higher": "high_or_higher", "medium_or_higher": "medium_or_higher", "all": "all"}
-var uiRulesetQualitySeverity = map[uimodel.CodeQualitySeverity]string{"errors": "errors", "warnings_and_higher": "warnings", "notes_and_higher": "notes", "all": "all"}
 
 func declareUIRulesetChoice[T ~string](choice T, choices map[T]string, label string) (string, error) {
 	value, ok := choices[choice]
@@ -66,17 +65,17 @@ func declareUIRulesetQuality(ui uimodel.CodeQualityRule) (*settings.RuleParamete
 	if ui.Severity == nil {
 		return nil, fmt.Errorf("require_code_quality_results requires severity")
 	}
-	severity, err := declareUIRulesetChoice(*ui.Severity, uiRulesetQualitySeverity, "severity")
-	if err != nil {
-		return nil, err
+	severity, valid := settings.RulesetQualitySeverityValueForChoice(*ui.Severity)
+	if !valid {
+		return nil, fmt.Errorf("unsupported UI severity choice %q", *ui.Severity)
 	}
 	return &settings.RuleParameters{Severity: &severity}, nil
 }
 
 func observeUIRulesetQuality(p *settings.RuleParameters) (*uimodel.CodeQualityRule, error) {
-	severity, err := observeUIRulesetChoice(*p.Severity, uiRulesetQualitySeverity, "severity")
-	if err != nil {
-		return nil, err
+	severity, valid := settings.RulesetQualitySeverityChoiceForValue(*p.Severity)
+	if !valid {
+		return nil, fmt.Errorf("severity is outside UI choices")
 	}
 	return &uimodel.CodeQualityRule{Severity: &severity}, nil
 }

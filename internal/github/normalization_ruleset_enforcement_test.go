@@ -28,7 +28,7 @@ func TestObservedRulesetEnforcementDecoderPreservesSourceAndStrictVerification(t
 				want = "disabled"
 				wantRecord = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: token, Fallback: "disabled"}
 			}
-			if err != nil || policy.Enforcement == nil || *policy.Enforcement != want || record != wantRecord || !reflect.DeepEqual(raw, before) {
+			if err != nil || policy.Enforcement == nil || *policy.Enforcement != want || record.Enforcement != wantRecord || record.QualitySeverity != (settings.ObservationNormalization{}) || !reflect.DeepEqual(raw, before) {
 				t.Fatal(policy, record, err, raw, before)
 			}
 			if token != "active" && token != "disabled" {
@@ -68,7 +68,7 @@ func TestObservedRulesetEnforcementDecoderRejectsIncompletePolicy(t *testing.T) 
 			before[key] = bytes.Clone(value)
 		}
 		policy, record, err := decodeObservedRulesetPolicy(raw)
-		if err == nil || !reflect.DeepEqual(policy, settings.RulesetDeclaration{}) || record != (settings.ObservationNormalization{}) || !reflect.DeepEqual(raw, before) {
+		if err == nil || !reflect.DeepEqual(policy, settings.RulesetDeclaration{}) || record != (settings.RulesetNormalizations{}) || !reflect.DeepEqual(raw, before) {
 			t.Fatal("invalid partial policy escaped", policy, record, err)
 		}
 	}

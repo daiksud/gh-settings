@@ -13,12 +13,12 @@ func TestRulesetEnforcementChangesOwnActionableWholeObjects(t *testing.T) {
 			before.ID = rsID(7)
 			after := cloneRuleset(before)
 			after.Enforcement = rsText(desired)
-			change, err := NewRulesetChangeWithEnforcementNormalization("update", 7, &before, &after, state.EnforcementNormalization)
-			if err != nil || change.Operation() != "update" || change.ID() != 7 || change.EnforcementNormalization() != state.EnforcementNormalization {
+			change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, RulesetNormalizations{Enforcement: state.EnforcementNormalization})
+			if err != nil || change.Operation() != "update" || change.ID() != 7 || change.Normalizations().Enforcement != state.EnforcementNormalization {
 				t.Fatal(change, err)
 			}
 			display := change.Display()
-			if display.Operation() != "update" || display.EnforcementNormalization() != state.EnforcementNormalization || *display.Before().Enforcement != "disabled" || *display.After().Enforcement != desired {
+			if display.Operation() != "update" || display.Normalizations().Enforcement != state.EnforcementNormalization || *display.Before().Enforcement != "disabled" || *display.After().Enforcement != desired {
 				t.Fatal(display)
 			}
 			before.Name = "mutated caller"
@@ -102,13 +102,13 @@ func TestRulesetEnforcementChangeRejectsForgedOrUnboundPolicies(t *testing.T) {
 		op, id := "update", int64(7)
 		record := state.EnforcementNormalization
 		mutate(&op, &id, &b, &a, &record)
-		change, err := NewRulesetChangeWithEnforcementNormalization(op, id, b, a, record)
+		change, err := NewRulesetChangeWithNormalizations(op, id, b, a, RulesetNormalizations{Enforcement: record})
 		if err == nil || !reflect.DeepEqual(change, RulesetChange{}) {
 			t.Fatal("invalid normalized operation accepted", change, err)
 		}
 		// Display has no separate ID argument; all other malformed evidence is identical.
 		if id != 0 {
-			display, err := NewRulesetDisplayChangeWithEnforcementNormalization(op, b, a, record)
+			display, err := NewRulesetDisplayChangeWithNormalizations(op, b, a, RulesetNormalizations{Enforcement: record})
 			if err == nil || !reflect.DeepEqual(display, RulesetDisplayChange{}) {
 				t.Fatal("invalid normalized display accepted", display, err)
 			}
@@ -121,7 +121,7 @@ func TestNormalizedRulesetDisplayOmitsWriteOnlyDismissal(t *testing.T) {
 	before.ID, before.Enforcement = rsID(7), rsText("disabled")
 	after := cloneRuleset(before)
 	record := ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
-	change, err := NewRulesetChangeWithEnforcementNormalization("update", 7, &before, &after, record)
+	change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, RulesetNormalizations{Enforcement: record})
 	if err != nil {
 		t.Fatal(err)
 	}

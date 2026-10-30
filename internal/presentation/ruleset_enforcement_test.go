@@ -21,7 +21,7 @@ func TestNormalizedRulesetEnforcementPresentationRetainsWholeObjectContext(t *te
 			t.Fatal(err)
 		}
 		record := settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
-		change, err := settings.NewRulesetDisplayChangeWithEnforcementNormalization("update", &before, &after, record)
+		change, err := settings.NewRulesetDisplayChangeWithNormalizations("update", &before, &after, settings.RulesetNormalizations{Enforcement: record})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func TestRulesetEnforcementWarningEscapesRawAndName(t *testing.T) {
 		t.Fatal(err)
 	}
 	before.Name, after.Name = `policy "quoted" <name>`, `policy "quoted" <name>`
-	change, err := settings.NewRulesetDisplayChangeWithEnforcementNormalization("update", &before, &after, record)
+	change, err := settings.NewRulesetDisplayChangeWithNormalizations("update", &before, &after, settings.RulesetNormalizations{Enforcement: record})
 	if err != nil {
 		t.Fatal(err)
 	}

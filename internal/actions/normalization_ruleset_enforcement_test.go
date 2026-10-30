@@ -27,7 +27,7 @@ func enforcementReportChange(t *testing.T, raw, desired string) settings.Ruleset
 		t.Fatal(err)
 	}
 	after.Enforcement = &desired
-	change, err := settings.NewRulesetChangeWithEnforcementNormalization("update", 7, &before, &after, settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: raw, Fallback: "disabled"})
+	change, err := settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, settings.RulesetNormalizations{Enforcement: settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: raw, Fallback: "disabled"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestRulesetEnforcementPrivateReportRetainsClosedEvidence(t *testing.T) {
 			if err := json.Unmarshal(data, &report); err != nil {
 				t.Fatal(err)
 			}
-			if report.Outcome != "changed" || report.Managed != 1 || len(report.Rulesets) != 1 || report.Rulesets[0].EnforcementNormalization == nil || *report.Rulesets[0].EnforcementNormalization != change.EnforcementNormalization() {
+			if report.Outcome != "changed" || report.Managed != 1 || len(report.Rulesets) != 1 || report.Rulesets[0].EnforcementNormalization == nil || *report.Rulesets[0].EnforcementNormalization != change.Normalizations().Enforcement {
 				t.Fatal("provenance lost", string(data))
 			}
 			content, err := actions.RenderSummary(report, summaryMetadata())
@@ -94,7 +94,7 @@ func TestRulesetEnforcementReportRejectsForgedProof(t *testing.T) {
 		func(r *actions.PlanReport) { r.Rulesets = append(r.Rulesets, r.Rulesets[0]) },
 	} {
 		c := enforcementReportChange(t, "", "disabled")
-		record := c.EnforcementNormalization()
+		record := c.Normalizations().Enforcement
 		r := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Rulesets: []actions.RulesetPlanChange{{Operation: "update", Before: c.Display().Before(), After: c.Display().After(), EnforcementNormalization: &record}}}
 		if _, err := actions.RenderSummary(r, summaryMetadata()); err != nil {
 			t.Fatal("empty acquired raw rejected", err)

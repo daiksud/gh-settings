@@ -6,12 +6,12 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// decodeObservedRulesetPolicy projects only acquired enforcement; mutation
+// decodeObservedRulesetPolicy projects acquired enforcement and Quality severity; mutation
 // verification continues to use the strict decoder against raw responses.
-func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, settings.ObservationNormalization, error) {
+func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, settings.RulesetNormalizations, error) {
 	var enforcement string
 	if err := requiredRuleJSON(raw, "enforcement", &enforcement); err != nil {
-		return settings.RulesetDeclaration{}, settings.ObservationNormalization{}, err
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
 	copy := make(map[string]json.RawMessage, len(raw))
 	for key, value := range raw {
@@ -22,14 +22,19 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 		fallback, _ := settings.RulesetEnforcementValueForChoice(settings.DefaultRulesetEnforcementChoice)
 		value, err := json.Marshal(fallback)
 		if err != nil {
-			return settings.RulesetDeclaration{}, settings.ObservationNormalization{}, err
+			return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 		}
 		copy["enforcement"] = value
 		record = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: enforcement, Fallback: string(settings.DefaultRulesetEnforcementChoice)}
 	}
+	rules, quality, err := prepareRulesetQualityRules(raw["rules"])
+	if err != nil {
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
+	}
+	copy["rules"] = rules
 	policy, err := decodeRulesetPolicy(copy)
 	if err != nil {
-		return settings.RulesetDeclaration{}, settings.ObservationNormalization{}, err
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
-	return policy, record, nil
+	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality}, nil
 }
