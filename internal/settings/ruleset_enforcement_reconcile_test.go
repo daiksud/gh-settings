@@ -23,7 +23,7 @@ func TestNormalizedRulesetEnforcementReconciliationOwnsOnlySelectedIDs(t *testin
 				t.Fatal(changes, err)
 			}
 			for i, state := range []RulesetState{second, first} {
-				if changes[i].Operation() != "update" || changes[i].EnforcementNormalization() != state.EnforcementNormalization || changes[i].Display().EnforcementNormalization() != state.EnforcementNormalization {
+				if changes[i].Operation() != "update" || changes[i].Normalizations().Enforcement != state.EnforcementNormalization || changes[i].Display().Normalizations().Enforcement != state.EnforcementNormalization {
 					t.Fatal("selected evidence lost", changes[i])
 				}
 			}
