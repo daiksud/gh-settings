@@ -6,7 +6,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// decodeObservedRulesetPolicy projects acquired enforcement and Quality severity; mutation
+// decodeObservedRulesetPolicy projects acquired enforcement, approval count and Quality severity; mutation
 // verification continues to use the strict decoder against raw responses.
 func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, settings.RulesetNormalizations, error) {
 	var enforcement string
@@ -31,10 +31,14 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
+	rules, approvals, err := prepareRulesetRequiredApprovalsRules(rules)
+	if err != nil {
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
+	}
 	copy["rules"] = rules
 	policy, err := decodeRulesetPolicy(copy)
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
-	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality}, nil
+	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality, RequiredApprovals: approvals}, nil
 }

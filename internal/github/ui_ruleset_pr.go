@@ -7,7 +7,7 @@ import (
 )
 
 func declareUIRulesetPR(ui uimodel.PullRequestRule) (*settings.RuleParameters, error) {
-	if ui.RequiredApprovals != nil && (*ui.RequiredApprovals < 0 || *ui.RequiredApprovals > 10) {
+	if ui.RequiredApprovals != nil && !settings.RulesetRequiredApprovalsSupported(*ui.RequiredApprovals) {
 		return nil, fmt.Errorf("required_approvals must be a UI choice from 0 to 10")
 	}
 	result := &settings.RuleParameters{
@@ -47,7 +47,7 @@ func declareUIRulesetPR(ui uimodel.PullRequestRule) (*settings.RuleParameters, e
 }
 
 func observeUIRulesetPR(p *settings.RuleParameters) (*uimodel.PullRequestRule, error) {
-	if p == nil || p.RequiredApprovingReviewCount == nil || *p.RequiredApprovingReviewCount > 10 || *p.RequiredApprovingReviewCount < 0 {
+	if p == nil || p.RequiredApprovingReviewCount == nil || !settings.RulesetRequiredApprovalsSupported(*p.RequiredApprovingReviewCount) {
 		return nil, fmt.Errorf("required_approvals is missing or outside UI choices")
 	}
 	result := &uimodel.PullRequestRule{

@@ -9,7 +9,7 @@ func (state RulesetState) validateNormalizationEvidence() error {
 	if state.ID <= 0 {
 		return fmt.Errorf("Ruleset observation requires a positive ID")
 	}
-	if (state.EnforcementNormalization != (ObservationNormalization{}) || state.QualitySeverityNormalization != (ObservationNormalization{})) && state.Policy.ID != nil && *state.Policy.ID != state.ID {
+	if (state.EnforcementNormalization != (ObservationNormalization{}) || state.QualitySeverityNormalization != (ObservationNormalization{}) || state.RequiredApprovalsNormalization != (RulesetRequiredApprovalsNormalization{})) && state.Policy.ID != nil && *state.Policy.ID != state.ID {
 		return fmt.Errorf("Ruleset observation provenance conflicts with policy ID")
 	}
 	if record := state.EnforcementNormalization; record != (ObservationNormalization{}) {
@@ -25,6 +25,12 @@ func (state RulesetState) validateNormalizationEvidence() error {
 		_, supported := RulesetQualitySeverityChoiceForValue(record.RawValue)
 		if severity == nil || *severity != fallback || record.Path != RulesetQualitySeverityPath || record.Fallback != string(DefaultRulesetQualitySeverityChoice) || supported {
 			return fmt.Errorf("invalid Ruleset quality observation provenance")
+		}
+	}
+	if record := state.RequiredApprovalsNormalization; record != (RulesetRequiredApprovalsNormalization{}) {
+		count := rulesetRequiredApprovals(state.Policy)
+		if count == nil || *count != DefaultRulesetRequiredApprovals || record.Path != RulesetRequiredApprovalsPath || record.Fallback != DefaultRulesetRequiredApprovals || RulesetRequiredApprovalsSupported(record.RawValue) {
+			return fmt.Errorf("invalid Ruleset required approvals observation provenance")
 		}
 	}
 	return nil

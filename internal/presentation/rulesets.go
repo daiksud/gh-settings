@@ -25,6 +25,17 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 		decision := fmt.Sprintf("%s (Ruleset %d %q): %s (normalized observation) → %s (write required)", record.Path, id, change.Name(), strconv.Quote(record.Fallback), strconv.Quote(*desired.Enforcement))
 		details = append(details, RulesetNormalizationLine(id, change.Name(), record), decision)
 	}
+	if record := records.RequiredApprovals; record != (settings.RulesetRequiredApprovalsNormalization{}) {
+		afterChoice := "inactive (rule removed; write required)"
+		for _, rule := range *desired.Rules {
+			if rule.Type == "pull_request" {
+				afterChoice = strconv.Itoa(*rule.Parameters.RequiredApprovingReviewCount) + " (write required)"
+				break
+			}
+		}
+		decision := fmt.Sprintf("%s (Ruleset %d %q): %d (normalized observation) → %s", record.Path, id, change.Name(), record.Fallback, afterChoice)
+		details = append(details, RulesetRequiredApprovalsNormalizationLine(id, change.Name(), record), decision)
+	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) {
 		afterChoice := "inactive (rule removed; write required)"
 		for _, rule := range *desired.Rules {
@@ -42,4 +53,8 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 
 func RulesetNormalizationLine(id int64, name string, record settings.ObservationNormalization) string {
 	return fmt.Sprintf("%s Ruleset %d %q.", NormalizationLine(record), id, name)
+}
+
+func RulesetRequiredApprovalsNormalizationLine(id int64, name string, record settings.RulesetRequiredApprovalsNormalization) string {
+	return fmt.Sprintf("Warning: %s: observed %d is outside UI choices; using %d (projection only). Ruleset %d %q.", record.Path, record.RawValue, record.Fallback, id, name)
 }
