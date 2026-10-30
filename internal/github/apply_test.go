@@ -79,9 +79,9 @@ func TestApplyRepositoryFailures(t *testing.T) {
 
 func writeTestClient(t *testing.T, transport transportFunc) *Client {
 	t.Helper()
-	rest, err := api.NewRESTClient(api.ClientOptions{Host: "github.com", AuthToken: "test-token", LogIgnoreEnv: true, Transport: transport})
+	client, err := newWriteClient(api.ClientOptions{Host: "github.com", AuthToken: "test-token", LogIgnoreEnv: true, Transport: transport})
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Client{rest: rest}
+	return client
 }

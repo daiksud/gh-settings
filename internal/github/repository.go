@@ -10,9 +10,11 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// Client reads and updates repository settings through the selected REST client.
+// Client reads and updates repository settings, verifying managed message menus.
 type Client struct {
-	rest *api.RESTClient
+	rest                              *api.RESTClient
+	commitMessages                    *MergeMethodsClient
+	CommitMessageNormalizationWarning func(settings.CommitMessageNormalization)
 }
 
 // NewReadClient configures the existing gh authentication and read timeout.

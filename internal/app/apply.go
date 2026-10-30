@@ -70,7 +70,12 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 	index := firstOrdinary
 	if repositoryManaged {
 		if err := write.Repository(repo, other); err != nil {
-			result.failOperation(index, OperationFailedUnknown)
+			status := OperationFailedUnknown
+			var readFailure PreWriteReadFailure
+			if errors.As(err, &readFailure) {
+				status = OperationFailedRead
+			}
+			result.failOperation(index, status)
 			return result, err
 		}
 		result.Operations[index].Status = OperationCompleted

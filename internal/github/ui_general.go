@@ -31,11 +31,11 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 		Archived:                 copyUIValue(general.DangerZone.ArchiveThisRepository),
 	}
 	var err error
-	result.MergeCommitTitle, result.MergeCommitMessage, err = declareCommitMessage(general.PullRequests.MergeCommit.DefaultCommitMessage, general.PullRequests.AllowMergeCommits, mergeCommitMenu[:], "merge_commit")
+	result.MergeCommitTitle, result.MergeCommitMessage, err = declareCommitMessage(general.PullRequests.MergeCommit.DefaultCommitMessage, general.PullRequests.AllowMergeCommits, settings.MergeCommitMenu)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
-	result.SquashMergeCommitTitle, result.SquashMergeCommitMessage, err = declareCommitMessage(general.PullRequests.SquashMerge.DefaultCommitMessage, general.PullRequests.AllowSquashMerging, squashCommitMenu[:], "squash_merge")
+	result.SquashMergeCommitTitle, result.SquashMergeCommitMessage, err = declareCommitMessage(general.PullRequests.SquashMerge.DefaultCommitMessage, general.PullRequests.AllowSquashMerging, settings.SquashCommitMenu)
 	if err != nil {
 		return settings.RepositoryDeclaration{}, err
 	}
@@ -50,8 +50,9 @@ func GeneralDeclaration(general uimodel.General) (settings.RepositoryDeclaration
 	return result, nil
 }
 
-// GeneralConditionalValues retains owned API values behind conditional controls.
-// Nil values remain independently unacquired; these never supply desired intent.
+// GeneralConditionalValues owns the supplied native values behind conditional controls.
+// They may already contain effective projections; original wire evidence belongs
+// to observation normalization sidecars. Nil remains unacquired, never intent.
 type GeneralConditionalValues struct {
 	IssueCreationPolicy, PullRequestCreationPolicy   *string
 	MergeCommitTitle, MergeCommitMessage             *string
@@ -59,7 +60,7 @@ type GeneralConditionalValues struct {
 }
 type PreparedGeneral struct {
 	uimodel.General
-	RawConditionalValues GeneralConditionalValues
+	NativeConditionalValues GeneralConditionalValues
 }
 
 // GeneralObservation projects acquired, validated adapter values, preserving
@@ -80,11 +81,11 @@ func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, 
 		DangerZone: uimodel.DangerZone{ArchiveThisRepository: copyUIValue(state.Archived)},
 	}
 	var err error
-	result.PullRequests.MergeCommit.DefaultCommitMessage, err = observeCommitMessage(state.MergeCommitTitle, state.MergeCommitMessage, mergeCommitMenu[:], "merge_commit")
+	result.PullRequests.MergeCommit.DefaultCommitMessage, err = observeCommitMessage(state.MergeCommitTitle, state.MergeCommitMessage, settings.MergeCommitMenu)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}
-	result.PullRequests.SquashMerge.DefaultCommitMessage, err = observeCommitMessage(state.SquashMergeCommitTitle, state.SquashMergeCommitMessage, squashCommitMenu[:], "squash_merge")
+	result.PullRequests.SquashMerge.DefaultCommitMessage, err = observeCommitMessage(state.SquashMergeCommitTitle, state.SquashMergeCommitMessage, settings.SquashCommitMenu)
 	if err != nil {
 		return PreparedGeneral{}, err
 	}
@@ -108,7 +109,7 @@ func GeneralObservation(state settings.RepositoryDeclaration) (PreparedGeneral, 
 	if state.AllowSquashMerge != nil && !*state.AllowSquashMerge {
 		result.PullRequests.SquashMerge.DefaultCommitMessage = nil
 	}
-	return PreparedGeneral{General: result, RawConditionalValues: GeneralConditionalValues{
+	return PreparedGeneral{General: result, NativeConditionalValues: GeneralConditionalValues{
 		IssueCreationPolicy: copyUIValue(state.IssueCreationPolicy), PullRequestCreationPolicy: copyUIValue(state.PullRequestCreationPolicy),
 		MergeCommitTitle: copyUIValue(state.MergeCommitTitle), MergeCommitMessage: copyUIValue(state.MergeCommitMessage),
 		SquashMergeCommitTitle: copyUIValue(state.SquashMergeCommitTitle), SquashMergeCommitMessage: copyUIValue(state.SquashMergeCommitMessage),
