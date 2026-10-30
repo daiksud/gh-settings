@@ -34,10 +34,11 @@ type PlanReport struct {
 
 // PlanChange retains the native string, boolean, integer or string-list comparison values.
 type PlanChange struct {
-	Field         string                             `json:"field"`
-	Before        any                                `json:"before"`
-	After         any                                `json:"after"`
-	Normalization *settings.ObservationNormalization `json:"normalization,omitempty"`
+	Field                       string                                `json:"field"`
+	Before                      any                                   `json:"before"`
+	After                       any                                   `json:"after"`
+	Normalization               *settings.ObservationNormalization    `json:"normalization,omitempty"`
+	SecurityStatusNormalization *settings.SecurityStatusNormalization `json:"security_status_normalization,omitempty"`
 }
 
 func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
@@ -106,7 +107,11 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, change := range result.Comparison.Security {
 		before, after := change.Values()
-		report.Security = append(report.Security, PlanChange{Field: change.Field(), Before: before, After: after})
+		entry := PlanChange{Field: change.Field(), Before: before, After: after}
+		if normalization := change.Normalization(); normalization != (settings.SecurityStatusNormalization{}) {
+			entry.SecurityStatusNormalization = &normalization
+		}
+		report.Security = append(report.Security, entry)
 	}
 	for _, c := range result.Comparison.Pages {
 		b, a := c.Values()

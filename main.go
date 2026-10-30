@@ -29,7 +29,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
+			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -45,7 +45,9 @@ func main() {
 			if options.NoWriteback || os.Getenv("GITHUB_ACTIONS") == "true" {
 				record = nil
 			}
-			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: readPages, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: readSecretScanning, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, ReadImmutableReleases: readImmutableReleases, ImmutableReleases: writeImmutableReleases, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadForkApproval: readForkApprovalForApply, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
+			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: readPages, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
+				return readSecretScanningForApply(repo, desired.Security)
+			}, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, ReadImmutableReleases: readImmutableReleases, ImmutableReleases: writeImmutableReleases, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadForkApproval: readForkApprovalForApply, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
 		},
 	}))
 }
@@ -190,11 +192,27 @@ func readSecretScanning(repo repository.Repository) (settings.SecretScanningObse
 	}
 	return client.Read(repo)
 }
+func readSecretScanningForApply(repo repository.Repository, desired settings.SecurityDeclaration) (settings.SecretScanningObservation, error) {
+	observed, err := readSecretScanning(repo)
+	if err != nil {
+		return settings.SecretScanningObservation{}, err
+	}
+	if _, _, err := observed.Values(); err != nil {
+		return settings.SecretScanningObservation{}, err
+	}
+	for _, record := range observed.Normalizations() {
+		if record.Path == settings.SecretProtectionControl.Path() && desired.SecretScanning != nil || record.Path == settings.PushProtectionControl.Path() && desired.PushProtection != nil {
+			warnSecurityStatusNormalization(record)
+		}
+	}
+	return observed, nil
+}
 func writeSecretScanning(repo repository.Repository, change settings.SecurityChange) (bool, error) {
 	client, err := github.NewSecretScanningClient(repo.Host)
 	if err != nil {
 		return false, err
 	}
+	client.NormalizationWarning = warnSecurityStatusNormalization
 	return client.Update(repo, change)
 }
 
@@ -325,4 +343,8 @@ func warnNormalization(normalization settings.ObservationNormalization) {
 
 func warnCommitMessageNormalization(normalization settings.CommitMessageNormalization) {
 	fmt.Fprintln(os.Stderr, presentation.CommitMessageNormalizationLine(normalization))
+}
+
+func warnSecurityStatusNormalization(record settings.SecurityStatusNormalization) {
+	fmt.Fprintln(os.Stderr, presentation.SecurityStatusNormalizationLine(record))
 }

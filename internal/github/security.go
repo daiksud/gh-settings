@@ -13,7 +13,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-type SecretScanningClient struct{ rest *api.RESTClient }
+type SecretScanningClient struct {
+	rest                 *api.RESTClient
+	NormalizationWarning func(settings.SecurityStatusNormalization)
+}
 type securityPreWriteFailure struct{ cause error }
 
 func (e *securityPreWriteFailure) Error() string        { return e.cause.Error() }
@@ -41,16 +44,28 @@ func (c *SecretScanningClient) Read(repo repository.Repository) (settings.Secret
 	if json.Unmarshal(root["security_and_analysis"], &block) != nil || block == nil {
 		return settings.SecretScanningObservation{}, fmt.Errorf("GitHub returned hidden/null or invalid security_and_analysis")
 	}
-	values := make([]bool, 0, 2)
-	for _, key := range []string{"secret_scanning", "secret_scanning_push_protection"} {
+	var statuses [2]string
+	for i, key := range []string{"secret_scanning", "secret_scanning_push_protection"} {
 		var field map[string]json.RawMessage
 		var status *string
-		if json.Unmarshal(block[key], &field) != nil || field == nil || json.Unmarshal(field["status"], &status) != nil || status == nil || (*status != "enabled" && *status != "disabled") {
+		if json.Unmarshal(block[key], &field) != nil || field == nil || json.Unmarshal(field["status"], &status) != nil || status == nil {
 			return settings.SecretScanningObservation{}, fmt.Errorf("GitHub returned missing/null or unsupported %s status", key)
 		}
-		values = append(values, *status == "enabled")
+		statuses[i] = *status
 	}
-	return settings.NewSecretScanningObservation(values[0], values[1]), nil
+	var values [2]bool
+	var records []settings.SecurityStatusNormalization
+	for i, control := range []settings.SecurityStatusControl{settings.SecretProtectionControl, settings.PushProtectionControl} {
+		prepared, err := prepareSecurityStatusObservation(&statuses[i], control)
+		if err != nil {
+			return settings.SecretScanningObservation{}, err
+		}
+		values[i] = *prepared.Value
+		if prepared.Normalization != (settings.SecurityStatusNormalization{}) {
+			records = append(records, prepared.Normalization)
+		}
+	}
+	return settings.NewSecretScanningObservationWithNormalizations(values[0], values[1], records)
 }
 
 // Update writes one declared member after a fresh prerequisite read. It verifies
@@ -59,25 +74,27 @@ func (c *SecretScanningClient) Update(repo repository.Repository, change setting
 	if change.Field() != "security.secret_scanning" && change.Field() != "security.secret_scanning_push_protection" {
 		return false, &securityPreWriteFailure{fmt.Errorf("change does not belong to Secret scanning")}
 	}
-	before, after := change.Values()
-	if _, err := settings.NewSecurityChange(change.Field(), before, after); err != nil {
+	_, after := change.Values()
+	if err := settings.ValidateSecurityChanges([]settings.SecurityChange{change}); err != nil {
 		return false, &securityPreWriteFailure{err}
 	}
 	current, err := c.Read(repo)
 	if err != nil {
 		return false, &securityPreWriteFailure{err}
 	}
+	c.warnStatusNormalization(current, change.Field())
 	expected, err := settings.AfterSecretScanningChange(current, change)
 	if err != nil {
 		return false, &securityPreWriteFailure{err}
 	}
-	if current == expected {
+	matching, err := sameRawSecretScanningStatuses(expected, current)
+	if err != nil {
+		return false, &securityPreWriteFailure{err}
+	}
+	if matching {
 		return false, nil
 	}
-	status := "disabled"
-	if after {
-		status = "enabled"
-	}
+	status := settings.SecurityStatusForValue(after)
 	payload := map[string]any{"security_and_analysis": map[string]any{strings.TrimPrefix(change.Field(), "security."): map[string]string{"status": status}}}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -91,7 +108,12 @@ func (c *SecretScanningClient) Update(repo repository.Repository, change setting
 	if err != nil {
 		return false, fmt.Errorf("verify %s (write effects may already have applied): %w", change.Field(), err)
 	}
-	if actual != expected {
+	c.warnStatusNormalization(actual, change.Field())
+	matching, err = sameRawSecretScanningStatuses(expected, actual)
+	if err != nil {
+		return false, fmt.Errorf("verify %s (write effects may already have applied): %w", change.Field(), err)
+	}
+	if !matching {
 		return false, fmt.Errorf("GitHub did not retain requested %s or its companion (write effects may already have applied)", change.Field())
 	}
 	return true, nil
