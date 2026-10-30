@@ -534,7 +534,7 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior.ID = &id
 		comparableBefore := cloneRuleset(prior)
 		omitDismissalRestriction(&comparableBefore)
-		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, BypassModes: before.BypassModeNormalizations}
+		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, BypassModes: before.BypassModeNormalizations}
 		if normalizations.IsZero() && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
 			continue
 		}
