@@ -244,6 +244,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
+		if record := o.FolderNormalization(); record != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
+			checkout.NormalizationWarning(record)
+		}
 	}
 	return save(declaration)
 }

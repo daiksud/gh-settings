@@ -25,13 +25,8 @@ func PagesDeclaration(ui uimodel.Pages) (settings.PagesDeclaration, error) {
 			return settings.PagesDeclaration{}, fmt.Errorf("Pages Branch and Select folder must be declared together")
 		}
 		if b.Branch != nil {
-			var path string
-			switch *b.SelectFolder {
-			case uimodel.PagesRoot:
-				path = "/"
-			case uimodel.PagesDocs:
-				path = "/docs"
-			default:
+			path, valid := settings.PagesFolderValueForChoice(*b.SelectFolder)
+			if !valid {
 				return settings.PagesDeclaration{}, fmt.Errorf("unsupported UI Pages folder choice")
 			}
 			result.Source = &settings.PagesSource{Branch: *b.Branch, Path: path}
@@ -83,13 +78,8 @@ func PagesPolicyUI(policy settings.PagesDeclaration) (uimodel.Pages, error) {
 		if policy.Source == nil {
 			return uimodel.Pages{}, fmt.Errorf("Pages branch source was not acquired")
 		}
-		var folder uimodel.PagesFolderChoice
-		switch policy.Source.Path {
-		case "/":
-			folder = uimodel.PagesRoot
-		case "/docs":
-			folder = uimodel.PagesDocs
-		default:
+		folder, valid := settings.PagesFolderChoiceForValue(policy.Source.Path)
+		if !valid {
 			return uimodel.Pages{}, fmt.Errorf("Pages folder is outside UI choices")
 		}
 		b.Branch = copyUIPagesValue(&policy.Source.Branch)

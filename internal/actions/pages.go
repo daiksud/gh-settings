@@ -7,10 +7,11 @@ import (
 )
 
 type PagesPlanChange struct {
-	Field          string `json:"field"`
-	Before         any    `json:"before"`
-	After          any    `json:"after"`
-	BeforeInactive bool   `json:"before_inactive,omitempty"`
+	Field          string                             `json:"field"`
+	Before         any                                `json:"before"`
+	After          any                                `json:"after"`
+	BeforeInactive bool                               `json:"before_inactive,omitempty"`
+	Normalization  *settings.ObservationNormalization `json:"normalization,omitempty"`
 }
 
 func (r *PagesPlanChange) UnmarshalJSON(data []byte) error {
@@ -24,7 +25,7 @@ func (r *PagesPlanChange) UnmarshalJSON(data []byte) error {
 		}
 	}
 	for key := range fields {
-		if key != "field" && key != "before" && key != "after" && key != "before_inactive" {
+		if key != "field" && key != "before" && key != "after" && key != "before_inactive" && key != "normalization" {
 			return fmt.Errorf("unknown Pages report key %q", key)
 		}
 	}
@@ -46,7 +47,13 @@ func (r *PagesPlanChange) UnmarshalJSON(data []byte) error {
 func validatePagesReport(raw []PagesPlanChange) ([]settings.PagesChange, error) {
 	changes := []settings.PagesChange{}
 	for _, r := range raw {
-		c, err := settings.NewPagesChange(r.Field, r.Before, r.After, r.BeforeInactive)
+		var c settings.PagesChange
+		var err error
+		if r.Normalization != nil {
+			c, err = settings.NewPagesChangeWithNormalization(r.Field, r.Before, r.After, r.BeforeInactive, *r.Normalization)
+		} else {
+			c, err = settings.NewPagesChange(r.Field, r.Before, r.After, r.BeforeInactive)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -56,4 +63,21 @@ func validatePagesReport(raw []PagesPlanChange) ([]settings.PagesChange, error) 
 		return nil, err
 	}
 	return changes, nil
+}
+
+func minimumPagesReportFields(entries []PagesPlanChange) int {
+	hasBranch, normalizedFolder := false, false
+	for _, entry := range entries {
+		if entry.Field == "pages.source.branch" {
+			hasBranch = true
+		}
+		if entry.Field == "pages.source.path" && entry.Normalization != nil {
+			normalizedFolder = true
+		}
+	}
+	minimum := len(entries)
+	if normalizedFolder && !hasBranch {
+		minimum++
+	}
+	return minimum
 }

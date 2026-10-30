@@ -176,7 +176,7 @@ type validatedPlanReport struct {
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
 	maxManaged := settings.RepositoryFieldCount() + 4 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
-	scalarChanges := len(report.Changes) + 2*len(report.CommitMessages) + len(report.Actions) + len(report.Security) + len(report.Pages)
+	scalarChanges := len(report.Changes) + 2*len(report.CommitMessages) + len(report.Actions) + len(report.Security) + minimumPagesReportFields(report.Pages)
 	if report.Changes == nil || report.Managed < scalarChanges || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}
