@@ -277,7 +277,11 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 		if policy.DeploymentBranchPolicyDeclared || policy.DeploymentBranchPolicy != nil {
 			record = state.DeploymentModeNormalization
 		}
-		if record == (EnvironmentDeploymentNormalization{}) && !EnvironmentHasAPIOmissions(policy) && EnvironmentMatchesRequest(before, policy) {
+		var patternEvidence []EnvironmentPatternState
+		if policy.DeploymentBranchPatterns != nil && before.DeploymentBranchPolicy != nil && before.DeploymentBranchPolicy.CustomBranchPolicies && hasEnvironmentRefTypeNormalizations(state.Patterns) {
+			patternEvidence = state.Patterns
+		}
+		if record == (EnvironmentDeploymentNormalization{}) && patternEvidence == nil && !EnvironmentHasAPIOmissions(policy) && EnvironmentMatchesRequest(before, policy) {
 			continue
 		}
 		prior, after := cloneEnvironment(before), cloneEnvironment(policy)
@@ -285,6 +289,8 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 		var err error
 		if record != (EnvironmentDeploymentNormalization{}) {
 			change, err = NewEnvironmentChangeWithDeploymentNormalization("update", &prior, &after, record)
+		} else if patternEvidence != nil {
+			change, err = NewEnvironmentChangeWithPatternNormalizations("update", &prior, &after, patternEvidence)
 		} else {
 			change, err = NewEnvironmentChange("update", &prior, &after)
 		}
