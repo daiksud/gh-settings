@@ -45,6 +45,7 @@ type RulesetState struct {
 	EnforcementNormalization       ObservationNormalization
 	QualitySeverityNormalization   ObservationNormalization
 	RequiredApprovalsNormalization RulesetRequiredApprovalsNormalization
+	MergeMethodsNormalization      RulesetMergeMethodsNormalization
 	BypassModeNormalizations       []RulesetBypassModeNormalization
 }
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
