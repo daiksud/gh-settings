@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -13,7 +12,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-type PagesClient struct{ rest *api.RESTClient }
+type PagesClient struct {
+	rest                 *api.RESTClient
+	NormalizationWarning func(settings.ObservationNormalization)
+}
 type pagesPreWriteFailure struct{ cause error }
 
 func (e *pagesPreWriteFailure) Error() string        { return e.cause.Error() }
@@ -24,7 +26,7 @@ func NewPagesClient(host string) (*PagesClient, error) {
 	if err != nil {
 		return nil, &pagesPreWriteFailure{fmt.Errorf("configure Pages API: %w", err)}
 	}
-	return &PagesClient{c}, nil
+	return &PagesClient{rest: c}, nil
 }
 func pagesPath(repo repository.Repository) string {
 	return "repos/" + repo.Owner + "/" + repo.Name + "/pages"
@@ -41,13 +43,21 @@ func (c *PagesClient) Read(repo repository.Repository) (settings.PagesObservatio
 		return settings.PagesObservation{}, fmt.Errorf("GitHub returned incomplete or invalid Pages configured state")
 	}
 	s := settings.PagesState{BuildType: *mode, CNAME: cname, HTTPSEnforced: *https, Public: *public}
+	var record settings.ObservationNormalization
 	if s.BuildType == "legacy" {
 		var source map[string]json.RawMessage
 		var branch, path *string
 		if json.Unmarshal(raw["source"], &source) != nil || json.Unmarshal(source["branch"], &branch) != nil || branch == nil || json.Unmarshal(source["path"], &path) != nil || path == nil {
 			return settings.PagesObservation{}, fmt.Errorf("GitHub returned incomplete legacy Pages source")
 		}
-		s.Source = &settings.PagesSource{Branch: *branch, Path: *path}
+		prepared, err := prepareLegacyPagesFolderObservation(branch, path)
+		if err != nil {
+			return settings.PagesObservation{}, err
+		}
+		s.Source, record = &prepared.Source, prepared.Normalization
+	}
+	if record != (settings.ObservationNormalization{}) {
+		return settings.NewPagesObservationWithFolderNormalization(s, record)
 	}
 	return settings.NewPagesObservation(s)
 }
@@ -73,6 +83,7 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	if err != nil {
 		return pre(err)
 	}
+	c.warnFolderNormalization(observed, d)
 	_, changes, err := settings.ComparePages(observed, d)
 	if err != nil {
 		return pre(err)
@@ -80,7 +91,7 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	if len(changes) == 0 {
 		return false, nil
 	}
-	expected, err := settings.PreparePages(observed, d)
+	expected, err := preparePagesVerificationState(observed, d)
 	if err != nil {
 		return pre(err)
 	}
@@ -120,8 +131,9 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	if err != nil {
 		return false, fmt.Errorf("verify Pages (write may have applied): %w", err)
 	}
-	state, err := actual.Values()
-	if err != nil || !reflect.DeepEqual(state, expected) {
+	c.warnFolderNormalization(actual, d)
+	retained, err := samePagesVerificationState(expected, actual)
+	if err != nil || !retained {
 		return false, fmt.Errorf("Pages readback did not retain requested values, omitted companions or visibility (write may have applied)")
 	}
 	final, err := identity.ReadArchive(repo)

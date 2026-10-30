@@ -45,7 +45,9 @@ func main() {
 			if options.NoWriteback || os.Getenv("GITHUB_ACTIONS") == "true" {
 				record = nil
 			}
-			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: readPages, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
+			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
+				return readPagesForApply(repo, desired.Pages)
+			}, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
 			}, SecretScanning: writeSecretScanning, ReadPrivateReporting: readPrivateReporting, ReadImmutableReleases: readImmutableReleases, ImmutableReleases: writeImmutableReleases, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadForkApproval: readForkApprovalForApply, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
 		},
@@ -334,7 +336,22 @@ func writePages(repo repository.Repository, d settings.PagesDeclaration) (bool, 
 	if err != nil {
 		return false, err
 	}
+	c.NormalizationWarning = warnNormalization
 	return c.Update(repo, d)
+}
+
+func readPagesForApply(repo repository.Repository, d settings.PagesDeclaration) (settings.PagesObservation, error) {
+	o, err := readPages(repo)
+	if err != nil {
+		return settings.PagesObservation{}, err
+	}
+	if _, err := o.Values(); err != nil {
+		return settings.PagesObservation{}, err
+	}
+	if record := o.FolderNormalization(); d.Source != nil && record != (settings.ObservationNormalization{}) {
+		warnNormalization(record)
+	}
+	return o, nil
 }
 
 func warnNormalization(normalization settings.ObservationNormalization) {
