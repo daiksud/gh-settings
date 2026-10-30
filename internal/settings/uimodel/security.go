@@ -1,7 +1,7 @@
 // Package uimodel contains UI-oriented repository settings.
 package uimodel
 
-// These are candidates for out-of-UI observation normalization in #480,
+// These are adopted out-of-UI observation fallbacks in #480,
 // never defaults for omitted desired fields or failed acquisition.
 const (
 	DefaultSecretProtection = false

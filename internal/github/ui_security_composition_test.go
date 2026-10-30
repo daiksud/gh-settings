@@ -107,7 +107,7 @@ func TestUISecurityDependenciesAndFailedAcquisition(t *testing.T) {
 			t.Fatal(changes)
 		}
 	}
-	for _, body := range []string{`{"security_and_analysis":null}`, `{"security_and_analysis":{"secret_scanning":{"status":"future"},"secret_scanning_push_protection":{"status":"disabled"}}}`} {
+	for _, body := range []string{`{"security_and_analysis":null}`, `{"security_and_analysis":{"secret_scanning":{"status":42},"secret_scanning_push_protection":{"status":"disabled"}}}`} {
 		client := &SecretScanningClient{rest: actionsClient(t, func(req *http.Request) (*http.Response, error) { return labelsResponse(req, 200, body), nil }).rest}
 		raw, err := client.Read(repository.Repository{Owner: "owner", Name: "current"})
 		if err == nil {
