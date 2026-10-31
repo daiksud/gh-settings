@@ -9,9 +9,9 @@ import (
 // configuration values, API errors, credentials or resource names into Summary.
 var failureResources = []string{
 	"repository.settings.general.danger_zone.archive_this_repository",
-	"repository.settings.general.releases.enable_release_immutability",
-	"repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting",
-	"repository.settings.security_and_quality.advanced_security",
+	"repository.settings.general.releases.immutable_release",
+	"repository.settings.advanced_security.private_vulnerability_reporting",
+	"repository.settings.advanced_security",
 	"repository.settings.actions.general", "repository.settings.environments",
 	"repository.settings.rulesets", "repository.settings.pages", "repository.settings.general",
 	"repository.about.topics", "repository.about", "repository.labels", "repository.settings", "repository",

@@ -223,9 +223,9 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		case app.SecretScanningUpdate:
 			path = presentation.SettingPath(op.SecurityField)
 		case app.SecretScanningRead, app.PrivateReportingRead, app.PrivateReportingUpdate:
-			path = "repository.settings.security_and_quality.advanced_security"
+			path = "repository.settings.advanced_security"
 		case app.ImmutableReleasesRead, app.ImmutableReleasesUpdate:
-			path = "repository.settings.general.releases.enable_release_immutability"
+			path = "repository.settings.general.releases.immutable_release"
 		case app.PagesRead, app.PagesUpdate:
 			path = "repository.settings.pages"
 		case app.ArchiveRead, app.ArchiveUnarchive, app.ArchiveUpdate:
