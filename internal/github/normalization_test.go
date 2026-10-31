@@ -8,7 +8,7 @@ import (
 
 func TestWorkflowPermissionNormalizationRetainsRawObservation(t *testing.T) {
 	got := NormalizeWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: "FUTURE", CanApprovePullRequestReviews: false})
-	if got.DefaultWorkflowPermissions != "read" || got.Normalization.Path != "repository.settings.actions.general.workflow_permissions" || got.Normalization.RawValue != "FUTURE" || got.Normalization.Fallback != "read_repository_contents_and_packages_permissions" || got.CanApprovePullRequestReviews {
+	if got.DefaultWorkflowPermissions != "read" || got.Normalization.Path != "repository.settings.actions.general.workflow_permissions.default_permissions" || got.Normalization.RawValue != "FUTURE" || got.Normalization.Fallback != "read_repository_contents_and_packages_permissions" || got.CanApprovePullRequestReviews {
 		t.Fatalf("normalization lost effective value or raw provenance: %+v", got)
 	}
 	if again := NormalizeWorkflowPermissions(got); again != got {

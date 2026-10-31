@@ -17,7 +17,7 @@ func TestActionsExecutionProjectionPreservesTypedBooleansAndRawPolicy(t *testing
 				wantRecord := settings.ObservationNormalization{}
 				if raw != "all" && raw != "local_only" && raw != "selected" {
 					wantPolicy = "all"
-					wantRecord = settings.ObservationNormalization{Path: "repository.settings.actions.general.actions_permissions", RawValue: raw, Fallback: "allow_all_actions_and_reusable_workflows"}
+					wantRecord = settings.ObservationNormalization{Path: "repository.settings.actions.general.actions_permissions.policy", RawValue: raw, Fallback: "allow_all_actions_and_reusable_workflows"}
 				}
 				if err != nil || state.Enabled != enabled || state.SHAPinningRequired != sha || state.AllowedActions != wantPolicy || state.Selected != nil || state.AllowedActionsNormalization != wantRecord {
 					t.Fatal(state, wantPolicy, wantRecord, err)
