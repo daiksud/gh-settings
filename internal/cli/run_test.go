@@ -154,7 +154,7 @@ func TestApplyWritebackOption(t *testing.T) {
 			}
 			return app.ApplyResult{Outcome: app.ApplyCompleted, CreatedIDs: []app.CreatedObject{{Collection: "labels", Name: "new", ID: 17}}}, nil
 		}})
-		if status != 0 || !called || stderr.Len() != 0 || !strings.Contains(stdout.String(), `Created labels "new": id 17`) {
+		if status != 0 || !called || stderr.Len() != 0 || !strings.Contains(stdout.String(), `Created repository.labels "new": id 17`) {
 			t.Fatalf("status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
 		}
 	}
@@ -239,7 +239,7 @@ func TestApplyOutputFailureReportsCreatedIDsWithoutRetry(t *testing.T) {
 	if status != 1 || calls != 1 {
 		t.Fatal(status, calls)
 	}
-	for _, want := range []string{"write output: output unavailable", `reported labels "label" id 17`, `reported rulesets "policy" id 27`, "retain this ID before retrying"} {
+	for _, want := range []string{"write output: output unavailable", `reported repository.labels "label" id 17`, `reported repository.settings.rulesets "policy" id 27`, "retain this ID before retrying"} {
 		if !strings.Contains(stderr.String(), want) {
 			t.Fatalf("missing recovery %q: %s", want, stderr.String())
 		}
@@ -268,5 +268,19 @@ func TestApplyResultMessages(t *testing.T) {
 				t.Fatalf("status=%d calls=%d stdout=%q stderr=%q", status, calls, stdout.String(), stderr.String())
 			}
 		})
+	}
+}
+
+func TestApplyPartialFailureNamesUIResourceAndRetainsRecovery(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	result := app.ApplyResult{Outcome: app.ApplyPartialFailure, Operations: []app.ApplyOperation{
+		{Kind: app.TopicsUpdate, Status: app.OperationCompleted},
+		{Kind: app.PagesUpdate, Status: app.OperationFailedUnknown},
+	}, CreatedIDs: []app.CreatedObject{{Collection: "labels", Name: "bug", ID: 17}}}
+	code := Run([]string{"apply"}, &stdout, &stderr, "dev", Operations{Apply: func(ApplyOptions) (app.ApplyResult, error) {
+		return result, errors.New("earlier successful writes remain applied; write outcome unknown")
+	}})
+	if code != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "repository.settings.pages") || !strings.Contains(stderr.String(), "earlier successful writes remain applied") || !strings.Contains(stderr.String(), `reported repository.labels "bug" id 17`) {
+		t.Fatal(code, stdout.String(), stderr.String())
 	}
 }

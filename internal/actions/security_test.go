@@ -10,7 +10,7 @@ import (
 func TestSecuritySummaryHasNativeClosedValues(t *testing.T) {
 	valid := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Security: []actions.PlanChange{{Field: "security.secret_scanning", Before: false, After: true}}}
 	text, err := actions.RenderSummary(valid, summaryMetadata())
-	if err != nil || !strings.Contains(text, "settings.security.secret_scanning: false → true") {
+	if err != nil || !strings.Contains(text, "repository.settings.security_and_quality.advanced_security.secret_protection: false → true") {
 		t.Fatal(text, err)
 	}
 	for _, change := range []actions.PlanChange{{Field: "security.code_security", Before: false, After: true}, {Field: "security.secret_scanning", Before: nil, After: true}, {Field: "security.secret_scanning", Before: false, After: "true"}, {Field: "security.secret_scanning", Before: true, After: true}} {

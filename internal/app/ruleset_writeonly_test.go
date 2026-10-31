@@ -20,7 +20,7 @@ func TestPlanRejectsWriteOnlyDismissalBeforeRemoteWork(t *testing.T) {
 				t.Fatal("unsupported comparison resolved a target")
 				return repository.Repository{}, nil
 			}, Reader{})
-			if err == nil || !strings.Contains(err.Error(), "plan does not support write-only dismissal_restriction") {
+			if err == nil || !strings.Contains(err.Error(), "plan does not support write-only repository.settings.rulesets.rules.require_a_pull_request_before_merging.restrict_who_can_dismiss_pull_request_reviews") {
 				t.Fatal("unsupported plan did not fail explicitly", err)
 			}
 		})

@@ -39,7 +39,7 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		{name: "deletion false equality", command: "plan", input: "pull_requests: {automatically_delete_head_branches: false}\n", body: strings.Replace(observedMergeMethods, `"deleteBranchOnMerge":true`, `"deleteBranchOnMerge":false`, 1), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "deletion direct false", command: "apply", input: "pull_requests: {automatically_delete_head_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": false}},
 		{name: "deletion direct true", command: "apply", input: "pull_requests: {automatically_delete_head_branches: true}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": true}},
-		{name: "squash commit details plan", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title_and_commit_details}}\n", body: observedMergeMethods, want: "settings.repository.squash_merge_commit_title: \"COMMIT_OR_PR_TITLE\" → \"PR_TITLE\"\n", requests: []string{"POST /graphql"}},
+		{name: "squash commit details plan", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title_and_commit_details}}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.squash_merge.default_commit_message: \"default_message\" → \"pull_request_title_and_commit_details\"\n", requests: []string{"POST /graphql"}},
 		{name: "squash pair equality", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: default_message}}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "squash commit details direct", command: "apply", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title_and_commit_details}}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"squash_merge_commit_title": "PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES"}},
 		{name: "squash pair direct", command: "apply", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title}}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"squash_merge_commit_title": "PR_TITLE", "squash_merge_commit_message": "BLANK"}},
@@ -52,11 +52,11 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		{name: "PR update direct false", command: "apply", input: "pull_requests: {always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_update_branch": false}},
 		{name: "PR options direct pair", command: "apply", input: "pull_requests: {allow_auto_merge: true, always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": true, "allow_update_branch": false}},
 		{name: "PR update invalid local", command: "apply", input: "pull_requests: {always_suggest_updating_pull_request_branches: 'false'}\n", errorText: "must be a boolean"},
-		{name: "merge menu plan", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", body: observedMergeMethods, want: "settings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\nsettings.repository.merge_commit_message: \"PR_TITLE\" → \"BLANK\"\n", requests: []string{"POST /graphql"}},
+		{name: "merge menu plan", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.merge_commit.default_commit_message: \"default_message\" → \"pull_request_title\"\n", requests: []string{"POST /graphql"}},
 		{name: "disabled merge title rejected by validate", command: "validate", input: "pull_requests: {allow_merge_commits: false, merge_commit: {default_commit_message: pull_request_title}}\n", errorText: "general.pull_requests.merge_commit.default_commit_message requires the merge method to be enabled"},
 		{name: "disabled merge title rejected by plan", command: "plan", input: "pull_requests: {allow_merge_commits: false, merge_commit: {default_commit_message: pull_request_title}}\n", errorText: "general.pull_requests.merge_commit.default_commit_message requires the merge method to be enabled"},
-		{name: "observed disabled merge title rejected by plan", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), errorText: "require allow_merge_commit: true", requests: []string{"POST /graphql"}},
-		{name: "explicit merge enable overrides observed disabled", command: "plan", input: "pull_requests: {allow_merge_commits: true, merge_commit: {default_commit_message: pull_request_title}}\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), want: "repository.settings.general.pull_requests.allow_merge_commits: false → true\nsettings.repository.merge_commit_title: \"MERGE_MESSAGE\" → \"PR_TITLE\"\nsettings.repository.merge_commit_message: \"PR_TITLE\" → \"BLANK\"\n", requests: []string{"POST /graphql"}},
+		{name: "observed disabled merge title rejected by plan", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), errorText: "requires repository.settings.general.pull_requests.allow_merge_commits: true", requests: []string{"POST /graphql"}},
+		{name: "explicit merge enable overrides observed disabled", command: "plan", input: "pull_requests: {allow_merge_commits: true, merge_commit: {default_commit_message: pull_request_title}}\n", body: strings.Replace(observedMergeMethods, `"mergeCommitAllowed":true`, `"mergeCommitAllowed":false`, 1), want: "repository.settings.general.pull_requests.allow_merge_commits: false → true\nrepository.settings.general.pull_requests.merge_commit.default_commit_message: \"default_message\" → \"pull_request_title\"\n", requests: []string{"POST /graphql"}},
 		{name: "merge pair equality", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: default_message}}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "merge description menu direct", command: "apply", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title_and_description}}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"merge_commit_title": "PR_TITLE", "merge_commit_message": "PR_BODY"}},
 		{name: "merge pair direct", command: "apply", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"merge_commit_title": "PR_TITLE", "merge_commit_message": "BLANK"}},
@@ -262,6 +262,10 @@ settings:
 			}
 			wantReport := map[string]any{
 				"outcome": "changed", "target": "owner/current", "managed": float64(16),
+				"commit_message_contexts": []any{
+					map[string]any{"menu": "squash_merge", "before": map[string]any{"title": "COMMIT_OR_PR_TITLE", "message": "COMMIT_MESSAGES"}, "after": map[string]any{"title": "PR_TITLE", "message": "BLANK"}},
+					map[string]any{"menu": "merge_commit", "before": map[string]any{"title": "MERGE_MESSAGE", "message": "PR_TITLE"}, "after": map[string]any{"title": "PR_TITLE", "message": "BLANK"}},
+				},
 				"changes": []any{
 					map[string]any{"field": "repository.description", "before": "old", "after": ""},
 					map[string]any{"field": "repository.homepage", "before": "old-url", "after": "https://example.com/new"},
@@ -306,10 +310,8 @@ settings:
 				"repository.settings.general.pull_requests.automatically_delete_head_branches: true → false",
 				"repository.settings.general.pull_requests.allow_auto_merge: false → true",
 				"repository.settings.general.pull_requests.always_suggest_updating_pull_request_branches: false → true",
-				`settings.repository.squash_merge_commit_title: "COMMIT_OR_PR_TITLE" → "PR_TITLE"`,
-				`settings.repository.squash_merge_commit_message: "COMMIT_MESSAGES" → "BLANK"`,
-				`settings.repository.merge_commit_title: "MERGE_MESSAGE" → "PR_TITLE"`,
-				`settings.repository.merge_commit_message: "PR_TITLE" → "BLANK"`,
+				`repository.settings.general.pull_requests.squash_merge.default_commit_message: "default_message" → "pull_request_title"`,
+				`repository.settings.general.pull_requests.merge_commit.default_commit_message: "default_message" → "pull_request_title"`,
 			} {
 				position := strings.Index(visible, line)
 				if position < 0 {

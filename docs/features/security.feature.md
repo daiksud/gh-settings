@@ -60,7 +60,7 @@ A product-level toggle can affect subordinate security features. Before adoption
 
 Repeatable `--security FAMILY` accepts exactly the implemented `secret-scanning`, `private-vulnerability-reporting` and `immutable-releases` selections. Dependabot/product options and `all` are not accepted. Distinct families compose with other export options; unknown/missing/duplicate values fail before reads or file changes.
 
-Ordinary export adds no security requests. Secret protection/Push protection reads precede private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied or incomplete observations fail instead of being omitted with success. Complete out-of-UI status strings retain provenance and normalize to the named false fallback; inconsistent projected declarations fail without saving. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. An exact supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. #480 normalization is active for these two status strings; other families follow their documented policies and #481 complete reporting remains pending.
+Ordinary export adds no security requests. Secret protection/Push protection reads precede private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied or incomplete observations fail instead of being omitted with success. Complete out-of-UI status strings retain provenance and normalize to the named false fallback; inconsistent projected declarations fail without saving. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. An exact supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. Normalization is active for these two status strings; other families follow their documented policies.
 
 ## State and failure table
 
@@ -148,7 +148,7 @@ The [public configuration contract](../settings.md#private-vulnerability-reporti
 
 Fixtures use dummy credentials and local modeled responses. A read-only GET on this public repository returned enabled=true; no live PUT/DELETE, report/advisory/notification operation, permission expansion, upper-policy change or release was performed. These checks do not establish live update compatibility or other credential grants.
 
-The private same-version security report retains native API member identifiers/booleans and existing bounds. Exact-observation CLI/Summary component paths remain internal pending #481; they are not public YAML aliases. Normalized status decisions instead retain typed raw provenance and use their UI paths with boolean write-required decisions.
+The private same-version security report retains native API member identifiers/booleans and existing bounds. Exact-observation CLI/Summary use UI paths; native paths are not public YAML aliases. Normalized status decisions instead retain typed raw provenance and use their UI paths with boolean write-required decisions.
 
 ## Feature: Retain provenance for out-of-UI security statuses
 

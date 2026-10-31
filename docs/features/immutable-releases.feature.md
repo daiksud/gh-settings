@@ -40,8 +40,8 @@ release publisher and individual releases/tags/assets are outside ownership.
   failed readback or refused write fails with uncertain-write diagnostics and
   retains any confirmed earlier operations. No retries or rollback occur.
 - CLI and credential-free Action Summary render
-  `settings.security.immutable_releases: false → true` through the existing
-  internal component renderer pending #481; that path is not a YAML alias. The closed
+  `repository.settings.general.releases.enable_release_immutability: false → true`.
+  The private report retains its native field identity. The closed
   security report registry accepts only distinct native boolean changes, not
   owner metadata, unavailable values, guessed defaults or arbitrary fields.
 

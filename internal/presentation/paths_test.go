@@ -14,6 +14,8 @@ func TestUnambiguousAboutGeneralAndTopicsDisplayPathInventory(t *testing.T) {
 		{"repository.has_sponsorships", "repository.settings.general.features.sponsorships"},
 		{"repository.has_discussions", "repository.settings.general.features.discussions"},
 		{"repository.has_projects", "repository.settings.general.features.projects"},
+		{"repository.issue_creation_policy", "repository.settings.general.features.issue_permissions.creation_allowed_by"},
+		{"repository.pull_request_creation_policy", "repository.settings.general.features.pull_request_permissions.creation_allowed_by"},
 		{"repository.has_pull_requests", "repository.settings.general.features.pull_requests"},
 		{"repository.allow_merge_commit", "repository.settings.general.pull_requests.allow_merge_commits"},
 		{"repository.allow_squash_merge", "repository.settings.general.pull_requests.allow_squash_merging"},
@@ -38,7 +40,6 @@ func TestCompoundAndEnumReportAuditRemainsExplicitlySeparate(t *testing.T) {
 	for _, raw := range []string{
 		"repository.merge_commit_title", "repository.merge_commit_message",
 		"repository.squash_merge_commit_title", "repository.squash_merge_commit_message",
-		"repository.issue_creation_policy", "repository.pull_request_creation_policy",
 	} {
 		if got := SettingPath(raw); got != "settings."+raw {
 			t.Fatalf("invented compound UI path %q for %s", got, raw)

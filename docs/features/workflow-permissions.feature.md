@@ -24,7 +24,7 @@ Test mapping: [TestWorkflowPermissionsCompleteReads](../../internal/github/workf
 
 ## Rule: Show permission changes explicitly
 
-- Public YAML choices translate to internal read/write tokens. Normalized comparisons use the new YAML path and UI choices, with a warning and write-required note even when the desired choice equals the fallback. Exact observations still use native component display pending #481; API tokens are not YAML aliases. False-to-true remains a native boolean.
+- Public YAML choices translate to internal read/write tokens. Normalized comparisons use the new YAML path and UI choices, with a warning and write-required note even when the desired choice equals the fallback. Exact observations also use UI choices; API tokens are not YAML aliases. False-to-true remains a native boolean.
 - The closed report registry validates both sides. Normalized equality requires consistent acquired raw provenance; unavailable before values and missing/null/malformed normalization metadata are invalid.
 - Summary uses existing report data without credentials, origin resolution or API calls.
 

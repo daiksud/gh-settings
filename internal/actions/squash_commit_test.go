@@ -19,7 +19,7 @@ func TestSquashCommitReportAndSummary(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, Changes: []settings.Change{comparisonChange(t, "repository.squash_merge_commit_title", "COMMIT_OR_PR_TITLE", "PR_TITLE"), comparisonChange(t, "repository.squash_merge_commit_message", "COMMIT_MESSAGES", "BLANK")}}}, nil
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, CommitMessageContexts: []settings.CommitMessageContext{{Menu: settings.SquashCommitMenu, Before: settings.CommitMessagePair{Title: "COMMIT_OR_PR_TITLE", Message: "COMMIT_MESSAGES"}, After: settings.CommitMessagePair{Title: "PR_TITLE", Message: "BLANK"}}}, Changes: []settings.Change{comparisonChange(t, "repository.squash_merge_commit_title", "COMMIT_OR_PR_TITLE", "PR_TITLE"), comparisonChange(t, "repository.squash_merge_commit_message", "COMMIT_MESSAGES", "BLANK")}}}, nil
 	})
 	data, err := os.ReadFile(path)
 	if err != nil || status != 0 || stderr.Len() != 0 {
@@ -33,7 +33,7 @@ func TestSquashCommitReportAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html.UnescapeString(rendered), `settings.repository.squash_merge_commit_title: "COMMIT_OR_PR_TITLE" → "PR_TITLE"`) || !strings.Contains(html.UnescapeString(rendered), `settings.repository.squash_merge_commit_message: "COMMIT_MESSAGES" → "BLANK"`) {
+	if !strings.Contains(html.UnescapeString(rendered), `repository.settings.general.pull_requests.squash_merge.default_commit_message: "default_message" → "pull_request_title"`) {
 		t.Fatalf("summary=%s", rendered)
 	}
 	for _, field := range []string{"repository.squash_merge_commit_title", "repository.squash_merge_commit_message"} {

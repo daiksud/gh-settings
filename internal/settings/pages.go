@@ -30,15 +30,15 @@ func validPagesMode(s string) bool {
 }
 func ValidatePagesDomain(s string) error {
 	if len(s) == 0 || len(s) > 253 || !strings.Contains(s, ".") {
-		return fmt.Errorf("pages.cname must be an ASCII DNS hostname or null")
+		return fmt.Errorf("repository.settings.pages.custom_domain must be an ASCII DNS hostname or null")
 	}
 	for _, label := range strings.Split(s, ".") {
 		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
-			return fmt.Errorf("invalid pages.cname DNS label")
+			return fmt.Errorf("invalid repository.settings.pages.custom_domain DNS label")
 		}
 		for _, c := range label {
 			if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-') {
-				return fmt.Errorf("pages.cname must be an ASCII DNS hostname")
+				return fmt.Errorf("repository.settings.pages.custom_domain must be an ASCII DNS hostname")
 			}
 		}
 	}
@@ -46,16 +46,16 @@ func ValidatePagesDomain(s string) error {
 }
 func (s PagesSource) Validate() error {
 	if !ValidDefaultBranch(s.Branch) {
-		return fmt.Errorf("pages.source.branch must be a nonempty literal branch name")
+		return fmt.Errorf("repository.settings.pages.build_and_deployment.branch must be a nonempty literal branch name")
 	}
 	if _, valid := PagesFolderChoiceForValue(s.Path); !valid {
-		return fmt.Errorf("pages.source.path must be / or /docs")
+		return fmt.Errorf("repository.settings.pages.build_and_deployment.select_folder must be root or docs")
 	}
 	return nil
 }
 func (d PagesDeclaration) Validate() error {
 	if d.BuildType != nil && !validPagesMode(*d.BuildType) {
-		return fmt.Errorf("pages.build_type must be legacy or workflow")
+		return fmt.Errorf("repository.settings.pages.build_and_deployment.source must be deploy_from_a_branch or github_actions")
 	}
 	if d.Source != nil {
 		if err := d.Source.Validate(); err != nil {

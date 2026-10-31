@@ -179,7 +179,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write("{private_vulnerability_reporting: true}")
 	plan := run("plan")
-	if !strings.Contains(plan, "settings.security.private_vulnerability_reporting: false → true") {
+	if !strings.Contains(plan, "repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting: false → true") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "private-reporting-plan.json")

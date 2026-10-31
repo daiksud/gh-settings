@@ -20,7 +20,7 @@ func (d SecurityDeclaration) Empty() bool {
 }
 func (d SecurityDeclaration) Validate() error {
 	if d.SecretScanning != nil && !*d.SecretScanning && d.PushProtection != nil && *d.PushProtection {
-		return fmt.Errorf("security.secret_scanning_push_protection requires secret_scanning")
+		return fmt.Errorf("repository.settings.security_and_quality.advanced_security.push_protection requires secret_protection")
 	}
 	return nil
 }
@@ -144,13 +144,13 @@ func SecretScanningTransitions(o SecretScanningObservation, d SecurityDeclaratio
 	}
 	s, p, _ := o.RawStatuses()
 	if d.PushProtection != nil && *d.PushProtection && d.SecretScanning == nil && s != "enabled" {
-		return nil, fmt.Errorf("push protection requires already enabled secret_scanning or an explicit true declaration")
+		return nil, fmt.Errorf("repository.settings.security_and_quality.advanced_security.push_protection requires enabled secret_protection or an explicit true declaration")
 	}
 	if d.SecretScanning != nil && !*d.SecretScanning && p != "disabled" && (d.PushProtection == nil || *d.PushProtection) {
 		if _, supported := SecurityValueForStatus(p); !supported {
-			return nil, fmt.Errorf("disabling secret_scanning requires explicitly disabling unverified push protection")
+			return nil, fmt.Errorf("disabling secret_protection requires explicitly disabling unverified push protection")
 		}
-		return nil, fmt.Errorf("disabling secret_scanning requires explicitly disabling active push protection")
+		return nil, fmt.Errorf("disabling secret_protection requires explicitly disabling active push protection")
 	}
 	if d.SecretScanning != nil && !*d.SecretScanning && len(changes) == 2 {
 		changes[0], changes[1] = changes[1], changes[0]
@@ -170,15 +170,15 @@ func AfterSecretScanningChange(o SecretScanningObservation, c SecurityChange) (S
 	if c.field == "security.secret_scanning" {
 		if !c.after && p != "disabled" {
 			if _, supported := SecurityValueForStatus(p); !supported {
-				return SecretScanningObservation{}, fmt.Errorf("unverified push protection prevents disabling secret_scanning")
+				return SecretScanningObservation{}, fmt.Errorf("unverified push protection prevents disabling secret_protection")
 			}
-			return SecretScanningObservation{}, fmt.Errorf("active push protection prevents disabling secret_scanning")
+			return SecretScanningObservation{}, fmt.Errorf("active push protection prevents disabling secret_protection")
 		}
 		o.scanning = c.after
 		o.normalizations[0] = SecurityStatusNormalization{}
 	} else if c.field == "security.secret_scanning_push_protection" {
 		if c.after && s != "enabled" {
-			return SecretScanningObservation{}, fmt.Errorf("secret_scanning must be enabled before push protection")
+			return SecretScanningObservation{}, fmt.Errorf("secret_protection must be enabled before push protection")
 		}
 		o.push = c.after
 		o.normalizations[1] = SecurityStatusNormalization{}

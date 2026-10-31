@@ -144,7 +144,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	input := actionsPolicyInput(`{workflow_permissions: read_and_write_permissions, allow_github_actions_to_create_and_approve_pull_requests: true}`)
 	writeSettingsFile(fixture.work, input)
 	plan := run("plan")
-	if !strings.Contains(plan, `settings.actions.default_workflow_permissions: "read" → "write"`) || !strings.Contains(plan, `settings.actions.can_approve_pull_request_reviews: false → true`) {
+	if !strings.Contains(plan, `repository.settings.actions.general.workflow_permissions: "read_repository_contents_and_packages_permissions" → "read_and_write_permissions"`) || !strings.Contains(plan, `repository.settings.actions.general.allow_github_actions_to_create_and_approve_pull_requests: false → true`) {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "workflow-plan.json")

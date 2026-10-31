@@ -51,7 +51,7 @@ func TestEnvironmentPlanReportSummaryAndClosedBoundary(t *testing.T) {
 	if err != nil || strings.Contains(content, "<production>") {
 		t.Fatal(content, err)
 	}
-	for _, want := range []string{`settings.environments: update`, `"wait_timer":30`, `"wait_timer":0`, `"prevent_self_review":false`, `"can_admins_bypass":false`, `"can_admins_bypass":true`, `"reviewers":[]`, `"deployment_branch_policy":null`} {
+	for _, want := range []string{`settings.environments: update`, `"wait_timer":30`, `"wait_timer":0`, `"prevent_self_review":false`, `"allow_administrators_to_bypass_configured_protection_rules":false`, `"allow_administrators_to_bypass_configured_protection_rules":true`, `"required_reviewers":[]`, `"deployment_branches_and_tags":"no_restriction"`} {
 		if !strings.Contains(html.UnescapeString(content), want) {
 			t.Fatal("missing default-derived change", want, content)
 		}

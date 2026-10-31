@@ -74,7 +74,7 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 				args = append(args, "--no-writeback")
 			}
 			first, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, args, false)
-			if err != nil || first.runErr != nil || first.stderr.Len() != 0 || !strings.Contains(first.stdout.String(), `Created rulesets "new": id 17`) {
+			if err != nil || first.runErr != nil || first.stderr.Len() != 0 || !strings.Contains(first.stdout.String(), `Created repository.settings.rulesets "new": id 17`) {
 				t.Fatal(first, err)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))

@@ -175,10 +175,10 @@ func TestForkWorkflowExportPlanApplyAndSummary(t *testing.T) {
 				t.Fatal(string(data))
 			}
 			desired := "{approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_all_external_contributors}"
-			needle := "fork_pr_approval_policy"
+			needle := "repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors"
 			if private {
 				desired = "{fork_pull_request_workflows: {run_workflows_from_fork_pull_requests: true, send_secrets_and_variables_to_workflows_from_fork_pull_requests: false}}"
-				needle = "send_secrets_and_variables: true → false"
+				needle = "send_secrets_and_variables_to_workflows_from_fork_pull_requests: true → false"
 			}
 			write(desired)
 			plan := run("plan")

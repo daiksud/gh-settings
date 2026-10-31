@@ -12,7 +12,7 @@ func SecurityLine(change settings.SecurityChange) string {
 	if normalization := change.Normalization(); normalization != (settings.SecurityStatusNormalization{}) {
 		return SecurityStatusNormalizationLine(normalization) + "\n" + fmt.Sprintf("%s: %t (normalized observation) → %t (write required)", normalization.Path, before, after)
 	}
-	return fmt.Sprintf("settings.%s: %t → %t", change.Field(), before, after)
+	return fmt.Sprintf("%s: %t → %t", SettingPath(change.Field()), before, after)
 }
 
 func SecurityStatusNormalizationLine(record settings.SecurityStatusNormalization) string {

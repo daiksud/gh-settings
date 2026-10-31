@@ -15,7 +15,7 @@ supported and implemented in current source. The [settings reference](../setting
 - The complete repository REST GET requires a non-null boolean `is_template`. Missing or invalid data fails instead of becoming false, including when another REST field requested the observation.
 - Export includes the observed boolean only after all required reads complete. Plan compares declared values only, renders native booleans after web commit sign-off and before merge-related values, and performs no mutation or extra GraphQL query for this field.
 - Direct apply sends only declared repository fields in one PATCH, including native false. It makes no preliminary read. Forbidden or rejected updates stop later resources without implying rollback or that earlier writes were undone.
-- CLI and rendered Summary use `repository.settings.general.template_repository` with native booleans. The serialized private same-version report retains raw internal identifiers and bounds pending #481.
+- CLI and rendered Summary use `repository.settings.general.template_repository` with native booleans. The serialized private same-version report retains raw internal identifiers and bounds.
 - This feature does not generate a repository from a template, copy files, change source-template provenance, or modify Git LFS settings.
 
 ## API and evidence boundaries

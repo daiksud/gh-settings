@@ -29,7 +29,10 @@ func (menu CommitMessageMenu) DefaultChoice() (uimodel.CommitMessageChoice, bool
 	}
 }
 
-type CommitMessagePair struct{ Title, Message string }
+type CommitMessagePair struct {
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
 
 // CommitMessageNormalization retains both acquired members of one UI menu.
 // The effective pair is separate; neither raw member becomes desired intent.

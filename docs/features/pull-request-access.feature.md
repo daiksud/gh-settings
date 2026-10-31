@@ -32,7 +32,7 @@ Cover true/false, both policies, independent omission, invalid YAML/enum/null, d
 
 The process suite also retains the existing repository export/read/write fixtures, now including the two additional fields and narrow query. Verification uses local files/Git and dummy credentials; the read-only public-repository example of disabled PRs with policy `ALL` is observation evidence, not a write grant or preservation guarantee.
 
-Public YAML choices convert to internal GraphQL enums; those API tokens are not YAML aliases. The private report and compound permission display retain existing native protocol values pending #481.
+Public YAML choices convert to internal GraphQL enums; those API tokens are not YAML aliases. The private report retains native values; CLI and Summary use UI paths and choices.
 
 ## Feature: Retain provenance for out-of-UI creation policies
 

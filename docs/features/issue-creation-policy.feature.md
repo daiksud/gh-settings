@@ -30,7 +30,7 @@ Test both policies, independent omission, disabled-Issue observations, invalid l
 | Native enum report and Summary validation | [Issue policy presentation](../../internal/actions/issue_creation_policy_test.go) |
 | Built CLI disabled-Issue lifecycle, exact writes and failure sequencing | [Issue policy acceptance](../../tests/acceptance/issue_creation_policy_test.go) |
 
-The existing PR-access tests continue to check their unchanged selective reads, identity guards and failure semantics through the shared writer. The private same-version report retains native pairs plus closed scalar provenance for normalized policies. CLI/detailed Summary use UI labels and a warning/write-required decision; status-only suppresses policy values. Exact observations retain native policy display pending full UI rendering/count integration in #481. The read-only disabled-Issue sample returns policy `ALL`; fixtures cover explicit edits while availability remains false without asserting live write preservation.
+The existing PR-access tests continue to check their unchanged selective reads, identity guards and failure semantics through the shared writer. The private same-version report retains native pairs plus closed scalar provenance for normalized policies. CLI/detailed Summary use UI labels and a warning/write-required decision; status-only suppresses policy values. Exact observations also use UI names and choices. The read-only disabled-Issue sample returns policy `ALL`; fixtures cover explicit edits while availability remains false without asserting live write preservation.
 
 ## Feature: Retain provenance for out-of-UI creation policies
 

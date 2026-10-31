@@ -157,8 +157,8 @@ func TestNormalizedCreationPolicyPresentationRetainsUIAndPrivacy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if output := string(cli.RenderComparison(settings.Comparison{Managed: 1, Changes: []settings.Change{ordinary}})); output != "settings."+test.field+": \"ALL\" → \"COLLABORATORS_ONLY\"\n" {
-			t.Fatal("ordinary policy display changed", output)
+		if output := string(cli.RenderComparison(settings.Comparison{Managed: 1, Changes: []settings.Change{ordinary}})); output != test.path+": \"all_users\" → \"collaborators_only\"\n" {
+			t.Fatal("ordinary policy display mismatch", output)
 		}
 	}
 }

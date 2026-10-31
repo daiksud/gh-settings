@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/daiksud/gh-settings/internal/app"
+	"github.com/daiksud/gh-settings/internal/presentation"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -149,11 +150,14 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		if err != nil {
 			return err
 		}
+		if err := presentation.ValidateRulesetChanges(result.Comparison.Rulesets); err != nil {
+			return fmt.Errorf("repository.settings.rulesets: %w", err)
+		}
 		data = RenderComparison(result.Comparison)
 	case "apply":
 		result, err := operations.Apply(applyOptions)
 		if err != nil {
-			return createdIDDiagnostic(err, result.CreatedIDs)
+			return createdIDDiagnostic(applyDiagnostic(err, result), result.CreatedIDs)
 		}
 		createdIDs = result.CreatedIDs
 		if result.Completed() {
@@ -162,7 +166,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 			data = []byte("No managed repository settings.\n")
 		}
 		for _, object := range result.CreatedIDs {
-			data = append(data, []byte(fmt.Sprintf("Created %s %q: id %d\n", object.Collection, object.Name, object.ID))...)
+			data = append(data, []byte(fmt.Sprintf("Created %s %q: id %d\n", createdCollectionPath(object.Collection), object.Name, object.ID))...)
 		}
 		for _, notice := range result.Notices {
 			data = append(data, []byte("Note: "+notice+"\n")...)
@@ -178,7 +182,58 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 
 func createdIDDiagnostic(err error, objects []app.CreatedObject) error {
 	for _, object := range objects {
-		err = fmt.Errorf("%w; reported %s %q id %d (retain this ID before retrying)", err, object.Collection, object.Name, object.ID)
+		err = fmt.Errorf("%w; reported %s %q id %d (retain this ID before retrying)", err, createdCollectionPath(object.Collection), object.Name, object.ID)
+	}
+	return err
+}
+
+func createdCollectionPath(collection string) string {
+	switch collection {
+	case "labels":
+		return "repository.labels"
+	case "rulesets":
+		return "repository.settings.rulesets"
+	default:
+		return collection
+	}
+}
+
+// applyDiagnostic uses recorded operation identity, retaining the original
+// error and its uncertainty about earlier or failed writes.
+func applyDiagnostic(err error, result app.ApplyResult) error {
+	for i := len(result.Operations) - 1; i >= 0; i-- {
+		op := result.Operations[i]
+		if op.Status != app.OperationFailedRead && op.Status != app.OperationFailedUnknown {
+			continue
+		}
+		path := ""
+		switch op.Kind {
+		case app.RepositoryUpdate:
+			path = "repository"
+		case app.TopicsUpdate:
+			path = "repository.about.topics"
+		case app.LabelsRead, app.LabelCreate, app.LabelUpdate, app.LabelDelete:
+			path = "repository.labels"
+		case app.RulesetsRead, app.RulesetCreate, app.RulesetUpdate, app.RulesetDelete:
+			path = "repository.settings.rulesets"
+		case app.EnvironmentsRead, app.EnvironmentUpsert:
+			path = "repository.settings.environments"
+		case app.ActionsPolicyUpdate, app.WorkflowPermissionsUpdate, app.RetentionRead, app.RetentionUpdate, app.ForkApprovalRead, app.ForkApprovalUpdate, app.PrivateForkRead, app.PrivateForkUpdate:
+			path = "repository.settings.actions.general"
+		case app.SecretScanningUpdate:
+			path = presentation.SettingPath(op.SecurityField)
+		case app.SecretScanningRead, app.PrivateReportingRead, app.PrivateReportingUpdate:
+			path = "repository.settings.security_and_quality.advanced_security"
+		case app.ImmutableReleasesRead, app.ImmutableReleasesUpdate:
+			path = "repository.settings.general.releases.enable_release_immutability"
+		case app.PagesRead, app.PagesUpdate:
+			path = "repository.settings.pages"
+		case app.ArchiveRead, app.ArchiveUnarchive, app.ArchiveUpdate:
+			path = "repository.settings.general.danger_zone.archive_this_repository"
+		}
+		if path != "" {
+			return fmt.Errorf("%s: %w", path, err)
+		}
 	}
 	return err
 }

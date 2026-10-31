@@ -30,7 +30,7 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 		{name: "omitted", command: "apply", declaration: `{}`, want: "No managed repository settings.\n"},
 		{name: "empty plan", command: "plan", declaration: `{labels: []}`, want: "No managed repository settings.\n"},
 		{name: "empty apply", command: "apply", declaration: `{labels: []}`, want: "No managed repository settings.\n"},
-		{name: "create plan leaves siblings", command: "plan", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: current, want: "settings.labels: create \"new\" color=\"abcdef\" description=\"\"\n", requests: []string{"GET /repos/owner/current/labels "}},
+		{name: "create plan leaves siblings", command: "plan", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: current, want: "repository.labels: create \"new\" color=\"#abcdef\" description=\"\"\n", requests: []string{"GET /repos/owner/current/labels "}},
 		{name: "collision", command: "apply", declaration: `{labels: [{name: KEEP, color: "#abcdef"}]}`, body: current, errorText: "specify id: 7", requests: []string{"GET /repos/owner/current/labels "}},
 		{name: "missing ID", command: "apply", declaration: `{labels: [{id: 99, name: new, color: "#abcdef"}]}`, body: current, errorText: "refusing create fallback", requests: []string{"GET /repos/owner/current/labels "}},
 		{name: "defaults clear description", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: "#abcdef"}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
@@ -272,7 +272,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "<new>") || !strings.Contains(html.UnescapeString(string(data)), `settings.labels: create "<new>" color="abcdef" description=""`) || strings.Contains(string(data), "removes issue/PR associations") || fixture.reads.Load() != 1 {
+	if strings.Contains(string(data), "<new>") || !strings.Contains(html.UnescapeString(string(data)), `repository.labels: create "<new>" color="#abcdef" description=""`) || strings.Contains(string(data), "removes issue/PR associations") || fixture.reads.Load() != 1 {
 		t.Fatalf("summary=%s requests=%d", data, fixture.reads.Load())
 	}
 }

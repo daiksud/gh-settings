@@ -152,7 +152,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write("true")
 	plan := run("plan")
-	if !strings.Contains(plan, "settings.security.immutable_releases: false → true") {
+	if !strings.Contains(plan, "repository.settings.general.releases.enable_release_immutability: false → true") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "immutable-releases-plan.json")

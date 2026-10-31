@@ -47,9 +47,9 @@ A valid document without managed fields succeeds before origin resolution, authe
 - Omitted fields are unmanaged and produce no difference.
 - Explicit false and empty strings are managed values.
 - Retain stable existing comparison order for About/General fields, then Topics and selected-object operations; see [current output](../commands.md#plan-behavior).
-- Unambiguous About/General scalar and Topics lines use current UI paths with `CURRENT → DESIRED`; compound/other-family rendering remains under #481.
+- Scalar and nested settings use current UI paths and choices with `CURRENT → DESIRED`; whole-object changes show UI-named controls.
 - Strings are double-quoted with Go string escaping; booleans use `true` or `false`.
-- Equal managed values produce `No differences for managed repository settings.`
+- Equal exact managed values produce `No differences for managed repository settings.`; normalized fallback equality remains actionable.
 - A valid document without managed fields produces `No managed repository settings.`
 
 ### Rule: Report success and failures
@@ -98,7 +98,7 @@ Current unreleased source reads nonempty label selections and reports typed crea
 
 Current source compares six independent managed fields and explicitly marks inactive selected before values unavailable. The [Actions policy specification](actions-execution-policy.feature.md#rule-plan-inactive-values-honestly) owns native comparisons, Summary validation and error boundaries.
 
-Plan reads only managed resources, retaining existing field/resource ordering and native comparison semantics. A UI menu can expand to two internal members; the private same-version report keeps its existing typed protocol and bounds. Complete UI paths/choices/count audits belong to #481. Collections count according to their ownership contracts. Denied, inapplicable or incomplete observations fail and discard earlier partial comparisons. Complete out-of-UI values follow their adopted field-specific normalization policies with raw provenance and actionable fallback equality; unsupported identities and incomplete/malformed observations remain errors. A zero plan covers only successfully observed managed intent and proves neither write permission nor future drift protection.
+Plan reads only managed resources, retaining existing field/resource ordering and native comparison semantics. A UI menu can expand to two internal members; the private same-version report preserves native comparisons and their bounds, with validated context for composite choices. Collections count according to their ownership contracts. Denied, inapplicable or incomplete observations fail and discard earlier partial comparisons. Complete out-of-UI values follow their adopted field-specific normalization policies with raw provenance and actionable fallback equality; unsupported identities and incomplete/malformed observations remain errors. A zero plan covers only successfully observed managed intent and proves neither write permission nor future drift protection.
 
 | Subset | Existing application and supplied-binary coverage |
 | --- | --- |
@@ -109,3 +109,14 @@ Plan reads only managed resources, retaining existing field/resource ordering an
 | Fork workflow policies | [Fork app sequencing](../../internal/app/fork_workflows_test.go), [fork process/Summary](../../tests/acceptance/fork_workflows_test.go) |
 
 The dedicated feature specifications own conditional reads, dependencies, cap checks and visibility boundaries. The same typed comparison feeds credential-free Summary validation; no saved report becomes apply input.
+
+## Rule: Render scalar policy differences with UI names
+
+- Actions workflow permissions and contributor approval use the selectable UI choices on both sides of a difference.
+- Security and Pages differences identify their public YAML paths; Pages source and folder choices use UI values.
+- Exact merge/squash and Actions execution differences each display one UI choice, including when an internal companion did not change.
+- Rulesets use UI-named policies; Environment before policies omit controls absent from the request.
+- CLI and Action Summary use the same presentation helpers while the private report transport retains internal field identities.
+- A normalization warning retains raw provenance and does not independently verify raw equality.
+
+Test mapping: [presentation choices](../../internal/presentation/ui_reporting_test.go), [workflow Summary](../../internal/actions/workflow_permissions_test.go), [workflow executable acceptance](../../tests/acceptance/workflow_permissions_test.go), [paired context validation](../../internal/actions/ui_context_test.go) and [merge menu process acceptance](../../tests/acceptance/merge_methods_test.go).

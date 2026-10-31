@@ -20,7 +20,7 @@ repository:
 
 Omitting the field leaves it unmanaged. Explicit false remains a declared value in encode, comparison, report and PATCH. Null, quoted booleans, numbers and collections fail local validation before API access; the existing strict boolean, duplicate-key, alias and merge rules apply.
 
-Repository comparison retains registry order for repository fields, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once. Private report bounds are retained internally pending the #481 UI reporting/count audit.
+Repository comparison retains registry order for repository fields, followed by collections and policy resources in their documented order. Each declared scalar counts once and each managed collection once. Private report bounds are retained internally.
 
 ### Rule: Use the existing complete GraphQL read
 

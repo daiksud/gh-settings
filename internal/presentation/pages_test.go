@@ -33,7 +33,7 @@ func TestPagesNormalizedModeDisplaysUIChoicesAndQuotedRawWarning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := PagesLine(ordinary); got != "settings.pages.build_type: \"legacy\" → \"workflow\" (branch source becomes inactive)" {
+	if got := PagesLine(ordinary); got != "repository.settings.pages.build_and_deployment.source: \"deploy_from_a_branch\" → \"github_actions\" (branch source becomes inactive)" {
 		t.Fatal(got)
 	}
 }

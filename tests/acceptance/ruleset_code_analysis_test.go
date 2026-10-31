@@ -166,7 +166,7 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, string(edited)); err != nil {
 		t.Fatal(err)
 	}
-	if out := run("plan"); !strings.Contains(out, `"severity":"warnings"`) || !strings.Contains(out, `"security_alerts_threshold":"critical"`) {
+	if out := run("plan"); !strings.Contains(out, `"severity":"warnings_and_higher"`) || !strings.Contains(out, `"security_alerts":"critical"`) {
 		t.Fatal("threshold change absent", out)
 	}
 	run("apply")

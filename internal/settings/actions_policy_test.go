@@ -60,7 +60,7 @@ func TestPrepareActionsDoesNotReportUnmanagedAllowedActions(t *testing.T) {
 	state := ActionsPolicyState{AllowedActions: "local_only"}
 	declaration := ActionsPolicyDeclaration{SelectedActions: SelectedActionsDeclaration{PatternsAllowed: &patterns}}
 	err := PrepareActions(state, declaration)
-	if err == nil || strings.Contains(err.Error(), state.AllowedActions) || !strings.Contains(err.Error(), "declare allowed_actions: selected") {
+	if err == nil || strings.Contains(err.Error(), state.AllowedActions) || !strings.Contains(err.Error(), "declare the selected non-owner choice") {
 		t.Fatal(err)
 	}
 }

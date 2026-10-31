@@ -135,7 +135,7 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 	input := generalInput("features: {issue_permissions: {creation_allowed_by: collaborators_only}}\n")
 	writeSettingsFile(fixture.work, input)
 	run("validate")
-	want := `settings.repository.issue_creation_policy: "ALL" → "COLLABORATORS_ONLY"` + "\n"
+	want := `repository.settings.general.features.issue_permissions.creation_allowed_by: "all_users" → "collaborators_only"` + "\n"
 	if got := run("plan"); got != want {
 		t.Fatal(got)
 	}

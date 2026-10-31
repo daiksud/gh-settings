@@ -16,3 +16,14 @@ func ActionsExecutionLine(change settings.ActionsExecutionChange) string {
 	}
 	return warning + fmt.Sprintf("%s: %s → %s (write required)", settings.ActionsPermissionsPath, before, strconv.Quote(string(change.After())))
 }
+
+func ExactActionsExecutionLine(context *settings.ActionsExecutionContext) string {
+	if context == nil || context.Validate() != nil {
+		return settings.ActionsPermissionsPath + ": selection unavailable"
+	}
+	return fmt.Sprintf("%s: %q → %q", settings.ActionsPermissionsPath, context.Before, context.After)
+}
+
+func IsActionsExecutionField(field string) bool {
+	return field == "actions.enabled" || field == "actions.allowed_actions"
+}

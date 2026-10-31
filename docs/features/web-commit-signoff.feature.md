@@ -15,7 +15,7 @@ supported and implemented in current source. The field is `repository.settings.g
 - Export includes the observed boolean only after all required reads succeed. A failed read preserves the destination. Exported false remains an explicit declaration.
 - Plan is read-only, compares declared values only, and places this field after `has_discussions` and before merge-related fields. This field alone needs no GraphQL request.
 - Apply sends only declared fields through one repository PATCH, with no preliminary GET. An explicit false is sent as native JSON false; omission does not add the key or alter other fields. Existing API errors stop later resources and do not imply rollback.
-- CLI output and rendered Summary use `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` with native booleans. The serialized private same-version report retains raw internal identifiers and bounds pending #481.
+- CLI output and rendered Summary use `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` with native booleans. The serialized private same-version report retains raw internal identifiers and bounds.
 - The setting applies to web-based commit sign-off. It does not require cryptographic signatures, install a DCO check, rewrite commits or change protections.
 
 ## API and evidence boundaries

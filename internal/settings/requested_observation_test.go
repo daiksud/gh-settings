@@ -92,7 +92,7 @@ func TestCompareRepositoryObservationValidatesEffectiveMergeMethod(t *testing.T)
 			observed := NewRepositoryObservation(nil, &MergeMethodsState{AllowMergeCommit: test.observed, MergeCommitTitle: "MERGE_MESSAGE"}, nil)
 			got, err := CompareRepositoryObservation(observed, test.desired)
 			if test.wantErr {
-				if err == nil || !strings.Contains(err.Error(), "require allow_merge_commit: true") || !reflect.DeepEqual(got, Comparison{}) {
+				if err == nil || !strings.Contains(err.Error(), "requires repository.settings.general.pull_requests.allow_merge_commits: true") || !reflect.DeepEqual(got, Comparison{}) {
 					t.Fatalf("comparison=%+v error=%v", got, err)
 				}
 			} else if err != nil || got.Managed != len(DeclaredRepositoryFields(test.desired)) {

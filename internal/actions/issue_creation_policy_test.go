@@ -10,7 +10,7 @@ import (
 func TestIssueCreationPolicyReportEnum(t *testing.T) {
 	report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{{Field: "repository.issue_creation_policy", Before: "ALL", After: "COLLABORATORS_ONLY"}}}
 	content, err := actions.RenderSummary(report, summaryMetadata())
-	if err != nil || !strings.Contains(html.UnescapeString(content), `settings.repository.issue_creation_policy: "ALL" → "COLLABORATORS_ONLY"`) {
+	if err != nil || !strings.Contains(html.UnescapeString(content), `repository.settings.general.features.issue_permissions.creation_allowed_by: "all_users" → "collaborators_only"`) {
 		t.Fatal(content, err)
 	}
 	for _, value := range []any{nil, false, float64(0), "", "all", "UNKNOWN"} {

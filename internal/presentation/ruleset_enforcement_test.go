@@ -27,7 +27,7 @@ func TestNormalizedRulesetEnforcementPresentationRetainsWholeObjectContext(t *te
 		}
 		warning := `Warning: repository.settings.rulesets.enforcement_status: observed "evaluate" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".`
 		decision := `repository.settings.rulesets.enforcement_status (Ruleset 7 "policy"): "disabled" (normalized observation) → "` + desired + `" (write required)`
-		whole := `settings.rulesets: update "policy": ` + enforcementDisplayPolicy + ` → ` + afterJSON
+		whole := `repository.settings.rulesets: update "policy": ` + rulesetPolicy(&before) + ` → ` + rulesetPolicy(&after)
 		want := warning + "\n" + decision + "\nEffective policy: " + whole
 		if got := RulesetLine(change); got != want {
 			t.Fatal(got, want)

@@ -7,15 +7,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 // RulesetLine renders selected whole objects, including IDs and fixed defaults.
 func RulesetLine(change settings.RulesetDisplayChange) string {
 	prior, desired := change.Before(), change.After()
-	before, _ := json.Marshal(prior)
-	after, _ := json.Marshal(desired)
-	line := fmt.Sprintf("settings.rulesets: %s %q: %s → %s", change.Operation(), change.Name(), before, after)
+	before := rulesetPolicy(prior)
+	after := rulesetPolicy(desired)
+	line := fmt.Sprintf("repository.settings.rulesets: %s %q: %s → %s", change.Operation(), change.Name(), before, after)
 	records := change.Normalizations()
 	if records.IsZero() {
 		return line
@@ -141,11 +143,15 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 }
 
 func rulesetBypassActorLabel(record settings.RulesetBypassModeNormalization) string {
-	label := fmt.Sprintf("actor_type=%q", record.ActorType)
-	if record.ActorID != nil {
-		label += fmt.Sprintf(", actor_id=%d", *record.ActorID)
+	actor, err := github.RulesetBypassIdentityUI(record.ActorType, record.ActorID)
+	if err != nil {
+		return "actor unavailable in supported UI choices"
 	}
-	return label
+	encoded, err := workspace.MarshalUIReport(actor)
+	if err != nil {
+		return "actor unavailable in supported UI choices"
+	}
+	return string(encoded)
 }
 
 func RulesetBypassNormalizationLine(id int64, name string, record settings.RulesetBypassModeNormalization) string {
@@ -176,4 +182,45 @@ func RulesetScanningAlertsNormalizationLine(id int64, name string, record settin
 
 func RulesetScanningSecurityAlertsNormalizationLine(id int64, name string, record settings.RulesetScanningSecurityAlertsNormalization) string {
 	return fmt.Sprintf("Warning: %s: observed %q is outside UI choices; using %q (projection only). Ruleset %d %q, tool=%q.", record.Path, record.RawValue, record.Fallback, id, name, record.Tool)
+}
+
+// rulesetPolicy never substitutes a partial or unrepresentable API object for
+// a UI policy. A nil value denotes the absent side of a create operation.
+func rulesetPolicy(policy *settings.RulesetDeclaration) string {
+	if policy == nil {
+		return "absent"
+	}
+	projected, err := github.RulesetObservation(*policy)
+	if err != nil {
+		return "unavailable (policy is outside supported UI choices)"
+	}
+	encoded, err := workspace.MarshalUIReport(projected.Ruleset)
+	if err != nil {
+		return "unavailable (policy cannot be rendered)"
+	}
+	return string(encoded)
+}
+
+// ValidateRulesetDisplay rejects a selected policy that cannot be projected to
+// supported UI controls. Never replace an unsupported observation with an
+// apparently complete or equal policy.
+func ValidateRulesetDisplay(change settings.RulesetDisplayChange) error {
+	for _, policy := range []*settings.RulesetDeclaration{change.Before(), change.After()} {
+		if policy == nil {
+			continue
+		}
+		if _, err := github.RulesetObservation(*policy); err != nil {
+			return fmt.Errorf("selected Ruleset policy cannot be represented using supported UI choices")
+		}
+	}
+	return nil
+}
+
+func ValidateRulesetChanges(changes []settings.RulesetChange) error {
+	for _, change := range changes {
+		if err := ValidateRulesetDisplay(change.Display()); err != nil {
+			return err
+		}
+	}
+	return nil
 }

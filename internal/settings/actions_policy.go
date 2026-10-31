@@ -64,7 +64,7 @@ func ValidateActionPatterns(values []string) error {
 		return fmt.Errorf("Actions patterns must be a non-null array")
 	}
 	if len(values) > 1000 {
-		return fmt.Errorf("actions.selected_actions.patterns_allowed must contain at most 1000 patterns")
+		return fmt.Errorf("repository.settings.actions.general.allow_or_block_specified_actions_and_reusable_workflows must contain at most 1000 patterns")
 	}
 	for _, v := range values {
 		if v == "" {
@@ -76,7 +76,7 @@ func ValidateActionPatterns(values []string) error {
 
 func (d ActionsPolicyDeclaration) Validate() error {
 	if d.ForkApprovalPolicy != nil && !ValidForkApprovalPolicy(*d.ForkApprovalPolicy) {
-		return fmt.Errorf("actions.fork_pr_approval_policy must be a supported contributor approval policy")
+		return fmt.Errorf("repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors must be a supported choice")
 	}
 	if d.RetentionDays != nil {
 		if err := ValidateRetentionDays(*d.RetentionDays); err != nil {
@@ -84,13 +84,13 @@ func (d ActionsPolicyDeclaration) Validate() error {
 		}
 	}
 	if d.DefaultWorkflowPermissions != nil && !ValidDefaultWorkflowPermissions(*d.DefaultWorkflowPermissions) {
-		return fmt.Errorf("actions.default_workflow_permissions must be read or write")
+		return fmt.Errorf("repository.settings.actions.general.workflow_permissions must be a supported choice")
 	}
 	if d.AllowedActions != nil && !ValidAllowedActions(*d.AllowedActions) {
-		return fmt.Errorf("actions.allowed_actions must be all, local_only or selected")
+		return fmt.Errorf("repository.settings.actions.general.actions_permissions must be a supported choice")
 	}
 	if !d.SelectedActions.Empty() && d.AllowedActions != nil && *d.AllowedActions != "selected" {
-		return fmt.Errorf("actions.selected_actions requires allowed_actions selected or omitted")
+		return fmt.Errorf("selected Actions controls require the selected non-owner actions_permissions choice or omission")
 	}
 	if d.SelectedActions.PatternsAllowed != nil {
 		return ValidateActionPatterns(*d.SelectedActions.PatternsAllowed)
@@ -100,7 +100,7 @@ func (d ActionsPolicyDeclaration) Validate() error {
 
 func (s ActionsPolicyState) Validate() error {
 	if !ValidAllowedActions(s.AllowedActions) {
-		return fmt.Errorf("unsupported observed actions.allowed_actions value")
+		return fmt.Errorf("unsupported observed Actions permissions value")
 	}
 	if record := s.AllowedActionsNormalization; record != (ObservationNormalization{}) {
 		_, fallback, _ := ActionsPermissionsValueForChoice(DefaultActionsPermissionsChoice)
@@ -136,10 +136,10 @@ func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 		return err
 	}
 	if !s.Enabled && d.Enabled != nil && *d.Enabled && d.AllowedActions == nil && s.AllowedActionsNormalization != (ObservationNormalization{}) {
-		return fmt.Errorf("enabling Actions from an unknown policy requires an explicit canonical allowed_actions policy")
+		return fmt.Errorf("enabling Actions from an unknown policy requires an explicit canonical actions_permissions choice")
 	}
 	if s.AllowedActions != "selected" && d.AllowedActions != nil && *d.AllowedActions == "selected" && !d.SelectedActions.Complete() {
-		return fmt.Errorf("transition to selected requires all three selected_actions values; inactive values cannot be read")
+		return fmt.Errorf("transition to selected requires all three selected Actions controls; inactive values cannot be read")
 	}
 	if d.SelectedActions.Empty() {
 		return nil
@@ -151,10 +151,10 @@ func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 		return nil
 	}
 	if d.AllowedActions == nil || *d.AllowedActions != "selected" {
-		return fmt.Errorf("selected Actions values are not observable under the current unmanaged allowed_actions policy; declare allowed_actions: selected and all three selected_actions values")
+		return fmt.Errorf("selected Actions values are not observable under the current unmanaged actions_permissions policy; declare the selected non-owner choice and all three selected Actions controls")
 	}
 	if !d.SelectedActions.Complete() {
-		return fmt.Errorf("transition to selected requires all three selected_actions values; inactive values cannot be read")
+		return fmt.Errorf("transition to selected requires all three selected Actions controls; inactive values cannot be read")
 	}
 	return nil
 }
@@ -335,9 +335,10 @@ func ValidateActionsPolicyChanges(changes []ActionsPolicyChange, execution ...Ac
 }
 
 type ActionsPolicyComparison struct {
-	Managed   int
-	Changes   []ActionsPolicyChange
-	Execution []ActionsExecutionChange
+	Managed          int
+	Changes          []ActionsPolicyChange
+	Execution        []ActionsExecutionChange
+	ExecutionContext *ActionsExecutionContext
 }
 
 func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (ActionsPolicyComparison, error) {
@@ -347,6 +348,7 @@ func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (Act
 	managed := 0
 	changes := []ActionsPolicyChange{}
 	var execution []ActionsExecutionChange
+	var executionContext *ActionsExecutionContext
 	radioIntent := false
 	if s.AllowedActionsNormalization != (ObservationNormalization{}) {
 		if d.AllowedActions != nil && (d.Enabled == nil || !*d.Enabled) {
@@ -369,6 +371,20 @@ func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (Act
 				}
 				execution = append(execution, change)
 			}
+		}
+	}
+	if s.AllowedActionsNormalization == (ObservationNormalization{}) && d.Enabled != nil && (d.AllowedActions != nil || !*d.Enabled) {
+		before, valid := ActionsPermissionsChoiceForValue(s.Enabled, s.AllowedActions)
+		allowed := ""
+		if d.AllowedActions != nil {
+			allowed = *d.AllowedActions
+		}
+		after, afterValid := ActionsPermissionsChoiceForValue(*d.Enabled, allowed)
+		if !valid || !afterValid {
+			return ActionsPolicyComparison{}, fmt.Errorf("invalid Actions radio choice")
+		}
+		if before != after {
+			executionContext = &ActionsExecutionContext{Before: before, After: after, ObservedAllowed: s.AllowedActions}
 		}
 	}
 	add := func(field string, before, after any) {
@@ -405,5 +421,5 @@ func CompareActionsPolicy(s ActionsPolicyState, d ActionsPolicyDeclaration) (Act
 	if err := ValidateActionsPolicyChanges(changes, execution...); err != nil {
 		return ActionsPolicyComparison{}, err
 	}
-	return ActionsPolicyComparison{Managed: managed, Changes: changes, Execution: execution}, nil
+	return ActionsPolicyComparison{Managed: managed, Changes: changes, Execution: execution, ExecutionContext: executionContext}, nil
 }

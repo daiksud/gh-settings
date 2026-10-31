@@ -44,7 +44,7 @@ func TestNormalizedRulesetQualityPresentationPreservesRemovalAndUIChoices(t *tes
 				} else {
 					decision += `"` + test.choice + `" (write required)`
 				}
-				whole := `settings.rulesets: update "policy": ` + beforeJSON + ` → ` + afterJSON
+				whole := `repository.settings.rulesets: update "policy": ` + rulesetPolicy(&before) + ` → ` + rulesetPolicy(&after)
 				want := prefix + warning + "\n" + decision + "\nEffective policy: " + whole
 				if got := RulesetLine(change); got != want || strings.Count(got, "Effective policy:") != 1 {
 					t.Fatal(got, want)

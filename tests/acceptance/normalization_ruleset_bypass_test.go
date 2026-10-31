@@ -187,8 +187,8 @@ func TestRulesetBypassNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	keyWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "KEY_MODE" is outside UI choices; using "always" (projection only). Ruleset 7 "basic", actor_type="DeployKey".`
-	teamWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "FUTURE_MODE" is outside UI choices; using "always" (projection only). Ruleset 7 "basic", actor_type="Team", actor_id=9.`
+	keyWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "KEY_MODE" is outside UI choices; using "always" (projection only). Ruleset 7 "basic", {"deploy_keys":true}.`
+	teamWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "FUTURE_MODE" is outside UI choices; using "always" (projection only). Ruleset 7 "basic", {"team":9}.`
 	warnings := keyWarning + "\n" + teamWarning + "\n"
 	output, diagnostic, status := run("export", "--rulesets")
 	if status != 0 || output != "" || diagnostic != warnings {
@@ -206,7 +206,7 @@ func TestRulesetBypassNormalizationAcrossExecutableCommands(t *testing.T) {
 		if choice == "removed" {
 			after = "inactive (actor removed; write required)"
 		}
-		decision := `repository.settings.rulesets.bypass_list.bypass_mode (Ruleset 7 "basic", actor_type="Team", actor_id=9): "always" (normalized observation) → ` + after
+		decision := `repository.settings.rulesets.bypass_list.bypass_mode (Ruleset 7 "basic", {"team":9}): "always" (normalized observation) → ` + after
 		if status != 0 || diagnostic != "" || strings.Count(output, teamWarning) != 1 || strings.Count(output, keyWarning) != 1 || !strings.Contains(output, decision) || strings.Count(output, "Effective policy:") != 1 {
 			t.Fatal("plan evidence", status, output, diagnostic)
 		}

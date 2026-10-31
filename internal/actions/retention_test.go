@@ -10,7 +10,7 @@ import (
 func TestRetentionSummaryHasNativeIntegerValues(t *testing.T) {
 	r := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: "actions.artifact_and_log_retention_days", Before: float64(90), After: float64(30)}}}
 	text, err := actions.RenderSummary(r, summaryMetadata())
-	if err != nil || !strings.Contains(text, "settings.actions.artifact_and_log_retention_days: 90 → 30") {
+	if err != nil || !strings.Contains(text, "repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention: 90 → 30") {
 		t.Fatal(text, err)
 	}
 	for _, value := range []any{nil, "30", true, 0, 401, 1.5} {

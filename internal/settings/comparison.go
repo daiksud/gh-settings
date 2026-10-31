@@ -2,16 +2,18 @@ package settings
 
 // Comparison counts all declared fields and records only changed values.
 type Comparison struct {
-	Managed          int
-	Changes          []Change
-	CommitMessages   []NormalizedCommitMessageChange
-	Labels           LabelChanges
-	Rulesets         []RulesetChange
-	Environments     []EnvironmentChange
-	Actions          []ActionsPolicyChange
-	ActionsExecution []ActionsExecutionChange
-	Security         []SecurityChange
-	Pages            []PagesChange
+	Managed                 int
+	Changes                 []Change
+	CommitMessages          []NormalizedCommitMessageChange
+	CommitMessageContexts   []CommitMessageContext
+	Labels                  LabelChanges
+	Rulesets                []RulesetChange
+	Environments            []EnvironmentChange
+	Actions                 []ActionsPolicyChange
+	ActionsExecution        []ActionsExecutionChange
+	ActionsExecutionContext *ActionsExecutionContext
+	Security                []SecurityChange
+	Pages                   []PagesChange
 }
 
 // HasChanges includes actionable normalized fallback matches, not only unequal

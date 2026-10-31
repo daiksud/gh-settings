@@ -138,7 +138,7 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 		t.Fatal(err)
 	}
 	plan := run("plan")
-	if !strings.Contains(plan, `settings.actions.enabled: false → true`) || !strings.Contains(plan, `settings.actions.allowed_actions: "all" → "selected"`) || strings.Count(plan, "unavailable while policy is not selected") != 3 {
+	if !strings.Contains(plan, `repository.settings.actions.general.actions_permissions: "disable_actions" → "allow_owner_and_select_non_owner_actions_and_reusable_workflows"`) || strings.Count(plan, "unavailable while policy is not selected") != 3 {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "actions-plan.json")

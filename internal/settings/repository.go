@@ -72,7 +72,7 @@ func (d RepositoryDeclaration) ValidateCommitDependencies() error {
 
 func (d RepositoryDeclaration) validateMergeCommitDefaults(allowed bool) error {
 	if !allowed && (d.MergeCommitTitle != nil || d.MergeCommitMessage != nil) {
-		return errors.New("merge_commit_title and merge_commit_message require allow_merge_commit: true when declared")
+		return errors.New("repository.settings.general.pull_requests.merge_commit.default_commit_message requires repository.settings.general.pull_requests.allow_merge_commits: true")
 	}
 	return nil
 }

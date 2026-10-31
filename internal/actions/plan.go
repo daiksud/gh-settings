@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/daiksud/gh-settings/internal/app"
+	"github.com/daiksud/gh-settings/internal/presentation"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -18,19 +19,22 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
-	Outcome          string                       `json:"outcome"`
-	Target           string                       `json:"target,omitempty"`
-	Managed          int                          `json:"managed"`
-	Changes          []PlanChange                 `json:"changes"`
-	CommitMessages   []CommitMessagePlanChange    `json:"commit_messages,omitempty"`
-	Diagnostic       string                       `json:"diagnostic,omitempty"`
-	Labels           []LabelPlanChange            `json:"labels,omitempty"`
-	Actions          []PlanChange                 `json:"actions,omitempty"`
-	ActionsExecution []ActionsExecutionPlanChange `json:"actions_execution,omitempty"`
-	Security         []PlanChange                 `json:"security,omitempty"`
-	Rulesets         []RulesetPlanChange          `json:"rulesets,omitempty"`
-	Environments     []EnvironmentPlanChange      `json:"environments,omitempty"`
-	Pages            []PagesPlanChange            `json:"pages,omitempty"`
+	Outcome                 string                            `json:"outcome"`
+	Target                  string                            `json:"target,omitempty"`
+	Managed                 int                               `json:"managed"`
+	Changes                 []PlanChange                      `json:"changes"`
+	CommitMessageContexts   []settings.CommitMessageContext   `json:"commit_message_contexts,omitempty"`
+	CommitMessages          []CommitMessagePlanChange         `json:"commit_messages,omitempty"`
+	Resource                string                            `json:"resource,omitempty"`
+	Diagnostic              string                            `json:"diagnostic,omitempty"`
+	Labels                  []LabelPlanChange                 `json:"labels,omitempty"`
+	Actions                 []PlanChange                      `json:"actions,omitempty"`
+	ActionsExecutionContext *settings.ActionsExecutionContext `json:"actions_execution_context,omitempty"`
+	ActionsExecution        []ActionsExecutionPlanChange      `json:"actions_execution,omitempty"`
+	Security                []PlanChange                      `json:"security,omitempty"`
+	Rulesets                []RulesetPlanChange               `json:"rulesets,omitempty"`
+	Environments            []EnvironmentPlanChange           `json:"environments,omitempty"`
+	Pages                   []PagesPlanChange                 `json:"pages,omitempty"`
 }
 
 // PlanChange retains the native string, boolean, integer or string-list comparison values.
@@ -44,12 +48,19 @@ type PlanChange struct {
 
 func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	result, planErr := plan()
+	if planErr == nil {
+		if err := presentation.ValidateRulesetChanges(result.Comparison.Rulesets); err != nil {
+			planErr = &app.PlanError{Stage: "read-failure", Path: "repository.settings.rulesets", Target: result.Target, Err: err}
+			result.Comparison = settings.Comparison{}
+		}
+	}
 	report := PlanReport{Outcome: "unmanaged", Managed: result.Comparison.Managed, Changes: make([]PlanChange, 0, len(result.Comparison.Changes))}
 	if planErr != nil {
 		var failure *app.PlanError
 		if !errors.As(planErr, &failure) {
 			return planErr
 		}
+		report.Resource = reportFailureResource(failure)
 		switch failure.Stage {
 		case "invalid-config":
 			report.Outcome = "invalid-config"
@@ -84,6 +95,8 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		)
 		report.Changes = append(report.Changes, entry)
 	}
+	report.CommitMessageContexts = result.Comparison.CommitMessageContexts
+	report.ActionsExecutionContext = result.Comparison.ActionsExecutionContext
 	for _, change := range result.Comparison.CommitMessages {
 		_, after := change.Values()
 		report.CommitMessages = append(report.CommitMessages, CommitMessagePlanChange{Menu: change.Menu(), After: after, Normalization: change.Normalization()})

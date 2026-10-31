@@ -33,9 +33,7 @@ func TestEnvironmentDeploymentPresentationMarksEffectiveBeforeAndScopesModeEvide
 				if err != nil {
 					t.Fatal(err)
 				}
-				beforeJSON, _ := json.Marshal(before)
-				afterJSON, _ := json.Marshal(after)
-				whole := `settings.environments: update "production": effective before policy ` + string(beforeJSON) + ` → request ` + string(afterJSON)
+				whole := `repository.settings.environments: update "production": effective before policy ` + environmentPolicy(environmentVisibleBefore(&before, &after)) + ` → request ` + environmentPolicy(&after)
 				if partial {
 					whole += " (omitted fields are API-controlled; resulting values are unknown until apply)"
 				}
