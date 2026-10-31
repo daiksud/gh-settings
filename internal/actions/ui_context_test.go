@@ -2,6 +2,7 @@ package actions
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,6 +65,15 @@ func TestActionsExecutionContextKeepsDisabledLatentValuePrivate(t *testing.T) {
 }
 
 func TestFailureResourceUsesOnlyFixedPaths(t *testing.T) {
+	invalid := &app.PlanError{Stage: "invalid-config", Err: errors.New("repository.settings.general.features.issues must be a boolean")}
+	if got := reportFailureResource(invalid); got != "repository.settings.general" {
+		t.Fatal(got)
+	}
+	read := &app.PlanError{Stage: "read-failure", Path: "repository", Err: errors.New("fixture read denied")}
+	if got := reportFailureResource(read); got != "repository" {
+		t.Fatal(got)
+	}
+
 	if validFailureResource("read-failure", "repository.settings.pages secret") || validFailureResource("changed", "repository.settings.pages") || !validFailureResource("read-failure", "repository.settings.pages") {
 		t.Fatal("failure resource boundary not enforced")
 	}

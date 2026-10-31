@@ -172,9 +172,9 @@ YAML
     else
       grep -Fq 'Error — plan failed.' "$summary"
       if [[ "$2" == read-failure ]]; then
-        grep -Fq '<pre>repository read failed</pre>' "$summary"
+        grep -Fq '<pre>repository: repository read failed</pre>' "$summary"
       else
-        grep -Fq '<pre>configuration validation failed</pre>' "$summary"
+        grep -Fq '<pre>repository.settings.general: configuration validation failed</pre>' "$summary"
       fi
     fi
     if grep -Fq '<script>' "$summary"; then exit 1; fi
