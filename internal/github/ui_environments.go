@@ -98,41 +98,10 @@ func EnvironmentPolicyUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 	if err := p.ValidateObservationPolicy(); err != nil {
 		return uimodel.Environment{}, err
 	}
-	ui := uimodel.Environment{Name: p.Name, DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{
-		WaitTimer: copyUIEnvironmentValue(p.WaitTimer), PreventSelfReview: copyUIEnvironmentValue(p.PreventSelfReview), AllowAdministratorsToBypassConfiguredProtectionRules: copyUIEnvironmentValue(p.CanAdminsBypass),
-	}}
-	reviewers := make([]uimodel.EnvironmentReviewer, 0, len(*p.Reviewers))
-	for _, reviewer := range *p.Reviewers {
-		switch reviewer.Type {
-		case "User":
-			reviewers = append(reviewers, uimodel.EnvironmentReviewer{Person: copyUIEnvironmentValue(&reviewer.ID)})
-		case "Team":
-			reviewers = append(reviewers, uimodel.EnvironmentReviewer{Team: copyUIEnvironmentValue(&reviewer.ID)})
-		default:
-			return uimodel.Environment{}, fmt.Errorf("environment reviewer is outside UI identities")
-		}
+	if p.DeploymentBranchPolicy != nil && p.DeploymentBranchPolicy.CustomBranchPolicies && p.DeploymentBranchPatterns == nil {
+		return uimodel.Environment{}, fmt.Errorf("custom deployment patterns were not acquired")
 	}
-	ui.DeploymentProtectionRules.RequiredReviewers = &reviewers
-	choice, supported := settings.EnvironmentDeploymentChoiceForPolicy(p.DeploymentBranchPolicy)
-	if !supported {
-		return uimodel.Environment{}, fmt.Errorf("environment branch policy is outside UI choices")
-	}
-	ui.DeploymentBranchesAndTags = &choice
-	if choice == uimodel.SelectedBranchesAndTags {
-		if p.DeploymentBranchPatterns == nil {
-			return uimodel.Environment{}, fmt.Errorf("custom deployment patterns were not acquired")
-		}
-		patterns := make([]uimodel.EnvironmentDeploymentRule, 0, len(*p.DeploymentBranchPatterns))
-		for _, pattern := range *p.DeploymentBranchPatterns {
-			kind, supported := settings.EnvironmentRefTypeChoiceForValue(pattern.Type)
-			if !supported {
-				return uimodel.Environment{}, fmt.Errorf("environment pattern ref type is outside UI choices")
-			}
-			patterns = append(patterns, uimodel.EnvironmentDeploymentRule{RefType: kind, NamePattern: pattern.Name})
-		}
-		ui.DeploymentBranchOrTagRules = &patterns
-	}
-	return ui, nil
+	return EnvironmentReportUI(p)
 }
 
 func EnvironmentsObservation(observation settings.EnvironmentObservation) ([]PreparedEnvironment, error) {
@@ -171,4 +140,51 @@ func EnvironmentsObservation(observation settings.EnvironmentObservation) ([]Pre
 		return cmp.Compare(settings.EnvironmentIdentity(a.Environment.Name), settings.EnvironmentIdentity(b.Environment.Name))
 	})
 	return result, nil
+}
+
+// EnvironmentReportUI projects an already validated complete observation or
+// partial request without filling omitted, API-controlled values.
+func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment, error) {
+	ui := uimodel.Environment{Name: p.Name}
+	if p.WaitTimer != nil || p.PreventSelfReview != nil || p.CanAdminsBypass != nil || p.Reviewers != nil {
+		protection := &uimodel.EnvironmentDeploymentProtectionRules{
+			WaitTimer:         copyUIEnvironmentValue(p.WaitTimer),
+			PreventSelfReview: copyUIEnvironmentValue(p.PreventSelfReview),
+			AllowAdministratorsToBypassConfiguredProtectionRules: copyUIEnvironmentValue(p.CanAdminsBypass),
+		}
+		if p.Reviewers != nil {
+			reviewers := make([]uimodel.EnvironmentReviewer, 0, len(*p.Reviewers))
+			for _, reviewer := range *p.Reviewers {
+				switch reviewer.Type {
+				case "User":
+					reviewers = append(reviewers, uimodel.EnvironmentReviewer{Person: copyUIEnvironmentValue(&reviewer.ID)})
+				case "Team":
+					reviewers = append(reviewers, uimodel.EnvironmentReviewer{Team: copyUIEnvironmentValue(&reviewer.ID)})
+				default:
+					return uimodel.Environment{}, fmt.Errorf("environment reviewer is outside UI identities")
+				}
+			}
+			protection.RequiredReviewers = &reviewers
+		}
+		ui.DeploymentProtectionRules = protection
+	}
+	if p.DeploymentBranchPolicyDeclared || p.DeploymentBranchPolicy != nil {
+		choice, ok := settings.EnvironmentDeploymentChoiceForPolicy(p.DeploymentBranchPolicy)
+		if !ok {
+			return uimodel.Environment{}, fmt.Errorf("environment branch policy is outside UI choices")
+		}
+		ui.DeploymentBranchesAndTags = &choice
+	}
+	if p.DeploymentBranchPatterns != nil {
+		patterns := make([]uimodel.EnvironmentDeploymentRule, 0, len(*p.DeploymentBranchPatterns))
+		for _, pattern := range *p.DeploymentBranchPatterns {
+			kind, ok := settings.EnvironmentRefTypeChoiceForValue(pattern.Type)
+			if !ok {
+				return uimodel.Environment{}, fmt.Errorf("environment pattern ref type is outside UI choices")
+			}
+			patterns = append(patterns, uimodel.EnvironmentDeploymentRule{RefType: kind, NamePattern: pattern.Name})
+		}
+		ui.DeploymentBranchOrTagRules = &patterns
+	}
+	return ui, nil
 }

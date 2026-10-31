@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/daiksud/gh-settings/internal/presentation"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -198,6 +199,9 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 			return nil, fmt.Errorf("unordered Ruleset operations")
 		}
 		last = change.Name()
+		if err := presentation.ValidateRulesetDisplay(change); err != nil {
+			return nil, err
+		}
 		out = append(out, change)
 	}
 	return out, nil

@@ -185,7 +185,7 @@ repository:
 		t.Fatal(err)
 	}
 	plan := run("plan")
-	for _, shown := range []string{`update "basic"`, `create "new"`, `"id":7`, `"name":"renamed"`, `"rules":[]`} {
+	for _, shown := range []string{`update "basic"`, `create "new"`, `"id":7`, `"ruleset_name":"renamed"`, `"restrict_deletions":false`} {
 		if !strings.Contains(plan, shown) {
 			t.Fatal("missing selected/default-derived change", shown, plan)
 		}
@@ -223,7 +223,7 @@ repository:
 	// Force local-mode writeback even when the acceptance harness itself runs in Actions.
 	env = labelIDFixtureEnv(fixture.cfg, false)
 	out := run("apply")
-	if !strings.Contains(out, `Created rulesets "new": id 10`) {
+	if !strings.Contains(out, `Created repository.settings.rulesets "new": id 10`) {
 		t.Fatal(out)
 	}
 	recorded, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
@@ -278,7 +278,7 @@ func TestRulesetsFailureBoundaries(t *testing.T) {
 	for _, tt := range []struct {
 		name, command, detail, config string
 		status                        int
-	}{{"hidden bypass", "apply", strings.Replace(acceptanceRuleset, `"bypass_actors":[],`, "", 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"unsupported rule", "apply", strings.Replace(acceptanceRuleset, `"type":"deletion"`, `"type":"merge_queue"`, 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"unknown condition", "plan", strings.Replace(acceptanceRuleset, `"exclude":[]`, `"exclude":[],"future":true`, 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"get redirect", "apply", acceptanceRuleset, "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 302}, {"put failure stops later writes", "apply", acceptanceRuleset, `[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]`, 403}, {"invalid before reads", "apply", "", "null", 200}} {
+	}{{"unsupported UI actor", "plan", strings.Replace(acceptanceRuleset, `"bypass_actors":[]`, `"bypass_actors":[{"actor_type":"OrganizationAdmin","bypass_mode":"always"}]`, 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"hidden bypass", "apply", strings.Replace(acceptanceRuleset, `"bypass_actors":[],`, "", 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"unsupported rule", "apply", strings.Replace(acceptanceRuleset, `"type":"deletion"`, `"type":"merge_queue"`, 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"unknown condition", "plan", strings.Replace(acceptanceRuleset, `"exclude":[]`, `"exclude":[],"future":true`, 1), "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 200}, {"get redirect", "apply", acceptanceRuleset, "[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]", 302}, {"put failure stops later writes", "apply", acceptanceRuleset, `[{id: 7, ruleset_name: basic, enforcement_status: disabled, target_branches: {include_default_branch: true}}]`, 403}, {"invalid before reads", "apply", "", "null", 200}} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string

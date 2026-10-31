@@ -119,9 +119,20 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	result, failed := summaryOutcome(report.outcome)
 	fmt.Fprintf(&content, "</table>\n\n<p>%s</p>\n\n<pre>", result)
 	if failed {
+		if report.resource != "" {
+			content.WriteString(quoteHTML(report.resource + ": "))
+		}
 		content.WriteString(quoteHTML(report.diagnostic))
 	}
+	shownMenus := map[settings.CommitMessageMenu]bool{}
 	for _, change := range report.comparison.Changes {
+		if context, ok := presentation.CommitMessageContextForField(change.Field().Path(), report.comparison.CommitMessageContexts); ok {
+			if !shownMenus[context.Menu] {
+				fmt.Fprintln(&content, quoteHTML(presentation.ExactCommitMessageLine(context)))
+				shownMenus[context.Menu] = true
+			}
+			continue
+		}
 		if change.Normalization() != (settings.ObservationNormalization{}) {
 			fmt.Fprintln(&content, quoteHTML(presentation.CreationPolicyLine(change)))
 			continue
@@ -131,7 +142,10 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 		}
 		change.Visit(
 			func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },
-			func(before, after string) { line(strconv.Quote(before), strconv.Quote(after)) },
+			func(before, after string) {
+				before, after = presentation.StringValues(change.Field().Path(), before, after)
+				line(strconv.Quote(before), strconv.Quote(after))
+			},
 			func(before, after []string) {
 				beforeJSON, _ := json.Marshal(before)
 				afterJSON, _ := json.Marshal(after)
@@ -157,7 +171,15 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	for _, change := range report.comparison.ActionsExecution {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.ActionsExecutionLine(change)))
 	}
+	shownActionsExecution := false
 	for _, change := range report.comparison.Actions {
+		if presentation.IsActionsExecutionField(change.Field()) {
+			if !shownActionsExecution {
+				fmt.Fprintln(&content, quoteHTML(presentation.ExactActionsExecutionLine(report.comparison.ActionsExecutionContext)))
+				shownActionsExecution = true
+			}
+			continue
+		}
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.ActionsPolicyLine(change)))
 	}
 	for _, change := range report.comparison.Security {
@@ -172,12 +194,15 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 
 // validatedPlanReport retains the result of the JSON and report-state boundary.
 type validatedPlanReport struct {
-	outcome, diagnostic string
-	comparison          settings.Comparison
-	rulesets            []settings.RulesetDisplayChange
+	outcome, diagnostic, resource string
+	comparison                    settings.Comparison
+	rulesets                      []settings.RulesetDisplayChange
 }
 
 func validatePlanReport(report PlanReport, target string) (validatedPlanReport, error) {
+	if !validFailureResource(report.Outcome, report.Resource) {
+		return validatedPlanReport{}, fmt.Errorf("invalid plan report resource")
+	}
 	execution, executionManaged, err := validateActionsExecutionReport(report.ActionsExecution)
 	if err != nil {
 		return validatedPlanReport{}, err
@@ -238,7 +263,10 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err != nil {
 		return validatedPlanReport{}, err
 	}
-	comparison := settings.Comparison{Managed: report.Managed, CommitMessages: commitMessages, Labels: labels, Environments: environments, ActionsExecution: execution}
+	if err := validateCommitMessageContexts(report.CommitMessageContexts, report.Changes); err != nil {
+		return validatedPlanReport{}, err
+	}
+	comparison := settings.Comparison{Managed: report.Managed, CommitMessages: commitMessages, CommitMessageContexts: report.CommitMessageContexts, Labels: labels, Environments: environments, ActionsExecution: execution}
 	for _, raw := range report.Actions {
 		if raw.SecurityStatusNormalization != nil {
 			return validatedPlanReport{}, fmt.Errorf("security status normalization cannot describe an Actions comparison")
@@ -255,6 +283,10 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 		}
 		comparison.Actions = append(comparison.Actions, change)
 	}
+	if err := validateActionsExecutionContext(report.ActionsExecutionContext, report.Actions, report.ActionsExecution); err != nil {
+		return validatedPlanReport{}, err
+	}
+	comparison.ActionsExecutionContext = report.ActionsExecutionContext
 	if err := settings.ValidateActionsPolicyChanges(comparison.Actions, comparison.ActionsExecution...); err != nil {
 		return validatedPlanReport{}, err
 	}
@@ -294,7 +326,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 		seen[change.Field()] = true
 		comparison.Changes = append(comparison.Changes, change)
 	}
-	return validatedPlanReport{outcome: report.Outcome, diagnostic: report.Diagnostic, comparison: comparison, rulesets: rulesets}, nil
+	return validatedPlanReport{outcome: report.Outcome, diagnostic: report.Diagnostic, resource: report.Resource, comparison: comparison, rulesets: rulesets}, nil
 }
 
 func parseReportChange(raw PlanChange) (settings.Change, error) {

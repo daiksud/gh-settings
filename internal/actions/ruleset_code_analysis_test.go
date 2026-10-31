@@ -53,7 +53,7 @@ func TestRulesetCodeAnalysisReportRetainsThresholdsAndEscapesTools(t *testing.T)
 		t.Fatal(err)
 	}
 	visible := html.UnescapeString(rendered)
-	for _, want := range []string{`"severity":"warnings"`, `"security_alerts_threshold":"critical"`, `"tool":"\u003cCodeQL\u003e"`} {
+	for _, want := range []string{`"severity":"warnings_and_higher"`, `"security_alerts":"critical"`, `"tool_name":"\u003cCodeQL\u003e"`} {
 		if !strings.Contains(visible, want) {
 			t.Fatal("missing analysis policy", want, visible)
 		}

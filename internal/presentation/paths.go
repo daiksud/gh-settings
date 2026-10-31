@@ -1,5 +1,7 @@
 package presentation
 
+import "github.com/daiksud/gh-settings/internal/settings"
+
 // SettingPath renders unambiguous UI paths without changing comparison identity.
 // Compound controls and the complete reporting contract are owned by Issue #481.
 func SettingPath(path string) string {
@@ -24,6 +26,10 @@ func SettingPath(path string) string {
 		return "repository.settings.general.features.discussions"
 	case "repository.has_projects":
 		return "repository.settings.general.features.projects"
+	case "repository.issue_creation_policy":
+		return settings.IssuePermissionsControl.Path()
+	case "repository.pull_request_creation_policy":
+		return settings.PullRequestPermissionsControl.Path()
 	case "repository.has_pull_requests":
 		return "repository.settings.general.features.pull_requests"
 	case "repository.allow_merge_commit":
@@ -42,6 +48,48 @@ func SettingPath(path string) string {
 		return "repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits"
 	case "repository.archived":
 		return "repository.settings.general.danger_zone.archive_this_repository"
+	case "security.secret_scanning":
+		return "repository.settings.security_and_quality.advanced_security.secret_protection"
+	case "security.secret_scanning_push_protection":
+		return "repository.settings.security_and_quality.advanced_security.push_protection"
+	case "security.private_vulnerability_reporting":
+		return "repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting"
+	case "security.immutable_releases":
+		return "repository.settings.general.releases.enable_release_immutability"
+	case "pages.build_type":
+		return "repository.settings.pages.build_and_deployment.source"
+	case "pages.source.branch":
+		return "repository.settings.pages.build_and_deployment.branch"
+	case "pages.source.path":
+		return "repository.settings.pages.build_and_deployment.select_folder"
+	case "pages.cname":
+		return "repository.settings.pages.custom_domain"
+	case "pages.https_enforced":
+		return "repository.settings.pages.enforce_https"
+	case "actions.fork_pr_approval_policy":
+		return "repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors"
+	case "actions.artifact_and_log_retention_days":
+		return "repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention"
+	case "actions.default_workflow_permissions":
+		return "repository.settings.actions.general.workflow_permissions"
+	case "actions.can_approve_pull_request_reviews":
+		return "repository.settings.actions.general.allow_github_actions_to_create_and_approve_pull_requests"
+	case "actions.sha_pinning_required":
+		return "repository.settings.actions.general.require_actions_to_be_pinned_to_a_full_length_commit_sha"
+	case "actions.selected_actions.github_owned_allowed":
+		return "repository.settings.actions.general.allow_actions_created_by_github"
+	case "actions.selected_actions.verified_allowed":
+		return "repository.settings.actions.general.allow_actions_by_marketplace_verified_creators"
+	case "actions.selected_actions.patterns_allowed":
+		return "repository.settings.actions.general.allow_or_block_specified_actions_and_reusable_workflows"
+	case "actions.private_fork_workflows.run_workflows_from_fork_pull_requests":
+		return "repository.settings.actions.general.fork_pull_request_workflows.run_workflows_from_fork_pull_requests"
+	case "actions.private_fork_workflows.send_write_tokens_to_workflows":
+		return "repository.settings.actions.general.fork_pull_request_workflows.send_write_tokens_to_workflows_from_fork_pull_requests"
+	case "actions.private_fork_workflows.send_secrets_and_variables":
+		return "repository.settings.actions.general.fork_pull_request_workflows.send_secrets_and_variables_to_workflows_from_fork_pull_requests"
+	case "actions.private_fork_workflows.require_approval_for_fork_pr_workflows":
+		return "repository.settings.actions.general.fork_pull_request_workflows.require_approval_for_fork_pull_request_workflows"
 	default:
 		return "settings." + path
 	}

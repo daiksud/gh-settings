@@ -25,14 +25,34 @@ func PagesLine(c settings.PagesChange) string {
 		}
 		return line
 	}
+	b = pagesDisplayValue(c.Field(), b)
+	a = pagesDisplayValue(c.Field(), a)
 	before, _ := json.Marshal(b)
 	after, _ := json.Marshal(a)
 	if c.BeforeInactive() {
 		before = []byte("inactive")
 	}
-	line := fmt.Sprintf("settings.%s: %s → %s", c.Field(), before, after)
-	if c.Field() == "pages.build_type" && a == "workflow" {
+	line := fmt.Sprintf("%s: %s → %s", SettingPath(c.Field()), before, after)
+	if c.Field() == "pages.build_type" && a == "github_actions" {
 		line += " (branch source becomes inactive)"
 	}
 	return line
+}
+
+func pagesDisplayValue(field string, value any) any {
+	v, ok := value.(string)
+	if !ok {
+		return value
+	}
+	switch field {
+	case "pages.build_type":
+		if choice, valid := settings.PagesModeChoiceForValue(v); valid {
+			return string(choice)
+		}
+	case "pages.source.path":
+		if choice, valid := settings.PagesFolderChoiceForValue(v); valid {
+			return string(choice)
+		}
+	}
+	return value
 }

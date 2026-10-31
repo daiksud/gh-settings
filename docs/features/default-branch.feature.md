@@ -16,7 +16,7 @@ supported and implemented in current source. The [settings reference](../setting
 - Export includes the observed branch after all reads succeed. Plan remains read-only and needs only the repository REST observation for this field. The string appears after About Website and before booleans; existing fields keep their relative order.
 - Direct apply sends only declared fields in one repository PATCH, with no preliminary read, branch creation/rename or local Git mutation. The selected branch must already exist; GitHub handles existence and policy rejection at update time.
 - A declared branch requires a returned valid string equal to the request. Missing/null/invalid/mismatched responses fail after PATCH, warn that repository writes may have applied, and stop later resources without rollback. Undeclared branch values do not alter existing PATCH response requirements.
-- CLI and rendered Summary use `repository.settings.general.default_branch` with native strings. The serialized private same-version report retains raw internal identifiers and bounds pending the #481 reporting/count audit.
+- CLI and rendered Summary use `repository.settings.general.default_branch` with native strings. The serialized private same-version report retains raw internal identifiers and bounds.
 - Protections, Rulesets and individual PR bases are not edited. Policies that target the default branch can apply to a different branch after this setting changes.
 
 ## API and evidence boundaries

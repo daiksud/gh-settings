@@ -19,7 +19,7 @@ func TestMergeCommitReportAndSummary(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, Changes: []settings.Change{comparisonChange(t, "repository.merge_commit_title", "MERGE_MESSAGE", "PR_TITLE"), comparisonChange(t, "repository.merge_commit_message", "PR_TITLE", "BLANK")}}}, nil
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 2, CommitMessageContexts: []settings.CommitMessageContext{{Menu: settings.MergeCommitMenu, Before: settings.CommitMessagePair{Title: "MERGE_MESSAGE", Message: "PR_TITLE"}, After: settings.CommitMessagePair{Title: "PR_TITLE", Message: "BLANK"}}}, Changes: []settings.Change{comparisonChange(t, "repository.merge_commit_title", "MERGE_MESSAGE", "PR_TITLE"), comparisonChange(t, "repository.merge_commit_message", "PR_TITLE", "BLANK")}}}, nil
 	})
 	data, err := os.ReadFile(path)
 	if err != nil || status != 0 || stderr.Len() != 0 {
@@ -33,7 +33,7 @@ func TestMergeCommitReportAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(html.UnescapeString(rendered), `settings.repository.merge_commit_title: "MERGE_MESSAGE" → "PR_TITLE"`) || !strings.Contains(html.UnescapeString(rendered), `settings.repository.merge_commit_message: "PR_TITLE" → "BLANK"`) {
+	if !strings.Contains(html.UnescapeString(rendered), `repository.settings.general.pull_requests.merge_commit.default_commit_message: "default_message" → "pull_request_title"`) {
 		t.Fatalf("summary=%s", rendered)
 	}
 	for _, field := range []string{"repository.merge_commit_title", "repository.merge_commit_message"} {

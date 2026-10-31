@@ -97,3 +97,16 @@ func observeUIRulesetBypass(actors []settings.BypassActor) (*[]uimodel.BypassEnt
 	}
 	return &result, nil
 }
+
+// RulesetBypassIdentityUI projects an already validated actor identity for a
+// user-facing diagnostic without exposing API actor type names.
+func RulesetBypassIdentityUI(actorType string, actorID *int64) (uimodel.BypassEntry, error) {
+	mode := "always"
+	entries, err := observeUIRulesetBypass([]settings.BypassActor{{ActorType: actorType, ActorID: actorID, BypassMode: &mode}})
+	if err != nil {
+		return uimodel.BypassEntry{}, err
+	}
+	entry := (*entries)[0]
+	entry.BypassMode = nil
+	return entry, nil
+}

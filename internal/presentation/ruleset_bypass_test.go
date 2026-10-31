@@ -41,13 +41,11 @@ func TestRulesetBypassPresentationKeepsActorIdentityAndRawEvidence(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			keyWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "KEY\tMODE" is outside UI choices; using "always" (projection only). Ruleset 7 "policy", actor_type="DeployKey".`
-			keyDecision := `repository.settings.rulesets.bypass_list.bypass_mode (Ruleset 7 "policy", actor_type="DeployKey"): "always" (normalized observation) → "always" (write required)`
-			teamWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "FUTURE\n\"TEAM<>" is outside UI choices; using "always" (projection only). Ruleset 7 "policy", actor_type="Team", actor_id=9.`
-			teamDecision := `repository.settings.rulesets.bypass_list.bypass_mode (Ruleset 7 "policy", actor_type="Team", actor_id=9): "always" (normalized observation) → ` + tc.after
-			beforeJSON, _ := json.Marshal(change.Before())
-			afterJSON, _ := json.Marshal(change.After())
-			whole := `settings.rulesets: update "policy": ` + string(beforeJSON) + ` → ` + string(afterJSON)
+			keyWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "KEY\tMODE" is outside UI choices; using "always" (projection only). Ruleset 7 "policy", {"deploy_keys":true}.`
+			keyDecision := `repository.settings.rulesets.bypass_list.bypass_mode (Ruleset 7 "policy", {"deploy_keys":true}): "always" (normalized observation) → "always" (write required)`
+			teamWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "FUTURE\n\"TEAM<>" is outside UI choices; using "always" (projection only). Ruleset 7 "policy", {"team":9}.`
+			teamDecision := `repository.settings.rulesets.bypass_list.bypass_mode (Ruleset 7 "policy", {"team":9}): "always" (normalized observation) → ` + tc.after
+			whole := `repository.settings.rulesets: update "policy": ` + rulesetPolicy(&before) + ` → ` + rulesetPolicy(&after)
 			want := strings.Join([]string{keyWarning, keyDecision, teamWarning, teamDecision, "Effective policy: " + whole}, "\n")
 			if got := RulesetLine(change); got != want || strings.Count(got, "Effective policy:") != 1 {
 				t.Fatalf("actor-bound presentation differs:\ngot %s\nwant %s", got, want)

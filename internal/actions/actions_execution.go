@@ -58,3 +58,52 @@ func validateActionsExecutionReport(entries []ActionsExecutionPlanChange) ([]set
 	}
 	return changes, managed, nil
 }
+
+func validateActionsExecutionContext(context *settings.ActionsExecutionContext, changes []PlanChange, normalized []ActionsExecutionPlanChange) error {
+	var enabled, allowed *PlanChange
+	for i := range changes {
+		switch changes[i].Field {
+		case "actions.enabled":
+			if enabled != nil {
+				return fmt.Errorf("duplicate Actions radio component")
+			}
+			enabled = &changes[i]
+		case "actions.allowed_actions":
+			if allowed != nil {
+				return fmt.Errorf("duplicate Actions radio component")
+			}
+			allowed = &changes[i]
+		}
+	}
+	if context == nil {
+		if enabled != nil || allowed != nil {
+			return fmt.Errorf("missing Actions radio context")
+		}
+		return nil
+	}
+	if len(normalized) != 0 || context.Validate() != nil {
+		return fmt.Errorf("invalid Actions radio context")
+	}
+	beforeEnabled, beforeAllowed, _ := settings.ActionsPermissionsValueForChoice(context.Before)
+	afterEnabled, afterAllowed, _ := settings.ActionsPermissionsValueForChoice(context.After)
+	if (enabled != nil) != (beforeEnabled != afterEnabled) {
+		return fmt.Errorf("inconsistent Actions enabled component")
+	}
+	if enabled != nil && (enabled.Before != beforeEnabled || enabled.After != afterEnabled) {
+		return fmt.Errorf("Actions enabled component differs from context")
+	}
+	if allowed != nil {
+		if afterAllowed == nil || allowed.After != *afterAllowed || allowed.Before != context.ObservedAllowed {
+			return fmt.Errorf("Actions allowed component differs from context")
+		}
+		if beforeEnabled && (beforeAllowed == nil || allowed.Before != *beforeAllowed) {
+			return fmt.Errorf("Actions observed component differs from context")
+		}
+	} else if afterEnabled && context.ObservedAllowed != *afterAllowed {
+		return fmt.Errorf("missing Actions allowed component")
+	}
+	if enabled == nil && allowed == nil {
+		return fmt.Errorf("unreferenced Actions radio context")
+	}
+	return nil
+}

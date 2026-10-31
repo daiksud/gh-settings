@@ -23,7 +23,7 @@ repository:
 
 - Omitted fields remain unmanaged. Explicit false is a declared value and is included in PATCH; GitHub defaults never fill omitted fields.
 - Values must be YAML booleans spelled true or false under the existing parser rules. Null, strings, numbers, collections, duplicate keys and unsupported settings fail validation before API access. Aliases and merge keys retain their existing behavior.
-- About/General fields retain existing comparison order, then merge-method/PR-option booleans, internal menu components, Topics and selected objects. Unambiguous booleans display current UI paths; compound menu reporting remains #481.
+- About/General fields retain existing comparison order, then merge-method/PR-option booleans, internal menu components, Topics and selected objects. Booleans display current UI paths, and compound menus display one UI choice.
 
 ### Rule: Read merge methods without write permissions
 
@@ -52,7 +52,7 @@ Apply uses the existing `PATCH /repos/{owner}/{repo}` and [Administration write 
 
 Existing target resolution, write timeout, redirect rejection, failure propagation and partial-failure behavior remain unchanged. This feature does not change root managed configuration, live merge policy, App grants, PR token permissions, consumer pins, or release selection. GitHub may reject combinations that pass local boolean validation; no additional merge policy is inferred locally.
 
-CLI and the same-version Actions report/Summary preserve native boolean before/after values and resource-qualified field paths. Private report bounds remain internal; complete UI reporting/count integration is #481. Reports remain presentation data, never apply input.
+CLI and detailed Summary use UI paths and boolean values. The same-version private report retains native field identities and bounds. Reports remain presentation data, never apply input.
 
 ### Test mapping
 

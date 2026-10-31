@@ -66,7 +66,7 @@ func TestLabelsCreatedIDWritebackAndRepeatApply(t *testing.T) {
 				args = append(args, "--no-writeback")
 			}
 			first, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, args, false)
-			if err != nil || first.runErr != nil || first.stderr.Len() != 0 || !strings.Contains(first.stdout.String(), `Created labels "new": id 17`) {
+			if err != nil || first.runErr != nil || first.stderr.Len() != 0 || !strings.Contains(first.stdout.String(), `Created repository.labels "new": id 17`) {
 				t.Fatalf("first=%+v err=%v", first, err)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))

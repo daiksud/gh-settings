@@ -137,7 +137,7 @@ func TestRulesetPlanReportAndSummaryShowSelectedWholeObjects(t *testing.T) {
 		t.Fatal(err)
 	}
 	visible := html.UnescapeString(content)
-	if strings.Contains(visible, "CANARY-unlisted-object") || !strings.Contains(visible, `"enforcement":"disabled"`) || !strings.Contains(visible, `"rules":[]`) || !strings.Contains(visible, `"id":7`) {
+	if strings.Contains(visible, "CANARY-unlisted-object") || !strings.Contains(visible, `"enforcement_status":"disabled"`) || !strings.Contains(visible, `"restrict_deletions":false`) || !strings.Contains(visible, `"id":7`) {
 		t.Fatal("selected defaults or identity missing", visible)
 	}
 }

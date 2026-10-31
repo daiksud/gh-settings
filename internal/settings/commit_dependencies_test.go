@@ -38,11 +38,11 @@ func TestCommitMessageDependencies(t *testing.T) {
 		},
 		{
 			name: "disabled merge title", declaration: RepositoryDeclaration{AllowMergeCommit: &disabled, MergeCommitTitle: &mergeTitle},
-			wantError: "merge_commit_title and merge_commit_message require allow_merge_commit: true when declared",
+			wantError: "repository.settings.general.pull_requests.merge_commit.default_commit_message requires repository.settings.general.pull_requests.allow_merge_commits: true",
 		},
 		{
 			name: "disabled merge pair", declaration: RepositoryDeclaration{AllowMergeCommit: &disabled, MergeCommitTitle: &mergeTitle, MergeCommitMessage: &message},
-			wantError: "merge_commit_title and merge_commit_message require allow_merge_commit: true when declared",
+			wantError: "repository.settings.general.pull_requests.merge_commit.default_commit_message requires repository.settings.general.pull_requests.allow_merge_commits: true",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {

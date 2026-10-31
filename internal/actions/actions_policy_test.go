@@ -16,17 +16,17 @@ import (
 )
 
 func TestActionsNativePlanAndSummaryUnavailableValues(t *testing.T) {
-	selected, githubOwned, verified := "selected", false, false
+	selected, githubOwned, verified, enabled := "selected", false, false, true
 	patterns := []string{"org/*", "!org/<blocked>@*", "org/*"}
-	d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{AllowedActions: &selected, SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: &githubOwned, VerifiedAllowed: &verified, PatternsAllowed: &patterns}}}
-	comparison, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{AllowedActions: "all"}, d.Actions)
+	d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{Enabled: &enabled, AllowedActions: &selected, SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: &githubOwned, VerifiedAllowed: &verified, PatternsAllowed: &patterns}}}
+	comparison, err := settings.CompareActionsPolicy(settings.ActionsPolicyState{Enabled: true, AllowedActions: "all"}, d.Actions)
 	if err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "plan.json")
 	var stdout, stderr bytes.Buffer
 	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
-		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: comparison.Managed, Actions: comparison.Changes}}, nil
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: comparison.Managed, Actions: comparison.Changes, ActionsExecutionContext: comparison.ExecutionContext}}, nil
 	})
 	data, err := os.ReadFile(path)
 	if status != 0 || err != nil {
@@ -36,7 +36,7 @@ func TestActionsNativePlanAndSummaryUnavailableValues(t *testing.T) {
 	if err := json.Unmarshal(data, &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.Outcome != "changed" || report.Managed != 4 || len(report.Actions) != 4 || report.Actions[1].Before != nil || report.Actions[1].After != false {
+	if report.Outcome != "changed" || report.Managed != 5 || len(report.Actions) != 4 || report.Actions[1].Before != nil || report.Actions[1].After != false {
 		t.Fatal(string(data))
 	}
 	content, err := actions.RenderSummary(report, summaryMetadata())

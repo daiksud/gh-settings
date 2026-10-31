@@ -172,7 +172,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write("{secret_protection: true, push_protection: true}")
 	plan := run("plan")
-	if !strings.Contains(plan, "settings.security.secret_scanning: false → true") || !strings.Contains(plan, "settings.security.secret_scanning_push_protection: false → true") {
+	if !strings.Contains(plan, "repository.settings.security_and_quality.advanced_security.secret_protection: false → true") || !strings.Contains(plan, "repository.settings.security_and_quality.advanced_security.push_protection: false → true") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "security-plan.json")

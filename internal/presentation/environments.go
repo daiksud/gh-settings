@@ -7,13 +7,15 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
+	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
 func EnvironmentLine(change settings.EnvironmentChange) string {
-	before, _ := json.Marshal(change.Before())
-	after, _ := json.Marshal(change.After())
-	line := fmt.Sprintf("settings.environments: %s %q: effective before policy %s → request %s", change.Operation(), change.Name(), before, after)
+	before := environmentPolicy(environmentVisibleBefore(change.Before(), change.After()))
+	after := environmentPolicy(change.After())
+	line := fmt.Sprintf("repository.settings.environments: %s %q: effective before policy %s → request %s", change.Operation(), change.Name(), before, after)
 	if requested := change.After(); requested != nil && settings.EnvironmentHasAPIOmissions(*requested) {
 		line += " (omitted fields are API-controlled; resulting values are unknown until apply)"
 	}
@@ -57,4 +59,48 @@ func EnvironmentDeploymentNormalizationLine(name string, record settings.Environ
 
 func EnvironmentRefTypeNormalizationLine(name string, pattern settings.EnvironmentPatternState) string {
 	return fmt.Sprintf("%s Environment %q, pattern %d name_pattern %q.", NormalizationLine(pattern.RefTypeNormalization), name, pattern.ID, pattern.Pattern.Name)
+}
+
+func environmentPolicy(policy *settings.EnvironmentDeclaration) string {
+	if policy == nil {
+		return "absent"
+	}
+	projected, err := github.EnvironmentReportUI(*policy)
+	if err != nil {
+		return "unavailable (policy is outside supported UI choices)"
+	}
+	encoded, err := workspace.MarshalUIReport(projected)
+	if err != nil {
+		return "unavailable (policy cannot be rendered)"
+	}
+	return string(encoded)
+}
+
+// environmentVisibleBefore retains only fields present in the request. Omitted
+// values are API-controlled and must not be disclosed as managed differences.
+func environmentVisibleBefore(before, request *settings.EnvironmentDeclaration) *settings.EnvironmentDeclaration {
+	if before == nil || request == nil {
+		return before
+	}
+	visible := *before
+	if request.WaitTimer == nil {
+		visible.WaitTimer = nil
+	}
+	if request.PreventSelfReview == nil {
+		visible.PreventSelfReview = nil
+	}
+	if request.CanAdminsBypass == nil {
+		visible.CanAdminsBypass = nil
+	}
+	if request.Reviewers == nil {
+		visible.Reviewers = nil
+	}
+	if !request.DeploymentBranchPolicyDeclared && request.DeploymentBranchPolicy == nil {
+		visible.DeploymentBranchPolicy = nil
+		visible.DeploymentBranchPolicyDeclared = false
+	}
+	if request.DeploymentBranchPatterns == nil {
+		visible.DeploymentBranchPatterns = nil
+	}
+	return &visible
 }

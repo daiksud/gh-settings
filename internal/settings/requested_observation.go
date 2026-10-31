@@ -123,6 +123,10 @@ func CompareRepositoryObservation(observed RepositoryObservation, desired Reposi
 		return Comparison{}, err
 	}
 	desired = remaining
+	result.CommitMessageContexts, err = commitMessageContexts(observed.values, desired)
+	if err != nil {
+		return Comparison{}, err
+	}
 	if err := compareObservedFields(&result, repositoryStringFields[:], observed.values, desired, stringChange); err != nil {
 		return Comparison{}, err
 	}

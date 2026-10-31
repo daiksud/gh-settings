@@ -46,7 +46,7 @@ func TestLabelPlanReportAndSummary(t *testing.T) {
 		t.Fatalf("rendered=%s err=%v", rendered, err)
 	}
 	visible := html.UnescapeString(rendered)
-	for _, want := range []string{`settings.labels: create "<new>"`, `settings.labels: update "existing" (id 1) description: "</pre><script>" → ""`} {
+	for _, want := range []string{`repository.labels: create "<new>"`, `repository.labels: update "existing" (id 1) description: "</pre><script>" → ""`} {
 		if !strings.Contains(visible, want) {
 			t.Fatalf("missing %s in %s", want, visible)
 		}

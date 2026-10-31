@@ -205,7 +205,7 @@ func TestWriteOnlyDismissalContract(t *testing.T) {
 			if explicit {
 				for _, args := range [][]string{{"plan"}, {"action", "plan", reportPath}} {
 					r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-					if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "plan does not support write-only dismissal_restriction") || r.stdout.Len() != 0 {
+					if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "plan does not support write-only repository.settings.rulesets.rules.require_a_pull_request_before_merging.restrict_who_can_dismiss_pull_request_reviews") || r.stdout.Len() != 0 {
 						t.Fatalf("write-only plan did not fail honestly: %v %v %s %s", err, r.runErr, r.stdout.String(), r.stderr.String())
 					}
 				}

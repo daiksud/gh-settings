@@ -179,7 +179,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write("{check_workflow_run_status_artifact_and_log_retention: 14}")
 	plan := run("plan")
-	if !strings.Contains(plan, "settings.actions.artifact_and_log_retention_days: 90 → 14") {
+	if !strings.Contains(plan, "repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention: 90 → 14") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "retention-plan.json")

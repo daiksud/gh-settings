@@ -66,7 +66,7 @@ func TestRulesetReviewReportPreservesOrderFalseAndZero(t *testing.T) {
 		t.Fatal(e)
 	}
 	visible := html.UnescapeString(rendered)
-	for _, want := range []string{`"required_approving_review_count":0`, `"require_code_owner_review":false`, `"required_status_checks":[]`, `"file_patterns":["!docs/**","**","**"]`} {
+	for _, want := range []string{`"required_approvals":0`, `"require_review_from_code_owners":false`, `"required_status_checks":[]`, `"file_patterns":["!docs/**","**","**"]`} {
 		if !strings.Contains(visible, want) {
 			t.Fatal("missing typed/order value", want, visible)
 		}

@@ -238,7 +238,7 @@ The dedicated [Rulesets](rulesets.feature.md), [workflow permissions](workflow-p
 - Requested family mappings compose into one current UI document without reimplementing their converters.
 - Complete typed Actions execution/workflow permissions, public-fork approval, Security status strings, creation policies, merge/squash menu pairs, complete Pages modes and legacy folders, Ruleset enforcement/Quality severity/bypass-mode/scanning-threshold strings, Required approvals and Team reviewer Approvals integers, Allowed merge methods lists and Environment deployment-mode pairs/ref-type strings use their named fallback with original provenance and warnings; unsupported identities and incomplete/malformed observations remain errors. Observations never populate omitted desired intent.
 - Raw latent conditional state is not replayed as selected UI controls. Enabled unknown execution policies warn and export the named Allow all fallback; disabled unknown policy exports known Disable without a warning. Execution fallback equality remains actionable, while hidden Disable matches remain unchanged. Missing/null/type failures never supply either choice.
-- Complete UI report integration remains #481; an export success does not claim that work is complete.
+- Export success does not prove future drift protection or writable access.
 
 Test mapping: [UI export aggregation](../../internal/github/ui_export_test.go), [root deferred save](../../checkout_config_test.go), and the independent current-YAML maps/string goldens in the process files above.
 
@@ -266,7 +266,7 @@ Test mapping: [Reader](../../internal/github/ruleset_required_approvals_read_tes
 - Emit contextual mode warnings in folded-name order after complete collection acquisition. Failed/partial acquisition emits none; a later conversion failure may retain legitimate warnings but preserves the destination.
 - Selected fallback-equal mode intent remains write-required. Omitted mode remains API-controlled without copying an observed pair or printing an unowned warning; unlisted names stay private.
 
-Test mapping: [reader completeness](../../internal/github/environment_deployment_read_test.go), [export scope/order](../../internal/app/normalization_environment_deployment_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_deployment_test.go). Full #481 reporting remains pending.
+Test mapping: [reader completeness](../../internal/github/environment_deployment_read_test.go), [export scope/order](../../internal/app/normalization_environment_deployment_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_deployment_test.go).
 
 ### Rule: Export complete Environment ref-type projections
 

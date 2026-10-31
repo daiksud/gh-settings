@@ -36,13 +36,13 @@ func TestActionsExecutionRadioPresentationDistinguishesVisibleProjection(t *test
 	}
 }
 
-func TestOrdinaryActionsRenderingRemainsNative(t *testing.T) {
+func TestOrdinaryActionsRenderingUsesRadioChoice(t *testing.T) {
 	change, err := settings.NewActionsPolicyChange("actions.enabled", false, true)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := string(cli.RenderComparison(settings.Comparison{Managed: 1, Actions: []settings.ActionsPolicyChange{change}}))
-	if got != "settings.actions.enabled: false → true\n" {
+	got := string(cli.RenderComparison(settings.Comparison{Managed: 1, Actions: []settings.ActionsPolicyChange{change}, ActionsExecutionContext: &settings.ActionsExecutionContext{Before: uimodel.DisableActions, After: uimodel.AllowAllActionsAndReusableWorkflows, ObservedAllowed: "all"}}))
+	if got != "repository.settings.actions.general.actions_permissions: \"disable_actions\" → \"allow_all_actions_and_reusable_workflows\"\n" {
 		t.Fatal(got)
 	}
 }

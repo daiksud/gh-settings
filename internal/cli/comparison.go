@@ -17,7 +17,15 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	} else if !comparison.HasChanges() {
 		output.WriteString("No differences for managed repository settings.\n")
 	} else {
+		shownMenus := map[settings.CommitMessageMenu]bool{}
 		for _, change := range comparison.Changes {
+			if context, ok := presentation.CommitMessageContextForField(change.Field().Path(), comparison.CommitMessageContexts); ok {
+				if !shownMenus[context.Menu] {
+					fmt.Fprintln(&output, presentation.ExactCommitMessageLine(context))
+					shownMenus[context.Menu] = true
+				}
+				continue
+			}
 			if change.Normalization() != (settings.ObservationNormalization{}) {
 				fmt.Fprintln(&output, presentation.CreationPolicyLine(change))
 				continue
@@ -27,7 +35,10 @@ func RenderComparison(comparison settings.Comparison) []byte {
 			}
 			change.Visit(
 				func(before, after bool) { line(strconv.FormatBool(before), strconv.FormatBool(after)) },
-				func(before, after string) { line(strconv.Quote(before), strconv.Quote(after)) },
+				func(before, after string) {
+					before, after = presentation.StringValues(change.Field().Path(), before, after)
+					line(strconv.Quote(before), strconv.Quote(after))
+				},
 				func(before, after []string) { line(topicsValue(before), topicsValue(after)) },
 			)
 			if note := presentation.ArchiveOrder(change); note != "" {
@@ -50,7 +61,15 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	for _, change := range comparison.ActionsExecution {
 		fmt.Fprintln(&output, presentation.ActionsExecutionLine(change))
 	}
+	shownActionsExecution := false
 	for _, change := range comparison.Actions {
+		if presentation.IsActionsExecutionField(change.Field()) {
+			if !shownActionsExecution {
+				fmt.Fprintln(&output, presentation.ExactActionsExecutionLine(comparison.ActionsExecutionContext))
+				shownActionsExecution = true
+			}
+			continue
+		}
 		fmt.Fprintln(&output, presentation.ActionsPolicyLine(change))
 	}
 	for _, change := range comparison.Security {

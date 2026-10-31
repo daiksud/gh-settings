@@ -9,7 +9,7 @@ import (
 func TestForkSummaryShowsCredentialChoicesAndClosedEnums(t *testing.T) {
 	r := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 2, Changes: []actions.PlanChange{}, Actions: []actions.PlanChange{{Field: "actions.fork_pr_approval_policy", Before: "first_time_contributors", After: "all_external_contributors"}, {Field: "actions.private_fork_workflows.send_secrets_and_variables", Before: false, After: true}}}
 	text, err := actions.RenderSummary(r, summaryMetadata())
-	if err != nil || !strings.Contains(text, "send_secrets_and_variables: false → true") || !strings.Contains(text, "all_external_contributors") {
+	if err != nil || !strings.Contains(text, "send_secrets_and_variables_to_workflows_from_fork_pull_requests: false → true") || !strings.Contains(text, "all_external_contributors") {
 		t.Fatal(text, err)
 	}
 	for _, bad := range []any{nil, true, "never", 1} {

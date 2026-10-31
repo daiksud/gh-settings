@@ -154,7 +154,7 @@ func TestPlanReadFailure(t *testing.T) {
 		t.Fatalf("result=%+v error=%v calls=%v, want read error and zero result", got, err, calls)
 	}
 	var failure *PlanError
-	if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target != target || err.Error() != readError.Error() {
+	if !errors.As(err, &failure) || failure.Stage != "read-failure" || failure.Target != target || err.Error() != "repository: "+readError.Error() {
 		t.Fatalf("read failure lost stage, target or original diagnostic: %v", err)
 	}
 }

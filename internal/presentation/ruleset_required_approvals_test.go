@@ -58,9 +58,7 @@ func TestRulesetRequiredApprovalsPresentationUsesTypedNumbersAndRemoval(t *testi
 				}
 				warning := `Warning: repository.settings.rulesets.rules.require_a_pull_request_before_merging.required_approvals: observed ` + strconv.Itoa(raw) + ` is outside UI choices; using 0 (projection only). Ruleset 7 "policy".`
 				decision := `repository.settings.rulesets.rules.require_a_pull_request_before_merging.required_approvals (Ruleset 7 "policy"): 0 (normalized observation) → ` + afterText
-				beforeJSON, _ := json.Marshal(before)
-				afterJSON, _ := json.Marshal(after)
-				whole := `settings.rulesets: update "policy": ` + string(beforeJSON) + ` → ` + string(afterJSON)
+				whole := `repository.settings.rulesets: update "policy": ` + rulesetPolicy(&before) + ` → ` + rulesetPolicy(&after)
 				want := prefix + warning + "\n" + decision + suffix + "\nEffective policy: " + whole
 				if got := RulesetLine(change); got != want || strings.Count(got, "Effective policy:") != 1 {
 					t.Fatal(got, want)

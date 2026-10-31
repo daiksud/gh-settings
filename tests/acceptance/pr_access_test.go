@@ -135,7 +135,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	if fixture.reads.Load() != beforeValidate {
 		t.Fatal("validate requested API")
 	}
-	wantPlan := "settings.repository.pull_request_creation_policy: \"ALL\" → \"COLLABORATORS_ONLY\"\n"
+	wantPlan := "repository.settings.general.features.pull_request_permissions.creation_allowed_by: \"all_users\" → \"collaborators_only\"\n"
 	if got := run("plan"); got != wantPlan {
 		t.Fatal(got)
 	}

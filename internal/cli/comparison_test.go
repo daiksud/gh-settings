@@ -59,9 +59,9 @@ func TestRenderLabelsComparison(t *testing.T) {
 	op := labelOperation(t)
 	got := string(RenderComparison(settings.Comparison{Managed: 1, Labels: labelSequence(t,
 		op(settings.NewLabelCreate(settings.LabelDeclaration{Name: "new", Color: &color})),
-		op(settings.NewLabelUpdate(settings.LabelState{ID: 1, Name: "a", Color: "abcdef", Description: "old\ntext"}, settings.LabelDeclaration{ID: &id, Name: "a", Color: &color, Description: &empty})),
+		op(settings.NewLabelUpdate(settings.LabelState{ID: 1, Name: "a", Color: "123456", Description: "old\ntext"}, settings.LabelDeclaration{ID: &id, Name: "a", Color: &color, Description: &empty})),
 	)}))
-	want := "settings.labels: create \"new\" color=\"abcdef\" description=\"\"\nsettings.labels: update \"a\" (id 1) description: \"old\\ntext\" → \"\"\n"
+	want := "repository.labels: create \"new\" color=\"#abcdef\" description=\"\"\nrepository.labels: update \"a\" (id 1) color: \"#123456\" → \"#abcdef\", description: \"old\\ntext\" → \"\"\n"
 	if got != want {
 		t.Fatalf("got=%q want=%q", got, want)
 	}
