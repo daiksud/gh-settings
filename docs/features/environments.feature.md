@@ -80,7 +80,7 @@ Test mapping: [mapping](../../internal/settings/environment_deployment_mapping_t
 
 ## Rule: Keep raw ref-type identity distinct from effective branch
 
-Status: implemented in current source for the Environment ref-type portion of #480. Publication and the remaining setting families are separate.
+Status: implemented in current source. Complete UI reporting remains #481, and release publication is a separate operation.
 
 - Given complete acquisition of active selected deployment patterns with an unsupported string ref type, export projects that type to `branch` and warns with the Environment name, pattern ID, exact pattern name, original type and fallback. Canonical branch/tag companions remain unchanged and silent.
 - Warn in normalized Environment-name order, then ascending pattern-ID order, before materializing or saving the export. Latent patterns under an effective mode other than Selected are neither exported nor disclosed by ref-type warnings. A missing warning sink does not change the effective policy.

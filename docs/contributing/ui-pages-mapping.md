@@ -13,7 +13,7 @@ sources:
 
 ## Preparation boundary
 
-This existing-site Pages mapping was prepared for [#486](https://github.com/daiksud/gh-settings/issues/486) and is now used by current-source UI YAML activation in [#479](https://github.com/daiksud/gh-settings/issues/479). The [public contract](../settings.md#existing-pages-configuration) retains existing-site-only scope. [#480](https://github.com/daiksud/gh-settings/issues/480) normalization/warnings and [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remain unfinished. No migration, site lifecycle or DNS management is added.
+This existing-site Pages mapping was prepared for [#486](https://github.com/daiksud/gh-settings/issues/486) and is now used by current-source UI YAML activation in [#479](https://github.com/daiksud/gh-settings/issues/479). The [public contract](../settings.md#existing-pages-configuration) retains existing-site-only scope. [#480](https://github.com/daiksud/gh-settings/issues/480) normalization/warnings are active; [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remains separate. No migration, site lifecycle or DNS management is added.
 
 The [UI model](../../internal/settings/uimodel/pages.go) contains display terminology and typed choices without serialization tags. The [adapter](../../internal/github/ui_pages.go) translates desired fields into existing validated Pages inputs and projects acquired configured state directly. `PreparedPages.Public` retains unowned visibility metadata outside desired UI values.
 
