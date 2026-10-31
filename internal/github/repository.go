@@ -12,15 +12,16 @@ import (
 
 // Client reads and updates repository settings, verifying managed message menus.
 type Client struct {
-	rest                                         *api.RESTClient
-	commitMessages                               *MergeMethodsClient
-	CommitMessageNormalizationWarning            func(settings.CommitMessageNormalization)
-	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
-	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
-	RulesetMergeMethodsNormalizationWarning      func(int64, string, settings.RulesetMergeMethodsNormalization)
-	RulesetTeamApprovalsNormalizationWarning     func(int64, string, settings.RulesetTeamApprovalsNormalization)
-	RulesetScanningAlertsNormalizationWarning    func(int64, string, settings.RulesetScanningAlertsNormalization)
-	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
+	rest                                              *api.RESTClient
+	commitMessages                                    *MergeMethodsClient
+	CommitMessageNormalizationWarning                 func(settings.CommitMessageNormalization)
+	RulesetNormalizationWarning                       func(int64, string, settings.ObservationNormalization)
+	RulesetRequiredApprovalsNormalizationWarning      func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	RulesetMergeMethodsNormalizationWarning           func(int64, string, settings.RulesetMergeMethodsNormalization)
+	RulesetTeamApprovalsNormalizationWarning          func(int64, string, settings.RulesetTeamApprovalsNormalization)
+	RulesetScanningAlertsNormalizationWarning         func(int64, string, settings.RulesetScanningAlertsNormalization)
+	RulesetScanningSecurityAlertsNormalizationWarning func(int64, string, settings.RulesetScanningSecurityAlertsNormalization)
+	RulesetBypassModeNormalizationWarning             func(int64, string, settings.RulesetBypassModeNormalization)
 }
 
 // NewReadClient configures the existing gh authentication and read timeout.

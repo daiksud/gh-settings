@@ -6,25 +6,6 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-var uiRulesetSecurityAlerts = map[uimodel.CodeScanningSecurityAlerts]string{"none": "none", "critical": "critical", "high_or_higher": "high_or_higher", "medium_or_higher": "medium_or_higher", "all": "all"}
-
-func declareUIRulesetChoice[T ~string](choice T, choices map[T]string, label string) (string, error) {
-	value, ok := choices[choice]
-	if !ok {
-		return "", fmt.Errorf("unsupported UI %s choice %q", label, choice)
-	}
-	return value, nil
-}
-
-func observeUIRulesetChoice[T ~string](value string, choices map[T]string, label string) (T, error) {
-	for choice, api := range choices {
-		if api == value {
-			return choice, nil
-		}
-	}
-	return "", fmt.Errorf("%s is outside UI choices", label)
-}
-
 func declareUIRulesetScanning(ui uimodel.CodeScanningRule) (*settings.RuleParameters, error) {
 	if ui.CodeScanningTools == nil {
 		return nil, fmt.Errorf("require_code_scanning_results requires code_scanning_tools")
@@ -35,9 +16,9 @@ func declareUIRulesetScanning(ui uimodel.CodeScanningRule) (*settings.RuleParame
 		if !valid {
 			return nil, fmt.Errorf("unsupported UI alerts choice %q", tool.Alerts)
 		}
-		security, err := declareUIRulesetChoice(tool.SecurityAlerts, uiRulesetSecurityAlerts, "security_alerts")
-		if err != nil {
-			return nil, err
+		security, valid := settings.RulesetScanningSecurityAlertsValueForChoice(tool.SecurityAlerts)
+		if !valid {
+			return nil, fmt.Errorf("unsupported UI security_alerts choice %q", tool.SecurityAlerts)
 		}
 		tools = append(tools, settings.CodeScanningTool{Tool: tool.ToolName, AlertsThreshold: alerts, SecurityAlertsThreshold: security})
 	}
@@ -51,9 +32,9 @@ func observeUIRulesetScanning(p *settings.RuleParameters) (*uimodel.CodeScanning
 		if !valid {
 			return nil, fmt.Errorf("alerts is outside UI choices")
 		}
-		security, err := observeUIRulesetChoice(tool.SecurityAlertsThreshold, uiRulesetSecurityAlerts, "security_alerts")
-		if err != nil {
-			return nil, err
+		security, valid := settings.RulesetScanningSecurityAlertsChoiceForValue(tool.SecurityAlertsThreshold)
+		if !valid {
+			return nil, fmt.Errorf("security_alerts is outside UI choices")
 		}
 		tools = append(tools, uimodel.CodeScanningTool{ToolName: tool.Tool, Alerts: alerts, SecurityAlerts: security})
 	}

@@ -103,6 +103,7 @@ func cloneRulesetState(state RulesetState) RulesetState {
 	state.MergeMethodsNormalization = cloneRulesetMergeMethodsNormalization(state.MergeMethodsNormalization)
 	state.TeamApprovalsNormalizations = slices.Clone(state.TeamApprovalsNormalizations)
 	state.ScanningAlertsNormalizations = slices.Clone(state.ScanningAlertsNormalizations)
+	state.ScanningSecurityAlertsNormalizations = slices.Clone(state.ScanningSecurityAlertsNormalizations)
 	state.BypassModeNormalizations = cloneRulesetBypassModeNormalizations(state.BypassModeNormalizations)
 	return state
 }

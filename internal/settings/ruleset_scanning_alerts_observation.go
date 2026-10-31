@@ -63,6 +63,13 @@ func (state RulesetState) RawCodeScanningTools() ([]CodeScanningTool, error) {
 			}
 		}
 	}
+	for _, record := range state.ScanningSecurityAlertsNormalizations {
+		for i := range *tools {
+			if (*tools)[i].Tool == record.Tool {
+				(*tools)[i].SecurityAlertsThreshold = record.RawValue
+			}
+		}
+	}
 	return *tools, nil
 }
 

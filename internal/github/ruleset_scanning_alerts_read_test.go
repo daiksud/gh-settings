@@ -86,7 +86,7 @@ func TestScanningAlertsProjectorAndCompleteReaderRetainExactNames(t *testing.T) 
 }
 
 func TestScanningAlertsAcquisitionRejectsPartialOrMalformedTools(t *testing.T) {
-	for _, mode := range []string{"absent", "empty", "null alerts", "missing alerts", "number alerts", "null tool", "missing tool", "blank tool", "control tool", "duplicate", "null security", "missing security", "unknown security", "null tools", "unknown member", "later denied", "pagination denied"} {
+	for _, mode := range []string{"absent", "empty", "null alerts", "missing alerts", "number alerts", "null tool", "missing tool", "blank tool", "control tool", "duplicate", "null security", "missing security", "null tools", "unknown member", "later denied", "pagination denied"} {
 		t.Run(mode, func(t *testing.T) {
 			calls := 0
 			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
@@ -139,8 +139,6 @@ func TestScanningAlertsAcquisitionRejectsPartialOrMalformedTools(t *testing.T) {
 						first["security_alerts_threshold"] = nil
 					case "missing security":
 						delete(first, "security_alerts_threshold")
-					case "unknown security":
-						first["security_alerts_threshold"] = "future"
 					case "null tools":
 						params["code_scanning_tools"] = nil
 					case "unknown member":

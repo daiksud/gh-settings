@@ -12,16 +12,17 @@ import (
 // RulesetPlanChange carries selected whole supported objects and their declared
 // identity. It is presentation data, never apply input.
 type RulesetPlanChange struct {
-	Operation                      string                                          `json:"operation"`
-	Before                         *settings.RulesetDeclaration                    `json:"before,omitempty"`
-	After                          *settings.RulesetDeclaration                    `json:"after,omitempty"`
-	EnforcementNormalization       *settings.ObservationNormalization              `json:"enforcement_normalization,omitempty"`
-	QualitySeverityNormalization   *settings.ObservationNormalization              `json:"quality_severity_normalization,omitempty"`
-	RequiredApprovalsNormalization *settings.RulesetRequiredApprovalsNormalization `json:"required_approvals_normalization,omitempty"`
-	MergeMethodsNormalization      *RulesetMergeMethodsNormalization               `json:"merge_methods_normalization,omitempty"`
-	TeamApprovalsNormalizations    *[]RulesetTeamApprovalsNormalization            `json:"team_approvals_normalizations,omitempty"`
-	ScanningAlertsNormalizations   *[]RulesetScanningAlertsNormalization           `json:"scanning_alerts_normalizations,omitempty"`
-	BypassModeNormalizations       *[]RulesetBypassModeNormalization               `json:"bypass_mode_normalizations,omitempty"`
+	Operation                            string                                          `json:"operation"`
+	Before                               *settings.RulesetDeclaration                    `json:"before,omitempty"`
+	After                                *settings.RulesetDeclaration                    `json:"after,omitempty"`
+	EnforcementNormalization             *settings.ObservationNormalization              `json:"enforcement_normalization,omitempty"`
+	QualitySeverityNormalization         *settings.ObservationNormalization              `json:"quality_severity_normalization,omitempty"`
+	RequiredApprovalsNormalization       *settings.RulesetRequiredApprovalsNormalization `json:"required_approvals_normalization,omitempty"`
+	MergeMethodsNormalization            *RulesetMergeMethodsNormalization               `json:"merge_methods_normalization,omitempty"`
+	TeamApprovalsNormalizations          *[]RulesetTeamApprovalsNormalization            `json:"team_approvals_normalizations,omitempty"`
+	ScanningAlertsNormalizations         *[]RulesetScanningAlertsNormalization           `json:"scanning_alerts_normalizations,omitempty"`
+	ScanningSecurityAlertsNormalizations *[]RulesetScanningSecurityAlertsNormalization   `json:"scanning_security_alerts_normalizations,omitempty"`
+	BypassModeNormalizations             *[]RulesetBypassModeNormalization               `json:"bypass_mode_normalizations,omitempty"`
 }
 
 type RulesetBypassModeNormalization struct {
@@ -155,6 +156,14 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 			}
 			for _, record := range *e.ScanningAlertsNormalizations {
 				records.ScanningAlerts = append(records.ScanningAlerts, settings.RulesetScanningAlertsNormalization{Tool: record.Tool, Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback})
+			}
+		}
+		if e.ScanningSecurityAlertsNormalizations != nil {
+			if len(*e.ScanningSecurityAlertsNormalizations) == 0 {
+				return nil, fmt.Errorf("present Ruleset scanning security alerts normalization metadata cannot be empty")
+			}
+			for _, record := range *e.ScanningSecurityAlertsNormalizations {
+				records.ScanningSecurityAlerts = append(records.ScanningSecurityAlerts, settings.RulesetScanningSecurityAlertsNormalization{Tool: record.Tool, Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback})
 			}
 		}
 		if e.BypassModeNormalizations != nil {
