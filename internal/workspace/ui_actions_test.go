@@ -20,13 +20,15 @@ repository:
           require_approval_for_fork_pull_request_workflows: false
         approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors
         check_workflow_run_status_artifact_and_log_retention: 0
-        actions_permissions: allow_owner_and_select_non_owner_actions_and_reusable_workflows
-        require_actions_to_be_pinned_to_a_full_length_commit_sha: true
-        allow_actions_created_by_github: false
-        allow_actions_by_marketplace_verified_creators: true
-        allow_or_block_specified_actions_and_reusable_workflows: ['example/a@v1', '!example/b@*', 'example/a@v1']
-        workflow_permissions: read_repository_contents_and_packages_permissions
-        allow_github_actions_to_create_and_approve_pull_requests: false
+        actions_permissions:
+          policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows
+          require_actions_to_be_pinned_to_a_full_length_commit_sha: true
+          allow_actions_created_by_github: false
+          allow_actions_by_marketplace_verified_creators: true
+          allow_or_block_specified_actions_and_reusable_workflows: ['example/a@v1', '!example/b@*', 'example/a@v1']
+        workflow_permissions:
+          default_permissions: read_repository_contents_and_packages_permissions
+          allow_github_actions_to_create_and_approve_pull_requests: false
 `
 	want := &uimodel.ActionsGeneral{
 		ForkPullRequestWorkflows:                                   &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: uiConfigPtr(true), SendWriteTokensToWorkflowsFromForkPullRequests: uiConfigPtr(false), SendSecretsAndVariablesToWorkflowsFromForkPullRequests: uiConfigPtr(true), RequireApprovalForForkPullRequestWorkflows: uiConfigPtr(false)},
@@ -58,8 +60,10 @@ func TestUIConfigActionsRejectInvalidSyntax(t *testing.T) {
 	for _, controls := range []string{
 		"enabled: true", "allowed_actions: selected", "default_workflow_permissions: read",
 		"fork_pull_request_workflows: null", "check_workflow_run_status_artifact_and_log_retention: '1'",
-		"allow_actions_created_by_github: 'false'", "allow_or_block_specified_actions_and_reusable_workflows: null",
-		"allow_or_block_specified_actions_and_reusable_workflows: [false]",
+		"actions_permissions: {allow_actions_created_by_github: 'false'}", "actions_permissions: {allow_or_block_specified_actions_and_reusable_workflows: null}",
+		"actions_permissions: {allow_or_block_specified_actions_and_reusable_workflows: [false]}",
+		"actions_permissions: null", "workflow_permissions: null",
+		"actions_permissions: {policy: false}", "workflow_permissions: {default_permissions: false}",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {general: {" + controls + "}}}}\n"
 		if _, err := DecodeConfig([]byte(input)); err == nil {

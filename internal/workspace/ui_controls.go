@@ -11,21 +11,21 @@ import (
 )
 
 func decodeUISettings(node *yaml.Node) (uimodel.RepositorySettings, error) {
-	var result uimodel.RepositorySettings
-	if err := decodeUIControl(node, reflect.ValueOf(&result).Elem(), "repository.settings"); err != nil {
+	var document uiSettingsDocument
+	if err := decodeUIControl(node, reflect.ValueOf(&document).Elem(), "repository.settings"); err != nil {
 		return uimodel.RepositorySettings{}, err
 	}
-	return result, nil
+	return document.model(), nil
 }
 
 func encodeUISettings(settings uimodel.RepositorySettings) (*yaml.Node, error) {
-	return encodeUIControl(reflect.ValueOf(settings))
+	return encodeUIControl(reflect.ValueOf(uiSettingsDocumentFromModel(settings)))
 }
 
 var uiInitialismBoundary = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
 var uiWordBoundary = regexp.MustCompile(`([a-z0-9])([A-Z])`)
 
-// UI models contain reviewed control names, never API transport fields.
+// Document fields contain reviewed control names, never API transport fields.
 // Literal YAML fixtures, rather than this spelling mechanism, fix their contract.
 func uiControlName(name string) string {
 	name = strings.ReplaceAll(name, "GitHub", "Github")
