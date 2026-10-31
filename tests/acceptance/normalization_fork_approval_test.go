@@ -164,8 +164,8 @@ func TestForkApprovalNormalizationAcrossExecutableCommands(t *testing.T) {
 			Field, Before, After string
 			Normalization        struct {
 				Path     string
-				Raw      string `json:"raw_value"`
-				Fallback string
+					Raw      string `json:"raw_value"`
+					Fallback string
 			}
 		}
 	}
@@ -194,7 +194,7 @@ func TestForkApprovalNormalizationAcrossExecutableCommands(t *testing.T) {
 	if readOnlyWrites != 0 {
 		t.Fatal("export/plan normalized remote state", readOnlyWrites)
 	}
-	intent("{actions_permissions: disable_actions}")
+	intent("{actions_permissions: {policy: disable_actions}}")
 	output, diagnostic, status = run("plan")
 	if status != 0 || diagnostic != "" || output != "No differences for managed repository settings.\n" {
 		t.Fatal("unmanaged fork was printed", status, output, diagnostic)
@@ -233,7 +233,7 @@ func TestForkApprovalNormalizationAcrossExecutableCommands(t *testing.T) {
 	permission, keepUnknown = "FUTURE", true
 	beforeExecutionWrites := len(executionWrites)
 	mu.Unlock()
-	input = intent("{actions_permissions: allow_all_actions_and_reusable_workflows, approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors}")
+	input = intent("{actions_permissions: {policy: allow_all_actions_and_reusable_workflows}, approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors}")
 	output, diagnostic, status = run("apply")
 	if status != 1 || !strings.Contains(diagnostic, "earlier successful writes remain applied") || !strings.Contains(diagnostic, "FUTURE") {
 		t.Fatal("unverified readback lost earlier progress", status, output, diagnostic)

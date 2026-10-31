@@ -127,15 +127,15 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 		return input
 	}
 	output, diagnostic, status := run("export", "--workflow-permissions")
-	if status != 0 || output != "" || !strings.Contains(diagnostic, "Warning:") || !strings.Contains(diagnostic, "FUTURE") || !strings.Contains(diagnostic, "repository.settings.actions.general.workflow_permissions") || !strings.Contains(diagnostic, "read_repository_contents_and_packages_permissions") {
+	if status != 0 || output != "" || !strings.Contains(diagnostic, "Warning:") || !strings.Contains(diagnostic, "FUTURE") || !strings.Contains(diagnostic, "repository.settings.actions.general.workflow_permissions.default_permissions") || !strings.Contains(diagnostic, "read_repository_contents_and_packages_permissions") {
 		t.Fatal("export normalization was not visible", status, output, diagnostic)
 	}
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "workflow_permissions: read_repository_contents_and_packages_permissions") || strings.Contains(string(data), "FUTURE") {
+	if err != nil || !strings.Contains(string(data), "workflow_permissions:\n") || !strings.Contains(string(data), "default_permissions: read_repository_contents_and_packages_permissions") || strings.Contains(string(data), "FUTURE") {
 		t.Fatal("exported YAML did not contain only UI fallback", string(data), err)
 	}
 	for _, choice := range []string{"read_repository_contents_and_packages_permissions", "read_and_write_permissions"} {
-		input := intent("{workflow_permissions: " + choice + "}")
+		input := intent("{workflow_permissions: {default_permissions: " + choice + "}}")
 		output, diagnostic, status = run("plan")
 		if status != 0 || diagnostic != "" || !strings.Contains(output, "Warning:") || !strings.Contains(output, "FUTURE") || !strings.Contains(output, choice) || !strings.Contains(output, "write required") || strings.Contains(output, "No differences") {
 			t.Fatal("plan confused a projection with observation", choice, status, output, diagnostic)
@@ -160,7 +160,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 	if readOnlyWrites != 0 {
 		t.Fatal("export/plan normalized remote state", readOnlyWrites)
 	}
-	intent("{allow_github_actions_to_create_and_approve_pull_requests: false}")
+	intent("{workflow_permissions: {allow_github_actions_to_create_and_approve_pull_requests: false}}")
 	output, diagnostic, status = run("plan")
 	if status != 0 || diagnostic != "" || output != "No differences for managed repository settings.\n" {
 		t.Fatal("unmanaged permission was printed", status, output, diagnostic)
@@ -175,7 +175,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 	if !preserved {
 		t.Fatal("approval-only payload or raw companion changed")
 	}
-	input := intent("{workflow_permissions: read_repository_contents_and_packages_permissions}")
+	input := intent("{workflow_permissions: {default_permissions: read_repository_contents_and_packages_permissions}}")
 	output, diagnostic, status = run("apply")
 	if status != 1 || output != "" || !strings.Contains(diagnostic, "Warning:") || !strings.Contains(diagnostic, "may already have applied") {
 		t.Fatal("normalized fallback falsely verified a write", status, output, diagnostic)
@@ -186,7 +186,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 	mu.Lock()
 	keepUnknown = false
 	mu.Unlock()
-	intent("{workflow_permissions: read_and_write_permissions}")
+	intent("{workflow_permissions: {default_permissions: read_and_write_permissions}}")
 	output, diagnostic, status = run("apply")
 	if status != 0 || !strings.Contains(diagnostic, "Warning:") || !strings.Contains(output, "Applied repository settings") {
 		t.Fatal("canonical readback did not complete apply", status, output, diagnostic)
@@ -198,7 +198,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 	mu.Lock()
 	permission, keepUnknown = "FUTURE", true
 	mu.Unlock()
-	input = intent("{actions_permissions: allow_all_actions_and_reusable_workflows, workflow_permissions: read_repository_contents_and_packages_permissions}")
+	input = intent("{actions_permissions: {policy: allow_all_actions_and_reusable_workflows}, workflow_permissions: {default_permissions: read_repository_contents_and_packages_permissions}}")
 	output, diagnostic, status = run("apply")
 	if status != 1 || !strings.Contains(diagnostic, "earlier resource writes remain applied") || !strings.Contains(diagnostic, "FUTURE") {
 		t.Fatal("unverified readback lost earlier progress", status, output, diagnostic)
@@ -216,7 +216,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 	permission = nil
 	beforeWrites := len(workflowWrites) + len(executionWrites)
 	mu.Unlock()
-	input = intent("{workflow_permissions: read_repository_contents_and_packages_permissions}")
+	input = intent("{workflow_permissions: {default_permissions: read_repository_contents_and_packages_permissions}}")
 	output, diagnostic, status = run("apply")
 	if status != 1 || strings.Contains(diagnostic, "Warning:") || !strings.Contains(diagnostic, "missing/null or invalid") {
 		t.Fatal("missing acquisition became a fallback", status, output, diagnostic)

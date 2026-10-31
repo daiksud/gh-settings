@@ -21,7 +21,7 @@ import (
 func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 	binary := acceptanceBinary(t)
 	for _, control := range []struct{ ui, key, companion, status string }{
-		{"secret_protection", "secret_scanning", "secret_scanning_push_protection", "disabled"},
+		{"enabled", "secret_scanning", "secret_scanning_push_protection", "disabled"},
 		{"push_protection", "secret_scanning_push_protection", "secret_scanning", "enabled"},
 	} {
 		t.Run(control.ui, func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 			}
 			intent := func(values, about string) string {
 				t.Helper()
-				input := repositoryInput(about + "settings: {security_and_quality: {advanced_security: " + values + "}}\n")
+				input := repositoryInput(about + "settings: {advanced_security: {secret_protection: " + values + "}}\n")
 				if err := writeSettingsFile(fixture.work, input); err != nil {
 					t.Fatal(err)
 				}
@@ -149,7 +149,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			path := "repository.settings.security_and_quality.advanced_security." + control.ui
+			path := "repository.settings.advanced_security.secret_protection." + control.ui
 			warning := "Warning: " + path + ": observed \"FUTURE_STATUS\" is outside UI choices; using false (projection only)."
 			output, diagnostic, status := run("export", "--security", "secret-scanning")
 			if status != 0 || output != "" || diagnostic != warning+"\n" {
@@ -257,7 +257,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 
 			mu.Lock()
 			unsafeDesired := true
-			if control.ui == "secret_protection" {
+			if control.ui == "enabled" {
 				statuses[control.key] = "enabled"
 				unsafeDesired = false
 			} else {
@@ -302,7 +302,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 			keepUnknown = false
 			beforeCoupled := len(securityWrites)
 			mu.Unlock()
-			input = intent("{secret_protection: true, push_protection: true}", "")
+			input = intent("{enabled: true, push_protection: true}", "")
 			output, diagnostic, status = run("apply")
 			if status != 0 || strings.Count(diagnostic, "Warning:") != 4 {
 				t.Fatal("coupled normalization", status, output, diagnostic)
@@ -320,7 +320,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 			statuses["secret_scanning_push_protection"] = "enabled"
 			mu.Unlock()
 			output, diagnostic, status = run("export", "--security", "secret-scanning")
-			inconsistentWarning := "Warning: repository.settings.security_and_quality.advanced_security.secret_protection: observed \"FUTURE_STATUS\" is outside UI choices; using false (projection only)."
+			inconsistentWarning := "Warning: repository.settings.advanced_security.secret_protection.enabled: observed \"FUTURE_STATUS\" is outside UI choices; using false (projection only)."
 			if status != 1 || output != "" || strings.Count(diagnostic, inconsistentWarning) != 1 || !strings.Contains(diagnostic, "consistent declaration") {
 				t.Fatal("inconsistent export", status, output, diagnostic)
 			}
