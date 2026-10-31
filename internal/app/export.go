@@ -32,6 +32,7 @@ type ExportCheckout struct {
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
 	RulesetMergeMethodsNormalizationWarning      func(int64, string, settings.RulesetMergeMethodsNormalization)
 	RulesetTeamApprovalsNormalizationWarning     func(int64, string, settings.RulesetTeamApprovalsNormalization)
+	RulesetScanningAlertsNormalizationWarning    func(int64, string, settings.RulesetScanningAlertsNormalization)
 	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
 	EnvironmentDeploymentNormalizationWarning    func(string, settings.EnvironmentDeploymentNormalization)
 	EnvironmentRefTypeNormalizationWarning       func(string, settings.EnvironmentPatternState)
@@ -113,7 +114,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Rulesets = &desired
-		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil || checkout.RulesetMergeMethodsNormalizationWarning != nil || checkout.RulesetTeamApprovalsNormalizationWarning != nil {
+		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil || checkout.RulesetMergeMethodsNormalizationWarning != nil || checkout.RulesetTeamApprovalsNormalizationWarning != nil || checkout.RulesetScanningAlertsNormalizationWarning != nil {
 			values, err := observed.Values()
 			if err != nil {
 				return err
@@ -132,6 +133,11 @@ func Export(checkout ExportCheckout, read Reader) error {
 				if checkout.RulesetTeamApprovalsNormalizationWarning != nil {
 					for _, record := range settings.OrderedRulesetTeamApprovalsNormalizations(value.TeamApprovalsNormalizations) {
 						checkout.RulesetTeamApprovalsNormalizationWarning(value.ID, value.Policy.Name, record)
+					}
+				}
+				if checkout.RulesetScanningAlertsNormalizationWarning != nil {
+					for _, record := range settings.OrderedRulesetScanningAlertsNormalizations(value.ScanningAlertsNormalizations) {
+						checkout.RulesetScanningAlertsNormalizationWarning(value.ID, value.Policy.Name, record)
 					}
 				}
 				if record := value.QualitySeverityNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {

@@ -47,6 +47,7 @@ type RulesetState struct {
 	RequiredApprovalsNormalization RulesetRequiredApprovalsNormalization
 	MergeMethodsNormalization      RulesetMergeMethodsNormalization
 	TeamApprovalsNormalizations    []RulesetTeamApprovalsNormalization
+	ScanningAlertsNormalizations   []RulesetScanningAlertsNormalization
 	BypassModeNormalizations       []RulesetBypassModeNormalization
 }
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
@@ -535,7 +536,7 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior.ID = &id
 		comparableBefore := cloneRuleset(prior)
 		omitDismissalRestriction(&comparableBefore)
-		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, BypassModes: before.BypassModeNormalizations}
+		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
 		if normalizations.IsZero() && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
 			continue
 		}

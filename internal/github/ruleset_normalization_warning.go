@@ -8,7 +8,7 @@ import (
 )
 
 func (client *Client) warnRulesetReadbackNormalizations(id int64, raw map[string]json.RawMessage) {
-	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil && client.RulesetBypassModeNormalizationWarning == nil && client.RulesetMergeMethodsNormalizationWarning == nil && client.RulesetTeamApprovalsNormalizationWarning == nil {
+	if client.RulesetNormalizationWarning == nil && client.RulesetRequiredApprovalsNormalizationWarning == nil && client.RulesetBypassModeNormalizationWarning == nil && client.RulesetMergeMethodsNormalizationWarning == nil && client.RulesetTeamApprovalsNormalizationWarning == nil && client.RulesetScanningAlertsNormalizationWarning == nil {
 		return
 	}
 	policy, records, err := decodeObservedRulesetPolicy(raw)
@@ -32,6 +32,11 @@ func (client *Client) warnRulesetNormalizations(id int64, name string, records s
 	if client.RulesetTeamApprovalsNormalizationWarning != nil {
 		for _, record := range settings.OrderedRulesetTeamApprovalsNormalizations(records.TeamApprovals) {
 			client.RulesetTeamApprovalsNormalizationWarning(id, name, record)
+		}
+	}
+	if client.RulesetScanningAlertsNormalizationWarning != nil {
+		for _, record := range settings.OrderedRulesetScanningAlertsNormalizations(records.ScanningAlerts) {
+			client.RulesetScanningAlertsNormalizationWarning(id, name, record)
 		}
 	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) && client.RulesetNormalizationWarning != nil {

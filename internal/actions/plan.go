@@ -113,6 +113,13 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 			}
 			entry.TeamApprovalsNormalizations = &values
 		}
+		if records := display.Normalizations().ScanningAlerts; len(records) > 0 {
+			values := make([]RulesetScanningAlertsNormalization, 0, len(records))
+			for _, record := range records {
+				values = append(values, RulesetScanningAlertsNormalization{Tool: record.Tool, Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback})
+			}
+			entry.ScanningAlertsNormalizations = &values
+		}
 		if records := display.Normalizations().BypassModes; len(records) > 0 {
 			values := make([]RulesetBypassModeNormalization, 0, len(records))
 			for _, record := range records {

@@ -19,6 +19,7 @@ type Client struct {
 	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
 	RulesetMergeMethodsNormalizationWarning      func(int64, string, settings.RulesetMergeMethodsNormalization)
 	RulesetTeamApprovalsNormalizationWarning     func(int64, string, settings.RulesetTeamApprovalsNormalization)
+	RulesetScanningAlertsNormalizationWarning    func(int64, string, settings.RulesetScanningAlertsNormalization)
 	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
 }
 
