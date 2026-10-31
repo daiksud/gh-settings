@@ -9,7 +9,7 @@ func (state RulesetState) validateNormalizationEvidence() error {
 	if state.ID <= 0 {
 		return fmt.Errorf("Ruleset observation requires a positive ID")
 	}
-	if (state.EnforcementNormalization != (ObservationNormalization{}) || state.QualitySeverityNormalization != (ObservationNormalization{}) || state.RequiredApprovalsNormalization != (RulesetRequiredApprovalsNormalization{}) || !state.MergeMethodsNormalization.IsZero() || len(state.BypassModeNormalizations) != 0 || len(state.TeamApprovalsNormalizations) != 0 || len(state.ScanningAlertsNormalizations) != 0) && state.Policy.ID != nil && *state.Policy.ID != state.ID {
+	if (state.EnforcementNormalization != (ObservationNormalization{}) || state.QualitySeverityNormalization != (ObservationNormalization{}) || state.RequiredApprovalsNormalization != (RulesetRequiredApprovalsNormalization{}) || !state.MergeMethodsNormalization.IsZero() || len(state.BypassModeNormalizations) != 0 || len(state.TeamApprovalsNormalizations) != 0 || len(state.ScanningAlertsNormalizations) != 0 || len(state.ScanningSecurityAlertsNormalizations) != 0) && state.Policy.ID != nil && *state.Policy.ID != state.ID {
 		return fmt.Errorf("Ruleset observation provenance conflicts with policy ID")
 	}
 	if record := state.EnforcementNormalization; record != (ObservationNormalization{}) {
@@ -40,6 +40,9 @@ func (state RulesetState) validateNormalizationEvidence() error {
 		return err
 	}
 	if err := state.validateScanningAlertsNormalizations(); err != nil {
+		return err
+	}
+	if err := state.validateScanningSecurityAlertsNormalizations(); err != nil {
 		return err
 	}
 	return state.validateBypassModeNormalizations()

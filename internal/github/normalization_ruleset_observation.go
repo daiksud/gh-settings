@@ -47,6 +47,10 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
+	rules, scanningSecurity, err := prepareRulesetScanningSecurityAlertsRules(rules)
+	if err != nil {
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
+	}
 	copy["rules"] = rules
 	actors, bypass, err := prepareRulesetBypassActors(raw["bypass_actors"])
 	if err != nil {
@@ -57,5 +61,5 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
-	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality, RequiredApprovals: approvals, MergeMethods: methods, TeamApprovals: teams, ScanningAlerts: scanning, BypassModes: bypass}, nil
+	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality, RequiredApprovals: approvals, MergeMethods: methods, TeamApprovals: teams, ScanningAlerts: scanning, ScanningSecurityAlerts: scanningSecurity, BypassModes: bypass}, nil
 }

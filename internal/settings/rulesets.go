@@ -40,15 +40,16 @@ type RulesetRule struct {
 // RulesetState contains the observed supported policy and its transport ID.
 // An omitted optional dismissal restriction remains unknown, never disabled.
 type RulesetState struct {
-	ID                             int64
-	Policy                         RulesetDeclaration
-	EnforcementNormalization       ObservationNormalization
-	QualitySeverityNormalization   ObservationNormalization
-	RequiredApprovalsNormalization RulesetRequiredApprovalsNormalization
-	MergeMethodsNormalization      RulesetMergeMethodsNormalization
-	TeamApprovalsNormalizations    []RulesetTeamApprovalsNormalization
-	ScanningAlertsNormalizations   []RulesetScanningAlertsNormalization
-	BypassModeNormalizations       []RulesetBypassModeNormalization
+	ID                                   int64
+	Policy                               RulesetDeclaration
+	EnforcementNormalization             ObservationNormalization
+	QualitySeverityNormalization         ObservationNormalization
+	RequiredApprovalsNormalization       RulesetRequiredApprovalsNormalization
+	MergeMethodsNormalization            RulesetMergeMethodsNormalization
+	TeamApprovalsNormalizations          []RulesetTeamApprovalsNormalization
+	ScanningAlertsNormalizations         []RulesetScanningAlertsNormalization
+	ScanningSecurityAlertsNormalizations []RulesetScanningSecurityAlertsNormalization
+	BypassModeNormalizations             []RulesetBypassModeNormalization
 }
 type RulesetDeclarations struct{ entries []RulesetDeclaration }
 type RulesetObservation struct {
@@ -536,7 +537,7 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior.ID = &id
 		comparableBefore := cloneRuleset(prior)
 		omitDismissalRestriction(&comparableBefore)
-		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
+		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, ScanningSecurityAlerts: before.ScanningSecurityAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
 		if normalizations.IsZero() && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
 			continue
 		}

@@ -11,32 +11,33 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
-	IncludeArchive                               bool
-	IncludePages                                 bool
-	IncludeForkApproval                          bool
-	IncludePrivateFork                           bool
-	Repository                                   TargetResolver
-	IncludeActions                               bool
-	IncludeWorkflowPermissions                   bool
-	IncludeRulesets                              bool
-	IncludeEnvironments                          bool
-	IncludeSecretScanning                        bool
-	IncludePrivateReporting                      bool
-	IncludeImmutableReleases                     bool
-	IncludeRetention                             bool
-	ExcludedRulesets                             func(int)
-	NormalizationWarning                         func(settings.ObservationNormalization)
-	CommitMessageNormalizationWarning            func(settings.CommitMessageNormalization)
-	SecurityStatusNormalizationWarning           func(settings.SecurityStatusNormalization)
-	RulesetNormalizationWarning                  func(int64, string, settings.ObservationNormalization)
-	RulesetRequiredApprovalsNormalizationWarning func(int64, string, settings.RulesetRequiredApprovalsNormalization)
-	RulesetMergeMethodsNormalizationWarning      func(int64, string, settings.RulesetMergeMethodsNormalization)
-	RulesetTeamApprovalsNormalizationWarning     func(int64, string, settings.RulesetTeamApprovalsNormalization)
-	RulesetScanningAlertsNormalizationWarning    func(int64, string, settings.RulesetScanningAlertsNormalization)
-	RulesetBypassModeNormalizationWarning        func(int64, string, settings.RulesetBypassModeNormalization)
-	EnvironmentDeploymentNormalizationWarning    func(string, settings.EnvironmentDeploymentNormalization)
-	EnvironmentRefTypeNormalizationWarning       func(string, settings.EnvironmentPatternState)
-	PrepareSave                                  func() (func(settings.Declaration) error, error)
+	IncludeArchive                                    bool
+	IncludePages                                      bool
+	IncludeForkApproval                               bool
+	IncludePrivateFork                                bool
+	Repository                                        TargetResolver
+	IncludeActions                                    bool
+	IncludeWorkflowPermissions                        bool
+	IncludeRulesets                                   bool
+	IncludeEnvironments                               bool
+	IncludeSecretScanning                             bool
+	IncludePrivateReporting                           bool
+	IncludeImmutableReleases                          bool
+	IncludeRetention                                  bool
+	ExcludedRulesets                                  func(int)
+	NormalizationWarning                              func(settings.ObservationNormalization)
+	CommitMessageNormalizationWarning                 func(settings.CommitMessageNormalization)
+	SecurityStatusNormalizationWarning                func(settings.SecurityStatusNormalization)
+	RulesetNormalizationWarning                       func(int64, string, settings.ObservationNormalization)
+	RulesetRequiredApprovalsNormalizationWarning      func(int64, string, settings.RulesetRequiredApprovalsNormalization)
+	RulesetMergeMethodsNormalizationWarning           func(int64, string, settings.RulesetMergeMethodsNormalization)
+	RulesetTeamApprovalsNormalizationWarning          func(int64, string, settings.RulesetTeamApprovalsNormalization)
+	RulesetScanningAlertsNormalizationWarning         func(int64, string, settings.RulesetScanningAlertsNormalization)
+	RulesetScanningSecurityAlertsNormalizationWarning func(int64, string, settings.RulesetScanningSecurityAlertsNormalization)
+	RulesetBypassModeNormalizationWarning             func(int64, string, settings.RulesetBypassModeNormalization)
+	EnvironmentDeploymentNormalizationWarning         func(string, settings.EnvironmentDeploymentNormalization)
+	EnvironmentRefTypeNormalizationWarning            func(string, settings.EnvironmentPatternState)
+	PrepareSave                                       func() (func(settings.Declaration) error, error)
 }
 
 // Export saves all observed fields only after a complete read.
@@ -114,7 +115,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Rulesets = &desired
-		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil || checkout.RulesetMergeMethodsNormalizationWarning != nil || checkout.RulesetTeamApprovalsNormalizationWarning != nil || checkout.RulesetScanningAlertsNormalizationWarning != nil {
+		if checkout.RulesetNormalizationWarning != nil || checkout.RulesetRequiredApprovalsNormalizationWarning != nil || checkout.RulesetBypassModeNormalizationWarning != nil || checkout.RulesetMergeMethodsNormalizationWarning != nil || checkout.RulesetTeamApprovalsNormalizationWarning != nil || checkout.RulesetScanningAlertsNormalizationWarning != nil || checkout.RulesetScanningSecurityAlertsNormalizationWarning != nil {
 			values, err := observed.Values()
 			if err != nil {
 				return err
@@ -138,6 +139,11 @@ func Export(checkout ExportCheckout, read Reader) error {
 				if checkout.RulesetScanningAlertsNormalizationWarning != nil {
 					for _, record := range settings.OrderedRulesetScanningAlertsNormalizations(value.ScanningAlertsNormalizations) {
 						checkout.RulesetScanningAlertsNormalizationWarning(value.ID, value.Policy.Name, record)
+					}
+				}
+				if checkout.RulesetScanningSecurityAlertsNormalizationWarning != nil {
+					for _, record := range settings.OrderedRulesetScanningSecurityAlertsNormalizations(value.ScanningSecurityAlertsNormalizations) {
+						checkout.RulesetScanningSecurityAlertsNormalizationWarning(value.ID, value.Policy.Name, record)
 					}
 				}
 				if record := value.QualitySeverityNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {

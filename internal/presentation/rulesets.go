@@ -93,6 +93,25 @@ func RulesetLine(change settings.RulesetDisplayChange) string {
 		decision := fmt.Sprintf("%s (Ruleset %d %q, tool=%q): %q (normalized observation) → %s", record.Path, id, change.Name(), record.Tool, record.Fallback, afterChoice)
 		details = append(details, RulesetScanningAlertsNormalizationLine(id, change.Name(), record), decision)
 	}
+	for _, record := range settings.OrderedRulesetScanningSecurityAlertsNormalizations(records.ScanningSecurityAlerts) {
+		afterChoice := "inactive (rule removed; write required)"
+		for _, rule := range *desired.Rules {
+			if rule.Type != "code_scanning" {
+				continue
+			}
+			afterChoice = "inactive (tool removed; write required)"
+			for _, tool := range *rule.Parameters.CodeScanningTools {
+				if tool.Tool == record.Tool {
+					choice, _ := settings.RulesetScanningSecurityAlertsChoiceForValue(tool.SecurityAlertsThreshold)
+					afterChoice = strconv.Quote(string(choice)) + " (write required)"
+					break
+				}
+			}
+			break
+		}
+		decision := fmt.Sprintf("%s (Ruleset %d %q, tool=%q): %q (normalized observation) → %s", record.Path, id, change.Name(), record.Tool, record.Fallback, afterChoice)
+		details = append(details, RulesetScanningSecurityAlertsNormalizationLine(id, change.Name(), record), decision)
+	}
 	if record := records.QualitySeverity; record != (settings.ObservationNormalization{}) {
 		afterChoice := "inactive (rule removed; write required)"
 		for _, rule := range *desired.Rules {
@@ -152,5 +171,9 @@ func RulesetTeamApprovalsNormalizationLine(id int64, name string, record setting
 }
 
 func RulesetScanningAlertsNormalizationLine(id int64, name string, record settings.RulesetScanningAlertsNormalization) string {
+	return fmt.Sprintf("Warning: %s: observed %q is outside UI choices; using %q (projection only). Ruleset %d %q, tool=%q.", record.Path, record.RawValue, record.Fallback, id, name, record.Tool)
+}
+
+func RulesetScanningSecurityAlertsNormalizationLine(id int64, name string, record settings.RulesetScanningSecurityAlertsNormalization) string {
 	return fmt.Sprintf("Warning: %s: observed %q is outside UI choices; using %q (projection only). Ruleset %d %q, tool=%q.", record.Path, record.RawValue, record.Fallback, id, name, record.Tool)
 }
