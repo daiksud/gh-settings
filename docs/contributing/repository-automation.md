@@ -48,7 +48,7 @@ After a permitted merge, a matching main push starts the settings workflow. Whet
 
 ## Active settings workflows
 
-The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. Their pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.
+The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. The PR plan pin is selected independently from the main apply and merge-validation pins: trusted default-branch code must understand a candidate declaration before that declaration can be adopted. Main apply and merge validation must stay compatible with the tracked declaration. Their pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.
 
 The PR caller uses trusted default-branch `pull_request_target` code for opened, synchronize and reopened events targeting main. Its path filter covers `.github/settings.yml`, both operational caller workflows, and the GitHub Actions examples. The exact main-ref/repository/base condition and Environment `gh-settings` constrain this credential consumer. Per-PR concurrency cancels superseded plans.
 
@@ -94,9 +94,10 @@ When evaluating enforcement, inspect the applicable required checks and allowed 
 ## Local PR settings validation
 
 The required `settings-plan` job in [settings-plan.yml](../../.github/workflows/settings-plan.yml)
-validates `.github/settings.yml` from the PR merge checkout with the same immutable
-public Action pin used by [settings-pr.yml](../../.github/workflows/settings-pr.yml)
-and [settings-main.yml](../../.github/workflows/settings-main.yml). It calls only
+validates `.github/settings.yml` from the PR merge checkout with the immutable
+public Action pin used by [settings-main.yml](../../.github/workflows/settings-main.yml).
+The [PR plan caller](../../.github/workflows/settings-pr.yml) has an independent pin
+to support candidate declarations before adoption. The validation job calls only
 `command: validate`, with no token. The job uses the public Action's supported
 fresh Ubuntu 24.04 x64 VM, has only Contents read, selects no Environment and
 creates no App token. A validation failure fails the required check.

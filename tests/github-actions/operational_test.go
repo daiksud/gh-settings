@@ -13,7 +13,7 @@ import (
 )
 
 const operationalAction = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
-const operationalPlanAction = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
+const operationalPlanAction = "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6"
 
 func TestManagedRepositoryEnvironments(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))

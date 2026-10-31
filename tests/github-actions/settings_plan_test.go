@@ -30,9 +30,9 @@ func TestSettingsPlanRemainsUnprivilegedPRValidation(t *testing.T) {
 	if len(j.Steps) != 2 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(j.Steps[0].With, map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}) || j.Steps[1].Uses != consumer || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"command": "validate"}) || j.Steps[1].If != "" {
 		t.Fatal("validate the merge declaration with its pinned operational consumer, without a token or conditional skip")
 	}
-	for _, caller := range []struct{ file, job, command string }{
-		{"settings-pr.yml", "plan", "plan"},
-		{"settings-main.yml", "apply", "apply"},
+	for _, caller := range []struct{ file, job, command, action string }{
+		{"settings-pr.yml", "plan", "plan", operationalPlanAction},
+		{"settings-main.yml", "apply", "apply", operationalAction},
 	} {
 		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", caller.file))
 		if err != nil {
@@ -45,8 +45,8 @@ func TestSettingsPlanRemainsUnprivilegedPRValidation(t *testing.T) {
 		matches := 0
 		for _, step := range operational.Jobs[caller.job].Steps {
 			if strings.HasPrefix(step.Uses, "daiksud/gh-settings@") {
-				if step.Uses != consumer || step.With["command"] != caller.command {
-					t.Fatal("settings validation must match both operational consumers")
+				if step.Uses != caller.action || step.With["command"] != caller.command {
+					t.Fatal("operational consumers must use their declared immutable package")
 				}
 				matches++
 			}
