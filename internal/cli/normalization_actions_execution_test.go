@@ -22,9 +22,9 @@ func TestActionsExecutionRadioPresentationDistinguishesVisibleProjection(t *test
 				t.Fatal(err)
 			}
 			got := string(cli.RenderComparison(settings.Comparison{Managed: len(radio.NativeFields()), ActionsExecution: []settings.ActionsExecutionChange{radio}}))
-			want := "repository.settings.actions.general.actions_permissions: \"disable_actions\" → " + strconv.Quote(string(desired)) + " (write required)\n"
+			want := "repository.settings.actions.general.actions_permissions.policy: \"disable_actions\" → " + strconv.Quote(string(desired)) + " (write required)\n"
 			if enabled {
-				want = "Warning: repository.settings.actions.general.actions_permissions: observed " + strconv.Quote(raw) + " is outside UI choices; using \"allow_all_actions_and_reusable_workflows\" (projection only).\nrepository.settings.actions.general.actions_permissions: \"allow_all_actions_and_reusable_workflows\" (normalized observation) → " + strconv.Quote(string(desired)) + " (write required)\n"
+				want = "Warning: repository.settings.actions.general.actions_permissions.policy: observed " + strconv.Quote(raw) + " is outside UI choices; using \"allow_all_actions_and_reusable_workflows\" (projection only).\nrepository.settings.actions.general.actions_permissions.policy: \"allow_all_actions_and_reusable_workflows\" (normalized observation) → " + strconv.Quote(string(desired)) + " (write required)\n"
 			}
 			if got != want || strings.Contains(got, "\n::warning::") || strings.Contains(got, "settings.actions.enabled") || strings.Contains(got, "settings.actions.allowed_actions") {
 				t.Fatalf("got %q want %q", got, want)
@@ -42,7 +42,7 @@ func TestOrdinaryActionsRenderingUsesRadioChoice(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := string(cli.RenderComparison(settings.Comparison{Managed: 1, Actions: []settings.ActionsPolicyChange{change}, ActionsExecutionContext: &settings.ActionsExecutionContext{Before: uimodel.DisableActions, After: uimodel.AllowAllActionsAndReusableWorkflows, ObservedAllowed: "all"}}))
-	if got != "repository.settings.actions.general.actions_permissions: \"disable_actions\" → \"allow_all_actions_and_reusable_workflows\"\n" {
+	if got != "repository.settings.actions.general.actions_permissions.policy: \"disable_actions\" → \"allow_all_actions_and_reusable_workflows\"\n" {
 		t.Fatal(got)
 	}
 }

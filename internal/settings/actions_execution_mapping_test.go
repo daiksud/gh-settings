@@ -7,7 +7,7 @@ import (
 )
 
 func TestActionsExecutionMappingKeepsRadioAndPolicyOwnershipSeparate(t *testing.T) {
-	if ActionsPermissionsPath != "repository.settings.actions.general.actions_permissions" || DefaultActionsPermissionsChoice != "allow_all_actions_and_reusable_workflows" {
+	if ActionsPermissionsPath != "repository.settings.actions.general.actions_permissions.policy" || DefaultActionsPermissionsChoice != "allow_all_actions_and_reusable_workflows" {
 		t.Fatal(ActionsPermissionsPath, DefaultActionsPermissionsChoice)
 	}
 	for _, test := range []struct {

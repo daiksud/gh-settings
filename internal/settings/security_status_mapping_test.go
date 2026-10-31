@@ -7,8 +7,8 @@ func TestSecurityStatusMappingIsClosed(t *testing.T) {
 		control     SecurityStatusControl
 		path, field string
 	}{
-		{SecretProtectionControl, "repository.settings.security_and_quality.advanced_security.secret_protection", "security.secret_scanning"},
-		{PushProtectionControl, "repository.settings.security_and_quality.advanced_security.push_protection", "security.secret_scanning_push_protection"},
+		{SecretProtectionControl, "repository.settings.advanced_security.secret_protection.enabled", "security.secret_scanning"},
+		{PushProtectionControl, "repository.settings.advanced_security.secret_protection.push_protection", "security.secret_scanning_push_protection"},
 	} {
 		fallback, valid := test.control.DefaultValue()
 		if !valid || fallback || test.control.Path() != test.path || test.control.Field() != test.field {

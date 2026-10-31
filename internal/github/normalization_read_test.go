@@ -25,7 +25,7 @@ func TestWorkflowReadNormalizesOnlyCompleteTypedObservations(t *testing.T) {
 			if state.DefaultWorkflowPermissions != raw || state.Normalization != (settings.ObservationNormalization{}) {
 				t.Fatal("supported GET choice changed", state)
 			}
-		} else if state.DefaultWorkflowPermissions != "read" || state.Normalization.Path != "repository.settings.actions.general.workflow_permissions" || state.Normalization.RawValue != raw || state.Normalization.Fallback != "read_repository_contents_and_packages_permissions" {
+		} else if state.DefaultWorkflowPermissions != "read" || state.Normalization.Path != "repository.settings.actions.general.workflow_permissions.default_permissions" || state.Normalization.RawValue != raw || state.Normalization.Fallback != "read_repository_contents_and_packages_permissions" {
 			t.Fatal("unknown GET choice lost provenance", state)
 		}
 	}

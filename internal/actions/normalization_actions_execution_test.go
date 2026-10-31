@@ -74,7 +74,7 @@ func TestActionsExecutionPrivateReportRetainsClosedRadioAndNativeOwnership(t *te
 			if !strings.Contains(html.UnescapeString(summary), strconv.Quote(string(desired))+" (write required)") || strings.Contains(summary, "<script>") {
 				t.Fatal(summary)
 			}
-			warning := "Warning: repository.settings.actions.general.actions_permissions: observed " + strconv.Quote(raw) + " is outside UI choices; using \"allow_all_actions_and_reusable_workflows\" (projection only)."
+			warning := "Warning: repository.settings.actions.general.actions_permissions.policy: observed " + strconv.Quote(raw) + " is outside UI choices; using \"allow_all_actions_and_reusable_workflows\" (projection only)."
 			if enabled {
 				if strings.Count(html.UnescapeString(summary), warning) != 1 || !strings.Contains(summary, "normalized observation") {
 					t.Fatal("visible projection missing", summary)
