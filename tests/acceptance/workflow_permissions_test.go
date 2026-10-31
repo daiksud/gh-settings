@@ -130,7 +130,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	run("export", "--workflow-permissions")
 	run("validate")
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "workflow_permissions: read_repository_contents_and_packages_permissions") || !strings.Contains(string(data), "allow_github_actions_to_create_and_approve_pull_requests: false") || strings.Contains(string(data), "require_actions_to_be_pinned_to_a_full_length_commit_sha:") {
+	if err != nil || !strings.Contains(string(data), "workflow_permissions:\n") || !strings.Contains(string(data), "default_permissions: read_repository_contents_and_packages_permissions") || !strings.Contains(string(data), "allow_github_actions_to_create_and_approve_pull_requests: false") || strings.Contains(string(data), "require_actions_to_be_pinned_to_a_full_length_commit_sha:") {
 		t.Fatal(string(data), err)
 	}
 	mu.Lock()
@@ -141,10 +141,10 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	input := actionsPolicyInput(`{workflow_permissions: read_and_write_permissions, allow_github_actions_to_create_and_approve_pull_requests: true}`)
+	input := actionsPolicyInput(`{workflow_permissions: {default_permissions: read_and_write_permissions, allow_github_actions_to_create_and_approve_pull_requests: true}}`)
 	writeSettingsFile(fixture.work, input)
 	plan := run("plan")
-	if !strings.Contains(plan, `repository.settings.actions.general.workflow_permissions: "read_repository_contents_and_packages_permissions" → "read_and_write_permissions"`) || !strings.Contains(plan, `repository.settings.actions.general.allow_github_actions_to_create_and_approve_pull_requests: false → true`) {
+	if !strings.Contains(plan, `repository.settings.actions.general.workflow_permissions.default_permissions: "read_repository_contents_and_packages_permissions" → "read_and_write_permissions"`) || !strings.Contains(plan, `repository.settings.actions.general.workflow_permissions.allow_github_actions_to_create_and_approve_pull_requests: false → true`) {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "workflow-plan.json")
@@ -173,9 +173,9 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal(got)
 	}
 	run("apply")
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{workflow_permissions: read_repository_contents_and_packages_permissions}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{workflow_permissions: {default_permissions: read_repository_contents_and_packages_permissions}}`))
 	run("apply")
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{allow_github_actions_to_create_and_approve_pull_requests: false}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{workflow_permissions: {allow_github_actions_to_create_and_approve_pull_requests: false}}`))
 	run("apply")
 	mu.Lock()
 	if executionReads != beforeExecution || len(writes) != 4 || !reflect.DeepEqual(writes[2], map[string]any{"default_workflow_permissions": "read"}) || !reflect.DeepEqual(writes[3], map[string]any{"can_approve_pull_request_reviews": false}) || policy["default_workflow_permissions"] != "read" || policy["can_approve_pull_request_reviews"] != false {
@@ -187,7 +187,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal(got)
 	}
 	// A later organization refusal retains the completed execution-policy write.
-	input = actionsPolicyInput(`{actions_permissions: allow_all_actions_and_reusable_workflows, workflow_permissions: read_and_write_permissions}`)
+	input = actionsPolicyInput(`{actions_permissions: {policy: allow_all_actions_and_reusable_workflows}, workflow_permissions: {default_permissions: read_and_write_permissions}}`)
 	writeSettingsFile(fixture.work, input)
 	mu.Lock()
 	deny = true
@@ -216,7 +216,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	}
 	// Invalid local values never reach the endpoint.
 	before := fixture.reads.Load()
-	for _, body := range []string{`{workflow_permissions: unknown}`, `{workflow_permissions: null}`, `{allow_github_actions_to_create_and_approve_pull_requests: null}`} {
+	for _, body := range []string{`{workflow_permissions: {default_permissions: unknown}}`, `{workflow_permissions: null}`, `{workflow_permissions: {allow_github_actions_to_create_and_approve_pull_requests: null}}`, `{workflow_permissions: read_and_write_permissions}`, `{workflow_permissions: {selection: read_and_write_permissions}}`, `{allow_github_actions_to_create_and_approve_pull_requests: true}`} {
 		writeSettingsFile(fixture.work, actionsPolicyInput(body))
 		for _, command := range []string{"validate", "plan", "apply"} {
 			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)

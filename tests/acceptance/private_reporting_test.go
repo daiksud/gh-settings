@@ -152,14 +152,14 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write := func(value string) {
 		t.Helper()
-		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {security_and_quality: {advanced_security: "+value+"}}\n")); err != nil {
+		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {advanced_security: "+value+"}\n")); err != nil {
 			t.Fatal(err)
 		}
 	}
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
 	data, err := os.ReadFile(path)
-	if err != nil || strings.Contains(string(data), "security_and_quality:") {
+	if err != nil || strings.Contains(string(data), "advanced_security:") {
 		t.Fatal(string(data), err)
 	}
 	mu.Lock()
@@ -179,7 +179,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write("{private_vulnerability_reporting: true}")
 	plan := run("plan")
-	if !strings.Contains(plan, "repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting: false → true") {
+	if !strings.Contains(plan, "repository.settings.advanced_security.private_vulnerability_reporting: false → true") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "private-reporting-plan.json")
@@ -285,7 +285,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	for _, args := range [][]string{{"export", "--security", "private-vulnerability-reporting", "--security", "secret-scanning"}, {"export", "--security", "secret-scanning", "--security", "private-vulnerability-reporting"}} {
 		run(args...)
 		data, _ = os.ReadFile(path)
-		for _, field := range []string{"secret_protection: false", "push_protection: false", "private_vulnerability_reporting: false"} {
+		for _, field := range []string{"secret_protection:\n", "enabled: false", "push_protection: false", "private_vulnerability_reporting: false"} {
 			if !strings.Contains(string(data), field) {
 				t.Fatal("selected family erased", field, string(data))
 			}
@@ -294,7 +294,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 			t.Fatal(got)
 		}
 	}
-	write("{secret_protection: true, private_vulnerability_reporting: true}")
+	write("{secret_protection: {enabled: true}, private_vulnerability_reporting: true}")
 	mu.Lock()
 	mode = "deny-write"
 	before = len(writes)
