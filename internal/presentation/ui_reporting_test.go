@@ -27,7 +27,7 @@ func TestWorkflowChoicesDoNotLeakTransportNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := ActionsPolicyLine(c)
-	if got != `repository.settings.actions.general.workflow_permissions: "read_repository_contents_and_packages_permissions" → "read_and_write_permissions"` {
+	if got != `repository.settings.actions.general.workflow_permissions.default_permissions: "read_repository_contents_and_packages_permissions" → "read_and_write_permissions"` {
 		t.Fatal(got)
 	}
 	if c.Field() != "actions.default_workflow_permissions" || strings.Contains(got, `"write"`) {

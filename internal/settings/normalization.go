@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const WorkflowPermissionsPath = "repository.settings.actions.general.workflow_permissions"
+const WorkflowPermissionsPath = "repository.settings.actions.general.workflow_permissions.default_permissions"
 
 // ObservationNormalization distinguishes an effective UI choice from the exact
 // acquired API token. An empty Path means no fallback was used; an empty raw

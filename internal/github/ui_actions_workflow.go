@@ -17,7 +17,7 @@ func declareUIActionsWorkflow(choice *uimodel.WorkflowPermissionChoice) (*string
 	case uimodel.ReadRepositoryContentsAndPackagesPermissions:
 		value = "read"
 	default:
-		return nil, fmt.Errorf("unsupported UI workflow_permissions choice")
+		return nil, fmt.Errorf("unsupported %s UI choice", settings.WorkflowPermissionsPath)
 	}
 	return &value, nil
 }
@@ -40,7 +40,7 @@ func WithActionsWorkflowObservation(ui uimodel.ActionsGeneral, state settings.Wo
 	case "read":
 		choice = uimodel.ReadRepositoryContentsAndPackagesPermissions
 	default:
-		return uimodel.ActionsGeneral{}, fmt.Errorf("workflow_permissions is outside UI choices")
+		return uimodel.ActionsGeneral{}, fmt.Errorf("%s is outside UI choices", settings.WorkflowPermissionsPath)
 	}
 	ui.WorkflowPermissions = &choice
 	ui.AllowGitHubActionsToCreateAndApprovePullRequests = copyUIActionsValue(&state.CanApprovePullRequestReviews)

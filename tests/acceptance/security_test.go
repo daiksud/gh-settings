@@ -145,14 +145,14 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	}
 	write := func(value string) {
 		t.Helper()
-		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {security_and_quality: {advanced_security: "+value+"}}\n")); err != nil {
+		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {advanced_security: {secret_protection: "+value+"}}\n")); err != nil {
 			t.Fatal(err)
 		}
 	}
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
 	data, err := os.ReadFile(path)
-	if err != nil || strings.Contains(string(data), "security_and_quality:") {
+	if err != nil || strings.Contains(string(data), "advanced_security:") {
 		t.Fatal("ordinary export acquired security", string(data), err)
 	}
 	mu.Lock()
@@ -164,15 +164,15 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	run("export", "--security", "secret-scanning")
 	run("validate")
 	data, err = os.ReadFile(path)
-	if err != nil || !strings.Contains(string(data), "secret_protection: false") || !strings.Contains(string(data), "push_protection: false") || strings.Contains(string(data), "future_security") {
+	if err != nil || !strings.Contains(string(data), "secret_protection:\n") || !strings.Contains(string(data), "enabled: false") || !strings.Contains(string(data), "push_protection: false") || strings.Contains(string(data), "future_security") || strings.Contains(string(data), "security_and_quality:") {
 		t.Fatal(string(data), err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	write("{secret_protection: true, push_protection: true}")
+	write("{enabled: true, push_protection: true}")
 	plan := run("plan")
-	if !strings.Contains(plan, "repository.settings.security_and_quality.advanced_security.secret_protection: false → true") || !strings.Contains(plan, "repository.settings.security_and_quality.advanced_security.push_protection: false → true") {
+	if !strings.Contains(plan, "repository.settings.advanced_security.secret_protection.enabled: false → true") || !strings.Contains(plan, "repository.settings.advanced_security.secret_protection.push_protection: false → true") {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "security-plan.json")
@@ -208,7 +208,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	mu.Unlock()
 	write("{push_protection: false}")
 	run("apply")
-	write("{secret_protection: false}")
+	write("{enabled: false}")
 	run("apply")
 	mu.Lock()
 	if s || p || !reflect.DeepEqual(writes[2:], []string{"secret_scanning_push_protection", "secret_scanning"}) {
@@ -244,7 +244,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	mode = "enforced"
 	before := len(writes)
 	mu.Unlock()
-	write("{secret_protection: true}")
+	write("{enabled: true}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "did not retain requested") {
 		t.Fatal("enforced no-change accepted", err, r.stderr.String())
@@ -271,13 +271,13 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	mode = ""
 	mu.Unlock()
 	// Child success survives a later parent refusal; no rollback or retry.
-	write("{secret_protection: true, push_protection: true}")
+	write("{enabled: true, push_protection: true}")
 	run("apply")
 	mu.Lock()
 	mode = "deny-parent"
 	before = len(writes)
 	mu.Unlock()
-	write("{secret_protection: false, push_protection: false}")
+	write("{enabled: false, push_protection: false}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "earlier successful writes remain applied") {
 		t.Fatal(err, r.stderr.String())

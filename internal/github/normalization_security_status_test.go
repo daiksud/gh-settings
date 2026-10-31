@@ -11,8 +11,8 @@ func TestPrepareSecurityStatusObservation(t *testing.T) {
 		control settings.SecurityStatusControl
 		path    string
 	}{
-		{settings.SecretProtectionControl, "repository.settings.security_and_quality.advanced_security.secret_protection"},
-		{settings.PushProtectionControl, "repository.settings.security_and_quality.advanced_security.push_protection"},
+		{settings.SecretProtectionControl, "repository.settings.advanced_security.secret_protection.enabled"},
+		{settings.PushProtectionControl, "repository.settings.advanced_security.secret_protection.push_protection"},
 	} {
 		for _, raw := range []string{"enabled", "disabled", "FUTURE", "", " \t"} {
 			prepared, err := prepareSecurityStatusObservation(&raw, test.control)

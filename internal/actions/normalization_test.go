@@ -72,7 +72,7 @@ func TestWorkflowNormalizationPresentationShowsProjection(t *testing.T) {
 		}
 		comparison := settings.Comparison{Managed: managed, Actions: changes}
 		output := string(cli.RenderComparison(comparison))
-		if !strings.Contains(output, "Warning:") || !strings.Contains(output, "repository.settings.actions.general.workflow_permissions") || !strings.Contains(output, strconv.Quote(raw)) || !strings.Contains(output, `"read_repository_contents_and_packages_permissions"`) || !strings.Contains(output, strconv.Quote(desired.ui)) || !strings.Contains(output, "write required") || strings.Contains(output, "No differences") || strings.Contains(output, "\n::warning::") {
+		if !strings.Contains(output, "Warning:") || !strings.Contains(output, "repository.settings.actions.general.workflow_permissions.default_permissions") || !strings.Contains(output, strconv.Quote(raw)) || !strings.Contains(output, `"read_repository_contents_and_packages_permissions"`) || !strings.Contains(output, strconv.Quote(desired.ui)) || !strings.Contains(output, "write required") || strings.Contains(output, "No differences") || strings.Contains(output, "\n::warning::") {
 			t.Fatalf("projection was presented as exact equality or unsafe text: %s", output)
 		}
 		before, after := changes[0].Values()
@@ -100,7 +100,7 @@ func TestWorkflowNormalizationPresentationShowsProjection(t *testing.T) {
 func TestWorkflowNormalizationReportRequiresAcquiredStrings(t *testing.T) {
 	for _, member := range []string{"path", "raw_value", "fallback"} {
 		for _, invalid := range []any{nil, false, float64(1), []any{}, map[string]any{}} {
-			fields := map[string]any{"path": "repository.settings.actions.general.workflow_permissions", "raw_value": "", "fallback": "read_repository_contents_and_packages_permissions"}
+			fields := map[string]any{"path": "repository.settings.actions.general.workflow_permissions.default_permissions", "raw_value": "", "fallback": "read_repository_contents_and_packages_permissions"}
 			fields[member] = invalid
 			data, _ := json.Marshal(fields)
 			var normalization settings.ObservationNormalization
@@ -108,7 +108,7 @@ func TestWorkflowNormalizationReportRequiresAcquiredStrings(t *testing.T) {
 				t.Fatalf("non-string provenance accepted: %s", data)
 			}
 		}
-		fields := map[string]any{"path": "repository.settings.actions.general.workflow_permissions", "raw_value": "", "fallback": "read_repository_contents_and_packages_permissions"}
+		fields := map[string]any{"path": "repository.settings.actions.general.workflow_permissions.default_permissions", "raw_value": "", "fallback": "read_repository_contents_and_packages_permissions"}
 		delete(fields, member)
 		data, _ := json.Marshal(fields)
 		var normalization settings.ObservationNormalization
@@ -117,7 +117,7 @@ func TestWorkflowNormalizationReportRequiresAcquiredStrings(t *testing.T) {
 		}
 	}
 	var normalization settings.ObservationNormalization
-	if err := json.Unmarshal([]byte(`{"path":"repository.settings.actions.general.workflow_permissions","raw_value":"","fallback":"read_repository_contents_and_packages_permissions"}`), &normalization); err != nil || normalization.RawValue != "" || normalization.Path == "" {
+	if err := json.Unmarshal([]byte(`{"path":"repository.settings.actions.general.workflow_permissions.default_permissions","raw_value":"","fallback":"read_repository_contents_and_packages_permissions"}`), &normalization); err != nil || normalization.RawValue != "" || normalization.Path == "" {
 		t.Fatalf("explicit acquired empty token rejected: %+v %v", normalization, err)
 	}
 }

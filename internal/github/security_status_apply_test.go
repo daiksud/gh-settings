@@ -222,7 +222,7 @@ func TestSecurityInconsistentProjectionIsAcquiredButNotDeclarable(t *testing.T) 
 	if err != nil || scanning || !push {
 		t.Fatal(scanning, push, err)
 	}
-	if !reflect.DeepEqual(observed.Normalizations(), []settings.SecurityStatusNormalization{{Path: "repository.settings.security_and_quality.advanced_security.secret_protection", RawValue: "FUTURE", Fallback: false}}) {
+	if !reflect.DeepEqual(observed.Normalizations(), []settings.SecurityStatusNormalization{{Path: "repository.settings.advanced_security.secret_protection.enabled", RawValue: "FUTURE", Fallback: false}}) {
 		t.Fatal(observed.Normalizations())
 	}
 	if _, err := observed.Declaration(); err == nil {

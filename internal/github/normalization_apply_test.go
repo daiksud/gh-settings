@@ -70,7 +70,7 @@ func TestWorkflowNormalizedApplyVerifiesRawReadback(t *testing.T) {
 				}
 			}
 			for _, warning := range warnings {
-				if warning.Path != "repository.settings.actions.general.workflow_permissions" || warning.RawValue != "FUTURE" || warning.Fallback != "read_repository_contents_and_packages_permissions" {
+				if warning.Path != "repository.settings.actions.general.workflow_permissions.default_permissions" || warning.RawValue != "FUTURE" || warning.Fallback != "read_repository_contents_and_packages_permissions" {
 					t.Fatal("raw warning provenance changed", warning)
 				}
 			}

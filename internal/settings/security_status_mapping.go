@@ -11,8 +11,10 @@ const (
 
 func (control SecurityStatusControl) Path() string {
 	switch control {
-	case SecretProtectionControl, PushProtectionControl:
-		return "repository.settings.security_and_quality.advanced_security." + string(control)
+	case SecretProtectionControl:
+		return "repository.settings.advanced_security.secret_protection.enabled"
+	case PushProtectionControl:
+		return "repository.settings.advanced_security.secret_protection.push_protection"
 	default:
 		return ""
 	}
