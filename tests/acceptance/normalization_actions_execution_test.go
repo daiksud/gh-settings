@@ -121,9 +121,9 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 		}
 		return r.stdout.String(), r.stderr.String(), status
 	}
-	intent := func(general, about string) string {
+	intent := func(permissions, about string) string {
 		t.Helper()
-		input := repositoryInput(about + "settings: {actions: {general: " + general + "}}\n")
+		input := repositoryInput(about + "settings: {actions: {general: {actions_permissions: " + permissions + "}}}\n")
 		if err := writeSettingsFile(fixture.work, input); err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +135,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	path := "repository.settings.actions.general.actions_permissions"
+	path := "repository.settings.actions.general.actions_permissions.policy"
 	fallback := "allow_all_actions_and_reusable_workflows"
 	warning := "Warning: " + path + ": observed \"FUTURE_POLICY\" is outside UI choices; using \"" + fallback + "\" (projection only)."
 	output, diagnostic, status := run("export", "--actions")
@@ -143,7 +143,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 		t.Fatal("export", status, output, diagnostic)
 	}
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "actions_permissions: "+fallback) || strings.Contains(string(data), "FUTURE_POLICY") {
+	if err != nil || !strings.Contains(string(data), "actions_permissions:\n") || !strings.Contains(string(data), "policy: "+fallback) || strings.Contains(string(data), "FUTURE_POLICY") {
 		t.Fatal(string(data), err)
 	}
 	report, summary := filepath.Join(fixture.root, "execution.json"), filepath.Join(fixture.root, "execution.md")
@@ -160,7 +160,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 		} `json:"actions_execution"`
 	}
 	for _, choice := range []string{fallback, "disable_actions", "allow_owner_actions_and_reusable_workflows"} {
-		input := intent("{actions_permissions: "+choice+"}", "")
+		input := intent("{policy: "+choice+"}", "")
 		output, diagnostic, status = run("plan")
 		decision := path + ": \"" + fallback + "\" (normalized observation) → \"" + choice + "\" (write required)"
 		if status != 0 || diagnostic != "" || strings.Count(output, warning) != 1 || !strings.Contains(output, decision) {
@@ -194,7 +194,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	if readonlyWrites != 0 {
 		t.Fatal("read-only wrote")
 	}
-	input := intent("{actions_permissions: "+fallback+"}", "")
+	input := intent("{policy: "+fallback+"}", "")
 	output, diagnostic, status = run("apply")
 	if status != 1 || output != "" || strings.Count(diagnostic, warning) != 2 || !strings.Contains(diagnostic, "writes may already have applied") {
 		t.Fatal("retained unknown", status, output, diagnostic)
@@ -211,7 +211,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	mu.Lock()
 	base["allowed_actions"] = "FUTURE_POLICY"
 	mu.Unlock()
-	input = intent("{actions_permissions: disable_actions}", "")
+	input = intent("{policy: disable_actions}", "")
 	output, diagnostic, status = run("apply")
 	if status != 0 || strings.Count(diagnostic, warning) != 1 {
 		t.Fatal("disable preserve", status, output, diagnostic)
@@ -219,15 +219,15 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	checkSource(input)
 	output, diagnostic, status = run("export", "--actions")
 	data, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || status != 0 || diagnostic != "" || !strings.Contains(string(data), "actions_permissions: disable_actions") || strings.Contains(string(data), "FUTURE_POLICY") {
+	if err != nil || status != 0 || diagnostic != "" || !strings.Contains(string(data), "policy: disable_actions") || strings.Contains(string(data), "FUTURE_POLICY") {
 		t.Fatal("hidden export", status, string(data), diagnostic, err)
 	}
-	input = intent("{actions_permissions: disable_actions}", "")
+	input = intent("{policy: disable_actions}", "")
 	output, diagnostic, status = run("plan")
 	if status != 0 || diagnostic != "" || output != "No differences for managed repository settings.\n" {
 		t.Fatal("known disabled", status, output, diagnostic)
 	}
-	input = intent("{actions_permissions: allow_owner_and_select_non_owner_actions_and_reusable_workflows, allow_actions_created_by_github: true, allow_actions_by_marketplace_verified_creators: false, allow_or_block_specified_actions_and_reusable_workflows: ['org/*', '!org/bad@*', 'org/*']}", "")
+	input = intent("{policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows, allow_actions_created_by_github: true, allow_actions_by_marketplace_verified_creators: false, allow_or_block_specified_actions_and_reusable_workflows: ['org/*', '!org/bad@*', 'org/*']}", "")
 	output, diagnostic, status = run("plan")
 	if status != 0 || diagnostic != "" || strings.Contains(output, "FUTURE_POLICY") || strings.Contains(output, "normalized observation") || !strings.Contains(output, `"disable_actions" → "allow_owner_and_select_non_owner_actions_and_reusable_workflows" (write required)`) {
 		t.Fatal("known disabled enabling", status, output, diagnostic)
@@ -266,7 +266,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	}
 	ignored = true
 	mu.Unlock()
-	input = intent("{actions_permissions: "+fallback+"}", "about: {description: updated}\n")
+	input = intent("{policy: "+fallback+"}", "about: {description: updated}\n")
 	output, diagnostic, status = run("apply")
 	if status != 1 || output != "" || strings.Count(diagnostic, warning) != 2 || !strings.Contains(diagnostic, "earlier resource writes remain applied") {
 		t.Fatal("earlier REST effects", status, output, diagnostic)

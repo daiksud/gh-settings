@@ -196,14 +196,14 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 	if !desired.Security.SecretScanningEmpty() {
 		observed, err := read.SecretScanning(repo)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.security_and_quality.advanced_security", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security", Target: repo, Err: err}
 		}
 		if _, err := settings.SecretScanningTransitions(observed, desired.Security); err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.security_and_quality.advanced_security", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security", Target: repo, Err: err}
 		}
 		managed, changes, err := settings.CompareSecretScanning(observed, desired.Security)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.security_and_quality.advanced_security", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security", Target: repo, Err: err}
 		}
 		comparison.Managed += managed
 		comparison.Security = changes
@@ -212,11 +212,11 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 	if desired.Security.PrivateVulnerabilityReporting != nil {
 		observed, err := read.PrivateReporting(repo)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.private_vulnerability_reporting", Target: repo, Err: err}
 		}
 		managed, changes, err := settings.ComparePrivateReporting(observed, desired.Security)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.private_vulnerability_reporting", Target: repo, Err: err}
 		}
 		comparison.Managed += managed
 		comparison.Security = append(comparison.Security, changes...)
@@ -225,11 +225,11 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 	if desired.Security.ImmutableReleases != nil {
 		observed, err := read.ImmutableReleases(repo)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.enable_release_immutability", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.immutable_release", Target: repo, Err: err}
 		}
 		managed, changes, err := settings.CompareImmutableReleases(observed, desired.Security)
 		if err != nil {
-			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.enable_release_immutability", Target: repo, Err: err}
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.general.releases.immutable_release", Target: repo, Err: err}
 		}
 		comparison.Managed += managed
 		comparison.Security = append(comparison.Security, changes...)

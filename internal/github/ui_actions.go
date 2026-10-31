@@ -41,7 +41,7 @@ func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclar
 	if ui.ActionsPermissions != nil {
 		enabled, allowed, valid := settings.ActionsPermissionsValueForChoice(*ui.ActionsPermissions)
 		if !valid {
-			return settings.ActionsPolicyDeclaration{}, fmt.Errorf("unsupported actions_permissions UI choice")
+			return settings.ActionsPolicyDeclaration{}, fmt.Errorf("unsupported %s UI choice", settings.ActionsPermissionsPath)
 		}
 		result.Enabled = &enabled
 		result.AllowedActions = allowed
@@ -53,7 +53,7 @@ func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclar
 		result.SelectedActions.PatternsAllowed = &patterns
 	}
 	if !result.SelectedActions.Empty() && ui.ActionsPermissions != nil && *ui.ActionsPermissions != uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows {
-		return settings.ActionsPolicyDeclaration{}, fmt.Errorf("selected action controls require the selected non-owner Actions permission or an omitted radio")
+		return settings.ActionsPolicyDeclaration{}, fmt.Errorf("selected action controls require the selected non-owner %s choice or omission", settings.ActionsPermissionsPath)
 	}
 	var err error
 	result.DefaultWorkflowPermissions, err = declareUIActionsWorkflow(ui.WorkflowPermissions)

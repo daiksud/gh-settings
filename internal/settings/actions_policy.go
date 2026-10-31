@@ -64,7 +64,7 @@ func ValidateActionPatterns(values []string) error {
 		return fmt.Errorf("Actions patterns must be a non-null array")
 	}
 	if len(values) > 1000 {
-		return fmt.Errorf("repository.settings.actions.general.allow_or_block_specified_actions_and_reusable_workflows must contain at most 1000 patterns")
+		return fmt.Errorf("repository.settings.actions.general.actions_permissions.allow_or_block_specified_actions_and_reusable_workflows must contain at most 1000 patterns")
 	}
 	for _, v := range values {
 		if v == "" {
@@ -84,13 +84,13 @@ func (d ActionsPolicyDeclaration) Validate() error {
 		}
 	}
 	if d.DefaultWorkflowPermissions != nil && !ValidDefaultWorkflowPermissions(*d.DefaultWorkflowPermissions) {
-		return fmt.Errorf("repository.settings.actions.general.workflow_permissions must be a supported choice")
+		return fmt.Errorf("%s must be a supported choice", WorkflowPermissionsPath)
 	}
 	if d.AllowedActions != nil && !ValidAllowedActions(*d.AllowedActions) {
-		return fmt.Errorf("repository.settings.actions.general.actions_permissions must be a supported choice")
+		return fmt.Errorf("%s must be a supported choice", ActionsPermissionsPath)
 	}
 	if !d.SelectedActions.Empty() && d.AllowedActions != nil && *d.AllowedActions != "selected" {
-		return fmt.Errorf("selected Actions controls require the selected non-owner actions_permissions choice or omission")
+		return fmt.Errorf("selected Actions controls require the selected non-owner actions_permissions.policy choice or omission")
 	}
 	if d.SelectedActions.PatternsAllowed != nil {
 		return ValidateActionPatterns(*d.SelectedActions.PatternsAllowed)
@@ -136,7 +136,7 @@ func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 		return err
 	}
 	if !s.Enabled && d.Enabled != nil && *d.Enabled && d.AllowedActions == nil && s.AllowedActionsNormalization != (ObservationNormalization{}) {
-		return fmt.Errorf("enabling Actions from an unknown policy requires an explicit canonical actions_permissions choice")
+		return fmt.Errorf("enabling Actions from an unknown policy requires an explicit canonical actions_permissions.policy choice")
 	}
 	if s.AllowedActions != "selected" && d.AllowedActions != nil && *d.AllowedActions == "selected" && !d.SelectedActions.Complete() {
 		return fmt.Errorf("transition to selected requires all three selected Actions controls; inactive values cannot be read")
@@ -151,7 +151,7 @@ func PrepareActions(s ActionsPolicyState, d ActionsPolicyDeclaration) error {
 		return nil
 	}
 	if d.AllowedActions == nil || *d.AllowedActions != "selected" {
-		return fmt.Errorf("selected Actions values are not observable under the current unmanaged actions_permissions policy; declare the selected non-owner choice and all three selected Actions controls")
+		return fmt.Errorf("selected Actions values are not observable under the current unmanaged actions_permissions.policy; declare the selected non-owner choice and all three selected Actions controls")
 	}
 	if !d.SelectedActions.Complete() {
 		return fmt.Errorf("transition to selected requires all three selected Actions controls; inactive values cannot be read")

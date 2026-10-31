@@ -6,7 +6,7 @@ import (
 )
 
 func TestSecurityStatusNormalizationRequiresTypedAcquiredMembers(t *testing.T) {
-	valid := SecurityStatusNormalization{Path: "repository.settings.security_and_quality.advanced_security.secret_protection", RawValue: "", Fallback: false}
+	valid := SecurityStatusNormalization{Path: "repository.settings.advanced_security.secret_protection.enabled", RawValue: "", Fallback: false}
 	data, err := json.Marshal(valid)
 	if err != nil {
 		t.Fatal(err)

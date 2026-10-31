@@ -74,23 +74,36 @@ Ruleset PR controls preserve explicit zero approvals, false checkboxes, and sele
 
 #### Scenario: Preserve Actions General controls
 
-- Given `repository.settings.actions.general` declares UI permission choices and nested fork workflow controls
+- Given `repository.settings.actions.general.actions_permissions` declares `policy` and its companion controls
+- And `workflow_permissions` declares `default_permissions` and the independent PR approval boolean
+- And fork workflow controls retain their existing group
 - When the document is read and exported
 - Then explicit false values, ordered action patterns and omitted controls remain distinct
 - And UI control names use snake_case, including `github` and `sha`
-- And API-shaped aliases, null controls and incorrectly typed values are rejected
+- And API-shaped aliases, scalar permission sections, flat companions, null controls and incorrectly typed values are rejected
 
-Test mapping: the [Actions UI codec tests](../../internal/workspace/ui_actions_test.go).
+Test mapping: the [Actions UI codec tests](../../internal/workspace/ui_actions_test.go) and [page/section fixtures](../../internal/workspace/ui_page_sections_test.go).
 
 #### Scenario: Keep Security controls at their UI locations
 
-- Given Secret Protection, Push protection and Private vulnerability reporting are declared under `repository.settings.security_and_quality.advanced_security`
-- And release immutability is declared under `repository.settings.general.releases`
+- Given `repository.settings.advanced_security.secret_protection` declares independently optional `enabled` and `push_protection` booleans
+- And `private_vulnerability_reporting` is a sibling of Secret Protection
+- And release immutability is declared at `repository.settings.general.releases.immutable_release`
 - When the document is read and exported
 - Then each explicit boolean stays at its UI location and omitted controls remain unmanaged
-- And API aliases, the internal `general_releases` container and owner enforcement metadata are rejected
+- And navigation-category wrappers, scalar Secret Protection, flat push protection, API aliases and owner enforcement metadata are rejected
 
-Test mapping: the [Security UI codec tests](../../internal/workspace/ui_security_test.go).
+Test mapping: the [Security UI codec tests](../../internal/workspace/ui_security_test.go) and [page/section fixtures](../../internal/workspace/ui_page_sections_test.go).
+
+#### Scenario: Reject generic and superseded section shapes
+
+- Given a permission section uses `selection`, `value` or a second Actions `enabled` flag
+- Or a document uses a superseded scalar section or flat companion
+- When the document is decoded
+- Then validation fails rather than interpreting it as the current contract
+- And an independently declared companion never populates an omitted policy or enabling checkbox
+
+Test mapping: `TestUIPageSectionSchemaRejectsSupersededShapes` and `TestUIPageSectionSchemaPreservesIndependentOmission` in the [page/section fixtures](../../internal/workspace/ui_page_sections_test.go).
 
 #### Scenario: Preserve Pages controls and domain removal
 
@@ -171,7 +184,7 @@ Test mapping: the [Environment UI codec tests](../../internal/workspace/ui_envir
 - Labels and Rulesets select only listed objects; empty root lists select nothing.
 - Ruleset omitted rule groups follow whole-object defaults, not remote retention.
 - Environment omitted built-ins remain API-controlled without invented defaults or numeric-ID writeback.
-- Actions UI radios select explicit execution state/policy; omitted radios never enable implicitly.
+- Actions UI policy choices select explicit execution state/policy; omitted policies never enable implicitly.
 - Unknown controls such as organization custom properties and General forking policy fail at their current paths.
 - Current-state prerequisites, entitlement, caps and upper-policy checks belong to observation/apply, not local validation.
 
@@ -186,6 +199,7 @@ The supplied-binary [validation scenarios](../../tests/acceptance/scenarios_vali
 | General choices and types | [General UI codec](../../internal/workspace/ui_general_test.go), [General API conversion](../../internal/github/ui_general_test.go) |
 | Label identity/color/omission | [Labels UI codec](../../internal/workspace/ui_labels_test.go), [composition](../../internal/github/ui_declaration_test.go) |
 | Ruleset nested controls/identities | [Ruleset UI codec](../../internal/workspace/ui_rulesets_test.go), [independent HTTP requests](../../internal/github/ui_config_rulesets_test.go) |
+| Page/section grouping and old-shape rejection | [Literal page/section schema](../../internal/workspace/ui_page_sections_test.go) |
 | Actions, Security, Pages, Environment types | [Actions](../../internal/workspace/ui_actions_test.go), [Security](../../internal/workspace/ui_security_test.go), [Pages](../../internal/workspace/ui_pages_test.go), [Environments](../../internal/workspace/ui_environments_test.go) |
 | No partial semantic intent and snapshot composition | [Root composition](../../checkout_config_test.go) |
 | File, checkout and injected application failures | [Files](../../internal/workspace/config_file_test.go), [Checkout](../../internal/workspace/checkout_test.go), [application](../../internal/app/validate_test.go) |

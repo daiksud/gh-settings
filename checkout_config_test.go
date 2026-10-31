@@ -40,8 +40,9 @@ repository:
     general: {features: {issues: false}}
     actions:
       general:
-        workflow_permissions: read_repository_contents_and_packages_permissions
-        allow_github_actions_to_create_and_approve_pull_requests: false
+        workflow_permissions:
+          default_permissions: read_repository_contents_and_packages_permissions
+          allow_github_actions_to_create_and_approve_pull_requests: false
 `
 
 func TestCheckoutUICompositionAndSnapshotWriteback(t *testing.T) {
@@ -119,7 +120,7 @@ func TestCheckoutUIExportSaveDefersAndRejectsPartialOutput(t *testing.T) {
 }
 
 func TestCheckoutUIInvalidDomainReturnsNoPartialIntent(t *testing.T) {
-	checkout, path := checkoutConfigFixture(t, "version: daiksud/gh-settings@v0\nrepository: {about: {description: valid}, settings: {actions: {general: {workflow_permissions: read}}}}\n")
+	checkout, path := checkoutConfigFixture(t, "version: daiksud/gh-settings@v0\nrepository: {about: {description: valid}, settings: {actions: {general: {workflow_permissions: {default_permissions: read}}}}}\n")
 	before, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)

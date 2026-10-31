@@ -12,17 +12,17 @@ Manage repository feature enablement only. Exclude alert contents or dismissal, 
 
 ## Planned declaration and ownership
 
-Current source uses the exact marker `version: daiksud/gh-settings@v0`. Optional booleans under `repository.settings.security_and_quality.advanced_security` are:
+Current source uses the exact marker `version: daiksud/gh-settings@v0`. Optional booleans under `repository.settings.advanced_security` are:
 
 | Public UI key | Implementation | Scope |
 | --- | --- | --- |
-| `secret_protection` | #345 | Repository Secret Protection feature, not partner notifications |
-| `push_protection` | #345 | Repository push protection, not user-level protection |
+| `secret_protection.enabled` | #345 | Repository Secret Protection feature, not partner notifications |
+| `secret_protection.push_protection` | #345 | Repository push protection, not user-level protection |
 | `private_vulnerability_reporting` | #347 | Public repositories only |
 
-Release immutability belongs separately at `repository.settings.general.releases.enable_release_immutability`; its [contract](immutable-releases.feature.md) owns the explicit GET-404 tradeoff and owner enforcement.
+Release immutability belongs separately at `repository.settings.general.releases.immutable_release`; its [contract](immutable-releases.feature.md) owns the explicit GET-404 tradeoff and owner enforcement.
 
-Omitted groups/keys are unmanaged; empty mappings manage nothing. False disables, true enables, and null/wrong types/duplicate/unknown keys fail before remote work. The old security root and API-shaped aliases are not accepted. Empty mappings do not disable all. Dependabot and product candidates below are future API concepts and adoption gates, not accepted YAML or CLI families. Their future UI paths need their own inventory; this change does not implement them.
+Omitted groups/keys are unmanaged; empty mappings manage nothing. False disables, true enables, and null/wrong types/duplicate/unknown keys fail before remote work. Navigation-category wrappers, scalar Secret Protection, flat push protection and API-shaped aliases are not accepted. The two fields within Secret Protection remain independently optional; declaring the child never populates `enabled`. Empty mappings do not disable all. Dependabot and product candidates below are future API concepts and adoption gates, not accepted YAML or CLI families. Their future UI paths need their own inventory; this change does not implement them.
 
 Plan reads only declared families and the prerequisite/companion observations needed to establish a safe transition. Unrelated hidden security fields do not prevent private vulnerability reporting or an ordinary repository-only plan. API response-only metadata, including pause, entitlement, and enforcement evidence, cannot be declared as desired state.
 
@@ -126,7 +126,7 @@ The [private vulnerability reporting guide](https://docs.github.com/en/code-secu
 The [public configuration contract](../settings.md#secret-scanning-and-push-protection) owns current-source usage. The Secret scanning subset uses its two booleans and `--security secret-scanning`, independently of private vulnerability reporting below. Other families and product candidates remain unsupported.
 
 - Declaration/observation/transition/forged-change boundaries: [TestSecretScanningObservationAndTransitions](../../internal/settings/security_test.go) and [TestSecurityComparisonsRejectForgedValues](../../internal/settings/security_test.go).
-- Strict YAML, explicit false and omission round-trip: [Security UI codec](../../internal/workspace/ui_security_test.go).
+- Strict YAML, explicit false and omission round-trip: [Security UI codec](../../internal/workspace/ui_security_test.go) and [page/section schema](../../internal/workspace/ui_page_sections_test.go), including nested controls and rejection of superseded shapes.
 - Complete API reads, malformed/denied/redirect responses, fresh prerequisites, narrow payload and readback/companion failures: [TestSecretScanningCompleteReads](../../internal/github/security_test.go) and [TestSecretScanningNarrowPayloadReadbackAndFreshPreflight](../../internal/github/security_test.go).
 - Dependency order, read certainty, matching state and confirmed partial progress: [TestSecretScanningApplyOrderAndPartialProgress](../../internal/app/security_test.go) and [TestSecretScanningReadFailureAndOmission](../../internal/app/security_test.go).
 - Export selection/composition and forged native Summary values: [TestSecurityExportSelectionIsExplicitAndComposable](../../internal/cli/security_test.go) and [TestSecuritySummaryHasNativeClosedValues](../../internal/actions/security_test.go).
@@ -136,7 +136,7 @@ Fixtures use dummy credentials and local modeled responses. A read-only observat
 
 ## Implemented private vulnerability reporting test mappings
 
-The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Dependabot and product candidates remain gated/unsupported.
+The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Dependabot and product candidates remain gated/unsupported.
 
 - Acquired observations, omitted/false/true comparison and independent field domains: [TestPrivateReportingObservationAndIndependentDeclaration](../../internal/settings/private_reporting_test.go).
 - Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [Security UI codec](../../internal/workspace/ui_security_test.go).

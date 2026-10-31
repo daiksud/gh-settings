@@ -2,7 +2,7 @@ package settings
 
 import "github.com/daiksud/gh-settings/internal/settings/uimodel"
 
-const ActionsPermissionsPath = "repository.settings.actions.general.actions_permissions"
+const ActionsPermissionsPath = "repository.settings.actions.general.actions_permissions.policy"
 const DefaultActionsPermissionsChoice = uimodel.DefaultActionsPermissions
 
 var actionsPermissionsChoices = [...]struct {
