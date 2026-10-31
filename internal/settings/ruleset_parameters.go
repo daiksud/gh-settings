@@ -123,7 +123,7 @@ func validateRule(r RulesetRule, complete bool) error {
 				if complete && (v.MinimumApprovals == nil || v.FilePatterns == nil) {
 					return fmt.Errorf("new required reviewer requires minimum_approvals and file_patterns")
 				}
-				if v.MinimumApprovals != nil && (*v.MinimumApprovals < 0 || *v.MinimumApprovals > 10) {
+				if v.MinimumApprovals != nil && !RulesetTeamApprovalsSupported(*v.MinimumApprovals) {
 					return fmt.Errorf("minimum_approvals must be between 0 and 10")
 				}
 				if v.FilePatterns != nil {

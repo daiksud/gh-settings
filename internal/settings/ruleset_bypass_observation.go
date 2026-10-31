@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 )
 
@@ -100,6 +101,7 @@ func OrderedRulesetBypassModeNormalizations(records []RulesetBypassModeNormaliza
 func cloneRulesetState(state RulesetState) RulesetState {
 	state.Policy = cloneRuleset(state.Policy)
 	state.MergeMethodsNormalization = cloneRulesetMergeMethodsNormalization(state.MergeMethodsNormalization)
+	state.TeamApprovalsNormalizations = slices.Clone(state.TeamApprovalsNormalizations)
 	state.BypassModeNormalizations = cloneRulesetBypassModeNormalizations(state.BypassModeNormalizations)
 	return state
 }
