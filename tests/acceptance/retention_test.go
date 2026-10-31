@@ -276,7 +276,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	mu.Unlock()
 	run("export", "--retention", "--actions", "--workflow-permissions")
 	data, _ = os.ReadFile(path)
-	for _, field := range []string{"check_workflow_run_status_artifact_and_log_retention: 7", "actions_permissions: disable_actions", "workflow_permissions: read_repository_contents_and_packages_permissions"} {
+	for _, field := range []string{"check_workflow_run_status_artifact_and_log_retention: 7", "actions_permissions:\n", "policy: disable_actions", "workflow_permissions:\n", "default_permissions: read_repository_contents_and_packages_permissions"} {
 		if !strings.Contains(string(data), field) {
 			t.Fatal("composed resource lost", field, string(data))
 		}
@@ -284,7 +284,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	write("{workflow_permissions: read_and_write_permissions, check_workflow_run_status_artifact_and_log_retention: 30}")
+	write("{workflow_permissions: {default_permissions: read_and_write_permissions}, check_workflow_run_status_artifact_and_log_retention: 30}")
 	mu.Lock()
 	mode = "deny-write"
 	events = nil

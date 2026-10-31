@@ -127,18 +127,18 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	run("export", "--actions")
 	run("validate")
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "actions_permissions: disable_actions\n") || !strings.Contains(string(data), "require_actions_to_be_pinned_to_a_full_length_commit_sha: true") || strings.Contains(string(data), "allow_actions_created_by_github:") || strings.Contains(string(data), "allow_actions_by_marketplace_verified_creators:") || strings.Contains(string(data), "allow_or_block_specified_actions_and_reusable_workflows:") {
+	if err != nil || !strings.Contains(string(data), "actions_permissions:\n") || !strings.Contains(string(data), "policy: disable_actions\n") || !strings.Contains(string(data), "require_actions_to_be_pinned_to_a_full_length_commit_sha: true") || strings.Contains(string(data), "allow_actions_created_by_github:") || strings.Contains(string(data), "allow_actions_by_marketplace_verified_creators:") || strings.Contains(string(data), "allow_or_block_specified_actions_and_reusable_workflows:") {
 		t.Fatal(string(data), err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	full := actionsPolicyInput(`{actions_permissions: allow_owner_and_select_non_owner_actions_and_reusable_workflows, allow_actions_created_by_github: false, allow_actions_by_marketplace_verified_creators: false, allow_or_block_specified_actions_and_reusable_workflows: ['org/*', '!org/bad@*', 'org/*']}`)
+	full := actionsPolicyInput(`{actions_permissions: {policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows, allow_actions_created_by_github: false, allow_actions_by_marketplace_verified_creators: false, allow_or_block_specified_actions_and_reusable_workflows: ['org/*', '!org/bad@*', 'org/*']}}`)
 	if err := writeSettingsFile(fixture.work, full); err != nil {
 		t.Fatal(err)
 	}
 	plan := run("plan")
-	if !strings.Contains(plan, `repository.settings.actions.general.actions_permissions: "disable_actions" → "allow_owner_and_select_non_owner_actions_and_reusable_workflows"`) || strings.Count(plan, "unavailable while policy is not selected") != 3 {
+	if !strings.Contains(plan, `repository.settings.actions.general.actions_permissions.policy: "disable_actions" → "allow_owner_and_select_non_owner_actions_and_reusable_workflows"`) || strings.Count(plan, "unavailable while policy is not selected") != 3 {
 		t.Fatal(plan)
 	}
 	report := filepath.Join(fixture.root, "actions-plan.json")
@@ -181,7 +181,7 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	}
 	mu.Unlock()
 	// Partial selected updates preserve fresh companions and exact sequence order.
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{allow_or_block_specified_actions_and_reusable_workflows: []}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{actions_permissions: {allow_or_block_specified_actions_and_reusable_workflows: []}}`))
 	run("apply")
 	run("apply")
 	mu.Lock()
@@ -189,10 +189,10 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 		t.Fatal(selected, writes)
 	}
 	mu.Unlock()
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{actions_permissions: allow_owner_actions_and_reusable_workflows, require_actions_to_be_pinned_to_a_full_length_commit_sha: false}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{actions_permissions: {policy: allow_owner_actions_and_reusable_workflows, require_actions_to_be_pinned_to_a_full_length_commit_sha: false}}`))
 	run("apply")
 	// An incomplete transition fails before any write; errors do not invent defaults.
-	writeSettingsFile(fixture.work, actionsPolicyInput(`{actions_permissions: allow_owner_and_select_non_owner_actions_and_reusable_workflows}`))
+	writeSettingsFile(fixture.work, actionsPolicyInput(`{actions_permissions: {policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows}}`))
 	mu.Lock()
 	beforeWrites := len(writes)
 	mu.Unlock()
@@ -245,7 +245,7 @@ func TestActionsInvalidDeclarationsNeverContactAPI(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	for _, body := range []string{`{actions_permissions: null}`, `{actions_permissions: unknown}`, `{allow_or_block_specified_actions_and_reusable_workflows: null}`, `{actions_permissions: allow_all_actions_and_reusable_workflows, allow_actions_by_marketplace_verified_creators: false}`} {
+	for _, body := range []string{`{actions_permissions: null}`, `{actions_permissions: {policy: unknown}}`, `{actions_permissions: {allow_or_block_specified_actions_and_reusable_workflows: null}}`, `{actions_permissions: {policy: allow_all_actions_and_reusable_workflows, allow_actions_by_marketplace_verified_creators: false}}`, `{actions_permissions: allow_all_actions_and_reusable_workflows}`, `{actions_permissions: {selection: disable_actions}}`, `{allow_actions_created_by_github: true}`} {
 		writeSettingsFile(fixture.work, actionsPolicyInput(body))
 		for _, command := range []string{"validate", "plan", "apply"} {
 			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
@@ -308,7 +308,7 @@ func TestActionsReadFailuresDiscardPlansAndKeepEarlierWrites(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			input := repositoryInput("about: {description: changed}\nsettings: {actions: {general: {actions_permissions: disable_actions}}}\n")
+			input := repositoryInput("about: {description: changed}\nsettings: {actions: {general: {actions_permissions: {policy: disable_actions}}}}\n")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
 			}
