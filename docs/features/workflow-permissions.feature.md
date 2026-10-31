@@ -8,15 +8,16 @@ Status: implemented in current source, supported. The [configuration contract](.
 
 ## Rule: Declare independent optional native values
 
-- Under `repository.settings.actions.general`, `workflow_permissions` accepts `read_and_write_permissions` or `read_repository_contents_and_packages_permissions`; `allow_github_actions_to_create_and_approve_pull_requests` accepts booleans.
+- Under `repository.settings.actions.general.workflow_permissions`, `default_permissions` accepts `read_and_write_permissions` or `read_repository_contents_and_packages_permissions`; `allow_github_actions_to_create_and_approve_pull_requests` accepts booleans.
 - Omitted fields remain unmanaged; false is explicit. Null, unknown/case-varied enums and wrong types fail locally before API access.
 - Either field can be declared alone without managing or querying execution policy. Empty declarations remain local no-ops.
+- Superseded scalar `workflow_permissions`, flat PR approval and generic `selection` or `value` members are rejected rather than translated.
 
-Test mapping: [Actions UI codec](../../internal/workspace/ui_actions_test.go), [TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
+Test mapping: [Actions UI codec](../../internal/workspace/ui_actions_test.go), [literal page/section schema](../../internal/workspace/ui_page_sections_test.go), [TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
 
 ## Rule: Acquire complete policy only when requested
 
-- Ordinary export and `--actions` retain their existing scope. `--workflow-permissions` independently includes both complete values and composes with other opt-ins.
+- Ordinary export and `--actions` retain their existing scope. `--workflow-permissions` independently includes both complete values in their section and composes with other opt-ins.
 - Missing/null/malformed members and denied reads fail without invented defaults or replacing the destination. Complete correctly typed out-of-UI permission strings use the defined fallback and retain their raw provenance.
 - Supported exact values roundtrip to zero differences. A normalized export does not prove raw equality. Workflow-only plan reads only its own policy endpoint.
 
@@ -24,7 +25,7 @@ Test mapping: [TestWorkflowPermissionsCompleteReads](../../internal/github/workf
 
 ## Rule: Show permission changes explicitly
 
-- Public YAML choices translate to internal read/write tokens. Normalized comparisons use the new YAML path and UI choices, with a warning and write-required note even when the desired choice equals the fallback. Exact observations also use UI choices; API tokens are not YAML aliases. False-to-true remains a native boolean.
+- Public YAML choices translate to internal read/write tokens. Normalized comparisons use `repository.settings.actions.general.workflow_permissions.default_permissions` and UI choices, with a warning and write-required note even when the desired choice equals the fallback. Exact observations also use UI choices; API tokens are not YAML aliases. False-to-true remains a native boolean.
 - The closed report registry validates both sides. Normalized equality requires consistent acquired raw provenance; unavailable before values and missing/null/malformed normalization metadata are invalid.
 - Summary uses existing report data without credentials, origin resolution or API calls.
 
@@ -57,7 +58,7 @@ distinguishing that projection from independently observed remote equality.
 - Given a complete workflow policy with permission token `FUTURE` and approval disabled
 - When the policy is converted to UI choices
 - Then the permission choice is `read_repository_contents_and_packages_permissions`
-- And the exact raw token, new YAML field and selected fallback remain available for a warning
+- And the exact raw token, current YAML field and selected fallback remain available for a warning
 - And approval remains disabled
 
 #### Scenario: An exact permission choice does not require a fallback
