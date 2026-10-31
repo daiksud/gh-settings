@@ -15,7 +15,7 @@ sources:
 
 ## Scope and status
 
-Current source reads and exports UI-oriented YAML in `.github/settings.yml` at the Git checkout root. That checkout's directly configured GitHub.com `origin` selects the repository. Public keys and finite choices use the English Web UI wording in snake_case; REST and GraphQL names are translated internally.[^ui-inventory]
+Current source reads and exports UI-oriented YAML in `.github/settings.yml` at the Git checkout root. That checkout's directly configured GitHub.com `origin` selects the repository. Public configuration follows pages and sections, using English Web UI terms and meaningful control keys in snake_case; REST and GraphQL names are translated internally.[^ui-inventory]
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -33,13 +33,15 @@ repository:
       features: {issues: true}
 ```
 
-The exact string `version: daiksud/gh-settings@v0` is required. The old `schemaVersion`/root `settings` envelope and API-shaped aliases are rejected. There is no compatibility decoder, migration or legacy-format fallback.
+The exact string `version: daiksud/gh-settings@v0` is required. Superseded envelopes, navigation-category wrappers, scalar permission sections and API-shaped aliases are rejected. There is no compatibility decoder, migration or legacy-format fallback.
 
 This reference describes current source, not the contract of every published CLI or pinned Action. Read the [published package boundary](github-actions.md#published-package-and-consumer-pins) before adoption. This change does not upgrade a pin or publish a release. Current-source output uses UI names and field-specific normalization warnings. Out-of-UI Actions execution/workflow permission strings, public-fork approval policies, Security status strings, creation policies, complete merge/squash message pairs, complete Pages modes and legacy folders, Ruleset enforcement/Quality severity/bypass-mode/scanning Alerts/scanning Security alerts strings, Required approvals and Team reviewer Approvals integers, Allowed merge methods lists and Environment deployment-mode pairs/ref-type strings use the explicit observation policies below; unsupported identities and malformed or incomplete observations still fail. Observed fallbacks never populate omitted desired fields. CLI and detailed Action Summary use UI paths and choices for exact and normalized decisions. Same-version private reports retain native identities and are not apply input.
 
 ## Supported fields
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `security_and_quality.advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+
+The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` key, no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
 Under `repository.about`, `description` and `website` are strings, including `''`; `topics` is a direct string array. These translate to repository REST fields and the Topics endpoint. Nullable observed repository strings become empty strings through the existing reader; YAML null does not request that behavior.[^github-update-repository][^github-repository-openapi]
 
@@ -56,7 +58,7 @@ The following paths are relative to `repository.settings.general`:
 | `pull_requests.merge_commit.default_commit_message`, `pull_requests.squash_merge.default_commit_message` | UI menu choice below |
 | `commits.require_contributors_to_sign_off_on_web_based_commits` | boolean |
 | `danger_zone.archive_this_repository` | boolean; explicit export opt-in |
-| `releases.enable_release_immutability` | boolean; explicit export opt-in |
+| `releases.immutable_release` | boolean; explicit export opt-in |
 
 Omitting a scalar leaves it unmanaged. Explicit false and empty strings remain intent. An explicitly disabled Issues/Pull requests feature cannot accompany its creation-permission choice. Likewise, an explicitly disabled merge method cannot accompany its commit-message menu. Omitting the enabling checkbox never implicitly enables it. Export hides choices behind explicitly disabled controls after validating the acquired raw values.
 
@@ -81,19 +83,19 @@ Existing Administration read/write grants and actor authorization are prerequisi
 
 ## Secret scanning and push protection
 
-Use booleans at `repository.settings.security_and_quality.advanced_security.secret_protection` and `push_protection`.
+Use the independently optional booleans `enabled` and `push_protection` under `repository.settings.advanced_security.secret_protection`.
 
 ```yaml
 version: daiksud/gh-settings@v0
 repository:
   settings:
-    security_and_quality:
-      advanced_security:
-        secret_protection: true
+    advanced_security:
+      secret_protection:
+        enabled: true
         push_protection: true
 ```
 
-Omission is unmanaged; false disables. Explicit secret-protection=false with push-protection=true fails locally. No parent is enabled implicitly. Push protection true with its parent omitted requires fresh observed secret protection=true. Disabling secret protection while push protection is active requires declaring push protection false too. Unknown raw companions cannot prove prerequisites; explicit intent must resolve an unsafe transition. Safely unmodified companions retain exact raw evidence for readback. Enable parent before child; disable child before parent.
+Omission is unmanaged; false disables. Explicit `secret_protection.enabled=false` with `push_protection=true` fails locally. No parent is enabled implicitly. Push protection true with `enabled` omitted requires fresh observed secret protection=true. Disabling secret protection while push protection is active requires declaring push protection false too. Unknown raw companions cannot prove prerequisites; explicit intent must resolve an unsafe transition. Safely unmodified companions retain exact raw evidence for readback. Enable parent before child; disable child before parent.
 
 Ordinary export omits this group. `export --security secret-scanning` reads both complete statuses. Plan is read-only. Apply preflights, makes narrow per-member repository updates in dependency order, rereads prerequisites and verifies requested values plus preserved companions. Exact canonical matching members are skipped. Upper policy can ignore an apparently successful update; readback mismatch fails. Later failure retains earlier confirmed writes and uncertain effects; no rollback or automatic retry occurs.
 
@@ -105,7 +107,7 @@ Existing entitlement, token grants and appropriate admin/organization-owner/secu
 
 ## Immutable release policy
 
-Use `repository.settings.general.releases.enable_release_immutability`, a boolean. This General-page control is independent from Advanced Security. Ordinary export omits it; use `export --security immutable-releases`. Owner enforcement is read-only metadata, never YAML intent.
+Use `repository.settings.general.releases.immutable_release`, a boolean. This General-page control is independent from Advanced Security. Ordinary export omits it; use `export --security immutable-releases`. Owner enforcement is read-only metadata, never YAML intent.
 
 A complete successful observation requires both enabled and owner-enforced booleans. HTTP 404 is treated as disabled without an authorization-discrimination request. GitHub can also hide inaccessible resources behind 404, so this deliberate tradeoff can misreport an authorization-related 404 as disabled. It does not prove access and is not an exception for other endpoints.
 
@@ -113,18 +115,29 @@ An owner-enforced policy cannot be planned/applied as false. Apply runs after pr
 
 ## Private vulnerability reporting
 
-Use boolean `repository.settings.security_and_quality.advanced_security.private_vulnerability_reporting`. Omission is unmanaged; false explicitly disables. It is independent from Secret protection. `export --security private-vulnerability-reporting` opts in; ordinary export does not read the endpoint.
+Use boolean `repository.settings.advanced_security.private_vulnerability_reporting`. Omission is unmanaged; false explicitly disables. It is independent from Secret protection. `export --security private-vulnerability-reporting` opts in; ordinary export does not read the endpoint.
 
 This control applies to public repositories. Fresh visibility and complete status are required; private/internal applicability failures, malformed data, permission errors and redirects do not become disabled state. Apply reads fresh prerequisites, skips matching state, performs the narrow enable/disable operation and verifies readback. Earlier writes remain on later failure. No rollback, permission expansion or automatic retry occurs. See [private reporting](features/security.feature.md).
 
 ## Default workflow permissions
 
-These fields belong to `repository.settings.actions.general`:
+These fields belong to `repository.settings.actions.general.workflow_permissions`:
 
 | Field | Choice / type |
 | --- | --- |
-| `workflow_permissions` | `read_and_write_permissions` or `read_repository_contents_and_packages_permissions` |
+| `default_permissions` | `read_and_write_permissions` or `read_repository_contents_and_packages_permissions` |
 | `allow_github_actions_to_create_and_approve_pull_requests` | boolean |
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    actions:
+      general:
+        workflow_permissions:
+          default_permissions: read_repository_contents_and_packages_permissions
+          allow_github_actions_to_create_and_approve_pull_requests: false
+```
 
 Each is independent and optional. `export --workflow-permissions` includes both after complete acquisition without acquiring execution policy. Omission is unmanaged, false remains explicit, and unknown choices/null/wrong types fail locally. Apply uses declared-only workflow-policy members, complete fresh reads/readback and the existing direct-apply semantics. Organization refusal can leave an earlier execution-policy update applied. This declaration does not create tokens or waive a PR's approval requirements. See [workflow permissions](features/workflow-permissions.feature.md).
 
@@ -161,11 +174,11 @@ Use integer `repository.settings.actions.general.check_workflow_run_status_artif
 
 ## Actions execution policy
 
-All paths below are relative to `repository.settings.actions.general`:
+All paths below are relative to `repository.settings.actions.general.actions_permissions`:
 
 | Field | Choice / type |
 | --- | --- |
-| `actions_permissions` | `allow_all_actions_and_reusable_workflows`, `disable_actions`, `allow_owner_actions_and_reusable_workflows`, `allow_owner_and_select_non_owner_actions_and_reusable_workflows` |
+| `policy` | `allow_all_actions_and_reusable_workflows`, `disable_actions`, `allow_owner_actions_and_reusable_workflows`, `allow_owner_and_select_non_owner_actions_and_reusable_workflows` |
 | `require_actions_to_be_pinned_to_a_full_length_commit_sha` | boolean |
 | `allow_actions_created_by_github` | boolean; selected-policy companion |
 | `allow_actions_by_marketplace_verified_creators` | boolean; selected-policy companion |
@@ -177,22 +190,23 @@ repository:
   settings:
     actions:
       general:
-        actions_permissions: allow_owner_and_select_non_owner_actions_and_reusable_workflows
-        require_actions_to_be_pinned_to_a_full_length_commit_sha: true
-        allow_actions_created_by_github: true
-        allow_actions_by_marketplace_verified_creators: false
-        allow_or_block_specified_actions_and_reusable_workflows: ['my-org/*', '!my-org/blocked@*']
+        actions_permissions:
+          policy: allow_owner_and_select_non_owner_actions_and_reusable_workflows
+          require_actions_to_be_pinned_to_a_full_length_commit_sha: true
+          allow_actions_created_by_github: true
+          allow_actions_by_marketplace_verified_creators: false
+          allow_or_block_specified_actions_and_reusable_workflows: ['my-org/*', '!my-org/blocked@*']
 ```
 
-Selecting an allow radio explicitly enables Actions and selects its policy; `disable_actions` declares only disabled execution, leaving latent allowed policy unmanaged. There are no separate public API-shaped enabled/allowed fields. Omitting the radio does not implicitly enable Actions. SHA pinning is independent; reusable workflows can still use tags.
+Selecting an allow policy explicitly enables Actions and selects its policy; `policy: disable_actions` declares only disabled execution, leaving latent allowed policy unmanaged. There are no separate public API-shaped enabled/allowed fields. Omitting `policy` does not implicitly enable Actions. SHA pinning is independent; reusable workflows can still use tags.
 
-Companions can accompany the selected non-owner radio or an omitted radio, not another explicit radio. An omitted radio requires an already selected observed policy for companion updates. Transition from a nonselected policy requires all three companions: inactive values cannot be acquired or invented. Plan shows them as unavailable before the transition. Existing selected policy permits partial declarations merged with complete fresh companions.
+Companions can accompany the selected non-owner policy or an omitted policy, not another explicit policy. An omitted policy requires an already selected observed policy for companion updates. Transition from a nonselected policy requires all three companions: inactive values cannot be acquired or invented. Plan shows them as unavailable before the transition. Existing selected policy permits partial declarations merged with complete fresh companions.
 
 Patterns are at most 1000 nonempty strings. An explicit array replaces the entire sequence, and `[]` clears it. Case, order, duplicates, wildcards and negative entries are preserved; the tool does not emulate matching. Removing a negative entry may permit more actions. GitHub documents pattern applicability limits; configuring a list alone does not prove enforcement on private repositories.
 
-`export --actions` includes the selected radio, SHA control and visible acquired companions. Disabled/other policy hides selected companions; complete raw acquisition is still required. Normal export does not read this family. Failed or incomplete acquisition preserves the destination. Correctly typed unknown execution policies follow the observation policy below.
+`export --actions` includes the selected policy, SHA control and visible acquired companions in the same section. Disabled/other policy hides selected companions; complete raw acquisition is still required. Normal export does not read this family. Failed or incomplete acquisition preserves the destination. Correctly typed unknown execution policies follow the observation policy below.
 
-Apply reads fresh state and preflights before writing. The base policy endpoint requires enabled state; omitted radio uses the freshly observed value. Policy changes precede selected writes. When enabling a disabled repository with selection, it first selects policy while disabled, installs companions, then enables. Requested values and sent companions are verified with fresh reads. Repeated direct apply can still write declared values.
+Apply reads fresh state and preflights before writing. The base policy endpoint requires enabled state; omitted policy uses the freshly observed value. Policy changes precede selected writes. When enabling a disabled repository with selection, it first selects policy while disabled, installs companions, then enables. Requested values and sent companions are verified with fresh reads. Repeated direct apply can still write declared values.
 
 Operations are not transactional: an already enabled target can temporarily use remembered/default selection between writes. Earlier policy changes survive later refusal; failed writes/readback have uncertain effects. There is no rollback, saved-plan execution, automatic retry, lock or permission expansion. Existing Administration read/write and organization/enterprise policy remain prerequisites; policy changes can stop future workflows. See [execution policy](features/actions-execution-policy.feature.md).
 
@@ -202,11 +216,11 @@ Use `repository.settings.general.features.sponsorships`. This boolean controls t
 
 ### Execution-policy observation normalization
 
-A complete, correctly typed unknown `allowed_actions` string (including empty or whitespace) retains its exact raw value and projects to the named `allow_all_actions_and_reusable_workflows` fallback. Both acquired booleans remain unchanged. With execution enabled, export warns and emits that fallback; a declared radio keeps one UI decision actionable even at fallback equality. Disable owns one native field; enabling owns two, or five with all three selected companions. Managed counts reflect native fields internally.
+A complete, correctly typed unknown `allowed_actions` string (including empty or whitespace) retains its exact raw value and projects to the named `allow_all_actions_and_reusable_workflows` fallback. Both acquired booleans remain unchanged. With execution enabled, export warns and emits that fallback; a declared policy keeps one UI decision actionable even at fallback equality. Disable owns one native field; enabling owns two, or five with all three selected companions. Managed counts reflect native fields internally.
 
 With execution disabled, the visible choice is the known `disable_actions`, so the latent unknown policy produces no projection warning. Export omits latent choices, and a matching Disable plan has no differences. Enabling requires an explicit canonical policy; selected intent still needs all three companions and configures them before enabling. Private radio reports retain raw provenance for closed report validation/presentation but detailed output does not disclose hidden policy; status-only output suppresses all policy values.
 
-Apply sends only declared policy/SHA members with the endpoint-required enabled value. Disable and SHA-only updates preserve the exact raw policy; SHA-only updates do not warn about omitted radio intent. Fresh raw readback must confirm declared canonical policy or preserved raw policy, both booleans and any managed selected companions. An unchanged unknown string cannot confirm a declared fallback, and a different unknown token cannot confirm preservation. Failed verification retains uncertainty about writes and earlier completed resource work. Direct repeated apply retains its existing write behavior. Missing/null/wrong types and failed acquisition never become fallbacks.
+Apply sends only declared policy/SHA members with the endpoint-required enabled value. Disable and SHA-only updates preserve the exact raw policy; SHA-only updates do not warn about omitted policy intent. Fresh raw readback must confirm declared canonical policy or preserved raw policy, both booleans and any managed selected companions. An unchanged unknown string cannot confirm a declared fallback, and a different unknown token cannot confirm preservation. Failed verification retains uncertainty about writes and earlier completed resource work. Direct repeated apply retains its existing write behavior. Missing/null/wrong types and failed acquisition never become fallbacks.
 
 ## Creation-policy observation normalization
 
@@ -289,7 +303,7 @@ Normal CLI apply records each confirmed created Label/Ruleset ID in the original
 
 ## Configuration semantics
 
-The version marker is independent of the CLI release. Only one YAML mapping document is accepted. `repository` is optional; version-only, `repository: {}` and empty settings mappings are local no-ops without origin/authentication/API requirements. A present collection entry must still satisfy its complete object rules.
+The version marker is independent of the CLI release. Only one YAML mapping document is accepted. `repository` is optional; version-only, `repository: {}` and empty settings mappings are local no-ops without origin/authentication/API requirements. A present collection entry must still satisfy its complete object rules. Empty ordinary section objects add no scalar intent; they do not enable a parent or fill a policy. A parameterized rule object within a selected Ruleset still selects that rule, and a name-only Environment still requests its name-addressed upsert.
 
 Unknown/duplicate/non-string keys, unsupported tags, malformed/multiple documents, wrong shapes, invalid choices and wrong scalar types fail before remote work. Aliases/merges are validated after resolution. Strings must remain strings, booleans must be true/false and integers must fit their declared range. Explicit null is invalid except the nullable Pages custom-domain scalar. Empty strings, zero, false and empty arrays retain their distinct contracts. No desired defaults are populated from observation metadata or planned #480 fallbacks.
 
