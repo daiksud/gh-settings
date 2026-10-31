@@ -164,8 +164,8 @@ func TestForkApprovalNormalizationAcrossExecutableCommands(t *testing.T) {
 			Field, Before, After string
 			Normalization        struct {
 				Path     string
-					Raw      string `json:"raw_value"`
-					Fallback string
+				Raw      string `json:"raw_value"`
+				Fallback string
 			}
 		}
 	}
