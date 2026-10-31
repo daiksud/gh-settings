@@ -20,6 +20,7 @@ type RulesetPlanChange struct {
 	RequiredApprovalsNormalization *settings.RulesetRequiredApprovalsNormalization `json:"required_approvals_normalization,omitempty"`
 	MergeMethodsNormalization      *RulesetMergeMethodsNormalization               `json:"merge_methods_normalization,omitempty"`
 	TeamApprovalsNormalizations    *[]RulesetTeamApprovalsNormalization            `json:"team_approvals_normalizations,omitempty"`
+	ScanningAlertsNormalizations   *[]RulesetScanningAlertsNormalization           `json:"scanning_alerts_normalizations,omitempty"`
 	BypassModeNormalizations       *[]RulesetBypassModeNormalization               `json:"bypass_mode_normalizations,omitempty"`
 }
 
@@ -146,6 +147,14 @@ func validateRulesetReport(entries []RulesetPlanChange) ([]settings.RulesetDispl
 			}
 			for _, record := range *e.TeamApprovalsNormalizations {
 				records.TeamApprovals = append(records.TeamApprovals, settings.RulesetTeamApprovalsNormalization{ReviewerID: record.ReviewerID, Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback})
+			}
+		}
+		if e.ScanningAlertsNormalizations != nil {
+			if len(*e.ScanningAlertsNormalizations) == 0 {
+				return nil, fmt.Errorf("present Ruleset scanning alerts normalization metadata cannot be empty")
+			}
+			for _, record := range *e.ScanningAlertsNormalizations {
+				records.ScanningAlerts = append(records.ScanningAlerts, settings.RulesetScanningAlertsNormalization{Tool: record.Tool, Path: record.Path, RawValue: record.RawValue, Fallback: record.Fallback})
 			}
 		}
 		if e.BypassModeNormalizations != nil {

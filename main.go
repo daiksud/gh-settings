@@ -29,7 +29,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
+			return app.Export(app.ExportCheckout{IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeSecretScanning: options.SecretScanning, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork, ExcludedRulesets: func(count int) {
 				fmt.Fprintf(os.Stderr, "Excluded %d repository push Rulesets from export (outside managed branch/tag scope).\n", count)
 			}}, reader)
 		},
@@ -159,6 +159,7 @@ func writeRuleset(repo repository.Repository, change settings.RulesetChange) (in
 	client.RulesetRequiredApprovalsNormalizationWarning = warnRulesetRequiredApprovalsNormalization
 	client.RulesetMergeMethodsNormalizationWarning = warnRulesetMergeMethodsNormalization
 	client.RulesetTeamApprovalsNormalizationWarning = warnRulesetTeamApprovalsNormalization
+	client.RulesetScanningAlertsNormalizationWarning = warnRulesetScanningAlertsNormalization
 	client.RulesetBypassModeNormalizationWarning = warnRulesetBypassModeNormalization
 	return client.ApplyRuleset(repo, change)
 }
@@ -403,4 +404,8 @@ func warnEnvironmentDeploymentNormalization(name string, record settings.Environ
 
 func warnEnvironmentRefTypeNormalization(name string, pattern settings.EnvironmentPatternState) {
 	fmt.Fprintln(os.Stderr, presentation.EnvironmentRefTypeNormalizationLine(name, pattern))
+}
+
+func warnRulesetScanningAlertsNormalization(id int64, name string, record settings.RulesetScanningAlertsNormalization) {
+	fmt.Fprintln(os.Stderr, presentation.RulesetScanningAlertsNormalizationLine(id, name, record))
 }

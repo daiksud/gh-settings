@@ -6,7 +6,6 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-var uiRulesetScanningAlerts = map[uimodel.CodeScanningAlerts]string{"none": "none", "errors": "errors", "errors_and_warnings": "errors_and_warnings", "all": "all"}
 var uiRulesetSecurityAlerts = map[uimodel.CodeScanningSecurityAlerts]string{"none": "none", "critical": "critical", "high_or_higher": "high_or_higher", "medium_or_higher": "medium_or_higher", "all": "all"}
 
 func declareUIRulesetChoice[T ~string](choice T, choices map[T]string, label string) (string, error) {
@@ -32,9 +31,9 @@ func declareUIRulesetScanning(ui uimodel.CodeScanningRule) (*settings.RuleParame
 	}
 	tools := make([]settings.CodeScanningTool, 0, len(*ui.CodeScanningTools))
 	for _, tool := range *ui.CodeScanningTools {
-		alerts, err := declareUIRulesetChoice(tool.Alerts, uiRulesetScanningAlerts, "alerts")
-		if err != nil {
-			return nil, err
+		alerts, valid := settings.RulesetScanningAlertsValueForChoice(tool.Alerts)
+		if !valid {
+			return nil, fmt.Errorf("unsupported UI alerts choice %q", tool.Alerts)
 		}
 		security, err := declareUIRulesetChoice(tool.SecurityAlerts, uiRulesetSecurityAlerts, "security_alerts")
 		if err != nil {
@@ -48,9 +47,9 @@ func declareUIRulesetScanning(ui uimodel.CodeScanningRule) (*settings.RuleParame
 func observeUIRulesetScanning(p *settings.RuleParameters) (*uimodel.CodeScanningRule, error) {
 	tools := make([]uimodel.CodeScanningTool, 0, len(*p.CodeScanningTools))
 	for _, tool := range *p.CodeScanningTools {
-		alerts, err := observeUIRulesetChoice(tool.AlertsThreshold, uiRulesetScanningAlerts, "alerts")
-		if err != nil {
-			return nil, err
+		alerts, valid := settings.RulesetScanningAlertsChoiceForValue(tool.AlertsThreshold)
+		if !valid {
+			return nil, fmt.Errorf("alerts is outside UI choices")
 		}
 		security, err := observeUIRulesetChoice(tool.SecurityAlertsThreshold, uiRulesetSecurityAlerts, "security_alerts")
 		if err != nil {

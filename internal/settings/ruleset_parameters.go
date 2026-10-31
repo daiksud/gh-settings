@@ -168,7 +168,8 @@ func validateRule(r RulesetRule, complete bool) error {
 				return fmt.Errorf("invalid or duplicate code scanning tool")
 			}
 			seen[tool.Tool] = true
-			if !slices.Contains([]string{"none", "errors", "errors_and_warnings", "all"}, tool.AlertsThreshold) || !slices.Contains([]string{"none", "critical", "high_or_higher", "medium_or_higher", "all"}, tool.SecurityAlertsThreshold) {
+			_, validAlerts := RulesetScanningAlertsChoiceForValue(tool.AlertsThreshold)
+			if !validAlerts || !slices.Contains([]string{"none", "critical", "high_or_higher", "medium_or_higher", "all"}, tool.SecurityAlertsThreshold) {
 				return fmt.Errorf("invalid code scanning alert threshold")
 			}
 		}
