@@ -20,7 +20,7 @@ func (d SecurityDeclaration) Empty() bool {
 }
 func (d SecurityDeclaration) Validate() error {
 	if d.SecretScanning != nil && !*d.SecretScanning && d.PushProtection != nil && *d.PushProtection {
-		return fmt.Errorf("repository.settings.security_and_quality.advanced_security.push_protection requires secret_protection")
+		return fmt.Errorf("%s requires %s", PushProtectionControl.Path(), SecretProtectionControl.Path())
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func SecretScanningTransitions(o SecretScanningObservation, d SecurityDeclaratio
 	}
 	s, p, _ := o.RawStatuses()
 	if d.PushProtection != nil && *d.PushProtection && d.SecretScanning == nil && s != "enabled" {
-		return nil, fmt.Errorf("repository.settings.security_and_quality.advanced_security.push_protection requires enabled secret_protection or an explicit true declaration")
+		return nil, fmt.Errorf("%s requires %s to be enabled or an explicit true declaration", PushProtectionControl.Path(), SecretProtectionControl.Path())
 	}
 	if d.SecretScanning != nil && !*d.SecretScanning && p != "disabled" && (d.PushProtection == nil || *d.PushProtection) {
 		if _, supported := SecurityValueForStatus(p); !supported {
