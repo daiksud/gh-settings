@@ -14,14 +14,15 @@ tests instead of retaining historical contracts alongside the current one.
 This does not waive validation, checkout/target isolation, credential security,
 data protection, honest failure and partial-failure reporting, or the
 immutability of published releases. Incompatible public changes may use either a `!` title marker or a
-`BREAKING CHANGE:` footer, following Conventional Commits. PRLint only runs
+`BREAKING CHANGE:` / `BREAKING-CHANGE:` footer, following Conventional Commits. PRLint only runs
 commitlint on the proposed squash message; reviewers assess the actual impact
 under the [code-review policy](.agents/skills/code-review/SKILL.md).
 
 ## Branches, classification, and releases
 
 - Treat branch names only as work identifiers. Do not derive PR types, labels, or release versions from them, or rename a branch solely to correct classification.
-- Check PR titles and labels against the actual changes and their impact on CLI or public Action users. Correct the metadata during review; syntax checks do not establish semantic correctness.
+- Check the proposed squash title, body, and compatibility footers against the actual changes and their impact on CLI or public Action users. Correct the message during review; syntax checks do not establish semantic correctness.
+- Labels are independent organization metadata. Do not synchronize them with commit types, require type/label agreement, or use them to select release versions or note categories. Existing path-based and Dependabot labeling remains independent of message review.
 - Keep each PR focused and preserve its reviewed title, body, and compatibility footers in the squash commit. Follow the code-review skill for the detailed policy.
 - Merging and releasing are separate actions. Without an explicit user request to release, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. When requested, follow the documented manual release procedure and all its validation gates.
 
