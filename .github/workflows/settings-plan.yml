@@ -21,6 +21,6 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
       - name: Validate operational settings with their pinned consumer
-        uses: daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e # v0.23.0
+        uses: daiksud/gh-settings@276f971a6816c29f7814394e93388410ca3263f8 # v0.26.0
         with:
           command: validate
