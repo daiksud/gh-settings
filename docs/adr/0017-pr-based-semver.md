@@ -1,7 +1,7 @@
 ---
 type: ADR
 title: Derive SemVer from reviewed changes
-description: Calculate release versions from durable squash messages and use GitHub-native release notes.
+description: Derive release versions and note categories from durable squash messages in a fixed Git interval.
 ---
 
 ## Status
@@ -10,11 +10,11 @@ Accepted — implemented. Supersedes [ADR 0010](0010-explicit-release-version.md
 
 ## Context
 
-PR titles and bodies become durable squash messages. Classification can be corrected during review without renaming branches, while labels provide useful release-note categories. Automatic selection must not change source after validation or imply automatic publication.
+PR titles and bodies become durable squash messages. Classification can be corrected during review without renaming branches. Mutable PR metadata can change after merge, so it cannot reliably describe an already-committed release interval. Automatic selection must not change source after validation or imply automatic publication.
 
 ## Decision
 
-Use the complete previous-published-stable-to-frozen-source Git interval. Committed Conventional Commits headers and compatibility footers are the authoritative version signal; mutable labels and branch names are not.
+Use the complete previous-published-stable-to-frozen-source Git interval. Actual committed Conventional Commits headers and compatibility footers determine versions and release-note categories. Labels remain independent organization metadata, with no automatic synchronization, type-agreement requirement, or release check.
 
 The strongest included change selects the increment:
 
@@ -26,10 +26,10 @@ A revert does not automatically cancel another included change's signal. Ignore 
 
 The manually dispatched release workflow uses the same Python version calculator as gh-qw at the frozen main SHA. No version-preparation PR or persisted version update is necessary. The published composite Action selects its CLI by the invoking version tag or exact SHA-matching release tag. Existing matching drafts/releases retain their original version, source, notes, and verified bytes on retry.
 
-New release notes use GitHub's native generation with `.github/release.yml`. Reviewed labels classify PR entries; a minimal supplement retains committed breaking migration footers and a fixed-SHA comparison. Do not retain the superseded categorized Git-log renderer or implement a second version engine from labels.
+Generate notes locally from the same committed interval. Each commit enters one category, in priority order: breaking header or formal breaking footer, formal deprecation footer, `feat`, `fix`, `perf`, then Maintenance. Performance has its own heading. Entries link to exact commits; escaped breaking footer details and a fixed-SHA comparison retain compatibility guidance and traceability. Current PR titles, bodies, labels, and GitHub's native note-generation API are not inputs.
 
 ## Consequences
 
-Reviewers must reconcile titles, footers, and labels before merging, including already-merged unreleased PRs during adoption. A later label edit can affect new notes but not change the committed version signal. Native PR lists and contributors differ from the former per-commit changelog; direct commits remain visible through the frozen comparison.
+Reviewers must reconcile the proposed squash title, body, and compatibility footers with the actual user impact before merging. Preserve that reviewed message in the squash commit. Later PR edits and relabeling cannot alter either version calculation or the release notes. Existing path-based and Dependabot labels can continue independently; PRLint remains commitlint-only.
 
 Version calculation does not authorize publication. Computation, API, history, or immutable-identity mismatches fail before remote tag/release creation. Existing publication gates, immutable artifacts, and matching-draft recovery remain required. See the [maintainer release contract](../contributing/releases.md) for executable steps and evidence limits.
