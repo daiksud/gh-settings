@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const PagesFieldCount = 5
+const PagesFieldCount = 6
 
 // PagesDomain distinguishes an omitted declaration from an explicit domain removal.
 type PagesDomain struct{ Value *string }
@@ -19,6 +19,11 @@ type PagesDeclaration struct {
 	Source        *PagesSource
 	CNAME         *PagesDomain
 	HTTPSEnforced *bool
+}
+
+// Delete selects the exact UI Branch None sentinel; other branch casing is literal.
+func (d PagesDeclaration) Delete() bool {
+	return d.Source != nil && d.Source.Branch == "none"
 }
 
 func (d PagesDeclaration) Empty() bool {
@@ -54,6 +59,12 @@ func (s PagesSource) Validate() error {
 	return nil
 }
 func (d PagesDeclaration) Validate() error {
+	if d.Delete() {
+		if d.BuildType == nil || *d.BuildType != "legacy" || d.Source.Path != "" || d.CNAME != nil || d.HTTPSEnforced != nil {
+			return fmt.Errorf("Pages branch none requires explicit deploy_from_a_branch and forbids select_folder, custom_domain and enforce_https")
+		}
+		return nil
+	}
 	if d.BuildType != nil && !validPagesMode(*d.BuildType) {
 		return fmt.Errorf("repository.settings.pages.build_and_deployment.source must be deploy_from_a_branch or github_actions")
 	}
@@ -80,6 +91,7 @@ type PagesState struct {
 }
 type PagesObservation struct {
 	acquired            bool
+	absent              bool
 	state               PagesState
 	folderNormalization ObservationNormalization
 	modeNormalization   ObservationNormalization
@@ -117,13 +129,30 @@ func NewPagesObservation(s PagesState) (PagesObservation, error) {
 	}
 	return PagesObservation{acquired: true, state: copyPagesState(s)}, nil
 }
-func (o PagesObservation) Values() (PagesState, error) {
+
+// NewAbsentPagesObservation records a successful endpoint-specific absence observation.
+func NewAbsentPagesObservation() PagesObservation {
+	return PagesObservation{acquired: true, absent: true}
+}
+func (o PagesObservation) Absent() (bool, error) {
 	if !o.acquired {
-		return PagesState{}, fmt.Errorf("Pages observation was not acquired")
+		return false, fmt.Errorf("Pages observation was not acquired")
+	}
+	return o.absent, nil
+}
+func (o PagesObservation) Values() (PagesState, error) {
+	if !o.acquired || o.absent {
+		return PagesState{}, fmt.Errorf("Pages configured state requires an acquired present site")
 	}
 	return copyPagesState(o.state), nil
 }
 func (o PagesObservation) Declaration() (PagesDeclaration, error) {
+	if absent, err := o.Absent(); err != nil {
+		return PagesDeclaration{}, err
+	} else if absent {
+		mode := "legacy"
+		return PagesDeclaration{BuildType: &mode, Source: &PagesSource{Branch: "none"}}, nil
+	}
 	s, err := o.Values()
 	if err != nil {
 		return PagesDeclaration{}, err
@@ -131,6 +160,9 @@ func (o PagesObservation) Declaration() (PagesDeclaration, error) {
 	return PagesDeclaration{BuildType: &s.BuildType, Source: s.Source, CNAME: &PagesDomain{Value: s.CNAME}, HTTPSEnforced: &s.HTTPSEnforced}, nil
 }
 func PreparePages(o PagesObservation, d PagesDeclaration) (PagesState, error) {
+	if d.Delete() {
+		return PagesState{}, fmt.Errorf("Pages deletion has no configured after state")
+	}
 	if err := d.Validate(); err != nil {
 		return PagesState{}, err
 	}
@@ -171,41 +203,47 @@ type PagesChange struct {
 	field         string
 	before, after any
 	inactive      bool
+	absent        bool
 	normalization ObservationNormalization
 }
 
 func (c PagesChange) Field() string                           { return c.field }
 func (c PagesChange) Values() (any, any)                      { return c.before, c.after }
+func (c PagesChange) BeforeAbsent() bool                      { return c.absent }
 func (c PagesChange) BeforeInactive() bool                    { return c.inactive }
 func (c PagesChange) Normalization() ObservationNormalization { return c.normalization }
-func NewPagesChange(field string, before, after any, inactive bool) (PagesChange, error) {
-	valid := func(v any, previous bool) bool {
-		if previous && inactive {
-			return (field == "pages.source.branch" || field == "pages.source.path") && v == nil
+func validPagesChangeValue(field string, v any) bool {
+	switch field {
+	case "pages.lifecycle":
+		s, ok := v.(string)
+		return ok && (s == "present" || s == "absent")
+	case "pages.build_type":
+		s, ok := v.(string)
+		return ok && validPagesMode(s)
+	case "pages.source.branch":
+		s, ok := v.(string)
+		return ok && (PagesSource{Branch: s, Path: "/"}).Validate() == nil
+	case "pages.source.path":
+		s, ok := v.(string)
+		return ok && (s == "/" || s == "/docs")
+	case "pages.cname":
+		if v == nil {
+			return true
 		}
-		switch field {
-		case "pages.build_type":
-			s, ok := v.(string)
-			return ok && validPagesMode(s)
-		case "pages.source.branch":
-			s, ok := v.(string)
-			return ok && (PagesSource{Branch: s, Path: "/"}).Validate() == nil
-		case "pages.source.path":
-			s, ok := v.(string)
-			return ok && (s == "/" || s == "/docs")
-		case "pages.cname":
-			if v == nil {
-				return true
-			}
-			s, ok := v.(string)
-			return ok && ValidatePagesDomain(s) == nil && s == strings.ToLower(s)
-		case "pages.https_enforced":
-			_, ok := v.(bool)
-			return ok
-		}
-		return false
+		s, ok := v.(string)
+		return ok && ValidatePagesDomain(s) == nil && s == strings.ToLower(s)
+	case "pages.https_enforced":
+		_, ok := v.(bool)
+		return ok
 	}
-	if !valid(before, true) || !valid(after, false) || reflect.DeepEqual(before, after) || inactive && field != "pages.source.branch" && field != "pages.source.path" {
+	return false
+}
+func NewPagesChange(field string, before, after any, inactive bool) (PagesChange, error) {
+	beforeValid := validPagesChangeValue(field, before)
+	if inactive {
+		beforeValid = (field == "pages.source.branch" || field == "pages.source.path") && before == nil
+	}
+	if !beforeValid || !validPagesChangeValue(field, after) || reflect.DeepEqual(before, after) {
 		return PagesChange{}, fmt.Errorf("invalid Pages comparison %q", field)
 	}
 	return PagesChange{field: field, before: before, after: after, inactive: inactive}, nil
@@ -223,6 +261,8 @@ func ValidatePagesChanges(changes []PagesChange) error {
 			} else {
 				_, err = NewPagesChangeWithNormalization(c.field, c.before, c.after, c.inactive, c.normalization)
 			}
+		} else if c.absent {
+			_, err = NewPagesCreationChange(c.field, c.after)
 		} else {
 			_, err = NewPagesChange(c.field, c.before, c.after, c.inactive)
 		}
@@ -231,7 +271,37 @@ func ValidatePagesChanges(changes []PagesChange) error {
 		}
 		seen[c.field] = c
 	}
+	if life, ok := seen["pages.lifecycle"]; ok {
+		if life.after == "absent" {
+			if len(changes) != 1 {
+				return fmt.Errorf("Pages deletion cannot carry settings changes")
+			}
+			return nil
+		}
+		if _, ok := seen["pages.build_type"]; !ok {
+			return fmt.Errorf("Pages creation requires mode")
+		}
+		for _, c := range changes {
+			if c.field != "pages.lifecycle" && !c.absent {
+				return fmt.Errorf("Pages creation requires absent before values")
+			}
+		}
+		mode := seen["pages.build_type"].after
+		if mode == "legacy" {
+			if _, ok := seen["pages.source.branch"]; !ok {
+				return fmt.Errorf("Pages creation requires branch")
+			}
+			if _, ok := seen["pages.source.path"]; !ok {
+				return fmt.Errorf("Pages creation requires folder")
+			}
+		}
+	}
 	for _, c := range changes {
+		if c.absent {
+			if _, ok := seen["pages.lifecycle"]; !ok {
+				return fmt.Errorf("absent Pages comparison requires creation")
+			}
+		}
 		if c.inactive {
 			m, ok := seen["pages.build_type"]
 			if !ok || m.before != "workflow" || m.after != "legacy" || !seen["pages.source.branch"].inactive || !seen["pages.source.path"].inactive {
@@ -254,7 +324,56 @@ func ValidatePagesChanges(changes []PagesChange) error {
 	}
 	return nil
 }
+
+// NewPagesCreationChange carries no invented configured before value.
+func NewPagesCreationChange(field string, after any) (PagesChange, error) {
+	if field == "pages.lifecycle" || !validPagesChangeValue(field, after) || field == "pages.source.branch" && after == "none" {
+		return PagesChange{}, fmt.Errorf("invalid Pages creation field %q", field)
+	}
+	return PagesChange{field: field, after: after, absent: true}, nil
+}
 func ComparePages(o PagesObservation, d PagesDeclaration) (int, []PagesChange, error) {
+	if err := d.Validate(); err != nil {
+		return 0, nil, err
+	}
+	absent, err := o.Absent()
+	if err != nil {
+		return 0, nil, err
+	}
+	if d.Empty() {
+		return 0, nil, nil
+	}
+	if d.Delete() {
+		if absent {
+			return 1, nil, nil
+		}
+		c, _ := NewPagesChange("pages.lifecycle", "present", "absent", false)
+		return 1, []PagesChange{c}, nil
+	}
+	if absent {
+		if d.BuildType == nil || (*d.BuildType == "legacy" && d.Source == nil) {
+			return 0, nil, fmt.Errorf("absent Pages site requires explicit source and complete branch/select_folder for branch deployment")
+		}
+		c, _ := NewPagesChange("pages.lifecycle", "absent", "present", false)
+		changes := []PagesChange{c}
+		add := func(f string, v any) { c, _ := NewPagesCreationChange(f, v); changes = append(changes, c) }
+		add("pages.build_type", *d.BuildType)
+		if d.Source != nil {
+			add("pages.source.branch", d.Source.Branch)
+			add("pages.source.path", d.Source.Path)
+		}
+		if d.CNAME != nil {
+			var v any
+			if d.CNAME.Value != nil {
+				v = strings.ToLower(*d.CNAME.Value)
+			}
+			add("pages.cname", v)
+		}
+		if d.HTTPSEnforced != nil {
+			add("pages.https_enforced", *d.HTTPSEnforced)
+		}
+		return len(changes), changes, nil
+	}
 	after, err := PreparePages(o, d)
 	if err != nil {
 		return 0, nil, err
