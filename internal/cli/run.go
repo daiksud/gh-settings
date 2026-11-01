@@ -14,7 +14,7 @@ var errUnsupportedCommand = errors.New("unsupported command or arguments; usage:
 
 // ExportOptions selects independently acquired opt-in resources.
 type ExportOptions struct {
-	Rulesets, Environments, Actions, WorkflowPermissions, SecretScanning, PrivateReporting, ImmutableReleases, Retention, ForkApproval, PrivateFork, Archive, Pages bool
+	Dependabot, Rulesets, Environments, Actions, WorkflowPermissions, SecretScanning, PrivateReporting, ImmutableReleases, Retention, ForkApproval, PrivateFork, Archive, Pages bool
 }
 
 type ApplyOptions struct{ NoWriteback bool }
@@ -48,6 +48,11 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 				}
 				i++
 				switch args[i] {
+				case "dependabot":
+					if options.Dependabot {
+						return errUnsupportedCommand
+					}
+					options.Dependabot = true
 				case "secret-scanning":
 					if options.SecretScanning {
 						return errUnsupportedCommand
@@ -135,7 +140,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security <secret-scanning|private-vulnerability-reporting|immutable-releases>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply [--no-writeback]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --pages to include existing Pages configuration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security immutable-releases for the repository immutable release policy; Administration read is required and GET 404 means disabled.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nUse --private-fork-workflows for private fork execution/token/secrets/approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly. New label and Ruleset IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security <dependabot|secret-scanning|private-vulnerability-reporting|immutable-releases>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply [--no-writeback]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --pages to include existing Pages configuration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security immutable-releases for the repository immutable release policy; Administration read is required and GET 404 means disabled.\nUse --security dependabot to include Dependabot alerts and security updates; GET 404 is interpreted as disabled with a permission-misclassification risk.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nUse --private-fork-workflows for private fork execution/token/secrets/approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly. New label and Ruleset IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 		if _, err := fmt.Fprintln(stdout, "Use --environments with export to include complete supported named Environment policies; Actions read is required. Environment names select whole objects for create-or-update, never numeric-ID writeback or unlisted deletion."); err != nil {
@@ -157,6 +162,9 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 	case "apply":
 		result, err := operations.Apply(applyOptions)
 		if err != nil {
+			for _, notice := range result.Notices {
+				err = fmt.Errorf("%w; note: %s", err, notice)
+			}
 			return createdIDDiagnostic(applyDiagnostic(err, result), result.CreatedIDs)
 		}
 		createdIDs = result.CreatedIDs
@@ -220,6 +228,10 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = "repository.settings.environments"
 		case app.ActionsPolicyUpdate, app.WorkflowPermissionsUpdate, app.RetentionRead, app.RetentionUpdate, app.ForkApprovalRead, app.ForkApprovalUpdate, app.PrivateForkRead, app.PrivateForkUpdate:
 			path = "repository.settings.actions.general"
+		case app.DependabotUpdate:
+			path = presentation.SettingPath(op.SecurityField)
+		case app.DependabotRead:
+			path = "repository.settings.advanced_security.dependabot"
 		case app.SecretScanningUpdate:
 			path = presentation.SettingPath(op.SecurityField)
 		case app.SecretScanningRead, app.PrivateReportingRead, app.PrivateReportingUpdate:

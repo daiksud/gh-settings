@@ -80,8 +80,8 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}
 		}
-		if !source.Security.SecretScanningEmpty() || source.Security.PrivateVulnerabilityReporting != nil {
-			result.Settings.SecurityAndQuality = &uimodel.SecurityAndQuality{AdvancedSecurity: &uimodel.AdvancedSecurity{SecretProtection: copyUISecurityValue(source.Security.SecretScanning), PushProtection: copyUISecurityValue(source.Security.PushProtection), PrivateVulnerabilityReporting: copyUISecurityValue(source.Security.PrivateVulnerabilityReporting)}}
+		if !source.Security.DependabotEmpty() || !source.Security.SecretScanningEmpty() || source.Security.PrivateVulnerabilityReporting != nil {
+			result.Settings.SecurityAndQuality = &uimodel.SecurityAndQuality{AdvancedSecurity: &uimodel.AdvancedSecurity{DependabotAlerts: copyUISecurityValue(source.Security.DependabotAlerts), DependabotSecurityUpdates: copyUISecurityValue(source.Security.DependabotSecurityUpdates), SecretProtection: copyUISecurityValue(source.Security.SecretScanning), PushProtection: copyUISecurityValue(source.Security.PushProtection), PrivateVulnerabilityReporting: copyUISecurityValue(source.Security.PrivateVulnerabilityReporting)}}
 		}
 		if source.Security.ImmutableReleases != nil {
 			if result.Settings.General == nil {

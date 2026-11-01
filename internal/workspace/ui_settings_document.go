@@ -49,7 +49,13 @@ type uiWorkflowPermissionsDocument struct {
 	AllowGitHubActionsToCreateAndApprovePullRequests *bool
 }
 
+type uiDependabotDocument struct {
+	Alerts          *bool
+	SecurityUpdates *bool
+}
+
 type uiAdvancedSecurityDocument struct {
+	Dependabot                    *uiDependabotDocument
 	PrivateVulnerabilityReporting *bool
 	SecretProtection              *uiSecretProtectionDocument
 }
@@ -82,6 +88,10 @@ func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 	}
 	if security := document.AdvancedSecurity; security != nil {
 		advanced := &uimodel.AdvancedSecurity{PrivateVulnerabilityReporting: security.PrivateVulnerabilityReporting}
+		if security.Dependabot != nil {
+			advanced.DependabotAlerts = security.Dependabot.Alerts
+			advanced.DependabotSecurityUpdates = security.Dependabot.SecurityUpdates
+		}
 		if protection := security.SecretProtection; protection != nil {
 			advanced.SecretProtection = protection.Enabled
 			advanced.PushProtection = protection.PushProtection
@@ -133,6 +143,9 @@ func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDoc
 	if model.SecurityAndQuality != nil && model.SecurityAndQuality.AdvancedSecurity != nil {
 		security := model.SecurityAndQuality.AdvancedSecurity
 		result.AdvancedSecurity = &uiAdvancedSecurityDocument{PrivateVulnerabilityReporting: security.PrivateVulnerabilityReporting}
+		if security.DependabotAlerts != nil || security.DependabotSecurityUpdates != nil {
+			result.AdvancedSecurity.Dependabot = &uiDependabotDocument{Alerts: security.DependabotAlerts, SecurityUpdates: security.DependabotSecurityUpdates}
+		}
 		if security.SecretProtection != nil || security.PushProtection != nil {
 			result.AdvancedSecurity.SecretProtection = &uiSecretProtectionDocument{
 				Enabled: security.SecretProtection, PushProtection: security.PushProtection,

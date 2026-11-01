@@ -16,13 +16,14 @@ Current source uses the exact marker `version: daiksud/gh-settings@v0`. Optional
 
 | Public UI key | Implementation | Scope |
 | --- | --- | --- |
+| `dependabot.alerts`, `dependabot.security_updates` | #344 | Coupled optional booleans with explicit 404 reading and accepted-disable policies |
 | `secret_protection.enabled` | #345 | Repository Secret Protection feature, not partner notifications |
 | `secret_protection.push_protection` | #345 | Repository push protection, not user-level protection |
 | `private_vulnerability_reporting` | #347 | Public repositories only |
 
 Release immutability belongs separately at `repository.settings.general.releases.immutable_release`; its [contract](immutable-releases.feature.md) owns the explicit GET-404 tradeoff and owner enforcement.
 
-Omitted groups/keys are unmanaged; empty mappings manage nothing. False disables, true enables, and null/wrong types/duplicate/unknown keys fail before remote work. Navigation-category wrappers, scalar Secret Protection, flat push protection and API-shaped aliases are not accepted. The two fields within Secret Protection remain independently optional; declaring the child never populates `enabled`. Empty mappings do not disable all. Dependabot and product candidates below are future API concepts and adoption gates, not accepted YAML or CLI families. Their future UI paths need their own inventory; this change does not implement them.
+Omitted groups/keys are unmanaged; empty mappings manage nothing. False disables, true enables, and null/wrong types/duplicate/unknown keys fail before remote work. Navigation-category wrappers, scalar Secret Protection, flat push protection and API-shaped aliases are not accepted. The two fields within Secret Protection remain independently optional; declaring the child never populates `enabled`. Empty mappings do not disable all. Product candidates below remain future API concepts and adoption gates, not accepted YAML or CLI families. Dependabot uses the two independent controls above; paused state is not a declaration.
 
 Plan reads only declared families and the prerequisite/companion observations needed to establish a safe transition. Unrelated hidden security fields do not prevent private vulnerability reporting or an ordinary repository-only plan. API response-only metadata, including pause, entitlement, and enforcement evidence, cannot be declared as desired state.
 
@@ -32,8 +33,8 @@ Paths below are relative to `/repos/{owner}/{repo}`. Permission names are the do
 
 | Control | Observation | Mutation | Documented read / write boundary | Availability and upper policy |
 | --- | --- | --- | --- | --- |
-| Dependabot alerts | GET `/vulnerability-alerts`: 204 enabled; documented disabled response 404 requires the gate below | PUT / DELETE same path: 204 | Administration read / write; authenticated admin access | Public/private; basic Dependabot is available across plans. Endpoint also enables/disables dependency graph; upper security configuration can constrain changes. |
-| Dependabot security updates | GET `/automated-security-fixes`: 200 with required boolean `enabled` and `paused`; ambiguous 404 is unknown | PUT / DELETE same path: 204 | Administration read / write; authenticated admin access | Public/private; requires dependency graph and alerts. Enabled can be paused; does not mean a PR can be produced for every ecosystem/dependency. |
+| Dependabot alerts | GET `/vulnerability-alerts`: 204 enabled; 404 interpreted as disabled by explicit decision, retaining provenance | PUT / DELETE same path: exactly 204 | Administration read / write; authenticated admin access | Public/private; basic Dependabot is available across plans. Endpoint also enables/disables dependency graph; upper security configuration can constrain changes. |
+| Dependabot security updates | GET `/automated-security-fixes`: 200 with required boolean `enabled` and `paused`; 404 interpreted as disabled with pause unknown | PUT / DELETE same path: exactly 204 | Administration read / write; authenticated admin access | Public/private; requires dependency graph and alerts. Enabled can be paused; does not mean a PR can be produced for every ecosystem/dependency. |
 | Secret scanning | GET repository, required `security_and_analysis.secret_scanning.status` enum | PATCH repository with only declared nested status | Metadata read for repository endpoint plus admin/owner/security-manager visibility; Administration write and applicable role for security PATCH | Public feature availability differs from private/internal Secret Protection entitlement. Partner scanning is separate. Upper configuration can enforce either state. |
 | Repository push protection | GET repository, required `security_and_analysis.secret_scanning_push_protection.status` enum | Same narrow nested PATCH | Same visibility / update requirements | Secret scanning prerequisite; public availability does not establish private/internal entitlement. User push protection is not this setting. |
 | Code Security candidate | GET repository, `security_and_analysis.code_security.status` if completely visible | Candidate nested `code_security.status` PATCH | Same repository visibility / Administration write boundary, subject to adoption evidence | Standalone product; private/internal use needs applicable existing entitlement. Public scanning availability alone does not establish a writable product toggle. |
@@ -44,11 +45,46 @@ The permission matrix records the [repository REST reference](https://docs.githu
 
 For plan/entitlement boundaries see [GitHub security features](https://docs.github.com/en/code-security/getting-started/github-security-features) and [Advanced Security products](https://docs.github.com/en/get-started/learning-about-github/about-github-advanced-security). Basic dependency security is distinct from premium product capabilities. Do not purchase, trial, enroll, or switch products to make a failed read/write succeed. Existing organization entitlement is a prerequisite, not something gh-settings provisions.
 
-### Disabled-state gate for Dependabot
+### Dependabot state-reading decision
 
-The documented 404 disabled response overlaps GitHub's concealment of inaccessible resources. A successful repository GET or an unrelated Actions/runner endpoint cannot prove permission for this security endpoint. A user role alone cannot prove the token's fine-grained grants. Therefore initial implementation must treat an unqualified 404 as unknown and fail before comparison, mutation, or file replacement.
+The [scoped decision in ADR 0026](../adr/0026-explicit-security-observations.md#dependabot-state-reads) accepts GET 404 as disabled for both Dependabot endpoints, intentionally giving up the distinction from insufficient permission. No authorization discriminator, successful unrelated endpoint, token inspection or GraphQL replacement is required. This choice can misclassify inaccessible settings as disabled, producing false differences/equality or false exported values in public plan/export. Retain 404 provenance rather than representing it as direct boolean evidence. Explicit 401/403 and all other unsuccessful statuses remain errors.
 
-Before claiming full #344 disabled-state support, establish and document an endpoint- and credential-specific authorization discriminator, with denied and genuinely disabled fixtures. If none is available, defer #344 for a separate contract decision rather than silently weakening the observation guarantee. A narrower readable-state-only feature must be explicitly adopted as such; it cannot claim disabled export or verified disable success. This gate does not require new live permissions, toggling a production repository, or broader organization reads.
+The [Dependabot adapter](../../internal/github/dependabot.go) uses the existing security REST version/timeout and redirect rejection. Each family observation completely acquires alerts then updates with one GET per endpoint and returns no partial family on failure. Only declared family plan/apply or explicit export requests these reads. No credential-discovery requests are made.
+
+#### Response evidence and pause metadata
+
+The [official OpenAPI description at `f9ed742`](https://github.com/github/rest-api-description/blob/f9ed74230d54847b5ca00a1343e8e349e858b8fb/descriptions/api.github.com/api.github.com.json), reviewed on 2026-11-01, specifies alerts GET 204/404, updates GET 200/404, and body-free 204 acknowledgments for both PUT/DELETE pairs. The updates schema requires both `enabled` and `paused` booleans without constraining their relationship. Accept all four complete pairs. A 200 containing false is direct boolean evidence if returned; the schema does not promise disabled repositories return 200 instead of 404. Missing/null/wrong-type members, malformed JSON and unexpected successful statuses acquire no observation.
+
+The [typed observations](../../internal/settings/dependabot.go) distinguish unacquired state, direct endpoint evidence, and disabled-by-404 state. Updates 404 acquires enabled=false but no pause metadata. The `paused` value returned alongside `pauseKnown=false` is unavailable, not an observed false; presentation preserves this distinction. Complete 200 metadata remains independent of enabled, including enabled=false/paused=true.
+
+[GitHub's REST troubleshooting guidance](https://docs.github.com/en/rest/using-the-rest-api/troubleshooting-the-rest-api#404-not-found-for-an-existing-resource) explains authorization-concealing 404 responses. The [App permissions reference](https://docs.github.com/en/rest/authentication/permissions-required-for-github-apps) describes `X-Accepted-GitHub-Permissions` as endpoint requirements, not the caller's actual grants. Neither resolves the ambiguity accepted by the product decision.
+
+| Evidence | State-reading interpretation | Post-update verification |
+| --- | --- | --- |
+| Alerts REST 204 | Enabled, direct evidence | Can verify enabled=true, never disabled. |
+| Updates REST 200 with both booleans | Direct enabled state plus known pause metadata | Verify declared enabled independently of pause; mismatch fails. |
+| Either REST GET 404 | Disabled by accepted interpretation; permission may be insufficient | Cannot verify either desired value, including false. |
+| Updates DELETE 204 followed by GET 404 | Acknowledgment plus interpreted disabled read; pause unknown | Accepted disable with explicit uncertainty after the separately adopted decision; may proceed to an explicitly declared parent disable. |
+
+[Dependabot's inactivity guidance](https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-updates-stopped) distinguishes automatic pause from disablement and lists enabling security updates among activity that can reactivate updates. It does not specify an HTTP PUT pause guarantee. Therefore boolean intent true means enabled, not resume: fresh enabled=true/paused=true must skip PUT and retain a diagnostic. After an enable, acquire both booleans again without promising paused=false or running pull requests. Pause changes alone neither request an extra write nor fail verification of matching enabled intent.
+
+#### Mutation and accepted-disable contract
+
+The [separate accepted-disable decision](../adr/0026-explicit-security-observations.md#dependabot-accepted-disable) permits DELETE 204 plus a fresh target GET 404. The result is accepted with a warning/notice and `OperationAcceptedUnverified`, never independent verification. Permission loss or enforcement may be hidden by the interpreted false. Observation-only `VerifyEnabled` still rejects 404; the adapter requires the actual 204 acknowledgment before accepting this narrow outcome. PUT followed by 404, any non-204 write, target mismatch, companion mismatch or incomplete/failed readback remains a failure with possible effects.
+
+Apply observes the complete family before selecting changes. Every changed member rereads both controls immediately before its body-free PUT/DELETE, rechecks prerequisites, then reads both controls again. Matching fresh intent skips the write, including enabled=true/paused=true. A changed alerts value must preserve the interpreted updates value; a changed updates value must preserve interpreted alerts. These checks inherit the explicit 404 reading risk and do not prove authorization or actual preservation behind a concealed response. Pause is acquired when available and diagnosed, not replayed or compared as desired state.
+
+Enable alerts before updates; disable updates before alerts. An accepted child disable can precede the explicitly declared parent disable under the accepted uncertainty policy. Never enable an omitted parent, disable an active omitted child, or send undeclared siblings. The alert endpoint's intrinsic dependency-graph enable/disable effects are disclosed. Unexpected companion changes fail instead of inventing GitHub's side effects. Local contradictions fail before remote work; missing prerequisites and failed complete family reads fail before this family's first write. Later failure preserves verified and accepted-unverified prior progress with its warning/notice; no automatic retry or rollback occurs.
+
+#### Implemented Dependabot test mapping
+
+- [Observation tests](../../internal/settings/dependabot_test.go) cover unacquired values, explicit disabled-by-404 provenance, unavailable pause on 404, all four enabled/paused pairs and rejection of 404 for update verification.
+- [Endpoint fixtures](../../internal/github/dependabot_test.go) cover exact selected GET targets, 204 alerts, 200 updates, disabled-looking and permission-looking 404 bodies with the same deliberate interpretation, malformed/incomplete observations, 401/403/other statuses, rejected redirects, body/transport failure and no acquired state on error. They also exercise verification against actual decoded endpoint observations.
+- [Toggle fixtures](../../internal/github/dependabot_update_test.go) check exact body-free methods, fresh prerequisites, paused no-write equality, positive readback, DELETE 204 plus 404 acceptance (including a permission-loss fixture retaining enabled state), ignored writes, companion drift, rejected redirects and pre-/post-write certainty.
+- [Application fixtures](../../internal/app/dependabot_test.go) check dependency order, matching/omitted intent, local contradiction, read failure and accepted-unverified progress on later failure. [UI codec](../../internal/workspace/ui_dependabot_test.go) and [closed Summary](../../internal/actions/dependabot_test.go) fixtures retain optional booleans and native field bounds.
+- [Built-CLI cycle](../../tests/acceptance/dependabot_test.go) checks ordinary/explicit export, false round-trip to zero plan, native report and credential-free Summary, ordered enable/disable, paused no-write behavior, omitted-parent preservation, accepted-child/later-parent failure notices and destination preservation on incomplete/denied reads.
+
+All fixtures use local APIs and dummy credentials. They establish modeled behavior, not live permission grants, update effects, enforcement or scan activity.
 
 ### Product candidate gate
 
@@ -58,9 +94,9 @@ A product-level toggle can affect subordinate security features. Before adoption
 
 ## Explicit export selection
 
-Repeatable `--security FAMILY` accepts exactly the implemented `secret-scanning`, `private-vulnerability-reporting` and `immutable-releases` selections. Dependabot/product options and `all` are not accepted. Distinct families compose with other export options; unknown/missing/duplicate values fail before reads or file changes.
+Repeatable `--security FAMILY` accepts exactly the implemented `secret-scanning`, `dependabot`, `private-vulnerability-reporting` and `immutable-releases` selections. Product options and `all` are not accepted. Distinct families compose with other export options; unknown/missing/duplicate values fail before reads or file changes.
 
-Ordinary export adds no security requests. Secret protection/Push protection reads precede private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied or incomplete observations fail instead of being omitted with success. Complete out-of-UI status strings retain provenance and normalize to the named false fallback; inconsistent projected declarations fail without saving. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. An exact supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. Normalization is active for these two status strings; other families follow their documented policies.
+Ordinary export adds no security requests. Secret protection/Push protection reads precede Dependabot, private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied or incomplete observations fail instead of being omitted with success. Complete out-of-UI status strings retain provenance and normalize to the named false fallback; inconsistent projected declarations fail without saving. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. An exact supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. Normalization is active for these two status strings; other families follow their documented policies.
 
 ## State and failure table
 
@@ -70,27 +106,28 @@ Ordinary export adds no security requests. Secret protection/Push protection rea
 | Complete out-of-UI Secret Protection/Push protection status string | Retain raw provenance and named false fallback; declared equality remains write-required, never independent proof of raw equality. |
 | Updates `enabled: true, paused: true` | Preserve enabled=true and pause metadata; emit a diagnostic in plan/export/apply. Do not report running/healthy, synthesize false, or disable/re-enable to resume. |
 | Any other complete `enabled`/`paused` boolean pair | Compare enabled independently and retain pause metadata; warn whenever paused. Do not invent a correlation between the two booleans that the API schema does not establish. |
-| Missing/null/wrong-type enabled or pause metadata | Reject incomplete state; do not discard pause to manufacture a usable observation. |
+| Updates 200 with missing/null/wrong-type enabled or pause metadata | Reject incomplete state; do not discard pause to manufacture a usable observation. The scoped 404 interpretation separately retains unavailable pause. |
 | Missing/null/wrong-type requested response field | Fail that read; no successful empty/false comparison or export. |
-| 401/403, unqualified 404 (except the separate immutable-policy decision), redirect, transport failure, invalid JSON | Fail read as unknown/denied as evidenced; never infer disabled or follow a changed target. |
+| Dependabot GET 404 | Interpret enabled=false by explicit product decision; retain provenance and unavailable pause metadata; never use it alone to verify a mutation; only DELETE 204 plus target 404 qualifies for the explicit accepted-disable outcome. |
+| 401/403, unqualified 404 outside the scoped Dependabot/immutable policies, redirect, transport failure, invalid JSON on successful body-bearing reads | Fail read as unknown/denied as evidenced; never infer disabled or follow a changed target. |
 | Confirmed unsupported visibility/entitlement | Report inapplicable/unavailable as evidenced; never false. Do not guess licensing from arbitrary 403/404 text. |
 | Authoritative upper-policy conflict known before write | Fail before mutation of that security family; no detach or policy bypass. |
 | Fresh prerequisite read/preflight fails | Record a confirmed pre-write read failure, preserving prior completed operations. |
-| Write returns 2xx but readback differs, is incomplete, or fails | Fail verification; mutation effects are uncertain. Do not count success, retry, or roll back automatically. |
+| Write returns 2xx but readback differs, is incomplete, or fails, outside the explicit Dependabot DELETE 204/GET 404 acceptance | Fail verification; mutation effects are uncertain. Do not count success, retry, or roll back automatically. |
 | Earlier resource/family succeeded, later family fails | Retain and report confirmed progress and any uncertain mutation; overall failure. |
 
 Upper [security configuration enforcement](https://docs.github.com/en/code-security/reference/security-at-scale/configuration-enforcement) may make a REST change appear successful while leaving values unchanged. Complete fresh readback is mandatory. The initial feature does not require organization-wide configuration reads or claim to diagnose all enforcement before writing. If available evidence identifies a conflict, surface it; otherwise an unmet readback is a verification failure with no invented cause. Repository declarations never own inherited configuration membership. Changing an unenforced repository value may affect its configuration status; no attachment/detachment request is sent to repair that status.
 
 ## Dependency and mutation table
 
-These rules constrain transition preflight; they do not introduce a saved-plan transaction. Plan is read-only. Apply rereads prerequisites with its own credential immediately before each family's mutation; an earlier plan does not authorize using stale observations. Validate the entire local declaration before any remote operation. Within each family, complete necessary state and transition checks before its first write.
+These rules constrain transition preflight; they do not introduce a saved-plan transaction. Dependabot transitions use the explicit reading/accepted-disable policies above; interpreted disabled-by-404 state is not proof of actual companion preservation. Plan is read-only. Apply rereads prerequisites with its own credential immediately before each family's mutation; an earlier plan does not authorize using stale observations. Validate the entire local declaration before any remote operation. Within each family, complete necessary state and transition checks before its first write.
 
 | Desired transition | Required prerequisites and order |
 | --- | --- |
 | Security updates true with alerts false | Reject contradiction locally. |
 | Security updates true; alerts omitted | Require a fresh known-enabled alerts observation; otherwise fail before writes. Never enable omitted alerts. |
 | Alerts true and security updates true | Enable/verify alerts before enabling/verifying updates. The alerts endpoint's documented dependency-graph effect is intrinsic and must be disclosed. |
-| Alerts false | Observe updates; if currently enabled, require explicit updates=false and disable/verify updates first. Unknown updates blocks the transition. An omitted known-disabled child needs no write. The documented graph-disable effect is intrinsic. |
+| Alerts false | Observe updates; if currently enabled, require explicit updates=false and disable/verify or explicitly accept the scoped 204/404 outcome first. A failed updates read blocks the transition; a disabled-by-404 read follows the explicit risk policy. An omitted known-disabled child needs no write. The documented graph-disable effect is intrinsic. |
 | Push protection true with secret scanning false | Reject contradiction locally. |
 | Push protection true; scanning omitted | Require fresh known-enabled scanning; no implicit parent enable or product enrollment. |
 | Scanning true and push protection true | Enable/verify scanning before enabling/verifying push protection, with narrow sequential nested PATCHes. |
@@ -112,7 +149,7 @@ The matrix remains the acceptance plan for all families; the implemented family 
 | --- | --- |
 | All: codec/model | Omitted/group-empty no-op; explicit true/false preserved; null, wrong types, duplicate/unknown keys rejected before network; zero/unacquired observation rejected; copied values cannot corrupt invariants. |
 | All: API/app | Correct target and method, declared-only payload, complete fresh prerequisite and readback checks, redirect rejection, error classification before/after writes, deterministic order, earlier successes retained, no automatic retry/rollback. |
-| #344 | Resolve disabled-read gate first; authorized disabled vs permission-concealed 404, 204 alerts, complete enabled/paused combinations, contradictory/omitted dependencies, enable/disable ordering, graph effects, no version-update/individual-alert operations. |
+| #344 | Intentional disabled/permission-concealed 404 equivalence, unavailable pause, complete 200 pairs, independent verification versus accepted DELETE 204/404, fresh prerequisites, omitted/contradictory dependencies, ordered body-free writes, target/companion failure, partial accepted progress and graph effects; no version-update/individual-alert operations. |
 | #345 | Public and entitled/nonentitled private/internal fixtures; hidden/null/unknown status; parent/child combinations and fresh drift; no omitted fields in nested PATCH; enforced 2xx/no-change must fail verification; no bypass/pattern/configuration writes. |
 | #346 | Separate adoption evidence first; distinct model/entitlement fixtures, both-key rejection, no alias/fallback/conversion, complete companion effects and lossless supported-state round-trip. No implementation completion while product behavior remains unverified. |
 | #347 | Public true/false/equal/omitted, private/internal inapplicability, Metadata-only read shape, missing/null/wrong enabled value, 422/permission errors, PUT/DELETE+readback, no advisory/report/notification operations. |
@@ -136,7 +173,7 @@ Fixtures use dummy credentials and local modeled responses. A read-only observat
 
 ## Implemented private vulnerability reporting test mappings
 
-The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Dependabot and product candidates remain gated/unsupported.
+The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Product candidates remain gated/unsupported.
 
 - Acquired observations, omitted/false/true comparison and independent field domains: [TestPrivateReportingObservationAndIndependentDeclaration](../../internal/settings/private_reporting_test.go).
 - Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [Security UI codec](../../internal/workspace/ui_security_test.go).

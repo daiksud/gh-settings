@@ -219,6 +219,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if !desired.Security.DependabotEmpty() {
+		wrote, err := applyDependabot(&result, repo, desired.Security, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if desired.Security.PrivateVulnerabilityReporting != nil {
 		wrote, err := applyPrivateReporting(&result, repo, desired.Security, write)
 		if err != nil {

@@ -46,6 +46,8 @@ const (
 	PagesUpdate
 	EnvironmentsRead
 	EnvironmentUpsert
+	DependabotRead
+	DependabotUpdate
 )
 
 type ApplyOperationStatus uint8
@@ -56,6 +58,7 @@ const (
 	OperationFailedRead
 	OperationFailedUnknown
 	OperationUnchanged
+	OperationAcceptedUnverified
 )
 
 // ApplyOperation records only what this execution established for one operation.
@@ -94,7 +97,7 @@ func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus)
 	result.Operations[index].Status = status
 	result.Outcome = ApplyFailed
 	for _, operation := range result.Operations {
-		if operation.Status == OperationCompleted && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
+		if (operation.Status == OperationCompleted || operation.Status == OperationAcceptedUnverified) && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
 			result.Outcome = ApplyPartialFailure
 			break
 		}
