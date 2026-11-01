@@ -14,6 +14,8 @@ type SecuritySettings struct {
 }
 
 type AdvancedSecurity struct {
+	DependabotAlerts              *bool
+	DependabotSecurityUpdates     *bool
 	SecretProtection              *bool
 	PushProtection                *bool
 	PrivateVulnerabilityReporting *bool

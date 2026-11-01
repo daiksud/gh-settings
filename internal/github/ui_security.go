@@ -8,6 +8,8 @@ import (
 func SecurityDeclaration(ui uimodel.SecuritySettings) (settings.SecurityDeclaration, error) {
 	var result settings.SecurityDeclaration
 	if ui.AdvancedSecurity != nil {
+		result.DependabotAlerts = copyUISecurityValue(ui.AdvancedSecurity.DependabotAlerts)
+		result.DependabotSecurityUpdates = copyUISecurityValue(ui.AdvancedSecurity.DependabotSecurityUpdates)
 		result.SecretScanning = copyUISecurityValue(ui.AdvancedSecurity.SecretProtection)
 		result.PushProtection = copyUISecurityValue(ui.AdvancedSecurity.PushProtection)
 		result.PrivateVulnerabilityReporting = copyUISecurityValue(ui.AdvancedSecurity.PrivateVulnerabilityReporting)

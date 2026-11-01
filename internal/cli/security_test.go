@@ -20,7 +20,9 @@ func TestSecurityExportSelectionIsExplicitAndComposable(t *testing.T) {
 		{[]string{"export", "--rulesets", "--security", "secret-scanning", "--actions"}, true, cli.ExportOptions{SecretScanning: true, Actions: true, Rulesets: true}},
 		{[]string{"export", "--security"}, false, cli.ExportOptions{}},
 		{[]string{"export", "--security", "all"}, false, cli.ExportOptions{}},
-		{[]string{"export", "--security", "dependabot"}, false, cli.ExportOptions{}},
+		{[]string{"export", "--security", "dependabot"}, true, cli.ExportOptions{Dependabot: true}},
+		{[]string{"export", "--security", "dependabot", "--security", "secret-scanning"}, true, cli.ExportOptions{Dependabot: true, SecretScanning: true}},
+		{[]string{"export", "--security", "dependabot", "--security", "dependabot"}, false, cli.ExportOptions{}},
 		{[]string{"export", "--security", "secret-scanning", "--security", "secret-scanning"}, false, cli.ExportOptions{}},
 	} {
 		called := false

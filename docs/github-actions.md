@@ -235,6 +235,12 @@ Implementation protocols belong in [Action internals](contributing/actions-inter
 [^environment-controls]: [GitHub Environment controls](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). Check availability and protection rules for the actual target before owner setup.
 [^app-token-action]: [Official token Action at the reviewed revision](https://github.com/actions/create-github-app-token/tree/64ab729a6294000f5aa4a4bc0b73d1f32bc45510). Explicit target/permission inputs and default post-job revocation; actual revocation needs runtime evidence.
 
+## Dependabot settings
+
+Current source supports the two [Dependabot controls](settings.md#dependabot-alerts-and-security-updates) in validate/plan/apply and UI-named detailed Summary differences; the same-version report carries their two native booleans and closed count bounds. The pinned published package is unchanged and does not gain this capability from a configuration edit. Use a package that implements it before adoption. No Action input, token grant or credential source is added.
+
+Complete family reads require Administration read plus applicable actor authorization; writes require Administration write. GET 404 is deliberately interpreted as disabled even when permission is insufficient, with a fixed warning. Paused metadata is diagnosed in logs without requesting a resume. Apply accepts DELETE 204 plus fresh target GET 404 with an explicit unverified notice; it can then proceed in declared dependency order. This does not prove disabled state, grants or policy enforcement. PUT/readback failures and unexpected companion changes fail while retaining prior acknowledged progress. Review the full state-reading and accepted-disable risks before providing a write credential; local fixtures establish no live mutation or permission evidence.
+
 ## Fork workflow policies
 
 [Fork workflow policies](settings.md#fork-pr-workflow-policies), with public contributor approval separate from private fork execution/token/secrets/approval controls. Existing Administration read/write credentials are required; no Action input or grant is added. Summary shows UI choices and boolean differences, including credentials passed to forks. It remains credential-free presentation; apply independently rereads state. Fixtures do not establish live mutation compatibility, workflow execution safety or organization-policy enforcement.

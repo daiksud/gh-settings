@@ -209,6 +209,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Security = changes
 	}
 
+	if !desired.Security.DependabotEmpty() {
+		o, err := read.Dependabot(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.dependabot", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.DependabotTransitions(o, desired.Security)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.dependabot", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Security = append(comparison.Security, changes...)
+	}
 	if desired.Security.PrivateVulnerabilityReporting != nil {
 		observed, err := read.PrivateReporting(repo)
 		if err != nil {

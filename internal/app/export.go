@@ -11,6 +11,7 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludeDependabot                                 bool
 	IncludeArchive                                    bool
 	IncludePages                                      bool
 	IncludeForkApproval                               bool
@@ -281,6 +282,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if err != nil {
 			return err
 		}
+	}
+	if checkout.IncludeDependabot {
+		o, err := read.Dependabot(repo)
+		if err != nil {
+			return err
+		}
+		d, err := o.Declaration()
+		if err != nil {
+			return err
+		}
+		declaration.Security.DependabotAlerts = d.DependabotAlerts
+		declaration.Security.DependabotSecurityUpdates = d.DependabotSecurityUpdates
 	}
 	if checkout.IncludePrivateReporting {
 		observed, err := read.PrivateReporting(repo)

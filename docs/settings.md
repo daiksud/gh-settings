@@ -81,6 +81,28 @@ On an already archived target, archive=true combined with other managed settings
 
 Existing Administration read/write grants and actor authorization are prerequisites. Local fixtures do not establish live permissions or lifecycle behavior. See the [lifecycle specification](features/repository-lifecycle.feature.md) and [ADR 0027](adr/0027-repository-lifecycle.md).
 
+## Dependabot alerts and security updates
+
+Use independently optional booleans under `repository.settings.advanced_security.dependabot`:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    advanced_security:
+      dependabot:
+        alerts: true
+        security_updates: true
+```
+
+Omission leaves each control unmanaged; false explicitly disables, null is invalid and an empty mapping manages nothing. `paused` is observed metadata, not a YAML control. This current-source capability is not added to the pinned published package by documentation or configuration changes.
+
+`export --security dependabot` acquires both controls; ordinary export does not. Administration read and applicable actor access are required for complete reads; updates require Administration write and actor authorization. **GET 404 is deliberately interpreted as disabled even if insufficient permission caused it.** A warning identifies that risk; plans may show false changes/equality and exports may contain false disabled values. Updates 200 requires both enabled and paused booleans. Updates 404 has unavailable pause metadata. Paused updates remain enabled when enabled=true; warnings do not request a resume or promise active pull requests.
+
+Plan is read-only. Apply completely reads the family, then refreshes prerequisites before each narrow body-free PUT/DELETE and reads back both controls. Enable alerts before security updates; disable security updates before alerts. Explicit alerts=false with updates=true fails locally. Updates=true with alerts omitted requires interpreted enabled alerts; no parent is enabled implicitly. Disabling alerts while updates are active requires explicit updates=false. Omitted companions are preserved against their freshly interpreted enabled values; those checks retain the 404 misclassification risk. The alerts endpoint intrinsically enables/disables Dependency Graph too.
+
+A fresh matching value skips its write, including enabled=true/paused=true. An enable requires positive enabled readback. A disable returning DELETE 204 followed by target GET 404 is **accepted with uncertainty**, not independently verified. Apply retains a distinct accepted-unverified operation and prints a notice; it may continue to an explicitly declared parent disable. Permission loss or enforcement may conceal a retained enabled state. GET 404 alone, non-204 writes, malformed/failed readback or target/companion mismatch do not qualify. Later failures retain earlier verified and accepted-unverified progress and its notice, without retry or rollback. No Dependabot configuration files, individual alerts, grouping, auto-triage, credentials or organization settings are managed. See the [decision and fixture contract](features/security.feature.md#dependabot-state-reading-decision).
+
 ## Secret scanning and push protection
 
 Use the independently optional booleans `enabled` and `push_protection` under `repository.settings.advanced_security.secret_protection`.
@@ -103,7 +125,7 @@ A complete successful read requires both status strings. Canonical `enabled` / `
 
 Plan retains one write-required decision per declared normalized control, including false-to-false. Omitted controls remain unmanaged. Apply verifies fresh raw statuses for the requested member and preserved companion; unchanged unknown status cannot confirm a write, and a changed unknown companion fails verification. Each successful managed initial/preflight/readback observation can warn; unowned companion values are not disclosed. Detailed CLI/Summary use UI paths and native booleans, while status-only Summary suppresses values. Export saves effective booleans after complete conversion and never writes GitHub settings.
 
-Existing entitlement, token grants and appropriate admin/organization-owner/security-manager visibility are required. API visibility alone does not prove writable access or licensing. No product is purchased, credential expanded, alert/pattern/bypass managed or scanning workflow created. Dependabot and unadopted security controls remain unsupported. See the [security specification](features/security.feature.md).
+Existing entitlement, token grants and appropriate admin/organization-owner/security-manager visibility are required. API visibility alone does not prove writable access or licensing. No product is purchased, credential expanded, alert/pattern/bypass managed or scanning workflow created. Unadopted security product controls remain unsupported. See the [security specification](features/security.feature.md).
 
 ## Immutable release policy
 

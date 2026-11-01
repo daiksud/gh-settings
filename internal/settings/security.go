@@ -2,10 +2,12 @@ package settings
 
 import "fmt"
 
-const SecurityFieldCount = 4
+const SecurityFieldCount = 6
 
 // SecurityDeclaration owns only the adopted repository security controls.
 type SecurityDeclaration struct {
+	DependabotAlerts              *bool `yaml:"dependabot_alerts,omitempty"`
+	DependabotSecurityUpdates     *bool `yaml:"dependabot_security_updates,omitempty"`
 	ImmutableReleases             *bool `yaml:"immutable_releases,omitempty"`
 	SecretScanning                *bool `yaml:"secret_scanning,omitempty"`
 	PushProtection                *bool `yaml:"secret_scanning_push_protection,omitempty"`
@@ -16,9 +18,12 @@ func (d SecurityDeclaration) SecretScanningEmpty() bool {
 	return d.SecretScanning == nil && d.PushProtection == nil
 }
 func (d SecurityDeclaration) Empty() bool {
-	return d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil && d.ImmutableReleases == nil
+	return d.DependabotEmpty() && d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil && d.ImmutableReleases == nil
 }
 func (d SecurityDeclaration) Validate() error {
+	if d.DependabotAlerts != nil && !*d.DependabotAlerts && d.DependabotSecurityUpdates != nil && *d.DependabotSecurityUpdates {
+		return fmt.Errorf("repository.settings.advanced_security.dependabot.security_updates requires alerts")
+	}
 	if d.SecretScanning != nil && !*d.SecretScanning && d.PushProtection != nil && *d.PushProtection {
 		return fmt.Errorf("%s requires %s", PushProtectionControl.Path(), SecretProtectionControl.Path())
 	}
@@ -67,7 +72,7 @@ func (c SecurityChange) Normalization() SecurityStatusNormalization { return c.n
 func NewSecurityChange(field string, before, after any) (SecurityChange, error) {
 	b, bok := before.(bool)
 	a, aok := after.(bool)
-	if (field != "security.secret_scanning" && field != "security.secret_scanning_push_protection" && field != "security.private_vulnerability_reporting" && field != "security.immutable_releases") || !bok || !aok || b == a {
+	if (field != DependabotAlertsField && field != DependabotUpdatesField && field != "security.secret_scanning" && field != "security.secret_scanning_push_protection" && field != "security.private_vulnerability_reporting" && field != "security.immutable_releases") || !bok || !aok || b == a {
 		return SecurityChange{}, fmt.Errorf("invalid security comparison")
 	}
 	return SecurityChange{field: field, before: b, after: a}, nil
@@ -88,6 +93,10 @@ func ValidateSecurityChanges(changes []SecurityChange) error {
 		seen[c.field] = true
 		v := c.after
 		switch c.field {
+		case DependabotAlertsField:
+			d.DependabotAlerts = &v
+		case DependabotUpdatesField:
+			d.DependabotSecurityUpdates = &v
 		case "security.secret_scanning":
 			d.SecretScanning = &v
 		case "security.secret_scanning_push_protection":

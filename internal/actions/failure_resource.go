@@ -8,6 +8,7 @@ import (
 // Only fixed resource paths are retained: diagnostics must never echo arbitrary
 // configuration values, API errors, credentials or resource names into Summary.
 var failureResources = []string{
+	"repository.settings.advanced_security.dependabot",
 	"repository.settings.general.danger_zone.archive_this_repository",
 	"repository.settings.general.releases.immutable_release",
 	"repository.settings.advanced_security.private_vulnerability_reporting",

@@ -52,6 +52,10 @@ func SettingPath(path string) string {
 		return settings.SecretProtectionControl.Path()
 	case "security.secret_scanning_push_protection":
 		return settings.PushProtectionControl.Path()
+	case settings.DependabotAlertsField:
+		return settings.DependabotAlertsPath
+	case settings.DependabotUpdatesField:
+		return settings.DependabotUpdatesPath
 	case "security.private_vulnerability_reporting":
 		return "repository.settings.advanced_security.private_vulnerability_reporting"
 	case "security.immutable_releases":
