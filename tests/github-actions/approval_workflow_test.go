@@ -102,37 +102,46 @@ func TestCodexApprovalEvidence(t *testing.T) {
 		{"security incomplete", false, false}, {"code stale", false, false}, {"security stale", false, false},
 		{"spoofed summary", false, false}, {"spoofed receipt", false, false}, {"wrong app", false, false},
 		{"no security receipt", false, false}, {"security receipt findings", false, false}, {"wrong receipt head", false, false},
-		{"old same-head receipt", false, false}, {"edited receipt", false, false}, {"duplicate receipt", false, false},
-		{"unknown bot comment", false, false}, {"no request", false, false}, {"edited request", false, false},
-		{"overlapping requests", false, false}, {"security-only request", false, false}, {"new request", false, false},
-		{"old reaction", false, false}, {"same-second reaction", false, false}, {"other reaction", false, false},
+		{"old same-head receipt", true, false}, {"edited receipt", true, false}, {"duplicate receipt", true, false}, {"later same-head receipt findings", false, false},
+		{"unknown bot comment", true, false}, {"no request", true, false}, {"edited request", true, false},
+		{"overlapping requests", true, false}, {"security-only request", true, false}, {"new request", true, false},
+		{"old reaction", true, false}, {"same-second reaction", true, false}, {"other reaction", false, false},
 		{"missing reaction", false, false}, {"delayed reaction", true, false}, {"closed", false, false},
 		{"head changed", false, false}, {"closed during check", false, false}, {"summary changed", false, false},
-		{"request during check", false, false}, {"receipt edited during check", false, false}, {"reaction removed", false, false},
+		{"request during check", true, false}, {"receipt edited during check", false, false}, {"reaction removed", false, false},
 		{"already approved", false, false}, {"changes requested", false, false}, {"ambiguous short sha", false, true},
 		{"pagination failed", false, true}, {"reaction fetch failed", false, true}, {"post rejected", false, true},
-		{"post non-json", false, true}, {"malformed summary", false, false}, {"automatic nullable cycle", false, false},
-		{"initial automatic overlap", false, false}, {"edited older request", false, false},
+		{"post non-json", false, true}, {"malformed summary", false, false}, {"automatic nullable cycle", true, false},
+		{"initial automatic overlap", true, false}, {"edited older request", true, false},
 		{"wrong summary app", false, false}, {"receipt missing app", false, false}, {"duplicate marker", false, false},
-		{"wrong security metadata", false, false}, {"completion before receipt", false, false},
+		{"wrong security metadata", false, false}, {"completion before receipt", true, false},
 		{"wrong resolved sha", false, false}, {"unconfirmed approval", true, true}, {"malformed pagination", false, true},
 		{"wrong reaction account", false, false},
-		{"edited older structured request", false, false}, {"same-second older structured request", false, false},
+		{"edited older structured request", true, false}, {"same-second older structured request", true, false},
 		{"prior retarget", true, false},
-		{"retarget after review", false, false},
-		{"retarget during review", false, false},
-		{"same-second retarget", false, false},
-		{"automatic retarget", false, false},
-		{"retarget without request", false, false},
-		{"structured retarget", false, false},
-		{"retarget during check", false, false},
-		{"base ref changed", false, false},
-		{"base sha changed", false, false},
-		{"missing base", false, false},
-		{"timeline failed", false, true},
-		{"malformed timeline", false, true},
-		{"retarget missing timestamp", false, false},
-		{"same-second requests", false, false}, {"same-second summary start", false, false}, {"wrong row head", false, false},
+		{"retarget after review", true, false},
+		{"retarget during review", true, false},
+		{"same-second retarget", true, false},
+		{"automatic retarget", true, false},
+		{"retarget without request", true, false},
+		{"structured retarget", true, false},
+		{"retarget during check", true, false},
+		{"base ref changed", true, false},
+		{"base sha changed", true, false},
+		{"missing base", true, false},
+		{"timeline failed", true, false},
+		{"malformed timeline", true, false},
+		{"retarget missing timestamp", true, false},
+		{"same-second requests", true, false}, {"same-second summary start", true, false}, {"wrong row head", false, false},
+		{"one-hour clock skew", true, false}, {"timestamp order reversed", true, false},
+		{"completion without timestamp", true, false}, {"reaction without timestamp", true, false},
+		{"replayed same-head pair", true, false}, {"trusted same-head repost", true, false}, {"trusted different-head repost", true, false},
+		{"structured new request", true, false},
+		{"structured missing receipts", true, false}, {"structured automatic clean", true, false},
+		{"duplicate reaction", false, false}, {"reaction replaced", false, false}, {"reaction timestamp changed during check", true, false},
+		{"all timestamp metadata missing", true, false}, {"timestamp metadata changed during check", true, false},
+		{"request body changed during check", true, false},
+		{"missing receipt edit metadata", true, false}, {"missing request edit metadata", true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -143,7 +152,7 @@ func TestCodexApprovalEvidence(t *testing.T) {
 			code, security := f["code"].(approvalObject), f["security"].(approvalObject)
 			pr, reaction := f["pr"].(approvalObject), f["reaction"].(approvalObject)
 			switch tc.name {
-			case "structured clean", "edited older structured request", "same-second older structured request", "structured retarget", "retarget without request":
+			case "structured clean", "edited older structured request", "same-second older structured request", "structured retarget", "retarget without request", "structured new request", "structured missing receipts", "structured automatic clean":
 				securityState["has_any_findings"], securityState["has_unresolved_findings"] = false, false
 			case "draft":
 				pr["draft"] = true
@@ -176,6 +185,7 @@ func TestCodexApprovalEvidence(t *testing.T) {
 			case "receipt missing app":
 				delete(security, "performed_via_github_app")
 			case "initial automatic overlap":
+				summary["id"] = 95
 				summary["created_at"] = "2026-10-31T02:11:00Z"
 			case "same-second summary start":
 				summary["created_at"] = request["created_at"]
@@ -184,7 +194,21 @@ func TestCodexApprovalEvidence(t *testing.T) {
 			case "wrong receipt head":
 				security["body"] = strings.ReplaceAll(security["body"].(string), "aaaaaaaaaa", "bbbbbbbbbb")
 			case "old same-head receipt":
-				security["created_at"], security["updated_at"] = "2026-10-31T02:10:00Z", "2026-10-31T02:10:00Z"
+				security["id"] = 99
+			case "replayed same-head pair":
+				code["id"], security["id"] = 98, 99
+			case "reaction without timestamp":
+				delete(reaction, "created_at")
+			case "missing receipt edit metadata":
+				delete(security, "created_at")
+				delete(security, "updated_at")
+			case "missing request edit metadata":
+				delete(request, "created_at")
+				delete(request, "updated_at")
+			case "timestamp order reversed":
+				code["created_at"], code["updated_at"] = "2026-10-31T00:00:00Z", "2026-10-31T00:00:00Z"
+				security["created_at"], security["updated_at"] = "2026-10-31T00:00:00Z", "2026-10-31T00:00:00Z"
+				summary["updated_at"] = "2026-10-30T00:00:00Z"
 			case "edited receipt":
 				security["updated_at"] = "2026-10-31T02:13:12Z"
 			case "edited request":
@@ -220,6 +244,13 @@ func TestCodexApprovalEvidence(t *testing.T) {
 			if tc.name == "completion before receipt" {
 				summary["body"] = strings.ReplaceAll(summary["body"].(string), "02:13:11.462255", "02:13:09.462255")
 			}
+			if tc.name == "one-hour clock skew" {
+				// PR #550: GitHub comment metadata was an hour ahead of summary text.
+				summary["body"] = strings.ReplaceAll(summary["body"].(string), "T02:", "T01:")
+			}
+			if tc.name == "completion without timestamp" {
+				summary["body"] = strings.ReplaceAll(summary["body"].(string), "<relative-time datetime=", "<ignored value=")
+			}
 			if tc.name == "wrong row head" {
 				summary["body"] = strings.ReplaceAll(summary["body"].(string), "`aaaaaaa`", "`bbbbbbb`")
 			}
@@ -227,8 +258,15 @@ func TestCodexApprovalEvidence(t *testing.T) {
 			switch tc.name {
 			case "no request", "retarget without request":
 				comments = comments[1:]
+			case "structured automatic clean":
+				comments = []any{summary}
+			case "structured missing receipts":
+				comments = comments[:2]
 			case "no security receipt":
 				comments = comments[:3]
+			case "later same-head receipt findings":
+				body := strings.ReplaceAll(security["body"].(string), "No security issues were found in this pull request.", "Security issues were found.")
+				comments = append(comments, approvalComment(104, body, "2026-10-31T02:13:11Z"))
 			case "duplicate receipt":
 				comments = append(comments, approvalComment(104, security["body"].(string), "2026-10-31T02:13:11Z"))
 			case "unknown bot comment":
@@ -248,10 +286,27 @@ func TestCodexApprovalEvidence(t *testing.T) {
 					}
 					comments[0].(approvalObject)["updated_at"] = edited
 				}
-			case "new request":
+			case "trusted same-head repost", "trusted different-head repost":
+				// Reuse the latest receipt per kind for the current HEAD; newer
+				// receipts for another HEAD cannot replace that evidence.
+				body := security["body"].(string)
+				if tc.name == "trusted different-head repost" {
+					body = strings.ReplaceAll(body, "aaaaaaaaaa", "bbbbbbbbbb")
+				}
+				comments = append(comments, approvalRequest(104, "2026-10-31T02:14:00Z"),
+					approvalComment(105, code["body"].(string), "2026-10-31T02:14:01Z"),
+					approvalComment(106, body, "2026-10-31T02:14:02Z"))
+			case "new request", "structured new request":
 				comments = append(comments, approvalRequest(104, "2026-10-31T02:13:14Z"))
 			case "same-second requests":
 				comments = append(comments, approvalRequest(99, request["created_at"].(string)))
+			}
+			if tc.name == "all timestamp metadata missing" {
+				for _, c := range comments {
+					delete(c.(approvalObject), "created_at")
+					delete(c.(approvalObject), "updated_at")
+				}
+				delete(reaction, "created_at")
 			}
 			root := t.TempDir()
 			write := func(name string, data []byte, mode os.FileMode) {
@@ -329,6 +384,11 @@ elif endpoint == 'repos/owner/repo/issues/7/comments?per_page=100':
     if s == 'pagination failed': sys.exit(55)
     comments = f['comments']
     if n > 1:
+        if s == 'timestamp metadata changed during check':
+            for c in comments: c['updated_at'] = '2026-10-31T03:00:00Z'
+        if s == 'request body changed during check':
+            for c in comments:
+                if c['id'] == 100: c['body'] += '\nChanged instructions'
         if s == 'summary changed':
             for c in comments:
                 if c['id'] == 101: c['body'] = c['body'].replace('completed', 'in_progress')
@@ -356,6 +416,9 @@ elif endpoint == 'repos/owner/repo/issues/7/reactions?per_page=100':
     assert a[2:] == ['--paginate', '--slurp'], a
     if s == 'reaction fetch failed': sys.exit(55)
     result = [[], [f['reaction']]]
+    if s == 'duplicate reaction': result[1].append(dict(f['reaction'], id=201))
+    if s == 'reaction replaced' and n > 1: result[1][0]['id'] = 201
+    if s == 'reaction timestamp changed during check' and n > 1: result[1][0]['created_at'] = '2026-10-31T03:00:00Z'
     if s == 'missing reaction' or (s == 'delayed reaction' and n == 1) or (s == 'reaction removed' and n > 1): result = [[], []]
 elif endpoint == 'repos/owner/repo/pulls/7/reviews?per_page=100':
     assert a[2:] == ['--paginate', '--slurp'], a
