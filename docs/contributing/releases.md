@@ -49,25 +49,28 @@ Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link
 
 Both native acceptance lanes and the `candidate-action` lane must succeed before publication. Failure, skipping, or cancellation cannot be overridden. The candidate's bounded download fixture establishes pre-publication integration, not published-download identity. Post-publication verification independently establishes the tag and public-download identity. [Release gate tests](../../tests/github-actions/release_test.go) and [local Action tests](../../tests/github-actions/release_actions_test.go) protect orchestration bytes, source/version/manifests, dependency bindings, and tamper rejection. Fixture and PR validation do not execute a hosted release.
 
-## GitHub-generated release notes
+## Release notes from committed messages
 
-New notes use GitHub's [generate-notes API](https://docs.github.com/en/rest/releases/releases#generate-release-notes-content-for-a-release), configured by [`.github/release.yml`](../../.github/release.yml). The old categorized Git-log renderer has been removed. The request supplies the proposed tag, frozen target SHA, explicit previous published tag, and configuration path. The Contents-write publication token performs generation only after validation; the read-only resolver does not generate notes or create state.
+The [notes generator](../../scripts/release-metadata/main.go) reads the actual committed messages in the fixed `PREVIOUS_SHA..SOURCE_SHA` interval. Normal squash merging records each PR's reviewed title and body in one main commit. It follows main's first-parent history and skips commits with no tree change, keeping substantive main squash commits as the release entries. Notes use those messages directly, without querying current PR titles, bodies, or labels. Their generation does not call GitHub's generate-notes API or use a release-category configuration file.
 
-| Reviewed PR labels | Native heading |
+Each included commit appears once under the first matching category:
+
+| Committed message signal, in priority order | Heading |
 | --- | --- |
-| `BREAKING CHANGE` | `💥 BREAKING CHANGE` |
-| `DEPRECATED`, without breaking | `⚠️ DEPRECATED` |
-| `feat` or `perf`, without breaking or deprecation | `✨ New Feature` |
-| `fix`, without a stronger category | `🐛 Bug Fix` |
-| Everything not already categorized, including `revert` and unlabeled PRs | `🛠️ Maintenance` |
+| Header `!` or formal `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | `💥 BREAKING CHANGE` |
+| Formal `DEPRECATED:` footer | `⚠️ DEPRECATED` |
+| `feat` | `✨ New Feature` |
+| `fix` | `🐛 Bug Fix` |
+| `perf` | `⚡ Performance` |
+| Any remaining message, including internal maintenance, reverts, and legacy headers | `🛠️ Maintenance` |
 
-The catch-all retains unlabeled PRs. Before the first release using this configuration, review labels on already-merged, unreleased PRs; do not infer their meaning from branch names. Later label edits affect a newly generated presentation, not the durable version calculation. Reconcile disagreements before publication rather than maintaining two version engines.
+Compatibility markers must be Conventional Commits headers or footers; mentions in prose, Markdown headings, or quoted/fenced examples do not classify a change. New Feature and Bug Fix describe observable CLI or public Action behavior. Internal development tools and CI/CD changes use their appropriate maintenance types; user-experienced runtime improvements use `perf`. The [code-review policy](../../.agents/skills/code-review/SKILL.md#title-and-type) owns this semantic judgment. PRLint remains commitlint-only. Labels are independent organization metadata, with no synchronization, type-agreement requirement, or release-label check.
 
-GitHub lists merged PRs, contributors, and a changelog link; it does not promise to copy PR bodies or compatibility footers. A small supplement preserves breaking-change impact/migration footers from the same frozen Git interval, escaping them as text. A breaking header without a footer produces an explicit instruction to inspect that change. This is migration guidance, not another categorized change list. A fixed-SHA comparison also covers direct commits that are not separate native PR entries.
+Entries link to their exact commits and render message text safely. Migration guidance preserves breaking-change footer details from the same interval as escaped text. A breaking header without a footer produces an instruction to inspect that change. A fixed-SHA comparison links the complete interval, including any direct commits. Later edits to a PR or its labels cannot change the committed classification or text.
 
-The predecessor is the stable numeric-tag release with the latest publication timestamp, with release ID breaking ties. Drafts, prereleases, and unpublished tags do not establish that boundary. Full local history, predecessor ancestry, and the resolver's previous tag/SHA must agree; a changed publication boundary stops generation before remote mutations. GitHub receives the frozen target, and a conflicting existing target tag is rejected. New main commits cannot enter the frozen interval.
+The predecessor is the stable numeric-tag release with the latest publication timestamp, with release ID breaking ties. Drafts, prereleases, and unpublished tags do not establish that boundary. Full local history, predecessor ancestry, and the resolver's previous tag/SHA must agree; a changed publication boundary stops generation before remote mutations. A conflicting existing target tag is rejected. New main commits cannot enter the frozen interval.
 
-Generation must return a nonempty body. API or decoding failures stop before tag/draft creation. The publisher appends installation/upgrade/checksum guidance and its existing hidden version/source/binary identity manifest. A matching draft or completed release retains its original body on retry, even if labels or later publications change.
+Catalog, history, or generation failures stop before tag/draft creation. The publisher appends installation/upgrade/checksum guidance and its existing hidden version/source/binary identity manifest. A matching draft or completed release retains its original body on retry, even if labels or later publications change.
 
 ## Publication and recovery
 
@@ -101,4 +104,4 @@ PR/main CI builds one candidate and exercises it through process acceptance and 
 | Immutable identity and complete drafts | [ADR 0013](../adr/0013-immutable-release-identity.md), [ADR 0014](../adr/0014-draft-release-publication.md), [ADR 0018](../adr/0018-preserve-published-assets.md) |
 | Raw executables and reviewed messages | [ADR 0015](../adr/0015-raw-extension-binaries.md), [ADR 0016](../adr/0016-conventional-pr-titles.md), [ADR 0024](../adr/0024-code-review-policy.md) |
 
-The [release specification](../features/release.feature.md) maps behavior to tests. Identical [Python version tests](../../.github/scripts/test_release_version.py) use temporary Git repositories for version precedence, exact ranges, metadata failures and retry identity. [Go notes tests](../../scripts/release-metadata/main_test.go) cover generation requests, migration footers and failures. [Release fixtures](../../tests/release.sh) exercise new publication and recovery with a local `gh` stand-in, retaining notes and validating artifact identity. These tests neither publish a release nor prove GitHub's live rendering; only an explicitly authorized release run establishes that operational evidence.
+The [release specification](../features/release.feature.md) maps behavior to tests. Identical [Python version tests](../../.github/scripts/test_release_version.py) use temporary Git repositories for version precedence, exact ranges, metadata failures and retry identity. [Go notes tests](../../scripts/release-metadata/main_test.go) cover committed category precedence, formal footers, escaping, fixed ranges, and failures. [Release fixtures](../../tests/release.sh) exercise the generated body through new publication and recovery with a local `gh` stand-in, retaining notes and validating artifact identity. These tests neither publish a release nor prove GitHub's live rendering; only an explicitly authorized release run establishes that operational evidence.
