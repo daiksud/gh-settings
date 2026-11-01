@@ -16,7 +16,7 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Independent PR gates | [Message workflow tests](../../tests/github-actions/pr_message_test.go), [code-result tests](../../tests/github-actions/pr_code_gate_test.go) | Metadata/code event separation, required-message activation, failed/skipped/cancelled jobs, stale revisions, API failures, and status publication |
 | Installed process behavior | [Acceptance tests](../../tests/acceptance/) | The actual supplied binary, isolated Git/files, local API requests, stdout/stderr and exit codes |
 | Version calculation | [Python tests](../../.github/scripts/test_release_version.py) | Temporary Git history, SemVer precedence, fixed published boundaries, invalid catalogs, and immutable retry selection |
-| Release notes | [Go metadata tests](../../scripts/release-metadata/main_test.go) | Frozen GitHub-native notes, migration footers, and changed-baseline failures |
+| Release notes | [Go metadata tests](../../scripts/release-metadata/main_test.go) | Committed category precedence, formal footers, escaping, fixed Git ranges, and changed-baseline failures |
 | Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go), [local Action tests](../../tests/github-actions/release_actions_test.go) | Mock publication/recovery, canonical orchestration, manifested artifact identity/tamper rejection, stored-note preservation, and declared source/version/gate relationships |
 
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
@@ -159,7 +159,7 @@ The [shared Python tests](../../.github/scripts/test_release_version.py) exercis
 python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
 ```
 
-The [Go metadata tests](../../scripts/release-metadata/main_test.go) retain native-note request, Git history boundary, and breaking-footer coverage. The [publisher fixtures](../../tests/release.sh) check generation failures before remote state and preservation of existing notes and artifacts during retries. These tests neither publish a release nor claim to execute GitHub's native renderer.
+The [Go metadata tests](../../scripts/release-metadata/main_test.go) cover categories and formal compatibility markers from committed messages, escaped text, and fixed Git boundaries. The [publisher fixtures](../../tests/release.sh) compare the complete generated body from fixture commits, reject PR metadata and native note-generation requests, and check generation failures before remote state and preservation of existing notes and artifacts during retries. These tests neither publish a release nor establish live GitHub rendering.
 
 The [release runbook](releases.md) owns dispatch and recovery. Its build matrix transfers each native product with a manifest; the acceptance matrix reuses the bounded public Action fixture with the frozen source, calculated release version, and manifested Linux product. Actual token-free validate must succeed before publication. Source/helper tests inspect orchestration and wrapper behavior without dispatching a release, and therefore are not hosted release evidence.
 
