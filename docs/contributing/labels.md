@@ -1,12 +1,12 @@
 # Change labels
 
-[Repository settings](../../.github/settings.yml) owns the 20 label names, descriptions, and colors shared with gh-qw: eleven Conventional Commit types, two compatibility labels (`BREAKING CHANGE` and `DEPRECATED`), and seven independent issue-triage labels.
+[Repository settings](../../.github/settings.yml) owns the 20 label names, descriptions, and colors shared with gh-qw: thirteen labels for organizing work and compatibility information, and seven issue-triage labels.
 
-Give each focused PR one Conventional Commit type. Use `feat`, `fix`, and `perf` only for user-observable changes to the CLI or public Action, not development infrastructure. Compatibility labels may accompany a type. The initial Issue label, branch name, title alone, or file extension is not proof of a change type. Reviewers compare labels against the final diff under the [review policy](../../.agents/skills/code-review/SKILL.md).
+Labels organize Issues and PRs independently of the proposed squash message. They need not match its type or compatibility markers, and title/body edits do not require relabeling. Reviewers assess the message against actual user impact under the [review policy](../../.agents/skills/code-review/SKILL.md); an Issue label, branch name, or file extension does not select that message's type.
 
-Issue forms suggest `fix` for bug reports and `feat` for feature requests. Tasks and blank Issues have no default classification; an implementing PR may use another type. The seven manually managed triage labels are `accessibility`, `duplicate`, `good first issue`, `help wanted`, `invalid`, `question`, and `wontfix`.
+Issue forms suggest the `fix` label for bug reports and the `feat` label for feature requests. Tasks and blank Issues have no default labels. These suggestions organize incoming Issues and do not select the Conventional Commit type of an implementation. The seven manually managed triage labels are `accessibility`, `duplicate`, `good first issue`, `help wanted`, `invalid`, `question`, and `wontfix`.
 
-Version selection uses durable squash messages, not labels. Reviewed PR labels classify generated release notes: breaking, deprecated, feature/performance, fix, and maintenance. See [releases](releases.md).
+Version selection and release-note categories use the actual committed squash messages in the fixed release interval. Labels do not affect either result. Do not add automatic type/label synchronization, type-agreement requirements, or label-based PRLint/release checks. See [releases](releases.md#release-notes-from-committed-messages).
 
 ## Automatic path suggestions
 
@@ -19,6 +19,6 @@ The [Labeler configuration](../../.github/labeler.yml) has four deliberately con
 | `build` | `go.mod`, `go.sum`, and `mise.toml` |
 | `ci` | CI/PRLint/Labeler workflows, CI-specific local Actions/scripts, Labeler rules |
 
-Release workflows and tooling, repository-settings workflows, public Action source, and consumer examples are classified manually; their paths do not determine user impact or whether the work is `build` versus `ci`. Dependabot suggests `build` for Go modules and `ci` for GitHub Actions updates, without automatic merging.
+Release workflows and tooling, repository-settings workflows, public Action source, and consumer examples are outside these automatic path suggestions. Dependabot suggests the `build` label for Go modules and the `ci` label for GitHub Actions updates, without automatic merging.
 
-The [Labeler workflow](../../.github/workflows/labeler.yml) uses base-branch rules over the GitHub API under `pull_request_target` without executing PR code. Permissions are Contents read and Pull requests write. `dot: true` includes hidden files; `sync-labels: false` preserves manually assigned labels. Reviewers remove stale suggestions when the PR changes; a later matching run can re-add them. All label names must exist before Labeler can apply them.
+The [Labeler workflow](../../.github/workflows/labeler.yml) uses base-branch rules over the GitHub API under `pull_request_target` without executing PR code. Permissions are Contents read and Pull requests write. `dot: true` includes hidden files; `sync-labels: false` preserves manually assigned labels. Authors can adjust suggestions for organization; a later matching run can re-add them. All label names must exist before Labeler can apply them.
