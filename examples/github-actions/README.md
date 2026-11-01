@@ -4,7 +4,7 @@ Copy these workflows into the repository whose settings you want to manage. The 
 
 Both workflows use a reviewed full Action SHA; the [published package and pins](../../docs/github-actions.md#published-package-and-consumer-pins) identify the selected release. The [public Action guide](../../docs/github-actions.md) owns inputs, outputs, runner requirements and setup instructions.
 
-The examples pin v0.21.0. Its ID-selected label and Ruleset declarations
+The examples pin v0.27.0. Its ID-selected label and Ruleset declarations
 leave unlisted objects untouched; an explicitly empty list deletes nothing.
 Updating a listed Ruleset can still change branch protection through declared
 values and defaults. Inspect the selected binary's contract and permissions
@@ -17,7 +17,7 @@ in the [Action guide](../../docs/github-actions.md#labels-and-permissions).
 | [settings-pr.yml](settings-pr.yml) | `.github/workflows/settings-pr.yml` |
 | [settings-main.yml](settings-main.yml) | `.github/workflows/settings-main.yml` |
 
-Commit `.github/settings.yml` with [schemaVersion 1](../../docs/settings.md#configuration-semantics) at the repository root. These three files are the consumer workflow/configuration files; CLI installation, validation and PR Summary rendering belong to the Action. Copying them does not configure GitHub branch or Environment protections and does not install a workflow-scope guard.
+Commit `.github/settings.yml` with [`version: daiksud/gh-settings@v0`](../../docs/settings.md#configuration-semantics) at the repository root. These three files are the consumer workflow/configuration files; CLI installation, validation and PR Summary rendering belong to the Action. Copying them does not configure GitHub branch or Environment protections and does not install a workflow-scope guard.
 
 Use a fresh GitHub-hosted `ubuntu-24.04` x64 job. Main checks out its exact `github.sha` without persisted credentials. PR plan does **not** check out PR code: its trusted inline preparation creates only Git metadata and the pinned candidate `.github/settings.yml` at `GITHUB_WORKSPACE`. The fixed containing-repository GitHub.com `origin` selects the target. No external caller script is needed.
 

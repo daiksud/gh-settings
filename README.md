@@ -48,7 +48,7 @@ repository:
 
 Current source requires the exact `version` string above and uses UI wording in snake_case. Omission, false, empty strings and empty lists retain distinct meanings; `about.topics: []` clears the topic set. Old envelopes and API-shaped aliases are rejected without migration. See the [configuration reference](docs/settings.md) for every supported path and ownership rule.
 
-This YAML requires a CLI release containing the activation change or a current-source build. Published packages and the pinned Action below keep their own contracts; installing an older release does not enable it. Out-of-UI normalization (#480) and complete reporting integration (#481) remain separate work.
+The pinned v0.27.0 package below supports this YAML. The [package boundary](docs/github-actions.md#published-package-and-consumer-pins) explains how an Action pin selects its CLI release.
 
 Labels and repository Rulesets select existing objects by numeric ID. Only listed objects are managed; an omitted object or empty list does not delete it. Entries without IDs are create-only. Updating a listed Ruleset can change branch protection, reviews and checks; read the [Labels](docs/settings.md#labels) and [Rulesets](docs/settings.md#rulesets) contracts before applying.
 
@@ -77,7 +77,7 @@ ID writeback, permissions, and failure recovery.
 
 ## Use as a GitHub Action
 
-The pinned example below uses its published package contract. It cannot consume the new YAML until a release containing that change is selected. See the [package boundary](docs/github-actions.md#published-package-and-consumer-pins); no pin is upgraded here.
+The pinned example below validates the UI-oriented YAML shown above. See the [package boundary](docs/github-actions.md#published-package-and-consumer-pins) for package selection and verification.
 
 ```yaml
 name: Validate repository settings
@@ -93,12 +93,12 @@ jobs:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
           persist-credentials: false
-      - uses: daiksud/gh-settings@eb8795dca8bb42376ab575f646ffa11bfe7775c8 # v0.21.0
+      - uses: daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6 # v0.27.0
         with:
           command: validate
 ```
 
-The example pins the immutable v0.21.0 Action, which supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
+The example pins the immutable v0.27.0 Action, which supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
 
 Before enabling apply, follow the [approval and required-check guidance](docs/github-actions.md#protect-the-apply-path) to protect both `main` and the job that receives the write credential. Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 

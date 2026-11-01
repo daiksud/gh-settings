@@ -26,7 +26,7 @@ func TestSettingsPlanRemainsUnprivilegedPRValidation(t *testing.T) {
 	if !present || j.Runner != "ubuntu-24.04" || j.If != "github.event_name == 'pull_request'" || j.Timeout != 10 || j.Environment != "" || j.Needs != "" || j.Continue || len(j.Env) != 0 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) {
 		t.Fatal("settings-plan must preserve its read-only PR boundary and use the supported validator runner")
 	}
-	const consumer = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
+	const consumer = "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6"
 	if len(j.Steps) != 2 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || !reflect.DeepEqual(j.Steps[0].With, map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}) || j.Steps[1].Uses != consumer || !reflect.DeepEqual(j.Steps[1].With, map[string]string{"command": "validate"}) || j.Steps[1].If != "" {
 		t.Fatal("validate the merge declaration with its pinned operational consumer, without a token or conditional skip")
 	}
