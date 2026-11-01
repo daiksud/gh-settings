@@ -2,48 +2,27 @@ package githubactions
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/daiksud/gh-settings/internal/settings"
-	"go.yaml.in/yaml/v4"
 )
 
-const operationalAction = "daiksud/gh-settings@cbc112ae1330b4ad4debe013857bd67d2e1a1e1e"
+const operationalAction = "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6"
 const operationalPlanAction = "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6"
 
 func TestManagedRepositoryEnvironments(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
-	if err != nil {
-		t.Fatal(err)
+	declaration := readManagedDeclaration(t)
+	if declaration.Environments == nil {
+		t.Fatal("both existing named Environments must be declared")
 	}
-	// This policy is consumed by the pinned released Action. Issue #382 owns
-	// its later adoption; this inspection does not claim current-codec acceptance.
-	var document struct {
-		Settings struct {
-			Environments []yaml.Node `yaml:"environments"`
-		} `yaml:"settings"`
-	}
-	if err := yaml.Unmarshal(data, &document); err != nil {
-		t.Fatal(err)
-	}
-	if len(document.Settings.Environments) != 2 {
+	environments := declaration.Environments.Values()
+	if len(environments) != 2 {
 		t.Fatal("both existing named Environments must be declared")
 	}
 	seenNames := map[string]bool{}
-	for _, node := range document.Settings.Environments {
-		var p settings.EnvironmentDeclaration
-		if err := node.Decode(&p); err != nil {
-			t.Fatal(err)
-		}
-		fields, err := settingsYAMLMap(&node)
-		if err != nil {
-			t.Fatal(err)
-		}
-		p.DeploymentBranchPolicyDeclared = fields["deployment_branch_policy"] != nil
+	for _, p := range environments {
 		identity := settings.EnvironmentIdentity(p.Name)
 		if seenNames[identity] {
 			t.Fatalf("duplicate managed Environment %q", p.Name)
@@ -69,34 +48,14 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 }
 
 func TestManagedRepositoryMergePreferences(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var config struct {
-		Settings struct {
-			Repository struct {
-				AllowMergeCommit       *bool   `yaml:"allow_merge_commit"`
-				AllowSquashMerge       *bool   `yaml:"allow_squash_merge"`
-				AllowRebaseMerge       *bool   `yaml:"allow_rebase_merge"`
-				SquashMergeCommitTitle string  `yaml:"squash_merge_commit_title"`
-				SquashMergeCommitBody  string  `yaml:"squash_merge_commit_message"`
-				MergeCommitTitle       *string `yaml:"merge_commit_title"`
-				MergeCommitBody        *string `yaml:"merge_commit_message"`
-			} `yaml:"repository"`
-		} `yaml:"settings"`
-	}
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		t.Fatal(err)
-	}
-	repository := config.Settings.Repository
+	repository := readManagedDeclaration(t).Repository
 	if repository.AllowMergeCommit == nil || *repository.AllowMergeCommit || repository.AllowSquashMerge == nil || !*repository.AllowSquashMerge || repository.AllowRebaseMerge == nil || *repository.AllowRebaseMerge {
 		t.Fatal("managed repository must allow squash merging only")
 	}
-	if repository.SquashMergeCommitTitle != "PR_TITLE" || repository.SquashMergeCommitBody != "PR_BODY" {
+	if repository.SquashMergeCommitTitle == nil || *repository.SquashMergeCommitTitle != "PR_TITLE" || repository.SquashMergeCommitMessage == nil || *repository.SquashMergeCommitMessage != "PR_BODY" {
 		t.Fatalf("managed squash messages are not PR title/body: %+v", repository)
 	}
-	if repository.MergeCommitTitle != nil || repository.MergeCommitBody != nil {
+	if repository.MergeCommitTitle != nil || repository.MergeCommitMessage != nil {
 		t.Fatalf("disabled normal-merge metadata must remain unmanaged: %+v", repository)
 	}
 }

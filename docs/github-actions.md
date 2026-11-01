@@ -44,14 +44,14 @@ This mode does not make a write-capable token read-only or protect it from other
 
 ## Published package and consumer pins
 
-The examples pin the immutable [v0.21.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.21.0) by its full source SHA `eb8795dca8bb42376ab575f646ffa11bfe7775c8`. The Action installs that exact release, not arbitrary current source code or the latest release; future pin changes require separately reviewed adoption. Published assets and `SHA256SUMS` are available on the release page.
+The examples pin the immutable [v0.27.0 Action/CLI package](https://github.com/daiksud/gh-settings/releases/tag/v0.27.0) by its full source SHA `6dbdbb3ab11cbc0ef257fef089d6915d31d003d6`. The Action installs that exact release, not arbitrary current source code or the latest release; future pin changes require separately reviewed adoption. Published assets and `SHA256SUMS` are available on the release page.
 
 Installation downloads the selected `gh-settings-linux-amd64` asset and `SHA256SUMS` from fixed upstream HTTPS release paths. It requires one valid checksum for the exact asset, verifies before execution and checks exact `gh-settings <version>` output. There is no latest fallback or caller version/URL override. The binary and checksum come from the same GitHub release; the Action SHA fixes the selected version, not an independent binary digest.
 
 ### Labels and permissions
 
 The selected published CLI determines supported [label behavior](settings.md#labels).
-**Safety:** The pinned v0.21.0 CLI uses ID-selected labels and repository
+**Safety:** The pinned v0.27.0 CLI uses ID-selected labels and repository
 Rulesets. Unlisted objects are left untouched, and omitted or explicitly empty
 collections never request implicit deletion. An entry without an ID is
 create-only. Updating a listed Ruleset still sends supported whole-object
@@ -61,7 +61,7 @@ pinned binary before approving apply.
 
 Listing needs Issues or Pull requests read, except public resources can be listed without those grants. Label mutations need either permission at write level; Administration write alone is insufficient. The default example App token still requests only Administration write for repository fields/topics. For label mutations, separately approve the App/installation permission and a matching token request scoped to the containing repository. Installing or pinning the Action does not grant permissions.
 
-The pinned v0.21.0 label apply is ID-based and never deletes unlisted labels. An ID-less collision fails with ID guidance. The CLI disables ID writeback whenever `GITHUB_ACTIONS=true`; created label/Ruleset IDs remain available in output or error diagnostics for manual adoption. See the [labels contract](settings.md#labels).
+The pinned v0.27.0 label apply is ID-based and never deletes unlisted labels. An ID-less collision fails with ID guidance. The CLI disables ID writeback whenever `GITHUB_ACTIONS=true`; created label/Ruleset IDs remain available in output or error diagnostics for manual adoption. See the [labels contract](settings.md#labels).
 
 ## Consumer files
 

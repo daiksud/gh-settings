@@ -10,26 +10,11 @@ import (
 )
 
 func TestRepositoryLabelVocabulary(t *testing.T) {
-	data, err := os.ReadFile("../../.github/settings.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var config struct {
-		Settings struct {
-			Labels []struct {
-				Name        string `yaml:"name"`
-				Color       string `yaml:"color"`
-				Description string `yaml:"description"`
-			} `yaml:"labels"`
-		} `yaml:"settings"`
-	}
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		t.Fatal(err)
-	}
+	declaration := readManagedDeclaration(t)
 	colors := regexp.MustCompile(`^[0-9a-f]{6}$`)
 	names := map[string]bool{}
-	for _, label := range config.Settings.Labels {
-		if names[label.Name] || label.Name == "" || !colors.MatchString(label.Color) || label.Description == "" {
+	for _, label := range declaration.Labels.Values() {
+		if names[label.Name] || label.Name == "" || label.Color == nil || !colors.MatchString(*label.Color) || label.Description == nil || *label.Description == "" {
 			t.Fatalf("invalid or duplicate label: %+v", label)
 		}
 		names[label.Name] = true

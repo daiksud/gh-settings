@@ -33,7 +33,7 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, signed and linear history, and strict required checks. It requires `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions. Repository merge configuration allows squash only. No bypass actors are declared, including administrators. Every change must satisfy ordinary approval, CI, signature, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). The trusted main workflow applies this declaration only after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
+The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, signed and linear history, and strict required checks. It requires `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions. Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, signature, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The trusted main workflow applies this declaration only after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
 
 | Required check | Source and purpose | Limit |
 | --- | --- | --- |
@@ -94,10 +94,9 @@ When evaluating enforcement, inspect the applicable required checks and allowed 
 ## Local PR settings validation
 
 The required `settings-plan` job in [settings-plan.yml](../../.github/workflows/settings-plan.yml)
-validates `.github/settings.yml` from the PR merge checkout with the immutable
-public Action pin used by [settings-main.yml](../../.github/workflows/settings-main.yml).
-The [PR plan caller](../../.github/workflows/settings-pr.yml) has an independent pin
-to support candidate declarations before adoption. The validation job calls only
+validates `.github/settings.yml` from the PR merge checkout with the same immutable
+public Action pin used by [settings-pr.yml](../../.github/workflows/settings-pr.yml)
+and [settings-main.yml](../../.github/workflows/settings-main.yml). It calls only
 `command: validate`, with no token. The job uses the public Action's supported
 fresh Ubuntu 24.04 x64 VM, has only Contents read, selects no Environment and
 creates no App token. A validation failure fails the required check.
@@ -106,9 +105,9 @@ This checks the operational declaration against its actual package contract.
 The separate required `ci-pr` builds and tests the candidate source, including
 current-format process and public Action fixtures. The candidate decoder still
 rejects obsolete configuration; no compatibility decoder or translation is used.
-[#382](https://github.com/daiksud/gh-settings/issues/382) owns the repository's
-new-format declaration and compatible package adoption. This validation split
-does not rewrite or apply that declaration.
+The tracked declaration uses the current UI contract. Validation and plan do
+not apply it; the main caller performs direct apply only after a permitted
+merge.
 
 Neither check establishes live App visibility or drift. The separate
 [trusted PR plan](#active-settings-workflows) performs authenticated observation;
@@ -124,7 +123,7 @@ Every review-request update must precede the completed summary, including edits 
 
 Immediately before submitting, the workflow rereads the relevant comments, base-retarget events, reaction and PR HEAD. The base branch name and commit must also match the initial observation. A new request or changed evidence on the same SHA withholds approval. It handles draft and ready PRs, refuses closed/stale heads and outstanding change requests, avoids a duplicate same-HEAD bot approval, and pins the approving review to the verified SHA. Logs distinguish approval, an existing approval and a withheld approval with its reason. Failed or malformed API reads fail the job; a successful job that reports a withheld approval has not approved the PR.
 
-The workflow runs trusted default-branch code without checking out PR source. GitHub Actions must be permitted to approve PRs, and a submitted approval is distinct from Codex's comment/reaction or workflow success. Recheck live Ruleset approvals, any review threads, and required CI for the final HEAD. No administrative bypass is permitted; an unavailable reviewer leaves the PR blocked until an eligible approval is obtained.
+The workflow runs trusted default-branch code without checking out PR source. GitHub Actions must be permitted to approve PRs, and a submitted approval is distinct from Codex's comment/reaction or workflow success. Recheck live Ruleset approvals, any review threads, and required CI for the final HEAD. The retained administrator bypass must not be used to merge; an unavailable reviewer leaves the PR blocked until an eligible approval is obtained.
 
 ## Inspect external configuration
 
