@@ -189,7 +189,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, c := range result.Comparison.Pages {
 		b, a := c.Values()
-		entry := PagesPlanChange{Field: c.Field(), Before: b, After: a, BeforeInactive: c.BeforeInactive()}
+		entry := PagesPlanChange{Field: c.Field(), Before: b, After: a, BeforeInactive: c.BeforeInactive(), BeforeAbsent: c.BeforeAbsent()}
 		if record := c.Normalization(); record != (settings.ObservationNormalization{}) {
 			entry.Normalization = &record
 		}

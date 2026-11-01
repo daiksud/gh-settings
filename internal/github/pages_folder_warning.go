@@ -3,7 +3,7 @@ package github
 import "github.com/daiksud/gh-settings/internal/settings"
 
 func (c *PagesClient) warnPagesNormalizations(o settings.PagesObservation, d settings.PagesDeclaration) {
-	if c.NormalizationWarning == nil {
+	if c.NormalizationWarning == nil || d.Delete() {
 		return
 	}
 	if _, err := o.Values(); err != nil {

@@ -9,6 +9,12 @@ import (
 
 func PagesLine(c settings.PagesChange) string {
 	b, a := c.Values()
+	if c.Field() == "pages.lifecycle" {
+		if a == "absent" {
+			return "repository.settings.pages: delete site (source: deploy_from_a_branch, branch: none)"
+		}
+		return "repository.settings.pages: create site"
+	}
 	if record := c.Normalization(); record != (settings.ObservationNormalization{}) {
 		value, _ := a.(string)
 		choice := ""
@@ -29,6 +35,9 @@ func PagesLine(c settings.PagesChange) string {
 	a = pagesDisplayValue(c.Field(), a)
 	before, _ := json.Marshal(b)
 	after, _ := json.Marshal(a)
+	if c.BeforeAbsent() {
+		before = []byte("absent")
+	}
 	if c.BeforeInactive() {
 		before = []byte("inactive")
 	}

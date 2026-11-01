@@ -33,6 +33,6 @@ Keep decision numbers and paths stable. Record a superseding decision and update
 | 0025 | [Reconcile repository Rulesets as declarative collections](0025-declarative-repository-rulesets.md) |
 | 0026 | [Require explicit, complete security observations](0026-explicit-security-observations.md) |
 | 0027 | [Isolate repository lifecycle transitions](0027-repository-lifecycle.md) |
-| 0028 | [Manage existing Pages configuration with explicit lifecycle boundaries](0028-declarative-pages-settings.md) |
+| 0028 | [Manage Pages lifecycle through UI Source and Branch controls](0028-declarative-pages-settings.md) |
 | 0029 | [Separate Environment protection ownership from lifecycle](0029-environment-ownership-and-protection.md) |
 | 0031 | [Separate direct repository grants from effective access](0031-repository-access-ownership.md) |

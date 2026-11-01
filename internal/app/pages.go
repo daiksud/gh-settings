@@ -25,6 +25,13 @@ func applyPages(result *ApplyResult, repo repository.Repository, d settings.Page
 	result.Operations = append(result.Operations, ApplyOperation{Kind: PagesUpdate})
 	wrote, err := write.Pages(repo, d)
 	if err != nil {
+		var created interface{ PagesCreationCompleted() }
+		if errors.As(err, &created) {
+			result.Operations[i].Kind = PagesCreate
+			result.Operations[i].Status = OperationCompleted
+			i = len(result.Operations)
+			result.Operations = append(result.Operations, ApplyOperation{Kind: PagesUpdate})
+		}
 		status := OperationFailedUnknown
 		var pre PreWriteReadFailure
 		if errors.As(err, &pre) {

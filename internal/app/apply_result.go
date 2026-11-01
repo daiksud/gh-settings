@@ -48,6 +48,7 @@ const (
 	EnvironmentUpsert
 	DependabotRead
 	DependabotUpdate
+	PagesCreate
 )
 
 type ApplyOperationStatus uint8
