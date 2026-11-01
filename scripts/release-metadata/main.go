@@ -1,4 +1,4 @@
-// Command release-metadata generates GitHub release notes for a frozen interval.
+// Command release-metadata generates release notes from a frozen Git interval.
 package main
 
 import (
@@ -33,8 +33,26 @@ type release struct {
 
 type change struct {
 	sha, subject, kind, scope string
-	major, minor              bool
+	major, deprecated         bool
 	breaking                  []string
+}
+
+const (
+	breakingCategory = iota
+	deprecatedCategory
+	featureCategory
+	fixCategory
+	performanceCategory
+	maintenanceCategory
+)
+
+var categoryHeadings = [...]string{
+	"💥 BREAKING CHANGE",
+	"⚠️ DEPRECATED",
+	"✨ New Feature",
+	"🐛 Bug Fix",
+	"⚡ Performance",
+	"🛠️ Maintenance",
 }
 
 type interval struct {
@@ -43,16 +61,14 @@ type interval struct {
 	changes     []change
 }
 
-type ghAPI func(...string) ([]byte, error)
-
 func main() {
-	if err := run(".", os.Args[1:], os.Stdout, ghCommand); err != nil {
+	if err := run(".", os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "release-metadata:", err)
 		os.Exit(1)
 	}
 }
 
-func run(directory string, args []string, output io.Writer, gh ghAPI) error {
+func run(directory string, args []string, output io.Writer) error {
 	if len(args) != 4 {
 		return fmt.Errorf("usage: release-metadata OWNER/REPO VERSION SOURCE_SHA RELEASES_JSON")
 	}
@@ -61,7 +77,7 @@ func run(directory string, args []string, output io.Writer, gh ghAPI) error {
 		return err
 	}
 	defer catalog.Close()
-	notes, err := generate(directory, args[0], args[1], args[2], catalog, os.Getenv("PREVIOUS_TAG"), os.Getenv("PREVIOUS_SHA"), gh)
+	notes, err := generate(directory, args[0], args[1], args[2], catalog, os.Getenv("PREVIOUS_TAG"), os.Getenv("PREVIOUS_SHA"))
 	if err != nil {
 		return err
 	}
@@ -132,7 +148,7 @@ func history(directory, source, excludeTag string, catalog []release) (interval,
 		}
 		rangeSpec = result.previousSHA + ".." + source
 	}
-	log, err := git(directory, "log", "--reverse", "--topo-order", "--no-decorate", "--no-notes", "--no-color", "--encoding=UTF-8", "-z", "--format=%H%x00%B", rangeSpec, "--")
+	log, err := git(directory, "log", "--first-parent", "--reverse", "--topo-order", "--no-decorate", "--no-notes", "--no-color", "--encoding=UTF-8", "-z", "--format=%H%x00%P%x00%B", rangeSpec, "--")
 	if err != nil {
 		return result, err
 	}
@@ -140,19 +156,30 @@ func history(directory, source, excludeTag string, catalog []release) (interval,
 		return result, nil
 	}
 	fields := strings.Split(strings.TrimSuffix(log, "\x00"), "\x00")
-	if len(fields)%2 != 0 {
+	if len(fields)%3 != 0 {
 		return result, fmt.Errorf("invalid Git log record")
 	}
-	for i := 0; i < len(fields); i += 2 {
+	for i := 0; i < len(fields); i += 3 {
 		if !sourcePattern.MatchString(fields[i]) {
 			return result, fmt.Errorf("invalid Git log commit")
 		}
-		result.changes = append(result.changes, parseChange(fields[i], fields[i+1]))
+		// A main-line squash commit represents one change. Empty commits do not
+		// change the product, even if their messages contain release markers.
+		if parents := strings.Fields(fields[i+1]); len(parents) > 0 {
+			diff, err := git(directory, "diff-tree", "--no-commit-id", "--name-only", "-r", parents[0], fields[i], "--")
+			if err != nil {
+				return result, err
+			}
+			if diff == "" {
+				continue
+			}
+		}
+		result.changes = append(result.changes, parseChange(fields[i], fields[i+2]))
 	}
 	return result, nil
 }
 
-func generate(directory, repository, version, source string, reader io.Reader, expectedPrevious, expectedSHA string, gh ghAPI) (string, error) {
+func generate(directory, repository, version, source string, reader io.Reader, expectedPrevious, expectedSHA string) (string, error) {
 	if !repoPattern.MatchString(repository) || !versionPattern.MatchString(version) || !sourcePattern.MatchString(source) {
 		return "", fmt.Errorf("invalid repository, version, or source commit")
 	}
@@ -171,9 +198,6 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 	if (expectedPrevious != "" && previous != expectedPrevious) || (expectedSHA != "" && interval.previousSHA != expectedSHA) {
 		return "", fmt.Errorf("published release boundary changed since version resolution")
 	}
-	if _, err := git(directory, "cat-file", "-e", source+":.github/release.yml"); err != nil {
-		return "", fmt.Errorf("release source lacks .github/release.yml")
-	}
 	tag, err := git(directory, "tag", "--list", version)
 	if err != nil {
 		return "", err
@@ -184,23 +208,22 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 			return "", fmt.Errorf("existing tag targets another commit")
 		}
 	}
-	args := []string{"api", "-X", "POST", "repos/" + repository + "/releases/generate-notes", "-f", "tag_name=" + version, "-f", "target_commitish=" + source, "-f", "configuration_file_path=.github/release.yml"}
-	if previous != "" {
-		args = append(args, "-f", "previous_tag_name="+previous)
-	}
-	data, err := gh(args...)
-	if err != nil {
-		return "", fmt.Errorf("GitHub release-note generation failed: %w", err)
-	}
-	var generated struct {
-		Body *string `json:"body"`
-	}
-	if json.Unmarshal(data, &generated) != nil || generated.Body == nil || strings.TrimSpace(*generated.Body) == "" {
-		return "", fmt.Errorf("GitHub returned no release-note body")
-	}
 	var notes strings.Builder
-	notes.WriteString(strings.TrimRight(*generated.Body, "\n"))
-	notes.WriteString("\n")
+	notes.WriteString("## What's Changed\n")
+	groups := make([][]change, len(categoryHeadings))
+	for _, c := range interval.changes {
+		category := c.category()
+		groups[category] = append(groups[category], c)
+	}
+	for category, changes := range groups {
+		if len(changes) == 0 {
+			continue
+		}
+		fmt.Fprintf(&notes, "\n### %s\n\n", categoryHeadings[category])
+		for _, c := range changes {
+			fmt.Fprintf(&notes, "- [%s](https://github.com/%s/commit/%s)\n", markdownText(c.subject), repository, c.sha)
+		}
+	}
 	migration := false
 	for _, c := range interval.changes {
 		if !c.major {
@@ -227,23 +250,40 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 	return notes.String(), nil
 }
 
+func (c change) category() int {
+	switch {
+	case c.major:
+		return breakingCategory
+	case c.deprecated:
+		return deprecatedCategory
+	case c.kind == "feat":
+		return featureCategory
+	case c.kind == "fix":
+		return fixCategory
+	case c.kind == "perf":
+		return performanceCategory
+	default:
+		return maintenanceCategory
+	}
+}
+
 func parseChange(sha, message string) change {
 	lines := strings.Split(strings.ReplaceAll(message, "\r\n", "\n"), "\n")
 	c := change{sha: sha, subject: lines[0]}
 	if m := headerPattern.FindStringSubmatch(lines[0]); m != nil {
 		c.kind, c.scope, c.subject = strings.ToLower(m[1]), m[3], m[5]
 		c.major = m[4] != ""
-		c.minor = c.kind == "feat" || c.kind == "perf"
 	}
-	c.breaking, c.minor = footers(lines[1:], c.minor)
+	c.breaking, c.deprecated = footers(lines[1:])
 	c.major = c.major || len(c.breaking) > 0
 	return c
 }
 
 // Extract compatibility footers, not example markers inside fenced code.
-func footers(lines []string, minor bool) ([]string, bool) {
+func footers(lines []string) ([]string, bool) {
 	var result, value []string
 	inFooters, collecting, blank := false, false, false
+	deprecated := false
 	fence := ""
 	flush := func() {
 		if collecting {
@@ -267,7 +307,7 @@ func footers(lines []string, minor bool) ([]string, bool) {
 				value = append(value, footer[3])
 			}
 			if footer[1] == "DEPRECATED" && footer[2] == ": " {
-				minor = true
+				deprecated = true
 			}
 			blank = false
 			continue
@@ -278,7 +318,7 @@ func footers(lines []string, minor bool) ([]string, bool) {
 		blank = strings.TrimSpace(line) == ""
 	}
 	flush()
-	return result, minor
+	return result, deprecated
 }
 
 func markdownText(text string) string {
@@ -293,12 +333,4 @@ func git(directory string, args ...string) (string, error) {
 		return "", fmt.Errorf("git %s failed: %w", args[0], err)
 	}
 	return string(data), nil
-}
-
-func ghCommand(args ...string) ([]byte, error) {
-	data, err := exec.Command("gh", args...).Output()
-	if err != nil {
-		return nil, fmt.Errorf("GitHub metadata request failed: %w", err)
-	}
-	return data, nil
 }
