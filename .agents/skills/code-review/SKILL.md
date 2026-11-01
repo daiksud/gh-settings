@@ -30,7 +30,9 @@ Treat the PR title as the header and the PR body as the body/footers of **one** 
 
 Require `type: description` or `type(scope): description`, adding `!` immediately before `:` for a breaking change. Select the type by the **result for gh-settings users**, not by whether the implementation added code or fixed a problem somewhere in the repository.
 
-Branch names are identifiers, not classification evidence. Do not require type prefixes or request a branch rename or replacement PR to correct a type. Authors and reviewers edit the PR title and labels instead. Check labels against the actual diff, independently of an associated Issue's initial classification; remove stale path suggestions when the PR changes scope. File paths alone do not determine feature, fix, performance, refactoring, or compatibility intent. Reconcile the final title, labels, body, and squash message before merging.
+Branch names are identifiers, not classification evidence. Do not require type prefixes or request a branch rename or replacement PR to correct a type. Authors and reviewers correct the proposed squash message directly. File paths alone do not determine feature, fix, performance, refactoring, or compatibility intent. Reconcile the final title, body, and squash message with the diff before merging.
+
+Labels are independent organization metadata, including existing path-based and Dependabot labels. Do not synchronize them with types or compatibility markers, require type/label agreement, or make labels a merge or release gate. Release versions and note categories come from the actual committed messages in the fixed release interval; a later PR edit or relabeling cannot change them. The [release guide](../../../docs/contributing/releases.md#release-notes-from-committed-messages) owns category precedence and footer handling.
 
 For `feat` and `fix`, **users** are people consuming the gh-settings CLI or public GitHub Action in their own repositories, not contributors maintaining this repository. Compare the observable product behavior before and after: supported commands, configuration, output/errors, Action inputs/outputs, installation, and execution. Product features intended for an upcoming release count even before publication. Build scripts, CI, release tooling, and test harnesses used only to maintain this repository are not themselves gh-settings product features.
 
@@ -63,7 +65,7 @@ Examples of the product-user boundary:
 | Add a build target or repair a broken internal build script | `build` | The tool's supported behavior does not change |
 | Add a CI job or repair a failing PR workflow | `ci` | Repository maintenance automation changes, not the product |
 
-Do not label internal work `feat` merely because it adds functionality or `fix` merely because it repairs a bug. A faster CI pipeline is `ci`, not a gh-settings `perf` change. Conversely, a public Action behavior change can be `feat` or `fix` even when implemented in YAML or shell. Tests, documentation, and required wiring for the same product change remain part of that change's type. Classify by demonstrated user-visible consequences, not speculative indirect benefits such as faster future releases.
+Do not classify internal work as `feat` merely because it adds functionality or `fix` merely because it repairs a bug. A faster CI pipeline is `ci`, not a gh-settings `perf` change. Conversely, a public Action behavior change can be `feat` or `fix` even when implemented in YAML or shell. Tests, documentation, and required wiring for the same product change remain part of that change's type. Classify by demonstrated user-visible consequences, not speculative indirect benefits such as faster future releases.
 
 Use the pinned [commitlint configuration](../../../commitlint.config.mjs) and [development guide](../../../docs/contributing/development.md#pull-request-messages) for syntax/style checks: the conventional 11-type list, lowercase type/scope, subject-case restrictions, no final subject period, and no surrounding title whitespace. Do not add arbitrary title/body line-length limits. A passing lint result does not establish that the type matches the diff, that the scope is coherent, or that breaking changes have been disclosed.
 
@@ -82,7 +84,7 @@ configuration, outputs, exit codes, and public Action inputs and outputs.
 
 Conventional Commits marks a breaking change with **either** a `!` immediately
 before the title colon (`type!:` or `type(scope)!:`) **or** a
-`BREAKING CHANGE:` footer. Either is sufficient; do not require both,
+`BREAKING CHANGE:` or `BREAKING-CHANGE:` footer. Either marker form is sufficient; do not require both a header marker and a footer,
 automatic migration, or upgrade guides during v0.x. Reviewers assess whether
 the PR accurately describes the user impact. PRLint only checks the title
 and body together with commitlint, not a separate semantic policy.

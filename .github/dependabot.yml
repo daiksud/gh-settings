@@ -1,6 +1,6 @@
 # Dependabot supplies initial maintenance labels and Conventional Commit types.
 # Branch names are unrestricted and do not determine release classifications.
-# Reviewers can change PR types or add version labels when warranted.
+# Reviewers assess PR types by impact; labels remain independent metadata.
 version: 2
 updates:
   - package-ecosystem: "gomod"

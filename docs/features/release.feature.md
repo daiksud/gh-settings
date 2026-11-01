@@ -112,7 +112,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - Then it fails without repairing an immutable release or fabricating a match
 - And missing/malformed release metadata is not interpreted as an empty catalog
 
-### Rule: Generate native release notes at a fixed boundary
+### Rule: Generate release notes from committed messages at a fixed boundary
 
 #### Scenario: Select the previous published stable release
 
@@ -122,32 +122,44 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - And its tag and resolved commit are frozen before validation
 - And a shallow checkout, missing tag, unrelated predecessor, or changed boundary stops publication
 
-#### Scenario: Generate GitHub categories and preserve migration guidance
+#### Scenario: Classify the actual squash messages and preserve migration guidance
 
-- Given reviewed labels on the merged PRs included by GitHub
-- When the publisher requests native notes with the version, frozen target SHA, previous tag, and `.github/release.yml`
-- Then breaking labels take precedence over deprecation, feature/performance and fix labels
-- And deprecation takes precedence over feature/performance and fix labels
-- And the Maintenance catch-all retains every remaining PR, including revert and unlabeled PRs
-- And a minimal supplement preserves committed breaking migration footers as escaped text
-- And an immutable comparison covers the complete source interval, including direct commits
-- And native notes are not claimed to contain every PR body or every Git commit as an entry
+- Given the actual committed messages in the frozen predecessor-SHA-to-source-SHA interval
+- When the publisher generates notes from that Git history
+- Then each substantive first-parent main commit appears once under the first matching category
+- And development-branch commits and commits without tree changes are excluded
+- And a header `!` or formal `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer selects Breaking Change
+- Otherwise a formal `DEPRECATED:` footer selects Deprecated
+- Otherwise `feat` selects New Feature, `fix` selects Bug Fix, and `perf` selects the separate Performance category
+- Otherwise Maintenance retains the commit, including internal tooling changes, reverts, and legacy headers
+- And prose, Markdown headings, and quoted or fenced marker examples do not become compatibility signals
+- And each entry links its exact commit and escapes message text
+- And migration guidance preserves breaking footer details, or points to a breaking commit without such a footer
+- And a fixed-SHA comparison covers the complete source interval, including direct commits
+
+#### Scenario: PR metadata changes after the squash commit
+
+- Given committed feature, fix, performance, and compatibility signals
+- And their PR titles, bodies, or labels are later changed or missing
+- When the same frozen interval is rendered again
+- Then its categories and message text are unchanged
+- And generation needs no PR metadata, label synchronization, label check, or GitHub generate-notes request
 
 #### Scenario: Generation fails before tag creation
 
-- Given the note API fails or returns missing, malformed, or empty content
+- Given the release catalog is malformed, history is incomplete, or the frozen publication boundary changes
 - When new notes are prepared
 - Then the publisher stops before creating a remote tag or draft
-- And it does not silently use a second local categorized renderer
+- And it does not substitute a different commit interval or metadata source
 
 ### Test mapping
 
-The [release-metadata tests](../../scripts/release-metadata/main_test.go) use temporary Git repositories and an injected API boundary to exercise version precedence, complete frozen ranges, preparation writes, immutable retries, invalid catalogs/history, exact native generation arguments, preserved migration details, and failures. They do not execute GitHub's renderer or mutate GitHub. The repository already has published stable releases; automatic first-release baseline selection is deliberately unsupported.
+The [release-metadata tests](../../scripts/release-metadata/main_test.go) use temporary Git repositories to exercise committed category precedence, formal footer recognition, escaped subjects and migration details, complete frozen ranges, invalid catalogs/history, and failures. Missing or misleading PR metadata cannot change the output. The separate [Python tests](../../.github/scripts/test_release_version.py) own version calculation and retry selection. These tests do not mutate GitHub. The repository already has published stable releases; automatic first-release baseline selection is deliberately unsupported.
 
-The [release fixtures](../../tests/release.sh) invoke the real publisher with a local `gh` stand-in. They retain first publication, failed generation before remote state, complete/incomplete retries, note preservation, source/version conflicts, missing or altered assets, annotated tags, and final tag rechecks. The full expected body combines independently supplied native fixture content, migration details, and the unchanged installation/checksum/identity template, including long content. No fixture creates a GitHub tag or release.
+The [release fixtures](../../tests/release.sh) invoke the real publisher with a local `gh` stand-in. They retain first publication, failed generation before remote state, complete/incomplete retries, note preservation, source/version conflicts, missing or altered assets, annotated tags, and final tag rechecks. The independently expected body combines categories from fixture commits, migration details, and the unchanged installation/checksum/identity template, including long content. The stand-in rejects PR metadata and native note-generation requests. No fixture creates a GitHub tag or release.
 
-The [workflow gate tests](../../tests/github-actions/release_test.go) protect frozen source/version/artifact/output mappings and ordinary prerequisite-success dependencies. `TestReleaseOptionalSourcePin` executes the actual source step with Bash and an owned `gh` stub: omitted/matching pins succeed, while invalid/mismatched pins, invalid responses, and API failures emit no source output. The fixture requires Bash 5 like hosted Ubuntu; structural checks remain available on older local shells. [Metadata wiring tests](../../tests/github-actions/release_metadata_test.go) protect the manual-only trigger, read-only resolver, frozen predecessor outputs, and native category precedence/catch-all.
+The [workflow gate tests](../../tests/github-actions/release_test.go) protect frozen source/version/artifact/output mappings and ordinary prerequisite-success dependencies. `TestReleaseOptionalSourcePin` executes the actual source step with Bash and an owned `gh` stub: omitted/matching pins succeed, while invalid/mismatched pins, invalid responses, and API failures emit no source output. The fixture requires Bash 5 like hosted Ubuntu; structural checks remain available on older local shells. [Metadata wiring tests](../../tests/github-actions/release_metadata_test.go) protect the manual-only trigger, read-only resolver, and frozen predecessor outputs.
 
 The existing [publisher preflight](../../scripts/release-publisher/main_test.go), [lookup/tag](../../scripts/release-publisher/lookup_test.go), [state](../../scripts/release-publisher/state_test.go), [asset](../../scripts/release-publisher/assets_test.go), and [controller](../../scripts/release-publisher/publish_test.go) tests retain validation order, exact checksum/manifest bytes, duplicate/unknown assets, downloaded hashes, missing-only uploads, immutable published no-ops, and fresh confirmation. The [CLI test](../../internal/cli/run_test.go) still owns the explicit version command.
 
-PR/main CI establishes current-source integration, not real published downloads or live native-note rendering. Only an explicitly authorized manual release run establishes operational publication evidence. No successful merge or calculated version alone authorizes that run.
+PR/main CI establishes current-source integration, not real published downloads or live GitHub rendering. Only an explicitly authorized manual release run establishes operational publication evidence. No successful merge or calculated version alone authorizes that run.

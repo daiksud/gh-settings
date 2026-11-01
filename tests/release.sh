@@ -19,16 +19,6 @@ if [[ "$1" == api ]]; then
   shift
   if [[ "$1" == -X ]]; then
     case "$2:$3" in
-      POST:*/releases/generate-notes)
-        [[ $# == 11 && "$3" == "repos/$GITHUB_REPOSITORY/releases/generate-notes" && "$4" == -f && "$5" == "tag_name=$VERSION" && "$6" == -f && "$7" == "target_commitish=$SOURCE_SHA" && "$8" == -f && "$9" == configuration_file_path=.github/release.yml && "${10}" == -f && "${11}" == previous_tag_name=v1.2.2 ]] || {
-          echo 'unexpected release-note generation request' >&2; exit 1
-        }
-        [[ "${MOCK_GENERATION_FAILURE:-}" != 1 ]] || { echo 'fixture generation failed' >&2; exit 1; }
-        if [[ "${MOCK_INVALID_NOTES:-}" == 1 ]]; then
-          printf '{"body":null}\n'
-        else
-          jq -n --rawfile body "$MOCK_ROOT/generated-notes" '{body:$body}'
-        fi ;;
       POST:*/git/refs)
         [[ $# == 7 && "$3" == "repos/$GITHUB_REPOSITORY/git/refs" && "$4" == -f && "$5" == "ref=refs/tags/$VERSION" && "$6" == -f && "$7" == "sha=$SOURCE_SHA" ]] || {
           echo 'unexpected tag creation request' >&2; exit 1
@@ -138,14 +128,11 @@ cp "$repo_root/scripts/publish-release.sh" "$fixture/source/scripts/publish-rele
 cp "$repo_root/scripts/release-publisher/main.go" "$fixture/source/scripts/release-publisher/main.go"
 cp "$repo_root/scripts/release-metadata/main.go" "$fixture/source/scripts/release-metadata/main.go"
 printf 'v1.2.3\n' > "$fixture/source/action/cli-version"
-mkdir -p "$fixture/source/.github"
-cp "$repo_root/.github/release.yml" "$fixture/source/.github/release.yml"
-printf '## 🚨 BREAKING CHANGE\n\n* GitHub fixture PR #1\n' > "$fixture/generated-notes"
 git -C "$fixture/source" init --quiet
 git -C "$fixture/source" config user.name Fixture
 git -C "$fixture/source" config user.email fixture@example.invalid
 git -C "$fixture/source" config commit.gpgsign false
-git -C "$fixture/source" add .github/release.yml action/cli-version
+git -C "$fixture/source" add action/cli-version
 git -C "$fixture/source" commit --quiet --allow-empty -m 'chore: initialize release fixture'
 git -C "$fixture/source" -c tag.gpgsign=false tag v1.2.2
 printf 'feat!: update the test fixture\n\nBREAKING CHANGE: Migrate the previous fixture.\n' > "$fixture/message"
@@ -153,12 +140,16 @@ if [[ "${MOCK_LONG_NOTES:-1}" == 1 ]]; then
   head -c 262144 /dev/zero | tr '\0' x >> "$fixture/message"
   printf '\n' >> "$fixture/message"
 fi
-git -C "$fixture/source" commit --quiet --allow-empty -F "$fixture/message"
+printf 'released change\n' > "$fixture/source/change.txt"
+git -C "$fixture/source" add change.txt
+git -C "$fixture/source" commit --quiet -F "$fixture/message"
 SOURCE_SHA="$(git -C "$fixture/source" rev-parse HEAD)"
 export SOURCE_SHA
 PREVIOUS_SHA="$(git -C "$fixture/source" rev-parse 'v1.2.2^{commit}')"
 export PREVIOUS_SHA
-git -C "$fixture/source" commit --quiet --allow-empty -m 'feat: do not include later HEAD'
+printf 'later change\n' > "$fixture/source/change.txt"
+git -C "$fixture/source" add change.txt
+git -C "$fixture/source" commit --quiet -m 'feat: do not include later HEAD'
 printf '[[{"id":120,"tag_name":"v1.2.2","draft":false,"prerelease":false,"published_at":"2026-10-01T00:00:00Z"}]]\n' > "$fixture/catalog.json"
 publish() { bash "$fixture/source/scripts/publish-release.sh"; }
 reject() {
@@ -200,13 +191,15 @@ fi
 [[ ! -e "$fixture/tag.json" && ! -e "$fixture/body" ]]
 mv "$fixture/catalog.saved" "$fixture/catalog.json"
 
-# Note generation failure cannot leave a tag, draft, or uploaded asset.
-MOCK_GENERATION_FAILURE=1 reject
-grep -q 'GitHub release-note generation failed' "$fixture/output"
-MOCK_INVALID_NOTES=1 reject
-grep -q 'GitHub returned no release-note body' "$fixture/output"
+# A changed frozen boundary must stop local note generation before remote writes.
+PREVIOUS_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa reject
+grep -q 'published release boundary changed since version resolution' "$fixture/output"
 [[ ! -e "$fixture/tag.json" && ! -e "$fixture/body" ]]
 [[ "$(find "$fixture/assets" -type f | wc -l | tr -d ' ')" == 0 ]]
+if grep -q '^api -X ' "$fixture/calls"; then
+  echo 'note generation failure created remote state' >&2
+  exit 1
+fi
 
 # The tag endpoint hides drafts in this mock, as it does in GitHub's REST API.
 # First run must use the created draft ID, then publish its three assets.
@@ -217,9 +210,9 @@ cmp "$fixture/expected-checksums" "$RELEASE_DIR/SHA256SUMS"
 expected_manifest="{\"version\":\"v1.2.3\",\"commit\":\"$SOURCE_SHA\",\"macos_sha256\":\"69e398f9f4479aba0fcc353dc9acb6819c0a7d260f6e104ca65aae7ac2c21b85\",\"linux_sha256\":\"8e05650e3597d536838387f4fb4f08fbd95624760f1ce44bbff4e35de8a353e8\",\"checksums_sha256\":\"98f9ece90dea10c02544983c6f8bc3e3ccef162fa20869eecebe1df30b297abe\"}"
 IFS= read -r actual_marker < "$fixture/body"
 [[ "$actual_marker" == "<!-- gh-settings-release: $expected_manifest -->" ]]
-# Independently assemble the native response plus the retained migration supplement.
+# Independently assemble the committed change and retained migration supplement.
 {
-  cat "$fixture/generated-notes"
+  printf "## What's Changed\n\n### 💥 BREAKING CHANGE\n\n- [update the test fixture](https://github.com/%s/commit/%s)\n" "$GITHUB_REPOSITORY" "$SOURCE_SHA"
   printf '\n## ⚠️ Migration guidance\n\n- [update the test fixture](https://github.com/%s/commit/%s)\n\n  > Migrate the previous fixture.\n' "$GITHUB_REPOSITORY" "$SOURCE_SHA"
   if [[ "${MOCK_LONG_NOTES:-1}" == 1 ]]; then
     printf '  > '
@@ -268,18 +261,21 @@ cmp "$fixture/expected-notes" "$fixture/body"
 [[ "$(cat "$fixture/draft")" == false ]]
 [[ "$(find "$fixture/assets" -type f | wc -l | tr -d ' ')" == 3 ]]
 [[ "$(grep -c '^release upload ' "$fixture/calls")" == 3 ]]
-grep -q '^## 🚨 BREAKING CHANGE$' "$fixture/body"
+grep -q '^### 💥 BREAKING CHANGE$' "$fixture/body"
 grep -q 'Migrate the previous fixture' "$fixture/body"
 if grep -q 'do not include later HEAD\|initialize release fixture' "$fixture/body" "$fixture/calls"; then
   echo 'release notes used history outside the frozen range' >&2
   exit 1
 fi
-[[ "$(grep -n '^## 🚨' "$fixture/body" | cut -d: -f1)" -lt "$(grep -n '^## 📦' "$fixture/body" | cut -d: -f1)" ]]
+[[ "$(grep -n '^### 💥' "$fixture/body" | cut -d: -f1)" -lt "$(grep -n '^## 📦' "$fixture/body" | cut -d: -f1)" ]]
 if [[ "${MOCK_LONG_NOTES:-1}" == 1 ]]; then
   [[ "$(wc -c < "$fixture/body")" -gt 262144 ]]
 fi
 cp "$fixture/body" "$fixture/original-notes"
-generations="$(grep -c '^api -X POST repos/owner/repo/releases/generate-notes ' "$fixture/calls")"
+if grep -q 'releases/generate-notes\|/pulls\|/issues' "$fixture/calls"; then
+  echo 'release notes consulted mutable GitHub metadata' >&2
+  exit 1
+fi
 
 # Later publications cannot change notes or make an existing release regenerate.
 # The intentionally unavailable new predecessor would fail first-time generation.
@@ -409,5 +405,8 @@ previous_resolutions="$(grep -c '^api repos/owner/repo/git/tags/' "$fixture/call
 publish
 [[ "$(cat "$fixture/draft")" == false ]]
 [[ "$(grep -c '^api repos/owner/repo/git/tags/' "$fixture/calls")" == "$((previous_resolutions + 2))" ]]
-[[ "$(grep -c '^api -X POST repos/owner/repo/releases/generate-notes ' "$fixture/calls")" == "$generations" ]]
+if grep -q 'releases/generate-notes\|/pulls\|/issues' "$fixture/calls"; then
+  echo 'release retry consulted mutable note metadata' >&2
+  exit 1
+fi
 echo 'release mock tests passed'
