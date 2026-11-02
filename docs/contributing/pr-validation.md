@@ -22,8 +22,20 @@ cannot create a skipped-success replacement for a prior failed job.
 
 ## Message and settings validation
 
-`prlint` checks the current PR title and body together via commitlint. A green
-result confirms syntax, not semantic correctness.
+`prlint` checks the current PR title and body together via commitlint. For PRs
+that run the job, a green result confirms syntax, not semantic correctness.
+
+PRs authored by `dependabot[bot]` skip the `prlint` job, matching the
+[gh-qw workflow](https://github.com/daiksud/gh-qw/blob/main/.github/workflows/prlint.yml).
+The condition uses the PR author, so a human rerun still skips a Dependabot PR;
+other PRs retain the full validation even when the triggering actor is a bot.
+Keep the workflow's PR events and required job name: this is a job-level skip,
+not a workflow filter or removal of the required check. GitHub reports a skipped
+job as successful for required-check purposes, so the existing `prlint` ruleset
+requirement remains satisfied without changing protections. See
+[GitHub's job-condition contract](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-jobs-with-conditions).
+Normal review, squash-message classification and other required checks still
+apply to Dependabot PRs.
 
 The required `settings-plan` job validates the PR merge checkout's operational
 `.github/settings.yml` with the same immutable public Action pin as the trusted
