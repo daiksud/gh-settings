@@ -11,7 +11,6 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR events run staged code validation and publish the native `ci-pr` aggregate check |
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
-| [`labeler.yml`](../../.github/workflows/labeler.yml) | PR-target events suggest add-only labels for unambiguous all-files path categories without executing candidate code |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
 | [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Credential-free validation of the merge declaration with its pinned operational consumer |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
@@ -60,8 +59,6 @@ The main caller runs only on a push to `main` changing `.github/settings.yml` or
 
 The token-creation step references `vars.ANSWER26_CLIENT_ID` and `secrets.ANSWER26_PRIVATE_KEY`, limits installation scope to the triggering owner/repository, and requests Administration write and Issues write. The resulting token is passed only to the Action's apply input; the token Action owns its normal post-job revocation. Source checks verify those bindings, not the remote App installation or actual token revocation.
 
-The operational callers manage the twenty existing labels in [this repository's configuration](../../.github/settings.yml) by their verified numeric IDs, with every supported value explicit. Unlisted objects remain unmanaged and are never implicitly deleted. The main caller requests Issues write for label mutations; installation grants are unchanged. This permission also permits operations on issues, comments, assignees and milestones. See the [label permission contract](../github-actions.md#labels-and-permissions) before changing label definitions or token requests.
-
 The configuration also selects the existing `gh-settings` and `copilot`
 Environments by name with complete supported observations. `gh-settings`
 retains administrator bypass disabled and only the typed Branch `main` pattern;
@@ -71,7 +68,7 @@ unmanaged. A fresh complete match skips Environment writes; a prior plan is
 not a lock. Read back the policy and typed patterns after any apply rather than
 inferring effective deployment security from a successful workflow alone.
 
-When the fresh labels comparison performed by apply has no operations, that invocation sends no label mutations. An earlier zero-difference PR plan does not guarantee that result: labels can change before apply reads them. It also does not make the whole apply write-free, because declared repository fields and topics retain their direct PATCH/PUT behavior. A labels read or mutation failure occurs after those earlier writes and does not roll them back. Any claim that an adoption or run performed no label writes needs evidence for that exact execution, not just a prior plan or the generic success message.
+An earlier zero-difference PR plan does not make a later apply write-free: declared repository fields and topics retain their direct PATCH/PUT behavior. Earlier successful writes remain applied if a later operation fails. Assess the exact execution rather than inferring no writes from a prior plan or the generic success message.
 
 There is no prepare/handoff job or main-side pre-approval plan. The PR Summary and exact committed configuration provide review context; direct apply does not consume a saved plan and may overwrite intervening changes to managed values. The presence of `environment: gh-settings` identifies the selected Environment but does not establish whether reviewers are currently configured.
 
