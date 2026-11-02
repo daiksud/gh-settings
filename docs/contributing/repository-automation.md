@@ -79,11 +79,32 @@ There is no prepare/handoff job or main-side pre-approval plan. The PR Summary a
 
 The [guard workflow](../../.github/workflows/settings-env.yml) checks out trusted `main` policy into `.policy` and the candidate PR merge into `.candidate`. The candidate is inspected only as YAML data. The job has a read-only token, installs Go using trusted configuration, and runs the main-branch [scope test](../../tests/github-actions/settings_environment_scope_test.go) with `GH_SETTINGS_WORKFLOWS_DIR` pointing at the candidate workflows.
 
-The `gh-settings` Environment allowlist contains exactly two locations: `.github/workflows/settings-main.yml/jobs.apply` on push to main, and `.github/workflows/settings-pr.yml/jobs.plan` on trusted `pull_request_target` targeting main. The PR job must have the exact event/main-ref/repository/base condition, and only opened/synchronize/reopened activities are permitted. All other `gh-settings` references are rejected. The existing main reference remains mandatory; the new PR reference may be absent while the guard is deployed before its caller, but absence cannot grant another path access. Dynamic Environment names, workflow/job aliases or merges, duplicate mapping keys, dynamic job names and job-level reusable-workflow calls remain rejected. The retired `gh-settings-plan` Environment is forbidden in every workflow. Unrelated literal Environment names retain their existing boundaries.
+The `gh-settings` Environment allowlist contains exactly two locations: `.github/workflows/settings-main.yml/jobs.apply` on push to main, and `.github/workflows/settings-pr.yml/jobs.plan` on trusted `pull_request_target` targeting main. The main reference is mandatory. The PR reference may be absent, but absence cannot grant another path access. All other `gh-settings` references are rejected.
+
+The plan-only PR caller permits opened, synchronize and reopened activities
+with the exact event/main-ref/repository/base condition. A combined PR caller
+must also handle edited events without a workflow-level path filter and run
+an unconditional `settings-plan` validation job. Its separate `plan` job must
+depend on that validation, retain the trusted condition, exclude edited events
+and require `needs.settings-plan.outputs.plan-required == 'true'`. Validation
+and plan must have independent per-PR concurrency groups; validation does not
+cancel active runs and plan cancels superseded plans.
+
+The `settings-plan` job ID and display name are reserved for real validation in
+`settings-plan.yml` or `settings-pr.yml`. At least one approved validator must
+remain; when both are present they must use the same immutable public Action
+pin. The guard requires a merge checkout without persisted credentials and
+the pinned Action's `command: validate`, with only Contents read and no
+Environment or injected credentials. Conditional validation steps, ignored
+failures and additional execution steps are rejected. The combined validator
+cannot have a job condition or prerequisite job; its only extra step handles
+the explicit event base/head inputs and produces plan eligibility.
+
+Dynamic Environment names, workflow/job aliases or merges, duplicate mapping keys, dynamic job names and job-level reusable-workflow calls remain rejected. The retired `gh-settings-plan` Environment is forbidden in every workflow. Unrelated literal Environment names retain their existing boundaries.
 
 The guard was deployed before the operational PR credential consumer. GitHub [evaluates `pull_request_target` using the default branch](https://github.blog/changelog/2025-11-07-actions-pull_request_target-and-environment-branch-protections-changes/), including Environment branch matching; existing main-only deployment restrictions do not need to be widened. The permitted PR job still needs trusted executing code and candidate YAML treated only as data; path/event allowlisting does not inspect every step body. The allowlist does not configure live Environment restrictions or issue tokens itself.
 
-The guard does not inspect the allowed apply job's step bodies, approve Action revisions, restrict its API operations, validate actual token grants, or configure remote Environment/ruleset settings. The allowed job could still be changed to execute code with privileged credentials. Review that job, its referenced code, and changes to the guard/policy itself under the [apply-path protection guidance](../github-actions.md#protect-the-apply-path); later runs use whatever policy has been merged into `main`.
+The guard checks validation structure, not the inline merge/path handler's implementation. It does not inspect the allowed apply job's step bodies, approve Action revisions, restrict its API operations, validate actual token grants, or configure remote Environment/ruleset settings. The allowed job could still be changed to execute code with privileged credentials. Review the trusted step bodies, their referenced code, and changes to the guard/policy itself under the [apply-path protection guidance](../github-actions.md#protect-the-apply-path); later runs use whatever policy has been merged into `main`.
 
 The dedicated check name is **`settings-env`**. The policy reserves that job ID/display name for the guard and rejects collisions elsewhere in inspected workflows. The ordinary Go suite also runs the scope assertion and contributes to `ci-pr` or `ci-push`.
 
