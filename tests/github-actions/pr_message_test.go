@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"go.yaml.in/yaml/v4"
 )
 
 func TestIndependentPRMessageValidation(t *testing.T) {
@@ -16,6 +18,9 @@ func TestIndependentPRMessageValidation(t *testing.T) {
 		Types []string `yaml:"types"`
 	}
 	node := w.On["pull_request"]
+	if node.Kind != yaml.MappingNode || len(node.Content) != 2 || node.Content[0].Value != "types" {
+		t.Fatal("every PR must trigger the workflow so the required prlint check is reported")
+	}
 	if err := node.Decode(&event); err != nil {
 		t.Fatal(err)
 	}
@@ -23,8 +28,11 @@ func TestIndependentPRMessageValidation(t *testing.T) {
 		t.Fatal("message edits need their own concurrency group and validation event")
 	}
 	j := w.Jobs["prlint"]
-	if j.If != "" || j.Needs != "" || j.Environment != "" || j.Continue || j.Timeout != 5 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Steps) != 3 {
-		t.Fatal("stable required message job must always run without write permissions")
+	if j.If != "github.event.pull_request.user.login != 'dependabot[bot]'" {
+		t.Fatal("skip the required job only for Dependabot-authored PRs, independently of the event actor")
+	}
+	if j.Needs != "" || j.Environment != "" || j.Continue || j.Timeout != 5 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Steps) != 3 {
+		t.Fatal("ordinary PRs must retain strict message validation without write permissions")
 	}
 	if j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || j.Steps[0].With["persist-credentials"] != "false" {
 		t.Fatal("message policy checkout must not retain credentials")

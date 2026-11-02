@@ -9,7 +9,7 @@ The workflow files describe source-controlled behavior. Required reviews/checks,
 | Workflow | Trigger and responsibility |
 | --- | --- |
 | [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR events run staged code validation and publish the native `ci-pr` aggregate check |
-| [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate the current title/body through `prlint` |
+| [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
 | [`labeler.yml`](../../.github/workflows/labeler.yml) | PR-target events suggest add-only labels for unambiguous all-files path categories without executing candidate code |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
@@ -25,7 +25,7 @@ Release publication has no Issue-comment bridge. The owner starts [`release.yml`
 
 Every PR event sets Draft, resolves the static build and acceptance matrices, runs commit-stage, then marks the PR Ready before process and public-Action acceptance. Both acceptance legs verify the same manifested binary from commit-stage without rebuilding it. The final native `ci-pr` aggregate job succeeds only when every prerequisite succeeded. Title/body edits rerun the same stages rather than introducing skipped-success required checks.
 
-The independent `prlint` job checks the current title and body together as the proposed squash message. GitHub's required-check settings enforce this separately from the code reporter; the reporter does not query or enforce rulesets. See [PR validation](pr-validation.md) for the independent checks, metadata separation, and failure behavior.
+The independent `prlint` job checks the current title and body together as the proposed squash message, except for Dependabot-authored PRs. Its job-level skip preserves the required check. GitHub's required-check settings enforce this separately from the code reporter; the reporter does not query or enforce rulesets. See [PR validation](pr-validation.md#message-and-settings-validation) for the author condition, required-check semantics and failure behavior.
 
 Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready and code-status jobs have narrowly scoped write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state/status changes; the workflow does not bypass them.
 
