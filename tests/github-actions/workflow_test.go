@@ -39,7 +39,11 @@ type job struct {
 	Outputs     map[string]string `yaml:"outputs"`
 	Permissions map[string]string `yaml:"permissions"`
 	Continue    bool              `yaml:"continue-on-error"`
-	Steps       []step            `yaml:"steps"`
+	Concurrency struct {
+		Group  string `yaml:"group"`
+		Cancel bool   `yaml:"cancel-in-progress"`
+	} `yaml:"concurrency"`
+	Steps []step `yaml:"steps"`
 }
 type step struct {
 	Name     string            `yaml:"name"`
