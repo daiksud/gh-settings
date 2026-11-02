@@ -26,19 +26,29 @@ func TestGoCachePreservesCommitChecksAndTrustBoundary(t *testing.T) {
 		}
 		return action.Runs.Steps, string(data), action.Inputs
 	}
-	steps, text, inputs := read("commit-stage")
-	if inputs["cache-go"].Default != "false" || strings.Contains(text, "cache-hit") {
+	steps, _, inputs := read("commit-stage")
+	if inputs["cache-go"].Default != "false" {
 		t.Fatal("cache must be opt-in and never decide whether checks execute")
 	}
 	guard := "inputs.cache-go == 'true' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))"
-	cacheCount := 0
+	cacheCount, saveCount := 0, 0
 	checks := map[string]bool{
 		"go mod download": false, "go mod verify": false, "go mod tidy -diff": false,
 		"go vet ./...": false, "go test -race -count=1 -vet=off ./...": false,
 		"go build -trimpath": false,
 	}
-	for _, s := range steps {
-		if strings.HasPrefix(s.Uses, "actions/cache@") {
+	for index, s := range steps {
+		if strings.HasPrefix(s.Uses, "actions/cache/save@") {
+			saveCount++
+			if index != len(steps)-1 || !s.Continue || s.If != guard+" && steps.go-cache-restore.outputs.cache-hit != 'true' && steps.go-cache-restore.outputs.cache-primary-key != ''" || s.With["key"] != "${{ steps.go-cache-restore.outputs.cache-primary-key }}" {
+				t.Fatal("save must be explicit after all checks, reuse the resolved key and tolerate unavailability")
+			}
+			if s.With["path"] != "${{ steps.go-cache.outputs.build-path }}\n${{ steps.go-cache.outputs.module-path }}\n" {
+				t.Fatal("save must use the same in-scope Go cache paths as restore")
+			}
+			continue
+		}
+		if strings.HasPrefix(s.Uses, "actions/cache/restore@") {
 			cacheCount++
 			if s.If != guard || !s.Continue || s.With["fail-on-cache-miss"] == "true" || s.With["lookup-only"] == "true" || s.With["enableCrossOsArchive"] == "true" {
 				t.Fatal("cache must tolerate unavailability without widening event/environment scope")
@@ -72,8 +82,8 @@ func TestGoCachePreservesCommitChecksAndTrustBoundary(t *testing.T) {
 			}
 		}
 	}
-	if cacheCount != 1 {
-		t.Fatalf("want one Go cache, got %d", cacheCount)
+	if cacheCount != 1 || saveCount != 1 {
+		t.Fatalf("want explicit restore/save, got %d/%d", cacheCount, saveCount)
 	}
 	for command, found := range checks {
 		if !found {

@@ -132,7 +132,9 @@ files, tool pins and commit-stage implementation. Changing dependencies, tools
 or build flags therefore starts a new cache family. Bump the namespace to
 invalidate all entries when changing cache policy. Each source SHA gets an
 immutable entry; a prefix restore reuses the latest compatible source entry
-and saves the newly compiled packages after the job succeeds. There is no
+and saves the newly compiled packages after all commit checks succeed, before
+packaging/upload. Explicit restore/save steps retain nested-composite output
+scope during save; no deferred post step reads these paths. There is no
 fallback across dependency or environment families. GitHub eviction can make
 any run cold; entries per revision trade storage for current compiled packages.
 
@@ -150,7 +152,7 @@ To measure hosted performance, record a cold CI run after a namespace change,
 then rerun the same source for an exact hit. Compare another source revision
 with unchanged cache-family inputs for a prefix hit, and a PR started after a
 successful main run for default-branch reuse. Record runner image, Go version,
-cache key/matched key, restored size, restore and post-job save duration,
+cache key/matched key, restored size, restore and save duration,
 module/vet/race/build step durations and total commit-job duration. Confirm every
 check and both acceptance legs still execute and that the aggregate gate passes.
 Compare several runs because runner load varies; include transfer overhead in
