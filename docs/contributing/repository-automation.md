@@ -12,10 +12,11 @@ review and squash-merge process. Use declarations supported by the
 [pinned operational packages](#active-settings-workflows).
 
 1. Open a configuration PR and inspect its checks. The required `settings-plan`
-   check runs credential-free `validate`; it does not observe GitHub settings.
-   For matching paths, the separate `settings-pr` workflow uses trusted main
-   code and App authentication to plan the candidate configuration against
-   GitHub. Review that run's Summary for the current PR head.
+   check validates the proposed merge configuration with the operational Action
+   selected by trusted main code; it does not observe GitHub settings. The same
+   `settings-pr` workflow selects a separate authenticated plan for relevant
+   file changes. Metadata edits still validate but do not start a plan. Review
+   the eligible plan run's Summary for the current PR head.
 2. Satisfy the [normal merge requirements](#protected-main-and-required-checks)
    and squash-merge the PR. A push to `main` changing `.github/settings.yml`
    or `.github/workflows/settings-main.yml` starts `settings-main`, which
@@ -58,8 +59,8 @@ resource-specific behavior.
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
 | [`labeler.yml`](../../.github/workflows/labeler.yml) | PR-target events suggest add-only labels for unambiguous all-files path categories without executing candidate code |
-| [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Relevant PR path changes; read-only settings plan and review Summary |
-| [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Credential-free validation of the merge declaration with its pinned operational consumer |
+| [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Trusted PR-target events always validate the merge declaration as `settings-plan`; relevant file changes separately select a read-only head plan |
+| [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Independent credential-free validation of the merge declaration with its pinned operational consumer |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
 | [`settings-env.yml`](../../.github/workflows/settings-env.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-env` |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or PR CI completion; approve completed reviews matching HEAD with thumbs-up |
@@ -85,7 +86,7 @@ The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rul
 | --- | --- | --- |
 | `ci-pr` | [PR code CI](../../.github/workflows/ci-pr.yml) aggregates the build and acceptance stages | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
 | `prlint` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
-| `settings-plan` | [Settings plan workflow](../../.github/workflows/settings-plan.yml) checks the PR declaration with its pinned operational consumer, without write credentials | Live differences are observed by the separate privileged settings-pr workflow when relevant |
+| `settings-plan` | The [trusted PR workflow](../../.github/workflows/settings-pr.yml) validates the verified PR merge declaration with its pinned operational consumer, without an Environment or App token | The separate `plan` job observes the PR head against GitHub only when its event and path conditions match |
 | `settings-env` | The [trusted guard](../../.github/workflows/settings-env.yml) uses main-branch policy to inspect candidate workflow YAML as data | It checks the limited Environment/trigger/name policy below |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
@@ -94,11 +95,25 @@ After a permitted merge, a matching main push starts the settings workflow. Whet
 
 ## Active settings workflows
 
-The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. The PR plan pin is selected independently from the main apply and merge-validation pins: trusted default-branch code must understand a candidate declaration before that declaration can be adopted. Main apply and merge validation must stay compatible with the tracked declaration. Their pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.
+The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. The trusted default-branch workflow selects the PR validation and plan pins. Before a declaration uses a schema or capability those packages do not support, first merge the compatible published package pins into main and verify the updated trusted workflow. Changing a pin only inside the declaration PR does not change that PR's trusted validator or planner. Keep the main apply pin compatible with the tracked declaration. The operational pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.
 
-The PR caller uses trusted default-branch `pull_request_target` code for opened, synchronize and reopened events targeting main. Its path filter covers `.github/settings.yml`, both operational caller workflows, and the GitHub Actions examples. The exact main-ref/repository/base condition and Environment `gh-settings` constrain this credential consumer. Per-PR concurrency cancels superseded plans.
+The PR caller uses trusted default-branch `pull_request_target` code for opened,
+synchronize, reopened and edited events targeting main. There is no
+workflow-level path filter. Its required `settings-plan` job performs
+[credential-free merge validation](#pr-settings-validation) for every supported
+event, including metadata edits and PRs without settings changes.
 
-Before minting a token, the caller anonymously verifies this public repository's fixed identity, fetches only filtered commit/tree metadata for the event's PR head, and downloads the single regular `.github/settings.yml` blob. It validates the fetched head, file mode, bounded size and Git blob hash. It creates a configuration-only consumer with candidate Git identity; no PR code, hooks, local Actions, dependency configuration or scripts are checked out or executed. Public API rate limits, a visibility/identity change, an unavailable blob or a moved PR head fail the preparation; there is no credential fallback. This public-only retrieval deliberately needs no Contents grant on ANSWER26.
+The separate `plan` job requires successful validation and an opened,
+synchronize or reopened event. Validation checks the verified merge against
+its base parent for changes to `.github/settings.yml`,
+`.github/workflows/settings-pr.yml`, `.github/workflows/settings-main.yml` or
+`examples/github-actions/**`. Only a matching change selects the plan; an
+edited event never does. The exact main-ref/repository/base condition and
+Environment `gh-settings` still constrain this credential consumer. Validation
+uses its own per-PR concurrency group without cancelling active runs; the
+separate plan group cancels superseded plans.
+
+Before minting a token, the plan job anonymously verifies this public repository's fixed identity, fetches only filtered commit/tree metadata for the event's PR head, and downloads the single regular `.github/settings.yml` blob. It validates the fetched head, file mode, bounded size and Git blob hash. It creates a configuration-only consumer with candidate Git identity; no PR code, hooks, local Actions, dependency configuration or scripts are checked out or executed in this job. Public API rate limits, a visibility/identity change, an unavailable blob or a moved PR head fail the preparation; there is no credential fallback. This public-only retrieval deliberately needs no Contents grant on ANSWER26.
 
 The plan job then mints a short-lived repository-scoped token from the same ANSWER26 App used by main apply, requesting Administration write and Issues read, and passes it explicitly to the pinned released Action. GitHub's [Ruleset GET contract](https://docs.github.com/en/rest/repos/rules#get-a-repository-ruleset) returns bypass actors only to callers with Ruleset write access. Nonmutating plan therefore needs a write-capable token for complete observation; it is not a read-only credential. This token can change repository administration settings if trusted executing code misuses it. The existing installation grants are unchanged, and its repository selection is limited to this repository. No additional Environment consumer or API mutation is authorized by this permission request. Feature adoption must still verify complete observation, endpoint support and installation permissions; the broader token alone does not establish that a Ruleset is safely manageable. Local fixtures establish data isolation and failure handling, not effective remote grants or successful live execution. A PR changing this caller itself runs the previous default-branch caller; subsequent relevant events must verify the updated trusted plan.
 
@@ -158,15 +173,33 @@ These checks detect violations in the inspected source, but the required status 
 
 When evaluating enforcement, inspect the applicable required checks and allowed check providers, actual guard run, Environment deployment branches/reviewers, and [`pull_request_target` event policy](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target). The repository YAML does not establish those external settings or enforce policy across other repositories. This guide records the guard's behavior and limits without prescribing a change to external approval configuration.
 
-## Local PR settings validation
+## PR settings validation
 
-The required `settings-plan` job in [settings-plan.yml](../../.github/workflows/settings-plan.yml)
-validates `.github/settings.yml` from the PR merge checkout with the same immutable
-public Action pin used by [settings-pr.yml](../../.github/workflows/settings-pr.yml)
-and [settings-main.yml](../../.github/workflows/settings-main.yml). It calls only
-`command: validate`, with no token. The job uses the public Action's supported
-fresh Ubuntu 24.04 x64 VM, has only Contents read, selects no Environment and
-creates no App token. A validation failure fails the required check.
+The required `settings-plan` job in
+[settings-pr.yml](../../.github/workflows/settings-pr.yml) validates
+`.github/settings.yml` from the PR merge checkout. Trusted main code checks
+that the merge commit has exactly the event's base and head SHAs as its two
+parents before invoking its pinned public Action. An unavailable or mismatched
+merge fails validation. The job has no conditional skip or prerequisite job;
+every supported PR event executes the validation.
+
+If the base or head moved, obtain a fresh PR event for the current candidate.
+Rerunning the earlier event retains its earlier identities; validation does
+not substitute a head or main checkout. A synchronization or reopening event
+can also select a relevant authenticated plan, while an edit only validates.
+
+It calls only `command: validate`, with no supplied token. The job uses the
+public Action's supported fresh Ubuntu 24.04 x64 VM, has only Contents read,
+selects no Environment and creates no App token. It does not execute PR scripts
+or local Actions. A validation failure fails the required check. The validator
+passes only the relevant-path match to the separate plan job, whose data comes
+from the event's PR head rather than the merge checkout.
+
+The independent [settings-plan.yml](../../.github/workflows/settings-plan.yml)
+also validates the PR merge declaration with its pinned operational consumer.
+Both jobs perform real validation with the same immutable Action pin and
+report `settings-plan`; inspect the workflow behind the result when verifying
+that the trusted PR caller ran.
 
 This checks the operational declaration against its actual package contract.
 The separate required `ci-pr` builds and tests the candidate source, including
@@ -176,8 +209,8 @@ The tracked declaration uses the current UI contract. Validation and plan do
 not apply it; the main caller performs direct apply only after a permitted
 merge.
 
-Neither check establishes live App visibility or drift. The separate
-[trusted PR plan](#active-settings-workflows) performs authenticated observation;
+Neither validation establishes live App visibility or drift. The separate
+[trusted plan job](#active-settings-workflows) performs authenticated observation;
 no validation result authorizes a later apply or locks remote state.
 
 ## Codex approval control
