@@ -120,9 +120,10 @@ func TestGoCacheEnvironmentFingerprint(t *testing.T) {
 	}
 	dir := t.TempDir()
 	fixtures := map[string]string{
-		"cat": `printf '%s\n' "$DISTRO"`,
-		"gcc": `printf '%s\n' "$COMPILER"`,
-		"ldd": `printf '%s\n' "$LIBC"`,
+		"sha256sum": `exec shasum -a 256 "$@"`,
+		"cat":       `printf '%s\n' "$DISTRO"`,
+		"gcc":       `printf '%s\n' "$COMPILER"`,
+		"ldd":       `printf '%s\n' "$LIBC"`,
 		"go": `case "$*" in
 "env GOCACHE") echo /fixture/build ;;
 "env GOMODCACHE") echo /fixture/modules ;;
