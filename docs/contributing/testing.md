@@ -111,7 +111,54 @@ The shared [CI commit composite](../../.github/actions/ci-commit/action.yml) cal
 
 Each acceptance matrix leg downloads the same run's artifact with digest mismatch treated as an error and checks out the exact producer source separately into `.action`. The [CI acceptance composite](../../.github/actions/ci-acceptance/action.yml) validates manifest identity against the checkout and bytes before choosing the process or public-Action acceptance path. The [process acceptance composite](../../.github/actions/acceptance-stage/action.yml) additionally verifies the embedded version and runs the tagged process suite with test caching disabled. No acceptance leg rebuilds the product.
 
-All runners install required tools from pinned mise configuration. The CI commit stage uses `ubuntu-24.04` because compilation and race tests can exceed the single-CPU runner's [15-minute job limit](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#single-cpu-runners). The process acceptance leg uses `ubuntu-slim`. The public-Action leg uses Ubuntu 24.04 x64 and Go only to compile its local API fixture. Tool caches are disabled, artifacts are retained for one day, and CI candidate artifacts are not promoted to privileged release or settings workflows.
+All runners install required tools from pinned mise configuration. The public-Action leg uses Ubuntu 24.04 x64 and Go only to compile its local API fixture; commit and process checks use `ubuntu-slim`. The single-CPU runner's [15-minute job limit](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#single-cpu-runners) still applies. The mise tool cache is disabled, artifacts are retained for one day, and CI candidate artifacts are not promoted to privileged release or settings workflows.
+
+### Go cache in commit CI
+
+Only the CI commit composite enables the Go cache after installing the pinned
+Go toolchain. It caches the resolved `GOCACHE` and `GOMODCACHE` directories;
+product binaries, candidate manifests, credentials and settings observations
+are outside these paths. Release builds and settings workflows do not opt in.
+Cache restore errors are tolerated and ordinary cache misses compile from source.
+Module download, `go mod verify`, `go mod tidy -diff`, `go vet ./...`,
+`go test -race -count=1 -vet=off ./...` and the single product build always run,
+regardless of cache hit. `-count=1` prevents reuse of successful test results;
+Go may still reuse compiled packages, including race-instrumented packages.
+
+The `go-ci-v1` namespace separates this cache from other workflows. Keys include
+runner OS/architecture, the `ubuntu-slim` runner family, actual Go version and
+build environment, distribution/compiler/libc identity, and a hash of module
+files, tool pins and commit-stage implementation. Changing dependencies, tools
+or build flags therefore starts a new cache family. Bump the namespace to
+invalidate all entries when changing cache policy. Each source SHA gets an
+immutable entry; a prefix restore reuses the latest compatible source entry
+and saves the newly compiled packages after all commit checks succeed, before
+packaging/upload. Explicit restore/save steps retain nested-composite output
+scope during save; no deferred post step reads these paths. There is no
+fallback across dependency or environment families. GitHub eviction can make
+any run cold; entries per revision trade storage for current compiled packages.
+
+[GitHub cache scope rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
+allow PRs to restore compatible default-branch entries. A PR writes under its
+merge ref, so its reruns can reuse those entries, while main and other PRs
+cannot restore that PR's cache. Keys deliberately omit branch names to allow
+main-to-PR reuse; keys alone are not a trust boundary. No `pull_request_target`,
+privileged consumer or release job restores this cache. Caches are readable by
+PR contributors and must never contain secrets. Module verification checks
+module contents; it does not authenticate compiled cache contents. The GitHub
+ref scope and separation from privileged workflows provide that boundary.
+
+To measure hosted performance, record a cold CI run after a namespace change,
+then rerun the same source for an exact hit. Compare another source revision
+with unchanged cache-family inputs for a prefix hit, and a PR started after a
+successful main run for default-branch reuse. Record runner image, Go version,
+cache key/matched key, restored size, restore and save duration,
+module/vet/race/build step durations and total commit-job duration. Confirm every
+check and both acceptance legs still execute and that the aggregate gate passes.
+Compare several runs because runner load varies; include transfer overhead in
+the net saving. A changed module/tool/environment family must miss. Local
+cold/warm `GOCACHE`/`GOMODCACHE` timings demonstrate compilation reuse only,
+not hosted cache transfers, scope enforcement or ubuntu-slim performance.
 
 ### Hosted candidate composite
 
