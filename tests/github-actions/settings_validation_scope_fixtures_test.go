@@ -5,32 +5,9 @@ import (
 	"testing"
 )
 
-const settingsValidationLegacyFixture = `name: settings-plan
-on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited]
-    branches: [main]
-permissions: {}
-concurrency:
-  group: settings-plan-${{ github.repository }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
-jobs:
-  settings-plan:
-    if: github.event_name == 'pull_request'
-    permissions: {contents: read}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - uses: daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6
-        with: {command: validate}
-`
-
 // The inline body is a placeholder: this guard owns the event/permission/input
 // boundary, while the workflow's behavior fixtures and review own its Python.
-const settingsValidationCombinedFixture = `name: Settings PR plan
+const settingsValidationCombinedFixture = `name: Settings PR
 on:
   pull_request_target:
     types: [opened, synchronize, reopened, edited]
@@ -74,85 +51,72 @@ func settingsValidationFixtureWorkflows() map[string][]byte {
 	return map[string][]byte{
 		settingsWorkflowPath:      []byte("on: {push: {branches: [main]}}\njobs:\n  apply:\n    environment: gh-settings\n"),
 		settingsGuardWorkflowPath: []byte("jobs:\n  settings-env:\n    name: settings-env\n"),
+		settingsPRWorkflowPath:    []byte(settingsValidationCombinedFixture),
 	}
 }
 
-func TestSettingsEnvironmentScopeValidationRollout(t *testing.T) {
-	for _, stage := range []struct {
-		name             string
-		legacy, combined bool
-	}{
-		{"legacy", true, false},
-		{"overlap", true, true},
-		{"consolidated", false, true},
-	} {
-		t.Run(stage.name, func(t *testing.T) {
-			files := settingsValidationFixtureWorkflows()
-			if stage.legacy {
-				files[settingsPlanWorkflowPath] = []byte(settingsValidationLegacyFixture)
-			}
-			if stage.combined {
-				files[settingsPRWorkflowPath] = []byte(settingsValidationCombinedFixture)
-			}
-			if err := checkSettingsEnvironmentScope(files); err != nil {
-				t.Fatal(err)
-			}
-		})
-	}
-	if err := checkSettingsEnvironmentScope(settingsValidationFixtureWorkflows()); err == nil {
-		t.Fatal("removing both required validators must fail")
-	}
+func TestSettingsEnvironmentScopeRequiresOneValidator(t *testing.T) {
 	files := settingsValidationFixtureWorkflows()
-	files[settingsPlanWorkflowPath] = []byte(settingsValidationLegacyFixture)
-	files[settingsPRWorkflowPath] = []byte(strings.ReplaceAll(settingsValidationCombinedFixture, "6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", strings.Repeat("a", 40)))
-	if err := checkSettingsEnvironmentScope(files); err == nil {
-		t.Fatal("overlapping same-name checks must not validate with different packages")
-	}
-	files[settingsPlanWorkflowPath] = []byte(strings.ReplaceAll(settingsValidationLegacyFixture, "6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", strings.Repeat("a", 40)))
 	if err := checkSettingsEnvironmentScope(files); err != nil {
-		t.Fatalf("matching immutable pins are not tied to a particular release: %v", err)
+		t.Fatal(err)
+	}
+	delete(files, settingsPRWorkflowPath)
+	if err := checkSettingsEnvironmentScope(files); err == nil {
+		t.Fatal("the required PR validation workflow must exist")
+	}
+	files = settingsValidationFixtureWorkflows()
+	start := strings.Index(settingsValidationCombinedFixture, "  settings-plan:\n")
+	end := strings.Index(settingsValidationCombinedFixture, "  plan:\n")
+	files[settingsPRWorkflowPath] = []byte(settingsValidationCombinedFixture[:start] + settingsValidationCombinedFixture[end:])
+	if err := checkSettingsEnvironmentScope(files); err == nil {
+		t.Fatal("a privileged plan without the required validator must fail")
+	}
+	files = settingsValidationFixtureWorkflows()
+	files[retiredSettingsPlanPath] = []byte("jobs: {}\n")
+	if err := checkSettingsEnvironmentScope(files); err == nil {
+		t.Fatal("the retired validation workflow must not return")
+	}
+	files = settingsValidationFixtureWorkflows()
+	files[settingsPRWorkflowPath] = []byte(strings.ReplaceAll(settingsValidationCombinedFixture, "6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", strings.Repeat("a", 40)))
+	if err := checkSettingsEnvironmentScope(files); err != nil {
+		t.Fatalf("immutable validation pins are not tied to a particular release: %v", err)
 	}
 }
 
 func TestSettingsEnvironmentScopeRequiredValidationBoundaries(t *testing.T) {
-	for _, fixture := range []struct{ name, path, source string }{
-		{"legacy", settingsPlanWorkflowPath, settingsValidationLegacyFixture},
-		{"consolidated", settingsPRWorkflowPath, settingsValidationCombinedFixture},
+	for _, change := range []struct{ name, before, after string }{
+		{"missing default permissions", "permissions: {}\n", ""},
+		{"default write grant", "permissions: {}", "permissions: {contents: write}"},
+		{"global secret", "permissions: {}", "permissions: {}\nenv: {GH_TOKEN: '${{ secrets.TOKEN }}'}"},
+		{"job write grant", "permissions: {contents: read}", "permissions: {contents: write}"},
+		{"extra grant", "permissions: {contents: read}", "permissions: {contents: read, issues: write}"},
+		{"Environment", "    runs-on:", "    environment: gh-settings\n    runs-on:"},
+		{"other Environment", "    runs-on:", "    environment: preview\n    runs-on:"},
+		{"job secret", "    runs-on:", "    env: {GH_TOKEN: '${{ secrets.TOKEN }}'}\n    runs-on:"},
+		{"ignored failure", "    runs-on:", "    continue-on-error: true\n    runs-on:"},
+		{"skipped dependency", "    runs-on:", "    needs: missing\n    runs-on:"},
+		{"delegated validation", "    runs-on:", "    uses: owner/repo/.github/workflows/check.yml@main\n    runs-on:"},
+		{"matrix substitute", "    runs-on:", "    strategy: {matrix: {include: []}}\n    runs-on:"},
+		{"wrong check name", "  settings-plan:\n", "  settings-plan:\n    name: other-check\n"},
+		{"mutable validator", "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", "daiksud/gh-settings@main"},
+		{"different action", "daiksud/gh-settings@", "other/validator@"},
+		{"remote command", "with: {command: validate}", "with: {command: plan}"},
+		{"token input", "with: {command: validate}", "with: {command: validate, token: '${{ github.token }}'}"},
+		{"conditional validator", "        with: {command: validate}", "        if: false\n        with: {command: validate}"},
+		{"ignored validator failure", "        with: {command: validate}", "        continue-on-error: true\n        with: {command: validate}"},
+		{"persisted credentials", "persist-credentials: false", "persist-credentials: true"},
+		{"extra step", "    steps:\n", "    steps:\n      - run: echo substitute\n"},
 	} {
-		for _, change := range []struct{ name, before, after string }{
-			{"missing default permissions", "permissions: {}\n", ""},
-			{"default write grant", "permissions: {}", "permissions: {contents: write}"},
-			{"global secret", "permissions: {}", "permissions: {}\nenv: {GH_TOKEN: '${{ secrets.TOKEN }}'}"},
-			{"job write grant", "permissions: {contents: read}", "permissions: {contents: write}"},
-			{"extra grant", "permissions: {contents: read}", "permissions: {contents: read, issues: write}"},
-			{"Environment", "    runs-on:", "    environment: gh-settings\n    runs-on:"},
-			{"other Environment", "    runs-on:", "    environment: preview\n    runs-on:"},
-			{"job secret", "    runs-on:", "    env: {GH_TOKEN: '${{ secrets.TOKEN }}'}\n    runs-on:"},
-			{"ignored failure", "    runs-on:", "    continue-on-error: true\n    runs-on:"},
-			{"skipped dependency", "    runs-on:", "    needs: missing\n    runs-on:"},
-			{"delegated validation", "    runs-on:", "    uses: owner/repo/.github/workflows/check.yml@main\n    runs-on:"},
-			{"matrix substitute", "    runs-on:", "    strategy: {matrix: {include: []}}\n    runs-on:"},
-			{"wrong check name", "  settings-plan:\n", "  settings-plan:\n    name: other-check\n"},
-			{"mutable validator", "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", "daiksud/gh-settings@main"},
-			{"different action", "daiksud/gh-settings@", "other/validator@"},
-			{"remote command", "with: {command: validate}", "with: {command: plan}"},
-			{"token input", "with: {command: validate}", "with: {command: validate, token: '${{ github.token }}'}"},
-			{"conditional validator", "        with: {command: validate}", "        if: false\n        with: {command: validate}"},
-			{"ignored validator failure", "        with: {command: validate}", "        continue-on-error: true\n        with: {command: validate}"},
-			{"persisted credentials", "persist-credentials: false", "persist-credentials: true"},
-			{"extra step", "    steps:\n", "    steps:\n      - run: echo substitute\n"},
-		} {
-			t.Run(fixture.name+"/"+change.name, func(t *testing.T) {
-				if !strings.Contains(fixture.source, change.before) {
-					t.Fatal("fixture mutation did not match")
-				}
-				files := settingsValidationFixtureWorkflows()
-				files[fixture.path] = []byte(strings.Replace(fixture.source, change.before, change.after, 1))
-				if err := checkSettingsEnvironmentScope(files); err == nil {
-					t.Fatal("invalid validation boundary accepted")
-				}
-			})
-		}
+		t.Run(change.name, func(t *testing.T) {
+			if !strings.Contains(settingsValidationCombinedFixture, change.before) {
+				t.Fatal("fixture mutation did not match")
+			}
+			files := settingsValidationFixtureWorkflows()
+			files[settingsPRWorkflowPath] = []byte(strings.Replace(settingsValidationCombinedFixture, change.before, change.after, 1))
+			if err := checkSettingsEnvironmentScope(files); err == nil {
+				t.Fatal("invalid validation boundary accepted")
+			}
+		})
 	}
 }
 
@@ -177,7 +141,7 @@ func TestSettingsEnvironmentScopeCombinedValidationBoundaries(t *testing.T) {
 		{"wrong privileged Environment", "    environment: gh-settings", "    environment: preview"},
 		{"shared workflow concurrency", "permissions: {}", "permissions: {}\nconcurrency: shared"},
 		{"cancelling validation", "cancel-in-progress: false", "cancel-in-progress: true"},
-		{"legacy shared validation group", "settings-pr-validation-${{ github.repository }}", "settings-plan-${{ github.repository }}"},
+		{"shared validation group", "settings-pr-validation-${{ github.repository }}", "settings-pr-${{ github.repository }}"},
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			if !strings.Contains(settingsValidationCombinedFixture, change.before) {

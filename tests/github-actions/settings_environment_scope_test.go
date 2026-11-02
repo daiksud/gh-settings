@@ -18,7 +18,7 @@ const (
 	settingsEnvironment       = "gh-settings"
 	settingsGuardWorkflowPath = ".github/workflows/settings-env.yml"
 	settingsGuardCheckName    = "settings-env"
-	settingsPlanWorkflowPath  = ".github/workflows/settings-plan.yml"
+	retiredSettingsPlanPath   = ".github/workflows/settings-plan.yml"
 	settingsPlanEnvironment   = "gh-settings-plan"
 	settingsPlanCheckName     = "settings-plan"
 	settingsPRCondition       = "github.event_name == 'pull_request_target' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && github.event.pull_request.base.ref == 'main'"
@@ -57,7 +57,9 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	prFound := 0
 	guardChecks := 0
 	planChecks := 0
-	validationPins := make(map[string]string)
+	if _, present := workflows[retiredSettingsPlanPath]; present {
+		return fmt.Errorf("%s is retired; required settings validation belongs in %s", retiredSettingsPlanPath, settingsPRWorkflowPath)
+	}
 	for path, content := range workflows {
 		decoder := yaml.NewDecoder(bytes.NewReader(content))
 		var document yaml.Node
@@ -80,16 +82,6 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				return fmt.Errorf("%s: on: %w", path, err)
 			}
 		}
-		if path == settingsPlanWorkflowPath {
-			if err := checkSettingsPlanTrigger(workflow["on"]); err != nil {
-				return fmt.Errorf("%s: on: %w", path, err)
-			}
-			pin, err := checkSettingsValidationWorkflow(workflow, false)
-			if err != nil {
-				return fmt.Errorf("%s: %w", path, err)
-			}
-			validationPins[path] = pin
-		}
 		jobsNode, ok := workflow["jobs"]
 		if !ok {
 			return fmt.Errorf("%s: missing jobs", path)
@@ -98,13 +90,10 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 		if err != nil {
 			return fmt.Errorf("%s: jobs: %w", path, err)
 		}
-		combined := path == settingsPRWorkflowPath && jobs[settingsPlanCheckName] != nil
-		if combined {
-			pin, err := checkSettingsValidationWorkflow(workflow, true)
-			if err != nil {
+		if path == settingsPRWorkflowPath {
+			if err := checkSettingsValidationWorkflow(workflow); err != nil {
 				return fmt.Errorf("%s: %w", path, err)
 			}
-			validationPins[path] = pin
 		}
 		for jobName, jobNode := range jobs {
 			job, err := settingsYAMLMap(jobNode)
@@ -123,7 +112,7 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				checkName = node.Value
 			}
 			if jobName == settingsPlanCheckName || checkName == settingsPlanCheckName {
-				if (path != settingsPlanWorkflowPath && path != settingsPRWorkflowPath) || jobName != settingsPlanCheckName || checkName != settingsPlanCheckName {
+				if path != settingsPRWorkflowPath || jobName != settingsPlanCheckName || checkName != settingsPlanCheckName {
 					return fmt.Errorf("%s: jobs.%s: check name %q is reserved", path, jobName, settingsPlanCheckName)
 				}
 				planChecks++
@@ -154,18 +143,11 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				continue
 			}
 			if path == settingsPRWorkflowPath && jobName == "plan" && name == settingsEnvironment {
-				if err := checkSettingsPRTrigger(workflow["on"], combined); err != nil {
-					return fmt.Errorf("%s: on: %w", path, err)
-				}
-				expectedCondition := settingsPRCondition
-				if combined {
-					expectedCondition = settingsCombinedCondition
-					if !settingsScalarIs(job["needs"], settingsPlanCheckName) {
-						return fmt.Errorf("%s: jobs.plan: must depend on the required validation", path)
-					}
+				if !settingsScalarIs(job["needs"], settingsPlanCheckName) {
+					return fmt.Errorf("%s: jobs.plan: must depend on the required validation", path)
 				}
 				condition := job["if"]
-				if !settingsScalarIs(condition, expectedCondition) {
+				if !settingsScalarIs(condition, settingsCombinedCondition) {
 					return fmt.Errorf("%s: jobs.plan: missing trusted main PR-target condition", path)
 				}
 				prFound++
@@ -180,26 +162,21 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	if found != 1 {
 		return fmt.Errorf("expected exactly one %q Environment, at %s jobs.apply; found %d", settingsEnvironment, settingsWorkflowPath, found)
 	}
-	if prFound > 1 {
-		return fmt.Errorf("expected at most one trusted PR plan Environment; found %d", prFound)
+	if prFound != 1 {
+		return fmt.Errorf("expected exactly one trusted PR plan Environment; found %d", prFound)
 	}
 	if guardChecks != 1 {
 		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
 	}
-	if planChecks == 0 || planChecks != len(validationPins) {
-		return fmt.Errorf("expected a real settings validation check in an approved workflow; found %d", planChecks)
-	}
-	// Both real validators coexist only while the trusted main caller is rolled
-	// out. Their shared check name must never stand for different consumers.
-	if len(validationPins) == 2 && validationPins[settingsPlanWorkflowPath] != validationPins[settingsPRWorkflowPath] {
-		return fmt.Errorf("overlapping settings validation checks must use the same immutable Action pin")
+	if planChecks != 1 {
+		return fmt.Errorf("expected exactly one settings validation check in %s; found %d", settingsPRWorkflowPath, planChecks)
 	}
 	return nil
 }
 
-// The allowlist can be deployed before its new caller. Absence does not grant
-// access; any PR caller selecting this Environment must meet the full boundary.
-func checkSettingsPRTrigger(node *yaml.Node, combined bool) error {
+// Required validation runs for every PR update. Only the separate plan job may
+// narrow eligibility by activity or paths.
+func checkSettingsPRTrigger(node *yaml.Node) error {
 	if node == nil {
 		return fmt.Errorf("expected pull_request_target to main only")
 	}
@@ -211,58 +188,7 @@ func checkSettingsPRTrigger(node *yaml.Node, combined bool) error {
 	if !ok || len(events) != 1 {
 		return fmt.Errorf("expected pull_request_target only")
 	}
-	if combined {
-		// The required validation must run for every PR, including edits; only
-		// the separate plan job may narrow eligibility by activity or paths.
-		return checkSettingsPlanPREvent(target)
-	}
 	filters, err := settingsYAMLMap(target)
-	if err != nil {
-		return err
-	}
-	for key := range filters {
-		if key != "branches" && key != "paths" && key != "types" {
-			return fmt.Errorf("PR-target filter %q is not permitted", key)
-		}
-	}
-	branches := filters["branches"]
-	if branches == nil || branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 || branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
-		return fmt.Errorf("PR-target branches must be exactly [main]")
-	}
-	if types := filters["types"]; types != nil {
-		if types.Kind != yaml.SequenceNode || len(types.Content) != 3 {
-			return fmt.Errorf("PR-target types must be opened, synchronize and reopened")
-		}
-		seen := map[string]bool{}
-		for _, kind := range types.Content {
-			if kind.Kind != yaml.ScalarNode || seen[kind.Value] || (kind.Value != "opened" && kind.Value != "synchronize" && kind.Value != "reopened") {
-				return fmt.Errorf("unsupported PR-target activity")
-			}
-			seen[kind.Value] = true
-		}
-	}
-	return nil
-}
-
-// The legacy required check remains PR-only until its trusted replacement is
-// present on main and can report the same check during the deletion PR.
-func checkSettingsPlanTrigger(node *yaml.Node) error {
-	if node == nil {
-		return fmt.Errorf("expected pull_request only")
-	}
-	events, err := settingsYAMLMap(node)
-	if err != nil {
-		return err
-	}
-	pr, ok := events["pull_request"]
-	if !ok || len(events) != 1 {
-		return fmt.Errorf("expected pull_request only")
-	}
-	return checkSettingsPlanPREvent(pr)
-}
-
-func checkSettingsPlanPREvent(pr *yaml.Node) error {
-	filters, err := settingsYAMLMap(pr)
 	if err != nil {
 		return err
 	}
@@ -411,7 +337,7 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 			files := map[string][]byte{
 				settingsWorkflowPath:      []byte("on: {push: {branches: [main]}}\n" + test.main),
 				settingsGuardWorkflowPath: []byte(guard),
-				settingsPlanWorkflowPath:  []byte(settingsValidationLegacyFixture),
+				settingsPRWorkflowPath:    []byte(settingsValidationCombinedFixture),
 			}
 			if test.extra != "" {
 				files[".github/workflows/other.yaml"] = []byte(test.extra)
@@ -453,7 +379,7 @@ func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
 			files := map[string][]byte{
 				settingsWorkflowPath:      []byte(test.trigger + "\njobs:\n  apply:\n    environment: gh-settings\n"),
 				settingsGuardWorkflowPath: []byte("jobs:\n  settings-env:\n    name: settings-env\n"),
-				settingsPlanWorkflowPath:  []byte(settingsValidationLegacyFixture),
+				settingsPRWorkflowPath:    []byte(settingsValidationCombinedFixture),
 			}
 			err := checkSettingsEnvironmentScope(files)
 			if (err == nil) != test.valid {
