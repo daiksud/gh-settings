@@ -14,7 +14,7 @@ PR titles and bodies become durable squash messages. Classification can be corre
 
 ## Decision
 
-Use the complete previous-published-stable-to-frozen-source Git interval. Actual committed Conventional Commits headers and compatibility footers determine versions and release-note categories. Labels remain independent organization metadata, with no automatic synchronization, type-agreement requirement, or release check.
+Use the complete previous-published-stable-to-frozen-source Git interval. Actual committed Conventional Commits headers and compatibility footers determine versions and release-note categories.
 
 The strongest included change selects the increment:
 
@@ -26,10 +26,10 @@ A revert does not automatically cancel another included change's signal. Ignore 
 
 The manually dispatched release workflow uses the same Python version calculator as gh-qw at the frozen main SHA. No version-preparation PR or persisted version update is necessary. The published composite Action selects its CLI by the invoking version tag or exact SHA-matching release tag. Existing matching drafts/releases retain their original version, source, notes, and verified bytes on retry.
 
-Generate notes locally from the same committed interval. Each commit enters one category, in priority order: breaking header or formal breaking footer, formal deprecation footer, `feat`, `fix`, `perf`, then Maintenance. Performance has its own heading. Entries link to exact commits; escaped breaking footer details and a fixed-SHA comparison retain compatibility guidance and traceability. Current PR titles, bodies, labels, and GitHub's native note-generation API are not inputs.
+Generate notes locally from the same committed interval. Each commit enters one category, in priority order: breaking header or formal breaking footer, formal deprecation footer, `feat`, `fix`, `perf`, then Maintenance. Performance has its own heading. Entries link to exact commits; escaped breaking footer details and a fixed-SHA comparison retain compatibility guidance and traceability. Current PR titles, bodies, and GitHub's native note-generation API are not inputs.
 
 ## Consequences
 
-Reviewers must reconcile the proposed squash title, body, and compatibility footers with the actual user impact before merging. Preserve that reviewed message in the squash commit. Later PR edits and relabeling cannot alter either version calculation or the release notes. Existing path-based and Dependabot labels can continue independently; PRLint remains commitlint-only.
+Reviewers must reconcile the proposed squash title, body, and compatibility footers with the actual user impact before merging. Preserve that reviewed message in the squash commit. Later PR edits cannot alter either version calculation or the release notes. PRLint remains commitlint-only.
 
 Version calculation does not authorize publication. Computation, API, history, or immutable-identity mismatches fail before remote tag/release creation. Existing publication gates, immutable artifacts, and matching-draft recovery remain required. See the [maintainer release contract](../contributing/releases.md) for executable steps and evidence limits.

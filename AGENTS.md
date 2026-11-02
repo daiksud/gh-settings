@@ -30,9 +30,8 @@ record confirmed creation IDs through the documented follow-up PR procedure.
 
 ## Branches, classification, and releases
 
-- Treat branch names only as work identifiers. Do not derive PR types, labels, or release versions from them, or rename a branch solely to correct classification.
+- Treat branch names only as work identifiers. Do not derive PR types or release versions from them, or rename a branch solely to correct classification.
 - Check the proposed squash title, body, and compatibility footers against the actual changes and their impact on CLI or public Action users. Correct the message during review; syntax checks do not establish semantic correctness.
-- Labels are independent organization metadata. Do not synchronize them with commit types, require type/label agreement, or use them to select release versions or note categories. Existing path-based and Dependabot labeling remains independent of message review.
 - Keep each PR focused and preserve its reviewed title, body, and compatibility footers in the squash commit. Follow the code-review skill for the detailed policy.
 - Merging and releasing are separate actions. Without an explicit user request to release, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. When requested, follow the documented manual release procedure and all its validation gates.
 
