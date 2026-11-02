@@ -4,6 +4,52 @@ This guide is for maintainers of **daiksud/gh-settings**. For installing gh-sett
 
 The workflow files describe source-controlled behavior. Required reviews/checks, Environment protection rules, App installations, secrets, and event-policy eligibility are configured separately on GitHub; inspect those settings when assessing the current operational state.
 
+## Repository settings changes
+
+Change this repository's managed settings in
+[`.github/settings.yml`](../../.github/settings.yml) through the normal PR
+review and squash-merge process. Use declarations supported by the
+[pinned operational packages](#active-settings-workflows).
+
+1. Open a configuration PR and inspect its checks. The required `settings-plan`
+   check runs credential-free `validate`; it does not observe GitHub settings.
+   For matching paths, the separate `settings-pr` workflow uses trusted main
+   code and App authentication to plan the candidate configuration against
+   GitHub. Review that run's Summary for the current PR head.
+2. Satisfy the [normal merge requirements](#protected-main-and-required-checks)
+   and squash-merge the PR. A push to `main` changing `.github/settings.yml`
+   or `.github/workflows/settings-main.yml` starts `settings-main`, which
+   checks out that event's exact `github.sha` and runs `apply`. Other changes
+   alone do not trigger this apply workflow.
+3. Inspect the matching main apply run and read back the affected GitHub
+   settings before reporting them as applied. A passing PR validation or
+   plan is not evidence of a successful apply, and direct apply does not
+   consume a saved PR plan. Check any partial progress before retrying a
+   failed or cancelled run.
+
+The hosted workflows use the existing repository-scoped App authentication
+and `gh-settings` Environment. They do not depend on a local CLI login or a
+manual pre-merge apply. Inspect the actual run and live App/Environment
+configuration when diagnosing a blocked apply; see
+[active settings workflows](#active-settings-workflows) for those bindings.
+
+### Created resource IDs
+
+For supported resources whose contract treats an entry without an ID as
+create-only, the normal main apply can perform that initial creation.
+Confirmed creation IDs appear in the apply logs. GitHub Actions disables
+[configuration ID writeback](../settings.md#apply-id-writeback), and the
+workflow does not commit or push IDs back to the declaration.
+
+Read back the created objects, confirm their IDs, and adopt those IDs in a
+follow-up settings PR before another plan or apply of the same resources.
+Review that PR's plan to confirm it selects the existing objects instead of
+requesting another creation. Rerunning the original ID-less configuration
+after creation can fail with a name collision, including after a partial
+failure. Recover confirmed IDs before retrying; follow the
+[apply contract](../commands.md#apply-behavior) for partial progress and
+resource-specific behavior.
+
 ## Workflow inventory
 
 | Workflow | Trigger and responsibility |
