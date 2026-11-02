@@ -31,6 +31,7 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 | Select checks and understand local/CI evidence | [Testing](contributing/testing.md) |
 | Review PR scope, squash messages, compatibility, and implementation | [Code-review policy](../.agents/skills/code-review/SKILL.md) |
 | Change the private metadata, plan-report, or Summary protocol | [Actions internals](contributing/actions-internals.md) |
+| Change this repository's managed settings and verify the main apply | [Settings change procedure](contributing/repository-automation.md#repository-settings-changes) |
 | Maintain this repository's CI, review, and settings automation | [Repository automation](contributing/repository-automation.md) |
 | Prepare, publish, or recover a release | [Releases](contributing/releases.md) |
 | Understand the reasons for a design decision | [Architecture decision records](adr/README.md) |
