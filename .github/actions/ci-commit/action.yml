@@ -27,6 +27,8 @@ runs:
     - name: Run existing commit checks and build once
       id: build
       uses: ./.github/actions/commit-stage
+      with:
+        cache-go: 'true'
     - name: Package candidate identity
       id: package
       shell: bash
