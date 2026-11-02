@@ -43,7 +43,7 @@ func TestPagesReadRejectsUnknownAndIncomplete(t *testing.T) {
 			}
 		}
 	}
-	for _, status := range []int{301, 302, 307, 401, 403, 404, 500} {
+	for _, status := range []int{301, 302, 307, 401, 403, 500} {
 		c := &PagesClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
 			resp := actionsResponse(r, status, `{}`)
 			resp.Header.Set("Location", "https://other.invalid/pages")

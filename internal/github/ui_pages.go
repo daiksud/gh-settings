@@ -16,15 +16,19 @@ func PagesDeclaration(ui uimodel.Pages) (settings.PagesDeclaration, error) {
 			}
 			result.BuildType = &mode
 		}
-		if (b.Branch == nil) != (b.SelectFolder == nil) {
-			return settings.PagesDeclaration{}, fmt.Errorf("Pages Branch and Select folder must be declared together")
-		}
-		if b.Branch != nil {
-			path, valid := settings.PagesFolderValueForChoice(*b.SelectFolder)
-			if !valid {
-				return settings.PagesDeclaration{}, fmt.Errorf("unsupported UI Pages folder choice")
+		if b.Branch != nil && *b.Branch == "none" && b.SelectFolder == nil {
+			result.Source = &settings.PagesSource{Branch: "none"}
+		} else {
+			if (b.Branch == nil) != (b.SelectFolder == nil) {
+				return settings.PagesDeclaration{}, fmt.Errorf("Pages Branch and Select folder must be declared together")
 			}
-			result.Source = &settings.PagesSource{Branch: *b.Branch, Path: path}
+			if b.Branch != nil {
+				path, valid := settings.PagesFolderValueForChoice(*b.SelectFolder)
+				if !valid {
+					return settings.PagesDeclaration{}, fmt.Errorf("unsupported UI Pages folder choice")
+				}
+				result.Source = &settings.PagesSource{Branch: *b.Branch, Path: path}
+			}
 		}
 	}
 	if ui.CustomDomain != nil {
@@ -53,6 +57,14 @@ type PreparedPages struct {
 
 // PagesPolicyUI projects complete exported policy without site visibility metadata.
 func PagesPolicyUI(policy settings.PagesDeclaration) (uimodel.Pages, error) {
+	if policy.Delete() {
+		if err := policy.Validate(); err != nil {
+			return uimodel.Pages{}, err
+		}
+		source := uimodel.DeployFromABranch
+		branch := "none"
+		return uimodel.Pages{BuildAndDeployment: &uimodel.PagesBuildAndDeployment{Source: &source, Branch: &branch}}, nil
+	}
 	if policy.BuildType == nil || policy.CNAME == nil || policy.HTTPSEnforced == nil {
 		return uimodel.Pages{}, fmt.Errorf("Pages policy requires complete build type, custom domain and HTTPS values")
 	}
@@ -80,6 +92,14 @@ func PagesPolicyUI(policy settings.PagesDeclaration) (uimodel.Pages, error) {
 }
 
 func PagesObservation(observation settings.PagesObservation) (PreparedPages, error) {
+	policy, err := observation.Declaration()
+	if err != nil {
+		return PreparedPages{}, err
+	}
+	if absent, _ := observation.Absent(); absent {
+		ui, err := PagesPolicyUI(policy)
+		return PreparedPages{Pages: ui}, err
+	}
 	state, err := observation.Values()
 	if err != nil {
 		return PreparedPages{}, err
