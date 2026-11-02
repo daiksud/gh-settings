@@ -1,9 +1,8 @@
 # PR validation and required checks
 
-The required PR checks are named for their workflow file and aggregate job:
-`ci-pr.yml` → `ci-pr`, `prlint.yml` → `prlint`, and
-`settings-plan.yml` → `settings-plan`. The independent
-`settings-env.yml` reports `settings-env`.
+The required PR checks are `ci-pr`, `prlint`, `settings-plan` and `settings-env`.
+Their owning workflows and boundaries are listed in the
+[repository automation guide](repository-automation.md#protected-main-and-required-checks).
 No workflow publishes the shared `pass` commit status.
 
 ## Staged code validation
@@ -37,24 +36,16 @@ requirement remains satisfied without changing protections. See
 Normal review, squash-message classification and other required checks still
 apply to Dependabot PRs.
 
-The required `settings-plan` job validates the PR merge checkout's operational
-`.github/settings.yml` with the same immutable public Action pin as the trusted
-PR plan and main apply callers. It uses `command: validate` without a token,
-Environment or repository administration credentials, on the Action's supported
-fresh Ubuntu 24.04 x64 VM. Invalid configuration fails the check.
+The required `settings-plan` job always validates the proposed merge declaration
+with the operational public Action selected by trusted main code. It uses no
+Environment or App token and does not observe live settings. The separate plan
+job evaluates the PR head only when its event and path conditions match.
 
-The separate required `ci-pr` validates candidate code and current-format
-fixtures through its build, process and public Action acceptance stages.
-Operational YAML remains tied to its pinned consumer until the declaration and
-compatible package are adopted together under
-[#382](https://github.com/daiksud/gh-settings/issues/382). There is no automatic
-format conversion or compatibility path in the candidate product.
-
-The path-scoped [settings-pr.yml](../../.github/workflows/settings-pr.yml)
-separately runs a trusted, authenticated plan when relevant settings files
-change. Local validation does not establish live settings differences.
-`settings-plan` uses a per-PR concurrency group and does not cancel active runs;
-another PR cannot replace its pending run.
+The repository automation guide owns the
+[merge identity and validation contract](repository-automation.md#pr-settings-validation)
+and the [package pins, plan selection and credential boundaries](repository-automation.md#active-settings-workflows).
+Candidate code and current-format fixtures remain covered by `ci-pr`; they do
+not establish that a pinned operational package supports a new declaration.
 
 The trusted `settings-env` check audits the Environment boundary
 using the default-branch policy. Neither the guard nor the source-controlled

@@ -15,7 +15,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        build='{"include":[{"target":"linux-amd64","runner":"ubuntu-slim"}]}'
+        build='{"include":[{"target":"linux-amd64","runner":"ubuntu-24.04"}]}'
         acceptance='{"include":[{"target":"linux-amd64","kind":"process","runner":"ubuntu-slim"},{"target":"linux-amd64","kind":"public-action","runner":"ubuntu-24.04"}]}'
         jq -e '.include | length > 0' <<< "$build" > /dev/null
         jq -e '.include | length > 0' <<< "$acceptance" > /dev/null

@@ -111,7 +111,7 @@ The shared [CI commit composite](../../.github/actions/ci-commit/action.yml) cal
 
 Each acceptance matrix leg downloads the same run's artifact with digest mismatch treated as an error and checks out the exact producer source separately into `.action`. The [CI acceptance composite](../../.github/actions/ci-acceptance/action.yml) validates manifest identity against the checkout and bytes before choosing the process or public-Action acceptance path. The [process acceptance composite](../../.github/actions/acceptance-stage/action.yml) additionally verifies the embedded version and runs the tagged process suite with test caching disabled. No acceptance leg rebuilds the product.
 
-All runners install required tools from pinned mise configuration. The public-Action leg uses Ubuntu 24.04 x64 and Go only to compile its local API fixture; commit and process checks use `ubuntu-slim`. Tool caches are disabled, artifacts are retained for one day, and CI candidate artifacts are not promoted to privileged release or settings workflows.
+All runners install required tools from pinned mise configuration. The CI commit stage uses `ubuntu-24.04` because compilation and race tests can exceed the single-CPU runner's [15-minute job limit](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#single-cpu-runners). The process acceptance leg uses `ubuntu-slim`. The public-Action leg uses Ubuntu 24.04 x64 and Go only to compile its local API fixture. Tool caches are disabled, artifacts are retained for one day, and CI candidate artifacts are not promoted to privileged release or settings workflows.
 
 ### Hosted candidate composite
 
