@@ -1,26 +1,80 @@
-name: Settings PR plan
+name: Settings PR
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, edited]
     branches: [main]
-    paths:
-      - .github/settings.yml
-      - .github/workflows/settings-pr.yml
-      - .github/workflows/settings-main.yml
-      - examples/github-actions/**
 permissions: {}
 defaults:
   run:
     shell: bash
-concurrency:
-  group: settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
 jobs:
+  settings-plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {contents: read}
+    concurrency:
+      group: settings-pr-validation-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    outputs:
+      plan-required: ${{ steps.candidate.outputs.plan-required }}
+    steps:
+      - name: Checkout the PR merge as settings data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ format('refs/pull/{0}/merge', github.event.pull_request.number) }}
+          fetch-depth: 2
+          persist-credentials: false
+          # The pinned validator only reads configuration; candidate code is never executed.
+          allow-unsafe-pr-checkout: true
+      - name: Verify the merge candidate and select settings paths
+        id: candidate
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python3 -I - <<'PY'
+          import os, re, subprocess, sys
+
+          try:
+              head, base = (os.environ[k] for k in ('EXPECTED_HEAD', 'EXPECTED_BASE'))
+              if not all(re.fullmatch(r'[0-9a-f]{40}', value) for value in (head, base)):
+                  raise ValueError('candidate identity')
+              env = {k: v for k, v in os.environ.items() if not k.startswith('GIT_') and k not in ('GH_TOKEN', 'GITHUB_TOKEN', 'SSH_ASKPASS')}
+              env.update(GIT_CONFIG_GLOBAL='/dev/null', GIT_CONFIG_NOSYSTEM='1', GIT_NO_LAZY_FETCH='1', GIT_TERMINAL_PROMPT='0')
+              def git(*args):
+                  return subprocess.run(['git', '--no-replace-objects', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false', '-c', 'protocol.allow=never', *args], env=env, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=30)
+              resolved = git('rev-parse', '--verify', 'HEAD^{commit}')
+              merge = resolved.stdout.decode('ascii').strip()
+              if resolved.returncode or not re.fullmatch(r'[0-9a-f]{40}', merge):
+                  raise ValueError('merge identity')
+              commit = git('cat-file', '-p', merge)
+              headers = commit.stdout.split(b'\n\n', 1)[0].splitlines()
+              parents = [line[7:].decode('ascii') for line in headers if line.startswith(b'parent ')]
+              if commit.returncode or parents != [base, head]:
+                  raise ValueError('merge parents changed')
+              difference = git('diff', '--quiet', '--no-ext-diff', '--no-textconv', '--no-renames', base, merge, '--', '.github/settings.yml', '.github/workflows/settings-pr.yml', '.github/workflows/settings-main.yml', ':(glob)examples/github-actions/**')
+              if difference.returncode not in (0, 1):
+                  raise ValueError('settings path comparison failed')
+              with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+                  output.write('plan-required=' + ('true' if difference.returncode else 'false') + '\n')
+              print(f'Verified merge {merge} with base {base} and head {head}.')
+          except Exception:
+              print('merge candidate validation failed', file=sys.stderr)
+              sys.exit(1)
+          PY
+      - name: Validate settings with the trusted pinned Action
+        uses: daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6 # v0.27.0
+        with:
+          command: validate
   plan:
-    if: github.event_name == 'pull_request_target' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && github.event.pull_request.base.ref == 'main'
+    needs: settings-plan
+    if: github.event_name == 'pull_request_target' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && github.event.pull_request.base.ref == 'main' && github.event.action != 'edited' && needs.settings-plan.outputs.plan-required == 'true'
     environment: gh-settings
     runs-on: ubuntu-24.04
     timeout-minutes: 8
+    concurrency:
+      group: settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     steps:
       - name: Prepare only candidate settings data, never a PR code checkout
         id: candidate
