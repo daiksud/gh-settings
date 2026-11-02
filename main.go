@@ -355,8 +355,10 @@ func readPagesForApply(repo repository.Repository, d settings.PagesDeclaration) 
 	if err != nil {
 		return settings.PagesObservation{}, err
 	}
-	if _, err := o.Values(); err != nil {
+	if absent, err := o.Absent(); err != nil {
 		return settings.PagesObservation{}, err
+	} else if absent || d.Delete() {
+		return o, nil
 	}
 	if record := o.ModeNormalization(); d.BuildType != nil && record != (settings.ObservationNormalization{}) {
 		warnNormalization(record)

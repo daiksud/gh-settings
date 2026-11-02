@@ -217,7 +217,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		t.Fatal(got)
 	}
 	run("apply")
-	for _, failure := range []string{"404", "incomplete", "get-redirect"} {
+	for _, failure := range []string{"incomplete", "get-redirect"} {
 		mu.Lock()
 		mode = failure
 		before := len(writes)

@@ -3,7 +3,9 @@ package github
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -33,8 +35,25 @@ func pagesPath(repo repository.Repository) string {
 }
 func (c *PagesClient) Read(repo repository.Repository) (settings.PagesObservation, error) {
 	var raw map[string]json.RawMessage
-	if err := c.rest.Get(pagesPath(repo), &raw); err != nil {
-		return settings.PagesObservation{}, fmt.Errorf("read Pages (unavailable is not absent): %w", err)
+	response, err := c.rest.Request(http.MethodGet, pagesPath(repo), nil)
+	if err != nil {
+		var httpErr *api.HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return settings.NewAbsentPagesObservation(), nil
+		}
+		return settings.PagesObservation{}, fmt.Errorf("read Pages: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return settings.PagesObservation{}, fmt.Errorf("unexpected Pages read status %d", response.StatusCode)
+	}
+	decoder := json.NewDecoder(response.Body)
+	if err := decoder.Decode(&raw); err != nil {
+		return settings.PagesObservation{}, fmt.Errorf("decode Pages: %w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return settings.PagesObservation{}, fmt.Errorf("GitHub returned trailing or incomplete Pages JSON")
 	}
 	var mode *string
 	var https, public *bool
@@ -69,8 +88,12 @@ func (c *PagesClient) Read(repo repository.Repository) (settings.PagesObservatio
 	return settings.NewPagesObservation(s)
 }
 
-// Update reconciles only an observed existing site. It never creates or deletes.
+// Update reconciles the declared publishing controls, including explicit creation/deletion.
 func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclaration) (bool, error) {
+	return c.reconcile(repo, d, nil)
+}
+
+func (c *PagesClient) reconcile(repo repository.Repository, d settings.PagesDeclaration, requiredIdentity *settings.ArchiveState) (bool, error) {
 	pre := func(err error) (bool, error) { return false, &pagesPreWriteFailure{err} }
 	if err := d.Validate(); err != nil {
 		return pre(err)
@@ -82,6 +105,9 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	initial, err := identity.ReadArchive(repo)
 	if err != nil {
 		return pre(err)
+	}
+	if requiredIdentity != nil && initial != *requiredIdentity {
+		return pre(fmt.Errorf("repository identity changed before Pages follow-up"))
 	}
 	if initial.Archived {
 		return pre(fmt.Errorf("archived repository cannot update Pages without explicit unarchive"))
@@ -97,6 +123,12 @@ func (c *PagesClient) Update(repo repository.Repository, d settings.PagesDeclara
 	}
 	if len(changes) == 0 {
 		return false, nil
+	}
+	if d.Delete() {
+		return c.deleteSite(repo, initial)
+	}
+	if absent, _ := observed.Absent(); absent {
+		return c.createSite(repo, initial, d)
 	}
 	expected, err := preparePagesVerificationState(observed, d)
 	if err != nil {

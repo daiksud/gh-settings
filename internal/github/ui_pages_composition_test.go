@@ -76,7 +76,7 @@ func TestUIPagesUnavailableIsNotAbsent(t *testing.T) {
 		status int
 		body   string
 	}{
-		{404, `{"message":"Not Found"}`}, {403, `{"message":"Forbidden"}`},
+		{403, `{"message":"Forbidden"}`},
 		{200, `{"build_type":"future","cname":null,"https_enforced":false,"public":true}`},
 		{200, `{"build_type":"legacy","source":{"branch":"main","path":false},"cname":null,"https_enforced":false,"public":true}`},
 		{200, `{"build_type":"workflow","https_enforced":false,"public":true}`},

@@ -10,6 +10,7 @@ type PagesPlanChange struct {
 	Field          string                             `json:"field"`
 	Before         any                                `json:"before"`
 	After          any                                `json:"after"`
+	BeforeAbsent   bool                               `json:"before_absent,omitempty"`
 	BeforeInactive bool                               `json:"before_inactive,omitempty"`
 	Normalization  *settings.ObservationNormalization `json:"normalization,omitempty"`
 }
@@ -25,14 +26,16 @@ func (r *PagesPlanChange) UnmarshalJSON(data []byte) error {
 		}
 	}
 	for key := range fields {
-		if key != "field" && key != "before" && key != "after" && key != "before_inactive" && key != "normalization" {
+		if key != "field" && key != "before" && key != "after" && key != "before_inactive" && key != "before_absent" && key != "normalization" {
 			return fmt.Errorf("unknown Pages report key %q", key)
 		}
 	}
-	if raw, ok := fields["before_inactive"]; ok {
-		var value *bool
-		if json.Unmarshal(raw, &value) != nil || value == nil {
-			return fmt.Errorf("invalid Pages inactive marker")
+	for _, key := range []string{"before_inactive", "before_absent"} {
+		if raw, ok := fields[key]; ok {
+			var value *bool
+			if json.Unmarshal(raw, &value) != nil || value == nil {
+				return fmt.Errorf("invalid Pages inactive marker")
+			}
 		}
 	}
 	type plain PagesPlanChange
@@ -49,7 +52,12 @@ func validatePagesReport(raw []PagesPlanChange) ([]settings.PagesChange, error) 
 	for _, r := range raw {
 		var c settings.PagesChange
 		var err error
-		if r.Normalization != nil {
+		if r.BeforeAbsent {
+			if r.Before != nil || r.BeforeInactive || r.Normalization != nil {
+				return nil, fmt.Errorf("invalid absent Pages marker")
+			}
+			c, err = settings.NewPagesCreationChange(r.Field, r.After)
+		} else if r.Normalization != nil {
 			if r.Field == "pages.build_type" {
 				c, err = settings.NewPagesModeChangeWithNormalization(r.Field, r.Before, r.After, r.BeforeInactive, *r.Normalization)
 			} else {

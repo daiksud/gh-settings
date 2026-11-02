@@ -21,7 +21,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Security](security.feature.md) | Manage adopted security controls. |
 | [Immutable releases](immutable-releases.feature.md) | Manage repository release immutability policy and its explicit 404 tradeoff. |
 | [Retention](retention.feature.md) | Manage Actions retention policy. |
-| [Pages](pages.feature.md) | Manage supported existing Pages configuration. |
+| [Pages](pages.feature.md) | Manage Pages creation, configuration and explicit deletion. |
 | [Release](release.feature.md) | Publish and verify immutable artifacts. |
 | [Default branch](default-branch.feature.md) | Manage the repository default branch. |
 | [Repository lifecycle](repository-lifecycle.feature.md) | Archive and unarchive repositories. |
