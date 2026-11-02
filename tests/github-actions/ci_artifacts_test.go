@@ -65,7 +65,7 @@ func TestCITargetMatrices(t *testing.T) {
 	}
 	build := matrices["build-matrix"].Include
 	accept := matrices["acceptance-matrix"].Include
-	if len(build) != 1 || build[0].Target != "linux-amd64" || build[0].Runner != "ubuntu-slim" ||
+	if len(build) != 1 || build[0].Target != "linux-amd64" || build[0].Runner != "ubuntu-24.04" ||
 		len(accept) != 2 || accept[0].Target != build[0].Target ||
 		accept[0].Kind != "process" || accept[0].Runner != "ubuntu-slim" ||
 		accept[1].Target != build[0].Target || accept[1].Kind != "public-action" ||
