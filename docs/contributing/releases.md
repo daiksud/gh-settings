@@ -4,7 +4,7 @@ The [manual release workflow](../../.github/workflows/release.yml) builds and ac
 
 ## Automatic version calculation
 
-The same standard-library Python [release-version.py](../../.github/scripts/release-version.py) runs in gh-settings and gh-qw. It calculates the next version directly during manually dispatched release resolution, from the last published stable release through the fixed main SHA. There is **no preparation PR, committed release-version update, version input, or automatic publication on merge**. Branch names and mutable PR labels do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
+The same standard-library Python [release-version.py](../../.github/scripts/release-version.py) runs in gh-settings and gh-qw. It calculates the next version directly during manually dispatched release resolution, from the last published stable release through the fixed main SHA. There is **no preparation PR, committed release-version update, version input, or automatic publication on merge**. Branch names do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
 
 | Committed change | Selected increment |
 | --- | --- |
@@ -51,7 +51,7 @@ Both native acceptance lanes and the `candidate-action` lane must succeed before
 
 ## Release notes from committed messages
 
-The [notes generator](../../scripts/release-metadata/main.go) reads the actual committed messages in the fixed `PREVIOUS_SHA..SOURCE_SHA` interval. Normal squash merging records each PR's reviewed title and body in one main commit. It follows main's first-parent history and skips commits with no tree change, keeping substantive main squash commits as the release entries. Notes use those messages directly, without querying current PR titles, bodies, or labels. Their generation does not call GitHub's generate-notes API or use a release-category configuration file.
+The [notes generator](../../scripts/release-metadata/main.go) reads the actual committed messages in the fixed `PREVIOUS_SHA..SOURCE_SHA` interval. Normal squash merging records each PR's reviewed title and body in one main commit. It follows main's first-parent history and skips commits with no tree change, keeping substantive main squash commits as the release entries. Notes use those messages directly, without querying current PR titles or bodies. Their generation does not call GitHub's generate-notes API or use a release-category configuration file.
 
 Each included commit appears once under the first matching category:
 
@@ -64,13 +64,13 @@ Each included commit appears once under the first matching category:
 | `perf` | `⚡ Performance` |
 | Any remaining message, including internal maintenance, reverts, and legacy headers | `🛠️ Maintenance` |
 
-Compatibility markers must be Conventional Commits headers or footers; mentions in prose, Markdown headings, or quoted/fenced examples do not classify a change. New Feature and Bug Fix describe observable CLI or public Action behavior. Internal development tools and CI/CD changes use their appropriate maintenance types; user-experienced runtime improvements use `perf`. The [code-review policy](../../.agents/skills/code-review/SKILL.md#title-and-type) owns this semantic judgment. PRLint remains commitlint-only. Labels are independent organization metadata, with no synchronization, type-agreement requirement, or release-label check.
+Compatibility markers must be Conventional Commits headers or footers; mentions in prose, Markdown headings, or quoted/fenced examples do not classify a change. New Feature and Bug Fix describe observable CLI or public Action behavior. Internal development tools and CI/CD changes use their appropriate maintenance types; user-experienced runtime improvements use `perf`. The [code-review policy](../../.agents/skills/code-review/SKILL.md#title-and-type) owns this semantic judgment. PRLint remains commitlint-only.
 
-Entries link to their exact commits and render message text safely. Migration guidance preserves breaking-change footer details from the same interval as escaped text. A breaking header without a footer produces an instruction to inspect that change. A fixed-SHA comparison links the complete interval, including any direct commits. Later edits to a PR or its labels cannot change the committed classification or text.
+Entries link to their exact commits and render message text safely. Migration guidance preserves breaking-change footer details from the same interval as escaped text. A breaking header without a footer produces an instruction to inspect that change. A fixed-SHA comparison links the complete interval, including any direct commits. Later PR edits cannot change the committed classification or text.
 
 The predecessor is the stable numeric-tag release with the latest publication timestamp, with release ID breaking ties. Drafts, prereleases, and unpublished tags do not establish that boundary. Full local history, predecessor ancestry, and the resolver's previous tag/SHA must agree; a changed publication boundary stops generation before remote mutations. A conflicting existing target tag is rejected. New main commits cannot enter the frozen interval.
 
-Catalog, history, or generation failures stop before tag/draft creation. The publisher appends installation/upgrade/checksum guidance and its existing hidden version/source/binary identity manifest. A matching draft or completed release retains its original body on retry, even if labels or later publications change.
+Catalog, history, or generation failures stop before tag/draft creation. The publisher appends installation/upgrade/checksum guidance and its existing hidden version/source/binary identity manifest. A matching draft or completed release retains its original body on retry, even after later publications.
 
 ## Publication and recovery
 
