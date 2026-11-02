@@ -6,20 +6,7 @@ import (
 )
 
 func TestObserverRetirementAllowsOnlyUnprivilegedPRValidation(t *testing.T) {
-	const validation = `name: settings-plan
-on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited]
-    branches: [main]
-permissions: {}
-jobs:
-  settings-plan:
-    if: github.event_name == 'pull_request'
-    permissions: {contents: read}
-    runs-on: ubuntu-slim
-    steps:
-      - run: go run . validate
-`
+	const validation = settingsValidationLegacyFixture
 	for _, test := range []struct {
 		name, source string
 		valid        bool

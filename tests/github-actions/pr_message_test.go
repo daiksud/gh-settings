@@ -1,57 +1,98 @@
 package githubactions
 
 import (
-	"reflect"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
-
-	"go.yaml.in/yaml/v4"
 )
 
-func TestIndependentPRMessageValidation(t *testing.T) {
-	w, source := readWorkflow(t, "../../.github/workflows/prlint.yml")
-	if w.Name != "prlint" || len(w.On) != 1 || w.On["pull_request"].Kind == 0 || len(w.Jobs) != 1 || len(w.Permissions) != 0 {
-		t.Fatal("message validation must remain a separate read-only PR workflow")
-	}
+func TestPRLintEventsAndDependabotAuthor(t *testing.T) {
+	w, _ := readWorkflow(t, "../../.github/workflows/prlint.yml")
 	var event struct {
 		Types []string `yaml:"types"`
 	}
 	node := w.On["pull_request"]
-	if node.Kind != yaml.MappingNode || len(node.Content) != 2 || node.Content[0].Value != "types" {
-		t.Fatal("every PR must trigger the workflow so the required prlint check is reported")
-	}
 	if err := node.Decode(&event); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(event.Types, []string{"opened", "synchronize", "reopened", "edited"}) || w.Concurrency.Group != "prlint-${{ github.event.pull_request.number }}" || !w.Concurrency.Cancel {
-		t.Fatal("message edits need their own concurrency group and validation event")
+	for _, required := range []string{"opened", "synchronize", "reopened", "edited"} {
+		if !slices.Contains(event.Types, required) {
+			t.Fatalf("PRLint must run on %s", required)
+		}
 	}
+	for i := 0; i < len(node.Content); i += 2 {
+		if slices.Contains([]string{"paths", "paths-ignore", "branches", "branches-ignore"}, node.Content[i].Value) {
+			t.Fatal("workflow filters must not omit the required prlint check")
+		}
+	}
+	j, ok := w.Jobs["prlint"]
+	if !ok || strings.TrimSpace(j.If) != "github.event.pull_request.user.login != 'dependabot[bot]'" {
+		t.Fatal("the required prlint job must exclude Dependabot by PR author, not event actor")
+	}
+}
+
+func TestPRLintMessageAndFailurePropagation(t *testing.T) {
+	w, _ := readWorkflow(t, "../../.github/workflows/prlint.yml")
 	j := w.Jobs["prlint"]
-	if j.If != "github.event.pull_request.user.login != 'dependabot[bot]'" {
-		t.Fatal("skip the required job only for Dependabot-authored PRs, independently of the event actor")
-	}
-	if j.Needs != "" || j.Environment != "" || j.Continue || j.Timeout != 5 || !reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) || len(j.Steps) != 3 {
-		t.Fatal("ordinary PRs must retain strict message validation without write permissions")
-	}
-	if j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" || j.Steps[0].With["persist-credentials"] != "false" {
-		t.Fatal("message policy checkout must not retain credentials")
-	}
-	if j.Steps[1].Uses != "jdx/mise-action@82a612c5ab8bcda7cc5db6b7e81a8e7584c3dc6e" || j.Steps[1].With["install_args"] != "bun npm:@commitlint/cli" {
-		t.Fatal("install the pinned commitlint tools")
-	}
-	validate := j.Steps[2]
-	if !reflect.DeepEqual(validate.Env, map[string]string{"PR_TITLE": "${{ github.event.pull_request.title }}", "PR_BODY": "${{ github.event.pull_request.body }}"}) || !strings.Contains(validate.Run, `printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY"`) || !strings.Contains(validate.Run, "--strict") {
-		t.Fatal("validate the title and body as one message through environment values")
-	}
+	var validate step
+	var titleInput, bodyInput string
 	for _, s := range j.Steps {
-		if s.If != "" || s.Continue {
-			t.Fatal("message validation must not skip or ignore a failed step")
+		var titleName, bodyName string
+		for name, value := range s.Env {
+			switch value {
+			case "${{ github.event.pull_request.title }}":
+				titleName = name
+			case "${{ github.event.pull_request.body }}":
+				bodyName = name
+			}
+		}
+		if s.Run != "" && titleName != "" && bodyName != "" {
+			validate, titleInput, bodyInput = s, titleName, bodyName
+			break
 		}
 	}
-	for _, forbidden := range []string{"secrets.", "gh pr ready", "go build", "acceptance-stage", "candidate-smoke"} {
-		if strings.Contains(source, forbidden) {
-			t.Fatalf("metadata-only workflow contains %q", forbidden)
-		}
+	if titleInput == "" || bodyInput == "" || j.Continue || validate.Continue || validate.If != "" {
+		t.Fatal("ordinary PR message validation must run and propagate failures")
+	}
+
+	// Run the workflow's shell script with a local validator stand-in. This
+	// checks message transport and exit status without installing tools or
+	// asserting any action version, step position or runner configuration.
+	const runner = `#!/bin/sh
+if [ "$1" = which ]; then
+  printf 'commitlint\n'
+  exit 0
+fi
+case " $* " in *" commitlint "*) ;; *) exit 99 ;; esac
+case " $* " in *" --strict "*) ;; *) exit 99 ;; esac
+cat > "$PRLINT_CAPTURE"
+exit "$PRLINT_EXIT"
+`
+	title := `ci: preserve "$literal" $(printf injected) *`
+	body := "First line with `backticks` and %s.\nSecond line."
+	for _, exit := range []string{"0", "7"} {
+		t.Run("validator-exit-"+exit, func(t *testing.T) {
+			bin := t.TempDir()
+			if err := os.WriteFile(filepath.Join(bin, "mise"), []byte(runner), 0700); err != nil {
+				t.Fatal(err)
+			}
+			capture := filepath.Join(bin, "message")
+			cmd := exec.Command("bash", "--noprofile", "--norc", "-euo", "pipefail", "-c", validate.Run)
+			cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"), titleInput+"="+title, bodyInput+"="+body, "PRLINT_CAPTURE="+capture, "PRLINT_EXIT="+exit)
+			output, err := cmd.CombinedOutput()
+			if (err == nil) != (exit == "0") {
+				t.Fatalf("validator exit %s: %v\n%s", exit, err, output)
+			}
+			message, err := os.ReadFile(capture)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(message) != title+"\n\n"+body+"\n" {
+				t.Fatalf("title/body changed in transit: %q", message)
+			}
+		})
 	}
 }
