@@ -59,7 +59,6 @@ resource-specific behavior.
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Trusted PR-target events always validate the merge declaration as `settings-plan`; relevant file changes separately select a read-only head plan |
-| [`settings-plan.yml`](../../.github/workflows/settings-plan.yml) | Independent credential-free validation of the merge declaration with its pinned operational consumer |
 | [`settings-main.yml`](../../.github/workflows/settings-main.yml) | Pushes to `main` affecting settings or this workflow; one Environment-bound direct apply job |
 | [`settings-env.yml`](../../.github/workflows/settings-env.yml) | PR target events and pushes to `main`; inspect workflow YAML with trusted source, reporting `settings-env` |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or PR CI completion; approve completed reviews matching HEAD with thumbs-up |
@@ -137,24 +136,24 @@ There is no prepare/handoff job or main-side pre-approval plan. The PR Summary a
 
 The [guard workflow](../../.github/workflows/settings-env.yml) checks out trusted `main` policy into `.policy` and the candidate PR merge into `.candidate`. The candidate is inspected only as YAML data. The job has a read-only token, installs Go using trusted configuration, and runs the main-branch [scope test](../../tests/github-actions/settings_environment_scope_test.go) with `GH_SETTINGS_WORKFLOWS_DIR` pointing at the candidate workflows.
 
-The `gh-settings` Environment allowlist contains exactly two locations: `.github/workflows/settings-main.yml/jobs.apply` on push to main, and `.github/workflows/settings-pr.yml/jobs.plan` on trusted `pull_request_target` targeting main. The main reference is mandatory. The PR reference may be absent, but absence cannot grant another path access. All other `gh-settings` references are rejected.
+The `gh-settings` Environment allowlist contains exactly two locations: `.github/workflows/settings-main.yml/jobs.apply` on push to main, and `.github/workflows/settings-pr.yml/jobs.plan` on trusted `pull_request_target` targeting main. Both references are mandatory. All other `gh-settings` references are rejected.
 
-The plan-only PR caller permits opened, synchronize and reopened activities
-with the exact event/main-ref/repository/base condition. A combined PR caller
-must also handle edited events without a workflow-level path filter and run
-an unconditional `settings-plan` validation job. Its separate `plan` job must
-depend on that validation, retain the trusted condition, exclude edited events
-and require `needs.settings-plan.outputs.plan-required == 'true'`. Validation
-and plan must have independent per-PR concurrency groups; validation does not
-cancel active runs and plan cancels superseded plans.
+The PR caller must contain exactly the required `settings-plan` validation job
+and the separate `plan` job. It handles opened, synchronize, reopened and edited
+events without a workflow-level path filter. Validation runs unconditionally;
+plan must depend on that validation, retain the exact
+event/main-ref/repository/base condition, exclude edited events and require
+`needs.settings-plan.outputs.plan-required == 'true'`. Validation and plan
+have independent per-PR concurrency groups; validation does not cancel active
+runs and plan cancels superseded plans.
 
-The `settings-plan` job ID and display name are reserved for real validation in
-`settings-plan.yml` or `settings-pr.yml`. At least one approved validator must
-remain; when both are present they must use the same immutable public Action
-pin. The guard requires a merge checkout without persisted credentials and
+The `settings-plan` job ID and display name are reserved exclusively for
+`.github/workflows/settings-pr.yml/jobs.settings-plan`. That validator is
+mandatory, and a `.github/workflows/settings-plan.yml` file is rejected.
+The guard requires a merge checkout without persisted credentials and
 the pinned Action's `command: validate`, with only Contents read and no
 Environment or injected credentials. Conditional validation steps, ignored
-failures and additional execution steps are rejected. The combined validator
+failures and additional execution steps are rejected. The validator
 cannot have a job condition or prerequisite job; its only extra step handles
 the explicit event base/head inputs and produces plan eligibility.
 
@@ -192,12 +191,6 @@ or local Actions. A validation failure fails the required check. The validator
 passes only the relevant-path match to the separate plan job, whose data comes
 from the event's PR head rather than the merge checkout.
 
-The independent [settings-plan.yml](../../.github/workflows/settings-plan.yml)
-also validates the PR merge declaration with its pinned operational consumer.
-Both jobs perform real validation with the same immutable Action pin and
-report `settings-plan`; inspect the workflow behind the result when verifying
-that the trusted PR caller ran.
-
 This checks the operational declaration against its actual package contract.
 The separate required `ci-pr` builds and tests the candidate source, including
 current-format process and public Action fixtures. The candidate decoder still
@@ -206,7 +199,7 @@ The tracked declaration uses the current UI contract. Validation and plan do
 not apply it; the main caller performs direct apply only after a permitted
 merge.
 
-Neither validation establishes live App visibility or drift. The separate
+Validation does not establish live App visibility or drift. The separate
 [trusted plan job](#active-settings-workflows) performs authenticated observation;
 no validation result authorizes a later apply or locks remote state.
 

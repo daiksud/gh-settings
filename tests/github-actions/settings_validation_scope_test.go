@@ -10,83 +10,70 @@ import (
 // Keep the required check an unconditional, credential-free invocation of the
 // released validator. The trusted inline metadata step's implementation, like
 // the privileged plan steps, remains subject to owner review and behavior tests.
-func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node, combined bool) (string, error) {
+func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 	permissions, err := settingsYAMLMap(workflow["permissions"])
 	if err != nil || len(permissions) != 0 || workflow["env"] != nil {
-		return "", fmt.Errorf("settings validation must have no default token grants or injected environment")
+		return fmt.Errorf("settings validation must have no default token grants or injected environment")
 	}
 	jobs, err := settingsYAMLMap(workflow["jobs"])
 	if err != nil || jobs[settingsPlanCheckName] == nil {
-		return "", fmt.Errorf("settings validation requires the settings-plan job")
+		return fmt.Errorf("settings validation requires the settings-plan job")
 	}
-	if combined {
-		if len(jobs) != 2 || jobs["plan"] == nil || workflow["concurrency"] != nil {
-			return "", fmt.Errorf("combined PR workflow requires separate validation and plan jobs with independent concurrency")
-		}
-		if err := checkSettingsPRTrigger(workflow["on"], true); err != nil {
-			return "", err
-		}
-		defaults, err := settingsYAMLMap(workflow["defaults"])
-		if err != nil || len(defaults) != 1 || !settingsStringMapIs(defaults["run"], map[string]string{"shell": "bash"}) {
-			return "", fmt.Errorf("combined settings workflow must use the trusted bash step shell")
-		}
-		plan, err := settingsYAMLMap(jobs["plan"])
-		if err != nil || !settingsScalarIs(plan["environment"], settingsEnvironment) || !settingsConcurrencyIs(plan["concurrency"], "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}", true) {
-			return "", fmt.Errorf("combined plan must retain its Environment and independent cancelling concurrency")
-		}
-	} else if len(jobs) != 1 {
-		return "", fmt.Errorf("legacy PR validation requires exactly the settings-plan job")
+	if len(jobs) != 2 || jobs["plan"] == nil || workflow["concurrency"] != nil {
+		return fmt.Errorf("PR workflow requires separate validation and plan jobs with independent concurrency")
+	}
+	if err := checkSettingsPRTrigger(workflow["on"]); err != nil {
+		return err
+	}
+	defaults, err := settingsYAMLMap(workflow["defaults"])
+	if err != nil || len(defaults) != 1 || !settingsStringMapIs(defaults["run"], map[string]string{"shell": "bash"}) {
+		return fmt.Errorf("settings workflow must use the trusted bash step shell")
+	}
+	plan, err := settingsYAMLMap(jobs["plan"])
+	if err != nil || !settingsScalarIs(plan["environment"], settingsEnvironment) || !settingsConcurrencyIs(plan["concurrency"], "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}", true) {
+		return fmt.Errorf("plan must retain its Environment and independent cancelling concurrency")
 	}
 	job, err := settingsYAMLMap(jobs[settingsPlanCheckName])
 	if err != nil {
-		return "", err
+		return err
 	}
 	for _, key := range []string{"environment", "uses", "needs", "env", "container", "services", "strategy"} {
 		if job[key] != nil {
-			return "", fmt.Errorf("settings validation cannot set jobs.settings-plan.%s", key)
+			return fmt.Errorf("settings validation cannot set jobs.settings-plan.%s", key)
 		}
 	}
 	if job["continue-on-error"] != nil && !settingsScalarIs(job["continue-on-error"], "false") {
-		return "", fmt.Errorf("settings validation cannot ignore failure")
+		return fmt.Errorf("settings validation cannot ignore failure")
 	}
 	if !settingsScalarIs(job["runs-on"], "ubuntu-24.04") || !settingsStringMapIs(job["permissions"], map[string]string{"contents": "read"}) {
-		return "", fmt.Errorf("settings validation requires the supported runner and only Contents read")
+		return fmt.Errorf("settings validation requires the supported runner and only Contents read")
 	}
-	checkoutInputs := map[string]string{"ref": "${{ github.sha }}", "persist-credentials": "false"}
-	stepCount := 2
-	if combined {
-		if job["if"] != nil || !settingsStringMapIs(job["outputs"], map[string]string{"plan-required": "${{ steps.candidate.outputs.plan-required }}"}) || !settingsConcurrencyIs(job["concurrency"], "settings-pr-validation-${{ github.repository }}-${{ github.event.pull_request.number }}", false) {
-			return "", fmt.Errorf("combined validation must run unconditionally and expose only plan eligibility with independent non-cancelling concurrency")
-		}
-		checkoutInputs["ref"] = "${{ format('refs/pull/{0}/merge', github.event.pull_request.number) }}"
-		checkoutInputs["fetch-depth"] = "2"
-		checkoutInputs["allow-unsafe-pr-checkout"] = "true"
-		stepCount = 3
-	} else if !settingsScalarIs(job["if"], "github.event_name == 'pull_request'") || job["outputs"] != nil || job["concurrency"] != nil || !settingsConcurrencyIs(workflow["concurrency"], "settings-plan-${{ github.repository }}-${{ github.event.pull_request.number }}", false) {
-		return "", fmt.Errorf("legacy validation must retain its PR-only condition and non-cancelling concurrency")
+	if job["if"] != nil || !settingsStringMapIs(job["outputs"], map[string]string{"plan-required": "${{ steps.candidate.outputs.plan-required }}"}) || !settingsConcurrencyIs(job["concurrency"], "settings-pr-validation-${{ github.repository }}-${{ github.event.pull_request.number }}", false) {
+		return fmt.Errorf("validation must run unconditionally and expose only plan eligibility with independent non-cancelling concurrency")
 	}
 	steps := job["steps"]
-	if steps == nil || steps.Kind != yaml.SequenceNode || len(steps.Content) != stepCount {
-		return "", fmt.Errorf("settings validation requires merge checkout, trusted metadata when combined, and validate")
+	if steps == nil || steps.Kind != yaml.SequenceNode || len(steps.Content) != 3 {
+		return fmt.Errorf("settings validation requires merge checkout, trusted metadata, and validate")
 	}
 	checkout, err := settingsValidationStep(steps.Content[0], "uses", "with")
-	if err != nil || !settingsPinnedAction(checkout["uses"], "actions/checkout") || !settingsStringMapIs(checkout["with"], checkoutInputs) {
-		return "", fmt.Errorf("settings validation must check out the PR merge without persisting credentials")
+	if err != nil || !settingsPinnedAction(checkout["uses"], "actions/checkout") || !settingsStringMapIs(checkout["with"], map[string]string{
+		"ref": "${{ format('refs/pull/{0}/merge', github.event.pull_request.number) }}", "persist-credentials": "false",
+		"fetch-depth": "2", "allow-unsafe-pr-checkout": "true",
+	}) {
+		return fmt.Errorf("settings validation must check out the PR merge without persisting credentials")
 	}
-	if combined {
-		candidate, err := settingsValidationStep(steps.Content[1], "id", "env", "run")
-		if err != nil || !settingsScalarIs(candidate["id"], "candidate") || !settingsStringMapIs(candidate["env"], map[string]string{
-			"EXPECTED_HEAD": "${{ github.event.pull_request.head.sha }}",
-			"EXPECTED_BASE": "${{ github.event.pull_request.base.sha }}",
-		}) || candidate["run"] == nil || candidate["run"].Kind != yaml.ScalarNode || strings.TrimSpace(candidate["run"].Value) == "" || strings.Contains(candidate["run"].Value, "${{") {
-			return "", fmt.Errorf("combined validation requires trusted inline metadata handling with explicit event head and base inputs")
-		}
+	candidate, err := settingsValidationStep(steps.Content[1], "id", "env", "run")
+	if err != nil || !settingsScalarIs(candidate["id"], "candidate") || !settingsStringMapIs(candidate["env"], map[string]string{
+		"EXPECTED_HEAD": "${{ github.event.pull_request.head.sha }}",
+		"EXPECTED_BASE": "${{ github.event.pull_request.base.sha }}",
+	}) || candidate["run"] == nil || candidate["run"].Kind != yaml.ScalarNode || strings.TrimSpace(candidate["run"].Value) == "" || strings.Contains(candidate["run"].Value, "${{") {
+		return fmt.Errorf("validation requires trusted inline metadata handling with explicit event head and base inputs")
 	}
-	validate, err := settingsValidationStep(steps.Content[stepCount-1], "uses", "with")
+	validate, err := settingsValidationStep(steps.Content[2], "uses", "with")
 	if err != nil || !settingsPinnedAction(validate["uses"], "daiksud/gh-settings") || !settingsStringMapIs(validate["with"], map[string]string{"command": "validate"}) {
-		return "", fmt.Errorf("settings validation must invoke the immutable public Action with only command: validate")
+		return fmt.Errorf("settings validation must invoke the immutable public Action with only command: validate")
 	}
-	return validate["uses"].Value, nil
+	return nil
 }
 
 // These steps cannot be conditional, continue on error, inject tokens, or add
