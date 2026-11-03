@@ -7,7 +7,7 @@ import (
 )
 
 func TestReleaseWithdrawalsAndClarifications(t *testing.T) {
-	f := newFixture(t, "feat!: expose <temporary> mode\n\nBREAKING CHANGE: Switch to temporary mode.", "feat: retain useful mode")
+	f := newFixture(t, "feat!: expose <temporary> mode\n\nBREAKING CHANGE: Switch to temporary mode.\n\nRelease-note: Use temporary mode for upgrades.", "feat: retain useful mode")
 	commits := strings.Fields(mustGit(t, f.root, "rev-list", "--reverse", f.base+".."+f.source))
 	write(t, filepath.Join(f.root, "change.txt"), "withdraw temporary mode")
 	mustGit(t, f.root, "add", ".")
@@ -35,7 +35,7 @@ func TestReleaseWithdrawalsAndClarifications(t *testing.T) {
 			t.Fatalf("missing %q in notes:\n%s", want, notes)
 		}
 	}
-	if strings.Contains(notes, "Migration guidance") || strings.Contains(notes, "Switch to temporary mode") || strings.Contains(notes, "Refs #12") || strings.Count(notes, "- [expose") != 1 {
+	if strings.Contains(notes, "Migration guidance") || strings.Contains(notes, "Switch to temporary mode") || strings.Contains(notes, "Use temporary mode") || strings.Contains(notes, "Refs #12") || strings.Count(notes, "- [expose") != 1 {
 		t.Fatal("withdrawn entry advertised or obsolete migration leaked", notes)
 	}
 }

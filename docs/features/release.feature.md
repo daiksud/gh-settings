@@ -143,7 +143,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - When release notes are generated
 - Then the whole earlier entry appears once under Withdrawn before release instead of its original category
 - And its original commit, withdrawal reason, and annotating commit remain linked
-- And its obsolete migration footer is omitted without subtracting its version signal
+- And its obsolete migration and clarification footers are omitted without subtracting its version signal
 - And formal multiline `Release-note:` footers appear before the categorized history as escaped text
 - And clarifications distinguish unreleased withdrawals from actual previous-release upgrade impact
 - But prose, quoted examples, fences, and later commits outside the frozen source cannot annotate the interval

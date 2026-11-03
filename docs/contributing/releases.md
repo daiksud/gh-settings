@@ -84,7 +84,7 @@ Use one `Release-withdraws:` footer per fully withdrawn entry. The target must b
 an earlier substantive first-parent commit in the same frozen release interval.
 Its entry moves out of feature/fix/compatibility categories into Withdrawn before
 release, retaining its original commit link, the withdrawal reason, and a link to
-the annotating commit. Its obsolete migration footer is omitted. This does not
+the annotating commit. Its obsolete migration and clarification footers are omitted. This does not
 subtract its version signal: the Python resolver still considers every committed
 change. Partial removals must use a clarification explaining what remains rather
 than claiming the entire entry was withdrawn. The generator does not infer

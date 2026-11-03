@@ -217,6 +217,9 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 	}
 	var notes strings.Builder
 	for _, c := range interval.changes {
+		if c.withdrawnBy != "" {
+			continue
+		}
 		for _, detail := range c.notes {
 			if notes.Len() == 0 {
 				notes.WriteString("## Release clarifications\n\n")
