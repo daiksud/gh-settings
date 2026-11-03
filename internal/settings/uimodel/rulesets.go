@@ -31,6 +31,7 @@ type RulesetRules struct {
 	RequireCodeScanningResults                                                                         *CodeScanningRule
 	RequireCodeQualityResults                                                                          *CodeQualityRule
 	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
+	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -54,6 +55,11 @@ type CodeScanningTool struct {
 }
 
 type CodeScanningRule struct{ CodeScanningTools *[]CodeScanningTool }
+type CopilotCodeReviewRule struct {
+	ReviewNewPushes         *bool
+	ReviewDraftPullRequests *bool
+}
+
 type CodeQualityRule struct{ Severity *CodeQualitySeverity }
 
 type StatusChecksRule struct {

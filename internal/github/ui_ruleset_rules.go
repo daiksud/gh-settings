@@ -8,6 +8,10 @@ import (
 
 func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, error) {
 	result := []settings.RulesetRule{}
+	if ui.AutomaticallyRequestCopilotCodeReview != nil {
+		rule := ui.AutomaticallyRequestCopilotCodeReview
+		result = append(result, settings.RulesetRule{Type: "copilot_code_review", Parameters: &settings.RuleParameters{ReviewOnPush: copyUIRulesetValue(rule.ReviewNewPushes), ReviewDraftPullRequests: copyUIRulesetValue(rule.ReviewDraftPullRequests)}})
+	}
 	for _, control := range []struct {
 		selected *bool
 		kind     string
@@ -71,6 +75,8 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 				return uimodel.RulesetRules{}, fmt.Errorf("update requires complete parameters")
 			}
 			result.RestrictUpdates = &uimodel.UpdateRule{AllowFetchAndMerge: copyUIRulesetValue(rule.Parameters.UpdateAllowsFetchAndMerge)}
+		case "copilot_code_review":
+			result.AutomaticallyRequestCopilotCodeReview = &uimodel.CopilotCodeReviewRule{ReviewNewPushes: copyUIRulesetValue(rule.Parameters.ReviewOnPush), ReviewDraftPullRequests: copyUIRulesetValue(rule.Parameters.ReviewDraftPullRequests)}
 		case "deletion":
 			*result.RestrictDeletions = true
 		case "non_fast_forward":
