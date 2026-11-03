@@ -41,7 +41,7 @@ func TestRulesetEnforcementExportWarningsUseCompleteSelectedIDs(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			z := exportEnforcementState(t, 7, "z", "FUTURE_MODE", true)
-			a := exportEnforcementState(t, 9, "a", "evaluate", true)
+			a := exportEnforcementState(t, 9, "a", "FUTURE_ENFORCEMENT", true)
 			canonical := exportEnforcementState(t, 8, "canonical", "", false)
 			if test.failure == "ui" {
 				mode := "always"

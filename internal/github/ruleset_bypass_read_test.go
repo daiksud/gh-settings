@@ -17,7 +17,7 @@ func bypassReadBody(mode string, companions bool) map[string]any {
 	json.Unmarshal([]byte(basicRulesetJSON), &body)
 	if companions {
 		body = approvalsIntendedPayload(11, true)
-		body["enforcement"] = "evaluate"
+		body["enforcement"] = "FUTURE_ENFORCEMENT"
 		for _, r := range body["rules"].([]any) {
 			rule := r.(map[string]any)
 			if rule["type"] == "code_quality" {
@@ -59,7 +59,7 @@ func TestRulesetObservedBypassDecoderRetainsExactEvidenceAndStrictVerification(t
 				}
 			}
 			if companions {
-				want.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+				want.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 				want.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
 				want.RequiredApprovals = settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 11, Fallback: 0}
 			}
@@ -145,7 +145,7 @@ func TestRulesetBypassHTTPReaderIsSilentAndRejectsPartialAcquisition(t *testing.
 				if err == nil || valueErr == nil || len(values) != 0 {
 					t.Fatal("partial acquisition escaped", values, err, valueErr)
 				}
-			} else if err != nil || valueErr != nil || len(values) != 2 || len(values[0].BypassModeNormalizations) != 2 || len(values[1].BypassModeNormalizations) != 0 || values[0].EnforcementNormalization.RawValue != "evaluate" || values[0].RequiredApprovalsNormalization.RawValue != 11 {
+			} else if err != nil || valueErr != nil || len(values) != 2 || len(values[0].BypassModeNormalizations) != 2 || len(values[1].BypassModeNormalizations) != 0 || values[0].EnforcementNormalization.RawValue != "FUTURE_ENFORCEMENT" || values[0].RequiredApprovalsNormalization.RawValue != 11 {
 				t.Fatal("complete records lost", values, err, valueErr)
 			}
 			if calls != 3 {

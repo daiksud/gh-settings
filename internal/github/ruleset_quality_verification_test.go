@@ -33,7 +33,7 @@ func rulesetQualityChange(t *testing.T, desired string, both bool) settings.Rule
 	}
 	if both {
 		before.Enforcement, after.Enforcement = actionsPointer("disabled"), actionsPointer("disabled")
-		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 	}
 	change, err := settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)
 	if err != nil {

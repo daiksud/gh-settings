@@ -34,7 +34,7 @@ func rulesetApprovalsChange(t *testing.T, count int, both bool) settings.Ruleset
 	records := settings.RulesetNormalizations{RequiredApprovals: settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 11, Fallback: 0}}
 	if both {
 		before.Enforcement, after.Enforcement = actionsPointer("disabled"), actionsPointer("disabled")
-		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 		records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
 		*before.Rules = append(*before.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: actionsPointer("errors")}})
 		*after.Rules = append(*after.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: actionsPointer("errors")}})

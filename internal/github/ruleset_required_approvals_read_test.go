@@ -18,7 +18,7 @@ func TestUnifiedRulesetObservationDecoderOwnsTypedApprovalProvenance(t *testing.
 		for _, count := range []int{0, 1, 10, -1, 11, 100} {
 			body := approvalsIntendedPayload(count, both)
 			if both {
-				body["enforcement"] = "evaluate"
+				body["enforcement"] = "FUTURE_ENFORCEMENT"
 				for _, r := range body["rules"].([]any) {
 					rule := r.(map[string]any)
 					if rule["type"] == "code_quality" {
@@ -54,7 +54,7 @@ func TestUnifiedRulesetObservationDecoderOwnsTypedApprovalProvenance(t *testing.
 				want.RequiredApprovals = settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: count, Fallback: 0}
 			}
 			if both {
-				want.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+				want.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 				want.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
 			}
 			if err != nil || !reflect.DeepEqual(records, want) || !reflect.DeepEqual(raw, original) || policy.Rules == nil {
@@ -117,7 +117,7 @@ func TestRulesetRequiredApprovalsHTTPReaderOwnsThreeRecordsAndAbsenceSilently(t 
 				}
 				body["rules"] = rules
 				if both {
-					body["enforcement"] = "evaluate"
+					body["enforcement"] = "FUTURE_ENFORCEMENT"
 				}
 				encoded, _ := json.Marshal(body)
 				return labelsResponse(req, 200, string(encoded)), nil
@@ -140,7 +140,7 @@ func TestRulesetRequiredApprovalsHTTPReaderOwnsThreeRecordsAndAbsenceSilently(t 
 					t.Fatal("IDbound integer lost", values, got, err)
 				}
 				if both {
-					if enf, err := values[i].RawEnforcement(); err != nil || enf != "evaluate" {
+					if enf, err := values[i].RawEnforcement(); err != nil || enf != "FUTURE_ENFORCEMENT" {
 						t.Fatal(enf, err)
 					}
 					if q, err := values[i].RawQualitySeverity(); err != nil || q == nil || *q != "FUTURE_SEVERITY" {
@@ -166,7 +166,7 @@ func TestRulesetRequiredApprovalsHTTPReaderRejectsLaterMalformedPolicyWithoutPar
 	for _, rules := range invalidRules {
 		var raw map[string]json.RawMessage
 		json.Unmarshal([]byte(approvalsRulesetJSON), &raw)
-		raw["enforcement"], raw["rules"] = json.RawMessage(`"evaluate"`), rules
+		raw["enforcement"], raw["rules"] = json.RawMessage(`"FUTURE_ENFORCEMENT"`), rules
 		original := map[string]json.RawMessage{}
 		for k, v := range raw {
 			original[k] = bytes.Clone(v)
@@ -190,7 +190,7 @@ func TestRulesetRequiredApprovalsHTTPReaderRejectsLaterMalformedPolicyWithoutPar
 			}
 			var response map[string]json.RawMessage
 			json.Unmarshal([]byte(approvalsRulesetJSON), &response)
-			response["id"], response["enforcement"] = json.RawMessage(strconv.Itoa(id)), json.RawMessage(`"evaluate"`)
+			response["id"], response["enforcement"] = json.RawMessage(strconv.Itoa(id)), json.RawMessage(`"FUTURE_ENFORCEMENT"`)
 			if id == 9 {
 				response["name"], response["rules"] = json.RawMessage(`"later"`), rules
 			} else {

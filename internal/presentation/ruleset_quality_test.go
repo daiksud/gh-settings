@@ -19,8 +19,8 @@ func TestNormalizedRulesetQualityPresentationPreservesRemovalAndUIChoices(t *tes
 				prefix := ""
 				if both {
 					beforeJSON = strings.Replace(beforeJSON, `"enforcement":"active"`, `"enforcement":"disabled"`, 1)
-					records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
-					prefix = `Warning: repository.settings.rulesets.enforcement_status: observed "evaluate" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".` + "\n" + `repository.settings.rulesets.enforcement_status (Ruleset 7 "policy"): "disabled" (normalized observation) → "disabled" (write required)` + "\n"
+					records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
+					prefix = `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".` + "\n" + `repository.settings.rulesets.enforcement_status (Ruleset 7 "policy"): "disabled" (normalized observation) → "disabled" (write required)` + "\n"
 				}
 				afterJSON := strings.Replace(beforeJSON, `"severity":"errors"`, `"severity":"`+test.native+`"`, 1)
 				if test.native == "removed" {

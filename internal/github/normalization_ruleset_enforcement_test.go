@@ -10,7 +10,7 @@ import (
 )
 
 func TestObservedRulesetEnforcementDecoderPreservesSourceAndStrictVerification(t *testing.T) {
-	for _, token := range []string{"active", "disabled", "evaluate", "FUTURE_MODE", "", " \t"} {
+	for _, token := range []string{"active", "disabled", "evaluate", "FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		t.Run(token, func(t *testing.T) {
 			var raw map[string]json.RawMessage
 			if err := json.Unmarshal([]byte(basicRulesetJSON), &raw); err != nil {
@@ -24,19 +24,19 @@ func TestObservedRulesetEnforcementDecoderPreservesSourceAndStrictVerification(t
 			policy, record, err := decodeObservedRulesetPolicy(raw)
 			want := token
 			wantRecord := settings.ObservationNormalization{}
-			if token != "active" && token != "disabled" {
+			if token != "active" && token != "disabled" && token != "evaluate" {
 				want = "disabled"
 				wantRecord = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: token, Fallback: "disabled"}
 			}
 			if err != nil || policy.Enforcement == nil || *policy.Enforcement != want || record.Enforcement != wantRecord || record.QualitySeverity != (settings.ObservationNormalization{}) || !reflect.DeepEqual(raw, before) {
 				t.Fatal(policy, record, err, raw, before)
 			}
-			if token != "active" && token != "disabled" {
+			if token != "active" && token != "disabled" && token != "evaluate" {
 				if err := verifyReviewRulesetResponse(policy, raw); err == nil {
 					t.Fatal("projected equality confirmed raw write", token)
 				}
 				_, err := decodeRulesetPolicy(raw)
-				if token != "evaluate" && err == nil {
+				if err == nil {
 					t.Fatal("strict mutation decoder accepted unknown", token)
 				}
 			}

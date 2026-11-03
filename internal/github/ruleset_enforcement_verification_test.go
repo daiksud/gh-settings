@@ -28,7 +28,7 @@ func rulesetEnforcementChange(t *testing.T, desired string, normalized bool) set
 	after.ID = &afterID
 	var change settings.RulesetChange
 	if normalized {
-		change, err = settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, settings.RulesetNormalizations{Enforcement: settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}})
+		change, err = settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, settings.RulesetNormalizations{Enforcement: settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}})
 	} else {
 		change, err = settings.NewRulesetChange("update", 7, &before, &after)
 	}
@@ -40,8 +40,8 @@ func rulesetEnforcementChange(t *testing.T, desired string, normalized bool) set
 
 func TestNormalizedRulesetBasicUpdatesRequireStrictFreshGET(t *testing.T) {
 	for _, desired := range []string{"active", "disabled"} {
-		for _, response := range []string{"canonical", "evaluate", "unknown", "null", "wrongID"} {
-			for _, readback := range []string{"canonical", "evaluate", "unknown", "null", "wrongID"} {
+		for _, response := range []string{"canonical", "FUTURE_ENFORCEMENT", "unknown", "null", "wrongID"} {
+			for _, readback := range []string{"canonical", "FUTURE_ENFORCEMENT", "unknown", "null", "wrongID"} {
 				t.Run(desired+response+readback, func(t *testing.T) {
 					var operations []string
 					change := rulesetEnforcementChange(t, desired, true)
@@ -75,8 +75,8 @@ func TestNormalizedRulesetBasicUpdatesRequireStrictFreshGET(t *testing.T) {
 						}
 						body := strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"`+desired+`"`, 1)
 						switch mode {
-						case "evaluate":
-							body = strings.Replace(body, `"enforcement":"`+desired+`"`, `"enforcement":"evaluate"`, 1)
+						case "FUTURE_ENFORCEMENT":
+							body = strings.Replace(body, `"enforcement":"`+desired+`"`, `"enforcement":"FUTURE_ENFORCEMENT"`, 1)
 						case "unknown":
 							body = strings.Replace(body, `"enforcement":"`+desired+`"`, `"enforcement":"FUTURE_MODE"`, 1)
 						case "null":

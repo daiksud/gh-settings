@@ -329,6 +329,9 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	}
 	needsReadback := !change.Normalizations().IsZero()
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
+		if policy != nil && policy.Enforcement != nil && *policy.Enforcement == "evaluate" {
+			needsReadback = true
+		}
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
 				needsReadback = needsReadback || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality"

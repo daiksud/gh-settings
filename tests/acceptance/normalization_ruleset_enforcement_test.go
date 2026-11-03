@@ -22,7 +22,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 	var mu sync.Mutex
 	var state map[string]any
 	json.Unmarshal([]byte(acceptanceRuleset), &state)
-	state["enforcement"] = "evaluate"
+	state["enforcement"] = "FUTURE_ENFORCEMENT"
 	ignored, includeOther := true, false
 	description := "current"
 	expectedEnforcement := "disabled"
@@ -159,13 +159,13 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 		}
 	}
 	path := "repository.settings.rulesets.enforcement_status"
-	warning := `Warning: repository.settings.rulesets.enforcement_status: observed "evaluate" is outside UI choices; using "disabled" (projection only). Ruleset 7 "basic".`
+	warning := `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "basic".`
 	output, diagnostic, status := run("export", "--rulesets")
 	if status != 0 || output != "" || diagnostic != warning+"\n" {
 		t.Fatal("export", status, output, diagnostic)
 	}
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "enforcement_status: disabled") || strings.Contains(string(data), "evaluate") {
+	if err != nil || !strings.Contains(string(data), "enforcement_status: disabled") || strings.Contains(string(data), "FUTURE_ENFORCEMENT") {
 		t.Fatal(string(data), err)
 	}
 	report, summary := filepath.Join(fixture.root, "ruleset.json"), filepath.Join(fixture.root, "ruleset.md")
@@ -190,7 +190,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 		}
 		output, diagnostic, status = run("action", "plan", report)
 		data, err = os.ReadFile(report)
-		if err != nil || status != 0 || output != "" || diagnostic != "" || json.Unmarshal(data, &saved) != nil || saved.Outcome != "changed" || saved.Managed != 1 || len(saved.Rulesets) != 1 || saved.Rulesets[0].Operation != "update" || saved.Rulesets[0].EnforcementNormalization.Path != path || saved.Rulesets[0].EnforcementNormalization.Raw != "evaluate" || saved.Rulesets[0].EnforcementNormalization.Fallback != "disabled" {
+		if err != nil || status != 0 || output != "" || diagnostic != "" || json.Unmarshal(data, &saved) != nil || saved.Outcome != "changed" || saved.Managed != 1 || len(saved.Rulesets) != 1 || saved.Rulesets[0].Operation != "update" || saved.Rulesets[0].EnforcementNormalization.Path != path || saved.Rulesets[0].EnforcementNormalization.Raw != "FUTURE_ENFORCEMENT" || saved.Rulesets[0].EnforcementNormalization.Fallback != "disabled" {
 			t.Fatal("private evidence", string(data), diagnostic, err)
 		}
 		checkSource(input)
@@ -203,7 +203,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 	private := filepath.Join(fixture.root, "ruleset-private.md")
 	output, diagnostic, status = run("action", "summary", report, private, "status-only")
 	data, err = os.ReadFile(private)
-	if err != nil || status != 0 || output != "plan-outcome=changed\n" || diagnostic != "" || strings.Contains(string(data), path) || strings.Contains(string(data), "evaluate") || strings.Contains(string(data), "Ruleset 7") {
+	if err != nil || status != 0 || output != "plan-outcome=changed\n" || diagnostic != "" || strings.Contains(string(data), path) || strings.Contains(string(data), "FUTURE_ENFORCEMENT") || strings.Contains(string(data), "Ruleset 7") {
 		t.Fatal("private summary", string(data), diagnostic, err)
 	}
 	mu.Lock()
@@ -249,7 +249,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 	if len(writes) != beforeRepeat {
 		t.Fatal("canonical no-op wrote")
 	}
-	state["enforcement"] = "evaluate"
+	state["enforcement"] = "FUTURE_ENFORCEMENT"
 	mu.Unlock()
 	input = intent("active", "")
 	output, diagnostic, status = run("apply")
@@ -258,7 +258,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 	}
 	checkSource(input)
 	mu.Lock()
-	state["enforcement"] = "evaluate"
+	state["enforcement"] = "FUTURE_ENFORCEMENT"
 	ignored = true
 	mu.Unlock()
 	input = intent("disabled", "about: {description: updated}\n")

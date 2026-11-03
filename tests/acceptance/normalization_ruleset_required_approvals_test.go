@@ -31,7 +31,7 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 			reset := func(count any) {
 				state["enforcement"] = "active"
 				if both {
-					state["enforcement"] = "evaluate"
+					state["enforcement"] = "FUTURE_ENFORCEMENT"
 				}
 				state["rules"] = []any{acceptanceApprovalsRule(count)}
 				if both {
@@ -198,7 +198,7 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 			path := "repository.settings.rulesets.rules.require_a_pull_request_before_merging.required_approvals"
 			warning := `Warning: repository.settings.rulesets.rules.require_a_pull_request_before_merging.required_approvals: observed 11 is outside UI choices; using 0 (projection only). Ruleset 7 "basic".`
 			qualityWarning := `Warning: repository.settings.rulesets.rules.require_code_quality_results.severity: observed "FUTURE_SEVERITY" is outside UI choices; using "errors" (projection only). Ruleset 7 "basic".`
-			enfWarning := `Warning: repository.settings.rulesets.enforcement_status: observed "evaluate" is outside UI choices; using "disabled" (projection only). Ruleset 7 "basic".`
+			enfWarning := `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "basic".`
 			orderedWarnings := warning + "\n"
 			if both {
 				orderedWarnings = enfWarning + "\n" + orderedWarnings + qualityWarning + "\n"

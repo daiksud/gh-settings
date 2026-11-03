@@ -36,7 +36,7 @@ func approvalsReportChange(t *testing.T, raw, count int, both bool) settings.Rul
 	if both {
 		disabled, severity := "disabled", "errors"
 		before.Enforcement, after.Enforcement = &disabled, &disabled
-		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 		records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "<QUALITY_RAW>", Fallback: "errors"}
 		*before.Rules = append(*before.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}})
 		*after.Rules = append(*after.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}})

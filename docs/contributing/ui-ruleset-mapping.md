@@ -37,7 +37,7 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 | --- | --- | --- |
 | Selected Ruleset identity | `R.id` | Numeric ID selects an existing resource; no ID remains create-only; never a writable payload field |
 | Ruleset Name | `R.ruleset_name` | `name` |
-| Enforcement status | `R.enforcement_status` | `enforcement`; Active / Disabled become `active` / `disabled` |
+| Enforcement status | `R.enforcement_status` | `enforcement`; Active / Disabled / Evaluate become `active` / `disabled` / `evaluate` |
 | Target branches / Include default branch | `R.target_branches.include_default_branch` | `target: branch`, include sentinel `~DEFAULT_BRANCH` |
 | Target branches / Include all branches | `R.target_branches.include_all_branches` | Include sentinel `~ALL` |
 | Target branches / Include by pattern | `R.target_branches.include_by_pattern` | Include strings prefixed with `refs/heads/` |
@@ -116,7 +116,7 @@ The model supplies separate observation defaults for #480. They match the inspec
 | Scanning Security alerts | `high_or_higher` (`DefaultCodeScanningSecurityAlerts`) |
 | Quality Severity | `errors` (`DefaultCodeQualitySeverity`) |
 
-Actor/reviewer/source/tool identities and naming/file patterns are not closed enums with a synthetic identity default. The UI starts with no bypass actor selected; preparation never substitutes a repository administrator, another ID or another pattern for an unrepresentable value. Personal-repository UI has no OrganizationAdmin actor, and Evaluate was absent from the inspected enforcement menu. OrganizationAdmin remains unsupported in UI projection without an invented identity. Complete Evaluate/unknown enforcement now projects to Disabled with exact ID-bound provenance and contextual warnings; the native validator still distinguishes API transport values from UI choices. #480 must retain raw identity/provenance and warning information for any adopted normalization, rather than quietly removing protection or granting bypass.
+Actor/reviewer/source/tool identities and naming/file patterns are not closed enums with a synthetic identity default. The UI starts with no bypass actor selected; preparation never substitutes a repository administrator, another ID or another pattern for an unrepresentable value. Personal-repository UI has no OrganizationAdmin actor, and Evaluate was absent from the inspected enforcement menu. OrganizationAdmin remains unsupported in UI projection without an invented identity. Evaluate is supported for Enterprise-entitled repository Rulesets. Complete unknown enforcement projects to Disabled with exact ID-bound provenance and contextual warnings; the native validator still distinguishes API transport values from UI choices. #480 must retain raw identity/provenance and warning information for any adopted normalization, rather than quietly removing protection or granting bypass.
 
 Bypass-mode normalization changes only a complete acquired mode string to `always`. Its record preserves exact actor type, ID presence and numeric value; canonical companions remain intact. Nil DeployKey identity is not interchangeable with a numeric actor. Invalid identity or actor/target applicability is never repaired by mode projection. Selected actor removal retains its original evidence and requires verified absence.
 

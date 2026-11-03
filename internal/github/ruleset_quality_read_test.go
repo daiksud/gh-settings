@@ -13,7 +13,7 @@ import (
 )
 
 func TestUnifiedRulesetObservationDecoderOwnsSimultaneousProvenance(t *testing.T) {
-	for _, enforcement := range []string{"active", "evaluate", "FUTURE_MODE"} {
+	for _, enforcement := range []string{"active", "FUTURE_ENFORCEMENT", "FUTURE_MODE"} {
 		for _, severity := range []string{"errors", "warnings", "notes", "all", "FUTURE_SEVERITY", "", " \t", "warnings_and_higher"} {
 			var raw map[string]json.RawMessage
 			json.Unmarshal([]byte(qualityRulesetJSON), &raw)
@@ -66,7 +66,7 @@ func TestRulesetQualityHTTPReaderAcquiresBothRecordsAndAbsenceSilently(t *testin
 					t.Fatal(req.URL)
 				}
 				if both {
-					raw["enforcement"] = "evaluate"
+					raw["enforcement"] = "FUTURE_ENFORCEMENT"
 				}
 				raw["rules"] = []any{map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": value}}}
 				if value == "ABSENT" {
@@ -91,7 +91,7 @@ func TestRulesetQualityHTTPReaderAcquiresBothRecordsAndAbsenceSilently(t *testin
 				}
 				wantEnforcement := "active"
 				if both {
-					wantEnforcement = "evaluate"
+					wantEnforcement = "FUTURE_ENFORCEMENT"
 				}
 				if raw, err := values[i].RawEnforcement(); err != nil || raw != wantEnforcement {
 					t.Fatal("enforcement evidence lost", raw, err)
@@ -108,7 +108,7 @@ func TestRulesetQualityHTTPReaderDiscardsLaterIncompletePolicy(t *testing.T) {
 	for _, rules := range []string{`null`, `{}`, `[{"type":"code_quality"}]`, `[{"type":"code_quality","parameters":null}]`, `[{"type":"code_quality","parameters":{}}]`, `[{"type":"code_quality","parameters":{"severity":null}}]`, `[{"type":"code_quality","parameters":{"severity":42}}]`, `[{"type":"code_quality","parameters":{"severity":false}}]`, `[{"type":"code_quality","parameters":{"severity":"errors"}},{"type":"code_quality","parameters":{"severity":"future"}}]`, `[{"type":"code_quality","parameters":{"severity":"future","extra":true}}]`} {
 		var incomplete map[string]json.RawMessage
 		json.Unmarshal([]byte(qualityRulesetJSON), &incomplete)
-		incomplete["enforcement"], incomplete["rules"] = json.RawMessage(`"evaluate"`), json.RawMessage(rules)
+		incomplete["enforcement"], incomplete["rules"] = json.RawMessage(`"FUTURE_ENFORCEMENT"`), json.RawMessage(rules)
 		original := map[string]json.RawMessage{}
 		for key, value := range incomplete {
 			original[key] = bytes.Clone(value)
@@ -128,7 +128,7 @@ func TestRulesetQualityHTTPReaderDiscardsLaterIncompletePolicy(t *testing.T) {
 			}
 			var raw map[string]json.RawMessage
 			json.Unmarshal([]byte(qualityRulesetJSON), &raw)
-			raw["enforcement"] = json.RawMessage(`"evaluate"`)
+			raw["enforcement"] = json.RawMessage(`"FUTURE_ENFORCEMENT"`)
 			if strings.HasSuffix(req.URL.Path, "/9") {
 				raw["id"] = json.RawMessage(`9`)
 				raw["name"] = json.RawMessage(`"later"`)

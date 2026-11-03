@@ -6,7 +6,7 @@ import (
 )
 
 func normalizedQualityState(id int64, name, raw string) RulesetState {
-	state := normalizedEnforcementState(id, name, "evaluate")
+	state := normalizedEnforcementState(id, name, "FUTURE_ENFORCEMENT")
 	state.Policy.Rules = &[]RulesetRule{{Type: "code_quality", Parameters: &RuleParameters{Severity: rsText("errors")}}}
 	state.QualitySeverityNormalization = ObservationNormalization{Path: RulesetQualitySeverityPath, RawValue: raw, Fallback: "errors"}
 	return state
@@ -36,7 +36,7 @@ func TestRulesetQualityObservationDistinguishesAbsenceAndOwnsBothRecords(t *test
 			if err != nil || again == nil || *again != want {
 				t.Fatal("raw pointer alias", again, err)
 			}
-			if enf, err := values[i].RawEnforcement(); err != nil || enf != "evaluate" {
+			if enf, err := values[i].RawEnforcement(); err != nil || enf != "FUTURE_ENFORCEMENT" {
 				t.Fatal("simultaneous enforcement lost", enf, err)
 			}
 		}
