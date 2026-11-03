@@ -7,69 +7,28 @@ repository:
     topics:
       - github-cli
       - settings-as-code
-  # Only these existing IDs are managed; unlisted labels are never deleted.
-  # Retain every supported value explicitly when adopting whole objects.
+  # Unlisted labels remain unmanaged and are never deleted.
   labels:
-    - id: 12791426851
-      name: BREAKING CHANGE
-      color: '#b60205'
-      description: Backward-incompatible user-visible behavior or public interface
-    - id: 12791427001
-      name: DEPRECATED
-      color: '#fbca04'
-      description: Public feature or behavior marked for future removal
-    - id: 12791427084
-      name: feat
-      color: '#0e8a16'
-      description: New user-facing capability or behavior
-    - id: 12791427113
-      name: fix
-      color: '#0052cc'
-      description: Correction to user-observable product behavior
-    - id: 12791427162
-      name: perf
-      color: '#7fd18a'
-      description: Runtime performance improvement experienced by product users
-    - id: 12791427291
-      name: revert
-      color: '#79b8ff'
-      description: Reverts a previous change; assess resulting user impact
-    - id: 12791427042
-      name: docs
-      color: '#c4b5e0'
-      description: Documentation or contributor and reviewer guidance
-    - id: 12791427206
-      name: refactor
-      color: '#8ec9cc'
-      description: Implementation restructuring without user-observable behavior changes
-    - id: 12791427403
-      name: style
-      color: '#b5dcde'
-      description: Formatting changes without behavior changes
-    - id: 12791427479
-      name: test
-      color: '#d8ecec'
-      description: Test-only additions or corrections
-    - id: 12791426886
-      name: build
-      color: '#a8aeb4'
-      description: Build, packaging, release tooling, or dependency management
-    - id: 12791426962
-      name: ci
-      color: '#cfd3d7'
-      description: CI checks and repository development automation
-    - id: 12791426923
-      name: chore
-      color: '#ededed'
-      description: Maintenance not covered by a more specific change type
     - id: 12636240708
       name: accessibility
       color: '#f143ab'
-      description: Accessibility issues or improvements
+      description: Barrier affecting people with disabilities
+    - id: 12928058534
+      name: bug
+      color: '#d73a4a'
+      description: Something isn't working
+    - id: 12928058575
+      name: documentation
+      color: '#0075ca'
+      description: Improvements or additions to documentation
     - id: 12636240741
       name: duplicate
       color: '#cfd3d7'
       description: This issue or pull request already exists
+    - id: 12928058612
+      name: enhancement
+      color: '#a2eeef'
+      description: New feature or request
     - id: 12636240788
       name: good first issue
       color: '#7057ff'
@@ -81,7 +40,7 @@ repository:
     - id: 12636240800
       name: invalid
       color: '#e4e669'
-      description: This does not seem right
+      description: This doesn't seem right
     - id: 12636240818
       name: question
       color: '#d876e3'

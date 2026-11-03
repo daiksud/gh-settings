@@ -18,7 +18,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - And a breaking signal does not automatically graduate `0.x` to `1.0.0`
 - Otherwise `feat`, `perf`, or `DEPRECATED:` selects MINOR
 - Otherwise fixes, reverts, maintenance, and legacy messages select PATCH
-- And later main commits and mutable branch names or labels do not affect that calculation
+- And later main commits and mutable branch names do not affect that calculation
 - And a revert does not subtract another included commit's signal
 
 #### Scenario: Calculate from immutable source without a preparation PR
@@ -140,10 +140,10 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 #### Scenario: PR metadata changes after the squash commit
 
 - Given committed feature, fix, performance, and compatibility signals
-- And their PR titles, bodies, or labels are later changed or missing
+- And their PR titles or bodies are later changed or missing
 - When the same frozen interval is rendered again
 - Then its categories and message text are unchanged
-- And generation needs no PR metadata, label synchronization, label check, or GitHub generate-notes request
+- And generation needs no PR metadata or GitHub generate-notes request
 
 #### Scenario: Generation fails before tag creation
 

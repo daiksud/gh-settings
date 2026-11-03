@@ -61,19 +61,25 @@ func TestManagedRepositoryMergePreferences(t *testing.T) {
 }
 
 func TestOperationalPRPlan(t *testing.T) {
-	w, text := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
+	w, _ := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
 	j := w.Jobs["plan"]
 	if len(j.Steps) != 3 || j.Steps[2].Uses != operationalPlanAction || !reflect.DeepEqual(j.Steps[2].With, map[string]string{"command": "plan", "token": "${{ steps.app.outputs.token }}"}) {
 		t.Fatal("operational PR must call the released public Action with its explicit App token")
 	}
-	if len(w.On) != 1 || w.On["pull_request_target"].Kind == 0 || len(w.Jobs) != 1 || j.Environment != "gh-settings" || j.If != settingsPRCondition || len(j.Env) != 0 || len(j.Outputs) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 8 {
+	const condition = settingsPRCondition + " && github.event.action != 'edited' && needs.settings-plan.outputs.plan-required == 'true'"
+	if len(w.On) != 1 || w.On["pull_request_target"].Kind == 0 || len(w.Jobs) != 2 || j.Environment != "gh-settings" || j.If != condition || j.Needs != "settings-plan" || len(j.Env) != 0 || len(j.Outputs) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 8 {
 		t.Fatal("operational PR trust boundary changed")
 	}
-	if len(w.Permissions) != 0 || w.Defaults.Run.Shell != "bash" || !w.Concurrency.Cancel || w.Concurrency.Group != "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}" {
+	if len(w.Permissions) != 0 || len(w.Env) != 0 || w.Defaults.Run.Shell != "bash" || w.Concurrency.Group != "" || w.Concurrency.Cancel || !j.Concurrency.Cancel || j.Concurrency.Group != "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}" {
 		t.Fatal("operational PR permissions or concurrency changed")
 	}
-	if j.Steps[0].ID != "candidate" || j.Steps[0].Uses != "" || !reflect.DeepEqual(j.Steps[0].Env, map[string]string{"EXPECTED_HEAD": "${{ github.event.pull_request.head.sha }}", "PR_NUMBER": "${{ github.event.pull_request.number }}"}) || strings.Contains(text, "actions/checkout@") || strings.Contains(text, "github.token") {
+	if j.Steps[0].ID != "candidate" || j.Steps[0].Uses != "" || !reflect.DeepEqual(j.Steps[0].Env, map[string]string{"EXPECTED_HEAD": "${{ github.event.pull_request.head.sha }}", "PR_NUMBER": "${{ github.event.pull_request.number }}"}) {
 		t.Fatal("candidate data must be prepared before credentials without checkout or token fallback")
+	}
+	for _, step := range j.Steps {
+		if strings.HasPrefix(step.Uses, "actions/checkout@") || strings.Contains(fmt.Sprint(step), "github.token") || step.Continue {
+			t.Fatal("the privileged plan cannot check out candidate code, use an ambient token or ignore failures")
+		}
 	}
 	app := j.Steps[1]
 	if app.ID != "app" || app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(app.With, map[string]string{

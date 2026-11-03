@@ -22,15 +22,13 @@ When [opening an issue](https://github.com/daiksud/gh-settings/issues/new/choose
 
 Blank issues remain available for questions or work that does not fit these forms. Use the same information structure when submitting through the web, CLI, or API. Add constraints or references to the relevant answer only when they affect the work.
 
-Dependabot checks Go modules and GitHub Actions weekly using [the dependency update configuration](.github/dependabot.yml). Its Go updates use `build` and its Actions updates use `ci` in their proposed Conventional Commit messages and labels. These PRs require normal review and merge decisions; no workflow enables auto-merge for them automatically. The repository-level auto-merge option remains available.
+Dependabot checks Go modules and GitHub Actions weekly using [the dependency update configuration](.github/dependabot.yml). Its Go updates use `build` and its Actions updates use `ci` in their proposed Conventional Commit messages. These PRs require normal review and merge decisions; no workflow enables auto-merge for them automatically. The repository-level auto-merge option remains available.
 
 ### Branch names and change classification
 
 Use topic branches and PRs targeting `main`. Branch names identify work, not its semantic type. A name may contain `feat/` or `fix/`, but no classification depends on that prefix. Correct a mistaken PR title directly; do not rename the branch or open a replacement PR just to change its classification.
 
-Authors propose the PR's Conventional Commits type, and reviewers check it against the actual effect on CLI and public Action users. An Issue or PR label does not determine that type. Tests, documentation, and necessary wiring for one product change belong to that same coherent PR, not separate changes merely because they touch different paths.
-
-Labels are independent organization metadata. Existing path-based and Dependabot labels can describe areas of work without selecting a commit type, release version, or release-note category. Do not synchronize labels with titles or compatibility markers, require type/label agreement, or add label checks to PRLint or release preparation. A source path alone cannot decide whether a change is a feature, fix, performance improvement, refactor, or compatibility break.
+Authors propose the PR's Conventional Commits type, and reviewers check it against the actual effect on CLI and public Action users. Tests, documentation, and necessary wiring for one product change belong to that same coherent PR, not separate changes merely because they touch different paths. A source path alone cannot decide whether a change is a feature, fix, performance improvement, refactor, or compatibility break.
 
 Before merging, reconcile the final title, body, and compatibility information with the final diff and preserve them in the squash commit. Retain the single-purpose PR policy and either Conventional Commits breaking-change marker under the [code-review policy](.agents/skills/code-review/SKILL.md). Release notes and versions read the actual committed messages; editing a PR after merge does not rewrite that source.
 
@@ -108,4 +106,4 @@ The existing Markdown check validates relative files and heading fragments. When
 
 Merging a PR does not publish a release or authorize one. Without an explicit release request, do not create or push release tags, dispatch release workflows, or publish GitHub Releases. Maintainers use the separately initiated [release procedure](docs/contributing/releases.md), which covers automatic version preparation, tested binary identity, and immutable release recovery.
 
-Release dispatch calculates the version from the frozen main Git history with the shared Python script; no preparation PR or version-file change is needed. Release notes classify the committed squash messages in that same fixed interval and preserve compatibility guidance and commit links. Labels and later PR edits affect neither result. Manual publication still requires acceptance checks; the release guide owns categories, retries, and full policy.
+Release dispatch calculates the version from the frozen main Git history with the shared Python script; no preparation PR or version-file change is needed. Release notes classify the committed squash messages in that same fixed interval and preserve compatibility guidance and commit links. Later PR edits affect neither result. Manual publication still requires acceptance checks; the release guide owns categories, retries, and full policy.

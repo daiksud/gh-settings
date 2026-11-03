@@ -1,7 +1,6 @@
 package githubactions
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,54 +29,8 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 	return declaration
 }
 
-func TestManagedLabelsPreserveExistingIDsNamesAndColors(t *testing.T) {
-	desired := readManagedDeclaration(t)
-	// Preserve the independent pre-unification API observation. The intended
-	// policy change updates descriptions, not existing label identity or color.
-	data, err := os.ReadFile("testdata/managed-label-baseline.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var labels []settings.LabelState
-	if err := json.Unmarshal(data, &labels); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := settings.NewLabelObservation(labels); err != nil {
-		t.Fatal(err)
-	}
-	if len(labels) != len(desired.Labels.Values()) {
-		t.Fatalf("managed labels = %d, observed labels = %d", len(desired.Labels.Values()), len(labels))
-	}
-	observedByID := map[int64]settings.LabelState{}
-	for _, label := range labels {
-		observedByID[label.ID] = label
-	}
-	for _, label := range desired.Labels.Values() {
-		if label.ID == nil || label.Color == nil {
-			t.Fatalf("managed label lacks ID or color: %+v", label)
-		}
-		original, exists := observedByID[*label.ID]
-		if !exists || original.Name != label.Name || original.Color != *label.Color {
-			t.Fatalf("label identity or color changed: desired=%+v original=%+v", label, original)
-		}
-	}
-}
-
 func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	desired := readManagedDeclaration(t)
-	if desired.Labels == nil || len(desired.Labels.Values()) != 20 {
-		t.Fatal("restore exactly the twenty existing ID-owned labels")
-	}
-	ids := map[int64]bool{}
-	for _, label := range desired.Labels.Values() {
-		if label.ID == nil || *label.ID <= 0 || ids[*label.ID] || label.Color == nil || label.Description == nil {
-			t.Fatalf("all labels must retain unique existing IDs and complete values: %+v", label)
-		}
-		ids[*label.ID] = true
-		if label.Name == "ci" && *label.ID != 12791426962 {
-			t.Fatal("ci must select its observed existing object, not create or adopt by name")
-		}
-	}
 	// Independent observations recorded during adoption. These fixtures do not
 	// query GitHub or establish that the live policy has remained unchanged.
 	checks := []struct {
