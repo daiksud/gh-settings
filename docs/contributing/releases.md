@@ -8,7 +8,6 @@ The same standard-library Python [release-version.py](../../.github/scripts/rele
 
 | Committed change | Selected increment |
 | --- | --- |
-| A later formal `Release-withdraws:` footer naming this commit | `↩️ Withdrawn before release` |
 | Header `!` or compatibility footer `BREAKING CHANGE:` / `BREAKING-CHANGE:` | MINOR while v0.x, MAJOR from v1.0.0 |
 | `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
 | Any other substantive commit, including maintenance and reverts | PATCH |
@@ -58,6 +57,7 @@ Each included commit appears once under the first matching category (explicit wi
 
 | Committed message signal, in priority order | Heading |
 | --- | --- |
+| A later formal `Release-withdraws:` footer naming this commit | `↩️ Withdrawn before release` |
 | Header `!` or formal `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | `💥 BREAKING CHANGE` |
 | Formal `DEPRECATED:` footer | `⚠️ DEPRECATED` |
 | `feat` | `✨ New Feature` |
