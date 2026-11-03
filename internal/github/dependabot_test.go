@@ -69,8 +69,8 @@ func TestDependabotAlertsReadStatusPolicy(t *testing.T) {
 			if err != nil || enabled != test.enabled || observed.DisabledBy404() != (test.status == 404) {
 				t.Fatal(observed, err)
 			}
-			if (observed.VerifyEnabled(test.enabled) == nil) != (test.status == 204) {
-				t.Fatal("404 is a reading decision, not update verification", observed)
+			if observed.VerifyEnabled(test.enabled) != nil || observed.VerifyEnabled(!test.enabled) == nil {
+				t.Fatal("acquired endpoint state must verify matching intent only", observed)
 			}
 		})
 	}
@@ -138,8 +138,8 @@ func TestDependabotUpdates404AndMalformedReads(t *testing.T) {
 			if err != nil || valueErr != nil || enabled || paused || known || !observed.DisabledBy404() {
 				t.Fatal("404 must acquire disabled but no pause value", observed, err, valueErr)
 			}
-			if observed.VerifyEnabled(false) == nil {
-				t.Fatal("a 404 after DELETE must not confirm success")
+			if observed.VerifyEnabled(false) != nil || observed.VerifyEnabled(true) == nil {
+				t.Fatal("404 must confirm disabled intent only")
 			}
 		})
 	}

@@ -6,7 +6,7 @@ description: Define collaborator and team ownership, invitation states and revoc
 
 ## Status
 
-Accepted design for #355, pending implementation adoption in #356 and #357. Neither current source nor published packages accept access declarations or export options. Closing the design does not authorize live grants, invitations, revocations, organization changes or credentials, and does not bypass the implementation gates below.
+Accepted historical design for #355. #356 and #357 are closed/not planned: collaborator/invitation management, including personal repositories, is excluded, and the organization-only exclusion remains. Neither current source nor published packages accept access declarations or export options. The design does not adopt implementation, authorize live grants, invitations, revocations, organization changes or credentials, or bypass the unresolved gates below.
 
 ## Context
 
@@ -26,6 +26,8 @@ Use complete fresh observations and deterministic nontransactional reconciliatio
 
 ## Consequences
 
-Initial implementation may adopt a narrower proven subset, with unsupported cases rejected explicitly. Direct collaborator provenance, custom-role identity, complete team direct-versus-inherited evidence, invitation creation intent and operator/recovery identity are adoption gates. Partial/null/denied observations never become empty grants or a no-difference result. A future custom role cannot be reduced to its base role, and changing a parent team cannot be hidden as a child-team correction.
+Any future adoption would require a separate scope decision and reviewed implementation, with unsupported cases rejected explicitly. Direct collaborator provenance, custom-role identity, complete team direct-versus-inherited evidence, invitation creation intent and operator/recovery identity are adoption gates. Partial/null/denied observations never become empty grants or a no-difference result. A future custom role cannot be reduced to its base role, and changing a parent team cannot be hidden as a child-team correction.
+
+The required-permissions precondition applies to this design without certifying actual grants, direct-source completeness or recovery identity. Endpoint-specific absence semantics would need an adoption decision: an authorization-related 404 rationale is not an extra permission-discrimination requirement, and another endpoint's 404 interpretation cannot establish absent direct access. Explicit denials, missing provenance/roles, incomplete pagination, timeouts and mismatching readback remain failures. This reconciliation neither resolves those observation gates nor reopens #356/#357.
 
 The specification defines proposed ownership, observable outcomes, ordering and acceptance cases. It is not a new supported YAML schema. Future code must deliver validate/export/plan/apply, CLI/Action presentation, relevant user documentation and behavior/real-binary fixtures together, one implementation issue at a time. Fixture evidence cannot establish live privileges, notification delivery, policy applicability or fork recovery. No API mutations or operational configuration changes accompany this design.

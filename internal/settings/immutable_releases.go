@@ -3,7 +3,8 @@ package settings
 import "fmt"
 
 // ImmutableReleasesObservation keeps owner enforcement separate from the toggle.
-// A disabled-state 404 acquires enabled=false, but no owner-enforcement value.
+// Under the required-permissions precondition, this endpoint's disabled-state
+// 404 acquires enabled=false, but no owner-enforcement value or grant evidence.
 type ImmutableReleasesObservation struct {
 	acquired, enabled, enforcedByOwner, ownerKnown bool
 }

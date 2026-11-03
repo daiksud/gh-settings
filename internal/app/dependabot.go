@@ -33,20 +33,12 @@ func applyDependabot(result *ApplyResult, repo repository.Repository, d settings
 				status = OperationFailedRead
 			}
 			result.failOperation(i, status)
-			return wrote, fmt.Errorf("apply Dependabot (earlier writes may have applied; accepted disables remain unverified): %w", err)
+			return wrote, fmt.Errorf("apply Dependabot (earlier writes may have applied): %w", err)
 		}
 		result.Operations[i].Status = OperationUnchanged
 		if outcome.Wrote {
 			wrote = true
 			result.Operations[i].Status = OperationCompleted
-			if outcome.AcceptedDisable {
-				result.Operations[i].Status = OperationAcceptedUnverified
-				path := settings.DependabotAlertsPath
-				if change.Field() == settings.DependabotUpdatesField {
-					path = settings.DependabotUpdatesPath
-				}
-				result.Notices = append(result.Notices, fmt.Sprintf("%s disable accepted after DELETE 204 and GET 404; retained disabled state is not independently verified and permission loss or enforcement cannot be excluded.", path))
-			}
 		}
 	}
 	return wrote, nil

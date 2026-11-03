@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-func TestDependabotExportPlanApplyAndAcceptedDisable(t *testing.T) {
+func TestDependabotExportPlanApplyAndVerifiedDisable(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
 	a, u, paused := false, false, false
@@ -140,7 +140,7 @@ func TestDependabotExportPlanApplyAndAcceptedDisable(t *testing.T) {
 	mu.Unlock()
 	_, warning := run("export", "--security", "dependabot")
 	data, err := os.ReadFile(path)
-	if err != nil || !strings.Contains(string(data), "alerts: false") || !strings.Contains(string(data), "security_updates: false") || !strings.Contains(warning, "insufficient permission may be misclassified") {
+	if err != nil || !strings.Contains(string(data), "alerts: false") || !strings.Contains(string(data), "security_updates: false") || warning != "" {
 		t.Fatal(string(data), warning, err)
 	}
 	run("validate")
@@ -191,7 +191,7 @@ func TestDependabotExportPlanApplyAndAcceptedDisable(t *testing.T) {
 	mu.Unlock()
 	write("{security_updates: false}")
 	out, diag := run("apply")
-	if !strings.Contains(out, "not independently verified") || !strings.Contains(diag, "disable accepted after DELETE 204 and GET 404") {
+	if !strings.Contains(out, "Applied") || strings.Contains(out+diag, "unverified") || strings.Contains(out+diag, "permission") {
 		t.Fatal(out, diag)
 	}
 	mu.Lock()
@@ -203,7 +203,7 @@ func TestDependabotExportPlanApplyAndAcceptedDisable(t *testing.T) {
 	mu.Unlock()
 	write("{alerts: false, security_updates: false}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "not independently verified") || !strings.Contains(r.stderr.String(), "parent denied") {
+	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "parent denied") {
 		t.Fatal(err, r.stdout.String(), r.stderr.String())
 	}
 	mu.Lock()

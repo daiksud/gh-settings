@@ -53,7 +53,7 @@ func TestDependabotExportComposesAndRequiresCompleteReads(t *testing.T) {
 	}
 }
 
-func TestDependabotPlanApplyOrderingAndPartialAcceptance(t *testing.T) {
+func TestDependabotPlanApplyOrderingAndPartialProgress(t *testing.T) {
 	for _, after := range []bool{false, true} {
 		for _, fail := range []bool{false, true} {
 			d := settings.Declaration{Security: settings.SecurityDeclaration{DependabotAlerts: appSecurityBool(after), DependabotSecurityUpdates: appSecurityBool(after)}}
@@ -74,7 +74,7 @@ func TestDependabotPlanApplyOrderingAndPartialAcceptance(t *testing.T) {
 				if fail && len(writes) == 2 {
 					return settings.DependabotWriteResult{}, errors.New("later write failed")
 				}
-				return settings.DependabotWriteResult{Wrote: true, AcceptedDisable: !after}, nil
+				return settings.DependabotWriteResult{Wrote: true}, nil
 			}})
 			want := []string{settings.DependabotAlertsField, settings.DependabotUpdatesField}
 			if !after {
@@ -83,11 +83,7 @@ func TestDependabotPlanApplyOrderingAndPartialAcceptance(t *testing.T) {
 			if !reflect.DeepEqual(writes, want) || (err != nil) != fail {
 				t.Fatal(result, writes, err)
 			}
-			status := OperationCompleted
-			if !after {
-				status = OperationAcceptedUnverified
-			}
-			if result.Operations[1].Status != status || !after && len(result.Notices) == 0 {
+			if result.Operations[1].Status != OperationCompleted || len(result.Notices) != 0 {
 				t.Fatal(result)
 			}
 			if fail && result.Outcome != ApplyPartialFailure || !fail && !result.Completed() {

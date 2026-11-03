@@ -18,11 +18,10 @@ type DependabotObservation struct {
 	Updates DependabotSecurityUpdatesObservation
 }
 
-// DependabotWriteResult distinguishes an accepted 204+404 disable from an
-// independently verified write. Acceptance is not proof of retained state.
+// DependabotWriteResult records a write with matching fresh family readback
+// under the required-permissions precondition.
 type DependabotWriteResult struct {
-	Wrote           bool
-	AcceptedDisable bool
+	Wrote bool
 }
 
 func (o DependabotObservation) Values() (alerts, updates bool, err error) {
@@ -116,15 +115,12 @@ func (o DependabotAlertsObservation) Value() (bool, error) {
 
 func (o DependabotAlertsObservation) DisabledBy404() bool { return o.disabledBy404 }
 
-// VerifyEnabled does not promote the 404 reading policy into proof that a
-// mutation succeeded. Alerts have no authoritative disabled response here.
+// VerifyEnabled compares acquired enabled intent under required permissions.
+// The adapter separately requires acknowledgment and fresh family readback.
 func (o DependabotAlertsObservation) VerifyEnabled(desired bool) error {
 	enabled, err := o.Value()
 	if err != nil {
 		return err
-	}
-	if o.disabledBy404 {
-		return fmt.Errorf("Dependabot alerts 404 is interpreted as disabled but cannot verify an update; permission may be insufficient")
 	}
 	if enabled != desired {
 		return fmt.Errorf("Dependabot alerts enabled state does not match requested value")
@@ -134,7 +130,7 @@ func (o DependabotAlertsObservation) VerifyEnabled(desired bool) error {
 
 // DependabotSecurityUpdatesObservation keeps enabled intent distinct from
 // operational pause metadata. A 404 acquires false under the product policy,
-// but acquires no pause value and cannot establish a successful mutation.
+// but acquires no pause value.
 type DependabotSecurityUpdatesObservation struct {
 	acquired, enabled, paused, pauseKnown, disabledBy404 bool
 }
@@ -157,14 +153,11 @@ func (o DependabotSecurityUpdatesObservation) Values() (enabled, paused, pauseKn
 func (o DependabotSecurityUpdatesObservation) DisabledBy404() bool { return o.disabledBy404 }
 
 // VerifyEnabled compares only enabled; pause is observed metadata, not a
-// request to resume updates. Even disabled intent cannot be verified by 404.
+// request to resume updates. A 404 verifies only disabled enabled intent.
 func (o DependabotSecurityUpdatesObservation) VerifyEnabled(desired bool) error {
 	enabled, _, _, err := o.Values()
 	if err != nil {
 		return err
-	}
-	if o.disabledBy404 {
-		return fmt.Errorf("Dependabot security updates 404 is interpreted as disabled but cannot verify an update; permission may be insufficient")
 	}
 	if enabled != desired {
 		return fmt.Errorf("Dependabot security updates enabled state does not match requested value")

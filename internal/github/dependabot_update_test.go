@@ -1,6 +1,7 @@
 package github
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,10 +13,10 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func TestDependabotFreshToggleReadbackAndAcceptedDisable(t *testing.T) {
+func TestDependabotFreshToggleReadbackUnderRequiredPermissions(t *testing.T) {
 	for _, field := range []string{settings.DependabotAlertsField, settings.DependabotUpdatesField} {
 		for _, after := range []bool{false, true} {
-			for _, mode := range []string{"success", "matching-paused", "pre403", "write403", "write404", "write200", "write-transport", "write-redirect", "readback403", "readback404", "readback-redirect", "readback-malformed", "ignored", "companion-drift", "permission-loss"} {
+			for _, mode := range []string{"success", "matching-paused", "pre403", "write403", "write404", "write200", "write-transport", "write-redirect", "readback403", "readback-timeout", "readback404", "readback-redirect", "readback-malformed", "ignored", "companion-drift"} {
 				t.Run(fmt.Sprint(field, "/", after, "/", mode), func(t *testing.T) {
 					a, u := true, false
 					target := "/automated-security-fixes"
@@ -41,6 +42,9 @@ func TestDependabotFreshToggleReadbackAndAcceptedDisable(t *testing.T) {
 						}
 						if req.Method == "GET" {
 							reads++
+							if writes > 0 && mode == "readback-timeout" {
+								return nil, context.DeadlineExceeded
+							}
 							if mode == "pre403" || writes > 0 && mode == "readback403" {
 								return actionsResponse(req, 403, `{}`), nil
 							}
@@ -49,7 +53,7 @@ func TestDependabotFreshToggleReadbackAndAcceptedDisable(t *testing.T) {
 								r.Header.Set("Location", "https://other.invalid/redirect")
 								return r, nil
 							}
-							if writes > 0 && strings.HasSuffix(req.URL.Path, target) && (mode == "readback404" || mode == "permission-loss") {
+							if writes > 0 && strings.HasSuffix(req.URL.Path, target) && mode == "readback404" {
 								return actionsResponse(req, 404, `{"message":"Resource not accessible by integration"}`), nil
 							}
 							if isAlerts {
@@ -87,7 +91,7 @@ func TestDependabotFreshToggleReadbackAndAcceptedDisable(t *testing.T) {
 								return r, nil
 							}
 						}
-						if mode != "ignored" && mode != "permission-loss" {
+						if mode != "ignored" {
 							if isAlerts {
 								a = after
 							} else {
@@ -108,13 +112,14 @@ func TestDependabotFreshToggleReadbackAndAcceptedDisable(t *testing.T) {
 						t.Fatal(err)
 					}
 					result, err := client.Update(repository.Repository{Owner: "owner", Name: "current"}, change)
-					good := mode == "success" || mode == "matching-paused" || !after && (mode == "readback404" || mode == "permission-loss")
+					good := mode == "success" || mode == "matching-paused" || !after && mode == "readback404"
 					if (err == nil) != good || result.Wrote != (good && mode != "matching-paused") {
 						t.Fatal(result, err)
 					}
-					accepted := good && mode != "matching-paused" && !after && (field == settings.DependabotAlertsField || mode == "readback404" || mode == "permission-loss")
-					if result.AcceptedDisable != accepted || accepted && !strings.Contains(strings.Join(warnings, " "), "not independently verified") {
-						t.Fatal(result, warnings)
+					for _, warning := range warnings {
+						if !strings.Contains(warning, "are paused") {
+							t.Fatal("unexpected permission or accepted-disable warning", warning)
+						}
 					}
 					var pre interface{ ReadFailedBeforeWrite() }
 					if errors.As(err, &pre) != (mode == "pre403") {
@@ -126,11 +131,6 @@ func TestDependabotFreshToggleReadbackAndAcceptedDisable(t *testing.T) {
 					}
 					if writes != wantWrites || reads < 1 {
 						t.Fatal(writes, reads)
-					}
-					if mode == "permission-loss" && !after {
-						if field == settings.DependabotAlertsField && !a || field == settings.DependabotUpdatesField && !u {
-							t.Fatal("fixture must retain enabled to demonstrate accepted uncertainty")
-						}
 					}
 				})
 			}

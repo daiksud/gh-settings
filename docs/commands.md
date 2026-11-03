@@ -60,7 +60,7 @@ Plan shows creates and ID-bound updates, including default-derived values. Color
 
 `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Other export selections compose with it.
 
-Current source supports `export --security dependabot` for [alerts and security updates](settings.md#dependabot-alerts-and-security-updates), `--security secret-scanning` for [Secret scanning](settings.md#secret-scanning-and-push-protection), `--security private-vulnerability-reporting` for [public-repository reporting](settings.md#private-vulnerability-reporting), and `--security immutable-releases` for release policy. Repeat distinct families to compose them with other selections; duplicate/missing/unknown families, `all` and product candidates fail before reads or destination changes. Selected security reads must complete before saving. Ordinary export does not acquire security policy. Dependabot requires Administration read, deliberately interprets GET 404 as disabled with a permission-misclassification warning, and never exports paused metadata. Its apply path separately discloses accepted-but-unverified DELETE 204/GET 404 outcomes; the configuration reference owns the exact risk and ordering contract.
+Current source supports `export --security dependabot` for [alerts and security updates](settings.md#dependabot-alerts-and-security-updates), `--security secret-scanning` for [Secret scanning](settings.md#secret-scanning-and-push-protection), `--security private-vulnerability-reporting` for [public-repository reporting](settings.md#private-vulnerability-reporting), and `--security immutable-releases` for release policy. Repeat distinct families to compose them with other selections; duplicate/missing/unknown families, `all` and product candidates fail before reads or destination changes. Selected security reads must complete before saving. Ordinary export does not acquire security policy. Dependabot requires Administration read, interprets GET 404 as disabled under required permissions, and never exports paused metadata. Its apply path requires a 204 acknowledgment and matching fresh family readback; the configuration reference owns the endpoint-specific verification and ordering contract.
 
 `export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
 
@@ -90,14 +90,16 @@ Success is silent and exits 0. Failures exit 1 and report a diagnostic on stderr
 `export --security immutable-releases` independently includes the repository
 [immutable release policy](settings.md#immutable-release-policy), requiring
 Administration read. Omitted selection adds no policy request. GET 404 is
-interpreted as disabled without a permission discriminator; an authorization
-404 can consequently be misreported as false. Other failures remain errors and
-preserve the export destination. Owner enforcement is never exported as intent.
+interpreted as disabled under the required-permissions precondition, without
+supplying owner-enforcement metadata or certifying actual credential grants.
+Other failures remain errors and preserve the export destination. Owner
+enforcement is never exported as intent.
 
 Plan compares only declared values without writes and rejects an owner-enforced
 disable. Apply follows private vulnerability reporting, uses fresh preflight,
 body-free PUT/DELETE, exact 204 and fresh readback; matching state is a no-op.
-Administration write is required. A 404 readback uses the same explicit tradeoff.
+Administration write is required. GET 404 readback uses the same endpoint
+contract, with owner enforcement still unknown.
 Write/readback failures can leave earlier changes applied; no retry or rollback
 occurs. Individual releases, tags and assets are outside this command's scope.
 
