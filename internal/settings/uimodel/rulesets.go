@@ -23,6 +23,7 @@ type Ruleset struct {
 // RulesetRules describes checkbox states inside a whole owned Ruleset.
 // Omission does not retain a remote rule; false and nil both leave it unselected.
 type RulesetRules struct {
+	RequireDeploymentsToSucceed                                                     *DeploymentsRule
 	RestrictDeletions, BlockForcePushes, RequireLinearHistory, RequireSignedCommits *bool
 	RequireAPullRequestBeforeMerging                                                *PullRequestRule
 	RequireStatusChecksToPass                                                       *StatusChecksRule
@@ -135,3 +136,6 @@ type TagTargets struct {
 	IncludeAllTags                     *bool
 	IncludeByPattern, ExcludeByPattern *[]string
 }
+
+// DeploymentsRule selects the environments that must deploy before merging.
+type DeploymentsRule struct{ RequiredDeploymentEnvironments *[]string }

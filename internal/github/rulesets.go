@@ -331,7 +331,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
-				needsReadback = needsReadback || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality"
+				needsReadback = needsReadback || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments"
 			}
 		}
 	}
@@ -426,7 +426,7 @@ func checkRulesetResponseKeys(value any, context string) error {
 		case "rule":
 			allowed = []string{"type", "parameters"}
 		case "parameters":
-			allowed = []string{"allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity"}
+			allowed = []string{"allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity", "required_deployment_environments"}
 		case "scanning_tool":
 			allowed = []string{"tool", "alerts_threshold", "security_alerts_threshold"}
 		case "dismissal_restriction":

@@ -9,6 +9,7 @@ import (
 // RuleParameters is the closed parameter union selected by the surrounding rule type.
 // Pointers retain omission independently of false, zero and empty collections.
 type RuleParameters struct {
+	RequiredDeploymentEnvironments             *[]string                   `json:"required_deployment_environments,omitempty" yaml:"required_deployment_environments,omitempty"`
 	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
 	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
@@ -68,7 +69,24 @@ func validateRule(r RulesetRule, complete bool) error {
 		return fmt.Errorf("unsupported ruleset rule %q", r.Type)
 	}
 	p := r.Parameters
+	if r.Type != "required_deployments" && p != nil && p.RequiredDeploymentEnvironments != nil {
+		return fmt.Errorf("parameters do not belong to %s", r.Type)
+	}
 	switch r.Type {
+	case "required_deployments":
+		if p == nil || p.RequiredDeploymentEnvironments == nil {
+			return fmt.Errorf("required_deployments requires required_deployment_environments")
+		}
+		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
+			return fmt.Errorf("parameters do not belong to required_deployments")
+		}
+		seen := map[string]bool{}
+		for _, environment := range *p.RequiredDeploymentEnvironments {
+			if !validRulesetText(environment) || seen[environment] {
+				return fmt.Errorf("invalid or duplicate required deployment environment")
+			}
+			seen[environment] = true
+		}
 	case "pull_request":
 		if p.hasChecks() || p.hasAnalysis() {
 			return fmt.Errorf("parameters do not belong to pull_request")
@@ -210,6 +228,10 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 		return nil
 	}
 	out := *p
+	out.RequiredDeploymentEnvironments = copyRuleList(p.RequiredDeploymentEnvironments)
+	if out.RequiredDeploymentEnvironments != nil {
+		slices.Sort(*out.RequiredDeploymentEnvironments)
+	}
 	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
 	if out.CodeScanningTools != nil {
 		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
@@ -287,7 +309,7 @@ func compareReviewActor(a, b ReviewActor) int {
 }
 func cloneRulesetRule(r RulesetRule) RulesetRule {
 	r.Parameters = cloneRuleParameters(r.Parameters)
-	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() {
+	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.RequiredDeploymentEnvironments == nil {
 		r.Parameters = nil
 	}
 	return r

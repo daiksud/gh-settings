@@ -69,7 +69,7 @@ func validRulesetText(value string) bool {
 	return true
 }
 func supportedRule(kind string) bool {
-	return slices.Contains([]string{"deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality"}, kind)
+	return slices.Contains([]string{"deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.ID != nil && *d.ID <= 0 {
@@ -108,8 +108,8 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 				return fmt.Errorf("unsupported or duplicate ruleset rule %q", r.Type)
 			}
 			seen[r.Type] = true
-			if r.Type == "pull_request" && d.Target != nil && *d.Target != "branch" {
-				return fmt.Errorf("pull_request rule requires branch target")
+			if (r.Type == "pull_request" || r.Type == "required_deployments") && d.Target != nil && *d.Target != "branch" {
+				return fmt.Errorf("%s rule requires branch target", r.Type)
 			}
 			if err := validateRule(r, complete); err != nil {
 				return err
