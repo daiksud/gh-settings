@@ -357,13 +357,32 @@ repository:
 
 Every entry requires `ruleset_name`, `enforcement_status` (`active`, `disabled` or `evaluate`) and exactly one of `target_branches`/`target_tags`. `evaluate` tests rules without enforcing them and requires GitHub Enterprise, even for a repository-owned Ruleset ([REST API](https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset)). Selecting it does not manage organization- or Enterprise-owned Rulesets. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting both target objects is invalid. No protected scope is guessed.
 
-Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic rule booleans are `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. The parameterized groups include `restrict_updates` with `allow_fetch_and_merge`, plus `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results` and `require_code_quality_results`, `require_deployments_to_succeed` `automatically_request_copilot_code_review` and `restrict_code_coverage`. Omitting a rule group removes it; it does not preserve an existing group.
+Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic rule booleans are `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. The parameterized groups include `restrict_updates` with `allow_fetch_and_merge`, plus `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results` and `require_code_quality_results`, `require_deployments_to_succeed` `automatically_request_copilot_code_review` `restrict_code_coverage` and `require_merge_queue`. Omitting a rule group removes it; it does not preserve an existing group.
 
 `restrict_creations: true` allows only bypass actors to create matching branches or tags. `restrict_updates: {allow_fetch_and_merge: false}` allows only bypass actors to update them; selecting an empty object supplies a declaration-only false default. Explicit true allows pulling upstream changes. Both rules support branch and tag targets. Export preserves the acquired upstream-sync flag; an absent, null or malformed flag is an acquisition error. Updates adding, changing or removing either rule require independent whole-policy GET verification after mutation acknowledgment. These repository rules use the standard Rulesets plan availability and Administration write permission; no organization-wide Ruleset is managed. See [GitHub's rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [REST parameter contract](https://docs.github.com/en/rest/repos/rules).
 
 `automatically_request_copilot_code_review: {review_new_pushes: true, review_draft_pull_requests: false}` selects automatic Copilot reviews for a branch Ruleset. Selecting an empty object defaults both options false only in the declaration; omitting the group removes the rule. Export requires both acquired booleans with their actual values; missing/null/malformed options fail rather than inventing a policy. Updates and removals require independent whole-policy GET verification after the mutation response. Automatic review requires author access to Copilot code review and available AI credits, subject to GitHub's applicable organization policies. This repository rule neither grants licenses nor configures Copilot approval eligibility. See [GitHub's automatic review controls](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review) and [repository Rulesets API](https://docs.github.com/en/rest/repos/rules).
 
 A bypass entry selects exactly one actor: `role` (`repository_admin`, `maintain`, `write`), positive `team`, `app` or `user`, or `deploy_keys: true`. `bypass_mode` is required and must be `always`, `exempt` or `for_pull_requests_only`; existing branch/actor applicability constraints apply. No actor/grant/credential is created. Organization-only actors and unadopted rules are unsupported.
+
+### Require merge queue
+
+`rules.require_merge_queue` selects a branch-only queue rule. Every control below is required; omission of the whole group removes the queue rule on the selected Ruleset. It does not delete the Ruleset.
+
+```yaml
+require_merge_queue:
+  merge_method: squash
+  build_concurrency: 5
+  minimum_group_size: 1
+  maximum_group_size: 5
+  wait_time_to_meet_minimum_group_size_minutes: 5
+  require_all_queue_entries_to_pass_required_checks: true
+  status_check_timeout_minutes: 60
+```
+
+Merge method accepts `merge`, `squash`, or `rebase`. Build concurrency accepts 0–100; zero pauses dispatch of new merge-group checks. Minimum/maximum group sizes accept the documented API range 0–100 with minimum no greater than maximum. Wait time accepts 0–360 minutes; status-check timeout accepts 1–360 minutes. Values must be integers. Reads require all seven native parameters and preserve zero/false without defaults. Updates and removals verify the full policy in both the mutation response and an independent fresh GET. Repeating converged apply sends no mutation.
+
+This is a repository-level rule. [Merge queues](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) require an organization-owned public repository, or an organization-owned private repository using GitHub Enterprise Cloud. Personal repositories are not eligible. The tool does not infer entitlement or change workflows; required GitHub Actions checks need the `merge_group` event configured separately. The [official API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) defines the numeric ranges; zero group sizes retain their API meaning even though general UI help describes 1–100. The [Ruleset-specific controls](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-merge-queue) explicitly support concurrency zero. Organization/Enterprise-level Rulesets remain outside management.
 
 ### Ruleset enforcement observation normalization
 

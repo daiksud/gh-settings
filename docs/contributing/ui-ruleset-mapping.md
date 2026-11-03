@@ -55,6 +55,13 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 | Rules / Block force pushes | `R.rules.block_force_pushes` | `non_fast_forward` |
 | Rules / Require linear history | `R.rules.require_linear_history` | `required_linear_history` |
 | Rules / Require signed commits | `R.rules.require_signed_commits` | `required_signatures` |
+| Require merge queue | `R.rules.require_merge_queue` | Branch-only `merge_queue`; seven explicit controls, no observation defaults |
+| Queue Merge method | Queue `.merge_method` | Merge / Squash / Rebase → `MERGE` / `SQUASH` / `REBASE` |
+| Queue Build concurrency | Queue `.build_concurrency` | `max_entries_to_build`, including zero to pause dispatch |
+| Queue minimum/maximum group size | Queue `.minimum_group_size`, `.maximum_group_size` | `min_entries_to_merge`, `max_entries_to_merge` |
+| Queue wait time | Queue `.wait_time_to_meet_minimum_group_size_minutes` | `min_entries_to_merge_wait_minutes` |
+| Require all queue entries to pass required checks | Queue `.require_all_queue_entries_to_pass_required_checks` | true → `ALLGREEN`; false → `HEADGREEN` |
+| Queue status check timeout | Queue `.status_check_timeout_minutes` | `check_response_timeout_minutes` |
 | Require a pull request before merging | `R.rules.require_a_pull_request_before_merging` | Selects `pull_request` rule |
 | Required approvals | PR rule `.required_approvals` | `required_approving_review_count`; UI integers 0–10 |
 | Allowed merge methods | PR rule `.allowed_merge_methods` | Merge / Squash / Rebase → `merge` / `squash` / `rebase` |
