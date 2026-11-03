@@ -93,7 +93,7 @@ func TestUIFromExportDeclarationRulesets(t *testing.T) {
 	*policy.Conditions.RefName.Include = []string{"~DEFAULT_BRANCH"}
 	source := uiExportBase()
 	source.Rulesets = exportRulesetPolicies(t, []settings.RulesetState{{ID: 7, Policy: policy}})
-	want := []uimodel.Ruleset{{ID: rulesetPtr(int64(7)), RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.Active), TargetBranches: &uimodel.BranchTargets{IncludeDefaultBranch: rulesetPtr(true), IncludeAllBranches: rulesetPtr(false), IncludeByPattern: rulesetPtr([]string{}), ExcludeByPattern: rulesetPtr([]string{})}, BypassList: rulesetPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}}}
+	want := []uimodel.Ruleset{{ID: rulesetPtr(int64(7)), RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.Active), TargetBranches: &uimodel.BranchTargets{IncludeDefaultBranch: rulesetPtr(true), IncludeAllBranches: rulesetPtr(false), IncludeByPattern: rulesetPtr([]string{}), ExcludeByPattern: rulesetPtr([]string{})}, BypassList: rulesetPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RestrictCreations: rulesetPtr(false), RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}}}
 	got, err := UIFromExportDeclaration(source)
 	if err != nil || got.Settings == nil || got.Settings.Rulesets == nil || !reflect.DeepEqual(*got.Settings.Rulesets, want) {
 		t.Fatalf("export Ruleset UI changed: %#v, %v", got, err)

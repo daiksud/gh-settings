@@ -9,6 +9,7 @@ import (
 // RuleParameters is the closed parameter union selected by the surrounding rule type.
 // Pointers retain omission independently of false, zero and empty collections.
 type RuleParameters struct {
+	UpdateAllowsFetchAndMerge                  *bool                       `json:"update_allows_fetch_and_merge,omitempty" yaml:"update_allows_fetch_and_merge,omitempty"`
 	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
 	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
@@ -68,7 +69,17 @@ func validateRule(r RulesetRule, complete bool) error {
 		return fmt.Errorf("unsupported ruleset rule %q", r.Type)
 	}
 	p := r.Parameters
+	if r.Type != "update" && p != nil && p.UpdateAllowsFetchAndMerge != nil {
+		return fmt.Errorf("update parameters do not belong to %s", r.Type)
+	}
 	switch r.Type {
+	case "update":
+		if complete && (p == nil || p.UpdateAllowsFetchAndMerge == nil) {
+			return fmt.Errorf("update requires update_allows_fetch_and_merge")
+		}
+		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
+			return fmt.Errorf("parameters do not belong to update")
+		}
 	case "pull_request":
 		if p.hasChecks() || p.hasAnalysis() {
 			return fmt.Errorf("parameters do not belong to pull_request")
@@ -210,6 +221,7 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 		return nil
 	}
 	out := *p
+	out.UpdateAllowsFetchAndMerge = copyRuleValue(p.UpdateAllowsFetchAndMerge)
 	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
 	if out.CodeScanningTools != nil {
 		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
@@ -287,7 +299,7 @@ func compareReviewActor(a, b ReviewActor) int {
 }
 func cloneRulesetRule(r RulesetRule) RulesetRule {
 	r.Parameters = cloneRuleParameters(r.Parameters)
-	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() {
+	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil {
 		r.Parameters = nil
 	}
 	return r

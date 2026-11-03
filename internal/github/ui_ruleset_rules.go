@@ -12,11 +12,14 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		selected *bool
 		kind     string
 	}{
-		{ui.RestrictDeletions, "deletion"}, {ui.BlockForcePushes, "non_fast_forward"}, {ui.RequireLinearHistory, "required_linear_history"}, {ui.RequireSignedCommits, "required_signatures"},
+		{ui.RestrictCreations, "creation"}, {ui.RestrictDeletions, "deletion"}, {ui.BlockForcePushes, "non_fast_forward"}, {ui.RequireLinearHistory, "required_linear_history"}, {ui.RequireSignedCommits, "required_signatures"},
 	} {
 		if control.selected != nil && *control.selected {
 			result = append(result, settings.RulesetRule{Type: control.kind})
 		}
+	}
+	if ui.RestrictUpdates != nil {
+		result = append(result, settings.RulesetRule{Type: "update", Parameters: &settings.RuleParameters{UpdateAllowsFetchAndMerge: copyUIRulesetValue(ui.RestrictUpdates.AllowFetchAndMerge)}})
 	}
 	if ui.RequireAPullRequestBeforeMerging != nil {
 		parameters, err := declareUIRulesetPR(*ui.RequireAPullRequestBeforeMerging)
@@ -51,9 +54,16 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 
 func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, error) {
 	no := false
-	result := uimodel.RulesetRules{RestrictDeletions: copyUIRulesetValue(&no), BlockForcePushes: copyUIRulesetValue(&no), RequireLinearHistory: copyUIRulesetValue(&no), RequireSignedCommits: copyUIRulesetValue(&no)}
+	result := uimodel.RulesetRules{RestrictCreations: copyUIRulesetValue(&no), RestrictDeletions: copyUIRulesetValue(&no), BlockForcePushes: copyUIRulesetValue(&no), RequireLinearHistory: copyUIRulesetValue(&no), RequireSignedCommits: copyUIRulesetValue(&no)}
 	for _, rule := range rules {
 		switch rule.Type {
+		case "creation":
+			*result.RestrictCreations = true
+		case "update":
+			if rule.Parameters == nil || rule.Parameters.UpdateAllowsFetchAndMerge == nil {
+				return uimodel.RulesetRules{}, fmt.Errorf("update requires complete parameters")
+			}
+			result.RestrictUpdates = &uimodel.UpdateRule{AllowFetchAndMerge: copyUIRulesetValue(rule.Parameters.UpdateAllowsFetchAndMerge)}
 		case "deletion":
 			*result.RestrictDeletions = true
 		case "non_fast_forward":

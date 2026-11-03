@@ -3,6 +3,13 @@ package settings
 // These are declaration defaults, not inferred server observations. Never call
 // this on an API read: unobserved protection must remain unknown, not false.
 func normalizeRuleObject(rule *RulesetRule) {
+	if rule.Type == "update" {
+		if rule.Parameters == nil {
+			rule.Parameters = &RuleParameters{}
+		}
+		defaultRuleValue(&rule.Parameters.UpdateAllowsFetchAndMerge, false)
+		return
+	}
 	if rule.Type != "pull_request" && rule.Type != "required_status_checks" {
 		return
 	}
