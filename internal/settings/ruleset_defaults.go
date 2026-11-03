@@ -10,6 +10,14 @@ func normalizeRuleObject(rule *RulesetRule) {
 		defaultRuleValue(&rule.Parameters.UpdateAllowsFetchAndMerge, false)
 		return
 	}
+	if rule.Type == "copilot_code_review" {
+		if rule.Parameters == nil {
+			rule.Parameters = &RuleParameters{}
+		}
+		defaultRuleValue(&rule.Parameters.ReviewDraftPullRequests, false)
+		defaultRuleValue(&rule.Parameters.ReviewOnPush, false)
+		return
+	}
 	if rule.Type != "pull_request" && rule.Type != "required_status_checks" {
 		return
 	}

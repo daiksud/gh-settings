@@ -11,6 +11,8 @@ import (
 type RuleParameters struct {
 	UpdateAllowsFetchAndMerge                  *bool                       `json:"update_allows_fetch_and_merge,omitempty" yaml:"update_allows_fetch_and_merge,omitempty"`
 	RequiredDeploymentEnvironments             *[]string                   `json:"required_deployment_environments,omitempty" yaml:"required_deployment_environments,omitempty"`
+	ReviewDraftPullRequests                    *bool                       `json:"review_draft_pull_requests,omitempty" yaml:"review_draft_pull_requests,omitempty"`
+	ReviewOnPush                               *bool                       `json:"review_on_push,omitempty" yaml:"review_on_push,omitempty"`
 	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
 	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
@@ -49,6 +51,9 @@ type RequiredStatusCheck struct {
 	IntegrationID *int64 `json:"integration_id,omitempty" yaml:"integration_id,omitempty"`
 }
 
+func (p *RuleParameters) hasCopilot() bool {
+	return p != nil && (p.ReviewDraftPullRequests != nil || p.ReviewOnPush != nil)
+}
 func (p *RuleParameters) hasPR() bool {
 	return p != nil && (p.AllowedMergeMethods != nil || p.DismissStaleReviewsOnPush != nil || p.DismissalRestriction != nil || p.RequireCodeOwnerReview != nil || p.RequireExtraApprovalForUnattributedChanges != nil || p.RequireLastPushApproval != nil || p.RequiredApprovingReviewCount != nil || p.RequiredReviewThreadResolution != nil || p.RequiredReviewers != nil)
 }
@@ -76,6 +81,9 @@ func validateRule(r RulesetRule, complete bool) error {
 	if r.Type != "required_deployments" && p != nil && p.RequiredDeploymentEnvironments != nil {
 		return fmt.Errorf("parameters do not belong to %s", r.Type)
 	}
+	if r.Type != "copilot_code_review" && p.hasCopilot() {
+		return fmt.Errorf("Copilot parameters do not belong to %s", r.Type)
+	}
 	switch r.Type {
 	case "update":
 		if complete && (p == nil || p.UpdateAllowsFetchAndMerge == nil) {
@@ -97,6 +105,13 @@ func validateRule(r RulesetRule, complete bool) error {
 				return fmt.Errorf("invalid or duplicate required deployment environment")
 			}
 			seen[environment] = true
+		}
+	case "copilot_code_review":
+		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
+			return fmt.Errorf("parameters do not belong to copilot_code_review")
+		}
+		if complete && (p == nil || p.ReviewDraftPullRequests == nil || p.ReviewOnPush == nil) {
+			return fmt.Errorf("copilot_code_review requires complete review options")
 		}
 	case "pull_request":
 		if p.hasChecks() || p.hasAnalysis() {
@@ -244,6 +259,8 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 	if out.RequiredDeploymentEnvironments != nil {
 		slices.Sort(*out.RequiredDeploymentEnvironments)
 	}
+	out.ReviewDraftPullRequests = copyRuleValue(p.ReviewDraftPullRequests)
+	out.ReviewOnPush = copyRuleValue(p.ReviewOnPush)
 	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
 	if out.CodeScanningTools != nil {
 		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
@@ -321,7 +338,7 @@ func compareReviewActor(a, b ReviewActor) int {
 }
 func cloneRulesetRule(r RulesetRule) RulesetRule {
 	r.Parameters = cloneRuleParameters(r.Parameters)
-	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil {
+	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil && !r.Parameters.hasCopilot() {
 		r.Parameters = nil
 	}
 	return r
