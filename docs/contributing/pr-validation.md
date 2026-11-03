@@ -1,9 +1,8 @@
 # PR validation and required checks
 
-The tracked required PR checks are `ci-pr`, `prlint`, `settings-plan` and
-`settings-env`. The guard is removed and validation now produces
-`settings-validate`; the required names need the explicitly authorized transition
-described below.
+The live main Ruleset and the tracked declaration require `ci-pr`,
+`prlint`, and `settings-validate` from GitHub Actions (App ID `15368`).
+The retired `settings-plan` and `settings-env` checks are not required.
 Their owning workflows and boundaries are listed in the
 [repository automation guide](repository-automation.md#protected-main-and-required-checks).
 No workflow publishes the shared `pass` commit status.
@@ -55,11 +54,12 @@ not establish live credential configuration.
 
 ## Ruleset transition
 
-The tracked declaration still requires `settings-plan` and `settings-env`.
-The workflow now produces `settings-validate`; it does not provide an old-name
-compatibility check. Follow the
-[transition procedure](repository-automation.md#required-check-transition):
-retire the live guard requirement, merge the job rename with the existing
-trusted-main validation still required, verify a fresh post-merge validation
-run, then replace the live required name. Update the declaration afterward
-before applying settings. Preserve all other required checks and protections.
+The retired checks were removed from the live Ruleset, and a fresh
+`settings-validate` run succeeded for PR #589 after the workflow migration
+in PR #586. The required context was then added to the live Ruleset.
+The [transition record](repository-automation.md#required-check-transition)
+identifies the observed workflow and run.
+
+The tracked required-check list now matches that live state. Any future
+Ruleset changes still require a review of actual GitHub settings, and
+`apply-settings` remains a separate manual operation after merge.

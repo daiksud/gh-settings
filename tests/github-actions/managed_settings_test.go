@@ -110,7 +110,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				!*p.StrictRequiredStatusChecksPolicy || p.DoNotEnforceOnCreate == nil || *p.DoNotEnforceOnCreate {
 				t.Fatal("native required checks must retain strict enforcement on creation")
 			}
-			want := map[string]bool{"ci-pr": true, "prlint": true, "settings-plan": true, "settings-env": true}
+			want := map[string]bool{"ci-pr": true, "prlint": true, "settings-validate": true}
 			for _, check := range *p.RequiredStatusChecks {
 				if !want[check.Context] || check.IntegrationID == nil || *check.IntegrationID != 15368 {
 					t.Fatalf("unexpected check or provider: %+v", check)
@@ -132,7 +132,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 		}
 	}
 	if !approval || signatureRequired || !linear || !nativeChecks || !scanning || !quality {
-		t.Fatal("the main Ruleset must keep approvals, history, all four native checks, CodeQL and code quality, without requiring signatures")
+		t.Fatal("the main Ruleset must keep approvals, history, exactly three native checks, CodeQL and code quality, without requiring signatures")
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.

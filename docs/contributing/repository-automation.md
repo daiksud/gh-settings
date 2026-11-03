@@ -167,7 +167,7 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. It requires `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions. Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
+The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. It requires `ci-pr`, `prlint` and `settings-validate` from GitHub Actions (App ID `15368`). Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
 
 | Check | Source and purpose | Limit |
 | --- | --- | --- |
@@ -241,32 +241,25 @@ do not configure live Environment, token, ruleset, or review settings.
 
 ### Required-check transition
 
-The tracked declaration still requires `settings-env` and `settings-plan`.
-The live Ruleset must be changed only through the explicitly authorized path;
-source edits do not change those requirements.
+The live main Ruleset requires `ci-pr`, `prlint`, and `settings-validate`,
+all from GitHub Actions (App ID `15368`). The tracked
+[settings declaration](../../.github/settings.yml) names the same three checks.
+The retired `settings-plan` and `settings-env` are no longer required.
 
-1. Retire the live `settings-env` required context before merging the workflow
-   retirement. The existing trusted guard rejects the new structure, so leaving
-   it required blocks this PR. No earlier code change is needed for this route.
-2. Keep `settings-plan` required while reviewing and merging the job rename.
-   `pull_request_target` uses the existing trusted main workflow for that PR,
-   which still produces `settings-plan`. Changing the candidate workflow does
-   not make its new `settings-validate` job run for that same event.
-3. After merge, generate a fresh PR event against the updated main workflow.
-   Verify the actual `settings-validate` producer, event, workflow revision,
-   candidate identity and successful result. Rerunning an old event is not
-   evidence that the newly merged workflow ran.
-4. Only after that success, replace the live required context `settings-plan`
-   with `settings-validate` in one Ruleset update, retaining the GitHub Actions
-   provider and other protections. Until replacement, new PRs may be blocked
-   waiting for the old name; do not bypass that wait or fabricate a status.
-5. Reconcile the tracked required-check declaration with the confirmed live
-   settings before any settings apply. This prepared change leaves those
-   declaration entries untouched pending the authorized live transition.
+The credential-free `settings-validate` job was introduced by [PR
+#586](https://github.com/daiksud/gh-settings/pull/586). A fresh
+`pull_request_target` event after that merge successfully ran the job for
+[PR #589](https://github.com/daiksud/gh-settings/pull/589) on commit
+`782e1e40af9963eee090e9b25a3b107a2a3949f6`; see the
+[successful Settings PR run](https://github.com/daiksud/gh-settings/actions/runs/41738311031).
+The live Ruleset was subsequently updated to require this context before
+reconciling the declaration.
 
-`ci-pr`, `prlint`, normal review and other live protections remain in
-force throughout. No workflow dispatch, rule update or merge is performed by
-these source changes.
+A green required check alone does not authenticate its workflow identity.
+For subsequent policy changes, verify the current job producer, workflow
+revision, event and candidate SHA, as well as the live Ruleset and its source
+App. Review and merge declaration changes normally. Settings application is
+still separate and manual; validation does not authorize or perform apply.
 
 ## PR settings validation
 
