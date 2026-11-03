@@ -24,6 +24,7 @@ type Ruleset struct {
 // RulesetRules describes checkbox states inside a whole owned Ruleset.
 // Omission does not retain a remote rule; false and nil both leave it unselected.
 type RulesetRules struct {
+	RequireLicenseComplianceResultsBeforeMerging                                                       *bool
 	RestrictCreations, RestrictDeletions, BlockForcePushes, RequireLinearHistory, RequireSignedCommits *bool
 	RestrictUpdates                                                                                    *UpdateRule
 	RequireAPullRequestBeforeMerging                                                                   *PullRequestRule

@@ -214,3 +214,9 @@ Test mapping: [domain](../../internal/settings/ruleset_metadata_test.go),
 [five built-executable sequences](../../tests/acceptance/ruleset_metadata_test.go).
 All fixtures use local APIs and dummy credentials. They establish neither live
 account entitlement nor effective GitHub enforcement or published behavior.
+
+## License compliance
+
+The repository branch checkbox `require_license_compliance_results_before_merging` maps to the parameterless `license_compliance_scanning` rule. A selected true value is acquired/exported as true; false or omission removes that rule on an owned object. Tag targets, unknown parameters, null and malformed checkbox values fail. Other supported protections stay in the whole policy. Both selecting and removing the rule require original acknowledgment plus independent strict GET confirmation; a matching echo with divergent readback fails with uncertain-write reporting. A verified result replans and reapplies without another write.
+
+[`TestLicenseRulesetDeclarationAndStrictAcquisition`](../../internal/github/ruleset_license_test.go) and [`TestLicenseRulesetIndependentReadbackAndRemoval`](../../internal/github/ruleset_license_test.go) cover strict mapping and confirmation. [`TestLicenseRulesetProcessRoundTrip`](../../tests/acceptance/ruleset_license_test.go) runs built-product export, validate, plan, apply, independent readback, removal and no-difference repetition with a local API. These fixtures do not enable Code Security, configure the enterprise license policy or demonstrate live enforcement. Entitlement and scope limits belong to [the configuration reference](../settings.md#license-compliance).

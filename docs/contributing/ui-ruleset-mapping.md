@@ -51,6 +51,7 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 | Select bypass mode | `R.bypass_list[].bypass_mode` | Always → `always`; Exempt → `exempt`; For pull requests only → `for_pull_requests_only` → API `pull_request` |
 | Rules / Restrict creations | `R.rules.restrict_creations` | Rule type `creation` |
 | Rules / Restrict updates | `R.rules.restrict_updates` | Rule type `update`; `.allow_fetch_and_merge` maps to required `update_allows_fetch_and_merge` |
+| Require license compliance results before merging | `R.rules.require_license_compliance_results_before_merging` | Parameterless `license_compliance_scanning`, branch-only |
 | Rules / Restrict deletions | `R.rules.restrict_deletions` | Rule type `deletion` |
 | Rules / Block force pushes | `R.rules.block_force_pushes` | `non_fast_forward` |
 | Rules / Require linear history | `R.rules.require_linear_history` | `required_linear_history` |
