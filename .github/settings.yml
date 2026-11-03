@@ -152,9 +152,7 @@ repository:
                 source: {app: 15368}
               - check: prlint
                 source: {app: 15368}
-              - check: settings-plan
-                source: {app: 15368}
-              - check: settings-env
+              - check: settings-validate
                 source: {app: 15368}
   # Unsupported examples only; never active desired state:
   # collaborators: []  # Unsupported: collaborator/team access management.
