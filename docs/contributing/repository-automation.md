@@ -76,7 +76,7 @@ Existing workflow SHA references, triggers, and permissions are retained.
 The run-only approval workflow has an empty dependency list.
 
 The verification workflow installs the official `github/gh-actions-lock` CLI
-at a fixed commit and runs online `--verify` for this explicit scope on PRs
+at a fixed release version and runs online `--verify` for this explicit scope on PRs
 and main pushes. It checks coverage and upstream provenance; it is not a
 required check or a Require lockfile policy. Do not run an unscoped generation
 or verification command during this rollout: it also scans the deferred
