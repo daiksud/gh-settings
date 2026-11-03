@@ -6,7 +6,7 @@ description: Separate repository security intent from permission, entitlement, a
 
 ## Status
 
-Accepted design for [#343](https://github.com/daiksud/gh-settings/issues/343). The Secret scanning subset from #345 and private vulnerability reporting for public repositories from #347 are implemented in v0.17.0; other public families remain planned/gated. Current source implements Dependabot under the scoped reading and accepted-disable decisions below. Published v0.16.0 and older packages reject security keys/options. Implementation remains split across #344–#347, subject to the gates below.
+Accepted design for [#343](https://github.com/daiksud/gh-settings/issues/343). The Secret scanning subset from #345 and private vulnerability reporting for public repositories from #347 are implemented in v0.17.0; other public families remain planned/gated. Current source implements Dependabot under the scoped reading and verification decisions below. Published v0.16.0 and older packages reject security keys/options. Implementation remains split across #344–#347, subject to the gates below.
 
 ## Context
 
@@ -28,49 +28,41 @@ Adopt the narrow Secret scanning and public-repository private vulnerability rep
 
 Opted-in export can fail when requested data is unavailable; it cannot silently omit it or overwrite a file with partial configuration. Paid-product availability and write authorization are not implied by API schema presence, a repository role, or an unchanged plan. Plan remains read-only, and apply remains direct and nontransactional with honest partial progress.
 
-Public family implementations must add the public references, native CLI/Action presentation, closed report validation, and fixture coverage together. Dependabot retains the distinction between verified state and an explicitly accepted disable with uncertain retained state. Local fixtures establish behavior against modeled responses, not live licensing, enforcement, permission grants, or scan outcomes. No settings, scans, contracts, grants, workflows, releases, or package versions change with this decision.
+Public family implementations must add the public references, native CLI/Action presentation, closed report validation, and fixture coverage together. Dependabot verifies enabled intent under the required-permissions precondition while retaining unavailable pause metadata. Local fixtures establish behavior against modeled responses, not live licensing, enforcement, permission grants, or scan outcomes. No settings, scans, contracts, grants, workflows, releases, or package versions change with this decision.
 
 ## Later scoped 404 decisions
 
 ### Dependabot state reads
 
-For [#344](https://github.com/daiksud/gh-settings/issues/344), the user explicitly
-decided on 2026-11-01 to stop distinguishing insufficient permission from
-disabled state and interpret GET 404 as disabled for both `vulnerability-alerts`
-and `automated-security-fixes`. This supersedes this ADR's requirement for an
-authorization discriminator for those **state reads**. The choice permits
-progress using the documented disabled response without additional credential
-discovery, expanded grants, or a GraphQL replacement.
+For [#344](https://github.com/daiksud/gh-settings/issues/344), GET 404 means
+disabled for `vulnerability-alerts` and `automated-security-fixes` under the
+required-permissions precondition, consistent with the adopted Pages contract.
+No authorization discriminator, credential discovery, expanded grants or
+GraphQL replacement is required. This interpretation does not certify actual
+grants or independently establish live platform behavior. Retain 404 provenance;
+updates 404 supplies no `paused` value. Explicit 401/403, incomplete 200 bodies,
+timeouts and other read failures remain errors.
 
-This is an accepted risk, not proof of authorization: an inaccessible setting
-can be misclassified as disabled, so a plan can show a false change or
-false equality and export can contain a false disabled value. Retain
-404 provenance. Updates 404 supplies no `paused` value; do not invent false.
-Explicit 401/403, incomplete 200 bodies and other read failures remain errors.
+### Dependabot update verification
 
-### Dependabot accepted disable
+The permission-precondition reconciliation supersedes the earlier
+accepted-unverified disable contract: DELETE 204 followed by fresh target
+GET 404 now verifies disabled enabled intent under that precondition. Apply
+records a completed operation without a permission-risk or accepted-disable
+warning/notice. A GET alone does not establish that a write ran. PUT followed
+by 404, a non-204 write, target/companion mismatch or failed/incomplete family
+readback still fails with possible write effects.
 
-On 2026-11-01 the user separately chose to accept a disable when DELETE returns
-204 and the subsequent target GET returns 404, while retaining uncertainty.
-This is acceptance of an acknowledged request, **not independent verification**
-that GitHub retained disabled state. Permission loss, concealment or enforcement
-can still produce a misleading result. A 404 alone, a non-204 DELETE, or a PUT
-followed by 404 never qualifies for this exception.
+Each changed control gets fresh whole-family preflight and readback. Enable
+alerts before updates; disable updates before alerts. A completed child disable
+can precede an explicitly declared parent disable. Later failure retains
+completed prior progress; no retry, rollback or implicit parent enablement is
+introduced. These endpoint-specific rules do not generalize 404 to other APIs.
 
-The adapter returns a distinct accepted-disable result. Apply retains it as
-`OperationAcceptedUnverified`, emits a warning/notice, and preserves it as prior
-progress if a later operation fails. It can proceed from an accepted child
-disable to the explicitly declared parent disable; it must not describe the
-child as independently verified. Fresh preflight and post-write family reads
-still reject failures and inconsistent interpreted target/companion values.
-Companion checks inherit the state-reading 404 risk rather than proving grants
-or preservation under all policies. There is no retry, rollback or implicit
-parent enablement.
-
-Observation-only `VerifyEnabled` still rejects 404 for either desired value:
-only the write adapter, after the required 204 acknowledgment, can accept the
-scoped disabled result. A complete updates 200 verifies enabled independently
-of acquired pause metadata; alerts 204 verifies enabled=true. The
+Observation-only `VerifyEnabled` compares acquired enabled intent: 404 matches
+false, alerts 204 matches true, and complete updates 200 matches its enabled
+boolean independently of pause. Unknown pause remains unavailable and paused
+updates are never implicitly resumed. The
 [security specification](../features/security.feature.md#dependabot-state-reading-decision)
 owns the public controls, endpoint rules, ordering and fixture mapping.
 
@@ -78,7 +70,7 @@ owns the public controls, endpoint rules, ordering and fixture mapping.
 
 The [immutable release policy](../features/immutable-releases.feature.md), adopted
 separately for #348, interprets its GET 404 as disabled by explicit user decision.
-An authorization-related 404 can therefore be misclassified; owner enforcement
-is unknown on that response. Its separately adopted update-verification
-behavior does not decide Dependabot mutation semantics or change other security
-endpoints' missing/denied-response handling.
+Required permissions are a precondition; the response still supplies no owner
+enforcement metadata. Its owner-enforcement gate and endpoint-specific
+update verification remain distinct from Dependabot pause metadata. Neither
+contract changes other security endpoints' missing/denied-response handling.

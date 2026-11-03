@@ -73,7 +73,7 @@ func TestDependabotObservationsRequireAcquisition(t *testing.T) {
 	}
 }
 
-func TestDependabot404ReadsDoNotVerifyUpdates(t *testing.T) {
+func TestDependabot404VerifiesOnlyDisabledIntent(t *testing.T) {
 	alerts := NewDependabotAlerts404Observation()
 	enabled, err := alerts.Value()
 	if err != nil || enabled || !alerts.DisabledBy404() {
@@ -85,8 +85,8 @@ func TestDependabot404ReadsDoNotVerifyUpdates(t *testing.T) {
 		t.Fatal("404 must not invent pause metadata", updates, err)
 	}
 	for _, desired := range []bool{false, true} {
-		if alerts.VerifyEnabled(desired) == nil || updates.VerifyEnabled(desired) == nil {
-			t.Fatal("404 reading policy was used to verify an update", desired)
+		if (alerts.VerifyEnabled(desired) == nil) == desired || (updates.VerifyEnabled(desired) == nil) == desired {
+			t.Fatal("404 must verify false only under required permissions", desired)
 		}
 	}
 }

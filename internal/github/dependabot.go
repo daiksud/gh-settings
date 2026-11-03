@@ -35,7 +35,6 @@ func (c *DependabotClient) ReadAlerts(repo repository.Repository) (settings.Depe
 	response, err := c.rest.Request(http.MethodGet, securityRepositoryPath(repo)+"/vulnerability-alerts", nil)
 	if err != nil {
 		if dependabotDisabled404(err) {
-			c.warn("Dependabot alerts GET 404 is interpreted as disabled; insufficient permission may be misclassified.")
 			return settings.NewDependabotAlerts404Observation(), nil
 		}
 		return settings.DependabotAlertsObservation{}, fmt.Errorf("read Dependabot alerts: %w", err)
@@ -51,7 +50,6 @@ func (c *DependabotClient) ReadSecurityUpdates(repo repository.Repository) (sett
 	response, err := c.rest.Request(http.MethodGet, securityRepositoryPath(repo)+"/automated-security-fixes", nil)
 	if err != nil {
 		if dependabotDisabled404(err) {
-			c.warn("Dependabot security updates GET 404 is interpreted as disabled; insufficient permission may be misclassified and pause state is unknown.")
 			return settings.NewDependabotSecurityUpdates404Observation(), nil
 		}
 		return settings.DependabotSecurityUpdatesObservation{}, fmt.Errorf("read Dependabot security updates: %w", err)
@@ -92,7 +90,7 @@ func (c *DependabotClient) Read(repo repository.Repository) (settings.Dependabot
 }
 
 // Update preflights a fresh complete family and sends one body-free toggle.
-// DELETE 204 followed by target GET 404 is explicitly accepted with uncertainty.
+// DELETE 204 plus fresh disabled readback completes under required permissions.
 // PUT never accepts 404 as evidence that enabled=true was retained.
 func (c *DependabotClient) Update(repo repository.Repository, change settings.SecurityChange) (settings.DependabotWriteResult, error) {
 	failed := func(err error) (settings.DependabotWriteResult, error) {
@@ -149,36 +147,26 @@ func (c *DependabotClient) Update(repo repository.Repository, change settings.Se
 	if err != nil {
 		return settings.DependabotWriteResult{}, fmt.Errorf("read back Dependabot (write effects may already have applied): %w", err)
 	}
-	accepted := false
 	if change.Field() == settings.DependabotAlertsField {
 		if aa != after || uu != u {
 			return settings.DependabotWriteResult{}, fmt.Errorf("Dependabot alerts or preserved security updates differ after write (write effects may already have applied)")
 		}
-		accepted = !after && actual.Alerts.DisabledBy404()
-		if !accepted {
-			err = actual.Alerts.VerifyEnabled(after)
-		}
+		err = actual.Alerts.VerifyEnabled(after)
 	} else {
 		if uu != after || aa != a {
 			return settings.DependabotWriteResult{}, fmt.Errorf("Dependabot security updates or preserved alerts differ after write (write effects may already have applied)")
 		}
-		accepted = !after && actual.Updates.DisabledBy404()
-		if !accepted {
-			err = actual.Updates.VerifyEnabled(after)
-		}
+		err = actual.Updates.VerifyEnabled(after)
 	}
 	if err != nil {
 		return settings.DependabotWriteResult{}, fmt.Errorf("verify Dependabot (write effects may already have applied): %w", err)
 	}
-	if accepted {
-		c.warn("Dependabot disable accepted after DELETE 204 and GET 404; retained disabled state is not independently verified and permission loss or enforcement cannot be excluded.")
-	}
-	return settings.DependabotWriteResult{Wrote: true, AcceptedDisable: accepted}, nil
+	return settings.DependabotWriteResult{Wrote: true}, nil
 }
 
 func dependabotDisabled404(err error) bool {
 	var status *api.HTTPError
-	// Explicit product decision, not an authorization test. Permission-concealing
-	// 404 responses are intentionally interpreted as disabled as well.
+	// Endpoint-specific disabled response under the required-permissions
+	// precondition; this does not inspect or certify actual credential grants.
 	return errors.As(err, &status) && status.StatusCode == http.StatusNotFound
 }

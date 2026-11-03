@@ -31,8 +31,9 @@ func (c *ImmutableReleasesClient) Read(repo repository.Repository) (settings.Imm
 	if err != nil {
 		var status *api.HTTPError
 		if errors.As(err, &status) && status.StatusCode == http.StatusNotFound {
-			// Explicit product decision: no extra authorization discriminator.
-			// An authorization-related 404 can therefore be misread as disabled.
+			// Under the required-permissions precondition, this endpoint's
+			// GET 404 means disabled, without owner-enforcement metadata.
+			// This interpretation does not establish actual credential grants.
 			return settings.NewDisabledImmutableReleasesObservation(), nil
 		}
 		return settings.ImmutableReleasesObservation{}, fmt.Errorf("read immutable releases: %w", err)

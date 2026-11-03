@@ -18,12 +18,13 @@ release publisher and individual releases/tags/assets are outside ownership.
 - GET `/repos/{owner}/{repo}/immutable-releases`: 200 requires native boolean
   `enabled` and `enforced_by_owner`; malformed/null/missing values fail. An
   enforced-but-disabled pair is inconsistent and fails.
-- The October 28 user decision maps every GET 404 to enabled=false, with unknown
-  owner enforcement. No additional endpoint, inferred grant or fallback identity
-  is used to distinguish disabled state from missing authorization. This scoped
-  exception can misclassify insufficient access as disabled. It is an accepted
-  product tradeoff, not a live observation that this endpoint returns such a
-  permission-related 404. 401/403/redirects/transport/other failures remain errors.
+- Under the required-permissions precondition, target GET 404 means
+  enabled=false, with unknown owner enforcement. No additional authorization
+  discriminator, inferred grant or fallback identity is used. This endpoint's
+  disabled-state interpretation does not establish actual credential grants or
+  supply owner-enforcement metadata, and does not define other endpoints' 404
+  semantics. Explicit 401/403 denials, redirects, transport and other failures
+  remain errors.
 
 ## Plan, apply and reporting
 
@@ -55,7 +56,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 - [Page/section schema](../../internal/workspace/ui_page_sections_test.go): the concise
   release key roundtrips, and the superseded release key is rejected without an alias.
 - [API](../../internal/github/immutable_releases_test.go): complete/incomplete
-  200, explicit 404 interpretation (including a modeled authorization message),
+  200 and endpoint-specific 404 interpretation under the permission precondition,
   distinct 403/409/redirect/transport failures, fresh enforcement, exact body-free
   writes, matching state, refused/ignored writes and readback certainty.
 - [Application](../../internal/app/immutable_releases_test.go): independent plan,
