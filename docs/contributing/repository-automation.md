@@ -69,74 +69,96 @@ Release publication has no Issue-comment bridge. The owner starts [`release.yml`
 ## Workflow dependency lockfile
 
 [The generated lockfile](../../.github/workflows/actions.lock) onboards
-`approve-codex-review`, `labeler`, `prlint`, `release-version-tests`,
-`settings-env`, `settings-main`, and `settings-pr`, plus the
-[`verify-lockfile` workflow](../../.github/workflows/verify-lockfile.yml).
-Existing workflow SHA references, triggers, and permissions are retained.
-The run-only approval workflow has an empty dependency list.
+`approve-codex-review`, `ci-pr`, `ci-push`, `labeler`, `prlint`, `release`,
+`release-version-tests`, `settings-env`, `settings-main`, and `settings-pr`,
+plus the [`verify-lockfile` workflow](../../.github/workflows/verify-lockfile.yml).
+Existing execution SHAs, triggers, permissions and release authorization remain
+unchanged. The run-only approval workflow has an empty dependency list.
 
 The verification workflow installs the official `github/gh-actions-lock` CLI
-at a fixed release version and runs online `--verify` for this explicit scope on PRs
-and main pushes. It checks coverage and upstream provenance; it is not a
-required check or a Require lockfile policy. Do not run an unscoped generation
-or verification command during this rollout: it also scans the deferred
-workflows. To regenerate, run the scoped command from that workflow with
-`--verify` replaced by `--no-interactive`. Keep `--no-narrow` to retain SHA
-references; without it the CLI may rewrite them to release tags.
+at a fixed release version and runs online `--verify --no-narrow
+--ignore-local-actions` for its explicit workflow scope on PRs and main pushes.
+It checks lock coverage and upstream provenance; it is not a required check or
+a Require lockfile policy. To regenerate, run the scoped command from that
+workflow with `--verify` replaced by `--no-interactive`. Keep `--no-narrow` to
+retain SHA references; without it the CLI may rewrite them to release tags.
 Commit the generated lockfile with dependency changes, and rerun the scoped
 verification command. `--verify-local` is an optional offline coverage check;
 it does not verify upstream identity or reachability. Never edit the lockfile
 by hand or automatically accept moved pins.
 
 The existing [Dependabot configuration](../../.github/dependabot.yml) checks
-GitHub Actions weekly. GitHub documents that Dependabot updates lockfile
-entries alongside dependency updates for onboarded workflows, leaving other
-workflows unonboarded. Inspect both files and the verification result in each
-update PR; local generation alone does not prove a hosted Dependabot update.
-See [GitHub's maintenance instructions](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies).
+GitHub Actions weekly. GitHub documents that Dependabot updates lockfile entries
+alongside dependency updates for onboarded workflows. Inspect both files and the
+verification result in each update PR; local generation alone does not prove a
+hosted Dependabot update. See [GitHub's maintenance
+instructions](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies).
 
-### Deferred composite workflows
+### Workspace composite coverage
 
-`ci-pr`, `ci-push`, and `release` retain their SHA pins and workspace-local
-Actions. Their acceptance jobs check source out under `.action`, create a
-separate configuration-only consumer at the workspace root, and execute that
-candidate Action. Release verification separately checks the published tag
-out under `.published`. A `$/` reference instead resolves from the workflow's
-repository at its commit, independent of those workspace checkouts. Replacing
-these paths mechanically would change which Action is exercised; `.action`
-and `.published` are checkout destinations, not source repository paths.
+`ci-pr`, `ci-push`, and `release` keep their workspace-local Action references.
+Their acceptance jobs check frozen source out under `.action`, create a separate
+configuration-only consumer at the workspace root, and execute that candidate
+Action. Release verification separately checks the published tag out under
+`.published`. A `$/` reference instead resolves from the workflow's repository at
+its commit, independent of those workspace checkouts. Replacing these paths
+mechanically would change which Action is exercised; `.action` and `.published`
+are checkout destinations, not source repository paths.
 
-An isolated `--migrate-local-actions --no-narrow` experiment rewrote nine
-references and reported success, but left the four `.action` acceptance and
-verification call sites as unresolved local-path warnings. The pinned
-actionlint 1.7.12 then rejected all seven generated workflow `$/` references
-as missing an external Action ref. CLI success alone therefore does not
-establish complete transitive coverage or lint compatibility. Before onboarding
-these workflows, validate each call site's source and working-directory
-semantics and resolve that linter incompatibility.
-GitHub documents a possible bridge: a never-run `$/` composite enumerating
-the workspace Action dependencies, generated with `--ignore-local-actions`.
-Such entries must cover every dependency for the **same workflow**, including
-nested composites and the published Action actually tested. Validate that
-inventory and candidate/published checkout isolation before adopting it.
-Simply suppressing local-action errors can leave missing runtime pins.
-See [GitHub's local-path guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies#keeping-a-local-path-action).
+Each of these three workflows calls the
+[dependency inventory composite](../../.github/actions/lock-workspace-dependencies/action.yml)
+through `$/` in one step guarded by literal `${{ false }}`. That step never runs;
+it enumerates the existing external Action references so the lockfile generator
+can record them for the same workflow. `--ignore-local-actions` retains the
+runtime `./` references. An inventory in a different workflow does not supply a
+missing runtime pin. See [GitHub's local-path
+guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies#keeping-a-local-path-action).
+
+[Inventory tests](../../tests/github-actions/actions_lockfile_test.go) walk the
+runtime workflow and nested local composites, including the root Action reached
+through the frozen `.action` and `.published` checkouts. They compare the exact
+external references with the inert composite and the same workflow's generated
+lock entries. Changing a nested dependency requires updating the inventory and
+regenerating the lockfile. Existing candidate, consumer and release verification
+checks still own checkout identity and execution isolation; the dependency
+inventory does not replace those checks or authorize a release.
+
+### Workflow lint compatibility
+
+The pinned actionlint 1.7.12 treats `$/` as an external Action missing a ref and
+also diagnoses a literal false condition. The
+[workflow lint wrapper](../../.github/scripts/lint-workflows.py) retains the
+normal actionlint checks and filters only those two exact structured diagnostics
+for the inventory step in `ci-pr`, `ci-push` and `release`. It verifies the actual
+source lines contain the adjacent literal-false condition and exact inventory
+reference. Other references, conditions, workflow paths and diagnostics remain
+errors. Invalid linter output and unexpected linter failures remain failures;
+this is not a blanket ignore of Action-format or condition checks.
+
+Use the wrapper in both [commit-stage](../../.github/actions/commit-stage/action.yml)
+and [local development](development.md#development-checks). The independent
+inventory tests validate the bridge and its dependencies because the old linter
+cannot resolve that `$/` call itself. This exception must not be extended to
+runtime Action calls or enabled inventory steps.
 
 ### Security boundary
 
-Compared with direct SHA pinning, lockfiles also inventory transitive Action
-dependencies and record repository and owner IDs plus an upstream ref for
-runtime provenance checks. This pilot's five distinct remote Actions add no
-new transitive Action entries; existing direct execution commits stay the same.
-The CLI reports a nonblocking bare-SHA warning because readable tag references
-are preferred upstream. Review generated refs, commit SHAs, and identities.
+Lockfiles inventory transitive Action dependencies and record repository and
+owner IDs plus an upstream ref for runtime provenance checks. Existing direct
+execution commits stay the same. The CLI reports a nonblocking bare-SHA warning
+because readable tag references are preferred upstream. Review generated refs,
+commit SHAs, and identities, including dependencies reached through local
+composites.
 
 Locking does not establish that an Action is safe. It does not lock downloaded
 CLI binaries, package-manager dependencies, runner images, inputs, secrets,
 or job-level reusable workflow calls. Local fixture checks do not establish
-hosted runtime behavior for workflows that did not run. See
-[GitHub's lockfile concepts](https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles)
-and the [general availability announcement](https://github.blog/changelog/2026-10-28-github-actions-workflow-lockfiles-are-generally-available/).
+hosted runtime behavior for workflows that did not run. In particular, release
+workflow coverage can be generated and checked without dispatching or publishing
+a release. See [GitHub's lockfile
+concepts](https://docs.github.com/en/actions/concepts/security/workflow-dependency-lockfiles)
+and the [general availability
+announcement](https://github.blog/changelog/2026-10-28-github-actions-workflow-lockfiles-are-generally-available/).
 
 ## PR lifecycle
 

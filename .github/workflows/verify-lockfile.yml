@@ -24,11 +24,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         # Keep this scope aligned with the rollout in repository-automation.md.
         run: |
-          gh actions-lock --verify --no-narrow \
+          gh actions-lock --verify --no-narrow --ignore-local-actions \
             .github/workflows/approve-codex-review.yml \
+            .github/workflows/ci-pr.yml \
+            .github/workflows/ci-push.yml \
             .github/workflows/labeler.yml \
             .github/workflows/prlint.yml \
             .github/workflows/release-version-tests.yml \
+            .github/workflows/release.yml \
             .github/workflows/settings-env.yml \
             .github/workflows/settings-main.yml \
             .github/workflows/settings-pr.yml \
