@@ -96,7 +96,7 @@ func TestMergeMethodsHTTPReadIsCompleteAndSilent(t *testing.T) {
 					if mode == "pagination denied" {
 						items := []any{map[string]any{"id": 7, "source_type": "Repository", "source": "owner/current"}}
 						for i := 1; i < 100; i++ {
-							items = append(items, map[string]any{"source_type": "Organization", "source": "owner"})
+							items = append(items, map[string]any{"id": 100 + len(items), "source_type": "Organization", "source": "owner"})
 						}
 						encoded, _ := json.Marshal(items)
 						response = labelsResponse(req, 200, string(encoded))

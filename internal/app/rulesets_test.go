@@ -151,3 +151,49 @@ func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
 		}
 	}
 }
+
+func TestRulesetExplicitDeletionAppOperationAndPartialFailure(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		state := appRulesetState(t)
+		desired := settings.Declaration{Rulesets: appRulesets(t, `[{id: 7, name: basic, delete: true}]`)}
+		calls := []string{}
+		yes := true
+		desired.Repository.HasIssues = &yes
+		result, err := Apply(func() (settings.Declaration, error) { return desired, nil }, func() (repository.Repository, error) {
+			return repository.Repository{Owner: "owner", Name: "current"}, nil
+		}, Writer{
+			Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+				calls = append(calls, "earlier-write")
+				return nil
+			},
+			ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
+				calls = append(calls, "rulesets-read")
+				return settings.NewRulesetObservation([]settings.RulesetState{state}, 0)
+			},
+			Ruleset: func(_ repository.Repository, c settings.RulesetChange) (int64, error) {
+				calls = append(calls, "delete")
+				if c.Operation() != "delete" || c.ID() != 7 || c.Before() == nil || c.After() != nil {
+					t.Fatal(c)
+				}
+				if fail {
+					return 0, errors.New("deletion readback denied; write may have applied")
+				}
+				return 7, nil
+			},
+		})
+		if !reflect.DeepEqual(calls, []string{"earlier-write", "rulesets-read", "delete"}) || (err != nil) != fail {
+			t.Fatal(calls, err)
+		}
+		last := result.Operations[len(result.Operations)-1]
+		if last.Kind != RulesetDelete || len(result.CreatedIDs) != 0 {
+			t.Fatal(result)
+		}
+		if fail {
+			if result.Outcome != ApplyPartialFailure || last.Status != OperationFailedUnknown {
+				t.Fatal(result)
+			}
+		} else if last.Status != OperationCompleted {
+			t.Fatal(result)
+		}
+	}
+}
