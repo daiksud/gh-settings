@@ -100,7 +100,7 @@ func TestScanningSecurityAlertsAcquisitionRejectsPartialOrMalformedTools(t *test
 					items := []any{map[string]any{"id": 7, "source_type": "Repository", "source": "owner/current"}, map[string]any{"id": 9, "source_type": "Repository", "source": "owner/current"}}
 					if mode == "pagination denied" {
 						for len(items) < 100 {
-							items = append(items, map[string]any{"source_type": "Organization", "source": "owner"})
+							items = append(items, map[string]any{"id": 100 + len(items), "source_type": "Organization", "source": "owner"})
 						}
 					}
 					encoded, _ := json.Marshal(items)

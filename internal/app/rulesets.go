@@ -38,6 +38,8 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 			kind = RulesetCreate
 		case "update":
 			kind = RulesetUpdate
+		case "delete":
+			kind = RulesetDelete
 		}
 		result.Operations = append(result.Operations, ApplyOperation{Kind: kind, RulesetName: change.Name()})
 	}
@@ -62,7 +64,11 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 		if after := change.After(); after != nil && after.HasWriteOnlyDismissal() {
 			result.Notices = append(result.Notices, fmt.Sprintf("Ruleset %q: repository.settings.rulesets.rules.require_a_pull_request_before_merging.restrict_who_can_dismiss_pull_request_reviews accepted by GitHub; value not verified (write-only)", change.Name()))
 		}
-		knownIDs[id] = true
+		if change.Operation() == "delete" {
+			delete(knownIDs, change.ID())
+		} else {
+			knownIDs[id] = true
+		}
 		if change.Operation() == "create" && write.CreatedID != nil {
 			if err := write.CreatedID("rulesets", change.Name(), id); err != nil {
 				result.Outcome = ApplyPartialFailure

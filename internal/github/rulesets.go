@@ -62,6 +62,7 @@ func rulesetOwner(raw map[string]json.RawMessage, repo repository.Repository) (b
 }
 func (client *Client) ReadRulesets(repo repository.Repository) (settings.RulesetObservation, error) {
 	ids := []int64{}
+	unmanagedIDs := []int64{}
 	seen := map[int64]bool{}
 	for page := 1; ; page++ {
 		var items []map[string]json.RawMessage
@@ -76,9 +77,6 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 			if err != nil {
 				return settings.RulesetObservation{}, err
 			}
-			if !owned {
-				continue
-			}
 			var id int64
 			if err := requiredRuleJSON(item, "id", &id); err != nil {
 				return settings.RulesetObservation{}, err
@@ -87,6 +85,10 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 				return settings.RulesetObservation{}, fmt.Errorf("invalid/duplicate Ruleset ID")
 			}
 			seen[id] = true
+			if !owned {
+				unmanagedIDs = append(unmanagedIDs, id)
+				continue
+			}
 			ids = append(ids, id)
 		}
 		if len(items) < 100 {
@@ -119,6 +121,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 			return settings.RulesetObservation{}, err
 		}
 		if target == "push" {
+			unmanagedIDs = append(unmanagedIDs, id)
 			push++
 			continue
 		}
@@ -131,7 +134,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		}
 		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity, RequiredApprovalsNormalization: normalizations.RequiredApprovals, MergeMethodsNormalization: normalizations.MergeMethods, TeamApprovalsNormalizations: normalizations.TeamApprovals, ScanningAlertsNormalizations: normalizations.ScanningAlerts, ScanningSecurityAlertsNormalizations: normalizations.ScanningSecurityAlerts, BypassModeNormalizations: normalizations.BypassModes})
 	}
-	return settings.NewRulesetObservation(values, push)
+	return settings.NewRulesetObservationWithUnmanagedIDs(values, push, unmanagedIDs)
 }
 func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, error) {
 	policy := map[string]json.RawMessage{}
@@ -252,6 +255,9 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 	return result, nil
 }
 func (client *Client) ApplyRuleset(repo repository.Repository, change settings.RulesetChange) (int64, error) {
+	if change.Operation() == "delete" {
+		return client.deleteRuleset(repo, change)
+	}
 	if change.Operation() != "create" && change.Operation() != "update" {
 		return 0, fmt.Errorf("invalid Ruleset operation")
 	}

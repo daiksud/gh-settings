@@ -355,7 +355,24 @@ repository:
         rules: {restrict_deletions: true}
 ```
 
-Every entry requires `ruleset_name`, `enforcement_status` (`active`, `disabled` or `evaluate`) and exactly one of `target_branches`/`target_tags`. `evaluate` tests rules without enforcing them and requires GitHub Enterprise, even for a repository-owned Ruleset ([REST API](https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset)). Selecting it does not manage organization- or Enterprise-owned Rulesets. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting both target objects is invalid. No protected scope is guessed.
+To delete one repository-owned branch/tag Ruleset, declare only its exact positive ID, current name and explicit deletion selection:
+
+```yaml
+repository:
+  settings:
+    rulesets:
+      - id: 123
+        ruleset_name: obsolete-policy
+        delete: true
+```
+
+A deletion entry cannot select enforcement, targets, bypass actors or rule controls. `delete: false`, missing/nonpositive IDs and missing names are invalid. Omission, an empty Rulesets list and unlisted IDs never delete anything. An ID absent from the repository-owned inventory is already satisfied after complete inventory acquisition; a different resource with the same name is never selected as a fallback. IDs returned for excluded inherited or push Rulesets fail rather than being treated as absent; inherited IDs omitted by the repository-only inventory select no mutation and do not establish absence of higher-level policy. Export includes observed present policies only and never invents or preserves deletion entries.
+
+Plan displays the complete selected policy changing to `absent`. Apply reacquires the collection and rechecks the exact selected detail's repository ownership, ID, name and complete unchanged supported policy immediately before DELETE. Unknown or incomplete protection and normalized unsupported values block deletion. A successful delete requires HTTP 204 and a fresh complete inventory confirming the ID is absent; 404, failed/partial reads and a retained ID are errors, never successful absence. Failures after the request report that the write may have applied; there is no retry or rollback, and earlier writes remain applied. Repeated plan/apply after confirmed absence produce no change. These checks do not lock the policy between the final GET and DELETE; concurrent changes remain possible because the documented DELETE API provides no conditional-policy parameter.
+
+Deletion uses [GitHub's repository Ruleset DELETE endpoint](https://docs.github.com/en/rest/repos/rules#delete-a-repository-ruleset) with Administration write permission. Complete bypass visibility is required before any deletion. Optional write-only dismissal restrictions still follow the existing acquisition limit: omission does not prove they are disabled. Explicit deletion removes the whole selected Ruleset, and a present acquired dismissal object is included in the immediate pre-delete drift check. Organization/Enterprise-level policy, excluded push Rulesets, legacy branch protection, grants, releases and bypass configuration are outside this operation. Implementation verification uses local fixtures and does not delete live protection.
+
+Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active`, `disabled` or `evaluate`) and exactly one of `target_branches`/`target_tags`. `evaluate` tests rules without enforcing them and requires GitHub Enterprise, even for a repository-owned Ruleset ([REST API](https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset)). Selecting it does not manage organization- or Enterprise-owned Rulesets. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting both target objects is invalid. No protected scope is guessed.
 
 Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic rule booleans are `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` `require_signed_commits` and branch-only `require_license_compliance_results_before_merging`; false/omission leaves that rule unselected. The parameterized groups include `restrict_updates` with `allow_fetch_and_merge`, plus `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results` and `require_code_quality_results`, `require_deployments_to_succeed` `automatically_request_copilot_code_review` `restrict_code_coverage` and `require_merge_queue`. Omitting a rule group removes it; it does not preserve an existing group.
 

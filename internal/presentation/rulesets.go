@@ -185,7 +185,7 @@ func RulesetScanningSecurityAlertsNormalizationLine(id int64, name string, recor
 }
 
 // rulesetPolicy never substitutes a partial or unrepresentable API object for
-// a UI policy. A nil value denotes the absent side of a create operation.
+// a UI policy. A nil value denotes the absent side of a lifecycle operation.
 func rulesetPolicy(policy *settings.RulesetDeclaration) string {
 	if policy == nil {
 		return "absent"

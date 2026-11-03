@@ -12,6 +12,7 @@ const (
 
 // Ruleset retains selected-ID ownership while naming controls after the UI.
 type Ruleset struct {
+	Delete            *bool
 	ID                *int64
 	RulesetName       string
 	EnforcementStatus *EnforcementStatus

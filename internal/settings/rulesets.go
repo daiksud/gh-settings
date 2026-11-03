@@ -12,6 +12,7 @@ import (
 // RulesetDeclaration selects one whole supported object; declaration defaults
 // are normalized independently of server observations and their optional absence.
 type RulesetDeclaration struct {
+	Delete       *bool              `json:"delete,omitempty" yaml:"delete,omitempty"`
 	ID           *int64             `json:"id,omitempty" yaml:"id,omitempty"`
 	Name         string             `json:"name" yaml:"name"`
 	Target       *string            `json:"target,omitempty" yaml:"target,omitempty"`
@@ -55,6 +56,7 @@ type RulesetDeclarations struct{ entries []RulesetDeclaration }
 type RulesetObservation struct {
 	entries      []RulesetState
 	excludedPush int
+	unmanagedIDs []int64
 }
 
 func validRulesetText(value string) bool {
@@ -72,6 +74,12 @@ func supportedRule(kind string) bool {
 	return slices.Contains([]string{"copilot_code_review", "code_coverage", "merge_queue", "license_compliance_scanning", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments", "commit_message_pattern", "commit_author_email_pattern", "committer_email_pattern", "branch_name_pattern", "tag_name_pattern"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
+	if d.Delete != nil {
+		if complete {
+			return fmt.Errorf("deletion tombstone is not a complete observed Ruleset policy")
+		}
+		return validateRulesetDeletion(d)
+	}
 	if d.ID != nil && *d.ID <= 0 {
 		return fmt.Errorf("ruleset id must be a positive integer")
 	}
@@ -161,6 +169,7 @@ func actorKey(a BypassActor) string {
 	return fmt.Sprintf("%s:%d", a.ActorType, *a.ActorID)
 }
 func cloneRuleset(d RulesetDeclaration) RulesetDeclaration {
+	d.Delete = copyRuleValue(d.Delete)
 	if d.ID != nil {
 		v := *d.ID
 		d.ID = &v
@@ -262,6 +271,9 @@ func NewRulesetDeclarations(entries []RulesetDeclaration) (RulesetDeclarations, 
 // remote state and therefore identical for create and update.
 func normalizeRulesetObject(d RulesetDeclaration) (RulesetDeclaration, error) {
 	d = cloneRuleset(d)
+	if d.Delete != nil {
+		return d, validateRulesetDeletion(d)
+	}
 	if d.Target == nil {
 		value := "branch"
 		d.Target = &value
@@ -302,12 +314,25 @@ func (d RulesetDeclarations) Values() []RulesetDeclaration {
 
 func (d RulesetDeclarations) Len() int { return len(d.entries) }
 func NewRulesetObservation(entries []RulesetState, excludedPush int) (RulesetObservation, error) {
+	return NewRulesetObservationWithUnmanagedIDs(entries, excludedPush, nil)
+}
+
+// NewRulesetObservationWithUnmanagedIDs retains inventory identities that cannot
+// be selected for mutation. They must never be mistaken for confirmed absence.
+func NewRulesetObservationWithUnmanagedIDs(entries []RulesetState, excludedPush int, unmanagedIDs []int64) (RulesetObservation, error) {
 	if excludedPush < 0 {
 		return RulesetObservation{}, fmt.Errorf("invalid excluded push count")
 	}
 	out := RulesetObservation{entries: make([]RulesetState, 0, len(entries)), excludedPush: excludedPush}
 	names := map[string]bool{}
 	ids := map[int64]bool{}
+	for _, id := range unmanagedIDs {
+		if id <= 0 || ids[id] {
+			return RulesetObservation{}, fmt.Errorf("invalid or duplicate unmanaged Ruleset ID")
+		}
+		ids[id] = true
+	}
+	out.unmanagedIDs = slices.Clone(unmanagedIDs)
 	for _, v := range entries {
 		if _, err := v.RawEnforcement(); err != nil {
 			return RulesetObservation{}, err
@@ -408,12 +433,15 @@ func newRulesetDisplayChange(operation string, before, after *RulesetDeclaration
 	}
 	for _, d := range []*RulesetDeclaration{before, after} {
 		if d != nil {
+			if d.Delete != nil {
+				return RulesetDisplayChange{}, fmt.Errorf("deletion tombstones are declarations, not observed policies")
+			}
 			if err := ValidateRuleset(*d, true); err != nil {
 				return RulesetDisplayChange{}, err
 			}
 		}
 	}
-	valid := (operation == "create" && before == nil && after != nil && after.ID == nil) ||
+	valid := (operation == "delete" && before != nil && before.ID != nil && *before.ID > 0 && before.Delete == nil && after == nil) || (operation == "create" && before == nil && after != nil && after.ID == nil) ||
 		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || !normalizations.IsZero()))
 	if !valid {
 		return RulesetDisplayChange{}, fmt.Errorf("invalid ruleset display operation")
@@ -472,12 +500,15 @@ func newRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 	}
 	for _, d := range []*RulesetDeclaration{before, after} {
 		if d != nil {
+			if d.Delete != nil {
+				return RulesetChange{}, fmt.Errorf("deletion tombstones are declarations, not observed policies")
+			}
 			if err := ValidateRuleset(*d, true); err != nil {
 				return RulesetChange{}, err
 			}
 		}
 	}
-	valid := (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || !normalizations.IsZero()))
+	valid := (operation == "delete" && id > 0 && before != nil && before.ID != nil && *before.ID == id && before.Delete == nil && after == nil) || (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || !normalizations.IsZero()))
 	if !valid {
 		return RulesetChange{}, fmt.Errorf("invalid ruleset operation")
 	}
@@ -517,6 +548,30 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 	}
 	out := []RulesetChange{}
 	for _, declared := range desired.Values() {
+		if declared.Delete != nil {
+			if current.HasUnmanagedID(*declared.ID) {
+				return nil, fmt.Errorf("Ruleset id %d is outside supported repository branch/tag ownership", *declared.ID)
+			}
+			before, present := byID[*declared.ID]
+			if !present {
+				continue
+			}
+			if before.Policy.Name != declared.Name {
+				return nil, fmt.Errorf("Ruleset id %d name differs from deletion selector %q", *declared.ID, declared.Name)
+			}
+			normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, ScanningSecurityAlerts: before.ScanningSecurityAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
+			if !normalizations.IsZero() {
+				return nil, fmt.Errorf("cannot delete Ruleset %d with unsupported normalized policy", before.ID)
+			}
+			prior := cloneRuleset(before.Policy)
+			prior.ID = copyRuleValue(&before.ID)
+			change, err := NewRulesetChange("delete", before.ID, &prior, nil)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, change)
+			continue
+		}
 		after := cloneRuleset(declared)
 		if declared.ID == nil {
 			if existing, present := byName[declared.Name]; present {
@@ -594,4 +649,23 @@ func omitDismissalRestriction(policy *RulesetDeclaration) {
 			}
 		}
 	}
+}
+
+// HasUnmanagedID distinguishes excluded resources from genuinely absent IDs.
+func (o RulesetObservation) HasUnmanagedID(id int64) bool { return slices.Contains(o.unmanagedIDs, id) }
+
+func validateRulesetDeletion(d RulesetDeclaration) error {
+	if d.Delete == nil || !*d.Delete || d.ID == nil || *d.ID <= 0 || !validRulesetText(d.Name) {
+		return fmt.Errorf("Ruleset deletion requires delete: true, positive id and ruleset_name")
+	}
+	if d.Target != nil || d.Enforcement != nil || d.Conditions != nil || d.BypassActors != nil || d.Rules != nil {
+		return fmt.Errorf("Ruleset deletion forbids policy fields")
+	}
+	return nil
+}
+
+// MatchesDeletionPolicy guards the selected complete policy against drift before
+// deletion, including latent dismissal values. It never applies read defaults.
+func (c RulesetChange) MatchesDeletionPolicy(policy RulesetDeclaration) bool {
+	return c.operation == "delete" && c.before != nil && policy.Delete == nil && ValidateRuleset(policy, true) == nil && reflect.DeepEqual(cloneRuleset(*c.before), cloneRuleset(policy))
 }
