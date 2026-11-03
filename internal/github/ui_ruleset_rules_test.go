@@ -9,7 +9,7 @@ import (
 )
 
 func uiObservedRuleFlags() uimodel.RulesetRules {
-	return uimodel.RulesetRules{RestrictCreations: rulesetPtr(false), RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}
+	return uimodel.RulesetRules{RequireLicenseComplianceResultsBeforeMerging: rulesetPtr(false), RestrictCreations: rulesetPtr(false), RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}
 }
 
 func TestUIRulesetSimpleRuleControls(t *testing.T) {

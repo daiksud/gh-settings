@@ -16,7 +16,7 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		selected *bool
 		kind     string
 	}{
-		{ui.RestrictCreations, "creation"}, {ui.RestrictDeletions, "deletion"}, {ui.BlockForcePushes, "non_fast_forward"}, {ui.RequireLinearHistory, "required_linear_history"}, {ui.RequireSignedCommits, "required_signatures"},
+		{ui.RequireLicenseComplianceResultsBeforeMerging, "license_compliance_scanning"}, {ui.RestrictCreations, "creation"}, {ui.RestrictDeletions, "deletion"}, {ui.BlockForcePushes, "non_fast_forward"}, {ui.RequireLinearHistory, "required_linear_history"}, {ui.RequireSignedCommits, "required_signatures"},
 	} {
 		if control.selected != nil && *control.selected {
 			result = append(result, settings.RulesetRule{Type: control.kind})
@@ -91,7 +91,7 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 
 func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, error) {
 	no := false
-	result := uimodel.RulesetRules{RestrictCreations: copyUIRulesetValue(&no), RestrictDeletions: copyUIRulesetValue(&no), BlockForcePushes: copyUIRulesetValue(&no), RequireLinearHistory: copyUIRulesetValue(&no), RequireSignedCommits: copyUIRulesetValue(&no)}
+	result := uimodel.RulesetRules{RequireLicenseComplianceResultsBeforeMerging: copyUIRulesetValue(&no), RestrictCreations: copyUIRulesetValue(&no), RestrictDeletions: copyUIRulesetValue(&no), BlockForcePushes: copyUIRulesetValue(&no), RequireLinearHistory: copyUIRulesetValue(&no), RequireSignedCommits: copyUIRulesetValue(&no)}
 	for _, rule := range rules {
 		switch rule.Type {
 		case "creation":
@@ -103,6 +103,8 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			result.RestrictUpdates = &uimodel.UpdateRule{AllowFetchAndMerge: copyUIRulesetValue(rule.Parameters.UpdateAllowsFetchAndMerge)}
 		case "copilot_code_review":
 			result.AutomaticallyRequestCopilotCodeReview = &uimodel.CopilotCodeReviewRule{ReviewNewPushes: copyUIRulesetValue(rule.Parameters.ReviewOnPush), ReviewDraftPullRequests: copyUIRulesetValue(rule.Parameters.ReviewDraftPullRequests)}
+		case "license_compliance_scanning":
+			*result.RequireLicenseComplianceResultsBeforeMerging = true
 		case "deletion":
 			*result.RestrictDeletions = true
 		case "non_fast_forward":

@@ -334,7 +334,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 		}
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
-				needsReadback = needsReadback || rule.Type == "creation" || rule.Type == "update" || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments" || rule.Type == "copilot_code_review" || rule.Type == "code_coverage" || rule.Type == "merge_queue" || settings.IsMetadataPatternRule(rule.Type)
+				needsReadback = needsReadback || rule.Type == "creation" || rule.Type == "update" || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments" || rule.Type == "copilot_code_review" || rule.Type == "code_coverage" || rule.Type == "merge_queue" || settings.IsMetadataPatternRule(rule.Type) || rule.Type == "license_compliance_scanning"
 			}
 		}
 	}
