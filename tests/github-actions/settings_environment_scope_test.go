@@ -13,20 +13,17 @@ import (
 )
 
 const (
-	settingsWorkflowPath      = ".github/workflows/settings-main.yml"
+	settingsWorkflowPath      = ".github/workflows/apply-settings.yml"
 	settingsPRWorkflowPath    = ".github/workflows/settings-pr.yml"
 	settingsEnvironment       = "gh-settings"
-	settingsGuardWorkflowPath = ".github/workflows/settings-env.yml"
 	settingsGuardCheckName    = "settings-env"
 	retiredSettingsPlanPath   = ".github/workflows/settings-plan.yml"
 	settingsPlanEnvironment   = "gh-settings-plan"
-	settingsPlanCheckName     = "settings-plan"
-	settingsPRCondition       = "github.event_name == 'pull_request_target' && github.ref == 'refs/heads/main' && github.repository == 'daiksud/gh-settings' && github.event.pull_request.base.ref == 'main'"
-	settingsCombinedCondition = settingsPRCondition + " && github.event.action != 'edited' && needs.settings-plan.outputs.plan-required == 'true'"
+	settingsValidateCheckName = "settings-validate"
 )
 
 // The ci-pr aggregate check runs this test with the rest of the Go suite.
-// The dedicated PR workflow runs it separately to give reviewers a focused result.
+// Candidate source owns this check; it is not an independent trusted-main guard.
 func TestSettingsEnvironmentScope(t *testing.T) {
 	dir := os.Getenv("GH_SETTINGS_WORKFLOWS_DIR")
 	if dir == "" {
@@ -54,8 +51,6 @@ func TestSettingsEnvironmentScope(t *testing.T) {
 
 func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	found := 0
-	prFound := 0
-	guardChecks := 0
 	planChecks := 0
 	if _, present := workflows[retiredSettingsPlanPath]; present {
 		return fmt.Errorf("%s is retired; required settings validation belongs in %s", retiredSettingsPlanPath, settingsPRWorkflowPath)
@@ -100,10 +95,8 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if err != nil {
 				return fmt.Errorf("%s: jobs.%s: %w", path, jobName, err)
 			}
-			// Keep the dedicated guard's check name unique among current workflows.
-			// Uniqueness helps avoid ambiguous statuses; it does not prevent spoofing
-			// by PR-controlled GitHub Actions, so do not remove Environment approval
-			// without an independently enforceable required check.
+			// Reserve the validation name and reject recreation of the retired guard.
+			// Candidate-controlled tests cannot establish trusted check identity.
 			checkName := jobName
 			if node, exists := job["name"]; exists {
 				if node.Kind != yaml.ScalarNode || strings.Contains(node.Value, "${{") {
@@ -111,17 +104,14 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 				}
 				checkName = node.Value
 			}
-			if jobName == settingsPlanCheckName || checkName == settingsPlanCheckName {
-				if path != settingsPRWorkflowPath || jobName != settingsPlanCheckName || checkName != settingsPlanCheckName {
-					return fmt.Errorf("%s: jobs.%s: check name %q is reserved", path, jobName, settingsPlanCheckName)
+			if jobName == settingsValidateCheckName || checkName == settingsValidateCheckName {
+				if path != settingsPRWorkflowPath || jobName != settingsValidateCheckName || checkName != settingsValidateCheckName {
+					return fmt.Errorf("%s: jobs.%s: check name %q is reserved", path, jobName, settingsValidateCheckName)
 				}
 				planChecks++
 			}
-			if jobName == settingsGuardCheckName || checkName == settingsGuardCheckName {
-				if path != settingsGuardWorkflowPath || jobName != settingsGuardCheckName || checkName != settingsGuardCheckName {
-					return fmt.Errorf("%s: jobs.%s: check name %q is reserved for %s", path, jobName, settingsGuardCheckName, settingsGuardWorkflowPath)
-				}
-				guardChecks++
+			if jobName == settingsGuardCheckName || checkName == settingsGuardCheckName || jobName == "settings-plan" || checkName == "settings-plan" {
+				return fmt.Errorf("%s: retired check %q must not be recreated", path, checkName)
 			}
 			// Called workflows can select this repository's Environment and
 			// inherit its secrets. Reject calls rather than trusting unseen code.
@@ -142,19 +132,8 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 			if !strings.EqualFold(strings.TrimSpace(name), settingsEnvironment) {
 				continue
 			}
-			if path == settingsPRWorkflowPath && jobName == "plan" && name == settingsEnvironment {
-				if !settingsScalarIs(job["needs"], settingsPlanCheckName) {
-					return fmt.Errorf("%s: jobs.plan: must depend on the required validation", path)
-				}
-				condition := job["if"]
-				if !settingsScalarIs(condition, settingsCombinedCondition) {
-					return fmt.Errorf("%s: jobs.plan: missing trusted main PR-target condition", path)
-				}
-				prFound++
-				continue
-			}
 			if path != settingsWorkflowPath || jobName != "apply" || name != settingsEnvironment {
-				return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only as a literal in %s jobs.apply or %s jobs.plan", path, jobName, name, settingsWorkflowPath, settingsPRWorkflowPath)
+				return fmt.Errorf("%s: jobs.%s.environment: %q is allowed only as a literal in %s jobs.apply", path, jobName, name, settingsWorkflowPath)
 			}
 			found++
 		}
@@ -162,20 +141,13 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 	if found != 1 {
 		return fmt.Errorf("expected exactly one %q Environment, at %s jobs.apply; found %d", settingsEnvironment, settingsWorkflowPath, found)
 	}
-	if prFound != 1 {
-		return fmt.Errorf("expected exactly one trusted PR plan Environment; found %d", prFound)
-	}
-	if guardChecks != 1 {
-		return fmt.Errorf("expected exactly one guard status %q in %s; found %d", settingsGuardCheckName, settingsGuardWorkflowPath, guardChecks)
-	}
 	if planChecks != 1 {
 		return fmt.Errorf("expected exactly one settings validation check in %s; found %d", settingsPRWorkflowPath, planChecks)
 	}
 	return nil
 }
 
-// Required validation runs for every PR update. Only the separate plan job may
-// narrow eligibility by activity or paths.
+// Required validation runs for every PR update without path filtering.
 func checkSettingsPRTrigger(node *yaml.Node) error {
 	if node == nil {
 		return fmt.Errorf("expected pull_request_target to main only")
@@ -221,32 +193,13 @@ func checkSettingsPRTrigger(node *yaml.Node) error {
 // Keep this guard about the Environment boundary. Privileged steps and Action
 // choices remain the responsibility of owner review.
 func checkSettingsMainTrigger(node *yaml.Node) error {
-	if node == nil {
-		return fmt.Errorf("expected only push to main")
-	}
 	events, err := settingsYAMLMap(node)
-	if err != nil {
-		return err
+	if err != nil || len(events) != 1 || events["workflow_dispatch"] == nil {
+		return fmt.Errorf("expected only manual workflow_dispatch")
 	}
-	push, ok := events["push"]
-	if !ok || len(events) != 1 {
-		return fmt.Errorf("expected only the push event")
-	}
-	filters, err := settingsYAMLMap(push)
-	if err != nil {
-		return err
-	}
-	for key := range filters {
-		switch key {
-		case "branches", "paths", "paths-ignore":
-		default:
-			return fmt.Errorf("push filter %q is not permitted", key)
-		}
-	}
-	branches := filters["branches"]
-	if branches == nil || branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 ||
-		branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
-		return fmt.Errorf("push.branches must be exactly [main]")
+	dispatch := events["workflow_dispatch"]
+	if dispatch.Tag != "!!null" {
+		return fmt.Errorf("manual apply must not accept dispatch inputs")
 	}
 	return nil
 }
@@ -305,7 +258,6 @@ func settingsEnvironmentName(node *yaml.Node) (string, error) {
 
 func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 	const allowed = "jobs:\n  apply:\n    environment: gh-settings\n"
-	const guard = "jobs:\n  settings-env:\n    name: settings-env\n"
 	const other = "jobs:\n  check:\n    environment: preview\n"
 	for _, test := range []struct {
 		name, main, extra string
@@ -335,9 +287,8 @@ func TestSettingsEnvironmentScopeFixtures(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string][]byte{
-				settingsWorkflowPath:      []byte("on: {push: {branches: [main]}}\n" + test.main),
-				settingsGuardWorkflowPath: []byte(guard),
-				settingsPRWorkflowPath:    []byte(settingsValidationCombinedFixture),
+				settingsWorkflowPath:   []byte("on: {workflow_dispatch: null}\n" + test.main),
+				settingsPRWorkflowPath: []byte(settingsValidationFixture),
 			}
 			if test.extra != "" {
 				files[".github/workflows/other.yaml"] = []byte(test.extra)
@@ -355,9 +306,10 @@ func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
 		name, trigger string
 		valid         bool
 	}{
-		{"main push", "on: {push: {branches: [main]}}", true},
-		{"main push with paths", "on:\n  push:\n    branches:\n      - main\n    paths: ['.github/settings.yml']", true},
-		{"main push with paths-ignore", "on: {push: {branches: [main], paths-ignore: ['docs/**']}}", true},
+		{"manual dispatch", "on: {workflow_dispatch: null}", true},
+		{"automatic main push", "on: {push: {branches: [main]}}", false},
+		{"main push with paths", "on:\n  push:\n    branches:\n      - main\n    paths: ['.github/settings.yml']", false},
+		{"main push with paths-ignore", "on: {push: {branches: [main], paths-ignore: ['docs/**']}}", false},
 		{"missing trigger", "", false},
 		{"scalar push", "on: push", false},
 		{"sequence push", "on: [push]", false},
@@ -377,9 +329,8 @@ func TestSettingsEnvironmentMainTriggerFixtures(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string][]byte{
-				settingsWorkflowPath:      []byte(test.trigger + "\njobs:\n  apply:\n    environment: gh-settings\n"),
-				settingsGuardWorkflowPath: []byte("jobs:\n  settings-env:\n    name: settings-env\n"),
-				settingsPRWorkflowPath:    []byte(settingsValidationCombinedFixture),
+				settingsWorkflowPath:   []byte(test.trigger + "\njobs:\n  apply:\n    environment: gh-settings\n"),
+				settingsPRWorkflowPath: []byte(settingsValidationFixture),
 			}
 			err := checkSettingsEnvironmentScope(files)
 			if (err == nil) != test.valid {

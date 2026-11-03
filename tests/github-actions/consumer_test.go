@@ -139,8 +139,14 @@ func runMainConsumer(t *testing.T, scenario string, workflowFile ...string) (res
 	}
 	w, _ := readWorkflow(t, name)
 	applyJob := w.Jobs["apply"]
-	event, ref := "push", "refs/heads/main"
+	expectedEvent := "push"
+	if len(workflowFile) != 0 {
+		expectedEvent = "workflow_dispatch"
+	}
+	event, ref := expectedEvent, "refs/heads/main"
 	switch scenario {
+	case "automatic push":
+		event = "push"
 	case "pull request":
 		event = "pull_request"
 	case "other branch":
@@ -149,10 +155,10 @@ func runMainConsumer(t *testing.T, scenario string, workflowFile ...string) (res
 		ref = "refs/tags/main"
 	}
 	// Model the exact job condition and Environment gate before any caller step.
-	if applyJob.If != "github.event_name == 'push' && github.ref == 'refs/heads/main'" || applyJob.Environment != expectedEnvironment {
+	if applyJob.If != "github.event_name == '"+expectedEvent+"' && github.ref == 'refs/heads/main'" || applyJob.Environment != expectedEnvironment {
 		t.Fatal("unmodeled caller approval boundary")
 	}
-	if event != "push" || ref != "refs/heads/main" || scenario == "waiting" || scenario == "rejected" {
+	if event != expectedEvent || ref != "refs/heads/main" || scenario == "waiting" || scenario == "rejected" {
 		result.trace = append(result.trace, scenario)
 		return
 	}
@@ -162,7 +168,7 @@ func runMainConsumer(t *testing.T, scenario string, workflowFile ...string) (res
 	}
 	apply.base["GITHUB_EVENT_NAME"], apply.base["GITHUB_REF"] = event, ref
 	apply.base["GITHUB_SHA"], apply.base["GITHUB_REPOSITORY"] = apply.sha, "owner/config"
-	apply.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/settings-main.yml@refs/heads/main"
+	apply.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/" + filepath.Base(name) + "@refs/heads/main"
 	apply.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
 	context := map[string]string{
 		"github.repository": "owner/config", "github.repository_owner": "owner", "github.event.repository.name": "config", "github.sha": apply.sha,
@@ -221,7 +227,7 @@ func (f *compositeFixture) call(t *testing.T, call step, context, extra map[stri
 		t.Fatalf("unexpected public Action call %s", call.Uses)
 	}
 	// Model pinned caller wiring with candidate package bytes, not released tag bytes.
-	if ref != strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(operationalAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(operationalPlanAction, "daiksud/gh-settings@") {
+	if ref != strings.TrimPrefix(exampleConsumerAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(exampleAction, "daiksud/gh-settings@") && ref != strings.TrimPrefix(operationalAction, "daiksud/gh-settings@") {
 		t.Fatalf("unmodeled public Action revision %s", ref)
 	}
 	overrides := map[string]string{

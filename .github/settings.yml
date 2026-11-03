@@ -95,28 +95,22 @@ repository:
       secret_protection:
         enabled: true
         push_protection: true
-    # Preserve complete protection for both named Environments. Unlisted names
-    # stay unmanaged; API Environment/pattern IDs are not declarative identities.
+    # Manage only the settings credential Environment. Unlisted names stay
+    # unmanaged; API Environment/pattern IDs are not declarative identities.
     environments:
-      - name: copilot
-        deployment_protection_rules:
-          wait_timer: 0
-          prevent_self_review: false
-          required_reviewers: []
-          allow_administrators_to_bypass_configured_protection_rules: true
-        deployment_branches_and_tags: no_restriction
       - name: gh-settings
         deployment_protection_rules:
           wait_timer: 0
           prevent_self_review: false
-          required_reviewers: []
+          required_reviewers:
+            - person: 155234749 # daiksud
           allow_administrators_to_bypass_configured_protection_rules: false
         deployment_branches_and_tags: selected_branches_and_tags
         deployment_branch_or_tag_rules:
           - ref_type: branch
             name_pattern: main
     # Preserve the existing ID-owned main Ruleset and its check-source App IDs.
-    # Protected main provides review; the main-only Environment adds no approval.
+    # Protected main and the main-only Environment require their own approvals.
     rulesets:
       - id: 24911852
         ruleset_name: default

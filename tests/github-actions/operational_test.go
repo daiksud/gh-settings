@@ -1,7 +1,6 @@
 package githubactions
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -10,16 +9,15 @@ import (
 )
 
 const operationalAction = "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6"
-const operationalPlanAction = "daiksud/gh-settings@6dbdbb3ab11cbc0ef257fef089d6915d31d003d6"
 
 func TestManagedRepositoryEnvironments(t *testing.T) {
 	declaration := readManagedDeclaration(t)
 	if declaration.Environments == nil {
-		t.Fatal("both existing named Environments must be declared")
+		t.Fatal("only the settings credential Environment must be declared")
 	}
 	environments := declaration.Environments.Values()
-	if len(environments) != 2 {
-		t.Fatal("both existing named Environments must be declared")
+	if len(environments) != 1 {
+		t.Fatal("only the settings credential Environment must be declared")
 	}
 	seenNames := map[string]bool{}
 	for _, p := range environments {
@@ -28,15 +26,15 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 			t.Fatalf("duplicate managed Environment %q", p.Name)
 		}
 		seenNames[identity] = true
-		if settings.EnvironmentHasAPIOmissions(p) || *p.WaitTimer != 0 || *p.PreventSelfReview || len(*p.Reviewers) != 0 {
+		if settings.EnvironmentHasAPIOmissions(p) || *p.WaitTimer != 0 || *p.PreventSelfReview {
 			t.Fatalf("Environment policy must retain complete observed values: %+v", p)
 		}
 		switch p.Name {
-		case "copilot":
-			if !*p.CanAdminsBypass || p.DeploymentBranchPolicy != nil || p.DeploymentBranchPatterns != nil {
-				t.Fatal("copilot must retain administrator bypass and unrestricted refs")
-			}
 		case "gh-settings":
+			reviewers := []settings.EnvironmentReviewer{{Type: "User", ID: 155234749}}
+			if !reflect.DeepEqual(*p.Reviewers, reviewers) {
+				t.Fatal("settings credential Environment must require daiksud approval")
+			}
 			want := []settings.EnvironmentPattern{{Type: "branch", Name: "main"}}
 			if *p.CanAdminsBypass || p.DeploymentBranchPolicy == nil || p.DeploymentBranchPolicy.ProtectedBranches || !p.DeploymentBranchPolicy.CustomBranchPolicies || p.DeploymentBranchPatterns == nil || !reflect.DeepEqual(*p.DeploymentBranchPatterns, want) {
 				t.Fatal("settings credential Environment must retain main-only refs without administrator bypass")
@@ -60,72 +58,13 @@ func TestManagedRepositoryMergePreferences(t *testing.T) {
 	}
 }
 
-func TestOperationalPRPlan(t *testing.T) {
-	w, _ := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
-	j := w.Jobs["plan"]
-	if len(j.Steps) != 3 || j.Steps[2].Uses != operationalPlanAction || !reflect.DeepEqual(j.Steps[2].With, map[string]string{"command": "plan", "token": "${{ steps.app.outputs.token }}"}) {
-		t.Fatal("operational PR must call the released public Action with its explicit App token")
-	}
-	const condition = settingsPRCondition + " && github.event.action != 'edited' && needs.settings-plan.outputs.plan-required == 'true'"
-	if len(w.On) != 1 || w.On["pull_request_target"].Kind == 0 || len(w.Jobs) != 2 || j.Environment != "gh-settings" || j.If != condition || j.Needs != "settings-plan" || len(j.Env) != 0 || len(j.Outputs) != 0 || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 8 {
-		t.Fatal("operational PR trust boundary changed")
-	}
-	if len(w.Permissions) != 0 || len(w.Env) != 0 || w.Defaults.Run.Shell != "bash" || w.Concurrency.Group != "" || w.Concurrency.Cancel || !j.Concurrency.Cancel || j.Concurrency.Group != "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}" {
-		t.Fatal("operational PR permissions or concurrency changed")
-	}
-	if j.Steps[0].ID != "candidate" || j.Steps[0].Uses != "" || !reflect.DeepEqual(j.Steps[0].Env, map[string]string{"EXPECTED_HEAD": "${{ github.event.pull_request.head.sha }}", "PR_NUMBER": "${{ github.event.pull_request.number }}"}) {
-		t.Fatal("candidate data must be prepared before credentials without checkout or token fallback")
-	}
-	for _, step := range j.Steps {
-		if strings.HasPrefix(step.Uses, "actions/checkout@") || strings.Contains(fmt.Sprint(step), "github.token") || step.Continue {
-			t.Fatal("the privileged plan cannot check out candidate code, use an ambient token or ignore failures")
-		}
-	}
-	app := j.Steps[1]
-	if app.ID != "app" || app.Uses != "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" || !reflect.DeepEqual(app.With, map[string]string{
-		"client-id": "${{ vars.ANSWER26_CLIENT_ID }}", "private-key": "${{ secrets.ANSWER26_PRIVATE_KEY }}",
-		"owner": "${{ github.repository_owner }}", "repositories": "${{ github.event.repository.name }}",
-		"permission-administration": "write", "permission-issues": "read",
-	}) {
-		t.Fatal("operational PR must use the existing repository-scoped App without new grants")
-	}
-	for _, scenario := range []struct {
-		name, outcome string
-		status        int
-	}{
-		{"differences", "changed", 0},
-		{"no differences", "no-difference", 0},
-		{"invalid configuration", "", 37},
-	} {
-		t.Run(scenario.name, func(t *testing.T) {
-			f := newCompositeFixture(t)
-			f.base["GITHUB_EVENT_NAME"] = "pull_request_target"
-			f.base["GITHUB_WORKFLOW_REF"] = "owner/config/.github/workflows/settings-pr.yml@refs/heads/main"
-			f.base["GITHUB_WORKFLOW_SHA"] = strings.Repeat("b", 40)
-			f.base["MOCK_PLAN_OUTCOME"] = scenario.outcome
-			f.base["MOCK_VALIDATE_STATUS"] = fmt.Sprint(scenario.status)
-			r := f.call(t, j.Steps[2], map[string]string{"steps.app.outputs.token": "app-fixture"}, nil)
-			if r.status != scenario.status || r.api != "" || strings.Contains(r.log+r.summary+fmt.Sprint(r.outputs), "app-fixture") {
-				t.Fatalf("operational PR result: %+v", r)
-			}
-			if scenario.status == 0 {
-				if r.calls != "plan\n" || r.outputs["config-sha"] != f.sha || r.outputs["target"] != "owner/config" || r.outputs["cli-version"] != committedCLIVersion(t) || r.outputs["cli-sha256"] != f.digest || !strings.Contains(r.summary, strings.TrimPrefix(operationalPlanAction, "daiksud/gh-settings@")) {
-					t.Fatalf("operational PR identity or execution: %+v", r)
-				}
-			} else if r.calls != "plan\n" || len(r.outputs) != 0 {
-				t.Fatalf("invalid configuration reached plan or published outputs: %+v", r)
-			}
-		})
-	}
-}
-
 func TestOperationalMainConsumer(t *testing.T) {
-	w, source := readWorkflow(t, "../../.github/workflows/settings-main.yml")
+	w, source := readWorkflow(t, "../../.github/workflows/apply-settings.yml")
 	apply := w.Jobs["apply"]
-	if len(w.On) != 1 || w.On["push"].Kind == 0 || len(w.Jobs) != 1 || len(apply.Steps) != 3 {
-		t.Fatal("operational main must use one job with checkout, App token and apply")
+	if len(w.On) != 1 || w.On["workflow_dispatch"].Kind == 0 || len(w.Jobs) != 1 || len(apply.Steps) != 3 {
+		t.Fatal("operational manual apply must use one job with checkout, App token and apply")
 	}
-	if apply.If != "github.event_name == 'push' && github.ref == 'refs/heads/main'" || apply.Environment != "gh-settings" || apply.Needs != "" ||
+	if apply.If != "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'" || apply.Environment != "gh-settings" || apply.Needs != "" ||
 		apply.Runner != "ubuntu-24.04" || apply.Timeout != 5 || apply.Continue || len(apply.Env) != 0 || len(apply.Outputs) != 0 ||
 		!reflect.DeepEqual(w.Permissions, map[string]string{"contents": "read"}) || w.Concurrency.Cancel ||
 		w.Concurrency.Group != "settings-main-${{ github.repository }}" {
@@ -150,7 +89,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 	if apply.Steps[2].Uses != operationalAction || !reflect.DeepEqual(apply.Steps[2].With, map[string]string{
 		"command": "apply", "token": "${{ steps.app.outputs.token }}",
 	}) || strings.Count(source, "steps.app.outputs.token") != 1 || strings.Contains(source, "verify-settings-handoff") ||
-		strings.Contains(source, "run:") || !strings.Contains(source, "branches: [main]") {
+		strings.Contains(source, "run:") || !strings.Contains(source, "workflow_dispatch:") {
 		t.Fatal("operational action identity, binding or simplified workflow changed")
 	}
 	for _, test := range []struct {
@@ -165,13 +104,14 @@ func TestOperationalMainConsumer(t *testing.T) {
 		{"apply installation failure", 1, true, ""},
 		{"waiting", 0, false, ""},
 		{"rejected", 0, false, ""},
+		{"automatic push", 0, false, ""},
 		{"pull request", 0, false, ""},
 		{"other branch", 0, false, ""},
 		{"tag push", 0, false, ""},
 		{"mint failure", 1, false, ""},
 	} {
 		t.Run(test.scenario, func(t *testing.T) {
-			result := runMainConsumer(t, test.scenario, "../../.github/workflows/settings-main.yml")
+			result := runMainConsumer(t, test.scenario, "../../.github/workflows/apply-settings.yml")
 			result.assertNoCredentials(t)
 			if result.status != test.status || result.minted != test.minted || result.revoked != test.minted || result.applied.api != test.api {
 				t.Fatalf("operational apply scenario failed: %+v", result)

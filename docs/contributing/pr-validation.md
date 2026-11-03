@@ -1,6 +1,9 @@
 # PR validation and required checks
 
-The required PR checks are `ci-pr`, `prlint`, `settings-plan` and `settings-env`.
+The tracked required PR checks are `ci-pr`, `prlint`, `settings-plan` and
+`settings-env`. The guard is removed and validation now produces
+`settings-validate`; the required names need the explicitly authorized transition
+described below.
 Their owning workflows and boundaries are listed in the
 [repository automation guide](repository-automation.md#protected-main-and-required-checks).
 No workflow publishes the shared `pass` commit status.
@@ -36,24 +39,27 @@ requirement remains satisfied without changing protections. See
 Normal review, squash-message classification and other required checks still
 apply to Dependabot PRs.
 
-The required `settings-plan` job always validates the proposed merge declaration
+The `settings-validate` job always validates the proposed merge declaration
 with the operational public Action selected by trusted main code. It uses no
-Environment or App token and does not observe live settings. The separate plan
-job evaluates the PR head only when its event and path conditions match.
+Environment or App token and does not observe live settings. There is no PR plan job.
 
 The repository automation guide owns the
 [merge identity and validation contract](repository-automation.md#pr-settings-validation)
-and the [package pins, plan selection and credential boundaries](repository-automation.md#active-settings-workflows).
+and the [package pins and credential boundaries](repository-automation.md#active-settings-workflows).
 Candidate code and current-format fixtures remain covered by `ci-pr`; they do
 not establish that a pinned operational package supports a new declaration.
 
-The trusted `settings-env` check audits the Environment boundary
-using the default-branch policy. Neither the guard nor the source-controlled
-workflow alone proves live credential configuration.
+The Environment scope tests still run in ordinary CI with candidate source.
+There is no independent trusted-main guard. These tests and workflow source do
+not establish live credential configuration.
 
 ## Ruleset transition
 
-Set required contexts to `ci-pr`, `prlint`, `settings-plan` and
-`settings-env`, each produced by GitHub Actions. Remove the
-old `pass`, `pr-message` and `gh-settings` required contexts. The live
-Ruleset is an external GitHub setting; changing job names does not update it.
+The tracked declaration still requires `settings-plan` and `settings-env`.
+The workflow now produces `settings-validate`; it does not provide an old-name
+compatibility check. Follow the
+[transition procedure](repository-automation.md#required-check-transition):
+retire the live guard requirement, merge the job rename with the existing
+trusted-main validation still required, verify a fresh post-merge validation
+run, then replace the live required name. Update the declaration afterward
+before applying settings. Preserve all other required checks and protections.

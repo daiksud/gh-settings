@@ -8,19 +8,19 @@ import (
 )
 
 // Keep the required check an unconditional, credential-free invocation of the
-// released validator. The trusted inline metadata step's implementation, like
-// the privileged plan steps, remains subject to owner review and behavior tests.
+// released validator. The trusted inline metadata step's implementation
+// remains subject to owner review and behavior tests.
 func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 	permissions, err := settingsYAMLMap(workflow["permissions"])
 	if err != nil || len(permissions) != 0 || workflow["env"] != nil {
 		return fmt.Errorf("settings validation must have no default token grants or injected environment")
 	}
 	jobs, err := settingsYAMLMap(workflow["jobs"])
-	if err != nil || jobs[settingsPlanCheckName] == nil {
-		return fmt.Errorf("settings validation requires the settings-plan job")
+	if err != nil || jobs[settingsValidateCheckName] == nil {
+		return fmt.Errorf("settings validation requires the settings-validate job")
 	}
-	if len(jobs) != 2 || jobs["plan"] == nil || workflow["concurrency"] != nil {
-		return fmt.Errorf("PR workflow requires separate validation and plan jobs with independent concurrency")
+	if len(jobs) != 1 || workflow["concurrency"] != nil {
+		return fmt.Errorf("PR workflow requires only validation with per-job concurrency")
 	}
 	if err := checkSettingsPRTrigger(workflow["on"]); err != nil {
 		return err
@@ -29,17 +29,13 @@ func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 	if err != nil || len(defaults) != 1 || !settingsStringMapIs(defaults["run"], map[string]string{"shell": "bash"}) {
 		return fmt.Errorf("settings workflow must use the trusted bash step shell")
 	}
-	plan, err := settingsYAMLMap(jobs["plan"])
-	if err != nil || !settingsScalarIs(plan["environment"], settingsEnvironment) || !settingsConcurrencyIs(plan["concurrency"], "settings-pr-${{ github.repository }}-${{ github.event.pull_request.number }}", true) {
-		return fmt.Errorf("plan must retain its Environment and independent cancelling concurrency")
-	}
-	job, err := settingsYAMLMap(jobs[settingsPlanCheckName])
+	job, err := settingsYAMLMap(jobs[settingsValidateCheckName])
 	if err != nil {
 		return err
 	}
 	for _, key := range []string{"environment", "uses", "needs", "env", "container", "services", "strategy"} {
 		if job[key] != nil {
-			return fmt.Errorf("settings validation cannot set jobs.settings-plan.%s", key)
+			return fmt.Errorf("settings validation cannot set jobs.settings-validate.%s", key)
 		}
 	}
 	if job["continue-on-error"] != nil && !settingsScalarIs(job["continue-on-error"], "false") {
@@ -48,8 +44,8 @@ func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 	if !settingsScalarIs(job["runs-on"], "ubuntu-24.04") || !settingsStringMapIs(job["permissions"], map[string]string{"contents": "read"}) {
 		return fmt.Errorf("settings validation requires the supported runner and only Contents read")
 	}
-	if job["if"] != nil || !settingsStringMapIs(job["outputs"], map[string]string{"plan-required": "${{ steps.candidate.outputs.plan-required }}"}) || !settingsConcurrencyIs(job["concurrency"], "settings-pr-validation-${{ github.repository }}-${{ github.event.pull_request.number }}", false) {
-		return fmt.Errorf("validation must run unconditionally and expose only plan eligibility with independent non-cancelling concurrency")
+	if job["if"] != nil || job["outputs"] != nil || !settingsConcurrencyIs(job["concurrency"], "settings-pr-validation-${{ github.repository }}-${{ github.event.pull_request.number }}", false) {
+		return fmt.Errorf("validation must run unconditionally without job outputs and with non-cancelling concurrency")
 	}
 	steps := job["steps"]
 	if steps == nil || steps.Kind != yaml.SequenceNode || len(steps.Content) != 3 {

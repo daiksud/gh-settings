@@ -1,10 +1,6 @@
-name: Settings main apply
+name: Apply settings
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/settings.yml
-      - .github/workflows/settings-main.yml
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -12,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   apply:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     environment: gh-settings
     runs-on: ubuntu-24.04
     timeout-minutes: 5
