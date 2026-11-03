@@ -174,3 +174,12 @@ Test mapping: [mapping/state/closed changes/reconciliation](../../internal/setti
 - Updates and removals require strict mutation acknowledgment and a separate GET confirming the complete desired policy, selected ID and repository ownership. A retained old policy, incomplete GET or denied read fails with uncertain-write reporting.
 - `TestCopilotRulesetUIAndExport`, `TestCopilotRulesetAcquisitionFailsClosed` and `TestCopilotRulesetStrictIndependentReadback` cover mapping, export roundtrip, validation, ownership and failure cases. `TestRulesetCopilotExportValidatePlanApplyReadback` exercises the built CLI through export, validate, plan, apply, independent readback and repeat no writes with exact independently authored payloads.
 - Local fixtures use dummy tokens. They do not establish actual Copilot review execution, licensing, AI credits or live protection.
+
+## Code coverage
+
+- Branch Rulesets can select `rules.restrict_code_coverage` with explicit finite 0–100 values for `minimum_line_coverage_percentage` and `maximum_line_coverage_drop`; fractional values and zero are retained exactly. A tag target or cross-rule parameters fail validation.
+- Export preserves both acquired thresholds and revalidates to no differences. Missing, null, wrong-type or unknown parameters fail the entire observation rather than becoming zero or disappearing from whole-object updates.
+- Add/update/remove checks the original acknowledgment and an independent ID- and repository-bound GET. Acknowledged but absent, stale or malformed readback reports uncertain effects. Repeated successful apply does not write.
+- [Domain tests](../../internal/settings/ruleset_coverage_test.go) own threshold bounds and copying; [codec tests](../../internal/workspace/ui_ruleset_coverage_test.go) own numeric YAML types; [transport tests](../../internal/github/ruleset_coverage_test.go) own incomplete acquisition and fresh verification, including removal. [Executable coverage tests](../../tests/acceptance/ruleset_coverage_test.go) check export, validate, plan, apply, readback failure and no-difference repetition against a local API with dummy credentials. No live protection, coverage uploads or plan entitlement is changed or verified.
+
+The [public contract](../settings.md#code-coverage-thresholds) owns Code Quality, coverage-upload and Team/Enterprise Cloud prerequisites. Organization/Enterprise policy is excluded even when a repository rule requires those subscriptions.
