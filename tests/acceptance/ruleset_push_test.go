@@ -123,7 +123,7 @@ func TestPushRulesetExportValidatePlanApplyAndIncompleteSafety(t *testing.T) {
 	policy := map[string]any{
 		"id": 26024001, "ruleset_name": "push", "enforcement_status": "active", "target_pushes": true, "bypass_list": []any{},
 		"rules": map[string]any{
-			"require_license_compliance_results_before_merging": false, "restrict_creations": false, "restrict_deletions": false, "block_force_pushes": false, "require_linear_history": false, "require_signed_commits": false,
+			"restrict_creations": false, "restrict_deletions": false, "block_force_pushes": false, "require_linear_history": false, "require_signed_commits": false,
 			"restrict_file_extensions":  map[string]any{"restricted_file_extensions": []any{".exe"}},
 			"restrict_file_paths":       map[string]any{"restricted_file_paths": []any{"secrets/**"}, "allowed_exceptions": []any{"secrets/example"}},
 			"restrict_file_path_length": map[string]any{"maximum_file_path_length": 240},

@@ -46,9 +46,6 @@ func TestRulesetBypassChangesOwnActorBoundEvidence(t *testing.T) {
 			if remove && (change.After().BypassActors == nil || len(*change.After().BypassActors) != 0 || len(*display.After().BypassActors) != 0) {
 				t.Fatal("actor removal invented a desired bypass mode", change)
 			}
-			if display.Before().HasWriteOnlyDismissal() || display.After().HasWriteOnlyDismissal() || change.Display().Before().HasWriteOnlyDismissal() {
-				t.Fatal("display leaked write-only intent")
-			}
 		}
 	}
 }

@@ -52,11 +52,4 @@ func TestUIRulesetTeamReviewerFailures(t *testing.T) {
 			t.Fatal("invalid team reviewer accepted")
 		}
 	}
-	source := apiRulesetBase()
-	p := completeUIAPIPR()
-	p.DismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: rulesetPtr(true), AllowedActors: rulesetPtr([]settings.ReviewActor{{Type: "RepositoryRole", ID: 99}})}
-	source.Rules = rulesetPtr([]settings.RulesetRule{{Type: "pull_request", Parameters: p}})
-	if _, err := RulesetObservation(source); err == nil {
-		t.Fatal("out-of-UI dismissal role silently erased")
-	}
 }

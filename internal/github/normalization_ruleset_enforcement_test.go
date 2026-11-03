@@ -10,7 +10,7 @@ import (
 )
 
 func TestObservedRulesetEnforcementDecoderPreservesSourceAndStrictVerification(t *testing.T) {
-	for _, token := range []string{"active", "disabled", "evaluate", "FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
+	for _, token := range []string{"active", "disabled", "FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		t.Run(token, func(t *testing.T) {
 			var raw map[string]json.RawMessage
 			if err := json.Unmarshal([]byte(basicRulesetJSON), &raw); err != nil {
@@ -24,14 +24,14 @@ func TestObservedRulesetEnforcementDecoderPreservesSourceAndStrictVerification(t
 			policy, record, err := decodeObservedRulesetPolicy(raw)
 			want := token
 			wantRecord := settings.ObservationNormalization{}
-			if token != "active" && token != "disabled" && token != "evaluate" {
+			if token != "active" && token != "disabled" {
 				want = "disabled"
 				wantRecord = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: token, Fallback: "disabled"}
 			}
 			if err != nil || policy.Enforcement == nil || *policy.Enforcement != want || record.Enforcement != wantRecord || record.QualitySeverity != (settings.ObservationNormalization{}) || !reflect.DeepEqual(raw, before) {
 				t.Fatal(policy, record, err, raw, before)
 			}
-			if token != "active" && token != "disabled" && token != "evaluate" {
+			if token != "active" && token != "disabled" {
 				if err := verifyReviewRulesetResponse(policy, raw); err == nil {
 					t.Fatal("projected equality confirmed raw write", token)
 				}
@@ -46,6 +46,7 @@ func TestObservedRulesetEnforcementDecoderPreservesSourceAndStrictVerification(t
 
 func TestObservedRulesetEnforcementDecoderRejectsIncompletePolicy(t *testing.T) {
 	for _, mutate := range []func(map[string]json.RawMessage){
+		func(raw map[string]json.RawMessage) { raw["enforcement"] = json.RawMessage(`"evaluate"`) },
 		func(raw map[string]json.RawMessage) { delete(raw, "enforcement") },
 		func(raw map[string]json.RawMessage) { raw["enforcement"] = json.RawMessage(`null`) },
 		func(raw map[string]json.RawMessage) { raw["enforcement"] = json.RawMessage(`42`) },

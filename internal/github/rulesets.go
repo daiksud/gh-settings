@@ -333,12 +333,9 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	}
 	needsReadback := !change.Normalizations().IsZero() || (after.Target != nil && *after.Target == "push") || (change.Before() != nil && change.Before().Target != nil && *change.Before().Target == "push")
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
-		if policy != nil && policy.Enforcement != nil && *policy.Enforcement == "evaluate" {
-			needsReadback = true
-		}
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
-				needsReadback = needsReadback || rule.Type == "creation" || rule.Type == "update" || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments" || rule.Type == "copilot_code_review" || rule.Type == "code_coverage" || rule.Type == "merge_queue" || settings.IsMetadataPatternRule(rule.Type) || rule.Type == "license_compliance_scanning"
+				needsReadback = needsReadback || rule.Type == "creation" || rule.Type == "update" || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments" || rule.Type == "copilot_code_review" || rule.Type == "code_coverage"
 			}
 		}
 	}
@@ -372,7 +369,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 }
 
 // Verify the requested observable policy without running create/update selection
-// again. Matching absence never proves that an unobservable value is unchanged.
+// again. Both policies must retain complete supported values.
 func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[string]json.RawMessage) error {
 	policy, err := decodeRulesetPolicy(raw)
 	if err != nil {
@@ -391,17 +388,6 @@ func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[st
 		return err
 	}
 	actual, requested := values[0].Policy, declaration.Values()[0]
-	// Temporary write-only support: API acceptance does not verify this value.
-	// Still decode and validate present response objects before excluding it.
-	for _, policy := range []*settings.RulesetDeclaration{&actual, &requested} {
-		if policy.Rules != nil {
-			for i := range *policy.Rules {
-				if p := (*policy.Rules)[i].Parameters; p != nil {
-					p.DismissalRestriction = nil
-				}
-			}
-		}
-	}
 	if !reflect.DeepEqual(actual, requested) {
 		return fmt.Errorf("GitHub response did not retain the requested Ruleset policy")
 	}
@@ -433,12 +419,10 @@ func checkRulesetResponseKeys(value any, context string) error {
 		case "rule":
 			allowed = []string{"type", "parameters"}
 		case "parameters":
-			allowed = []string{"update_allows_fetch_and_merge", "allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity", "required_deployment_environments", "review_draft_pull_requests", "review_on_push", "minimum_coverage", "max_coverage_drop", "check_response_timeout_minutes", "grouping_strategy", "max_entries_to_build", "max_entries_to_merge", "merge_method", "min_entries_to_merge", "min_entries_to_merge_wait_minutes", "name", "negate", "operator", "pattern", "restricted_file_paths", "ignored_file_paths", "restricted_file_extensions", "max_file_path_length", "max_file_size"}
+			allowed = []string{"update_allows_fetch_and_merge", "allowed_merge_methods", "dismiss_stale_reviews_on_push", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity", "required_deployment_environments", "review_draft_pull_requests", "review_on_push", "minimum_coverage", "max_coverage_drop", "restricted_file_paths", "ignored_file_paths", "restricted_file_extensions", "max_file_path_length", "max_file_size"}
 		case "scanning_tool":
 			allowed = []string{"tool", "alerts_threshold", "security_alerts_threshold"}
-		case "dismissal_restriction":
-			allowed = []string{"enabled", "allowed_actors"}
-		case "review_actor", "reviewer":
+		case "reviewer":
 			allowed = []string{"id", "type"}
 		case "required_reviewer":
 			allowed = []string{"reviewer", "minimum_approvals", "file_patterns"}
@@ -471,9 +455,6 @@ func checkRulesetResponseKeys(value any, context string) error {
 			}
 			if key == "code_scanning_tools" {
 				next = "scanning_tool"
-			}
-			if key == "allowed_actors" {
-				next = "review_actor"
 			}
 			if err := checkRulesetResponseKeys(v, next); err != nil {
 				return err

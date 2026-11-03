@@ -1,16 +1,12 @@
 ---
 type: Reference
 title: Prepared Ruleset UI mappings
-description: Ruleset UI controls, internal API translation, observation defaults and write-only dismissal provenance.
+description: Ruleset UI controls, internal API translation, observation defaults and complete unsupported-policy rejection.
 sources:
   - id: ruleset-ui
     resource: https://github.com/daiksud/gh-settings/settings/rules
   - id: existing-bypass-ui
     resource: https://github.com/daiksud/agents/settings/rules/22615823
-  - id: dismissal-ui
-    resource: https://github.blog/changelog/2026-07-07-restrict-who-can-dismiss-reviews-in-rulesets/
-  - id: dismissal-api
-    resource: https://docs.github.com/en/rest/repos/rules
   - id: role-identities
     resource: https://raw.githubusercontent.com/integrations/terraform-provider-github/main/docs/resources/repository_ruleset.md
 ---
@@ -19,13 +15,9 @@ sources:
 
 This Ruleset mapping was prepared for [#483](https://github.com/daiksud/gh-settings/issues/483) and is consumed by [#479](https://github.com/daiksud/gh-settings/issues/479) in current-source UI YAML. The [public reference](../settings.md#rulesets) defines the accepted contract. [#480](https://github.com/daiksud/gh-settings/issues/480) normalization and [#481](https://github.com/daiksud/gh-settings/issues/481) complete reporting remain separate; native internal object reports retain their existing protocol.
 
-The current write-only `dismissal_restriction` now has a verified UI mapping from GitHub's official release screenshot. The checkbox is **Restrict who can dismiss pull request reviews**, and its collection heading is **People, teams, or apps that can dismiss reviews**. This completes the control inventory without removing support or requiring an unsupported-setting decision. Existing export, plan and unverified-apply limits remain unchanged; UI wording does not establish stored/read-comparable enforcement.[^dismissal-ui][^dismissal-api]
-
 ## UI evidence
 
 English labels and choices were inspected on 2026-10-28. Existing gh-settings and agents Rulesets supplied root, bypass and active-rule controls. Conditional reviewer and code-analysis controls were revealed only in an unnamed, unsaved new Ruleset form; no Create or Save action was submitted, and that form was discarded. This verifies UI wording and options, not live mutation effects or effective protection.[^ruleset-ui][^existing-bypass-ui]
-
-The dismissal control was not visible in the inspected personal repository form. GitHub's 2026-07-07 release article supplies a direct screenshot of the checkbox, actor heading and Repository admin Role / App / Team / User rows, and states that it uses the same actor picker as other Ruleset controls. The documented API supplies the corresponding enabled flag and typed actor references. This evidence verifies the missing display without changing live settings.[^dismissal-ui][^dismissal-api]
 
 The visible bypass options' DOM identities map Repository admin to `RepositoryRole:5`, Maintain to `RepositoryRole:2`, and Write to `RepositoryRole:4`. The independent provider reference documents the same role IDs; the existing agents API/UI pair also identifies Repository admin 5. App, team and user identities remain dynamic; no installation-specific ID is hardcoded.[^role-identities]
 
@@ -38,7 +30,7 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 | Delete Ruleset | `R.delete: true` with exact `R.id` and `R.ruleset_name` | ID-addressed DELETE, no policy payload; all policy controls unselected |
 | Selected Ruleset identity | `R.id` | Numeric ID selects an existing resource; no ID remains create-only; never a writable payload field |
 | Ruleset Name | `R.ruleset_name` | `name` |
-| Enforcement status | `R.enforcement_status` | `enforcement`; Active / Disabled / Evaluate become `active` / `disabled` / `evaluate` |
+| Enforcement status | `R.enforcement_status` | `enforcement`; Active / Disabled become `active` / `disabled` |
 | Target branches / Include default branch | `R.target_branches.include_default_branch` | `target: branch`, include sentinel `~DEFAULT_BRANCH` |
 | Target branches / Include all branches | `R.target_branches.include_all_branches` | Include sentinel `~ALL` |
 | Target branches / Include by pattern | `R.target_branches.include_by_pattern` | Include strings prefixed with `refs/heads/` |
@@ -52,25 +44,14 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 | Select bypass mode | `R.bypass_list[].bypass_mode` | Always → `always`; Exempt → `exempt`; For pull requests only → `for_pull_requests_only` → API `pull_request` |
 | Rules / Restrict creations | `R.rules.restrict_creations` | Rule type `creation` |
 | Rules / Restrict updates | `R.rules.restrict_updates` | Rule type `update`; `.allow_fetch_and_merge` maps to required `update_allows_fetch_and_merge` |
-| Require license compliance results before merging | `R.rules.require_license_compliance_results_before_merging` | Parameterless `license_compliance_scanning`, branch-only |
 | Rules / Restrict deletions | `R.rules.restrict_deletions` | Rule type `deletion` |
 | Rules / Block force pushes | `R.rules.block_force_pushes` | `non_fast_forward` |
 | Rules / Require linear history | `R.rules.require_linear_history` | `required_linear_history` |
 | Rules / Require signed commits | `R.rules.require_signed_commits` | `required_signatures` |
-| Require merge queue | `R.rules.require_merge_queue` | Branch-only `merge_queue`; seven explicit controls, no observation defaults |
-| Queue Merge method | Queue `.merge_method` | Merge / Squash / Rebase → `MERGE` / `SQUASH` / `REBASE` |
-| Queue Build concurrency | Queue `.build_concurrency` | `max_entries_to_build`, including zero to pause dispatch |
-| Queue minimum/maximum group size | Queue `.minimum_group_size`, `.maximum_group_size` | `min_entries_to_merge`, `max_entries_to_merge` |
-| Queue wait time | Queue `.wait_time_to_meet_minimum_group_size_minutes` | `min_entries_to_merge_wait_minutes` |
-| Require all queue entries to pass required checks | Queue `.require_all_queue_entries_to_pass_required_checks` | true → `ALLGREEN`; false → `HEADGREEN` |
-| Queue status check timeout | Queue `.status_check_timeout_minutes` | `check_response_timeout_minutes` |
 | Require a pull request before merging | `R.rules.require_a_pull_request_before_merging` | Selects `pull_request` rule |
 | Required approvals | PR rule `.required_approvals` | `required_approving_review_count`; UI integers 0–10 |
 | Allowed merge methods | PR rule `.allowed_merge_methods` | Merge / Squash / Rebase → `merge` / `squash` / `rebase` |
 | Dismiss stale pull request approvals when new commits are pushed | PR rule `.dismiss_stale_pull_request_approvals_when_new_commits_are_pushed` | `dismiss_stale_reviews_on_push` |
-| Restrict who can dismiss pull request reviews | PR rule `.restrict_who_can_dismiss_pull_request_reviews` | Optional write-only `dismissal_restriction.enabled` |
-| People, teams, or apps that can dismiss reviews | PR rule `.people_teams_or_apps_that_can_dismiss_reviews[]` | `dismissal_restriction.allowed_actors` |
-| Dismissal actor Role / Team / App / User | Actor `.role`, `.team`, `.app`, `.user` | `RepositoryRole` with verified role IDs / `Team` / `IntegrationInstallation` / `User` |
 | Require review from Code Owners | PR rule `.require_review_from_code_owners` | `require_code_owner_review` |
 | Require approval of the most recent reviewable push | PR rule `.require_approval_of_the_most_recent_reviewable_push` | `require_last_push_approval` |
 | Require conversation resolution before merging | PR rule `.require_conversation_resolution_before_merging` | `required_review_thread_resolution` |
@@ -102,28 +83,6 @@ Branch rules and Tag rules are subheadings under Rules, selected by the target o
 
 Each bypass entry selects exactly one actor and explicitly supplies its mode. `deploy_keys: false`, multiple selectors, nonpositive dynamic IDs and unsupported role tokens are invalid. Existing target dependencies remain enforced, including no pull-request bypass for tag Rulesets or deploy keys.
 
-## Metadata restriction mapping
-
-The active metadata controls are `R.rules.restrict_commit_message`,
-`restrict_commit_author_email`, `restrict_committer_email`,
-`restrict_branch_names` and `restrict_tag_names`. They select the REST types
-`commit_message_pattern`, `commit_author_email_pattern`,
-`committer_email_pattern`, `branch_name_pattern` and `tag_name_pattern`.
-Each maps `description` to optional `name`, and `pattern` exactly. The explicit
-requirement maps to the four matching operators and optional true negation;
-false/absent negation both mean a positive requirement. A repeated type fails
-rather than losing a second restriction. The
-[public contract](../settings.md#metadata-restrictions) owns requirements,
-permissions, entitlement limits and omission semantics.
-
-## Review dismissal presence and write-only limits
-
-Omitting both dismissal controls preserves an absent/unacquired restriction, never an invented false value. Selecting either field creates a desired restriction object; the existing selected-object constructor alone supplies omitted false/empty members. A nonempty actor list requires an explicit true checkbox. False with an explicit empty list remains a disabled/cleared state. Each actor selects exactly one verified role or positive dynamic Team/App/User identity. The App value is an **installation ID**, matching `IntegrationInstallation`; it is not the bypass list's `Integration` App-ID namespace.
-
-`PreparedRuleset` embeds the visible UI model and separately retains an owned `UnverifiedReviewDismissalRestriction`. Absent raw restriction remains nil. A present false checkbox hides the actor list from visible UI while preserving the complete latent actor list in this metadata. A present true checkbox projects the typed actors. Unknown roles and malformed/incomplete acquired data fail explicitly. `PreparedRulesets.Rulesets` carries these prepared entries rather than discarding their provenance.
-
-This metadata does not authorize export or comparison. Existing export omits the setting even if GET returned it; explicit desired plan fails before remote work; apply repeats selected write-only intent and reports accepted-but-unverified results. Independent readback may omit the restriction without establishing its retained value. #479 must honor this boundary rather than serialize every projected control automatically, and #480/#481 must retain unverified provenance and honest reporting. No live setting/enforcement test is claimed.
-
 ## Analysis choices and defaults
 
 | Control | Verified UI choices | Prepared choice → API value when different |
@@ -145,7 +104,7 @@ The model supplies separate observation defaults for #480. They match the inspec
 | Scanning Security alerts | `high_or_higher` (`DefaultCodeScanningSecurityAlerts`) |
 | Quality Severity | `errors` (`DefaultCodeQualitySeverity`) |
 
-Actor/reviewer/source/tool identities and naming/file patterns are not closed enums with a synthetic identity default. The UI starts with no bypass actor selected; preparation never substitutes a repository administrator, another ID or another pattern for an unrepresentable value. Personal-repository UI has no OrganizationAdmin actor, and Evaluate was absent from the inspected enforcement menu. OrganizationAdmin remains unsupported in UI projection without an invented identity. Evaluate is supported for Enterprise-entitled repository Rulesets. Complete unknown enforcement projects to Disabled with exact ID-bound provenance and contextual warnings; the native validator still distinguishes API transport values from UI choices. #480 must retain raw identity/provenance and warning information for any adopted normalization, rather than quietly removing protection or granting bypass.
+Actor/reviewer/source/tool identities and naming/file patterns are not closed enums with a synthetic identity default. The UI starts with no bypass actor selected; preparation never substitutes a repository administrator, another ID or another pattern for an unrepresentable value. Personal-repository UI has no OrganizationAdmin actor, and Evaluate was absent from the inspected enforcement menu. OrganizationAdmin remains unsupported in UI projection without an invented identity. Acquired Evaluate is rejected as unsupported, rather than normalized into a writable Disabled policy. Complete unknown enforcement projects to Disabled with exact ID-bound provenance and contextual warnings; the native validator still distinguishes API transport values from UI choices. #480 must retain raw identity/provenance and warning information for any adopted normalization, rather than quietly removing protection or granting bypass.
 
 Bypass-mode normalization changes only a complete acquired mode string to `always`. Its record preserves exact actor type, ID presence and numeric value; canonical companions remain intact. Nil DeployKey identity is not interchangeable with a numeric actor. Invalid identity or actor/target applicability is never repaired by mode projection. Selected actor removal retains its original evidence and requires verified absence.
 
@@ -155,16 +114,14 @@ Correctly typed booleans have no out-of-UI value. Missing fields, invalid types,
 
 ## Ownership, acquisition and activation handoff
 
-`RulesetsDeclaration` preserves omitted versus empty collections and uses the existing constructor only for desired objects. IDs remain selectors; entries without IDs are create-only. Reconciliation updates only listed resources and does not delete unlisted Rulesets. Explicit positive-ID/name `delete: true` entries select deletion; they cannot select policy controls. Excluded inherited/push IDs remain separate inventory evidence, preventing an excluded resource from being interpreted as already absent.
+`RulesetsDeclaration` preserves omitted versus empty collections and uses the existing constructor only for desired objects. IDs remain selectors; entries without IDs are create-only. Reconciliation updates only listed resources and does not delete unlisted Rulesets. Explicit positive-ID/name `delete: true` entries select deletion; they cannot select policy controls. Excluded inherited or other-source IDs remain separate inventory evidence, preventing an excluded resource from being interpreted as already absent.
 
-`RulesetsObservation` requires a complete acquisition, uses `RulesetState.ID` rather than a possibly absent policy ID, and returns stable name order. It never applies declaration defaults to observations or strips dismissal state to manufacture success. Failure in any entry returns no partial UI collection. Existing transport includes complete repository-owned push Rulesets, excludes inherited organization/Enterprise policy and performs its complete pagination and ownership checks. The observed decoder projects copied, typed enforcement, present Required approvals, present Allowed merge methods, complete Team reviewer counts, complete tool-bound Alerts and Security alerts strings, present Quality severity and complete bypass-mode members before one strict complete validation; mutation verification keeps the original strict decoder. Selected normalized IDs force whole-object updates even at effective equality, and require fresh GET in addition to strict mutation-response checks. Scoped export/apply diagnostics preserve unlisted-ID privacy. The [public enforcement policy](../settings.md#ruleset-enforcement-observation-normalization), [Required approvals policy](../settings.md#ruleset-required-approvals-observation-normalization), [Allowed merge methods policy](../settings.md#ruleset-allowed-merge-methods-observation-normalization), [Team reviewer Approvals policy](../settings.md#ruleset-team-reviewer-approvals-observation-normalization), [scanning Alerts policy](../settings.md#ruleset-scanning-alerts-observation-normalization), [scanning Security alerts policy](../settings.md#ruleset-scanning-security-alerts-observation-normalization), [Quality severity policy](../settings.md#ruleset-quality-severity-observation-normalization) and [bypass-mode policy](../settings.md#ruleset-bypass-mode-observation-normalization) own these active limits. Quality absence stays absent, desired rule removal requires verified absence, and simultaneous provenance remains independent on one whole-object update.
+`RulesetsObservation` requires a complete acquisition, uses `RulesetState.ID` rather than a possibly absent policy ID, and returns stable name order. It never applies declaration defaults to observations or strips unsupported protection to manufacture success. Failure in any entry returns no partial UI collection. Existing transport includes complete repository-owned push Rulesets, excludes inherited organization/Enterprise policy and performs its complete pagination and ownership checks. The observed decoder projects copied, typed enforcement, present Required approvals, present Allowed merge methods, complete Team reviewer counts, complete tool-bound Alerts and Security alerts strings, present Quality severity and complete bypass-mode members before one strict complete validation; mutation verification keeps the original strict decoder. Selected normalized IDs force whole-object updates even at effective equality, and require fresh GET in addition to strict mutation-response checks. Scoped export/apply diagnostics preserve unlisted-ID privacy. The [public enforcement policy](../settings.md#ruleset-enforcement-observation-normalization), [Required approvals policy](../settings.md#ruleset-required-approvals-observation-normalization), [Allowed merge methods policy](../settings.md#ruleset-allowed-merge-methods-observation-normalization), [Team reviewer Approvals policy](../settings.md#ruleset-team-reviewer-approvals-observation-normalization), [scanning Alerts policy](../settings.md#ruleset-scanning-alerts-observation-normalization), [scanning Security alerts policy](../settings.md#ruleset-scanning-security-alerts-observation-normalization), [Quality severity policy](../settings.md#ruleset-quality-severity-observation-normalization) and [bypass-mode policy](../settings.md#ruleset-bypass-mode-observation-normalization) own these active limits. Quality absence stays absent, desired rule removal requires verified absence, and simultaneous provenance remains independent on one whole-object update.
 
-Inherited Rulesets, legacy branch protection and organization-wide policy remain outside this mapping. The verified dismissal mapping retains the documented write-only limitation.
+Inherited Rulesets, legacy branch protection and organization-wide policy remain outside this mapping. A present review-dismissal restriction is unsupported and stops acquisition; API omission does not establish disabled protection.
 
 See [the test specification](testing.md#internal-ui-ruleset-preparation) for independent expectations and the limits of local evidence.
 
-[^dismissal-ui]: GitHub Changelog, Restrict who can dismiss reviews in rulesets, 2026-07-07; official screenshot and instructions inspected 2026-10-28.
-[^dismissal-api]: GitHub REST API, repository Rulesets pull-request parameters and typed dismissal actors, consulted 2026-10-28.
 [^ruleset-ui]: Existing Ruleset and unsaved new branch/tag forms inspected read-only or with local unsaved control reveals, then discarded, 2026-10-28.
 [^existing-bypass-ui]: Existing Repository admin / For pull requests only bypass inspected without editing its policy, 2026-10-28.
 [^role-identities]: Provider-maintained reference explicitly lists associated base repository role IDs: maintain 2, write 4, admin 5; retrieved 2026-10-28.

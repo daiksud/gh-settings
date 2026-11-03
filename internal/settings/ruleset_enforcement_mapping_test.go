@@ -13,7 +13,7 @@ func TestRulesetEnforcementMappingSeparatesUIAndNativeChoices(t *testing.T) {
 	for _, test := range []struct {
 		choice uimodel.EnforcementStatus
 		native string
-	}{{uimodel.Active, "active"}, {uimodel.Disabled, "disabled"}, {uimodel.Evaluate, "evaluate"}} {
+	}{{uimodel.Active, "active"}, {uimodel.Disabled, "disabled"}} {
 		value, ok := RulesetEnforcementValueForChoice(test.choice)
 		if !ok || value != test.native {
 			t.Fatal(value, ok)
@@ -23,7 +23,7 @@ func TestRulesetEnforcementMappingSeparatesUIAndNativeChoices(t *testing.T) {
 			t.Fatal(choice, ok)
 		}
 	}
-	for _, raw := range []string{"FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t", "ACTIVE"} {
+	for _, raw := range []string{"evaluate", "FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t", "ACTIVE"} {
 		if choice, ok := RulesetEnforcementChoiceForValue(raw); ok || choice != "" {
 			t.Fatal("unsupported UI value", raw, choice)
 		}
@@ -33,7 +33,7 @@ func TestRulesetEnforcementMappingSeparatesUIAndNativeChoices(t *testing.T) {
 	}
 	policy := basicPolicy("native")
 	policy.Enforcement = rsText("evaluate")
-	if err := ValidateRuleset(policy, true); err != nil {
-		t.Fatal("native FUTURE_ENFORCEMENT contract changed", err)
+	if err := ValidateRuleset(policy, true); err == nil {
+		t.Fatal("unsupported Evaluate accepted")
 	}
 }

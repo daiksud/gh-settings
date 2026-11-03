@@ -15,7 +15,7 @@ func (state RulesetState) validateNormalizationEvidence() error {
 	if record := state.EnforcementNormalization; record != (ObservationNormalization{}) {
 		fallback, _ := RulesetEnforcementValueForChoice(DefaultRulesetEnforcementChoice)
 		_, supported := RulesetEnforcementChoiceForValue(record.RawValue)
-		if *state.Policy.Enforcement != fallback || record.Path != RulesetEnforcementPath || record.Fallback != string(DefaultRulesetEnforcementChoice) || supported {
+		if *state.Policy.Enforcement != fallback || record.Path != RulesetEnforcementPath || record.Fallback != string(DefaultRulesetEnforcementChoice) || supported || record.RawValue == "evaluate" {
 			return fmt.Errorf("invalid Ruleset enforcement observation provenance")
 		}
 	}

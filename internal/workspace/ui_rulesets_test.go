@@ -144,12 +144,6 @@ repository:
           - {deploy_keys: true, bypass_mode: always}
         rules:
           require_a_pull_request_before_merging:
-            restrict_who_can_dismiss_pull_request_reviews: true
-            people_teams_or_apps_that_can_dismiss_reviews:
-              - {role: repository_admin}
-              - {team: 12}
-              - {app: 83}
-              - {user: 21}
             require_review_from_specific_teams:
               - reviewer: 12
                 approvals: 0
@@ -158,7 +152,6 @@ repository:
         bypass_list: []
         rules:
           require_a_pull_request_before_merging:
-            people_teams_or_apps_that_can_dismiss_reviews: []
             require_review_from_specific_teams: []
 `
 	want := []uimodel.Ruleset{
@@ -169,11 +162,10 @@ repository:
 			{User: uiConfigPtr(int64(21)), BypassMode: uiConfigPtr(uimodel.Always)},
 			{DeployKeys: uiConfigPtr(true), BypassMode: uiConfigPtr(uimodel.Always)},
 		}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{
-			RestrictWhoCanDismissPullRequestReviews: uiConfigPtr(true),
-			PeopleTeamsOrAppsThatCanDismissReviews:  uiConfigPtr([]uimodel.ReviewDismissalActor{{Role: uiConfigPtr(uimodel.RepositoryAdmin)}, {Team: uiConfigPtr(int64(12))}, {App: uiConfigPtr(int64(83))}, {User: uiConfigPtr(int64(21))}}),
-			RequireReviewFromSpecificTeams:          uiConfigPtr([]uimodel.TeamReview{{Reviewer: 12, Approvals: uiConfigPtr(0), FilePatterns: uiConfigPtr([]string{"*.go", "!generated/*", "*.go"})}}),
+
+			RequireReviewFromSpecificTeams: uiConfigPtr([]uimodel.TeamReview{{Reviewer: 12, Approvals: uiConfigPtr(0), FilePatterns: uiConfigPtr([]string{"*.go", "!generated/*", "*.go"})}}),
 		}}},
-		{RulesetName: "empty", BypassList: uiConfigPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{PeopleTeamsOrAppsThatCanDismissReviews: uiConfigPtr([]uimodel.ReviewDismissalActor{}), RequireReviewFromSpecificTeams: uiConfigPtr([]uimodel.TeamReview{})}}},
+		{RulesetName: "empty", BypassList: uiConfigPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{RequireReviewFromSpecificTeams: uiConfigPtr([]uimodel.TeamReview{})}}},
 	}
 	got, err := DecodeConfig([]byte(input))
 	if err != nil || !reflect.DeepEqual(*got.Settings.Rulesets, want) {
@@ -263,6 +255,20 @@ func TestUIConfigRulesetStatusAndAnalysisRejectInvalidSyntax(t *testing.T) {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {rulesets: [{rules: {" + rule + "}}]}}\n"
 		if _, err := DecodeConfig([]byte(input)); err == nil {
 			t.Fatalf("accepted invalid analysis syntax: %s", rule)
+		}
+	}
+}
+
+func TestUIConfigRejectsReviewDismissalControls(t *testing.T) {
+	for _, control := range []string{
+		"restrict_who_can_dismiss_pull_request_reviews: true",
+		"restrict_who_can_dismiss_pull_request_reviews: false",
+		"people_teams_or_apps_that_can_dismiss_reviews: []",
+		"people_teams_or_apps_that_can_dismiss_reviews: null",
+	} {
+		input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    rulesets:\n      - ruleset_name: main\n        enforcement_status: active\n        target_branches: {}\n        rules:\n          require_a_pull_request_before_merging:\n            " + control + "\n"
+		if _, err := DecodeConfig([]byte(input)); err == nil {
+			t.Fatal("unsupported review dismissal control accepted", control)
 		}
 	}
 }

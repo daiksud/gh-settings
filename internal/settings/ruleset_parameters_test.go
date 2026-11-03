@@ -10,7 +10,7 @@ func paramInt(v int) *int    { return &v }
 func reviewPolicy() RulesetDeclaration {
 	d := basicPolicy("default")
 	d.BypassActors = &[]BypassActor{}
-	d.Rules = &[]RulesetRule{{Type: "deletion"}, {Type: "non_fast_forward"}, {Type: "required_linear_history"}, {Type: "pull_request", Parameters: &RuleParameters{AllowedMergeMethods: rsList("squash"), DismissStaleReviewsOnPush: paramBool(true), RequireCodeOwnerReview: paramBool(true), RequireExtraApprovalForUnattributedChanges: paramBool(false), RequireLastPushApproval: paramBool(false), RequiredApprovingReviewCount: paramInt(1), RequiredReviewThreadResolution: paramBool(true), RequiredReviewers: &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 21, Type: "Team"}, MinimumApprovals: paramInt(1), FilePatterns: rsList("src/**", "!src/generated/**", "src/generated/manual.go")}}, DismissalRestriction: &ReviewDismissalRestriction{Enabled: paramBool(true), AllowedActors: &[]ReviewActor{{ID: 32, Type: "Team"}}}}}, {Type: "required_status_checks", Parameters: &RuleParameters{RequiredStatusChecks: &[]RequiredStatusCheck{{Context: "pass", IntegrationID: rsID(15368)}, {Context: "gh-settings", IntegrationID: rsID(15368)}}, StrictRequiredStatusChecksPolicy: paramBool(true), DoNotEnforceOnCreate: paramBool(false)}}}
+	d.Rules = &[]RulesetRule{{Type: "deletion"}, {Type: "non_fast_forward"}, {Type: "required_linear_history"}, {Type: "pull_request", Parameters: &RuleParameters{AllowedMergeMethods: rsList("squash"), DismissStaleReviewsOnPush: paramBool(true), RequireCodeOwnerReview: paramBool(true), RequireExtraApprovalForUnattributedChanges: paramBool(false), RequireLastPushApproval: paramBool(false), RequiredApprovingReviewCount: paramInt(1), RequiredReviewThreadResolution: paramBool(true), RequiredReviewers: &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 21, Type: "Team"}, MinimumApprovals: paramInt(1), FilePatterns: rsList("src/**", "!src/generated/**", "src/generated/manual.go")}}}}, {Type: "required_status_checks", Parameters: &RuleParameters{RequiredStatusChecks: &[]RequiredStatusCheck{{Context: "pass", IntegrationID: rsID(15368)}, {Context: "gh-settings", IntegrationID: rsID(15368)}}, StrictRequiredStatusChecksPolicy: paramBool(true), DoNotEnforceOnCreate: paramBool(false)}}}
 	return d
 }
 func ruleOf(t *testing.T, d RulesetDeclaration, kind string) *RuleParameters {
@@ -42,9 +42,6 @@ func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 	if *pr.RequiredApprovingReviewCount != 2 || *pr.RequireCodeOwnerReview || *pr.DismissStaleReviewsOnPush || len(*pr.RequiredReviewers) != 0 || len(*checks.RequiredStatusChecks) != 0 || *checks.StrictRequiredStatusChecksPolicy || *checks.DoNotEnforceOnCreate {
 		t.Fatal("defaults borrowed remote protection", after)
 	}
-	if pr.DismissalRestriction != nil {
-		t.Fatal("omitted write-only setting was borrowed from remote state")
-	}
 	if !reflect.DeepEqual(*pr.AllowedMergeMethods, []string{"merge", "rebase", "squash"}) {
 		t.Fatal("merge-method default", *pr.AllowedMergeMethods)
 	}
@@ -60,8 +57,7 @@ func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 	}
 	createPR := ruleOf(t, *operations[0].After(), "pull_request")
 	withoutObserved := cloneRulesetRule(RulesetRule{Type: "pull_request", Parameters: pr}).Parameters
-	withoutObserved.DismissalRestriction = nil
-	if createPR.DismissalRestriction != nil || !reflect.DeepEqual(withoutObserved, createPR) {
+	if !reflect.DeepEqual(withoutObserved, createPR) {
 		t.Fatal("create/update defaults differ")
 	}
 	*pr.RequireCodeOwnerReview = true
@@ -72,7 +68,6 @@ func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 func TestRulesetReviewerPatternsOrderIsPolicy(t *testing.T) {
 	before := reviewPolicy()
 	p := ruleOf(t, before, "pull_request")
-	p.DismissalRestriction = nil
 	*(*p.RequiredReviewers)[0].FilePatterns = []string{"**", "!docs/**", "docs/README.md", "**"}
 	current := rsObserved(t, RulesetState{ID: 7, Policy: before})
 	before.ID = rsID(7)
@@ -93,7 +88,6 @@ func TestRulesetReviewerPatternsOrderIsPolicy(t *testing.T) {
 }
 func TestRulesetCheckIdentityAndCollectionOrdering(t *testing.T) {
 	before := reviewPolicy()
-	ruleOf(t, before, "pull_request").DismissalRestriction = nil
 	p := ruleOf(t, before, "required_status_checks")
 	p.RequiredStatusChecks = &[]RequiredStatusCheck{{Context: "build", IntegrationID: rsID(2)}, {Context: "build"}, {Context: "build", IntegrationID: rsID(1)}}
 	observed := rsObserved(t, RulesetState{ID: 7, Policy: before})
@@ -115,8 +109,6 @@ func TestRulesetReviewParameterValidationAndCreation(t *testing.T) {
 		p.RequiredReviewers = &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 1, Type: "User"}}}
 	}, func(p *RuleParameters) {
 		p.RequiredReviewers = &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 1, Type: "Team"}, MinimumApprovals: paramInt(11)}}
-	}, func(p *RuleParameters) {
-		p.DismissalRestriction = &ReviewDismissalRestriction{AllowedActors: &[]ReviewActor{{ID: 0, Type: "Team"}}}
 	}} {
 		d := reviewPolicy()
 		change(ruleOf(t, d, "pull_request"))
@@ -153,21 +145,20 @@ func TestRulesetReviewParameterValidationAndCreation(t *testing.T) {
 	}
 }
 
-func TestRulesetReviewerAndDismissalMembership(t *testing.T) {
+func TestRulesetReviewerMembership(t *testing.T) {
 	before := reviewPolicy()
 	desired := basicPolicy("default")
 	desired.ID = rsID(7)
 	desired.Rules = &[]RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{
-		RequiredReviewers:    &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 99, Type: "Team"}, MinimumApprovals: paramInt(2), FilePatterns: rsList("**")}},
-		DismissalRestriction: &ReviewDismissalRestriction{AllowedActors: &[]ReviewActor{{ID: 45, Type: "User"}}},
+		RequiredReviewers: &[]RequiredReviewer{{Reviewer: ReviewActor{ID: 99, Type: "Team"}, MinimumApprovals: paramInt(2), FilePatterns: rsList("**")}},
 	}}}
 	ops, err := ReconcileRulesets(rsObserved(t, RulesetState{ID: 7, Policy: before}), rsDesired(t, desired))
 	if err != nil || len(ops) != 1 {
 		t.Fatal(ops, err)
 	}
 	p := ruleOf(t, *ops[0].After(), "pull_request")
-	if len(*p.RequiredReviewers) != 1 || (*p.RequiredReviewers)[0].Reviewer.ID != 99 || *(*p.RequiredReviewers)[0].MinimumApprovals != 2 || *p.DismissalRestriction.Enabled || len(*p.DismissalRestriction.AllowedActors) != 1 || (*p.DismissalRestriction.AllowedActors)[0].ID != 45 {
-		t.Fatal("membership or fixed restriction default changed", p)
+	if len(*p.RequiredReviewers) != 1 || (*p.RequiredReviewers)[0].Reviewer.ID != 99 || *(*p.RequiredReviewers)[0].MinimumApprovals != 2 {
+		t.Fatal("reviewer membership changed", p)
 	}
 }
 

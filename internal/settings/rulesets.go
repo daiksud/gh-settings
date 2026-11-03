@@ -39,7 +39,6 @@ type RulesetRule struct {
 }
 
 // RulesetState contains the observed supported policy and its transport ID.
-// An omitted optional dismissal restriction remains unknown, never disabled.
 type RulesetState struct {
 	ID                                   int64
 	Policy                               RulesetDeclaration
@@ -71,7 +70,7 @@ func validRulesetText(value string) bool {
 	return true
 }
 func supportedRule(kind string) bool {
-	return isPushRule(kind) || slices.Contains([]string{"copilot_code_review", "code_coverage", "merge_queue", "license_compliance_scanning", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments", "commit_message_pattern", "commit_author_email_pattern", "committer_email_pattern", "branch_name_pattern", "tag_name_pattern"}, kind)
+	return isPushRule(kind) || slices.Contains([]string{"copilot_code_review", "code_coverage", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.Delete != nil {
@@ -89,7 +88,7 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.Target != nil && *d.Target != "branch" && *d.Target != "tag" && *d.Target != "push" {
 		return fmt.Errorf("unsupported ruleset target %q", *d.Target)
 	}
-	if d.Enforcement != nil && !slices.Contains([]string{"active", "disabled", "evaluate"}, *d.Enforcement) {
+	if d.Enforcement != nil && !slices.Contains([]string{"active", "disabled"}, *d.Enforcement) {
 		return fmt.Errorf("unsupported ruleset enforcement %q", *d.Enforcement)
 	}
 	push := d.Target != nil && *d.Target == "push"
@@ -123,11 +122,8 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 			if isPushRule(r.Type) != push {
 				return fmt.Errorf("rule %q does not belong to selected target", r.Type)
 			}
-			if (r.Type == "pull_request" || r.Type == "required_deployments" || r.Type == "copilot_code_review" || r.Type == "code_coverage" || r.Type == "merge_queue" || r.Type == "license_compliance_scanning") && d.Target != nil && *d.Target != "branch" {
+			if (r.Type == "pull_request" || r.Type == "required_deployments" || r.Type == "copilot_code_review" || r.Type == "code_coverage") && d.Target != nil && *d.Target != "branch" {
 				return fmt.Errorf("%s rule requires branch target", r.Type)
-			}
-			if d.Target != nil && ((r.Type == "branch_name_pattern" && *d.Target != "branch") || (r.Type == "tag_name_pattern" && *d.Target != "tag")) {
-				return fmt.Errorf("%s rule does not match ruleset target", r.Type)
 			}
 			if err := validateRule(r, complete); err != nil {
 				return err
@@ -365,8 +361,7 @@ func (o RulesetObservation) Values() ([]RulesetState, error) {
 }
 func (o RulesetObservation) ExcludedPush() int { return o.excludedPush }
 
-// ExportDeclarations excludes write-only dismissal settings, including values
-// returned by GET. It must not apply writable declaration defaults.
+// ExportDeclarations returns complete supported Ruleset declarations.
 func (o RulesetObservation) ExportDeclarations() (RulesetDeclarations, error) {
 	values, err := o.Values()
 	if err != nil {
@@ -376,7 +371,6 @@ func (o RulesetObservation) ExportDeclarations() (RulesetDeclarations, error) {
 	for _, value := range values {
 		policy, id := value.Policy, value.ID
 		policy.ID = &id
-		omitDismissalRestriction(&policy)
 		out.entries = append(out.entries, policy)
 	}
 	slices.SortFunc(out.entries, func(a, b RulesetDeclaration) int { return strings.Compare(a.Name, b.Name) })
@@ -449,19 +443,17 @@ func newRulesetDisplayChange(operation string, before, after *RulesetDeclaration
 		}
 	}
 	valid := (operation == "delete" && before != nil && before.ID != nil && *before.ID > 0 && before.Delete == nil && after == nil) || (operation == "create" && before == nil && after != nil && after.ID == nil) ||
-		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || !normalizations.IsZero()))
+		(operation == "update" && before != nil && after != nil && before.ID != nil && after.ID != nil && *before.ID == *after.ID && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || !normalizations.IsZero()))
 	if !valid {
 		return RulesetDisplayChange{}, fmt.Errorf("invalid ruleset display operation")
 	}
 	out := RulesetDisplayChange{operation: operation, normalizations: cloneRulesetNormalizations(normalizations)}
 	if before != nil {
 		v := cloneRuleset(*before)
-		omitDismissalRestriction(&v)
 		out.before = &v
 	}
 	if after != nil {
 		v := cloneRuleset(*after)
-		omitDismissalRestriction(&v)
 		out.after = &v
 	}
 	return out, nil
@@ -515,7 +507,7 @@ func newRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 			}
 		}
 	}
-	valid := (operation == "delete" && id > 0 && before != nil && before.ID != nil && *before.ID == id && before.Delete == nil && after == nil) || (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || after.HasWriteOnlyDismissal() || !normalizations.IsZero()))
+	valid := (operation == "delete" && id > 0 && before != nil && before.ID != nil && *before.ID == id && before.Delete == nil && after == nil) || (operation == "create" && id == 0 && before == nil && after != nil && after.ID == nil) || (operation == "update" && id > 0 && before != nil && after != nil && (before.ID == nil || *before.ID == id) && (after.ID == nil || *after.ID == id) && (!reflect.DeepEqual(cloneRuleset(*before), cloneRuleset(*after)) || !normalizations.IsZero()))
 	if !valid {
 		return RulesetChange{}, fmt.Errorf("invalid ruleset operation")
 	}
@@ -600,10 +592,8 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		}
 		prior, id := cloneRuleset(before.Policy), before.ID
 		prior.ID = &id
-		comparableBefore := cloneRuleset(prior)
-		omitDismissalRestriction(&comparableBefore)
 		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, ScanningSecurityAlerts: before.ScanningSecurityAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
-		if normalizations.IsZero() && !after.HasWriteOnlyDismissal() && reflect.DeepEqual(comparableBefore, after) {
+		if normalizations.IsZero() && reflect.DeepEqual(prior, after) {
 			continue
 		}
 		var change RulesetChange
@@ -622,42 +612,6 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 	return out, nil
 }
 
-// WriteOnlyDismissalRulesets identifies declarations whose values cannot be
-// compared or exported reliably. Explicit apply always sends these values.
-func (d *RulesetDeclarations) WriteOnlyDismissalRulesets() []string {
-	var names []string
-	if d != nil {
-		for _, policy := range d.entries {
-			if policy.HasWriteOnlyDismissal() {
-				names = append(names, policy.Name)
-			}
-		}
-	}
-	return names
-}
-
-// HasWriteOnlyDismissal reports explicit write-only intent, not observed drift.
-func (policy RulesetDeclaration) HasWriteOnlyDismissal() bool {
-	if policy.Rules != nil {
-		for _, rule := range *policy.Rules {
-			if rule.Parameters != nil && rule.Parameters.DismissalRestriction != nil {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func omitDismissalRestriction(policy *RulesetDeclaration) {
-	if policy.Rules != nil {
-		for i := range *policy.Rules {
-			if p := (*policy.Rules)[i].Parameters; p != nil {
-				p.DismissalRestriction = nil
-			}
-		}
-	}
-}
-
 // HasUnmanagedID distinguishes excluded resources from genuinely absent IDs.
 func (o RulesetObservation) HasUnmanagedID(id int64) bool { return slices.Contains(o.unmanagedIDs, id) }
 
@@ -672,7 +626,7 @@ func validateRulesetDeletion(d RulesetDeclaration) error {
 }
 
 // MatchesDeletionPolicy guards the selected complete policy against drift before
-// deletion, including latent dismissal values. It never applies read defaults.
+// deletion. It never applies read defaults.
 func (c RulesetChange) MatchesDeletionPolicy(policy RulesetDeclaration) bool {
 	return c.operation == "delete" && c.before != nil && policy.Delete == nil && ValidateRuleset(policy, true) == nil && reflect.DeepEqual(cloneRuleset(*c.before), cloneRuleset(policy))
 }

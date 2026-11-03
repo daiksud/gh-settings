@@ -12,7 +12,7 @@ import (
 )
 
 func TestRulesetEnforcementHTTPReadRetainsIDBoundRawEvidence(t *testing.T) {
-	for _, token := range []string{"active", "disabled", "evaluate", "FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
+	for _, token := range []string{"active", "disabled", "FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		t.Run(token, func(t *testing.T) {
 			calls := 0
 			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
@@ -48,7 +48,7 @@ func TestRulesetEnforcementHTTPReadRetainsIDBoundRawEvidence(t *testing.T) {
 				t.Fatal(values, calls, err)
 			}
 			wantPolicy, wantRecord := token, settings.ObservationNormalization{}
-			if token != "active" && token != "disabled" && token != "evaluate" {
+			if token != "active" && token != "disabled" {
 				wantPolicy = "disabled"
 				wantRecord = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: token, Fallback: "disabled"}
 			}
@@ -66,6 +66,7 @@ func TestRulesetEnforcementHTTPReadRetainsIDBoundRawEvidence(t *testing.T) {
 
 func TestRulesetEnforcementHTTPReadErrorsDiscardWholeCollection(t *testing.T) {
 	for _, mutate := range []func(map[string]json.RawMessage){
+		func(raw map[string]json.RawMessage) { raw["enforcement"] = json.RawMessage(`"evaluate"`) },
 		func(raw map[string]json.RawMessage) { delete(raw, "enforcement") },
 		func(raw map[string]json.RawMessage) { raw["enforcement"] = json.RawMessage(`null`) },
 		func(raw map[string]json.RawMessage) { raw["enforcement"] = json.RawMessage(`false`) },

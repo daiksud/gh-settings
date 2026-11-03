@@ -1,8 +1,6 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -41,9 +39,6 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 	}
 	if desired.Empty() {
 		return PlanResult{}, nil
-	}
-	if names := desired.Rulesets.WriteOnlyDismissalRulesets(); len(names) > 0 {
-		return PlanResult{}, &PlanError{Stage: "invalid-config", Err: fmt.Errorf("plan does not support write-only repository.settings.rulesets.rules.require_a_pull_request_before_merging.restrict_who_can_dismiss_pull_request_reviews in Ruleset %q; validate and apply are supported, but this value cannot be compared", names[0])}
 	}
 	repo, err := resolve()
 	if err != nil {

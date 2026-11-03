@@ -17,7 +17,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const acceptanceReviewRuleset = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"dismissal_restriction":{"enabled":true,"allowed_actors":[{"type":"Team","id":21}]},"required_reviewers":[{"reviewer":{"type":"Team","id":22},"minimum_approvals":1,"file_patterns":["**","!docs/**","docs/README.md","**"]}]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368}],"strict_required_status_checks_policy":true}}]}`
+const acceptanceReviewRuleset = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[{"reviewer":{"type":"Team","id":22},"minimum_approvals":1,"file_patterns":["**","!docs/**","docs/README.md","**"]}]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368}],"strict_required_status_checks_policy":true}}]}`
 
 func acceptanceRuleParams(t *testing.T, policy map[string]any, kind string) map[string]any {
 	t.Helper()
@@ -139,7 +139,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		"target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}},
 		"bypass_list":     []any{},
 		"rules": map[string]any{
-			"require_license_compliance_results_before_merging": false, "restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": false,
+			"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": false,
 			"require_a_pull_request_before_merging": map[string]any{
 				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
 				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,

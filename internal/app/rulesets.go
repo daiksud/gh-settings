@@ -61,9 +61,6 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 			return false, fmt.Errorf("%s Ruleset %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted
-		if after := change.After(); after != nil && after.HasWriteOnlyDismissal() {
-			result.Notices = append(result.Notices, fmt.Sprintf("Ruleset %q: repository.settings.rulesets.rules.require_a_pull_request_before_merging.restrict_who_can_dismiss_pull_request_reviews accepted by GitHub; value not verified (write-only)", change.Name()))
-		}
 		if change.Operation() == "delete" {
 			delete(knownIDs, change.ID())
 		} else {

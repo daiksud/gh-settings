@@ -14,7 +14,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const fullReviewRulesetJSON = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"dismissal_restriction":{"enabled":true,"allowed_actors":[{"type":"Team","id":21}]},"required_reviewers":[{"reviewer":{"type":"Team","id":22},"minimum_approvals":1,"file_patterns":["**","!docs/**","docs/README.md","**"]}]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368},{"context":"any-source","integration_id":null}],"strict_required_status_checks_policy":true}}]}`
+const fullReviewRulesetJSON = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[{"reviewer":{"type":"Team","id":22},"minimum_approvals":1,"file_patterns":["**","!docs/**","docs/README.md","**"]}]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368},{"context":"any-source","integration_id":null}],"strict_required_status_checks_policy":true}}]}`
 
 func TestReadReviewRulesetCompleteAndAnySourceIdentity(t *testing.T) {
 	policy, e := decodeRulesetPolicyFromTest([]byte(fullReviewRulesetJSON))
@@ -36,7 +36,7 @@ func TestReadReviewRulesetCompleteAndAnySourceIdentity(t *testing.T) {
 	}
 }
 func TestReadReviewRulesetRejectsNullUnknownAndIncomplete(t *testing.T) {
-	for _, pair := range [][2]string{{`"require_last_push_approval":false,`, ``}, {`"required_approving_review_count":1`, `"required_approving_review_count":"1"`}, {`"allowed_merge_methods":["squash"]`, `"allowed_merge_methods":null`}, {`"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`}, {`"require_last_push_approval":false`, `"require_last_push_approval":false,"future_switch":false`}, {`"enabled":true,`, `"enabled":true,"future":0,`}, {`"type":"Team","id":21`, `"type":"Team","id":21,"future":"x"`}, {`"minimum_approvals":1`, `"minimum_approvals":null`}, {`"type":"Team","id":22`, `"type":"Team","id":22,"future":true`}, {`"file_patterns":["**","!docs/**","docs/README.md","**"]`, `"file_patterns":null`}, {`"context":"pass","integration_id":15368`, `"context":"pass","integration_id":15368,"future":false`}, {`"strict_required_status_checks_policy":true`, `"strict_required_status_checks_policy":null`}, {`"do_not_enforce_on_create":false`, `"do_not_enforce_on_create":null`}, {`"required_status_checks":[`, `"Required_status_checks":[`}} {
+	for _, pair := range [][2]string{{`"require_last_push_approval":false,`, ``}, {`"required_approving_review_count":1`, `"required_approving_review_count":"1"`}, {`"allowed_merge_methods":["squash"]`, `"allowed_merge_methods":null`}, {`"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`}, {`"require_last_push_approval":false`, `"require_last_push_approval":false,"future_switch":false`}, {`"minimum_approvals":1`, `"minimum_approvals":null`}, {`"type":"Team","id":22`, `"type":"Team","id":22,"future":true`}, {`"file_patterns":["**","!docs/**","docs/README.md","**"]`, `"file_patterns":null`}, {`"context":"pass","integration_id":15368`, `"context":"pass","integration_id":15368,"future":false`}, {`"strict_required_status_checks_policy":true`, `"strict_required_status_checks_policy":null`}, {`"do_not_enforce_on_create":false`, `"do_not_enforce_on_create":null`}, {`"required_status_checks":[`, `"Required_status_checks":[`}} {
 		body := strings.Replace(fullReviewRulesetJSON, pair[0], pair[1], 1)
 		if body == fullReviewRulesetJSON {
 			t.Fatal(pair)
@@ -116,7 +116,7 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 					t.Fatal("reviewer changed", reviewer)
 				}
 				if p["dismissal_restriction"] != nil || p["allowed_merge_methods"] == nil {
-					t.Fatal("write-only omission or supported defaults changed", p)
+					t.Fatal("unsupported parameter or supported defaults changed", p)
 				}
 			}
 			if rule["type"] == "required_status_checks" {

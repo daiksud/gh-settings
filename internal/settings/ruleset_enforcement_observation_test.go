@@ -50,8 +50,8 @@ func TestRulesetEnforcementObservationOwnsProvenancePerID(t *testing.T) {
 	}
 	canonical := RulesetState{ID: 7, Policy: basicPolicy("canonical")}
 	canonical.Policy.Enforcement = rsText("evaluate")
-	if got, err := canonical.RawEnforcement(); err != nil || got != "evaluate" {
-		t.Fatal("canonical native contract changed", got, err)
+	if got, err := canonical.RawEnforcement(); err == nil || got != "" {
+		t.Fatal("unsupported Evaluate escaped", got, err)
 	}
 }
 

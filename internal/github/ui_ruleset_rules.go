@@ -16,7 +16,7 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		selected *bool
 		kind     string
 	}{
-		{ui.RequireLicenseComplianceResultsBeforeMerging, "license_compliance_scanning"}, {ui.RestrictCreations, "creation"}, {ui.RestrictDeletions, "deletion"}, {ui.BlockForcePushes, "non_fast_forward"}, {ui.RequireLinearHistory, "required_linear_history"}, {ui.RequireSignedCommits, "required_signatures"},
+		{ui.RestrictCreations, "creation"}, {ui.RestrictDeletions, "deletion"}, {ui.BlockForcePushes, "non_fast_forward"}, {ui.RequireLinearHistory, "required_linear_history"}, {ui.RequireSignedCommits, "required_signatures"},
 	} {
 		if control.selected != nil && *control.selected {
 			result = append(result, settings.RulesetRule{Type: control.kind})
@@ -31,13 +31,6 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		}
 		environments := append([]string{}, (*ui.RequireDeploymentsToSucceed.RequiredDeploymentEnvironments)...)
 		result = append(result, settings.RulesetRule{Type: "required_deployments", Parameters: &settings.RuleParameters{RequiredDeploymentEnvironments: &environments}})
-	}
-	if ui.RequireMergeQueue != nil {
-		parameters, err := declareUIRulesetQueue(*ui.RequireMergeQueue)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, settings.RulesetRule{Type: "merge_queue", Parameters: parameters})
 	}
 	if ui.RequireAPullRequestBeforeMerging != nil {
 		parameters, err := declareUIRulesetPR(*ui.RequireAPullRequestBeforeMerging)
@@ -71,21 +64,6 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		p := ui.RestrictCodeCoverage
 		result = append(result, settings.RulesetRule{Type: "code_coverage", Parameters: &settings.RuleParameters{MinimumCoverage: copyUIRulesetValue(p.MinimumLineCoveragePercentage), MaxCoverageDrop: copyUIRulesetValue(p.MaximumLineCoverageDrop)}})
 	}
-	for _, entry := range []struct {
-		ui   *uimodel.MetadataPatternRule
-		kind string
-	}{
-		{ui.RestrictCommitMessage, "commit_message_pattern"}, {ui.RestrictCommitAuthorEmail, "commit_author_email_pattern"}, {ui.RestrictCommitterEmail, "committer_email_pattern"}, {ui.RestrictBranchNames, "branch_name_pattern"}, {ui.RestrictTagNames, "tag_name_pattern"},
-	} {
-		if entry.ui == nil {
-			continue
-		}
-		p, err := declareUIMetadataPattern(*entry.ui)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, settings.RulesetRule{Type: entry.kind, Parameters: p})
-	}
 	push, err := declareUIRulesetPushRules(ui)
 	if err != nil {
 		return nil, err
@@ -96,7 +74,7 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 
 func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, error) {
 	no := false
-	result := uimodel.RulesetRules{RequireLicenseComplianceResultsBeforeMerging: copyUIRulesetValue(&no), RestrictCreations: copyUIRulesetValue(&no), RestrictDeletions: copyUIRulesetValue(&no), BlockForcePushes: copyUIRulesetValue(&no), RequireLinearHistory: copyUIRulesetValue(&no), RequireSignedCommits: copyUIRulesetValue(&no)}
+	result := uimodel.RulesetRules{RestrictCreations: copyUIRulesetValue(&no), RestrictDeletions: copyUIRulesetValue(&no), BlockForcePushes: copyUIRulesetValue(&no), RequireLinearHistory: copyUIRulesetValue(&no), RequireSignedCommits: copyUIRulesetValue(&no)}
 	for _, rule := range rules {
 		switch rule.Type {
 		case "creation":
@@ -108,8 +86,6 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			result.RestrictUpdates = &uimodel.UpdateRule{AllowFetchAndMerge: copyUIRulesetValue(rule.Parameters.UpdateAllowsFetchAndMerge)}
 		case "copilot_code_review":
 			result.AutomaticallyRequestCopilotCodeReview = &uimodel.CopilotCodeReviewRule{ReviewNewPushes: copyUIRulesetValue(rule.Parameters.ReviewOnPush), ReviewDraftPullRequests: copyUIRulesetValue(rule.Parameters.ReviewDraftPullRequests)}
-		case "license_compliance_scanning":
-			*result.RequireLicenseComplianceResultsBeforeMerging = true
 		case "deletion":
 			*result.RestrictDeletions = true
 		case "non_fast_forward":
@@ -124,8 +100,6 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			}
 			environments := append([]string{}, (*rule.Parameters.RequiredDeploymentEnvironments)...)
 			result.RequireDeploymentsToSucceed = &uimodel.DeploymentsRule{RequiredDeploymentEnvironments: &environments}
-		case "merge_queue":
-			result.RequireMergeQueue = observeUIRulesetQueue(rule.Parameters)
 		case "pull_request":
 			var err error
 			result.RequireAPullRequestBeforeMerging, err = observeUIRulesetPR(rule.Parameters)
@@ -149,23 +123,6 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 		case "code_coverage":
 			p := rule.Parameters
 			result.RestrictCodeCoverage = &uimodel.CodeCoverageRule{MinimumLineCoveragePercentage: copyUIRulesetValue(p.MinimumCoverage), MaximumLineCoverageDrop: copyUIRulesetValue(p.MaxCoverageDrop)}
-		case "commit_message_pattern", "commit_author_email_pattern", "committer_email_pattern", "branch_name_pattern", "tag_name_pattern":
-			ui, err := observeUIMetadataPattern(rule.Parameters)
-			if err != nil {
-				return uimodel.RulesetRules{}, err
-			}
-			switch rule.Type {
-			case "commit_message_pattern":
-				result.RestrictCommitMessage = ui
-			case "commit_author_email_pattern":
-				result.RestrictCommitAuthorEmail = ui
-			case "committer_email_pattern":
-				result.RestrictCommitterEmail = ui
-			case "branch_name_pattern":
-				result.RestrictBranchNames = ui
-			case "tag_name_pattern":
-				result.RestrictTagNames = ui
-			}
 		case "file_path_restriction", "max_file_path_length", "file_extension_restriction", "max_file_size":
 			observeUIRulesetPushRule(&result, rule)
 		default:

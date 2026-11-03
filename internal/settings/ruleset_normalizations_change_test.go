@@ -109,7 +109,7 @@ func TestRulesetNormalizationAggregateRejectsUnboundAndForgedEvidence(t *testing
 	}
 }
 
-func TestRulesetNormalizationAggregatePreservesDismissalOnQualityRemoval(t *testing.T) {
+func TestRulesetNormalizationAggregatePreservesEvidenceOnQualityRemoval(t *testing.T) {
 	before := reviewPolicy()
 	before.ID, before.Enforcement = rsID(7), rsText("disabled")
 	after := cloneRuleset(before)
@@ -122,7 +122,7 @@ func TestRulesetNormalizationAggregatePreservesDismissalOnQualityRemoval(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !change.Before().HasWriteOnlyDismissal() || !change.After().HasWriteOnlyDismissal() || change.Display().Before().HasWriteOnlyDismissal() || change.Display().After().HasWriteOnlyDismissal() || !reflect.DeepEqual(change.Display().Normalizations(), records) {
-		t.Fatal("dismissal or simultaneous evidence lost", change)
+	if !reflect.DeepEqual(change.Display().Normalizations(), records) {
+		t.Fatal("simultaneous evidence lost", change)
 	}
 }
