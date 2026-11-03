@@ -9,7 +9,7 @@ import (
 )
 
 func uiObservedRuleFlags() uimodel.RulesetRules {
-	return uimodel.RulesetRules{RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}
+	return uimodel.RulesetRules{RestrictCreations: rulesetPtr(false), RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}
 }
 
 func TestUIRulesetSimpleRuleControls(t *testing.T) {
@@ -19,6 +19,7 @@ func TestUIRulesetSimpleRuleControls(t *testing.T) {
 			ui       uimodel.RulesetRules
 			observed uimodel.RulesetRules
 		}{
+			{"creation", uimodel.RulesetRules{RestrictCreations: &enabled}, func() uimodel.RulesetRules { v := uiObservedRuleFlags(); v.RestrictCreations = &enabled; return v }()},
 			{"deletion", uimodel.RulesetRules{RestrictDeletions: &enabled}, func() uimodel.RulesetRules { v := uiObservedRuleFlags(); v.RestrictDeletions = &enabled; return v }()},
 			{"non_fast_forward", uimodel.RulesetRules{BlockForcePushes: &enabled}, func() uimodel.RulesetRules { v := uiObservedRuleFlags(); v.BlockForcePushes = &enabled; return v }()},
 			{"required_linear_history", uimodel.RulesetRules{RequireLinearHistory: &enabled}, func() uimodel.RulesetRules { v := uiObservedRuleFlags(); v.RequireLinearHistory = &enabled; return v }()},
