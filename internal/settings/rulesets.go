@@ -122,7 +122,7 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 			if isPushRule(r.Type) != push {
 				return fmt.Errorf("rule %q does not belong to selected target", r.Type)
 			}
-			if (r.Type == "pull_request" || r.Type == "required_deployments" || r.Type == "copilot_code_review" || r.Type == "code_coverage") && d.Target != nil && *d.Target != "branch" {
+			if (r.Type == "pull_request" || r.Type == "copilot_code_review" || r.Type == "code_coverage") && d.Target != nil && *d.Target != "branch" {
 				return fmt.Errorf("%s rule requires branch target", r.Type)
 			}
 			if err := validateRule(r, complete); err != nil {

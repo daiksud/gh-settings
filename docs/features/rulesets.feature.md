@@ -155,7 +155,7 @@ Test mapping: [mapping/state/closed changes/reconciliation](../../internal/setti
 
 ## Required deployments
 
-- `require_deployments_to_succeed.required_deployment_environments` is a required explicit list on branch Rulesets. Empty lists remain selected; omission removes the rule. Invalid, blank or duplicate names and mixed-rule parameters fail before remote work.
+- `require_deployments_to_succeed.required_deployment_environments` is a required explicit list on branch and tag Rulesets. Empty lists remain selected; omission removes the rule. Invalid, blank or duplicate names and mixed-rule parameters fail before remote work.
 - Complete acquired environment names export, validate and plan without loss; canonical ordering does not change membership. Unknown fields and incomplete reads fail without a partial policy.
 - Apply checks the exact declared whole-object payload, mutation acknowledgment and independent GET, including deployment-rule removal. A stale GET fails with uncertain-write reporting; a matching repeat produces no differences or writes.
 - [Domain](../../internal/settings/ruleset_deployments_test.go), [transport](../../internal/github/ruleset_deployments_test.go) and [built-product](../../tests/acceptance/ruleset_deployments_test.go) tests use local fixtures and dummy credentials; they do not establish live GitHub enforcement or entitlement.

@@ -34,8 +34,8 @@ func TestRequiredDeploymentsValidationOwnershipAndCanonicalization(t *testing.T)
 		}
 	}
 	*policy.Target = "tag"
-	if err := ValidateRuleset(policy, false); err == nil {
-		t.Fatal("accepted deployment rule for tags")
+	if err := ValidateRuleset(policy, false); err != nil {
+		t.Fatal("rejected deployment rule for tags", err)
 	}
 	if err := validateRule(RulesetRule{Type: "required_deployments", Parameters: &RuleParameters{RequiredDeploymentEnvironments: rsList()}}, true); err != nil {
 		t.Fatal("explicit empty list rejected", err)

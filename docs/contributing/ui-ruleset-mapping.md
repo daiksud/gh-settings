@@ -134,7 +134,7 @@ Scanning Alerts uses one shared UI/native membership mapping. Complete unsupport
 
 Scanning Security alerts shares its five-choice mapping between UI conversion, native validation and observation projection. Complete unsupported strings retain exact raw evidence and project High or higher. Both threshold records can coexist for the same tool without replacing each other; both must pass independent closed validation. Missing or malformed values and identities remain errors, and original raw acknowledgment/readback must confirm each desired threshold or removal.
 
-`R.rules.require_deployments_to_succeed.required_deployment_environments` maps the selected deployment environment names to `required_deployments.parameters.required_deployment_environments`. The list is explicit, branch-only and acquired completely; no environment or omitted value is synthesized. See the [configuration contract](../settings.md#required-deployments).
+`R.rules.require_deployments_to_succeed.required_deployment_environments` maps the selected deployment environment names to `required_deployments.parameters.required_deployment_environments`. The list is explicit, supports branch and tag Rulesets and is acquired completely; no environment or omitted value is synthesized. See the [configuration contract](../settings.md#required-deployments).
 
 ## Push target mapping
 
