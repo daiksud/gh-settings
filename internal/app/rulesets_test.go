@@ -114,7 +114,6 @@ func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
 		for _, fail := range []bool{false, true} {
 			saved := false
 			readRulesets := 0
-			excluded := 0
 			reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
 			reader.Rulesets = func(repository.Repository) (settings.RulesetObservation, error) {
 				readRulesets++
@@ -123,7 +122,7 @@ func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
 				}
 				return settings.NewRulesetObservation([]settings.RulesetState{appRulesetState(t)}, 2)
 			}
-			err := Export(ExportCheckout{Repository: checkoutRepository, IncludeRulesets: include, ExcludedRulesets: func(n int) { excluded = n }, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err := Export(ExportCheckout{Repository: checkoutRepository, IncludeRulesets: include, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					saved = true
 					if (d.Rulesets != nil) != include {
@@ -139,8 +138,8 @@ func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
 				}, nil
 			}}, reader)
 			if include {
-				if readRulesets != 1 || (fail && saved) || (!fail && (!saved || excluded != 2)) {
-					t.Fatal(saved, readRulesets, excluded)
+				if readRulesets != 1 || (fail && saved) || (!fail && !saved) {
+					t.Fatal(saved, readRulesets)
 				}
 			} else if readRulesets != 0 || !saved || err != nil {
 				t.Fatal("default export changed")

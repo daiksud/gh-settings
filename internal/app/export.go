@@ -25,7 +25,6 @@ type ExportCheckout struct {
 	IncludePrivateReporting                           bool
 	IncludeImmutableReleases                          bool
 	IncludeRetention                                  bool
-	ExcludedRulesets                                  func(int)
 	NormalizationWarning                              func(settings.ObservationNormalization)
 	CommitMessageNormalizationWarning                 func(settings.CommitMessageNormalization)
 	SecurityStatusNormalizationWarning                func(settings.SecurityStatusNormalization)
@@ -156,9 +155,6 @@ func Export(checkout ExportCheckout, read Reader) error {
 					}
 				}
 			}
-		}
-		if observed.ExcludedPush() > 0 && checkout.ExcludedRulesets != nil {
-			checkout.ExcludedRulesets(observed.ExcludedPush())
 		}
 	}
 	if checkout.IncludeEnvironments {

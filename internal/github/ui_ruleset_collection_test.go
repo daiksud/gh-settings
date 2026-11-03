@@ -67,7 +67,7 @@ func TestUIRulesetsRawReadComposition(t *testing.T) {
 		case "/repos/owner/current/rulesets/7":
 			return labelsResponse(req, 200, string(body)), nil
 		case "/repos/owner/current/rulesets/8":
-			return labelsResponse(req, 200, `{"id":8,"source_type":"Repository","source":"owner/current","target":"push"}`), nil
+			return labelsResponse(req, 200, pushRulesetJSON), nil
 		default:
 			t.Fatal(req.URL)
 			return nil, nil
@@ -78,7 +78,7 @@ func TestUIRulesetsRawReadComposition(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := RulesetsObservation(raw)
-	if err != nil || len(got.Rulesets) != 1 || got.ExcludedPush != 1 {
+	if err != nil || len(got.Rulesets) != 2 || got.ExcludedPush != 0 {
 		t.Fatal(got, err)
 	}
 	ui := got.Rulesets[0]

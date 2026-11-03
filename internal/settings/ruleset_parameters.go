@@ -28,6 +28,11 @@ type RuleParameters struct {
 	Negate                                     *bool                       `json:"negate,omitempty" yaml:"negate,omitempty"`
 	Operator                                   *string                     `json:"operator,omitempty" yaml:"operator,omitempty"`
 	Pattern                                    *string                     `json:"pattern,omitempty" yaml:"pattern,omitempty"`
+	RestrictedFilePaths                        *[]string                   `json:"restricted_file_paths,omitempty" yaml:"restricted_file_paths,omitempty"`
+	IgnoredFilePaths                           *[]string                   `json:"ignored_file_paths,omitempty" yaml:"ignored_file_paths,omitempty"`
+	RestrictedFileExtensions                   *[]string                   `json:"restricted_file_extensions,omitempty" yaml:"restricted_file_extensions,omitempty"`
+	MaxFilePathLength                          *int                        `json:"max_file_path_length,omitempty" yaml:"max_file_path_length,omitempty"`
+	MaxFileSize                                *int                        `json:"max_file_size,omitempty" yaml:"max_file_size,omitempty"`
 	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
 	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
@@ -110,6 +115,12 @@ func validateRule(r RulesetRule, complete bool) error {
 	}
 	if p.hasMetadata() && !IsMetadataPatternRule(r.Type) {
 		return fmt.Errorf("metadata parameters do not belong to %s", r.Type)
+	}
+	if p.hasPush() && !isPushRule(r.Type) {
+		return fmt.Errorf("push parameters do not belong to %s", r.Type)
+	}
+	if isPushRule(r.Type) {
+		return validatePushRule(r)
 	}
 	if IsMetadataPatternRule(r.Type) {
 		if p == nil || p.Operator == nil || p.Pattern == nil {
@@ -336,6 +347,16 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 	out.Negate = copyRuleValue(p.Negate)
 	out.Operator = copyRuleValue(p.Operator)
 	out.Pattern = copyRuleValue(p.Pattern)
+	out.RestrictedFilePaths = copyRuleList(p.RestrictedFilePaths)
+	out.IgnoredFilePaths = copyRuleList(p.IgnoredFilePaths)
+	out.RestrictedFileExtensions = copyRuleList(p.RestrictedFileExtensions)
+	for _, list := range []*[]string{out.RestrictedFilePaths, out.IgnoredFilePaths, out.RestrictedFileExtensions} {
+		if list != nil {
+			slices.Sort(*list)
+		}
+	}
+	out.MaxFilePathLength = copyRuleValue(p.MaxFilePathLength)
+	out.MaxFileSize = copyRuleValue(p.MaxFileSize)
 	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
 	if out.CodeScanningTools != nil {
 		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
@@ -418,7 +439,7 @@ func cloneRulesetRule(r RulesetRule) RulesetRule {
 	if IsMetadataPatternRule(r.Type) && r.Parameters != nil && r.Parameters.Negate != nil && !*r.Parameters.Negate {
 		r.Parameters.Negate = nil
 	}
-	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil && !r.Parameters.hasCopilot() && !r.Parameters.hasQueue() && !r.Parameters.hasMetadata() {
+	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil && !r.Parameters.hasCopilot() && !r.Parameters.hasQueue() && !r.Parameters.hasMetadata() && !r.Parameters.hasPush() {
 		r.Parameters = nil
 	}
 	return r

@@ -96,7 +96,6 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		}
 	}
 	values := []settings.RulesetState{}
-	push := 0
 	for _, id := range ids {
 		var raw map[string]json.RawMessage
 		if err := client.rest.Get(fmt.Sprintf("%s/%d?includes_parents=false", rulesetsPath(repo), id), &raw); err != nil {
@@ -120,12 +119,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		if err := requiredRuleJSON(raw, "target", &target); err != nil {
 			return settings.RulesetObservation{}, err
 		}
-		if target == "push" {
-			unmanagedIDs = append(unmanagedIDs, id)
-			push++
-			continue
-		}
-		if target != "branch" && target != "tag" {
+		if target != "branch" && target != "tag" && target != "push" {
 			return settings.RulesetObservation{}, fmt.Errorf("unsupported Ruleset target %q", target)
 		}
 		policy, normalizations, err := decodeObservedRulesetPolicy(raw)
@@ -134,7 +128,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		}
 		values = append(values, settings.RulesetState{ID: id, Policy: policy, EnforcementNormalization: normalizations.Enforcement, QualitySeverityNormalization: normalizations.QualitySeverity, RequiredApprovalsNormalization: normalizations.RequiredApprovals, MergeMethodsNormalization: normalizations.MergeMethods, TeamApprovalsNormalizations: normalizations.TeamApprovals, ScanningAlertsNormalizations: normalizations.ScanningAlerts, ScanningSecurityAlertsNormalizations: normalizations.ScanningSecurityAlerts, BypassModeNormalizations: normalizations.BypassModes})
 	}
-	return settings.NewRulesetObservationWithUnmanagedIDs(values, push, unmanagedIDs)
+	return settings.NewRulesetObservationWithUnmanagedIDs(values, 0, unmanagedIDs)
 }
 func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, error) {
 	policy := map[string]json.RawMessage{}
@@ -146,6 +140,10 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 		default:
 			return settings.RulesetDeclaration{}, fmt.Errorf("unknown Ruleset response field %q", key)
 		}
+	}
+	// Push targets have no ref conditions; the documented response permits null.
+	if bytes.Equal(bytes.TrimSpace(policy["conditions"]), []byte("null")) && bytes.Equal(bytes.TrimSpace(policy["target"]), []byte(`"push"`)) {
+		delete(policy, "conditions")
 	}
 	// The API uses ignored/null actor IDs for actors without numeric identity.
 	var actors []map[string]json.RawMessage
@@ -333,7 +331,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
 	}
-	needsReadback := !change.Normalizations().IsZero()
+	needsReadback := !change.Normalizations().IsZero() || (after.Target != nil && *after.Target == "push") || (change.Before() != nil && change.Before().Target != nil && *change.Before().Target == "push")
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Enforcement != nil && *policy.Enforcement == "evaluate" {
 			needsReadback = true
@@ -435,7 +433,7 @@ func checkRulesetResponseKeys(value any, context string) error {
 		case "rule":
 			allowed = []string{"type", "parameters"}
 		case "parameters":
-			allowed = []string{"update_allows_fetch_and_merge", "allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity", "required_deployment_environments", "review_draft_pull_requests", "review_on_push", "minimum_coverage", "max_coverage_drop", "check_response_timeout_minutes", "grouping_strategy", "max_entries_to_build", "max_entries_to_merge", "merge_method", "min_entries_to_merge", "min_entries_to_merge_wait_minutes", "name", "negate", "operator", "pattern"}
+			allowed = []string{"update_allows_fetch_and_merge", "allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity", "required_deployment_environments", "review_draft_pull_requests", "review_on_push", "minimum_coverage", "max_coverage_drop", "check_response_timeout_minutes", "grouping_strategy", "max_entries_to_build", "max_entries_to_merge", "merge_method", "min_entries_to_merge", "min_entries_to_merge_wait_minutes", "name", "negate", "operator", "pattern", "restricted_file_paths", "ignored_file_paths", "restricted_file_extensions", "max_file_path_length", "max_file_size"}
 		case "scanning_tool":
 			allowed = []string{"tool", "alerts_threshold", "security_alerts_threshold"}
 		case "dismissal_restriction":

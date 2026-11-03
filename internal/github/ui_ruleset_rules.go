@@ -86,6 +86,11 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		}
 		result = append(result, settings.RulesetRule{Type: entry.kind, Parameters: p})
 	}
+	push, err := declareUIRulesetPushRules(ui)
+	if err != nil {
+		return nil, err
+	}
+	result = append(result, push...)
 	return &result, nil
 }
 
@@ -161,6 +166,8 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			case "tag_name_pattern":
 				result.RestrictTagNames = ui
 			}
+		case "file_path_restriction", "max_file_path_length", "file_extension_restriction", "max_file_size":
+			observeUIRulesetPushRule(&result, rule)
 		default:
 			return uimodel.RulesetRules{}, fmt.Errorf("ruleset rule has no prepared UI mapping: %s", rule.Type)
 		}

@@ -71,7 +71,7 @@ func validRulesetText(value string) bool {
 	return true
 }
 func supportedRule(kind string) bool {
-	return slices.Contains([]string{"copilot_code_review", "code_coverage", "merge_queue", "license_compliance_scanning", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments", "commit_message_pattern", "commit_author_email_pattern", "committer_email_pattern", "branch_name_pattern", "tag_name_pattern"}, kind)
+	return isPushRule(kind) || slices.Contains([]string{"copilot_code_review", "code_coverage", "merge_queue", "license_compliance_scanning", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments", "commit_message_pattern", "commit_author_email_pattern", "committer_email_pattern", "branch_name_pattern", "tag_name_pattern"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.Delete != nil {
@@ -86,13 +86,17 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if !validRulesetText(d.Name) {
 		return fmt.Errorf("ruleset name must be a nonempty string without control characters")
 	}
-	if d.Target != nil && *d.Target != "branch" && *d.Target != "tag" {
+	if d.Target != nil && *d.Target != "branch" && *d.Target != "tag" && *d.Target != "push" {
 		return fmt.Errorf("unsupported ruleset target %q", *d.Target)
 	}
 	if d.Enforcement != nil && !slices.Contains([]string{"active", "disabled", "evaluate"}, *d.Enforcement) {
 		return fmt.Errorf("unsupported ruleset enforcement %q", *d.Enforcement)
 	}
-	if complete && (d.Target == nil || d.Enforcement == nil || d.Conditions == nil || d.Conditions.RefName == nil || d.Conditions.RefName.Include == nil || d.Conditions.RefName.Exclude == nil || d.BypassActors == nil || d.Rules == nil) {
+	push := d.Target != nil && *d.Target == "push"
+	if push && d.Conditions != nil {
+		return fmt.Errorf("push ruleset cannot have ref conditions")
+	}
+	if complete && (d.Target == nil || d.Enforcement == nil || (!push && (d.Conditions == nil || d.Conditions.RefName == nil || d.Conditions.RefName.Include == nil || d.Conditions.RefName.Exclude == nil)) || d.BypassActors == nil || d.Rules == nil) {
 		return fmt.Errorf("ruleset %q requires target, enforcement, ref include/exclude, bypass_actors and rules", d.Name)
 	}
 	if d.Conditions != nil && d.Conditions.RefName != nil {
@@ -116,6 +120,9 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 				return fmt.Errorf("unsupported or duplicate ruleset rule %q", r.Type)
 			}
 			seen[r.Type] = true
+			if isPushRule(r.Type) != push {
+				return fmt.Errorf("rule %q does not belong to selected target", r.Type)
+			}
 			if (r.Type == "pull_request" || r.Type == "required_deployments" || r.Type == "copilot_code_review" || r.Type == "code_coverage" || r.Type == "merge_queue" || r.Type == "license_compliance_scanning") && d.Target != nil && *d.Target != "branch" {
 				return fmt.Errorf("%s rule requires branch target", r.Type)
 			}
@@ -281,10 +288,10 @@ func normalizeRulesetObject(d RulesetDeclaration) (RulesetDeclaration, error) {
 	if d.Enforcement == nil {
 		return RulesetDeclaration{}, fmt.Errorf("ruleset %q requires enforcement", d.Name)
 	}
-	if d.Conditions == nil || d.Conditions.RefName == nil || d.Conditions.RefName.Include == nil {
+	if *d.Target != "push" && (d.Conditions == nil || d.Conditions.RefName == nil || d.Conditions.RefName.Include == nil) {
 		return RulesetDeclaration{}, fmt.Errorf("ruleset %q requires conditions.ref_name.include", d.Name)
 	}
-	if d.Conditions.RefName.Exclude == nil {
+	if d.Conditions != nil && d.Conditions.RefName != nil && d.Conditions.RefName.Exclude == nil {
 		values := []string{}
 		d.Conditions.RefName.Exclude = &values
 	}
@@ -550,7 +557,7 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 	for _, declared := range desired.Values() {
 		if declared.Delete != nil {
 			if current.HasUnmanagedID(*declared.ID) {
-				return nil, fmt.Errorf("Ruleset id %d is outside supported repository branch/tag ownership", *declared.ID)
+				return nil, fmt.Errorf("Ruleset id %d is outside supported repository branch/tag/push ownership", *declared.ID)
 			}
 			before, present := byID[*declared.ID]
 			if !present {
@@ -586,7 +593,7 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		}
 		before, present := byID[*declared.ID]
 		if !present {
-			return nil, fmt.Errorf("ruleset id %d does not exist in this repository's supported branch/tag objects; refusing create fallback", *declared.ID)
+			return nil, fmt.Errorf("ruleset id %d does not exist in this repository's supported branch/tag/push objects; refusing create fallback", *declared.ID)
 		}
 		if existing, present := byName[declared.Name]; present && existing.ID != before.ID {
 			return nil, fmt.Errorf("ruleset name %q belongs to existing id %d; refusing rename collision", declared.Name, existing.ID)
