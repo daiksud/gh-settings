@@ -12,7 +12,7 @@ import (
 // RulesetDeclaration translates UI intent before existing whole-object defaults.
 func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error) {
 	if ui.Delete != nil {
-		if ui.EnforcementStatus != nil || ui.TargetBranches != nil || ui.TargetTags != nil || ui.BypassList != nil || !reflect.DeepEqual(ui.Rules, uimodel.RulesetRules{}) {
+		if ui.EnforcementStatus != nil || ui.TargetBranches != nil || ui.TargetTags != nil || ui.TargetPushes != nil || ui.BypassList != nil || !reflect.DeepEqual(ui.Rules, uimodel.RulesetRules{}) {
 			return settings.RulesetDeclaration{}, fmt.Errorf("Ruleset deletion forbids policy fields")
 		}
 		result := settings.RulesetDeclaration{ID: copyUIRulesetValue(ui.ID), Name: ui.RulesetName, Delete: copyUIRulesetValue(ui.Delete)}
@@ -21,8 +21,21 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 		}
 		return result, nil
 	}
-	if (ui.TargetBranches == nil) == (ui.TargetTags == nil) {
-		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset requires exactly one of target_branches or target_tags")
+	targets := 0
+	if ui.TargetBranches != nil {
+		targets++
+	}
+	if ui.TargetTags != nil {
+		targets++
+	}
+	if ui.TargetPushes != nil {
+		targets++
+	}
+	if targets != 1 {
+		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset requires exactly one of target_branches, target_tags or target_pushes")
+	}
+	if ui.TargetPushes != nil && !*ui.TargetPushes {
+		return settings.RulesetDeclaration{}, fmt.Errorf("target_pushes must be true when selected")
 	}
 	if ui.EnforcementStatus == nil {
 		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active, disabled or evaluate")
@@ -34,7 +47,7 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 	var patternLists []*[]string
 	if ui.TargetBranches != nil {
 		patternLists = []*[]string{ui.TargetBranches.IncludeByPattern, ui.TargetBranches.ExcludeByPattern}
-	} else {
+	} else if ui.TargetTags != nil {
 		patternLists = []*[]string{ui.TargetTags.IncludeByPattern, ui.TargetTags.ExcludeByPattern}
 	}
 	for _, patterns := range patternLists {
@@ -57,7 +70,7 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 		}
 		include = appendUITargetPatterns(include, b.IncludeByPattern, prefix)
 		exclude = appendUITargetPatterns(exclude, b.ExcludeByPattern, prefix)
-	} else {
+	} else if ui.TargetTags != nil {
 		target, prefix = "tag", "refs/tags/"
 		if b := ui.TargetTags; b.IncludeAllTags != nil && *b.IncludeAllTags {
 			include = append(include, "~ALL")
@@ -66,6 +79,10 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 		exclude = appendUITargetPatterns(exclude, ui.TargetTags.ExcludeByPattern, prefix)
 	}
 	result := settings.RulesetDeclaration{ID: copyUIRulesetValue(ui.ID), Name: ui.RulesetName, Target: &target, Enforcement: &enforcement, Conditions: &settings.RulesetConditions{RefName: &settings.RefNameCondition{Include: &include, Exclude: &exclude}}}
+	if ui.TargetPushes != nil {
+		target = "push"
+		result.Conditions = nil
+	}
 	var err error
 	result.BypassActors, err = declareUIRulesetBypass(ui.BypassList)
 	if err != nil {
@@ -116,6 +133,10 @@ func RulesetObservation(policy settings.RulesetDeclaration) (PreparedRuleset, er
 	result.Rules, err = observeUIRulesetRules(*policy.Rules)
 	if err != nil {
 		return PreparedRuleset{}, err
+	}
+	if *policy.Target == "push" {
+		result.TargetPushes = new(true)
+		return PreparedRuleset{Ruleset: result}, nil
 	}
 	prefix := "refs/heads/"
 	if *policy.Target == "tag" {

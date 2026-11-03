@@ -32,7 +32,7 @@ func TestReadRulesetsCompleteOwnershipAndTargets(t *testing.T) {
 		case "/repos/owner/current/rulesets/7":
 			body = basicRulesetJSON
 		case "/repos/owner/current/rulesets/8":
-			body = `{"id":8,"name":"push","source_type":"Repository","source":"owner/current","target":"push","rules":[{"type":"unknown"}]}`
+			body = pushRulesetJSON
 		default:
 			t.Fatal("unexpected path", r.URL)
 		}
@@ -43,7 +43,7 @@ func TestReadRulesetsCompleteOwnershipAndTargets(t *testing.T) {
 		t.Fatal(err)
 	}
 	values, err := observed.Values()
-	if err != nil || len(values) != 1 || values[0].ID != 7 || observed.ExcludedPush() != 1 || len(calls) != 3 {
+	if err != nil || len(values) != 2 || values[0].ID != 7 || values[1].ID != 8 || observed.ExcludedPush() != 0 || len(calls) != 3 {
 		t.Fatalf("%+v %v %v", observed, err, calls)
 	}
 }

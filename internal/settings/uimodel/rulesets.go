@@ -18,6 +18,7 @@ type Ruleset struct {
 	EnforcementStatus *EnforcementStatus
 	TargetBranches    *BranchTargets
 	TargetTags        *TagTargets
+	TargetPushes      *bool
 	BypassList        *[]BypassEntry
 	Rules             RulesetRules
 }
@@ -38,6 +39,10 @@ type RulesetRules struct {
 	RequireMergeQueue                                                                                  *MergeQueueRule
 	RestrictCommitMessage, RestrictCommitAuthorEmail, RestrictCommitterEmail                           *MetadataPatternRule
 	RestrictBranchNames, RestrictTagNames                                                              *MetadataPatternRule
+	RestrictFilePaths                                                                                  *FilePathsRule
+	RestrictFilePathLength                                                                             *FilePathLengthRule
+	RestrictFileExtensions                                                                             *FileExtensionsRule
+	RestrictFileSize                                                                                   *FileSizeRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -178,4 +183,16 @@ type MergeQueueRule struct {
 	WaitTimeToMeetMinimumGroupSizeMinutes      *int
 	RequireAllQueueEntriesToPassRequiredChecks *bool
 	StatusCheckTimeoutMinutes                  *int
+}
+
+// Push rules select whole rules; exception lists must be explicitly acquired.
+type FilePathsRule struct {
+	RestrictedFilePaths *[]string
+	AllowedExceptions   *[]string
+}
+type FilePathLengthRule struct{ MaximumFilePathLength *int }
+type FileExtensionsRule struct{ RestrictedFileExtensions *[]string }
+type FileSizeRule struct {
+	MaximumFileSize   *int
+	AllowedExceptions *[]string
 }
