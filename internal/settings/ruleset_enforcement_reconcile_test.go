@@ -51,7 +51,7 @@ func TestNormalizedRulesetEnforcementReconciliationOwnsOnlySelectedIDs(t *testin
 	}
 }
 
-func TestNormalizedRulesetEnforcementReconciliationRetainsIdentityAndDismissalRules(t *testing.T) {
+func TestNormalizedRulesetEnforcementReconciliationRetainsIdentityAndPRRules(t *testing.T) {
 	state := normalizedEnforcementState(7, "first", "FUTURE_ENFORCEMENT")
 	observed := rsObserved(t, state, normalizedEnforcementState(8, "collision", "OTHER_MODE"))
 	for _, after := range []RulesetDeclaration{
@@ -76,7 +76,7 @@ func TestNormalizedRulesetEnforcementReconciliationRetainsIdentityAndDismissalRu
 		t.Fatal(err)
 	}
 	changes, err := ReconcileRulesets(observed, &exported)
-	if err != nil || len(changes) != 1 || ruleOf(t, *changes[0].After(), "pull_request").DismissalRestriction != nil || ruleOf(t, *changes[0].Display().Before(), "pull_request").DismissalRestriction != nil {
-		t.Fatal("omitted write-only setting changed", changes, err)
+	if err != nil || len(changes) != 1 {
+		t.Fatal("normalized PR policy changed", changes, err)
 	}
 }

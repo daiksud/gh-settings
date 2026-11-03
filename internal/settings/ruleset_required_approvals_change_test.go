@@ -28,8 +28,6 @@ func TestNormalizedRulesetRequiredApprovalsChangesOwnTypedDecisionAndRemoval(t *
 			}
 			if count == 0 {
 				ordinaryBefore, ordinaryAfter := cloneRuleset(before), cloneRuleset(after)
-				omitDismissalRestriction(&ordinaryBefore)
-				omitDismissalRestriction(&ordinaryAfter)
 				if _, err := NewRulesetChange("update", 7, &ordinaryBefore, &ordinaryAfter); err == nil {
 					t.Fatal("ordinary equality accepted")
 				}
@@ -42,12 +40,6 @@ func TestNormalizedRulesetRequiredApprovalsChangesOwnTypedDecisionAndRemoval(t *
 			returned.RequiredApprovals.RawValue = 99
 			if change.Normalizations().RequiredApprovals.RawValue != 11 || !reflect.DeepEqual(change.Before(), &wantBefore) || !reflect.DeepEqual(change.After(), &wantAfter) {
 				t.Fatal("typed decision alias", change)
-			}
-			if !change.After().HasWriteOnlyDismissal() && count != -1 {
-				t.Fatal("write-only intent dropped")
-			}
-			if change.Display().Before().HasWriteOnlyDismissal() || change.Display().After().HasWriteOnlyDismissal() {
-				t.Fatal("display leaked write-only values")
 			}
 			if count == -1 {
 				got, err := (RulesetState{ID: 7, Policy: *change.After()}).RawRequiredApprovals()

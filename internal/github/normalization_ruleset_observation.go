@@ -2,6 +2,7 @@ package github
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -12,6 +13,9 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	var enforcement string
 	if err := requiredRuleJSON(raw, "enforcement", &enforcement); err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
+	}
+	if enforcement == "evaluate" {
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, fmt.Errorf("unsupported ruleset enforcement %q", enforcement)
 	}
 	copy := make(map[string]json.RawMessage, len(raw))
 	for key, value := range raw {

@@ -50,7 +50,7 @@ func TestRulesetPresentationUsesUIFieldsOnBothSides(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := RulesetLine(change)
-	wantBefore := `{"bypass_list":[],"enforcement_status":"disabled","id":7,"rules":{"block_force_pushes":false,"require_license_compliance_results_before_merging":false,"require_linear_history":false,"require_signed_commits":false,"restrict_creations":false,"restrict_deletions":false},"ruleset_name":"policy","target_branches":{"exclude_by_pattern":[],"include_all_branches":false,"include_by_pattern":[],"include_default_branch":false}}`
+	wantBefore := `{"bypass_list":[],"enforcement_status":"disabled","id":7,"rules":{"block_force_pushes":false,"require_linear_history":false,"require_signed_commits":false,"restrict_creations":false,"restrict_deletions":false},"ruleset_name":"policy","target_branches":{"exclude_by_pattern":[],"include_all_branches":false,"include_by_pattern":[],"include_default_branch":false}}`
 	wantAfter := strings.Replace(wantBefore, `"enforcement_status":"disabled"`, `"enforcement_status":"active"`, 1)
 	want := `repository.settings.rulesets: update "policy": ` + wantBefore + ` → ` + wantAfter
 	if got != want {

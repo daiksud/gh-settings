@@ -13,7 +13,6 @@ func normalizedMergeMethodsState(raw []string, companions bool) RulesetState {
 	}
 	state.Policy.ID, state.Policy.Name = rsID(7), "methods"
 	pr := ruleOfForApprovals(state.Policy)
-	pr.DismissalRestriction = nil
 	pr.AllowedMergeMethods = rsList("merge", "rebase", "squash")
 	state.MergeMethodsNormalization = RulesetMergeMethodsNormalization{
 		Path: RulesetMergeMethodsPath, RawValue: slices.Clone(raw), Fallback: []string{"merge", "squash", "rebase"},

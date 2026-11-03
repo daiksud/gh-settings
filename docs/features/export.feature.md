@@ -236,7 +236,7 @@ The dedicated [Rulesets](rulesets.feature.md), [workflow permissions](workflow-p
 ### Rule: Convert completely before replacing the destination
 
 - Requested family mappings compose into one current UI document without reimplementing their converters.
-- Complete typed Actions execution/workflow permissions, public-fork approval, Security status strings, creation policies, merge/squash menu pairs, complete Pages modes and legacy folders, Ruleset enforcement/Quality severity/bypass-mode/scanning-threshold strings, Required approvals and Team reviewer Approvals integers, Allowed merge methods lists and Environment deployment-mode pairs/ref-type strings use their named fallback with original provenance and warnings; unsupported identities and incomplete/malformed observations remain errors. Observations never populate omitted desired intent.
+- Complete typed Actions execution/workflow permissions, public-fork approval, Security status strings, creation policies, merge/squash menu pairs, complete Pages modes and legacy folders, Ruleset enforcement/Quality severity/bypass-mode/scanning-threshold strings, Required approvals and Team reviewer Approvals integers, Allowed merge methods lists and Environment deployment-mode pairs/ref-type strings use their named fallback with original provenance and warnings; unsupported identities and incomplete/malformed observations remain errors. Acquired Ruleset `evaluate` enforcement and unsupported protection fail instead of being normalized or omitted. Observations never populate omitted desired intent.
 - Raw latent conditional state is not replayed as selected UI controls. Enabled unknown execution policies warn and export the named Allow all fallback; disabled unknown policy exports known Disable without a warning. Execution fallback equality remains actionable, while hidden Disable matches remain unchanged. Missing/null/type failures never supply either choice.
 - Export success does not prove future drift protection or writable access.
 
@@ -246,7 +246,7 @@ Test mapping: [UI export aggregation](../../internal/github/ui_export_test.go), 
 
 - Complete typed unknown Quality severity exports Errors with exact raw/ID-bound provenance and a contextual warning. Enforcement and Quality warnings compose in fixed control order within name-sorted objects.
 - An absent Quality rule remains absent; missing/null/type or incomplete later policies fail without saving. Neither fallback supplies desired intent.
-- A selected fallback-equal exported declaration remains actionable. Ordinary exact canonical policy without explicit write-only dismissal intent stays a no-op; unlisted IDs remain undisclosed and unwritten.
+- A selected fallback-equal exported declaration remains actionable. Ordinary exact canonical policy stays a no-op; unlisted IDs remain undisclosed and unwritten.
 
 Test mapping: [complete Reader](../../internal/github/ruleset_quality_read_test.go), [export ordering/scope](../../internal/app/normalization_ruleset_quality_export_test.go) and [executable export/plan/apply](../../tests/acceptance/normalization_ruleset_quality_test.go).
 
@@ -255,7 +255,7 @@ Test mapping: [complete Reader](../../internal/github/ruleset_quality_read_test.
 - Acquire a complete integer count per present PR rule. Out-of-range counts export UI 0 and warn with the original integer and ID/name; canonical 0–10 remain unchanged.
 - Warnings follow Ruleset name order then enforcement, Required approvals, Quality. String and integer sinks work independently. An absent PR rule is not created.
 - Missing/null/fractional/wrong-type/overflow values and incomplete policies preserve the destination. A later unsupported identity may retain legitimate earlier diagnostics but still prevents saving.
-- Selected fallback-equal intent remains actionable. Canonical equality without explicit write-only dismissal intent remains a no-op; unlisted IDs remain private.
+- Selected fallback-equal intent remains actionable. Canonical equality remains a no-op; unlisted IDs remain private.
 
 Test mapping: [Reader](../../internal/github/ruleset_required_approvals_read_test.go), [typed export](../../internal/app/normalization_ruleset_required_approvals_export_test.go) and [built executable](../../tests/acceptance/normalization_ruleset_required_approvals_test.go).
 

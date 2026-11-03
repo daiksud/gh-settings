@@ -337,7 +337,7 @@ Scalar omission is unmanaged. Labels/Rulesets own only listed whole objects with
 
 Export completes every requested read and conversion before replacing the destination. Complete failures do not produce plausible partial/empty YAML. Incomplete data remains an acquisition failure. Correctly typed out-of-UI Security statuses follow their [Security policy](#secret-scanning-and-push-protection), and public-fork approval strings follow their [fork policy](#fork-pr-workflow-policies). Complete workflow permission strings, merge/squash message pairs and creation-policy strings follow their [workflow](#default-workflow-permissions), [menu](#commit-message-observation-normalization) and [creation-policy](#creation-policy-observation-normalization) fallback policies. Complete Pages modes and legacy folders follow their [raw-source policy](#pages-configuration); Actions execution follows its [visible/latent policy](#execution-policy-observation-normalization). Ruleset enforcement follows its [ID-bound policy](#ruleset-enforcement-observation-normalization); Environment deployment modes follow their [raw-pair policy](#environment-deployment-mode-observation-normalization), and pattern ref types follow their [raw-identity policy](#environment-ref-type-observation-normalization). Only the explicitly documented typed fallback policies normalize observations; unsupported identities and incomplete values remain errors. Ordinary export includes About, Labels and supported visible General controls; archive and additional settings require explicit options. Hidden conditional controls are omitted without replaying latent API values as selected intent. IDs, false/zero/empty values and nullable Pages domains retain their declared meanings.
 
-An export followed by validate/plan roundtrips exact supported acquired values, subject to the write-only and API-controlled omission limits below. A normalized fallback does not establish raw equality. Export does not claim live entitlement, effective protection or transactional apply. It overwrites existing declaration content, including write-only intent it cannot export; review before adoption.
+An export followed by validate/plan roundtrips exact supported acquired values, subject to the API-controlled omission limits below. A normalized fallback does not establish raw equality. Export does not claim live entitlement, effective protection or transactional apply. It overwrites existing declaration content; review before adoption.
 
 ## Rulesets
 
@@ -370,11 +370,11 @@ A deletion entry cannot select enforcement, targets, bypass actors or rule contr
 
 Plan displays the complete selected policy changing to `absent`. Apply reacquires the collection and rechecks the exact selected detail's repository ownership, ID, name and complete unchanged supported policy immediately before DELETE. Unknown or incomplete protection and normalized unsupported values block deletion. A successful delete requires HTTP 204 and a fresh complete inventory confirming the ID is absent; 404, failed/partial reads and a retained ID are errors, never successful absence. Failures after the request report that the write may have applied; there is no retry or rollback, and earlier writes remain applied. Repeated plan/apply after confirmed absence produce no change. These checks do not lock the policy between the final GET and DELETE; concurrent changes remain possible because the documented DELETE API provides no conditional-policy parameter.
 
-Deletion uses [GitHub's repository Ruleset DELETE endpoint](https://docs.github.com/en/rest/repos/rules#delete-a-repository-ruleset) with Administration write permission. Complete bypass visibility is required before any deletion. Optional write-only dismissal restrictions still follow the existing acquisition limit: omission does not prove they are disabled. Explicit deletion removes the whole selected Ruleset, and a present acquired dismissal object is included in the immediate pre-delete drift check. Organization/Enterprise-level policy, legacy branch protection, grants, releases and bypass configuration are outside this operation. Implementation verification uses local fixtures and does not delete live protection.
+Deletion uses [GitHub's repository Ruleset DELETE endpoint](https://docs.github.com/en/rest/repos/rules#delete-a-repository-ruleset) with Administration write permission. Complete bypass visibility is required before any deletion. Explicit deletion removes the whole selected Ruleset. Any acquired unsupported protection prevents deletion; an omitted API field does not establish that its underlying protection is disabled. Organization/Enterprise-level policy, legacy branch protection, grants, releases and bypass configuration are outside this operation. Implementation verification uses local fixtures and does not delete live protection.
 
-Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active`, `disabled` or `evaluate`) and exactly one of `target_branches`/`target_tags`/`target_pushes: true`. `evaluate` tests rules without enforcing them and requires GitHub Enterprise, even for a repository-owned Ruleset ([REST API](https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset)). Selecting it does not manage organization- or Enterprise-owned Rulesets. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting all target selectors is invalid. No protected scope is guessed.
+Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active` or `disabled`) and exactly one of `target_branches`/`target_tags`/`target_pushes: true`. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting all target selectors is invalid. No protected scope is guessed.
 
-Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history`, `require_signed_commits` and branch-only `require_license_compliance_results_before_merging`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`, `restrict_code_coverage`, `require_merge_queue`, metadata restrictions and push restrictions. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
+Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`, `restrict_code_coverage` and push restrictions. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
 
 `restrict_creations: true` allows only bypass actors to create matching branches or tags. `restrict_updates: {allow_fetch_and_merge: false}` allows only bypass actors to update them; selecting an empty object supplies a declaration-only false default. Explicit true allows pulling upstream changes. Both rules support branch and tag targets. Export preserves the acquired upstream-sync flag; an absent, null or malformed flag is an acquisition error. Updates adding, changing or removing either rule require independent whole-policy GET verification after mutation acknowledgment. These repository rules use the standard Rulesets plan availability and Administration write permission; no organization-wide Ruleset is managed. See [GitHub's rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [REST parameter contract](https://docs.github.com/en/rest/repos/rules).
 
@@ -382,88 +382,13 @@ Omitted `bypass_list` and unselected `rules` become empty policy on an owned obj
 
 A bypass entry selects exactly one actor: `role` (`repository_admin`, `maintain`, `write`), positive `team`, `app` or `user`, or `deploy_keys: true`. `bypass_mode` is required and must be `always`, `exempt` or `for_pull_requests_only`; existing branch/actor applicability constraints apply. No actor/grant/credential is created. Organization-only actors and unadopted rules are unsupported.
 
-### Require merge queue
-
-`rules.require_merge_queue` selects a branch-only queue rule. Every control below is required; omission of the whole group removes the queue rule on the selected Ruleset. It does not delete the Ruleset.
-
-```yaml
-require_merge_queue:
-  merge_method: squash
-  build_concurrency: 5
-  minimum_group_size: 1
-  maximum_group_size: 5
-  wait_time_to_meet_minimum_group_size_minutes: 5
-  require_all_queue_entries_to_pass_required_checks: true
-  status_check_timeout_minutes: 60
-```
-
-Merge method accepts `merge`, `squash`, or `rebase`. Build concurrency accepts 0–100; zero pauses dispatch of new merge-group checks. Minimum/maximum group sizes accept the documented API range 0–100 with minimum no greater than maximum. Wait time accepts 0–360 minutes; status-check timeout accepts 1–360 minutes. Values must be integers. Reads require all seven native parameters and preserve zero/false without defaults. Updates and removals verify the full policy in both the mutation response and an independent fresh GET. Repeating converged apply sends no mutation.
-
-This is a repository-level rule. [Merge queues](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) require an organization-owned public repository, or an organization-owned private repository using GitHub Enterprise Cloud. Personal repositories are not eligible. The tool does not infer entitlement or change workflows; required GitHub Actions checks need the `merge_group` event configured separately. The [official API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) defines the numeric ranges; zero group sizes retain their API meaning even though general UI help describes 1–100. The [Ruleset-specific controls](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-merge-queue) explicitly support concurrency zero. Organization/Enterprise-level Rulesets remain outside management.
-
-### Metadata restrictions
-
-The following optional objects select one metadata restriction each under `rules`:
-`restrict_commit_message`, `restrict_commit_author_email`,
-`restrict_committer_email`, `restrict_branch_names` and `restrict_tag_names`.
-Branch names require a branch target; tag names require a tag target. Commit
-metadata can be selected on either target.
-
-```yaml
-rules:
-  restrict_commit_message:
-    description: issue reference
-    requirement: must_start_with_matching_pattern
-    pattern: 'issue: '
-  restrict_branch_names:
-    requirement: must_match_given_regex_pattern
-    pattern: '^(main|feature/.*)$'
-```
-
-Each object requires `requirement` and an explicitly present string `pattern`.
-An optional `description` preserves the exact displayed name, including an empty
-string. Requirements are `must_start_with_matching_pattern`,
-`must_not_start_with_matching_pattern`, `must_end_with_matching_pattern`,
-`must_not_end_with_matching_pattern`, `must_contain_matching_pattern`,
-`must_not_contain_matching_pattern`, `must_match_given_regex_pattern` and
-`must_not_match_given_regex_pattern`. Positive requirements do not negate the
-match; negative requirements do. Native optional `negate: false` and absence
-have the same non-negating policy. Export represents both as a positive
-requirement. No pattern text is trimmed or rewritten. Regex execution and API
-validation remain GitHub's responsibility; the CLI does not test the policy
-against repository history.
-
-Omitting a restriction removes that rule from the selected whole Ruleset.
-Acquired missing/null/wrong-type required fields, unknown operators, unknown
-parameters and repeated rule types fail the complete read; no restriction is
-discarded to obtain a usable export. Same-type repeated restrictions are not
-supported by this contract. The write response and an independent fresh GET
-must both confirm all observable policy, including restriction removal.
-
-These are repository-level rules, documented by the
-[repository Rulesets REST API](https://docs.github.com/en/rest/repos/rules?apiVersion=2026-03-10#create-a-repository-ruleset).
-Repository Rulesets are available for public repositories on Free and for
-public/private repositories on Pro, Team and Enterprise Cloud. Metadata-specific
-availability must be checked for the target account; the CLI does not infer
-entitlement from repository visibility or an organization membership. Writes
-require repository Administration write permission. This feature does not
-manage organization or enterprise Rulesets, change account plans or grant
-permissions. See GitHub's
-[metadata rule guidance](https://docs.github.com/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#metadata-restrictions).
-
-### License compliance
-
-`rules.require_license_compliance_results_before_merging: true` selects the parameterless repository branch rule `license_compliance_scanning`. False or omission leaves it unselected on the owned Ruleset; tag targets are rejected. Export includes the checkbox after complete acquisition. Plan compares the whole supported policy, and apply checks the original acknowledgment and an independent fresh GET, including removal. Repeating a successfully verified declaration produces no difference. Unknown rules or parameters and incomplete reads fail before mutation or export.
-
-This repository rule requires [GitHub Enterprise Cloud, GitHub Code Security enabled for the repository, and the dependency graph](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/configure-license-policies). The organization's enterprise license policy must already be configured. Organization/enterprise Rulesets, license-policy setup, package exceptions, licenses and security enablement are outside this control. Repository Ruleset writes require Administration write permission, with complete bypass visibility for reads; selecting this checkbox does not grant permissions or verify entitlement. The [official repository Rulesets API](https://docs.github.com/en/rest/repos/rules?apiVersion=2026-03-10#create-a-repository-ruleset) documents its parameterless wire representation. Local fixture verification does not establish live entitlement, policy storage or enforcement.
-
 ### Ruleset enforcement observation normalization
 
-A complete, correctly typed enforcement string outside Active/Disabled/Evaluate, including unknown, empty or whitespace strings, projects to the named `disabled` observation fallback. Preserve the exact raw token and its positive Ruleset ID outside desired policy. Export warns with the UI field, fallback, ID and name, in exported name order. Missing/null/wrong types, incomplete nested policy, ownership/ID failures and incomplete pagination remain acquisition errors without partial export.
+A complete, correctly typed enforcement string outside Active/Disabled, except the unsupported `evaluate` value, including unknown, empty or whitespace strings, projects to the named `disabled` observation fallback. Preserve the exact raw token and its positive Ruleset ID outside desired policy. Acquired `evaluate` fails instead of projecting to Disabled; it cannot be exported or overwritten as a normalized policy. Export warns with the UI field, fallback, ID and name, in exported name order. Missing/null/wrong types, incomplete nested policy, ownership/ID failures and incomplete pagination remain acquisition errors without partial export.
 
-A selected normalized ID requires one whole-object update even when desired Disabled equals the projection. Plan/detailed Summary show the contextual warning, a UI enforcement decision marked normalized/write-required and the complete effective supported policy. The effective object is not a raw observation. Unlisted IDs remain unmanaged, undisclosed and unwritten; desired whole-object defaults, name/ID collision guards and write-only dismissal limits are unchanged. Same-version private reports carry closed validation/presentation evidence and never supply apply input. A selected Rulesets collection counts once.
+A selected normalized ID requires one whole-object update even when desired Disabled equals the projection. Plan/detailed Summary show the contextual warning, a UI enforcement decision marked normalized/write-required and the complete effective supported policy. The effective object is not a raw observation. Unlisted IDs remain unmanaged, undisclosed and unwritten; desired whole-object defaults and name/ID collision guards are unchanged. Same-version private reports carry closed validation/presentation evidence and never supply apply input. A selected Rulesets collection counts once.
 
-Apply uses fresh collection preflight and exact desired whole-object payloads. Normalized updates always require an independent post-write GET, including basic Rulesets without review/analysis rules. Both mutation response and GET must retain canonical desired policy, correct ID and repository ownership; neither verification normalizes unknown values into success. A lying canonical acknowledgment followed by retained unknown GET fails with uncertain effects. Visible fresh diagnostics never supply verification values. Canonical equal objects without explicit write-only dismissal intent remain no-ops; earlier completed resource writes remain reported on later failure.
+Apply uses fresh collection preflight and exact desired whole-object payloads. Normalized updates always require an independent post-write GET, including basic Rulesets without review/analysis rules. Both mutation response and GET must retain canonical desired policy, correct ID and repository ownership; neither verification normalizes unknown values into success. A lying canonical acknowledgment followed by retained unknown GET fails with uncertain effects. Visible fresh diagnostics never supply verification values. Canonical equal objects remain no-ops; earlier completed resource writes remain reported on later failure.
 
 ### Ruleset Quality severity observation normalization
 
@@ -471,13 +396,13 @@ For a present, complete code-quality rule, a correctly typed severity outside th
 
 Enforcement and Quality keep independent records on one whole-object change. Export warnings follow Ruleset name order, then enforcement, Required approvals and Quality within each object. Selected normalized equality still requires a write; unlisted IDs remain private. Plan and detailed Summary show normalized/write-required UI choices, or `inactive (rule removed; write required)` when desired policy removes the Quality group, followed by one effective policy. Same-version private reports validate each concrete record independently and retain status-only privacy; existing collection count stays one.
 
-Apply sends only the complete desired policy and verifies the original mutation response plus an independent fresh GET. Unknown severity cannot prove an Errors match, and removing the rule requires actual absence: a retained canonical or unknown rule fails with uncertain effects. Warning projection never supplies verification values. Canonical equal policy without explicit write-only dismissal intent remains a no-op; acquisition failures preserve export destinations and make no Ruleset write.
+Apply sends only the complete desired policy and verifies the original mutation response plus an independent fresh GET. Unknown severity cannot prove an Errors match, and removing the rule requires actual absence: a retained canonical or unknown rule fails with uncertain effects. Warning projection never supplies verification values. Canonical equal policy remains a no-op; acquisition failures preserve export destinations and make no Ruleset write.
 
 ### Ruleset Required approvals observation normalization
 
 A complete present PR rule acquires `required_approving_review_count` as an integer. UI choices are 0–10. Other integers, including -1 and API-only 11, project to the named 0 fallback while retaining exact integer provenance per positive Ruleset ID. No string, fraction, overflow, null or missing member supplies a count. An absent PR rule stays absent. Native transport validation remains separate from the UI range.
 
-A selected normalized count requires one whole-object update, including desired 0 matching the projection. Plan and detailed Summary show unquoted integers marked normalized/write-required, or inactive/rule-removed intent when the desired PR group is absent. Enforcement, Required approvals and Quality retain independent concrete records and warn in that order within name-sorted objects. Unlisted IDs stay unmanaged and private. Existing collection counts stay one; ordinary canonical equality without explicit write-only dismissal intent stays a no-op.
+A selected normalized count requires one whole-object update, including desired 0 matching the projection. Plan and detailed Summary show unquoted integers marked normalized/write-required, or inactive/rule-removed intent when the desired PR group is absent. Enforcement, Required approvals and Quality retain independent concrete records and warn in that order within name-sorted objects. Unlisted IDs stay unmanaged and private. Existing collection counts stay one; ordinary canonical equality stays a no-op.
 
 Private `required_approvals_normalization` metadata requires a string path and integer raw/fallback members, including explicit zero; present-zero, forged and ID-conflicting records fail closed. Report values never supply mutation input. Apply verifies original acknowledgment and independent fresh GET against exact desired whole policy: retained 11/-1 cannot confirm 0, and a retained canonical PR rule cannot confirm removal. Incomplete acquisition makes no Ruleset write and preserves export destinations; later failure retains earlier resource effects.
 
@@ -527,7 +452,7 @@ A complete acquired `bypass_mode` string outside the native `always`, `exempt` a
 
 Requested export warns after complete acquisition and saves only effective UI policy. Warnings follow Ruleset name order, then enforcement, Required approvals, Allowed merge methods, Team reviewer Approvals (numeric reviewer ID order), scanning Alerts and Security alerts (each in tool-name order), Quality and bypass actors ordered by type and numeric ID. Actor diagnostics include `actor_type` and include `actor_id` only when present. These are identity context, not public YAML aliases. Unlisted Ruleset IDs stay unmanaged and undisclosed in plan/apply.
 
-Selected normalized equality still requires one whole-object update. Plan and detailed Summary show the raw warning and `always` marked as a normalized observation, followed by the desired UI mode marked write-required. Removing an actor, explicitly or through existing whole-object declaration defaults, shows `inactive (actor removed; write required)`. Each operation has one effective-policy line; canonical equal objects without explicit write-only dismissal intent remain no-ops. Observation fallback does not populate omitted desired resources or change whole-object ownership.
+Selected normalized equality still requires one whole-object update. Plan and detailed Summary show the raw warning and `always` marked as a normalized observation, followed by the desired UI mode marked write-required. Removing an actor, explicitly or through existing whole-object declaration defaults, shows `inactive (actor removed; write required)`. Each operation has one effective-policy line; canonical equal objects remain no-ops. Observation fallback does not populate omitted desired resources or change whole-object ownership.
 
 Apply verifies the original mutation response and an independent fresh GET against the desired observable policy. A canonical acknowledgment followed by the same unknown raw mode cannot confirm `always`; a retained canonical actor cannot confirm removal. Fresh warnings require complete owned readback and never supply verification values. Incomplete acquisition makes no Ruleset write and preserves export destinations; a later failure reports possible and earlier completed effects without implying rollback.
 
@@ -543,9 +468,8 @@ Private same-version reports retain actor-bound `bypass_mode_normalizations`, va
 | `allowed_merge_methods` | all three: `merge`, `squash`, `rebase`; nonempty unique selected choices |
 | `dismiss_stale_pull_request_approvals_when_new_commits_are_pushed`, `require_review_from_code_owners`, `require_approval_of_the_most_recent_reviewable_push`, `require_conversation_resolution_before_merging`, `require_an_additional_approval_for_unattributed_copilot_pull_requests` | false |
 | `require_review_from_specific_teams` | empty; up to 15 `{reviewer: positive-team-id, approvals: 0..10, file_patterns: [...]}` entries; approvals and patterns required |
-| `restrict_who_can_dismiss_pull_request_reviews`, `people_teams_or_apps_that_can_dismiss_reviews` | temporary write-only exception below |
 
-Reviewer file patterns preserve order/repetition, including negations. Other independent collections canonicalize by identity. A dismissal actor selects one `role`, `team`, `app` or `user`; nonempty actors require an explicitly selected restriction checkbox. Omitted restriction controls send no value. Explicit controls use existing false/empty defaults for omitted companions; explicit false differs from omission.
+Reviewer file patterns preserve order/repetition, including negations. Other independent collections canonicalize by identity.
 
 `rules.require_status_checks_to_pass` contains `required_status_checks` (`[{check: name, source: {any_source: true}}]` or `{source: {app: positive-id}}`), `require_branches_to_be_up_to_date_before_merging` and `do_not_require_status_checks_on_creation`. Defaults are empty checks and false flags. Omitted source means any source, not a retained App. Explicit source must select true Any source or App, not both. YAML null is invalid.
 
@@ -601,13 +525,11 @@ For path/size restrictions, `allowed_exceptions` is required even when empty. Th
 
 Complete supported observations, including bypass visibility, are required. Unknown writable fields/rules, missing values, invalid types, unreadable details and failed pages stop mutation/export. Inherited organization/enterprise Rulesets remain outside mutation ownership. Repository-owned push Rulesets are acquired and exported completely; unknown or incomplete push policy stops the operation. Other protection can still affect effective behavior.
 
-Plan shows only listed creates/ID updates and default-derived reductions; it never invents deletion of unlisted objects. A nonempty collection counts once as managed. Apply reads fresh state after earlier families, prepares selected operations before the first Rulesets write and writes in stable name order. Fresh comparable matches make no write unless explicit write-only intent exists.
+Plan shows only listed creates/ID updates and default-derived reductions; it never invents deletion of unlisted objects. A nonempty collection counts once as managed. Apply reads fresh state after earlier families, prepares selected operations before the first Rulesets write and writes in stable name order. Fresh comparable matches make no write.
 
-POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis/coverage changes and transitions into or out of Evaluate, plus every push-target mutation, require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
+POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis/coverage changes and every push-target mutation require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
 
-Review-dismissal restriction is temporarily write-only. Validate/apply accept explicit UI controls; plan rejects them before remote reads, export always omits both even when GET reports them, and successful apply reports API acceptance with the value unverified. An echoed response does not prove storage/enforcement; every repeated explicit apply sends it again. Omitted intent never invents false or borrows an observed value. Missing comparable state and malformed present objects still fail. Replacing a declaration with export loses this explicit write intent.
-
-A prior bounded experiment saw identical omitted GET values after omitted/false/true PUTs on a temporary disabled Ruleset. It did not establish stored values, default elision or a general preservation rule. Existing Metadata read/Administration write, complete bypass visibility and platform eligibility are prerequisites; no workaround or permission expansion occurs. See the [Rulesets specification](features/rulesets.feature.md) and [UI mapping](contributing/ui-ruleset-mapping.md).
+Unsupported protection is never omitted to produce a usable policy. Acquired Evaluate enforcement, merge queue, metadata restrictions, license compliance, or a present review-dismissal restriction stop Ruleset export, comparison and mutation. Review-dismissal absence in an API response does not prove the stored restriction is disabled. These controls are not accepted configuration. See the [Rulesets specification](features/rulesets.feature.md) and [UI mapping](contributing/ui-ruleset-mapping.md).
 
 ## Environments
 

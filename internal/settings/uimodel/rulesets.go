@@ -5,7 +5,6 @@ type EnforcementStatus string
 
 const (
 	Active                          EnforcementStatus = "active"
-	Evaluate                        EnforcementStatus = "evaluate"
 	Disabled                        EnforcementStatus = "disabled"
 	DefaultRulesetEnforcementStatus                   = Disabled
 )
@@ -26,7 +25,6 @@ type Ruleset struct {
 // RulesetRules describes checkbox states inside a whole owned Ruleset.
 // Omission does not retain a remote rule; false and nil both leave it unselected.
 type RulesetRules struct {
-	RequireLicenseComplianceResultsBeforeMerging                                                       *bool
 	RestrictCreations, RestrictDeletions, BlockForcePushes, RequireLinearHistory, RequireSignedCommits *bool
 	RestrictUpdates                                                                                    *UpdateRule
 	RequireAPullRequestBeforeMerging                                                                   *PullRequestRule
@@ -36,9 +34,6 @@ type RulesetRules struct {
 	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
 	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
 	RestrictCodeCoverage                                                                               *CodeCoverageRule
-	RequireMergeQueue                                                                                  *MergeQueueRule
-	RestrictCommitMessage, RestrictCommitAuthorEmail, RestrictCommitterEmail                           *MetadataPatternRule
-	RestrictBranchNames, RestrictTagNames                                                              *MetadataPatternRule
 	RestrictFilePaths                                                                                  *FilePathsRule
 	RestrictFilePathLength                                                                             *FilePathLengthRule
 	RestrictFileExtensions                                                                             *FileExtensionsRule
@@ -46,14 +41,6 @@ type RulesetRules struct {
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
-
-// MetadataPatternRule describes one metadata restriction. Positive requirements
-// leave the optional native negate flag absent; negative requirements select it.
-type MetadataPatternRule struct {
-	Description *string
-	Requirement string
-	Pattern     *string
-}
 
 type MergeMethod string
 
@@ -113,14 +100,7 @@ const (
 
 func DefaultRulesetMergeMethods() []MergeMethod { return []MergeMethod{Merge, Squash, Rebase} }
 
-type ReviewDismissalActor struct {
-	Role            *BypassRole
-	Team, App, User *int64
-}
-
 type PullRequestRule struct {
-	RestrictWhoCanDismissPullRequestReviews                       *bool
-	PeopleTeamsOrAppsThatCanDismissReviews                        *[]ReviewDismissalActor
 	RequiredApprovals                                             *int
 	AllowedMergeMethods                                           *[]MergeMethod
 	DismissStalePullRequestApprovalsWhenNewCommitsArePushed       *bool
@@ -173,17 +153,6 @@ type TagTargets struct {
 
 // DeploymentsRule selects the environments that must deploy before merging.
 type DeploymentsRule struct{ RequiredDeploymentEnvironments *[]string }
-
-// MergeQueueRule requires explicit settings; observations never borrow defaults.
-type MergeQueueRule struct {
-	MergeMethod                                *MergeMethod
-	BuildConcurrency                           *int
-	MinimumGroupSize                           *int
-	MaximumGroupSize                           *int
-	WaitTimeToMeetMinimumGroupSizeMinutes      *int
-	RequireAllQueueEntriesToPassRequiredChecks *bool
-	StatusCheckTimeoutMinutes                  *int
-}
 
 // Push rules select whole rules; exception lists must be explicitly acquired.
 type FilePathsRule struct {

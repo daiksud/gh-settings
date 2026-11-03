@@ -12,7 +12,6 @@ func TestRulesetBypassReconciliationRetainsSelectedWholeObjectEvidence(t *testin
 			t.Run(fmt.Sprintf("scalars=%t/actors=%s", companions, actors), func(t *testing.T) {
 				state := normalizedBypassState("FUTURE_MODE", companions)
 				state.Policy.ID = rsID(state.ID)
-				omitDismissalRestriction(&state.Policy)
 				unlisted := normalizedBypassState("UNLISTED_MODE", false)
 				unlisted.ID, unlisted.Policy.ID, unlisted.Policy.Name = 9, rsID(9), "unlisted"
 				observed := rsObserved(t, unlisted, state)

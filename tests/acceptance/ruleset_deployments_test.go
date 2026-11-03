@@ -123,7 +123,7 @@ func TestRulesetDeploymentsExportPlanApplyRetainsAllProtections(t *testing.T) {
 		"target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}},
 		"bypass_list":     []any{},
 		"rules": map[string]any{
-			"require_license_compliance_results_before_merging": false, "restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": true,
+			"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": true,
 			"require_a_pull_request_before_merging": map[string]any{
 				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
 				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,

@@ -34,10 +34,6 @@ func declareUIRulesetPR(ui uimodel.PullRequestRule) (*settings.RuleParameters, e
 	if err != nil {
 		return nil, err
 	}
-	result.DismissalRestriction, err = declareUIRulesetDismissal(ui)
-	if err != nil {
-		return nil, err
-	}
 	return result, nil
 }
 
@@ -67,10 +63,6 @@ func observeUIRulesetPR(p *settings.RuleParameters) (*uimodel.PullRequestRule, e
 	result.AllowedMergeMethods = &methods
 	var err error
 	result.RequireReviewFromSpecificTeams, err = observeUIRulesetTeams(p.RequiredReviewers)
-	if err != nil {
-		return nil, err
-	}
-	result.RestrictWhoCanDismissPullRequestReviews, result.PeopleTeamsOrAppsThatCanDismissReviews, err = observeUIRulesetDismissal(p.DismissalRestriction)
 	if err != nil {
 		return nil, err
 	}

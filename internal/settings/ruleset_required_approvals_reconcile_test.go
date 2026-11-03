@@ -9,7 +9,6 @@ func TestRulesetRequiredApprovalsReconciliationKeepsSelectedWholeObjectIntent(t 
 	for _, both := range []bool{false, true} {
 		for _, count := range []int{0, 1, 10, -1} {
 			state := normalizedRequiredApprovalsState(7, "selected", 11, both)
-			omitDismissalRestriction(&state.Policy)
 			unlisted := normalizedRequiredApprovalsState(9, "UNMANAGED", 99, true)
 			observed := rsObserved(t, state, unlisted)
 			after := cloneRuleset(state.Policy)
@@ -45,15 +44,12 @@ func TestRulesetRequiredApprovalsReconciliationKeepsSelectedWholeObjectIntent(t 
 func TestRulesetRequiredApprovalsReconciliationKeepsIDOrderAndCanonicalNoops(t *testing.T) {
 	z := normalizedRequiredApprovalsState(7, "z", 11, true)
 	a := normalizedRequiredApprovalsState(5, "a", 12, true)
-	omitDismissalRestriction(&z.Policy)
-	omitDismissalRestriction(&a.Policy)
 	changes, err := ReconcileRulesets(rsObserved(t, z, a), rsDesired(t, z.Policy, a.Policy))
 	if err != nil || len(changes) != 2 || changes[0].ID() != 5 || changes[1].ID() != 7 || changes[0].Normalizations().RequiredApprovals.RawValue != 12 || changes[1].Normalizations().RequiredApprovals.RawValue != 11 {
 		t.Fatal("ID order/evidence crossed", changes, err)
 	}
 	canonical := RulesetState{ID: 8, Policy: reviewPolicy()}
 	canonical.Policy.ID = rsID(8)
-	omitDismissalRestriction(&canonical.Policy)
 	changes, err = ReconcileRulesets(rsObserved(t, canonical, z), rsDesired(t, canonical.Policy))
 	if err != nil || len(changes) != 0 {
 		t.Fatal("canonical or unlisted became actionable", changes, err)

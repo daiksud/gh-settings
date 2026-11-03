@@ -115,20 +115,3 @@ func TestRulesetEnforcementChangeRejectsForgedOrUnboundPolicies(t *testing.T) {
 		}
 	}
 }
-
-func TestNormalizedRulesetDisplayOmitsWriteOnlyDismissal(t *testing.T) {
-	before := reviewPolicy()
-	before.ID, before.Enforcement = rsID(7), rsText("disabled")
-	after := cloneRuleset(before)
-	record := ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-	change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, RulesetNormalizations{Enforcement: record})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if ruleOf(t, *change.Before(), "pull_request").DismissalRestriction == nil || ruleOf(t, *change.After(), "pull_request").DismissalRestriction == nil {
-		t.Fatal("whole-object mutation policy lost")
-	}
-	if ruleOf(t, *change.Display().Before(), "pull_request").DismissalRestriction != nil || ruleOf(t, *change.Display().After(), "pull_request").DismissalRestriction != nil {
-		t.Fatal("write-only policy leaked into display")
-	}
-}

@@ -38,11 +38,11 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 		return settings.RulesetDeclaration{}, fmt.Errorf("target_pushes must be true when selected")
 	}
 	if ui.EnforcementStatus == nil {
-		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active, disabled or evaluate")
+		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active or disabled")
 	}
 	enforcement, valid := settings.RulesetEnforcementValueForChoice(*ui.EnforcementStatus)
 	if !valid {
-		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active, disabled or evaluate")
+		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active or disabled")
 	}
 	var patternLists []*[]string
 	if ui.TargetBranches != nil {
@@ -107,11 +107,9 @@ func appendUITargetPatterns(result []string, patterns *[]string, prefix string) 
 	return result
 }
 
-// PreparedRuleset keeps acquired write-only state outside visible UI controls.
-// The raw restriction is not authorized for export/comparison by this projection.
+// PreparedRuleset contains complete supported Ruleset UI state.
 type PreparedRuleset struct {
 	uimodel.Ruleset
-	UnverifiedReviewDismissalRestriction *settings.ReviewDismissalRestriction
 }
 
 // RulesetObservation projects only complete, validated acquired API policies.
@@ -176,13 +174,6 @@ func RulesetObservation(policy settings.RulesetDeclaration) (PreparedRuleset, er
 		result.TargetTags = &uimodel.TagTargets{IncludeAllTags: &all, IncludeByPattern: &include, ExcludeByPattern: &exclude}
 	}
 	prepared := PreparedRuleset{Ruleset: result}
-	for _, rule := range *policy.Rules {
-		if rule.Type == "pull_request" && rule.Parameters != nil && rule.Parameters.DismissalRestriction != nil {
-			raw := rule.Parameters.DismissalRestriction
-			actors := append([]settings.ReviewActor{}, (*raw.AllowedActors)...)
-			prepared.UnverifiedReviewDismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: copyUIRulesetValue(raw.Enabled), AllowedActors: &actors}
-		}
-	}
 	return prepared, nil
 }
 

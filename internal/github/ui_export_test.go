@@ -93,7 +93,7 @@ func TestUIFromExportDeclarationRulesets(t *testing.T) {
 	*policy.Conditions.RefName.Include = []string{"~DEFAULT_BRANCH"}
 	source := uiExportBase()
 	source.Rulesets = exportRulesetPolicies(t, []settings.RulesetState{{ID: 7, Policy: policy}})
-	want := []uimodel.Ruleset{{ID: rulesetPtr(int64(7)), RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.Active), TargetBranches: &uimodel.BranchTargets{IncludeDefaultBranch: rulesetPtr(true), IncludeAllBranches: rulesetPtr(false), IncludeByPattern: rulesetPtr([]string{}), ExcludeByPattern: rulesetPtr([]string{})}, BypassList: rulesetPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RequireLicenseComplianceResultsBeforeMerging: rulesetPtr(false), RestrictCreations: rulesetPtr(false), RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}}}
+	want := []uimodel.Ruleset{{ID: rulesetPtr(int64(7)), RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.Active), TargetBranches: &uimodel.BranchTargets{IncludeDefaultBranch: rulesetPtr(true), IncludeAllBranches: rulesetPtr(false), IncludeByPattern: rulesetPtr([]string{}), ExcludeByPattern: rulesetPtr([]string{})}, BypassList: rulesetPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RestrictCreations: rulesetPtr(false), RestrictDeletions: rulesetPtr(false), BlockForcePushes: rulesetPtr(false), RequireLinearHistory: rulesetPtr(false), RequireSignedCommits: rulesetPtr(false)}}}
 	got, err := UIFromExportDeclaration(source)
 	if err != nil || got.Settings == nil || got.Settings.Rulesets == nil || !reflect.DeepEqual(*got.Settings.Rulesets, want) {
 		t.Fatalf("export Ruleset UI changed: %#v, %v", got, err)
@@ -108,24 +108,8 @@ func TestUIFromExportDeclarationRulesets(t *testing.T) {
 	}
 }
 
-func TestUIFromExportDeclarationRulesetWriteOnlyAndUnsupportedValues(t *testing.T) {
-	policy := apiRulesetBase()
-	parameters := completeUIAPIPR()
-	parameters.DismissalRestriction = &settings.ReviewDismissalRestriction{Enabled: rulesetPtr(true), AllowedActors: rulesetPtr([]settings.ReviewActor{{Type: "Team", ID: 12}})}
-	policy.Rules = rulesetPtr([]settings.RulesetRule{{Type: "pull_request", Parameters: parameters}})
+func TestUIFromExportDeclarationRulesetUnsupportedValues(t *testing.T) {
 	source := uiExportBase()
-	source.Rulesets = exportRulesetPolicies(t, []settings.RulesetState{{ID: 7, Policy: policy}})
-	if source.Rulesets.Values()[0].HasWriteOnlyDismissal() {
-		t.Fatal("existing export boundary retained write-only dismissal")
-	}
-	got, err := UIFromExportDeclaration(source)
-	if err != nil || got.Settings == nil || got.Settings.Rulesets == nil {
-		t.Fatalf("missing exported Ruleset: %#v, %v", got, err)
-	}
-	pr := (*got.Settings.Rulesets)[0].Rules.RequireAPullRequestBeforeMerging
-	if pr == nil || pr.RestrictWhoCanDismissPullRequestReviews != nil || pr.PeopleTeamsOrAppsThatCanDismissReviews != nil {
-		t.Fatalf("write-only dismissal appeared in UI export: %#v", pr)
-	}
 	for _, mutate := range []func(*settings.RulesetDeclaration){
 		func(p *settings.RulesetDeclaration) {
 			p.BypassActors = rulesetPtr([]settings.BypassActor{{ActorType: "RepositoryRole", ActorID: rulesetPtr(int64(99)), BypassMode: rulesetPtr("always")}})
