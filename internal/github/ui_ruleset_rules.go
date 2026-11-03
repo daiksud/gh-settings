@@ -21,6 +21,13 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 	if ui.RestrictUpdates != nil {
 		result = append(result, settings.RulesetRule{Type: "update", Parameters: &settings.RuleParameters{UpdateAllowsFetchAndMerge: copyUIRulesetValue(ui.RestrictUpdates.AllowFetchAndMerge)}})
 	}
+	if ui.RequireDeploymentsToSucceed != nil {
+		if ui.RequireDeploymentsToSucceed.RequiredDeploymentEnvironments == nil {
+			return nil, fmt.Errorf("require_deployments_to_succeed requires required_deployment_environments")
+		}
+		environments := append([]string{}, (*ui.RequireDeploymentsToSucceed.RequiredDeploymentEnvironments)...)
+		result = append(result, settings.RulesetRule{Type: "required_deployments", Parameters: &settings.RuleParameters{RequiredDeploymentEnvironments: &environments}})
+	}
 	if ui.RequireAPullRequestBeforeMerging != nil {
 		parameters, err := declareUIRulesetPR(*ui.RequireAPullRequestBeforeMerging)
 		if err != nil {
@@ -72,6 +79,12 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			*result.RequireLinearHistory = true
 		case "required_signatures":
 			*result.RequireSignedCommits = true
+		case "required_deployments":
+			if rule.Parameters == nil || rule.Parameters.RequiredDeploymentEnvironments == nil {
+				return uimodel.RulesetRules{}, fmt.Errorf("required_deployments missing environments")
+			}
+			environments := append([]string{}, (*rule.Parameters.RequiredDeploymentEnvironments)...)
+			result.RequireDeploymentsToSucceed = &uimodel.DeploymentsRule{RequiredDeploymentEnvironments: &environments}
 		case "pull_request":
 			var err error
 			result.RequireAPullRequestBeforeMerging, err = observeUIRulesetPR(rule.Parameters)

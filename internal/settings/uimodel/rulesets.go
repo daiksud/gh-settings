@@ -29,6 +29,7 @@ type RulesetRules struct {
 	RequireStatusChecksToPass                                                                          *StatusChecksRule
 	RequireCodeScanningResults                                                                         *CodeScanningRule
 	RequireCodeQualityResults                                                                          *CodeQualityRule
+	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -138,3 +139,6 @@ type TagTargets struct {
 	IncludeAllTags                     *bool
 	IncludeByPattern, ExcludeByPattern *[]string
 }
+
+// DeploymentsRule selects the environments that must deploy before merging.
+type DeploymentsRule struct{ RequiredDeploymentEnvironments *[]string }
