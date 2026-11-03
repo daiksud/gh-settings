@@ -183,3 +183,12 @@ Test mapping: [mapping/state/closed changes/reconciliation](../../internal/setti
 - [Domain tests](../../internal/settings/ruleset_coverage_test.go) own threshold bounds and copying; [codec tests](../../internal/workspace/ui_ruleset_coverage_test.go) own numeric YAML types; [transport tests](../../internal/github/ruleset_coverage_test.go) own incomplete acquisition and fresh verification, including removal. [Executable coverage tests](../../tests/acceptance/ruleset_coverage_test.go) check export, validate, plan, apply, readback failure and no-difference repetition against a local API with dummy credentials. No live protection, coverage uploads or plan entitlement is changed or verified.
 
 The [public contract](../settings.md#code-coverage-thresholds) owns Code Quality, coverage-upload and Team/Enterprise Cloud prerequisites. Organization/Enterprise policy is excluded even when a repository rule requires those subscriptions.
+
+## Repository merge queue
+
+- A branch Ruleset accepts `rules.require_merge_queue` with explicit merge method, build concurrency, minimum/maximum group sizes, wait time, all-entries checkbox and status timeout. Zero concurrency and zero wait remain explicit values. Tag targets, incomplete settings, unknown choices, invalid limits, nulls and mixed rule parameters fail.
+- Export preserves all queue values and companion protections. Export → validate → plan produces no differences; changing concurrency performs one full-object PUT and independent GET. Repeat plan/apply converges without another write.
+- Create, update and queue removal verify mutation acknowledgment and fresh readback. Retained queue state, malformed state, denied readback and drift fail with uncertain-effects reporting. No retry or protection mutation on acquisition failure is allowed.
+- Local fixtures establish API/CLI behavior, not live entitlement or effective queue enforcement. Organization-owned public repositories or organization-owned private repositories on Enterprise Cloud are required; organization-level Rulesets remain outside scope.
+
+Mapped tests: `TestUIRulesetQueueChoicesAndOwnership`, `TestUIRulesetQueueRequiresExplicitCompleteValidSettings`, `TestRulesetMergeQueueRoundtripAndIncompleteReads`, `TestRulesetMergeQueueMutationVerifiesResponseAndIndependentReadback`, `TestRulesetMergeQueueExportValidatePlanApplyConverges`.

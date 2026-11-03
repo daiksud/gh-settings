@@ -32,6 +32,13 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		environments := append([]string{}, (*ui.RequireDeploymentsToSucceed.RequiredDeploymentEnvironments)...)
 		result = append(result, settings.RulesetRule{Type: "required_deployments", Parameters: &settings.RuleParameters{RequiredDeploymentEnvironments: &environments}})
 	}
+	if ui.RequireMergeQueue != nil {
+		parameters, err := declareUIRulesetQueue(*ui.RequireMergeQueue)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, settings.RulesetRule{Type: "merge_queue", Parameters: parameters})
+	}
 	if ui.RequireAPullRequestBeforeMerging != nil {
 		parameters, err := declareUIRulesetPR(*ui.RequireAPullRequestBeforeMerging)
 		if err != nil {
@@ -95,6 +102,8 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			}
 			environments := append([]string{}, (*rule.Parameters.RequiredDeploymentEnvironments)...)
 			result.RequireDeploymentsToSucceed = &uimodel.DeploymentsRule{RequiredDeploymentEnvironments: &environments}
+		case "merge_queue":
+			result.RequireMergeQueue = observeUIRulesetQueue(rule.Parameters)
 		case "pull_request":
 			var err error
 			result.RequireAPullRequestBeforeMerging, err = observeUIRulesetPR(rule.Parameters)

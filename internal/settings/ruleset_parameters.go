@@ -10,12 +10,20 @@ import (
 // RuleParameters is the closed parameter union selected by the surrounding rule type.
 // Pointers retain omission independently of false, zero and empty collections.
 type RuleParameters struct {
-	UpdateAllowsFetchAndMerge                  *bool                       `json:"update_allows_fetch_and_merge,omitempty" yaml:"update_allows_fetch_and_merge,omitempty"`
-	RequiredDeploymentEnvironments             *[]string                   `json:"required_deployment_environments,omitempty" yaml:"required_deployment_environments,omitempty"`
-	ReviewDraftPullRequests                    *bool                       `json:"review_draft_pull_requests,omitempty" yaml:"review_draft_pull_requests,omitempty"`
-	ReviewOnPush                               *bool                       `json:"review_on_push,omitempty" yaml:"review_on_push,omitempty"`
-	MinimumCoverage                            *float64                    `json:"minimum_coverage,omitempty" yaml:"minimum_coverage,omitempty"`
-	MaxCoverageDrop                            *float64                    `json:"max_coverage_drop,omitempty" yaml:"max_coverage_drop,omitempty"`
+	UpdateAllowsFetchAndMerge      *bool     `json:"update_allows_fetch_and_merge,omitempty" yaml:"update_allows_fetch_and_merge,omitempty"`
+	RequiredDeploymentEnvironments *[]string `json:"required_deployment_environments,omitempty" yaml:"required_deployment_environments,omitempty"`
+	ReviewDraftPullRequests        *bool     `json:"review_draft_pull_requests,omitempty" yaml:"review_draft_pull_requests,omitempty"`
+	ReviewOnPush                   *bool     `json:"review_on_push,omitempty" yaml:"review_on_push,omitempty"`
+	MinimumCoverage                *float64  `json:"minimum_coverage,omitempty" yaml:"minimum_coverage,omitempty"`
+	MaxCoverageDrop                *float64  `json:"max_coverage_drop,omitempty" yaml:"max_coverage_drop,omitempty"`
+	CheckResponseTimeoutMinutes    *int      `json:"check_response_timeout_minutes,omitempty" yaml:"check_response_timeout_minutes,omitempty"`
+	GroupingStrategy               *string   `json:"grouping_strategy,omitempty" yaml:"grouping_strategy,omitempty"`
+	MaxEntriesToBuild              *int      `json:"max_entries_to_build,omitempty" yaml:"max_entries_to_build,omitempty"`
+	MaxEntriesToMerge              *int      `json:"max_entries_to_merge,omitempty" yaml:"max_entries_to_merge,omitempty"`
+	MergeMethod                    *string   `json:"merge_method,omitempty" yaml:"merge_method,omitempty"`
+	MinEntriesToMerge              *int      `json:"min_entries_to_merge,omitempty" yaml:"min_entries_to_merge,omitempty"`
+	MinEntriesToMergeWaitMinutes   *int      `json:"min_entries_to_merge_wait_minutes,omitempty" yaml:"min_entries_to_merge_wait_minutes,omitempty"`
+
 	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
 	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
@@ -69,6 +77,9 @@ func (p *RuleParameters) hasAnalysis() bool {
 func (p *RuleParameters) hasCoverage() bool {
 	return p != nil && (p.MinimumCoverage != nil || p.MaxCoverageDrop != nil)
 }
+func (p *RuleParameters) hasQueue() bool {
+	return p != nil && (p.CheckResponseTimeoutMinutes != nil || p.GroupingStrategy != nil || p.MaxEntriesToBuild != nil || p.MaxEntriesToMerge != nil || p.MergeMethod != nil || p.MinEntriesToMerge != nil || p.MinEntriesToMergeWaitMinutes != nil)
+}
 func reviewActorKey(a ReviewActor) string { return fmt.Sprintf("%s:%d", a.Type, a.ID) }
 func checkKey(c RequiredStatusCheck) string {
 	if c.IntegrationID == nil {
@@ -81,6 +92,9 @@ func validateRule(r RulesetRule, complete bool) error {
 		return fmt.Errorf("unsupported ruleset rule %q", r.Type)
 	}
 	p := r.Parameters
+	if r.Type != "merge_queue" && p.hasQueue() {
+		return fmt.Errorf("merge queue parameters do not belong to %s", r.Type)
+	}
 	if r.Type != "update" && p != nil && p.UpdateAllowsFetchAndMerge != nil {
 		return fmt.Errorf("update parameters do not belong to %s", r.Type)
 	}
@@ -119,8 +133,21 @@ func validateRule(r RulesetRule, complete bool) error {
 		if complete && (p == nil || p.ReviewDraftPullRequests == nil || p.ReviewOnPush == nil) {
 			return fmt.Errorf("copilot_code_review requires complete review options")
 		}
+	case "merge_queue":
+		if p == nil || p.CheckResponseTimeoutMinutes == nil || p.GroupingStrategy == nil || p.MaxEntriesToBuild == nil || p.MaxEntriesToMerge == nil || p.MergeMethod == nil || p.MinEntriesToMerge == nil || p.MinEntriesToMergeWaitMinutes == nil {
+			return fmt.Errorf("merge_queue requires all queue parameters")
+		}
+		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
+			return fmt.Errorf("parameters do not belong to merge_queue")
+		}
+		if !slices.Contains([]string{"ALLGREEN", "HEADGREEN"}, *p.GroupingStrategy) || !slices.Contains([]string{"MERGE", "SQUASH", "REBASE"}, *p.MergeMethod) {
+			return fmt.Errorf("unsupported merge queue choice")
+		}
+		if *p.MaxEntriesToBuild < 0 || *p.MaxEntriesToBuild > 100 || *p.MinEntriesToMerge < 0 || *p.MaxEntriesToMerge > 100 || *p.MinEntriesToMerge > *p.MaxEntriesToMerge || *p.CheckResponseTimeoutMinutes < 1 || *p.CheckResponseTimeoutMinutes > 360 || *p.MinEntriesToMergeWaitMinutes < 0 || *p.MinEntriesToMergeWaitMinutes > 360 {
+			return fmt.Errorf("invalid merge queue limits")
+		}
 	case "pull_request":
-		if p.hasChecks() || p.hasAnalysis() {
+		if p.hasChecks() || p.hasAnalysis() || p.hasQueue() {
 			return fmt.Errorf("parameters do not belong to pull_request")
 		}
 		if complete && (p == nil || p.AllowedMergeMethods == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireExtraApprovalForUnattributedChanges == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil || p.RequiredReviewers == nil) {
@@ -186,7 +213,7 @@ func validateRule(r RulesetRule, complete bool) error {
 			}
 		}
 	case "required_status_checks":
-		if p.hasPR() || p.hasAnalysis() {
+		if p.hasPR() || p.hasAnalysis() || p.hasQueue() {
 			return fmt.Errorf("parameters do not belong to required_status_checks")
 		}
 		if complete && (p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil || p.DoNotEnforceOnCreate == nil) {
@@ -209,7 +236,7 @@ func validateRule(r RulesetRule, complete bool) error {
 		if p == nil || p.CodeScanningTools == nil {
 			return fmt.Errorf("code_scanning requires code_scanning_tools")
 		}
-		if p.hasPR() || p.hasChecks() || p.Severity != nil || p.hasCoverage() {
+		if p.hasPR() || p.hasChecks() || p.hasQueue() || p.Severity != nil || p.hasCoverage() {
 			return fmt.Errorf("parameters do not belong to code_scanning")
 		}
 		seen := map[string]bool{}
@@ -231,7 +258,7 @@ func validateRule(r RulesetRule, complete bool) error {
 		if _, valid := RulesetQualitySeverityChoiceForValue(*p.Severity); !valid {
 			return fmt.Errorf("code_quality requires supported severity")
 		}
-		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil || p.hasCoverage() {
+		if p.hasPR() || p.hasChecks() || p.hasQueue() || p.CodeScanningTools != nil || p.hasCoverage() {
 			return fmt.Errorf("parameters do not belong to code_quality")
 		}
 	case "code_coverage":
@@ -247,7 +274,7 @@ func validateRule(r RulesetRule, complete bool) error {
 			}
 		}
 	default:
-		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
+		if p.hasPR() || p.hasChecks() || p.hasAnalysis() || p.hasQueue() {
 			return fmt.Errorf("rule %q has no parameters", r.Type)
 		}
 	}
@@ -281,6 +308,14 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 	out.ReviewOnPush = copyRuleValue(p.ReviewOnPush)
 	out.MinimumCoverage = copyRuleValue(p.MinimumCoverage)
 	out.MaxCoverageDrop = copyRuleValue(p.MaxCoverageDrop)
+	out.CheckResponseTimeoutMinutes = copyRuleValue(p.CheckResponseTimeoutMinutes)
+	out.GroupingStrategy = copyRuleValue(p.GroupingStrategy)
+	out.MaxEntriesToBuild = copyRuleValue(p.MaxEntriesToBuild)
+	out.MaxEntriesToMerge = copyRuleValue(p.MaxEntriesToMerge)
+	out.MergeMethod = copyRuleValue(p.MergeMethod)
+	out.MinEntriesToMerge = copyRuleValue(p.MinEntriesToMerge)
+	out.MinEntriesToMergeWaitMinutes = copyRuleValue(p.MinEntriesToMergeWaitMinutes)
+
 	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
 	if out.CodeScanningTools != nil {
 		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
@@ -358,7 +393,7 @@ func compareReviewActor(a, b ReviewActor) int {
 }
 func cloneRulesetRule(r RulesetRule) RulesetRule {
 	r.Parameters = cloneRuleParameters(r.Parameters)
-	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil && !r.Parameters.hasCopilot() {
+	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil && !r.Parameters.hasCopilot() && !r.Parameters.hasQueue() {
 		r.Parameters = nil
 	}
 	return r

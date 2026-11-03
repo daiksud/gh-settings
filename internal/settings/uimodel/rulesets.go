@@ -33,6 +33,7 @@ type RulesetRules struct {
 	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
 	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
 	RestrictCodeCoverage                                                                               *CodeCoverageRule
+	RequireMergeQueue                                                                                  *MergeQueueRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -155,3 +156,14 @@ type TagTargets struct {
 
 // DeploymentsRule selects the environments that must deploy before merging.
 type DeploymentsRule struct{ RequiredDeploymentEnvironments *[]string }
+
+// MergeQueueRule requires explicit settings; observations never borrow defaults.
+type MergeQueueRule struct {
+	MergeMethod                                *MergeMethod
+	BuildConcurrency                           *int
+	MinimumGroupSize                           *int
+	MaximumGroupSize                           *int
+	WaitTimeToMeetMinimumGroupSizeMinutes      *int
+	RequireAllQueueEntriesToPassRequiredChecks *bool
+	StatusCheckTimeoutMinutes                  *int
+}
