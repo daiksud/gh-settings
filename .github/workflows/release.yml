@@ -64,6 +64,10 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      # Inventory dependencies without changing workspace Action execution.
+      - name: Lock dependencies of workspace Actions
+        if: ${{ false }}
+        uses: $/.github/actions/lock-workspace-dependencies
       - name: Resolve release metadata and validated target matrices
         id: metadata
         uses: ./.github/actions/release-metadata

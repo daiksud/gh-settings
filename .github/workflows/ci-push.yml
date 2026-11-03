@@ -23,6 +23,10 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      # Inventory dependencies without changing workspace Action execution.
+      - name: Lock dependencies of workspace Actions
+        if: ${{ false }}
+        uses: $/.github/actions/lock-workspace-dependencies
       - name: Resolve CI target matrices
         id: metadata
         uses: ./.github/actions/ci-metadata

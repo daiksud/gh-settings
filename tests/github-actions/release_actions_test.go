@@ -218,7 +218,7 @@ func TestReleaseWorkflowCanonicalBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != "7255a17f3d55957e1b85f6d2698d671a7aabf28afd971b7083efdcfbdadc948f" {
+	if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != "c57d3e7965fe2f2923fa7ff3bbfabf2da27d1629bfdc51486c214d818c3a5f42" {
 		t.Fatalf("canonical release workflow digest=%s", got)
 	}
 	if strings.Contains(string(data), "${{ needs.resolve.outputs.source-sha }}") {
