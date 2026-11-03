@@ -20,10 +20,11 @@ under the [code-review policy](.agents/skills/code-review/SKILL.md).
 
 ## Repository settings changes
 
-Use the reviewed `.github/settings.yml` and existing `settings-main` workflow
+Use the reviewed `.github/settings.yml` and manual `apply-settings` workflow
 for this repository's normal settings changes. Read the
 [settings change procedure](docs/contributing/repository-automation.md#repository-settings-changes)
-before choosing an execution path or recovering created resource IDs. The
+before choosing an execution path or recovering created resource IDs. After
+merge, dispatch it from `main`; settings are not applied automatically. The
 hosted workflow uses its own App authentication; local CLI authentication is
 not a prerequisite. Verify the relevant apply run and remote state, then
 record confirmed creation IDs through the documented follow-up PR procedure.

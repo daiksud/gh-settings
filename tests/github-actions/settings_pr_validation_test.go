@@ -8,33 +8,33 @@ import (
 	"testing"
 )
 
-func TestSettingsPRMergeIdentityAndPaths(t *testing.T) {
+func TestSettingsPRMergeIdentity(t *testing.T) {
 	w, _ := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
-	prepare := findStep(t, w.Jobs["settings-plan"], "candidate")
+	prepare := findStep(t, w.Jobs["settings-validate"], "candidate")
 	realGit, err := exec.LookPath("git")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, test := range []struct {
-		name, change, eligible string
-		fail                   bool
+		name, change string
+		fail         bool
 	}{
-		{"unrelated file", "readme", "false", false},
-		{"settings changed", "settings", "true", false},
-		{"PR workflow changed", "pr-workflow", "true", false},
-		{"main workflow changed", "main-workflow", "true", false},
-		{"nested example added", "example", "true", false},
-		{"settings deleted", "delete", "true", false},
-		{"settings renamed away", "rename-away", "true", false},
-		{"example renamed in", "rename-in", "true", false},
-		{"similar directory excluded", "lookalike", "false", false},
-		{"event head moved", "head-moved", "", true},
-		{"event base moved", "base-moved", "", true},
-		{"invalid event SHA", "invalid-sha", "", true},
-		{"checkout is not a merge", "not-merge", "", true},
-		{"missing parent history", "missing-history", "", true},
-		{"shallow checkout with parents", "shallow", "false", false},
-		{"replacement object ignored", "replace", "false", false},
+		{"unrelated file", "readme", false},
+		{"settings changed", "settings", false},
+		{"PR workflow changed", "pr-workflow", false},
+		{"main workflow changed", "main-workflow", false},
+		{"nested example added", "example", false},
+		{"settings deleted", "delete", false},
+		{"settings renamed away", "rename-away", false},
+		{"example renamed in", "rename-in", false},
+		{"similar directory excluded", "lookalike", false},
+		{"event head moved", "head-moved", true},
+		{"event base moved", "base-moved", true},
+		{"invalid event SHA", "invalid-sha", true},
+		{"checkout is not a merge", "not-merge", true},
+		{"missing parent history", "missing-history", true},
+		{"shallow checkout with parents", "shallow", false},
+		{"replacement object ignored", "replace", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			directory := t.TempDir()
@@ -79,7 +79,7 @@ func TestSettingsPRMergeIdentityAndPaths(t *testing.T) {
 			git("config", "commit.gpgsign", "false")
 			write(".github/settings.yml", "version: daiksud/gh-settings@v0\n")
 			write(".github/workflows/settings-pr.yml", "name: fixture\n")
-			write(".github/workflows/settings-main.yml", "name: fixture\n")
+			write(".github/workflows/apply-settings.yml", "name: fixture\n")
 			write("README.md", "base\n")
 			// Neither Python startup imports nor Git conversion programs from
 			// candidate content may execute during identity/path inspection.
@@ -99,7 +99,7 @@ func TestSettingsPRMergeIdentityAndPaths(t *testing.T) {
 			case "pr-workflow":
 				write(".github/workflows/settings-pr.yml", "name: changed\n")
 			case "main-workflow":
-				write(".github/workflows/settings-main.yml", "name: changed\n")
+				write(".github/workflows/apply-settings.yml", "name: changed\n")
 			case "example":
 				write("examples/github-actions/nested/workflow.yml", "name: added\n")
 			case "delete":
@@ -169,11 +169,11 @@ func TestSettingsPRMergeIdentityAndPaths(t *testing.T) {
 			}
 			if test.fail {
 				if len(output) != 0 || !strings.Contains(string(log), "merge candidate validation failed") {
-					t.Fatalf("failed identity/path check published eligibility: %q\n%s", output, log)
+					t.Fatalf("failed identity check published output: %q\n%s", output, log)
 				}
-			} else if string(output) != "plan-required="+test.eligible+"\n" ||
+			} else if len(output) != 0 ||
 				!strings.Contains(string(log), merge) || !strings.Contains(string(log), base) || !strings.Contains(string(log), head) {
-				t.Fatalf("wrong eligibility or verified identity: %q\n%s", output, log)
+				t.Fatalf("unexpected output or verified identity: %q\n%s", output, log)
 			}
 			if strings.Contains(string(log), "must-not-leak") || strings.Contains(string(log), "untrusted-value") {
 				t.Fatal("candidate identity or credentials leaked in failure output")

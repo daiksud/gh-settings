@@ -155,7 +155,7 @@ Inspect all candidate workflow YAML as data and permit each credential-bearing E
 
 Run the policy from a separately protected source, so a PR cannot change both an unsafe workflow and the test that is supposed to reject it. A trusted `pull_request_target` checker must have minimal read permissions and no apply credential. Never execute candidate code or install candidate-selected dependencies; do not run candidate local Actions or downloaded PR artifacts as code. Confirm that GitHub's applicable event policy allows the checker to run; see [secure use of `pull_request_target`](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target).
 
-This repository's [Environment guard](contributing/repository-automation.md#active-repository-environment-guard) illustrates the scope check and its limits. It is not included in the two consumer examples. Its location/event check does not assess every command inside the permitted apply job; owner review must still cover steps, Action revisions and credential handling.
+This repository's [Environment scope tests](contributing/repository-automation.md#repository-environment-scope-tests) illustrate the scope check and its limits. They run with candidate source in ordinary CI, so they do not supply an independent trusted policy. They are not included in the two consumer examples. Owner review must still cover apply steps, Action revisions and credential handling.
 
 #### A check name is not a workflow identity
 

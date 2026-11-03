@@ -18,8 +18,8 @@ func TestSettingsPRValidationUsesTrustedConsumer(t *testing.T) {
 		!reflect.DeepEqual(trigger["types"], []string{"opened", "synchronize", "reopened", "edited"}) {
 		t.Fatal("the required validator must run for every main PR update, without path filtering")
 	}
-	j, present := w.Jobs[settingsPlanCheckName]
-	if !present || len(w.Jobs) != 2 || len(w.Permissions) != 0 || len(w.Env) != 0 || w.Defaults.Run.Shell != "bash" ||
+	j, present := w.Jobs[settingsValidateCheckName]
+	if !present || len(w.Jobs) != 1 || len(w.Permissions) != 0 || len(w.Env) != 0 || w.Defaults.Run.Shell != "bash" ||
 		j.If != "" || j.Needs != "" || j.Environment != "" || j.Continue || j.Runner != "ubuntu-24.04" || j.Timeout != 10 || len(j.Env) != 0 ||
 		!reflect.DeepEqual(j.Permissions, map[string]string{"contents": "read"}) {
 		t.Fatal("required validation must execute independently without an Environment or write credential")
@@ -28,8 +28,8 @@ func TestSettingsPRValidationUsesTrustedConsumer(t *testing.T) {
 		j.Concurrency.Group != "settings-pr-validation-${{ github.repository }}-${{ github.event.pull_request.number }}" {
 		t.Fatal("validation must have its own non-cancelling group")
 	}
-	if !reflect.DeepEqual(j.Outputs, map[string]string{"plan-required": "${{ steps.candidate.outputs.plan-required }}"}) {
-		t.Fatal("only path eligibility may cross from validation to privileged plan")
+	if len(j.Outputs) != 0 {
+		t.Fatal("validate-only workflow must not publish plan eligibility")
 	}
 	if len(j.Steps) != 3 || j.Steps[0].Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
 		!reflect.DeepEqual(j.Steps[0].With, map[string]string{

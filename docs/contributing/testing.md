@@ -200,7 +200,7 @@ Examples and active main callers use the same single-job apply pattern: three `u
 
 ## Release and publication evidence
 
-The [shared Python tests](../../.github/scripts/test_release_version.py) exercise version precedence, publication-order selection, complete frozen Git ranges and retry identity. The independent [release-version-tests workflow](../../.github/workflows/release-version-tests.yml) runs them on pull requests and main pushes that change the resolver, its Python tests, or that workflow itself. It is not a required check or a dependency of the product build, acceptance, or release jobs. Keeping these tests in a separate checkout also prevents their untracked Python bytecode caches from marking the product build's VCS metadata as modified. Run them locally when changing the resolver or its tests:
+The [shared Python tests](../../.github/scripts/test_release_version.py) exercise version precedence, publication-order selection, complete frozen Git ranges and retry identity. These Python tests remain available locally; there is no dedicated workflow running them. Run them locally when changing the resolver or its tests:
 
 ```sh
 python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
