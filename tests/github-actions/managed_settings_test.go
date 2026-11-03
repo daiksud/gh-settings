@@ -93,7 +93,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 	if actor.ActorType != "RepositoryRole" || actor.ActorID == nil || *actor.ActorID != 5 || actor.BypassMode == nil || *actor.BypassMode != "pull_request" {
 		t.Fatalf("retain only the observed administrator pull-request bypass: %+v", actor)
 	}
-	approval, signed, linear, nativeChecks, scanning, quality := false, false, false, false, false, false
+	approval, signatureRequired, linear, nativeChecks, scanning, quality := false, false, false, false, false, false
 	for _, rule := range *ruleset.Rules {
 		switch rule.Type {
 		case "pull_request":
@@ -119,7 +119,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 			}
 			nativeChecks = len(want) == 0
 		case "required_signatures":
-			signed = true
+			signatureRequired = true
 		case "required_linear_history":
 			linear = true
 		case "code_scanning":
@@ -131,8 +131,8 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 			quality = p != nil && p.Severity != nil && *p.Severity == "errors"
 		}
 	}
-	if !approval || !signed || !linear || !nativeChecks || !scanning || !quality {
-		t.Fatal("the main Ruleset must keep approvals, signatures, history, all four native checks, CodeQL and code quality")
+	if !approval || signatureRequired || !linear || !nativeChecks || !scanning || !quality {
+		t.Fatal("the main Ruleset must keep approvals, history, all four native checks, CodeQL and code quality, without requiring signatures")
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.
