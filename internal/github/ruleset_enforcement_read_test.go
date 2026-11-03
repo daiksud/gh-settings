@@ -12,7 +12,7 @@ import (
 )
 
 func TestRulesetEnforcementHTTPReadRetainsIDBoundRawEvidence(t *testing.T) {
-	for _, token := range []string{"active", "disabled", "evaluate", "FUTURE_MODE", "", " \t"} {
+	for _, token := range []string{"active", "disabled", "evaluate", "FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		t.Run(token, func(t *testing.T) {
 			calls := 0
 			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
@@ -48,7 +48,7 @@ func TestRulesetEnforcementHTTPReadRetainsIDBoundRawEvidence(t *testing.T) {
 				t.Fatal(values, calls, err)
 			}
 			wantPolicy, wantRecord := token, settings.ObservationNormalization{}
-			if token != "active" && token != "disabled" {
+			if token != "active" && token != "disabled" && token != "evaluate" {
 				wantPolicy = "disabled"
 				wantRecord = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: token, Fallback: "disabled"}
 			}
@@ -87,7 +87,7 @@ func TestRulesetEnforcementHTTPReadErrorsDiscardWholeCollection(t *testing.T) {
 			}
 			var raw map[string]json.RawMessage
 			json.Unmarshal([]byte(basicRulesetJSON), &raw)
-			raw["enforcement"] = json.RawMessage(`"evaluate"`)
+			raw["enforcement"] = json.RawMessage(`"FUTURE_ENFORCEMENT"`)
 			if strings.HasSuffix(req.URL.Path, "/8") {
 				raw["id"] = json.RawMessage(`8`)
 				raw["name"] = json.RawMessage(`"later"`)

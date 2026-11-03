@@ -57,7 +57,7 @@ func TestRulesetBypassObservationOwnsIdentityBoundRawModes(t *testing.T) {
 				t.Fatal("raw actor pointer alias", again, err)
 			}
 			if companions {
-				if enf, err := values[0].RawEnforcement(); err != nil || enf != "evaluate" {
+				if enf, err := values[0].RawEnforcement(); err != nil || enf != "FUTURE_ENFORCEMENT" {
 					t.Fatal("enforcement companion lost", enf, err)
 				}
 				if quality, err := values[0].RawQualitySeverity(); err != nil || quality == nil || *quality != "FUTURE_SEVERITY" {

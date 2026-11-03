@@ -61,7 +61,7 @@ func TestRulesetBypassPrewriteWarningsKeepIdentityOwnershipAndIndependentSinks(t
 						}
 					}
 					if scalar {
-						records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+						records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 					}
 					var change settings.RulesetChange
 					if records.IsZero() {

@@ -64,7 +64,7 @@ func TestRulesetQualityWarningsComposeOnlyCompleteOwnedFreshEvidence(t *testing.
 								body["source_type"] = "Organization"
 							}
 							if test.mode == "future both" || test.mode == "unrelated invalid" {
-								body["enforcement"] = "evaluate"
+								body["enforcement"] = "FUTURE_ENFORCEMENT"
 							}
 							if test.mode == "unrelated invalid" {
 								body["future"] = true
@@ -90,11 +90,11 @@ func TestRulesetQualityWarningsComposeOnlyCompleteOwnedFreshEvidence(t *testing.
 					var want []diagnostic
 					if test.sink {
 						if both {
-							want = append(want, diagnostic{7, "quality", settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}})
+							want = append(want, diagnostic{7, "quality", settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}})
 						}
 						want = append(want, diagnostic{7, "quality", settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}})
 						if test.freshEnforcement {
-							want = append(want, diagnostic{7, "fresh quality", settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}})
+							want = append(want, diagnostic{7, "fresh quality", settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}})
 						}
 						if test.freshQuality {
 							name := "fresh quality"

@@ -30,7 +30,7 @@ func mergeMethodsReadBody(methods any, companions bool) map[string]any {
 		}
 	}
 	if companions {
-		body["enforcement"] = "evaluate"
+		body["enforcement"] = "FUTURE_ENFORCEMENT"
 		body["bypass_actors"] = []any{map[string]any{"actor_type": "Team", "actor_id": 9, "bypass_mode": "FUTURE_MODE"}}
 	}
 	return body
@@ -55,7 +55,7 @@ func TestMergeMethodsCompleteDecoderPreservesAllEvidenceAndStrictVerification(t 
 			if normalized && (!slices.Equal(records.MergeMethods.RawValue, methods) || !slices.Equal(records.MergeMethods.Fallback, []string{"merge", "squash", "rebase"})) {
 				t.Fatal(records)
 			}
-			if companions && (records.Enforcement.RawValue != "evaluate" || records.RequiredApprovals.RawValue != 11 || records.QualitySeverity.RawValue != "FUTURE_SEVERITY" || len(records.BypassModes) != 1 || records.BypassModes[0].Normalization.RawValue != "FUTURE_MODE") {
+			if companions && (records.Enforcement.RawValue != "FUTURE_ENFORCEMENT" || records.RequiredApprovals.RawValue != 11 || records.QualitySeverity.RawValue != "FUTURE_SEVERITY" || len(records.BypassModes) != 1 || records.BypassModes[0].Normalization.RawValue != "FUTURE_MODE") {
 				t.Fatal("companion evidence lost", records)
 			}
 			state := settings.RulesetState{ID: 7, Policy: policy, EnforcementNormalization: records.Enforcement, RequiredApprovalsNormalization: records.RequiredApprovals, MergeMethodsNormalization: records.MergeMethods, QualitySeverityNormalization: records.QualitySeverity, BypassModeNormalizations: records.BypassModes}

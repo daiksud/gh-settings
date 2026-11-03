@@ -80,7 +80,7 @@ func TestTeamApprovalsMappingAndOwnedObservation(t *testing.T) {
 		if *reviewers[0].MinimumApprovals != 0 || *reviewers[1].MinimumApprovals != 3 || *reviewers[2].MinimumApprovals != 0 {
 			t.Fatal("export used raw counts", reviewers)
 		}
-		if companions && (fresh[0].EnforcementNormalization.RawValue != "evaluate" || fresh[0].RequiredApprovalsNormalization.RawValue != 11 || fresh[0].MergeMethodsNormalization.IsZero() || len(fresh[0].BypassModeNormalizations) == 0) {
+		if companions && (fresh[0].EnforcementNormalization.RawValue != "FUTURE_ENFORCEMENT" || fresh[0].RequiredApprovalsNormalization.RawValue != 11 || fresh[0].MergeMethodsNormalization.IsZero() || len(fresh[0].BypassModeNormalizations) == 0) {
 			t.Fatal("companions lost")
 		}
 	}

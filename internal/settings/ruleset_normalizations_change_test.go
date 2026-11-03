@@ -36,7 +36,7 @@ func TestRulesetNormalizationAggregateOwnsIndependentAndCombinedDecisions(t *tes
 			}
 			wantBefore, wantAfter := cloneRuleset(before), cloneRuleset(after)
 			before.Name = "mutated input"
-			*after.Enforcement = "evaluate"
+			*after.Enforcement = "FUTURE_ENFORCEMENT"
 			copy := change.Normalizations()
 			copy.Enforcement.RawValue = "mutated record"
 			copy.QualitySeverity.RawValue = "mutated record"
@@ -115,7 +115,7 @@ func TestRulesetNormalizationAggregatePreservesDismissalOnQualityRemoval(t *test
 	after := cloneRuleset(before)
 	*before.Rules = append(*before.Rules, RulesetRule{Type: "code_quality", Parameters: &RuleParameters{Severity: rsText("errors")}})
 	records := RulesetNormalizations{
-		Enforcement:     ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"},
+		Enforcement:     ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"},
 		QualitySeverity: ObservationNormalization{Path: RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"},
 	}
 	change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)

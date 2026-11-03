@@ -20,7 +20,7 @@ func teamApprovalsReadBody(count int, companions bool) map[string]any {
 	teams[2].(map[string]any)["minimum_approvals"] = count
 	if companions {
 		teams[0].(map[string]any)["minimum_approvals"] = -1
-		body["enforcement"] = "evaluate"
+		body["enforcement"] = "FUTURE_ENFORCEMENT"
 		params["required_approving_review_count"] = 11
 		params["allowed_merge_methods"] = []any{"FUTURE_METHOD"}
 		body["rules"] = append(body["rules"].([]any), map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "FUTURE_SEVERITY"}})
@@ -55,7 +55,7 @@ func TestTeamApprovalsCompleteDecoderRetainsSixIndependentEvidenceFamilies(t *te
 			if !reflect.DeepEqual(records.TeamApprovals, want) {
 				t.Fatal("ID-bound counts lost", records.TeamApprovals, want)
 			}
-			if companions && (records.Enforcement.RawValue != "evaluate" || records.RequiredApprovals.RawValue != 11 || records.MergeMethods.IsZero() || records.QualitySeverity.RawValue != "FUTURE_SEVERITY" || len(records.BypassModes) != 1) {
+			if companions && (records.Enforcement.RawValue != "FUTURE_ENFORCEMENT" || records.RequiredApprovals.RawValue != 11 || records.MergeMethods.IsZero() || records.QualitySeverity.RawValue != "FUTURE_SEVERITY" || len(records.BypassModes) != 1) {
 				t.Fatal("companions lost", records)
 			}
 			state := settings.RulesetState{ID: 7, Policy: policy, EnforcementNormalization: records.Enforcement, RequiredApprovalsNormalization: records.RequiredApprovals, MergeMethodsNormalization: records.MergeMethods, TeamApprovalsNormalizations: records.TeamApprovals, QualitySeverityNormalization: records.QualitySeverity, BypassModeNormalizations: records.BypassModes}

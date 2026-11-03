@@ -20,12 +20,12 @@ func TestNormalizedRulesetEnforcementPresentationRetainsWholeObjectContext(t *te
 		if err := json.Unmarshal([]byte(afterJSON), &after); err != nil {
 			t.Fatal(err)
 		}
-		record := settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+		record := settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 		change, err := settings.NewRulesetDisplayChangeWithNormalizations("update", &before, &after, settings.RulesetNormalizations{Enforcement: record})
 		if err != nil {
 			t.Fatal(err)
 		}
-		warning := `Warning: repository.settings.rulesets.enforcement_status: observed "evaluate" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".`
+		warning := `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".`
 		decision := `repository.settings.rulesets.enforcement_status (Ruleset 7 "policy"): "disabled" (normalized observation) → "` + desired + `" (write required)`
 		whole := `repository.settings.rulesets: update "policy": ` + rulesetPolicy(&before) + ` → ` + rulesetPolicy(&after)
 		want := warning + "\n" + decision + "\nEffective policy: " + whole

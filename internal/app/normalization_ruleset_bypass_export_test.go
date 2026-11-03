@@ -12,7 +12,7 @@ import (
 
 func exportBypassState(t *testing.T, id int64, name string, normalized bool) settings.RulesetState {
 	t.Helper()
-	state := exportEnforcementState(t, id, name, "evaluate", normalized && name == "z")
+	state := exportEnforcementState(t, id, name, "FUTURE_ENFORCEMENT", normalized && name == "z")
 	always, exempt, team2, team10 := "always", "exempt", int64(2), int64(10)
 	state.Policy.BypassActors = &[]settings.BypassActor{
 		{ActorType: "Team", ActorID: &team10, BypassMode: &always},

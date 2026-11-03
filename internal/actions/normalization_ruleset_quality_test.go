@@ -35,7 +35,7 @@ func qualityReportChange(t *testing.T, raw, desired string, both bool) settings.
 	if both {
 		status := "disabled"
 		before.Enforcement, after.Enforcement = &status, &status
-		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 	}
 	change, err := settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)
 	if err != nil {
