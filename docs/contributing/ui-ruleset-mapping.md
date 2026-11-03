@@ -100,6 +100,20 @@ Branch rules and Tag rules are subheadings under Rules, selected by the target o
 
 Each bypass entry selects exactly one actor and explicitly supplies its mode. `deploy_keys: false`, multiple selectors, nonpositive dynamic IDs and unsupported role tokens are invalid. Existing target dependencies remain enforced, including no pull-request bypass for tag Rulesets or deploy keys.
 
+## Metadata restriction mapping
+
+The active metadata controls are `R.rules.restrict_commit_message`,
+`restrict_commit_author_email`, `restrict_committer_email`,
+`restrict_branch_names` and `restrict_tag_names`. They select the REST types
+`commit_message_pattern`, `commit_author_email_pattern`,
+`committer_email_pattern`, `branch_name_pattern` and `tag_name_pattern`.
+Each maps `description` to optional `name`, and `pattern` exactly. The explicit
+requirement maps to the four matching operators and optional true negation;
+false/absent negation both mean a positive requirement. A repeated type fails
+rather than losing a second restriction. The
+[public contract](../settings.md#metadata-restrictions) owns requirements,
+permissions, entitlement limits and omission semantics.
+
 ## Review dismissal presence and write-only limits
 
 Omitting both dismissal controls preserves an absent/unacquired restriction, never an invented false value. Selecting either field creates a desired restriction object; the existing selected-object constructor alone supplies omitted false/empty members. A nonempty actor list requires an explicit true checkbox. False with an explicit empty list remains a disabled/cleared state. Each actor selects exactly one verified role or positive dynamic Team/App/User identity. The App value is an **installation ID**, matching `IntegrationInstallation`; it is not the bypass list's `Integration` App-ID namespace.

@@ -24,6 +24,10 @@ type RuleParameters struct {
 	MinEntriesToMerge              *int      `json:"min_entries_to_merge,omitempty" yaml:"min_entries_to_merge,omitempty"`
 	MinEntriesToMergeWaitMinutes   *int      `json:"min_entries_to_merge_wait_minutes,omitempty" yaml:"min_entries_to_merge_wait_minutes,omitempty"`
 
+	Name                                       *string                     `json:"name,omitempty" yaml:"name,omitempty"`
+	Negate                                     *bool                       `json:"negate,omitempty" yaml:"negate,omitempty"`
+	Operator                                   *string                     `json:"operator,omitempty" yaml:"operator,omitempty"`
+	Pattern                                    *string                     `json:"pattern,omitempty" yaml:"pattern,omitempty"`
 	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
 	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
@@ -103,6 +107,18 @@ func validateRule(r RulesetRule, complete bool) error {
 	}
 	if r.Type != "copilot_code_review" && p.hasCopilot() {
 		return fmt.Errorf("Copilot parameters do not belong to %s", r.Type)
+	}
+	if p.hasMetadata() && !IsMetadataPatternRule(r.Type) {
+		return fmt.Errorf("metadata parameters do not belong to %s", r.Type)
+	}
+	if IsMetadataPatternRule(r.Type) {
+		if p == nil || p.Operator == nil || p.Pattern == nil {
+			return fmt.Errorf("%s requires operator and pattern", r.Type)
+		}
+		if !slices.Contains([]string{"starts_with", "ends_with", "contains", "regex"}, *p.Operator) || p.hasPR() || p.hasChecks() || p.hasAnalysis() {
+			return fmt.Errorf("invalid parameters for %s", r.Type)
+		}
+		return nil
 	}
 	switch r.Type {
 	case "update":
@@ -316,6 +332,10 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 	out.MinEntriesToMerge = copyRuleValue(p.MinEntriesToMerge)
 	out.MinEntriesToMergeWaitMinutes = copyRuleValue(p.MinEntriesToMergeWaitMinutes)
 
+	out.Name = copyRuleValue(p.Name)
+	out.Negate = copyRuleValue(p.Negate)
+	out.Operator = copyRuleValue(p.Operator)
+	out.Pattern = copyRuleValue(p.Pattern)
 	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
 	if out.CodeScanningTools != nil {
 		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
@@ -393,7 +413,12 @@ func compareReviewActor(a, b ReviewActor) int {
 }
 func cloneRulesetRule(r RulesetRule) RulesetRule {
 	r.Parameters = cloneRuleParameters(r.Parameters)
-	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil && !r.Parameters.hasCopilot() && !r.Parameters.hasQueue() {
+	// The documented flag negates a match only when true. Canonicalize only
+	// known metadata rules; a stray false flag on another rule still fails validation.
+	if IsMetadataPatternRule(r.Type) && r.Parameters != nil && r.Parameters.Negate != nil && !*r.Parameters.Negate {
+		r.Parameters.Negate = nil
+	}
+	if r.Parameters != nil && !r.Parameters.hasPR() && !r.Parameters.hasChecks() && !r.Parameters.hasAnalysis() && r.Parameters.UpdateAllowsFetchAndMerge == nil && r.Parameters.RequiredDeploymentEnvironments == nil && !r.Parameters.hasCopilot() && !r.Parameters.hasQueue() && !r.Parameters.hasMetadata() {
 		r.Parameters = nil
 	}
 	return r

@@ -71,6 +71,21 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		p := ui.RestrictCodeCoverage
 		result = append(result, settings.RulesetRule{Type: "code_coverage", Parameters: &settings.RuleParameters{MinimumCoverage: copyUIRulesetValue(p.MinimumLineCoveragePercentage), MaxCoverageDrop: copyUIRulesetValue(p.MaximumLineCoverageDrop)}})
 	}
+	for _, entry := range []struct {
+		ui   *uimodel.MetadataPatternRule
+		kind string
+	}{
+		{ui.RestrictCommitMessage, "commit_message_pattern"}, {ui.RestrictCommitAuthorEmail, "commit_author_email_pattern"}, {ui.RestrictCommitterEmail, "committer_email_pattern"}, {ui.RestrictBranchNames, "branch_name_pattern"}, {ui.RestrictTagNames, "tag_name_pattern"},
+	} {
+		if entry.ui == nil {
+			continue
+		}
+		p, err := declareUIMetadataPattern(*entry.ui)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, settings.RulesetRule{Type: entry.kind, Parameters: p})
+	}
 	return &result, nil
 }
 
@@ -127,6 +142,23 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 		case "code_coverage":
 			p := rule.Parameters
 			result.RestrictCodeCoverage = &uimodel.CodeCoverageRule{MinimumLineCoveragePercentage: copyUIRulesetValue(p.MinimumCoverage), MaximumLineCoverageDrop: copyUIRulesetValue(p.MaxCoverageDrop)}
+		case "commit_message_pattern", "commit_author_email_pattern", "committer_email_pattern", "branch_name_pattern", "tag_name_pattern":
+			ui, err := observeUIMetadataPattern(rule.Parameters)
+			if err != nil {
+				return uimodel.RulesetRules{}, err
+			}
+			switch rule.Type {
+			case "commit_message_pattern":
+				result.RestrictCommitMessage = ui
+			case "commit_author_email_pattern":
+				result.RestrictCommitAuthorEmail = ui
+			case "committer_email_pattern":
+				result.RestrictCommitterEmail = ui
+			case "branch_name_pattern":
+				result.RestrictBranchNames = ui
+			case "tag_name_pattern":
+				result.RestrictTagNames = ui
+			}
 		default:
 			return uimodel.RulesetRules{}, fmt.Errorf("ruleset rule has no prepared UI mapping: %s", rule.Type)
 		}

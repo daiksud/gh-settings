@@ -69,7 +69,7 @@ func validRulesetText(value string) bool {
 	return true
 }
 func supportedRule(kind string) bool {
-	return slices.Contains([]string{"copilot_code_review", "code_coverage", "merge_queue", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments"}, kind)
+	return slices.Contains([]string{"copilot_code_review", "code_coverage", "merge_queue", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments", "commit_message_pattern", "commit_author_email_pattern", "committer_email_pattern", "branch_name_pattern", "tag_name_pattern"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.ID != nil && *d.ID <= 0 {
@@ -110,6 +110,9 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 			seen[r.Type] = true
 			if (r.Type == "pull_request" || r.Type == "required_deployments" || r.Type == "copilot_code_review" || r.Type == "code_coverage" || r.Type == "merge_queue") && d.Target != nil && *d.Target != "branch" {
 				return fmt.Errorf("%s rule requires branch target", r.Type)
+			}
+			if d.Target != nil && ((r.Type == "branch_name_pattern" && *d.Target != "branch") || (r.Type == "tag_name_pattern" && *d.Target != "tag")) {
+				return fmt.Errorf("%s rule does not match ruleset target", r.Type)
 			}
 			if err := validateRule(r, complete); err != nil {
 				return err

@@ -384,6 +384,56 @@ Merge method accepts `merge`, `squash`, or `rebase`. Build concurrency accepts 0
 
 This is a repository-level rule. [Merge queues](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue) require an organization-owned public repository, or an organization-owned private repository using GitHub Enterprise Cloud. Personal repositories are not eligible. The tool does not infer entitlement or change workflows; required GitHub Actions checks need the `merge_group` event configured separately. The [official API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) defines the numeric ranges; zero group sizes retain their API meaning even though general UI help describes 1–100. The [Ruleset-specific controls](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-merge-queue) explicitly support concurrency zero. Organization/Enterprise-level Rulesets remain outside management.
 
+### Metadata restrictions
+
+The following optional objects select one metadata restriction each under `rules`:
+`restrict_commit_message`, `restrict_commit_author_email`,
+`restrict_committer_email`, `restrict_branch_names` and `restrict_tag_names`.
+Branch names require a branch target; tag names require a tag target. Commit
+metadata can be selected on either target.
+
+```yaml
+rules:
+  restrict_commit_message:
+    description: issue reference
+    requirement: must_start_with_matching_pattern
+    pattern: 'issue: '
+  restrict_branch_names:
+    requirement: must_match_given_regex_pattern
+    pattern: '^(main|feature/.*)$'
+```
+
+Each object requires `requirement` and an explicitly present string `pattern`.
+An optional `description` preserves the exact displayed name, including an empty
+string. Requirements are `must_start_with_matching_pattern`,
+`must_not_start_with_matching_pattern`, `must_end_with_matching_pattern`,
+`must_not_end_with_matching_pattern`, `must_contain_matching_pattern`,
+`must_not_contain_matching_pattern`, `must_match_given_regex_pattern` and
+`must_not_match_given_regex_pattern`. Positive requirements do not negate the
+match; negative requirements do. Native optional `negate: false` and absence
+have the same non-negating policy. Export represents both as a positive
+requirement. No pattern text is trimmed or rewritten. Regex execution and API
+validation remain GitHub's responsibility; the CLI does not test the policy
+against repository history.
+
+Omitting a restriction removes that rule from the selected whole Ruleset.
+Acquired missing/null/wrong-type required fields, unknown operators, unknown
+parameters and repeated rule types fail the complete read; no restriction is
+discarded to obtain a usable export. Same-type repeated restrictions are not
+supported by this contract. The write response and an independent fresh GET
+must both confirm all observable policy, including restriction removal.
+
+These are repository-level rules, documented by the
+[repository Rulesets REST API](https://docs.github.com/en/rest/repos/rules?apiVersion=2026-03-10#create-a-repository-ruleset).
+Repository Rulesets are available for public repositories on Free and for
+public/private repositories on Pro, Team and Enterprise Cloud. Metadata-specific
+availability must be checked for the target account; the CLI does not infer
+entitlement from repository visibility or an organization membership. Writes
+require repository Administration write permission. This feature does not
+manage organization or enterprise Rulesets, change account plans or grant
+permissions. See GitHub's
+[metadata rule guidance](https://docs.github.com/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#metadata-restrictions).
+
 ### Ruleset enforcement observation normalization
 
 A complete, correctly typed enforcement string outside Active/Disabled/Evaluate, including unknown, empty or whitespace strings, projects to the named `disabled` observation fallback. Preserve the exact raw token and its positive Ruleset ID outside desired policy. Export warns with the UI field, fallback, ID and name, in exported name order. Missing/null/wrong types, incomplete nested policy, ownership/ID failures and incomplete pagination remain acquisition errors without partial export.
