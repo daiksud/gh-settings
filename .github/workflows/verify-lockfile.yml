@@ -1,0 +1,35 @@
+name: verify-lockfile
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions: {contents: read}
+defaults:
+  run:
+    shell: bash
+jobs:
+  verify-lockfile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the official lockfile CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh extension install github/gh-actions-lock --pin v0.4.1
+      - name: Verify the onboarded workflows and upstream provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Keep this scope aligned with the rollout in repository-automation.md.
+        run: |
+          gh actions-lock --verify --no-narrow \
+            .github/workflows/approve-codex-review.yml \
+            .github/workflows/labeler.yml \
+            .github/workflows/prlint.yml \
+            .github/workflows/release-version-tests.yml \
+            .github/workflows/settings-env.yml \
+            .github/workflows/settings-main.yml \
+            .github/workflows/settings-pr.yml \
+            .github/workflows/verify-lockfile.yml
