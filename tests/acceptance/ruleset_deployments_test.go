@@ -18,6 +18,12 @@ import (
 )
 
 func TestRulesetDeploymentsExportPlanApplyRetainsAllProtections(t *testing.T) {
+	for _, target := range []string{"branch", "tag"} {
+		t.Run(target, func(t *testing.T) { rulesetDeploymentsExportPlanApplyRetainsAllProtections(t, target) })
+	}
+}
+
+func rulesetDeploymentsExportPlanApplyRetainsAllProtections(t *testing.T, target string) {
 	binary := acceptanceBinary(t)
 	data, err := os.ReadFile("../fixtures/ruleset-deployments.json")
 	if err != nil {
@@ -27,7 +33,20 @@ func TestRulesetDeploymentsExportPlanApplyRetainsAllProtections(t *testing.T) {
 	if err = json.Unmarshal(data, &state); err != nil {
 		t.Fatal(err)
 	}
-	json.Unmarshal(data, &baseline)
+	if target == "tag" {
+		state["target"], state["enforcement"] = "tag", "disabled"
+		state["conditions"] = map[string]any{"ref_name": map[string]any{"include": []any{"refs/tags/release/*"}, "exclude": []any{}}}
+		var rules []any
+		for _, rule := range state["rules"].([]any) {
+			kind := rule.(map[string]any)["type"]
+			if kind != "pull_request" && kind != "code_scanning" && kind != "code_quality" {
+				rules = append(rules, rule)
+			}
+		}
+		state["rules"] = rules
+	}
+	baselineData, _ := json.Marshal(state)
+	json.Unmarshal(baselineData, &baseline)
 	var mu sync.Mutex
 	writes := 0
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
@@ -136,6 +155,15 @@ func TestRulesetDeploymentsExportPlanApplyRetainsAllProtections(t *testing.T) {
 			"require_code_quality_results":   map[string]any{"severity": "errors"},
 			"require_deployments_to_succeed": map[string]any{"required_deployment_environments": []any{"staging"}},
 		},
+	}
+	if target == "tag" {
+		policy["enforcement_status"] = "disabled"
+		delete(policy, "target_branches")
+		policy["target_tags"] = map[string]any{"include_all_tags": false, "include_by_pattern": []any{"release/*"}, "exclude_by_pattern": []any{}}
+		rules := policy["rules"].(map[string]any)
+		delete(rules, "require_a_pull_request_before_merging")
+		delete(rules, "require_code_scanning_results")
+		delete(rules, "require_code_quality_results")
 	}
 	policies := []any{policy}
 	if !reflect.DeepEqual(actualPolicies, policies) {
