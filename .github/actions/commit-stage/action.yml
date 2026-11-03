@@ -69,7 +69,7 @@ runs:
     - name: Check GitHub workflows and shell scripts
       shell: bash
       run: |
-        actionlint -shellcheck shellcheck .github/workflows/*.yml examples/github-actions/*.yml
+        python3 .github/scripts/lint-workflows.py .github/workflows/*.yml examples/github-actions/*.yml
         shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh
         shellcheck action/*.sh
         shellcheck .github/scripts/*.sh
