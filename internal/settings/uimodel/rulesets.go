@@ -34,9 +34,19 @@ type RulesetRules struct {
 	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
 	RestrictCodeCoverage                                                                               *CodeCoverageRule
 	RequireMergeQueue                                                                                  *MergeQueueRule
+	RestrictCommitMessage, RestrictCommitAuthorEmail, RestrictCommitterEmail                           *MetadataPatternRule
+	RestrictBranchNames, RestrictTagNames                                                              *MetadataPatternRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
+
+// MetadataPatternRule describes one metadata restriction. Positive requirements
+// leave the optional native negate flag absent; negative requirements select it.
+type MetadataPatternRule struct {
+	Description *string
+	Requirement string
+	Pattern     *string
+}
 
 type MergeMethod string
 

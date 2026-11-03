@@ -192,3 +192,25 @@ The [public contract](../settings.md#code-coverage-thresholds) owns Code Quality
 - Local fixtures establish API/CLI behavior, not live entitlement or effective queue enforcement. Organization-owned public repositories or organization-owned private repositories on Enterprise Cloud are required; organization-level Rulesets remain outside scope.
 
 Mapped tests: `TestUIRulesetQueueChoicesAndOwnership`, `TestUIRulesetQueueRequiresExplicitCompleteValidSettings`, `TestRulesetMergeQueueRoundtripAndIncompleteReads`, `TestRulesetMergeQueueMutationVerifiesResponseAndIndependentReadback`, `TestRulesetMergeQueueExportValidatePlanApplyConverges`.
+
+## Rule: Preserve repository metadata restrictions
+
+- The five commit-message/author-email/committer-email/branch-name/tag-name
+  restrictions map independently to typed description, requirement and pattern.
+  Branch/tag name restrictions match their target. Optional description remains
+  exact; patterns are never trimmed. Positive/negative requirements retain
+  operator and negation semantics.
+- Missing/null/wrong-type required data, unknown operators/parameters and repeated
+  types fail complete acquisition. Known false/absent negation has the same
+  positive meaning; acquisition never invents a required operator or pattern.
+- Export and validate preserve every selected restriction and existing companion
+  protection. Plan is read-only. Apply sends the exact selected whole object,
+  checks the acknowledgment and separately reads back the ID-owned policy.
+  Removal also requires readback; retained or changed restrictions fail with
+  uncertain-write reporting. Matching re-execution makes no additional update.
+
+Test mapping: [domain](../../internal/settings/ruleset_metadata_test.go),
+[UI/strict transport](../../internal/github/ui_ruleset_metadata_test.go) and
+[five built-executable sequences](../../tests/acceptance/ruleset_metadata_test.go).
+All fixtures use local APIs and dummy credentials. They establish neither live
+account entitlement nor effective GitHub enforcement or published behavior.
