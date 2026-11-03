@@ -357,7 +357,7 @@ repository:
 
 Every entry requires `ruleset_name`, `enforcement_status` (`active`, `disabled` or `evaluate`) and exactly one of `target_branches`/`target_tags`. `evaluate` tests rules without enforcing them and requires GitHub Enterprise, even for a repository-owned Ruleset ([REST API](https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset)). Selecting it does not manage organization- or Enterprise-owned Rulesets. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting both target objects is invalid. No protected scope is guessed.
 
-Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic rule booleans are `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. The parameterized groups include `restrict_updates` with `allow_fetch_and_merge`, plus `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results` and `require_code_quality_results`, `require_deployments_to_succeed` and `automatically_request_copilot_code_review`. Omitting a rule group removes it; it does not preserve an existing group.
+Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic rule booleans are `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. The parameterized groups include `restrict_updates` with `allow_fetch_and_merge`, plus `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results` and `require_code_quality_results`, `require_deployments_to_succeed` `automatically_request_copilot_code_review` and `restrict_code_coverage`. Omitting a rule group removes it; it does not preserve an existing group.
 
 `restrict_creations: true` allows only bypass actors to create matching branches or tags. `restrict_updates: {allow_fetch_and_merge: false}` allows only bypass actors to update them; selecting an empty object supplies a declaration-only false default. Explicit true allows pulling upstream changes. Both rules support branch and tag targets. Export preserves the acquired upstream-sync flag; an absent, null or malformed flag is an acquisition error. Updates adding, changing or removing either rule require independent whole-policy GET verification after mutation acknowledgment. These repository rules use the standard Rulesets plan availability and Administration write permission; no organization-wide Ruleset is managed. See [GitHub's rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [REST parameter contract](https://docs.github.com/en/rest/repos/rules).
 
@@ -469,13 +469,26 @@ Reviewer file patterns preserve order/repetition, including negations. Other ind
 
 `rules.require_code_quality_results` requires `severity`: `errors`, `warnings_and_higher`, `notes_and_higher` or `all`. These UI choices translate internally; API tokens are not aliases. Complete acquisition is required. The rules constrain merges; they do not enable analysis, create workflows, change entitlement or expand credentials. Include every supported protection that must remain. See [Code Analysis](features/rulesets.feature.md).
 
+### Code coverage thresholds
+
+`rules.restrict_code_coverage` is a branch-only rule with two required explicit numbers: `minimum_line_coverage_percentage` and `maximum_line_coverage_drop`. Both accept finite values from 0 to 100, including fractions; zero disables that threshold. Omitting this rule removes it. Both thresholds must also be present in acquired API state; missing, null, malformed or unknown data fails export/plan/apply without inferring zero or dropping protection.
+
+```yaml
+rules:
+  restrict_code_coverage:
+    minimum_line_coverage_percentage: 80.25
+    maximum_line_coverage_drop: 0
+```
+
+GitHub's [coverage REST announcement](https://github.blog/changelog/2026-09-18-manage-the-code-coverage-ruleset-condition-with-the-rest-api/) makes this repository-level rule available on GitHub Team and Enterprise Cloud, including data residency, with Code Quality enabled and coverage uploads configured; Enterprise Server is excluded. Those prerequisites do not make organization-owned Rulesets part of this tool's scope. The rule evaluates uploaded line coverage and does not wait for uploads. Make each coverage-upload job's check required separately to prevent early merging ([coverage setup](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage)). This rule does not enable Code Quality, configure uploads or alter status checks.
+
 ### Plan, apply, and export
 
 Complete supported observations, including bypass visibility, are required. Unknown writable fields/rules, missing values, invalid types, unreadable details and failed pages stop mutation/export. Inherited organization/enterprise and repository push Rulesets remain outside mutation ownership; push Rulesets are excluded from export with a diagnostic. Other protection can still affect effective behavior.
 
 Plan shows only listed creates/ID updates and default-derived reductions; it never invents deletion of unlisted objects. A nonempty collection counts once as managed. Apply reads fresh state after earlier families, prepares selected operations before the first Rulesets write and writes in stable name order. Fresh comparable matches make no write unless explicit write-only intent exists.
 
-POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis changes require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
+POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis/coverage changes and transitions into or out of Evaluate require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
 
 Review-dismissal restriction is temporarily write-only. Validate/apply accept explicit UI controls; plan rejects them before remote reads, export always omits both even when GET reports them, and successful apply reports API acceptance with the value unverified. An echoed response does not prove storage/enforcement; every repeated explicit apply sends it again. Omitted intent never invents false or borrows an observed value. Missing comparable state and malformed present objects still fail. Replacing a declaration with export loses this explicit write intent.
 

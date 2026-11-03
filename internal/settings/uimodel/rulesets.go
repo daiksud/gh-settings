@@ -32,6 +32,7 @@ type RulesetRules struct {
 	RequireCodeQualityResults                                                                          *CodeQualityRule
 	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
 	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
+	RestrictCodeCoverage                                                                               *CodeCoverageRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -61,6 +62,11 @@ type CopilotCodeReviewRule struct {
 }
 
 type CodeQualityRule struct{ Severity *CodeQualitySeverity }
+
+type CodeCoverageRule struct {
+	MinimumLineCoveragePercentage *float64
+	MaximumLineCoverageDrop       *float64
+}
 
 type StatusChecksRule struct {
 	RequiredStatusChecks                     *[]StatusCheck

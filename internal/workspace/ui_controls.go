@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
 	"strings"
@@ -73,6 +74,15 @@ func decodeUIControl(node *yaml.Node, target reflect.Value, path string) error {
 			}
 		}
 		target.Set(values)
+	case reflect.Float64:
+		if node.Kind != yaml.ScalarNode || (node.Tag != "!!float" && node.Tag != "!!int") {
+			return fmt.Errorf("%s must be a number", path)
+		}
+		var value float64
+		if err := node.Decode(&value); err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+			return fmt.Errorf("%s must be a finite number", path)
+		}
+		target.SetFloat(value)
 	case reflect.Int, reflect.Int64:
 		if node.Kind != yaml.ScalarNode || node.Tag != "!!int" {
 			return fmt.Errorf("%s must be an integer", path)
@@ -155,7 +165,7 @@ func encodeUIControl(value reflect.Value) (*yaml.Node, error) {
 		}
 		return result, nil
 	}
-	if value.Kind() != reflect.Bool && value.Kind() != reflect.String && value.Kind() != reflect.Int64 && value.Kind() != reflect.Int {
+	if value.Kind() != reflect.Bool && value.Kind() != reflect.String && value.Kind() != reflect.Int64 && value.Kind() != reflect.Int && value.Kind() != reflect.Float64 {
 		return nil, fmt.Errorf("unsupported UI control type %s", value.Type())
 	}
 	var result yaml.Node

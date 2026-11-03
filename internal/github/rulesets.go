@@ -334,7 +334,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 		}
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
-				needsReadback = needsReadback || rule.Type == "creation" || rule.Type == "update" || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments" || rule.Type == "copilot_code_review"
+				needsReadback = needsReadback || rule.Type == "creation" || rule.Type == "update" || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments" || rule.Type == "copilot_code_review" || rule.Type == "code_coverage"
 			}
 		}
 	}
@@ -429,7 +429,7 @@ func checkRulesetResponseKeys(value any, context string) error {
 		case "rule":
 			allowed = []string{"type", "parameters"}
 		case "parameters":
-			allowed = []string{"update_allows_fetch_and_merge", "allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity", "required_deployment_environments", "review_draft_pull_requests", "review_on_push"}
+			allowed = []string{"update_allows_fetch_and_merge", "allowed_merge_methods", "dismiss_stale_reviews_on_push", "dismissal_restriction", "require_code_owner_review", "require_extra_approval_for_unattributed_changes", "require_last_push_approval", "required_approving_review_count", "required_review_thread_resolution", "required_reviewers", "required_status_checks", "strict_required_status_checks_policy", "do_not_enforce_on_create", "code_scanning_tools", "severity", "required_deployment_environments", "review_draft_pull_requests", "review_on_push", "minimum_coverage", "max_coverage_drop"}
 		case "scanning_tool":
 			allowed = []string{"tool", "alerts_threshold", "security_alerts_threshold"}
 		case "dismissal_restriction":

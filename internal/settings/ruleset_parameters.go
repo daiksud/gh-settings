@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 )
@@ -13,6 +14,8 @@ type RuleParameters struct {
 	RequiredDeploymentEnvironments             *[]string                   `json:"required_deployment_environments,omitempty" yaml:"required_deployment_environments,omitempty"`
 	ReviewDraftPullRequests                    *bool                       `json:"review_draft_pull_requests,omitempty" yaml:"review_draft_pull_requests,omitempty"`
 	ReviewOnPush                               *bool                       `json:"review_on_push,omitempty" yaml:"review_on_push,omitempty"`
+	MinimumCoverage                            *float64                    `json:"minimum_coverage,omitempty" yaml:"minimum_coverage,omitempty"`
+	MaxCoverageDrop                            *float64                    `json:"max_coverage_drop,omitempty" yaml:"max_coverage_drop,omitempty"`
 	CodeScanningTools                          *[]CodeScanningTool         `json:"code_scanning_tools,omitempty" yaml:"code_scanning_tools,omitempty"`
 	Severity                                   *string                     `json:"severity,omitempty" yaml:"severity,omitempty"`
 	AllowedMergeMethods                        *[]string                   `json:"allowed_merge_methods,omitempty" yaml:"allowed_merge_methods,omitempty"`
@@ -61,7 +64,10 @@ func (p *RuleParameters) hasChecks() bool {
 	return p != nil && (p.RequiredStatusChecks != nil || p.StrictRequiredStatusChecksPolicy != nil || p.DoNotEnforceOnCreate != nil)
 }
 func (p *RuleParameters) hasAnalysis() bool {
-	return p != nil && (p.CodeScanningTools != nil || p.Severity != nil)
+	return p != nil && (p.CodeScanningTools != nil || p.Severity != nil || p.hasCoverage())
+}
+func (p *RuleParameters) hasCoverage() bool {
+	return p != nil && (p.MinimumCoverage != nil || p.MaxCoverageDrop != nil)
 }
 func reviewActorKey(a ReviewActor) string { return fmt.Sprintf("%s:%d", a.Type, a.ID) }
 func checkKey(c RequiredStatusCheck) string {
@@ -203,7 +209,7 @@ func validateRule(r RulesetRule, complete bool) error {
 		if p == nil || p.CodeScanningTools == nil {
 			return fmt.Errorf("code_scanning requires code_scanning_tools")
 		}
-		if p.hasPR() || p.hasChecks() || p.Severity != nil {
+		if p.hasPR() || p.hasChecks() || p.Severity != nil || p.hasCoverage() {
 			return fmt.Errorf("parameters do not belong to code_scanning")
 		}
 		seen := map[string]bool{}
@@ -225,8 +231,20 @@ func validateRule(r RulesetRule, complete bool) error {
 		if _, valid := RulesetQualitySeverityChoiceForValue(*p.Severity); !valid {
 			return fmt.Errorf("code_quality requires supported severity")
 		}
-		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil {
+		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil || p.hasCoverage() {
 			return fmt.Errorf("parameters do not belong to code_quality")
+		}
+	case "code_coverage":
+		if p == nil || p.MinimumCoverage == nil || p.MaxCoverageDrop == nil {
+			return fmt.Errorf("code_coverage requires explicit minimum_coverage and max_coverage_drop")
+		}
+		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil || p.Severity != nil {
+			return fmt.Errorf("parameters do not belong to code_coverage")
+		}
+		for _, value := range []float64{*p.MinimumCoverage, *p.MaxCoverageDrop} {
+			if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || value > 100 {
+				return fmt.Errorf("code_coverage thresholds must be finite numbers between 0 and 100")
+			}
 		}
 	default:
 		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
@@ -261,6 +279,8 @@ func cloneRuleParameters(p *RuleParameters) *RuleParameters {
 	}
 	out.ReviewDraftPullRequests = copyRuleValue(p.ReviewDraftPullRequests)
 	out.ReviewOnPush = copyRuleValue(p.ReviewOnPush)
+	out.MinimumCoverage = copyRuleValue(p.MinimumCoverage)
+	out.MaxCoverageDrop = copyRuleValue(p.MaxCoverageDrop)
 	out.CodeScanningTools = copyRuleList(p.CodeScanningTools)
 	if out.CodeScanningTools != nil {
 		slices.SortFunc(*out.CodeScanningTools, func(a, b CodeScanningTool) int { return strings.Compare(a.Tool, b.Tool) })
