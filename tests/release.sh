@@ -135,11 +135,16 @@ git -C "$fixture/source" config commit.gpgsign false
 git -C "$fixture/source" add action/cli-version
 git -C "$fixture/source" commit --quiet --allow-empty -m 'chore: initialize release fixture'
 git -C "$fixture/source" -c tag.gpgsign=false tag v1.2.2
+printf 'temporary change\n' > "$fixture/source/change.txt"
+git -C "$fixture/source" add change.txt
+git -C "$fixture/source" commit --quiet -m 'feat!: temporary fixture behavior'
+withdrawn_sha="$(git -C "$fixture/source" rev-parse HEAD)"
 printf 'feat!: update the test fixture\n\nBREAKING CHANGE: Migrate the previous fixture.\n' > "$fixture/message"
 if [[ "${MOCK_LONG_NOTES:-1}" == 1 ]]; then
   head -c 262144 /dev/zero | tr '\0' x >> "$fixture/message"
   printf '\n' >> "$fixture/message"
 fi
+printf '\nRelease-note: Only final fixture behavior is available.\nRelease-withdraws: %s Temporary behavior removed before publication.\n' "$withdrawn_sha" >> "$fixture/message"
 printf 'released change\n' > "$fixture/source/change.txt"
 git -C "$fixture/source" add change.txt
 git -C "$fixture/source" commit --quiet -F "$fixture/message"
@@ -212,7 +217,10 @@ IFS= read -r actual_marker < "$fixture/body"
 [[ "$actual_marker" == "<!-- gh-settings-release: $expected_manifest -->" ]]
 # Independently assemble the committed change and retained migration supplement.
 {
-  printf "## What's Changed\n\n### 💥 BREAKING CHANGE\n\n- [update the test fixture](https://github.com/%s/commit/%s)\n" "$GITHUB_REPOSITORY" "$SOURCE_SHA"
+  printf '## Release clarifications\n\n- [Clarification](https://github.com/%s/commit/%s)\n\n  > Only final fixture behavior is available.\n\n' "$GITHUB_REPOSITORY" "$SOURCE_SHA"
+  printf "## What's Changed\n\n### ↩️ Withdrawn before release\n\n- [temporary fixture behavior](https://github.com/%s/commit/%s)\n" "$GITHUB_REPOSITORY" "$withdrawn_sha"
+  printf '\n  Withdrawn by [this change](https://github.com/%s/commit/%s); not available in this release.\n\n  > Temporary behavior removed before publication.\n' "$GITHUB_REPOSITORY" "$SOURCE_SHA"
+  printf "\n### 💥 BREAKING CHANGE\n\n- [update the test fixture](https://github.com/%s/commit/%s)\n" "$GITHUB_REPOSITORY" "$SOURCE_SHA"
   printf '\n## ⚠️ Migration guidance\n\n- [update the test fixture](https://github.com/%s/commit/%s)\n\n  > Migrate the previous fixture.\n' "$GITHUB_REPOSITORY" "$SOURCE_SHA"
   if [[ "${MOCK_LONG_NOTES:-1}" == 1 ]]; then
     printf '  > '

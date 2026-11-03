@@ -53,10 +53,11 @@ Both native acceptance lanes and the `candidate-action` lane must succeed before
 
 The [notes generator](../../scripts/release-metadata/main.go) reads the actual committed messages in the fixed `PREVIOUS_SHA..SOURCE_SHA` interval. Normal squash merging records each PR's reviewed title and body in one main commit. It follows main's first-parent history and skips commits with no tree change, keeping substantive main squash commits as the release entries. Notes use those messages directly, without querying current PR titles or bodies. Their generation does not call GitHub's generate-notes API or use a release-category configuration file.
 
-Each included commit appears once under the first matching category:
+Each included commit appears once under the first matching category (explicit withdrawals take precedence):
 
 | Committed message signal, in priority order | Heading |
 | --- | --- |
+| A later formal `Release-withdraws:` footer naming this commit | `↩️ Withdrawn before release` |
 | Header `!` or formal `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer | `💥 BREAKING CHANGE` |
 | Formal `DEPRECATED:` footer | `⚠️ DEPRECATED` |
 | `feat` | `✨ New Feature` |
@@ -67,6 +68,42 @@ Each included commit appears once under the first matching category:
 Compatibility markers must be Conventional Commits headers or footers; mentions in prose, Markdown headings, or quoted/fenced examples do not classify a change. New Feature and Bug Fix describe observable CLI or public Action behavior. Internal development tools and CI/CD changes use their appropriate maintenance types; user-experienced runtime improvements use `perf`. The [code-review policy](../../.agents/skills/code-review/SKILL.md#title-and-type) owns this semantic judgment. PRLint remains commitlint-only.
 
 Entries link to their exact commits and render message text safely. Migration guidance preserves breaking-change footer details from the same interval as escaped text. A breaking header without a footer produces an instruction to inspect that change. A fixed-SHA comparison links the complete interval, including any direct commits. Later PR edits cannot change the committed classification or text.
+
+### Explicit withdrawals and release clarifications
+
+When a later change fully withdraws an earlier entry before publication, record
+that fact in the reviewed squash body with a formal footer:
+
+```text
+Release-withdraws: FULL_40_CHARACTER_COMMIT_SHA Reason the whole entry is unavailable.
+Release-note: Explain the final supported behavior and any actual upgrade impact.
+Continuation lines preserve additional detail.
+```
+
+Use one `Release-withdraws:` footer per fully withdrawn entry. The target must be
+an earlier substantive first-parent commit in the same frozen release interval.
+Its entry moves out of feature/fix/compatibility categories into Withdrawn before
+release, retaining its original commit link, the withdrawal reason, and a link to
+the annotating commit. Its obsolete migration and clarification footers are omitted. This does not
+subtract its version signal: the Python resolver still considers every committed
+change. Partial removals must use a clarification explaining what remains rather
+than claiming the entire entry was withdrawn. The generator does not infer
+withdrawals from matching subjects, Git diffs, PR labels, or `revert` headers.
+
+`Release-note:` footers appear prominently before the categorized history, with
+the annotating commit link and escaped multiline text. They supplement existing
+breaking-change guidance; they do not change compatibility classification or
+replace a breaking marker. Use them to distinguish features removed during the
+unreleased interval from capabilities already available in the previous release
+that users must stop declaring. Later PR edits cannot amend old committed bodies;
+a new substantive commit can record the correction. Empty commits remain excluded.
+
+These footers use the same formal footer boundaries and fence exclusion as
+compatibility footers. Multiple notes are retained in history order. Empty notes,
+malformed withdrawal targets or missing reasons, targets outside the interval,
+self/forward references, duplicate withdrawals, and withdrawals of a withdrawing
+entry fail generation before any tag or draft mutation. New annotations do not
+rewrite notes retained by an existing draft or published-release retry.
 
 The predecessor is the stable numeric-tag release with the latest publication timestamp, with release ID breaking ties. Drafts, prereleases, and unpublished tags do not establish that boundary. Full local history, predecessor ancestry, and the resolver's previous tag/SHA must agree; a changed publication boundary stops generation before remote mutations. A conflicting existing target tag is rejected. New main commits cannot enter the frozen interval.
 

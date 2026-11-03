@@ -32,13 +32,16 @@ type release struct {
 }
 
 type change struct {
-	sha, subject, kind, scope string
-	major, deprecated         bool
-	breaking                  []string
+	sha, subject, kind, scope     string
+	major, deprecated             bool
+	breaking                      []string
+	notes, withdrawals            []string
+	withdrawnBy, withdrawalReason string
 }
 
 const (
-	breakingCategory = iota
+	withdrawnCategory = iota
+	breakingCategory
 	deprecatedCategory
 	featureCategory
 	fixCategory
@@ -47,6 +50,7 @@ const (
 )
 
 var categoryHeadings = [...]string{
+	"↩️ Withdrawn before release",
 	"💥 BREAKING CHANGE",
 	"⚠️ DEPRECATED",
 	"✨ New Feature",
@@ -208,7 +212,25 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 			return "", fmt.Errorf("existing tag targets another commit")
 		}
 	}
+	if err := applyWithdrawals(interval.changes); err != nil {
+		return "", err
+	}
 	var notes strings.Builder
+	for _, c := range interval.changes {
+		if c.withdrawnBy != "" {
+			continue
+		}
+		for _, detail := range c.notes {
+			if notes.Len() == 0 {
+				notes.WriteString("## Release clarifications\n\n")
+			}
+			fmt.Fprintf(&notes, "- [Clarification](https://github.com/%s/commit/%s)\n", repository, c.sha)
+			writeDetail(&notes, detail)
+		}
+	}
+	if notes.Len() > 0 {
+		notes.WriteByte('\n')
+	}
 	notes.WriteString("## What's Changed\n")
 	groups := make([][]change, len(categoryHeadings))
 	for _, c := range interval.changes {
@@ -222,11 +244,15 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 		fmt.Fprintf(&notes, "\n### %s\n\n", categoryHeadings[category])
 		for _, c := range changes {
 			fmt.Fprintf(&notes, "- [%s](https://github.com/%s/commit/%s)\n", markdownText(c.subject), repository, c.sha)
+			if c.withdrawnBy != "" {
+				fmt.Fprintf(&notes, "\n  Withdrawn by [this change](https://github.com/%s/commit/%s); not available in this release.\n", repository, c.withdrawnBy)
+				writeDetail(&notes, c.withdrawalReason)
+			}
 		}
 	}
 	migration := false
 	for _, c := range interval.changes {
-		if !c.major {
+		if !c.major || c.withdrawnBy != "" {
 			continue
 		}
 		if !migration {
@@ -238,10 +264,7 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 			notes.WriteString("\n  > No migration footer was recorded; review the linked change before upgrading.\n")
 		}
 		for _, detail := range c.breaking {
-			notes.WriteByte('\n')
-			for _, line := range strings.Split(detail, "\n") {
-				fmt.Fprintf(&notes, "  > %s\n", markdownText(line))
-			}
+			writeDetail(&notes, detail)
 		}
 	}
 	if previous != "" {
@@ -250,8 +273,44 @@ func generate(directory, repository, version, source string, reader io.Reader, e
 	return notes.String(), nil
 }
 
+// A withdrawal is an explicit reviewed statement about a whole earlier entry
+// in this interval. It changes presentation only, never the version calculation.
+func applyWithdrawals(changes []change) error {
+	prior := map[string]int{}
+	for i, c := range changes {
+		for _, note := range c.notes {
+			if strings.TrimSpace(note) == "" {
+				return fmt.Errorf("empty Release-note in %s", c.sha)
+			}
+		}
+		for _, withdrawal := range c.withdrawals {
+			target, reason, ok := strings.Cut(withdrawal, " ")
+			index, exists := prior[target]
+			if !ok || !sourcePattern.MatchString(target) || strings.TrimSpace(reason) == "" || !exists {
+				return fmt.Errorf("invalid Release-withdraws in %s: require earlier full SHA in this release interval and reason", c.sha)
+			}
+			if changes[index].withdrawnBy != "" || len(changes[index].withdrawals) > 0 {
+				return fmt.Errorf("duplicate or chained Release-withdraws for %s", target)
+			}
+			changes[index].withdrawnBy = c.sha
+			changes[index].withdrawalReason = strings.TrimSpace(reason)
+		}
+		prior[c.sha] = i
+	}
+	return nil
+}
+
+func writeDetail(notes *strings.Builder, detail string) {
+	notes.WriteByte('\n')
+	for _, line := range strings.Split(detail, "\n") {
+		fmt.Fprintf(notes, "  > %s\n", markdownText(line))
+	}
+}
+
 func (c change) category() int {
 	switch {
+	case c.withdrawnBy != "":
+		return withdrawnCategory
 	case c.major:
 		return breakingCategory
 	case c.deprecated:
@@ -274,20 +333,34 @@ func parseChange(sha, message string) change {
 		c.kind, c.scope, c.subject = strings.ToLower(m[1]), m[3], m[5]
 		c.major = m[4] != ""
 	}
-	c.breaking, c.deprecated = footers(lines[1:])
+	for _, footer := range footers(lines[1:]) {
+		switch footer.token {
+		case "BREAKING CHANGE", "BREAKING-CHANGE":
+			c.breaking = append(c.breaking, footer.value)
+		case "DEPRECATED":
+			c.deprecated = true
+		case "Release-note":
+			c.notes = append(c.notes, footer.value)
+		case "Release-withdraws":
+			c.withdrawals = append(c.withdrawals, footer.value)
+		}
+	}
 	c.major = c.major || len(c.breaking) > 0
 	return c
 }
 
-// Extract compatibility footers, not example markers inside fenced code.
-func footers(lines []string) ([]string, bool) {
-	var result, value []string
-	inFooters, collecting, blank := false, false, false
-	deprecated := false
+type trailer struct{ token, value string }
+
+// Extract formal footers, not markers inside prose or fenced examples.
+func footers(lines []string) []trailer {
+	var result []trailer
+	var value []string
+	token := ""
+	inFooters, blank := false, false
 	fence := ""
 	flush := func() {
-		if collecting {
-			result = append(result, strings.TrimSpace(strings.Join(value, "\n")))
+		if token != "" {
+			result = append(result, trailer{token, strings.TrimSpace(strings.Join(value, "\n"))})
 		}
 		value = nil
 	}
@@ -302,23 +375,21 @@ func footers(lines []string) ([]string, bool) {
 		} else if footer := footerPattern.FindStringSubmatch(line); footer != nil && (blank || inFooters) {
 			flush()
 			inFooters = true
-			collecting = footer[2] == ": " && (footer[1] == "BREAKING CHANGE" || footer[1] == "BREAKING-CHANGE")
-			if collecting {
+			token = ""
+			if footer[2] == ": " {
+				token = footer[1]
 				value = append(value, footer[3])
-			}
-			if footer[1] == "DEPRECATED" && footer[2] == ": " {
-				deprecated = true
 			}
 			blank = false
 			continue
 		}
-		if collecting {
+		if token != "" {
 			value = append(value, line)
 		}
 		blank = strings.TrimSpace(line) == ""
 	}
 	flush()
-	return result, deprecated
+	return result
 }
 
 func markdownText(text string) string {

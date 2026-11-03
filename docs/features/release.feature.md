@@ -137,6 +137,19 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - And migration guidance preserves breaking footer details, or points to a breaking commit without such a footer
 - And a fixed-SHA comparison covers the complete source interval, including direct commits
 
+#### Scenario: Explicitly withdraw an entry and clarify the final behavior
+
+- Given a later substantive squash message names an earlier interval commit in a formal `Release-withdraws:` footer with a reason
+- When release notes are generated
+- Then the whole earlier entry appears once under Withdrawn before release instead of its original category
+- And its original commit, withdrawal reason, and annotating commit remain linked
+- And its obsolete migration and clarification footers are omitted without subtracting its version signal
+- And formal multiline `Release-note:` footers appear before the categorized history as escaped text
+- And clarifications distinguish unreleased withdrawals from actual previous-release upgrade impact
+- But prose, quoted examples, fences, and later commits outside the frozen source cannot annotate the interval
+- And empty notes, missing reasons, invalid or out-of-interval targets, self/forward references, duplicates, and withdrawal chains stop generation before output or remote mutation
+- And existing draft and published retries retain their original notes
+
 #### Scenario: PR metadata changes after the squash commit
 
 - Given committed feature, fix, performance, and compatibility signals
@@ -154,7 +167,7 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 ### Test mapping
 
-The [release-metadata tests](../../scripts/release-metadata/main_test.go) use temporary Git repositories to exercise committed category precedence, formal footer recognition, escaped subjects and migration details, complete frozen ranges, invalid catalogs/history, and failures. Missing or misleading PR metadata cannot change the output. The separate [Python tests](../../.github/scripts/test_release_version.py) own version calculation and retry selection. These tests do not mutate GitHub. The repository already has published stable releases; automatic first-release baseline selection is deliberately unsupported.
+The [release-metadata tests](../../scripts/release-metadata/main_test.go) and [withdrawal tests](../../scripts/release-metadata/withdrawals_test.go) use temporary Git repositories to exercise committed category precedence, formal footer recognition, escaped subjects and migration details, complete frozen ranges, invalid catalogs/history, and failures. Missing or misleading PR metadata cannot change the output. The separate [Python tests](../../.github/scripts/test_release_version.py) own version calculation and retry selection. These tests do not mutate GitHub. The repository already has published stable releases; automatic first-release baseline selection is deliberately unsupported.
 
 The [release fixtures](../../tests/release.sh) invoke the real publisher with a local `gh` stand-in. They retain first publication, failed generation before remote state, complete/incomplete retries, note preservation, source/version conflicts, missing or altered assets, annotated tags, and final tag rechecks. The independently expected body combines categories from fixture commits, migration details, and the unchanged installation/checksum/identity template, including long content. The stand-in rejects PR metadata and native note-generation requests. No fixture creates a GitHub tag or release.
 
