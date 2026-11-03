@@ -167,7 +167,7 @@ This validation pipeline does not merge, publish, or deploy. Use [testing](testi
 
 ## Protected main and required checks
 
-The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, signed and linear history, and strict required checks. It requires `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions. Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, signature, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
+The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. It requires `ci-pr`, `prlint`, `settings-plan` and `settings-env` from GitHub Actions. Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
 
 | Check | Source and purpose | Limit |
 | --- | --- | --- |
@@ -264,7 +264,7 @@ source edits do not change those requirements.
    settings before any settings apply. This prepared change leaves those
    declaration entries untouched pending the authorized live transition.
 
-`ci-pr`, `prlint`, normal review, signatures and other protections remain in
+`ci-pr`, `prlint`, normal review and other live protections remain in
 force throughout. No workflow dispatch, rule update or merge is performed by
 these source changes.
 
