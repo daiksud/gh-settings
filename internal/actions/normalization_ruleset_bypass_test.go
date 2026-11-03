@@ -42,7 +42,7 @@ func bypassReportChange(t *testing.T, raw string, remove, companions bool) setti
 		if err := json.Unmarshal([]byte(rules), &after.Rules); err != nil {
 			t.Fatal(err)
 		}
-		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 		records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "QUALITY_MODE", Fallback: "errors"}
 		records.RequiredApprovals = settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 11, Fallback: 0}
 	}

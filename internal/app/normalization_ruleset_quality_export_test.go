@@ -12,7 +12,7 @@ import (
 
 func exportQualityState(t *testing.T, id int64, name, raw string, both bool) settings.RulesetState {
 	t.Helper()
-	state := exportEnforcementState(t, id, name, "evaluate", both)
+	state := exportEnforcementState(t, id, name, "FUTURE_ENFORCEMENT", both)
 	if !both {
 		*state.Policy.Enforcement = "active"
 	}

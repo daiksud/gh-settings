@@ -6,7 +6,7 @@ import (
 )
 
 func TestNormalizedRulesetEnforcementReconciliationOwnsOnlySelectedIDs(t *testing.T) {
-	for _, raw := range []string{"evaluate", "FUTURE_MODE", "", " \t"} {
+	for _, raw := range []string{"FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		for _, status := range []string{"active", "disabled"} {
 			first := normalizedEnforcementState(7, "z", raw)
 			unlisted := normalizedEnforcementState(8, "unmanaged", "OTHER_MODE")
@@ -30,7 +30,7 @@ func TestNormalizedRulesetEnforcementReconciliationOwnsOnlySelectedIDs(t *testin
 			if !reflect.DeepEqual(changes[1].After(), &desired.Values()[1]) {
 				t.Fatal("whole selected payload changed", changes[1].After(), desired.Values())
 			}
-			*changes[1].After().Enforcement = "evaluate"
+			*changes[1].After().Enforcement = "FUTURE_ENFORCEMENT"
 			if *changes[1].After().Enforcement != status {
 				t.Fatal("returned payload alias")
 			}
@@ -52,7 +52,7 @@ func TestNormalizedRulesetEnforcementReconciliationOwnsOnlySelectedIDs(t *testin
 }
 
 func TestNormalizedRulesetEnforcementReconciliationRetainsIdentityAndDismissalRules(t *testing.T) {
-	state := normalizedEnforcementState(7, "first", "evaluate")
+	state := normalizedEnforcementState(7, "first", "FUTURE_ENFORCEMENT")
 	observed := rsObserved(t, state, normalizedEnforcementState(8, "collision", "OTHER_MODE"))
 	for _, after := range []RulesetDeclaration{
 		func() RulesetDeclaration { d := cloneRuleset(state.Policy); d.ID = rsID(99); return d }(),

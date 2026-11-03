@@ -5,6 +5,7 @@ type EnforcementStatus string
 
 const (
 	Active                          EnforcementStatus = "active"
+	Evaluate                        EnforcementStatus = "evaluate"
 	Disabled                        EnforcementStatus = "disabled"
 	DefaultRulesetEnforcementStatus                   = Disabled
 )

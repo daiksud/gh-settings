@@ -45,7 +45,7 @@ func TestRulesetMergeMethodsObservationOwnsRawOrderAndCompanions(t *testing.T) {
 				t.Fatal("raw list alias", again, err)
 			}
 			if companions {
-				if v, err := values[0].RawEnforcement(); err != nil || v != "evaluate" {
+				if v, err := values[0].RawEnforcement(); err != nil || v != "FUTURE_ENFORCEMENT" {
 					t.Fatal("enforcement companion lost", v, err)
 				}
 				if v, err := values[0].RawRequiredApprovals(); err != nil || v == nil || *v != 11 {

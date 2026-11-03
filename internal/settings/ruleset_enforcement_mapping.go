@@ -10,6 +10,7 @@ var rulesetEnforcementChoices = [...]struct {
 	value  string
 }{
 	{uimodel.Active, "active"},
+	{uimodel.Evaluate, "evaluate"},
 	{uimodel.Disabled, "disabled"},
 }
 

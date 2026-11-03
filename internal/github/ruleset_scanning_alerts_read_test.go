@@ -75,7 +75,7 @@ func TestScanningAlertsProjectorAndCompleteReaderRetainExactNames(t *testing.T) 
 			if err != nil || len(actual) != 2 || actual[1].Tool != "z tool" || actual[1].AlertsThreshold != alerts || actual[1].SecurityAlertsThreshold != "all" || actual[0].AlertsThreshold != "none" {
 				t.Fatal(actual, err)
 			}
-			if companions && (len(values[0].TeamApprovalsNormalizations) != 1 || values[0].RequiredApprovalsNormalization.RawValue != 11 || values[0].EnforcementNormalization.RawValue != "evaluate" || values[0].MergeMethodsNormalization.IsZero() || len(values[0].BypassModeNormalizations) != 1 || values[0].QualitySeverityNormalization.RawValue != "FUTURE_SEVERITY") {
+			if companions && (len(values[0].TeamApprovalsNormalizations) != 1 || values[0].RequiredApprovalsNormalization.RawValue != 11 || values[0].EnforcementNormalization.RawValue != "FUTURE_ENFORCEMENT" || values[0].MergeMethodsNormalization.IsZero() || len(values[0].BypassModeNormalizations) != 1 || values[0].QualitySeverityNormalization.RawValue != "FUTURE_SEVERITY") {
 				t.Fatal("companion evidence lost", values)
 			}
 			if (verifyReviewRulesetResponse(values[0].Policy, raw) != nil) != (companions || !supported) {

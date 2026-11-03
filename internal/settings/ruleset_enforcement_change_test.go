@@ -6,7 +6,7 @@ import (
 )
 
 func TestRulesetEnforcementChangesOwnActionableWholeObjects(t *testing.T) {
-	for _, raw := range []string{"evaluate", "FUTURE_MODE", "", " \t"} {
+	for _, raw := range []string{"FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		for _, desired := range []string{"active", "disabled"} {
 			state := normalizedEnforcementState(7, "policy", raw)
 			before := state.Policy
@@ -22,12 +22,12 @@ func TestRulesetEnforcementChangesOwnActionableWholeObjects(t *testing.T) {
 				t.Fatal(display)
 			}
 			before.Name = "mutated caller"
-			*after.Enforcement = "evaluate"
+			*after.Enforcement = "FUTURE_ENFORCEMENT"
 			returned := change.Before()
 			returned.Name = "mutated result"
 			*returned.Enforcement = "active"
 			displayed := display.After()
-			*displayed.Enforcement = "evaluate"
+			*displayed.Enforcement = "FUTURE_ENFORCEMENT"
 			if change.Name() != "policy" || *change.Before().Enforcement != "disabled" || *change.After().Enforcement != desired || *display.After().Enforcement != desired {
 				t.Fatal("policy ownership lost", change, display)
 			}
@@ -70,7 +70,7 @@ func TestRulesetEnforcementChangeRejectsForgedOrUnboundPolicies(t *testing.T) {
 			(*after).ID = nil
 		},
 		func(_ *string, _ *int64, _ **RulesetDeclaration, after **RulesetDeclaration, _ *ObservationNormalization) {
-			(*after).Enforcement = rsText("evaluate")
+			(*after).Enforcement = rsText("FUTURE_ENFORCEMENT")
 		},
 		func(_ *string, _ *int64, before **RulesetDeclaration, _ **RulesetDeclaration, _ *ObservationNormalization) {
 			(*before).Enforcement = rsText("active")
@@ -94,7 +94,7 @@ func TestRulesetEnforcementChangeRejectsForgedOrUnboundPolicies(t *testing.T) {
 			n.Fallback = "active"
 		},
 	} {
-		state := normalizedEnforcementState(7, "policy", "evaluate")
+		state := normalizedEnforcementState(7, "policy", "FUTURE_ENFORCEMENT")
 		before := state.Policy
 		before.ID = rsID(7)
 		after := cloneRuleset(before)
@@ -120,7 +120,7 @@ func TestNormalizedRulesetDisplayOmitsWriteOnlyDismissal(t *testing.T) {
 	before := reviewPolicy()
 	before.ID, before.Enforcement = rsID(7), rsText("disabled")
 	after := cloneRuleset(before)
-	record := ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+	record := ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 	change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, RulesetNormalizations{Enforcement: record})
 	if err != nil {
 		t.Fatal(err)

@@ -14,11 +14,11 @@ func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error)
 		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset requires exactly one of target_branches or target_tags")
 	}
 	if ui.EnforcementStatus == nil {
-		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active or disabled")
+		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active, disabled or evaluate")
 	}
 	enforcement, valid := settings.RulesetEnforcementValueForChoice(*ui.EnforcementStatus)
 	if !valid {
-		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active or disabled")
+		return settings.RulesetDeclaration{}, fmt.Errorf("ruleset enforcement_status requires active, disabled or evaluate")
 	}
 	var patternLists []*[]string
 	if ui.TargetBranches != nil {

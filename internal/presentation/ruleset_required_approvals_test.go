@@ -27,12 +27,12 @@ func TestRulesetRequiredApprovalsPresentationUsesTypedNumbersAndRemoval(t *testi
 				if both {
 					disabled := "disabled"
 					before.Enforcement, after.Enforcement = &disabled, &disabled
-					records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+					records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 					records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
 					severity := "errors"
 					*before.Rules = append([]settings.RulesetRule{{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}}}, *before.Rules...)
 					*after.Rules = append([]settings.RulesetRule{{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}}}, *after.Rules...)
-					prefix = `Warning: repository.settings.rulesets.enforcement_status: observed "evaluate" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".` + "\n" + `repository.settings.rulesets.enforcement_status (Ruleset 7 "policy"): "disabled" (normalized observation) → "disabled" (write required)` + "\n"
+					prefix = `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".` + "\n" + `repository.settings.rulesets.enforcement_status (Ruleset 7 "policy"): "disabled" (normalized observation) → "disabled" (write required)` + "\n"
 					suffix = "\n" + `Warning: repository.settings.rulesets.rules.require_code_quality_results.severity: observed "FUTURE_SEVERITY" is outside UI choices; using "errors" (projection only). Ruleset 7 "policy".` + "\n" + `repository.settings.rulesets.rules.require_code_quality_results.severity (Ruleset 7 "policy"): "errors" (normalized observation) → "errors" (write required)`
 				}
 				afterText := strconv.Itoa(count) + " (write required)"

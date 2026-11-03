@@ -13,7 +13,7 @@ import (
 
 func exportApprovalsState(t *testing.T, id int64, name string, raw int, both bool) settings.RulesetState {
 	t.Helper()
-	state := exportEnforcementState(t, id, name, "evaluate", both)
+	state := exportEnforcementState(t, id, name, "FUTURE_ENFORCEMENT", both)
 	var rules []settings.RulesetRule
 	const pr = `[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false,"required_reviewers":[]}}]`
 	if err := json.Unmarshal([]byte(pr), &rules); err != nil {
@@ -105,7 +105,7 @@ func TestRulesetRequiredApprovalsExportOrdersTypedWarningsAndPreservesAbsence(t 
 						want = append(want, warning{id: 9, name: "a", integer: settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 12, Fallback: 0}})
 					}
 					if both && sinks&1 != 0 {
-						want = append(want, warning{id: 7, name: "z", text: settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}})
+						want = append(want, warning{id: 7, name: "z", text: settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}})
 					}
 					if sinks&2 != 0 {
 						want = append(want, warning{id: 7, name: "z", integer: settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 11, Fallback: 0}})

@@ -41,7 +41,7 @@ func TestRulesetRequiredApprovalsWarningsRequireCompleteOwnedEvidenceAndIndepend
 						preCount := 11
 						preEnf, preQ := "", ""
 						if both {
-							preEnf, preQ = "evaluate", "FUTURE_SEVERITY"
+							preEnf, preQ = "FUTURE_ENFORCEMENT", "FUTURE_SEVERITY"
 						}
 						want := expected("approvals", preEnf, preQ, &preCount)
 						client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
@@ -81,10 +81,10 @@ func TestRulesetRequiredApprovalsWarningsRequireCompleteOwnedEvidenceAndIndepend
 								case "renamed12":
 									body["name"] = "fresh approvals"
 								case "futureall":
-									body["enforcement"] = "evaluate"
+									body["enforcement"] = "FUTURE_ENFORCEMENT"
 								case "unrelated":
 									body["future"] = true
-									body["enforcement"] = "evaluate"
+									body["enforcement"] = "FUTURE_ENFORCEMENT"
 								case "wrongID":
 									body["id"] = 9
 								case "foreign":
@@ -129,7 +129,7 @@ func TestRulesetRequiredApprovalsWarningsRequireCompleteOwnedEvidenceAndIndepend
 						case "futureall":
 							value := 12
 							freshCount = &value
-							freshEnf = "evaluate"
+							freshEnf = "FUTURE_ENFORCEMENT"
 							if both {
 								freshQ = "OTHER_SEVERITY"
 							}

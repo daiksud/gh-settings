@@ -35,7 +35,7 @@ func enforcementReportChange(t *testing.T, raw, desired string) settings.Ruleset
 }
 
 func TestRulesetEnforcementPrivateReportRetainsClosedEvidence(t *testing.T) {
-	for _, raw := range []string{"evaluate", "", "<script>ENFORCEMENT_RAW</script>\n::warning::untrusted"} {
+	for _, raw := range []string{"FUTURE_ENFORCEMENT", "", "<script>ENFORCEMENT_RAW</script>\n::warning::untrusted"} {
 		for _, desired := range []string{"disabled", "active"} {
 			change := enforcementReportChange(t, raw, desired)
 			path := filepath.Join(t.TempDir(), "plan.json")
@@ -85,7 +85,7 @@ func TestRulesetEnforcementReportRejectsForgedProof(t *testing.T) {
 		},
 		func(r *actions.PlanReport) { r.Rulesets[0].Before.ID = nil },
 		func(r *actions.PlanReport) { *r.Rulesets[0].After.ID = 8 },
-		func(r *actions.PlanReport) { *r.Rulesets[0].After.Enforcement = "evaluate" },
+		func(r *actions.PlanReport) { *r.Rulesets[0].After.Enforcement = "FUTURE_ENFORCEMENT" },
 		func(r *actions.PlanReport) { *r.Rulesets[0].Before.Enforcement = "active" },
 		func(r *actions.PlanReport) { r.Rulesets[0].EnforcementNormalization = nil },
 		func(r *actions.PlanReport) { r.Rulesets[0].EnforcementNormalization.Path = "other" },

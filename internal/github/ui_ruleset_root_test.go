@@ -19,6 +19,7 @@ func TestUIRulesetRootDeclaration(t *testing.T) {
 	}{
 		{"branch", uimodel.Ruleset{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("active")), TargetBranches: &uimodel.BranchTargets{IncludeDefaultBranch: rulesetPtr(true), IncludeAllBranches: rulesetPtr(false), IncludeByPattern: rulesetPtr([]string{"release/*"}), ExcludeByPattern: rulesetPtr([]string{"release/test"})}}, "branch", []string{"~DEFAULT_BRANCH", "refs/heads/release/*"}, []string{"refs/heads/release/test"}},
 		{"tag", uimodel.Ruleset{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("disabled")), TargetTags: &uimodel.TagTargets{IncludeAllTags: rulesetPtr(true), IncludeByPattern: rulesetPtr([]string{"v*"})}}, "tag", []string{"~ALL", "refs/tags/v*"}, []string{}},
+		{"evaluate", uimodel.Ruleset{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.Evaluate), TargetBranches: &uimodel.BranchTargets{}}, "branch", []string{}, []string{}},
 		{"explicit empty", uimodel.Ruleset{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("active")), TargetBranches: &uimodel.BranchTargets{}}, "branch", []string{}, []string{}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -40,7 +41,7 @@ func TestUIRulesetRootObservation(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(got.Ruleset, want) {
 		t.Fatalf("observation=%+v err=%v want %+v", got, err, want)
 	}
-	for _, enforcement := range []string{"evaluate", "UNKNOWN"} {
+	for _, enforcement := range []string{"FUTURE_ENFORCEMENT", "UNKNOWN"} {
 		*source.Enforcement = enforcement
 		if _, err := RulesetObservation(source); err == nil {
 			t.Fatal("out-of-UI enforcement accepted")
@@ -57,7 +58,7 @@ func TestUIRulesetRootRequiredAndOwned(t *testing.T) {
 	for _, ui := range []uimodel.Ruleset{
 		{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("active"))},
 		{RulesetName: "Policy", TargetBranches: &uimodel.BranchTargets{}},
-		{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("evaluate")), TargetBranches: &uimodel.BranchTargets{}},
+		{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("FUTURE_ENFORCEMENT")), TargetBranches: &uimodel.BranchTargets{}},
 		{RulesetName: "Policy", EnforcementStatus: rulesetPtr(uimodel.EnforcementStatus("active")), TargetBranches: &uimodel.BranchTargets{}, TargetTags: &uimodel.TagTargets{}},
 	} {
 		if _, err := RulesetDeclaration(ui); err == nil {

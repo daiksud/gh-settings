@@ -12,7 +12,7 @@ func normalizedEnforcementState(id int64, name, raw string) RulesetState {
 }
 
 func TestRulesetEnforcementObservationOwnsProvenancePerID(t *testing.T) {
-	for _, raw := range []string{"evaluate", "FUTURE_MODE", "", " \t"} {
+	for _, raw := range []string{"FUTURE_ENFORCEMENT", "FUTURE_MODE", "", " \t"} {
 		t.Run(raw, func(t *testing.T) {
 			input := []RulesetState{normalizedEnforcementState(7, "first", raw), normalizedEnforcementState(9, "second", "OTHER_MODE")}
 			observed, err := NewRulesetObservation(input, 2)
@@ -60,15 +60,16 @@ func TestRulesetEnforcementObservationRejectsForgedOrIncompleteEvidence(t *testi
 		func(s *RulesetState) { s.ID = 0 },
 		func(s *RulesetState) { s.Policy.Enforcement = nil },
 		func(s *RulesetState) { s.Policy.Enforcement = rsText("active") },
-		func(s *RulesetState) { s.Policy.Enforcement = rsText("evaluate") },
+		func(s *RulesetState) { s.Policy.Enforcement = rsText("FUTURE_ENFORCEMENT") },
 		func(s *RulesetState) { s.Policy.ID = rsID(8) },
 		func(s *RulesetState) { s.Policy.Rules = nil },
 		func(s *RulesetState) { s.EnforcementNormalization.Path = "repository.settings.rulesets.other" },
 		func(s *RulesetState) { s.EnforcementNormalization.Fallback = "active" },
 		func(s *RulesetState) { s.EnforcementNormalization.RawValue = "disabled" },
 		func(s *RulesetState) { s.EnforcementNormalization.RawValue = "active" },
+		func(s *RulesetState) { s.EnforcementNormalization.RawValue = "evaluate" },
 	} {
-		state := normalizedEnforcementState(7, "invalid", "evaluate")
+		state := normalizedEnforcementState(7, "invalid", "FUTURE_ENFORCEMENT")
 		mutate(&state)
 		if raw, err := state.RawEnforcement(); err == nil || raw != "" {
 			t.Fatal("invalid raw accessor", state, raw, err)

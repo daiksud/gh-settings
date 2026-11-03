@@ -127,7 +127,6 @@ func TestUIFromExportDeclarationRulesetWriteOnlyAndUnsupportedValues(t *testing.
 		t.Fatalf("write-only dismissal appeared in UI export: %#v", pr)
 	}
 	for _, mutate := range []func(*settings.RulesetDeclaration){
-		func(p *settings.RulesetDeclaration) { p.Enforcement = rulesetPtr("evaluate") },
 		func(p *settings.RulesetDeclaration) {
 			p.BypassActors = rulesetPtr([]settings.BypassActor{{ActorType: "RepositoryRole", ActorID: rulesetPtr(int64(99)), BypassMode: rulesetPtr("always")}})
 		},

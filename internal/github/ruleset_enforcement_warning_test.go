@@ -22,13 +22,13 @@ func TestRulesetEnforcementWarningsRequireSelectedCompleteOwnedEvidence(t *testi
 		fresh          bool
 	}{
 		{"canonical", basicRulesetJSON, true, false},
-		{"retained evaluate", strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"evaluate"`, 1), true, true},
+		{"retained FUTURE_ENFORCEMENT", strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"FUTURE_ENFORCEMENT"`, 1), true, true},
 		{"fresh unknown", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"OTHER_MODE"`, 1), `"name":"basic"`, `"name":"fresh name"`, 1), true, true},
-		{"malformed", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"evaluate"`, 1), `"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]`, `"rules":null`, 1), true, false},
-		{"foreign", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"evaluate"`, 1), `"source":"Owner/Current"`, `"source":"owner/other"`, 1), true, false},
-		{"inherited", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"evaluate"`, 1), `"source_type":"Repository"`, `"source_type":"Organization"`, 1), true, false},
-		{"wrong ID", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"evaluate"`, 1), `"id":7`, `"id":8`, 1), true, false},
-		{"nil sink", strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"evaluate"`, 1), false, false},
+		{"malformed", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"FUTURE_ENFORCEMENT"`, 1), `"rules":[{"type":"deletion"},{"type":"non_fast_forward"}]`, `"rules":null`, 1), true, false},
+		{"foreign", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"FUTURE_ENFORCEMENT"`, 1), `"source":"Owner/Current"`, `"source":"owner/other"`, 1), true, false},
+		{"inherited", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"FUTURE_ENFORCEMENT"`, 1), `"source_type":"Repository"`, `"source_type":"Organization"`, 1), true, false},
+		{"wrong ID", strings.Replace(strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"FUTURE_ENFORCEMENT"`, 1), `"id":7`, `"id":8`, 1), true, false},
+		{"nil sink", strings.Replace(basicRulesetJSON, `"enforcement":"active"`, `"enforcement":"FUTURE_ENFORCEMENT"`, 1), false, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var got []diagnostic
@@ -55,9 +55,9 @@ func TestRulesetEnforcementWarningsRequireSelectedCompleteOwnedEvidence(t *testi
 			}
 			var want []diagnostic
 			if test.sink {
-				want = append(want, diagnostic{7, "basic", settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}})
+				want = append(want, diagnostic{7, "basic", settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}})
 				if test.fresh {
-					raw, name := "evaluate", "basic"
+					raw, name := "FUTURE_ENFORCEMENT", "basic"
 					if test.name == "fresh unknown" {
 						raw, name = "OTHER_MODE", "fresh name"
 					}

@@ -12,7 +12,7 @@ func normalizedRequiredApprovalsState(id int64, name string, raw int, both bool)
 	ruleOfForApprovals(state.Policy).RequiredApprovingReviewCount = paramInt(0)
 	if both {
 		state.Policy.Enforcement = rsText("disabled")
-		state.EnforcementNormalization = ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "evaluate", Fallback: "disabled"}
+		state.EnforcementNormalization = ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
 		*state.Policy.Rules = append(*state.Policy.Rules, RulesetRule{Type: "code_quality", Parameters: &RuleParameters{Severity: rsText("errors")}})
 		state.QualitySeverityNormalization = ObservationNormalization{Path: RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
 	}
@@ -54,7 +54,7 @@ func TestRulesetRequiredApprovalsObservationOwnsTypedRawAndCompanions(t *testing
 					t.Fatal("raw pointer alias", fresh, err)
 				}
 				if both {
-					if enf, err := values[i].RawEnforcement(); err != nil || enf != "evaluate" {
+					if enf, err := values[i].RawEnforcement(); err != nil || enf != "FUTURE_ENFORCEMENT" {
 						t.Fatal(enf, err)
 					}
 					if q, err := values[i].RawQualitySeverity(); err != nil || q == nil || *q != "FUTURE_SEVERITY" {
