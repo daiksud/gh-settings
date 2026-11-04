@@ -13,7 +13,7 @@ import (
 
 func TestHostedConsumerFixturesUseCurrentConfiguration(t *testing.T) {
 	for _, test := range []struct{ action, checkout string }{
-		{"candidate-smoke", ".action"},
+		{"e2e-test", ".action"},
 		{"release-verify", ".published"},
 	} {
 		t.Run(test.action, func(t *testing.T) {

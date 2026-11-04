@@ -1,5 +1,5 @@
-name: Validate candidate Action
-description: Exercise the verified candidate with an independent consumer and local API fixtures.
+name: E2E test
+description: Exercise the verified candidate public Action with an independent consumer and API fixtures.
 inputs:
   source-sha:
     description: Exact producer source commit already checked out into .action.
