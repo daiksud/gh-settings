@@ -92,7 +92,7 @@ func TestReleaseWrappersOwnArtifactIdentityAndTokenBoundaries(t *testing.T) {
 			t.Fatalf("%s wrapper no longer verifies the same-run manifest and artifact digest", name)
 		}
 	}
-	if !strings.Contains(acceptanceSource, "./.action/.github/actions/candidate-smoke") || !strings.Contains(acceptanceSource, "./.action/.github/actions/acceptance-stage") {
+	if !strings.Contains(acceptanceSource, "./.action/.github/actions/e2e-test") || !strings.Contains(acceptanceSource, "./.action/.github/actions/integration-test") {
 		t.Fatal("acceptance wrapper lost native or public Action acceptance")
 	}
 	if !strings.Contains(publishSource, "bash scripts/publish-release.sh") || strings.Contains(publishSource, "go build -trimpath") {
@@ -191,7 +191,7 @@ func TestReleaseCandidateFixtureToolchain(t *testing.T) {
 				t.Fatalf("release fixture must use the same pinned source toolchain as CI: %+v", s)
 			}
 		}
-		if s.Uses == "./.action/.github/actions/candidate-smoke" {
+		if s.Uses == "./.action/.github/actions/e2e-test" {
 			candidateIndex = i
 		}
 	}

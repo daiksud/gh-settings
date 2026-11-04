@@ -1,5 +1,5 @@
-name: Acceptance stage
-description: Check the transferred product binary through a local API fixture.
+name: Integration test
+description: Exercise the previously built product binary against the local API acceptance fixture.
 inputs:
   binary-path:
     description: Downloaded product binary, built in commit-stage.
