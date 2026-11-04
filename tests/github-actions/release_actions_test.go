@@ -200,7 +200,7 @@ func TestReleaseCandidateFixtureToolchain(t *testing.T) {
 	}
 
 	// Build and execute the actual fixture with automatic toolchain downloads
-	// disabled, just as candidate-smoke does. This does not rebuild the product
+	// disabled, just as e2e-test does. This does not rebuild the product
 	// or claim that a hosted mise installation has been exercised locally.
 	binary := filepath.Join(t.TempDir(), "plan-fixture")
 	command := exec.Command("go", "build", "-o", binary, "./tests/github-actions/plan-fixture")
@@ -226,7 +226,7 @@ func TestReleaseWorkflowCanonicalBytes(t *testing.T) {
 	if strings.Contains(string(data), "${{ needs.resolve.outputs.source-sha }}") {
 		t.Fatal("downstream jobs must consume the immutable dispatch SHA directly")
 	}
-	if !reflect.DeepEqual(strings.Count(string(data), "permissions: {contents: write}"), 1) {
+	if !reflect.DeepEqual(strings.Count(string(data), "permissions: {contents: write, actions: read}"), 1) {
 		t.Fatal("only publication may request contents write")
 	}
 }
