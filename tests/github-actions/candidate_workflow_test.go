@@ -52,6 +52,7 @@ func TestPRScreeningOnly(t *testing.T) {
 		t.Fatal("Ready must follow Screening")
 	}
 }
+
 // Main produces release-ready artifacts after native and public-Action
 // inspection. PR development candidates do not establish release readiness.
 func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
@@ -95,6 +96,7 @@ func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
 		}
 	}
 }
+
 func TestCandidateCompositeScenarios(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/candidate-smoke/action.yml"))
 	if err != nil {
