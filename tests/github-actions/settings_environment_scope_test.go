@@ -149,19 +149,30 @@ func checkSettingsEnvironmentScope(workflows map[string][]byte) error {
 
 // The default pull_request activities validate all updates to the merge candidate.
 func checkSettingsPRTrigger(node *yaml.Node) error {
-  if node == nil { return fmt.Errorf("expected pull_request to main") }
-  events, err := settingsYAMLMap(node)
-  if err != nil { return err }
-  target, ok := events["pull_request"]
-  if !ok || len(events) != 1 { return fmt.Errorf("expected pull_request only") }
-  filters, err := settingsYAMLMap(target)
-  if err != nil { return err }
-  if len(filters) != 1 || filters["branches"] == nil { return fmt.Errorf("required PR validation must use default event types and main only") }
-  branches := filters["branches"]
-  if branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 || branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
-    return fmt.Errorf("required PR validation must target main")
-  }
-  return nil
+	if node == nil {
+		return fmt.Errorf("expected pull_request to main")
+	}
+	events, err := settingsYAMLMap(node)
+	if err != nil {
+		return err
+	}
+	target, ok := events["pull_request"]
+	if !ok || len(events) != 1 {
+		return fmt.Errorf("expected pull_request only")
+	}
+	filters, err := settingsYAMLMap(target)
+	if err != nil {
+		return err
+	}
+	if len(filters) != 1 || filters["branches"] == nil {
+		return fmt.Errorf("required PR validation must use default event types and main only")
+	}
+	branches := filters["branches"]
+	if branches.Kind != yaml.SequenceNode || len(branches.Content) != 1 ||
+		branches.Content[0].Kind != yaml.ScalarNode || branches.Content[0].Value != "main" {
+		return fmt.Errorf("required PR validation must target main")
+	}
+	return nil
 }
 
 // Keep this guard about the Environment boundary. Privileged steps and Action

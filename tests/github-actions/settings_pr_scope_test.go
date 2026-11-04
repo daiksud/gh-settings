@@ -9,7 +9,7 @@ func TestSettingsEnvironmentScopePRFixtures(t *testing.T) {
 	const approved = settingsValidationFixture
 	for _, tc := range []struct {
 		name, content, path string
-		valid bool
+		valid               bool
 	}{
 		{"approved", approved, settingsPRWorkflowPath, true},
 		{"old trigger", strings.Replace(approved, "  pull_request:", "  pull_request_target:", 1), settingsPRWorkflowPath, false},

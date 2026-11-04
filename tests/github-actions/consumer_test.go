@@ -139,9 +139,9 @@ func runMainConsumer(t *testing.T, scenario string, workflowFile ...string) (res
 	}
 	w, _ := readWorkflow(t, name)
 	applyJob := w.Jobs["apply"]
-  if len(workflowFile) != 0 {
-    applyJob = w.Jobs["settings-apply"]
-  }
+	if len(workflowFile) != 0 {
+		applyJob = w.Jobs["settings-apply"]
+	}
 	expectedEvent := "push"
 	if len(workflowFile) != 0 {
 		expectedEvent = "workflow_dispatch"
