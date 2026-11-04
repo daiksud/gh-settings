@@ -97,21 +97,32 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_
 
 ## CI validation
 
-The [PR code](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows retain the product stages below. The separate [PRLint workflow](../../.github/workflows/prlint.yml) validates title/body edits without repeating product work. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle); [PR validation](pr-validation.md) documents the independent code/message checks and required-context boundary.
+The [PR workflow](../../.github/workflows/ci-pr.yml) runs Screening only:
+static analysis, unit and offline tests, and a native Linux build. Its final
+`ci-pr` check aggregates Draft, metadata resolution, Screening and Ready.
+It fails if any required dependency fails, is canceled or is skipped.
+The separate [PRLint workflow](../../.github/workflows/prlint.yml) validates
+PR title/body messages, including metadata-only edits.
 
-| Stage | Work and handoff |
-| --- | --- |
-| `prlint` (PR only) | Validate title/body with commitlint and reject invalid Conventional Commits; [Dependabot-authored PRs skip the job](pr-validation.md#message-and-settings-validation) |
-| Commit stage | Formatting, modules, vet, race tests, workflow/shell checks, release/installer fixtures, Markdown/local links, and one product build |
-| Acceptance stage (process) | Download the same run's manifested product, verify source SHA, target, binary name, digest and version, then execute the tagged process suite |
-| Acceptance stage (public Action) | Verify the identical candidate on Ubuntu 24.04 x64 and exercise the published Action interface against a local fixture without rebuilding the product |
-| `pass` | Require successful matrix resolution, commit, and all acceptance legs; PR message validation is required separately. Metadata-only edits do not publish a new code result; failed, cancelled, or skipped prerequisites cannot produce success |
+The [main workflow](../../.github/workflows/ci-push.yml) currently retains its
+source checks and process/public-Action acceptance lanes (Inspection), reusing
+the exact manifested binary within the run. The native Linux candidate has a
+source SHA, target, binary digest and version. Its acceptance jobs download
+that candidate into a separate consumer checkout without rebuilding it.
+The main workflow will be expanded to generate native release-ready Linux
+and macOS artifacts in a separate phase of #591.
 
-The shared [CI commit composite](../../.github/actions/ci-commit/action.yml) calls the existing [commit-stage](../../.github/actions/commit-stage/action.yml) checks and packages one Linux amd64 candidate with a manifest containing the checked-out source SHA, target, binary name, binary SHA-256, and committed version. PR validation builds the merge source; push validation builds the main revision. Both workflows delegate target selection to [CI metadata](../../.github/actions/ci-metadata/action.yml).
+PR Screening uses the [commit-stage Action](../../.github/actions/commit-stage/action.yml)
+and the `ubuntu-slim` runner, without artifact upload or E2E acceptance.
+The Go cache continues to restore compilation/module data independently of
+the required checks. A cache hit never skips source checks or build.
 
-Each acceptance matrix leg downloads the same run's artifact with digest mismatch treated as an error and checks out the exact producer source separately into `.action`. The [CI acceptance composite](../../.github/actions/ci-acceptance/action.yml) validates manifest identity against the checkout and bytes before choosing the process or public-Action acceptance path. The [process acceptance composite](../../.github/actions/acceptance-stage/action.yml) additionally verifies the embedded version and runs the tagged process suite with test caching disabled. No acceptance leg rebuilds the product.
-
-All runners install required tools from pinned mise configuration. The public-Action leg uses Ubuntu 24.04 x64 and Go only to compile its local API fixture; commit and process checks use `ubuntu-slim`. The single-CPU runner's [15-minute job limit](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#single-cpu-runners) still applies. The mise tool cache is disabled, artifacts are retained for one day, and CI candidate artifacts are not promoted to privileged release or settings workflows.
+The inert [PR dependency inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml)
+lists only the external Actions reachable from Screening. The main and
+release pipelines retain the [full inventory](../../.github/actions/lock-workspace-dependencies/action.yml).
+The generated [actions.lock](../../.github/workflows/actions.lock) must
+exactly reflect the transitively executed external Actions for each workflow,
+including nested local composites.
 
 ### Go cache in commit CI
 
