@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	workspaceLockBridge = "$/.github/actions/lock-workspace-dependencies"
+	workspaceLockBridge      = "$/.github/actions/lock-workspace-dependencies"
 	workspaceScreeningBridge = "$/.github/actions/lock-workspace-dependencies-screening"
 )
 

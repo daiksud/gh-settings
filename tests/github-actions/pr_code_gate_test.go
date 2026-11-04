@@ -104,7 +104,7 @@ func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
 		{"cancelled-resolve", "resolve", "cancelled", false},
 		{"cancelled-commit", "commit-stage", "cancelled", false},
 		{"cancelled-ready", "ready", "cancelled", false},
-			} {
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			results := make(map[string]map[string]string)
 			for _, name := range names {
