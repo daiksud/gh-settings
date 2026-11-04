@@ -54,7 +54,7 @@ resource-specific behavior.
 | --- | --- |
 | [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR events run staged code validation and publish the native `ci-pr` aggregate check |
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
-| [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; validate source and the built candidate, ending in `pass` |
+| [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; build native release-ready binaries and inspect them, ending in `ci-push` |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Trusted PR-target events validate the merge declaration only; the validation check is `settings-validate` |
 | [`apply-settings.yml`](../../.github/workflows/apply-settings.yml) | Manual dispatch from `main`; one Environment-bound direct apply job |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or PR CI completion; approve completed reviews matching HEAD with thumbs-up |
