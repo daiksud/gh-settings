@@ -1,7 +1,8 @@
 # PR validation and required checks
 
-The live main Ruleset and the tracked declaration require `ci-pr`,
-`prlint`, and `settings-validate` from GitHub Actions (App ID `15368`).
+The updated declaration requires `ci-pr`, `prlint`, and `settings-pr` from
+GitHub Actions (App ID `15368`). Until the reviewed manual settings apply is
+completed, the live Ruleset may still require the old `settings-validate`.
 The retired `settings-plan` and `settings-env` checks are not required.
 Their owning workflows and boundaries are listed in the
 [repository automation guide](repository-automation.md#protected-main-and-required-checks).
@@ -38,12 +39,12 @@ requirement remains satisfied without changing protections. See
 Normal review, squash-message classification and other required checks still
 apply to Dependabot PRs.
 
-The `settings-validate` job always validates the proposed merge declaration
-with the operational public Action selected by trusted main code. It uses no
+The `settings-pr` job validates the proposed merge declaration
+using the pinned public Action from the PR workflow definition. It uses no
 Environment or App token and does not observe live settings. There is no PR plan job.
 
 The repository automation guide owns the
-[merge identity and validation contract](repository-automation.md#pr-settings-validation)
+[checkout and validation contract](repository-automation.md#pr-settings-validation)
 and the [package pins and credential boundaries](repository-automation.md#active-settings-workflows).
 Candidate code and current-format fixtures remain covered by `ci-pr`; they do
 not establish that a pinned operational package supports a new declaration.
@@ -60,6 +61,10 @@ in PR #586. The required context was then added to the live Ruleset.
 The [transition record](repository-automation.md#required-check-transition)
 identifies the observed workflow and run.
 
-The tracked required-check list now matches that live state. Any future
+The new tracked required-check list must be applied manually to match live state. Any future
 Ruleset changes still require a review of actual GitHub settings, and
-`apply-settings` remains a separate manual operation after merge.
+`settings-apply` remains a separate manual operation after merge.
+
+The new `settings-pr` workflow uses the default `pull_request` activities
+(opened, synchronize and reopened) and an unconfigured checkout step on
+`ubuntu-slim`. Only `prlint` reruns automatically on metadata-only edits.
