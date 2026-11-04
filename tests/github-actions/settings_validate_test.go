@@ -11,7 +11,9 @@ func TestSettingsPRValidationUsesPinnedConsumer(t *testing.T) {
 	w, _ := readWorkflow(t, "../../.github/workflows/settings-pr.yml")
 	var trigger map[string][]string
 	target := w.On["pull_request"]
-	if err := target.Decode(&trigger); err != nil { t.Fatal(err) }
+	if err := target.Decode(&trigger); err != nil {
+		t.Fatal(err)
+	}
 	if len(w.On) != 1 || len(trigger) != 1 || !reflect.DeepEqual(trigger["branches"], []string{"main"}) {
 		t.Fatal("the required validator must use default pull_request activities on main")
 	}

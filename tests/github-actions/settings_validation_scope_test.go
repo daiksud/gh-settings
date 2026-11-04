@@ -21,11 +21,17 @@ func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 	if err != nil || len(jobs) != 1 || jobs[settingsValidateCheckName] == nil {
 		return fmt.Errorf("settings validation requires exactly one settings-pr job")
 	}
-	if err := checkSettingsPRTrigger(workflow["on"]); err != nil { return err }
+	if err := checkSettingsPRTrigger(workflow["on"]); err != nil {
+		return err
+	}
 	job, err := settingsYAMLMap(jobs[settingsValidateCheckName])
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	for _, key := range []string{"environment", "uses", "needs", "env", "container", "services", "strategy", "concurrency", "outputs", "if", "name"} {
-		if job[key] != nil { return fmt.Errorf("settings-pr job must not have field %s", key) }
+		if job[key] != nil {
+			return fmt.Errorf("settings-pr job must not have field %s", key)
+		}
 	}
 	if job["continue-on-error"] != nil && !settingsScalarIs(job["continue-on-error"], "false") {
 		return fmt.Errorf("settings validation must not ignore failure")
@@ -52,11 +58,17 @@ func checkSettingsValidationWorkflow(workflow map[string]*yaml.Node) error {
 
 func settingsValidationStep(node *yaml.Node, keys ...string) (map[string]*yaml.Node, error) {
 	step, err := settingsYAMLMap(node)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	allowed := map[string]bool{"name": true}
-	for _, key := range keys { allowed[key] = true }
+	for _, key := range keys {
+		allowed[key] = true
+	}
 	for key := range step {
-		if !allowed[key] { return nil, fmt.Errorf("unsupported validation step field %q", key) }
+		if !allowed[key] {
+			return nil, fmt.Errorf("unsupported validation step field %q", key)
+		}
 	}
 	return step, nil
 }
@@ -65,18 +77,28 @@ func settingsScalarIs(node *yaml.Node, value string) bool {
 }
 func settingsStringMapIs(node *yaml.Node, expected map[string]string) bool {
 	values, err := settingsYAMLMap(node)
-	if err != nil || len(values) != len(expected) { return false }
+	if err != nil || len(values) != len(expected) {
+		return false
+	}
 	for key, value := range expected {
-		if !settingsScalarIs(values[key], value) { return false }
+		if !settingsScalarIs(values[key], value) {
+			return false
+		}
 	}
 	return true
 }
 func settingsPinnedAction(node *yaml.Node, action string) bool {
-	if node == nil || node.Kind != yaml.ScalarNode { return false }
+	if node == nil || node.Kind != yaml.ScalarNode {
+		return false
+	}
 	sha, ok := strings.CutPrefix(node.Value, action+"@")
-	if !ok || len(sha) != 40 { return false }
+	if !ok || len(sha) != 40 {
+		return false
+	}
 	for _, digit := range sha {
-		if !strings.ContainsRune("0123456789abcdef", digit) { return false }
+		if !strings.ContainsRune("0123456789abcdef", digit) {
+			return false
+		}
 	}
 	return true
 }

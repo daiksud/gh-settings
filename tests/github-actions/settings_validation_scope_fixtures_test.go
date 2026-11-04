@@ -30,18 +30,28 @@ func settingsValidationFixtureWorkflows() map[string][]byte {
 
 func TestSettingsEnvironmentScopeRequiresOneValidator(t *testing.T) {
 	files := settingsValidationFixtureWorkflows()
-	if err := checkSettingsEnvironmentScope(files); err != nil { t.Fatal(err) }
+	if err := checkSettingsEnvironmentScope(files); err != nil {
+		t.Fatal(err)
+	}
 	delete(files, settingsPRWorkflowPath)
-	if err := checkSettingsEnvironmentScope(files); err == nil { t.Fatal("missing validator accepted") }
+	if err := checkSettingsEnvironmentScope(files); err == nil {
+		t.Fatal("missing validator accepted")
+	}
 	files = settingsValidationFixtureWorkflows()
 	files[settingsPRWorkflowPath] = []byte(strings.Replace(settingsValidationFixture, "  settings-pr:\n", "  other:\n", 1))
-	if err := checkSettingsEnvironmentScope(files); err == nil { t.Fatal("missing required job accepted") }
+	if err := checkSettingsEnvironmentScope(files); err == nil {
+		t.Fatal("missing required job accepted")
+	}
 	files = settingsValidationFixtureWorkflows()
 	files[retiredSettingsPlanPath] = []byte("jobs: {}\n")
-	if err := checkSettingsEnvironmentScope(files); err == nil { t.Fatal("retired workflow accepted") }
+	if err := checkSettingsEnvironmentScope(files); err == nil {
+		t.Fatal("retired workflow accepted")
+	}
 	files = settingsValidationFixtureWorkflows()
 	files[settingsPRWorkflowPath] = []byte(strings.ReplaceAll(settingsValidationFixture, "6dbdbb3ab11cbc0ef257fef089d6915d31d003d6", strings.Repeat("a", 40)))
-	if err := checkSettingsEnvironmentScope(files); err != nil { t.Fatalf("another immutable pin must be allowed: %v", err) }
+	if err := checkSettingsEnvironmentScope(files); err != nil {
+		t.Fatalf("another immutable pin must be allowed: %v", err)
+	}
 }
 
 func TestSettingsValidationRequiredBoundaries(t *testing.T) {
@@ -73,10 +83,14 @@ func TestSettingsValidationRequiredBoundaries(t *testing.T) {
 		{"extra step", "    steps:\n", "    steps:\n      - run: echo bypass\n"},
 	} {
 		t.Run(change.name, func(t *testing.T) {
-			if !strings.Contains(settingsValidationFixture, change.before) { t.Fatal("fixture mutation did not match") }
+			if !strings.Contains(settingsValidationFixture, change.before) {
+				t.Fatal("fixture mutation did not match")
+			}
 			files := settingsValidationFixtureWorkflows()
 			files[settingsPRWorkflowPath] = []byte(strings.Replace(settingsValidationFixture, change.before, change.after, 1))
-			if err := checkSettingsEnvironmentScope(files); err == nil { t.Fatal("unsafe validation accepted") }
+			if err := checkSettingsEnvironmentScope(files); err == nil {
+				t.Fatal("unsafe validation accepted")
+			}
 		})
 	}
 }
@@ -92,10 +106,14 @@ func TestSettingsValidationTriggerBoundaries(t *testing.T) {
 		{"missing event", "on:\n  pull_request:\n    branches: [main]\n", "on:\n"},
 	} {
 		t.Run(change.name, func(t *testing.T) {
-			if !strings.Contains(settingsValidationFixture, change.before) { t.Fatal("fixture mutation did not match") }
+			if !strings.Contains(settingsValidationFixture, change.before) {
+				t.Fatal("fixture mutation did not match")
+			}
 			files := settingsValidationFixtureWorkflows()
 			files[settingsPRWorkflowPath] = []byte(strings.Replace(settingsValidationFixture, change.before, change.after, 1))
-			if err := checkSettingsEnvironmentScope(files); err == nil { t.Fatal("invalid PR trigger accepted") }
+			if err := checkSettingsEnvironmentScope(files); err == nil {
+				t.Fatal("invalid PR trigger accepted")
+			}
 		})
 	}
 }
