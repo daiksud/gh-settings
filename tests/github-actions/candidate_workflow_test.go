@@ -11,7 +11,7 @@ import (
 )
 
 func TestCandidateCompositeCallers(t *testing.T) {
-	for _, name := range []string{"ci-pr.yml", "ci-push.yml"} {
+	for _, name := range []string{"ci-push.yml"} {
 		t.Run(name, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", name))
 			if err != nil {
@@ -132,6 +132,46 @@ func TestCandidateCompositeCallers(t *testing.T) {
 	}
 }
 
+// PR validation stops after source screening and building the candidate.
+func TestPRScreeningOnly(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var workflow struct {
+		Jobs map[string]yaml.Node `yaml:"jobs"`
+	}
+	if err := yaml.Unmarshal(data, &workflow); err != nil {
+		t.Fatal(err)
+	}
+	if len(workflow.Jobs) != 5 {
+		t.Fatalf("expected draft, resolve, commit-stage, ready and aggregate: %v", workflow.Jobs)
+	}
+	if _, found := workflow.Jobs["acceptance-stage"]; found {
+		t.Fatal("PR must not run Inspection")
+	}
+	var commit struct {
+		Needs string `yaml:"needs"`
+		Steps []step `yaml:"steps"`
+	}
+	if err := workflow.Jobs["commit-stage"].Decode(&commit); err != nil {
+		t.Fatal(err)
+	}
+	if commit.Needs != "resolve" || len(commit.Steps) != 2 ||
+		commit.Steps[1].Uses != "./.github/actions/commit-stage" ||
+		commit.Steps[1].With["cache-go"] != "true" {
+		t.Fatalf("Screening must perform source checks and build without artifact upload: %+v", commit)
+	}
+	var ready struct {
+		Needs string `yaml:"needs"`
+	}
+	if err := workflow.Jobs["ready"].Decode(&ready); err != nil {
+		t.Fatal(err)
+	}
+	if ready.Needs != "commit-stage" {
+		t.Fatal("Ready must follow Screening")
+	}
+}
 func TestCandidateCompositeScenarios(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/candidate-smoke/action.yml"))
 	if err != nil {
