@@ -54,7 +54,7 @@ To use the built checkout as a GitHub CLI extension, run `gh extension install .
 
 ## Development checks
 
-The [commit-stage Action](../../.github/actions/commit-stage/action.yml) defines the CI checks. Locally, inspect any filenames reported by `gofmt`, format those Go files, and run the relevant checks:
+The [commit-stage Action](../../.github/actions/commit-stage/action.yml) orchestrates focused [static analysis](../../.github/actions/static-analysis/action.yml), [unit tests](../../.github/actions/unit-test/action.yml), and [build](../../.github/actions/build/action.yml) Actions. It retains the Go cache policy. Locally, inspect any filenames reported by `gofmt`, format those Go files, and run the relevant checks:
 
 ```sh
 mise exec -- gofmt -l .
