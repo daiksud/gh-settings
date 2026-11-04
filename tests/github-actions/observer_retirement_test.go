@@ -6,8 +6,8 @@ func TestSettingsEnvironmentScopeReservedNames(t *testing.T) {
 	for _, source := range []string{
 		"jobs:\n  other:\n    environment: gh-settings-plan\n",
 		"jobs:\n  other:\n    environment: {name: ' GH-SETTINGS-PLAN '}\n",
-		"jobs:\n  settings-validate:\n    runs-on: ubuntu-slim\n",
-		"jobs:\n  other:\n    name: settings-validate\n    runs-on: ubuntu-slim\n",
+		"jobs:\n  settings-pr:\n    runs-on: ubuntu-slim\n",
+		"jobs:\n  other:\n    name: settings-pr\n    runs-on: ubuntu-slim\n",
 		"jobs:\n  settings-plan:\n    runs-on: ubuntu-slim\n",
 		"jobs:\n  other:\n    name: settings-plan\n    runs-on: ubuntu-slim\n",
 	} {

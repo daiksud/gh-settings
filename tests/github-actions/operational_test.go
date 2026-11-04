@@ -59,8 +59,8 @@ func TestManagedRepositoryMergePreferences(t *testing.T) {
 }
 
 func TestOperationalMainConsumer(t *testing.T) {
-	w, source := readWorkflow(t, "../../.github/workflows/apply-settings.yml")
-	apply := w.Jobs["apply"]
+	w, source := readWorkflow(t, "../../.github/workflows/settings-apply.yml")
+	apply := w.Jobs["settings-apply"]
 	if len(w.On) != 1 || w.On["workflow_dispatch"].Kind == 0 || len(w.Jobs) != 1 || len(apply.Steps) != 3 {
 		t.Fatal("operational manual apply must use one job with checkout, App token and apply")
 	}
@@ -111,7 +111,7 @@ func TestOperationalMainConsumer(t *testing.T) {
 		{"mint failure", 1, false, ""},
 	} {
 		t.Run(test.scenario, func(t *testing.T) {
-			result := runMainConsumer(t, test.scenario, "../../.github/workflows/apply-settings.yml")
+			result := runMainConsumer(t, test.scenario, "../../.github/workflows/settings-apply.yml")
 			result.assertNoCredentials(t)
 			if result.status != test.status || result.minted != test.minted || result.revoked != test.minted || result.applied.api != test.api {
 				t.Fatalf("operational apply scenario failed: %+v", result)
