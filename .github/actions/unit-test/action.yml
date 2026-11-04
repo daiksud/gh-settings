@@ -1,0 +1,18 @@
+name: Unit tests
+description: Run race-detected Go tests and offline release/Action fixtures.
+runs:
+  using: composite
+  steps:
+    - name: Test with race detection
+      shell: bash
+      run: go test -race -count=1 -vet=off ./...
+    - name: Test release version resolution
+      shell: bash
+      run: python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
+    - name: Test release recovery without GitHub
+      shell: bash
+      run: bash tests/release.sh
+    - name: Test settings examples without GitHub
+      shell: bash
+      run: |
+        bash tests/github-actions/action-install.sh

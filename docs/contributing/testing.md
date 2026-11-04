@@ -98,31 +98,29 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_
 ## CI validation
 
 The [PR workflow](../../.github/workflows/ci-pr.yml) runs Screening only:
-static analysis, unit and offline tests, and a native Linux build. Its final
-`ci-pr` check aggregates Draft, metadata resolution, Screening and Ready.
-It fails if any required dependency fails, is canceled or is skipped.
-The separate [PRLint workflow](../../.github/workflows/prlint.yml) validates
-PR title/body messages, including metadata-only edits.
+static analysis, Go race and offline tests, and a native Linux build.
+Its required `ci-pr` job aggregates Draft, metadata resolution, Screening,
+and Ready; failed, skipped or cancelled dependencies never report success.
+The separate [PRLint workflow](../../.github/workflows/prlint.yml) checks
+title/body edits and proposed squash messages.
 
-The [main workflow](../../.github/workflows/ci-push.yml) currently retains its
-source checks and process/public-Action acceptance lanes (Inspection), reusing
-the exact manifested binary within the run. The native Linux candidate has a
-source SHA, target, binary digest and version. Its acceptance jobs download
-that candidate into a separate consumer checkout without rebuilding it.
-The main workflow will be expanded to generate native release-ready Linux
-and macOS artifacts in a separate phase of #591.
+The [main workflow](../../.github/workflows/ci-push.yml) runs full Screening
+and Inspection. It resolves the release version for the exact `main` SHA,
+builds Linux amd64 and macOS arm64 natively using
+[release-build](../../.github/actions/release-build/action.yml), and tests
+those same product binaries and the public Action through
+[release-acceptance](../../.github/actions/release-acceptance/action.yml).
+Each artifact has a source/version/target/SHA-256 manifest and is retained
+for seven days for use by the manual release workflow.
 
-PR Screening uses the [commit-stage Action](../../.github/actions/commit-stage/action.yml)
-and the `ubuntu-slim` runner, without artifact upload or E2E acceptance.
-The Go cache continues to restore compilation/module data independently of
-the required checks. A cache hit never skips source checks or build.
-
-The inert [PR dependency inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml)
-lists only the external Actions reachable from Screening. The main and
-release pipelines retain the [full inventory](../../.github/actions/lock-workspace-dependencies/action.yml).
-The generated [actions.lock](../../.github/workflows/actions.lock) must
-exactly reflect the transitively executed external Actions for each workflow,
-including nested local composites.
+PR Screening invokes [commit-stage](../../.github/actions/commit-stage/action.yml)
+without artifact upload or process/public-Action acceptance. The Go build
+cache restores compilation and module data, never binary artifacts; a cache
+hit does not skip source checks. The [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml)
+and [full CI/release inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
+enumerate transitive external Action pins for the generated
+[actions.lock](../../.github/workflows/actions.lock). Inert inventory steps
+do not run; runtime workspace Actions retain their correct checkout scope.
 
 ### Go cache in commit CI
 

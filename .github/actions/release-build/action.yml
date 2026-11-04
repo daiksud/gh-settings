@@ -10,6 +10,10 @@ inputs:
   source-sha:
     description: Exact frozen main commit.
     required: true
+  overwrite:
+    description: Replace named artifacts when rerunning main CI.
+    required: false
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -74,4 +78,5 @@ runs:
         if-no-files-found: error
         include-hidden-files: false
         compression-level: 0
-        retention-days: 1
+        retention-days: 7
+        overwrite: ${{ inputs.overwrite }}

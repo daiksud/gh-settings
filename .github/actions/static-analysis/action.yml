@@ -1,0 +1,32 @@
+name: Static analysis
+description: Check workflow and shell syntax, Go formatting, modules, vet, and Markdown.
+runs:
+  using: composite
+  steps:
+    - name: Check GitHub workflows and shell scripts
+      shell: bash
+      run: |
+        python3 .github/scripts/lint-workflows.py .github/workflows/*.yml examples/github-actions/*.yml
+        shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh
+        shellcheck action/*.sh
+        shellcheck .github/scripts/*.sh
+    - name: Verify Go formatting
+      shell: bash
+      run: |
+        unformatted="$(gofmt -l .)"
+        if [[ -n "$unformatted" ]]; then
+          printf 'Run gofmt on:\n%s\n' "$unformatted"
+          exit 1
+        fi
+    - name: Verify modules
+      shell: bash
+      run: |
+        go mod download
+        go mod verify
+        go mod tidy -diff
+    - name: Static analysis
+      shell: bash
+      run: go vet ./...
+    - name: Check Markdown and local links
+      shell: bash
+      run: rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md AGENTS.md .agents .github/pull_request_template.md docs examples/github-actions

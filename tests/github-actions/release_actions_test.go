@@ -42,7 +42,7 @@ func readReleaseAction(t *testing.T, name string) (localReleaseAction, string) {
 func TestReleaseLocalActionContracts(t *testing.T) {
 	wantInputs := map[string][]string{
 		"release-metadata":   {"source-sha"},
-		"release-build":      {"target", "version", "source-sha"},
+		"release-build":      {"target", "version", "source-sha", "overwrite"},
 		"release-acceptance": {"target", "version", "source-sha"},
 		"release-publish":    {"source-sha", "version", "previous-tag", "previous-sha"},
 		"release-verify":     {"source-sha", "version"},
@@ -82,7 +82,9 @@ func TestReleaseWrappersOwnArtifactIdentityAndTokenBoundaries(t *testing.T) {
 	_, publishSource := readReleaseAction(t, "release-publish")
 	verify, verifySource := readReleaseAction(t, "release-verify")
 
-	if !strings.Contains(buildSource, "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9") || !strings.Contains(buildSource, "release-artifact.sh write") || !strings.Contains(buildSource, "compression-level: 0") {
+	if !strings.Contains(buildSource, "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9") || !strings.Contains(buildSource, "release-artifact.sh write") ||
+		!strings.Contains(buildSource, "compression-level: 0") ||
+		!strings.Contains(buildSource, "overwrite: ${{ inputs.overwrite }}") {
 		t.Fatal("build wrapper no longer owns the pinned exact artifact transfer")
 	}
 	for name, source := range map[string]string{"acceptance": acceptanceSource, "publish": publishSource, "verify": verifySource} {

@@ -10,128 +10,6 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func TestCandidateCompositeCallers(t *testing.T) {
-	for _, name := range []string{"ci-push.yml"} {
-		t.Run(name, func(t *testing.T) {
-			data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", name))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var w struct{ Jobs map[string]yaml.Node }
-			if err := yaml.Unmarshal(data, &w); err != nil {
-				t.Fatal(err)
-			}
-			if _, exists := w.Jobs["composite-smoke"]; exists {
-				t.Fatal("public Action acceptance must be a matrix leg, not a separate CI job")
-			}
-			resolveNode, buildNode := w.Jobs["resolve"], w.Jobs["commit-stage"]
-			var resolved, built job
-			if err := resolveNode.Decode(&resolved); err != nil {
-				t.Fatal(err)
-			}
-			if err := buildNode.Decode(&built); err != nil {
-				t.Fatal(err)
-			}
-			wantResolveDependency := ""
-			if name == "ci-pr.yml" {
-				wantResolveDependency = "draft"
-			}
-			if resolved.Needs != wantResolveDependency || built.Needs != "resolve" ||
-				built.Runner != "${{ matrix.runner }}" || len(built.Steps) != 3 {
-				t.Fatalf("stage dependency or build matrix changed: resolve=%+v build=%+v", resolved, built)
-			}
-			transfer := built.Steps[2]
-			if !strings.HasPrefix(transfer.Uses, "actions/upload-artifact@") ||
-				!reflect.DeepEqual(transfer.With, map[string]string{
-					"name":              "ci-${{ matrix.target }}-${{ github.sha }}",
-					"path":              "${{ steps.build.outputs.artifact-directory }}",
-					"if-no-files-found": "error", "overwrite": "true", "retention-days": "1",
-				}) {
-				t.Fatalf("commit must upload the manifested binary from this run: %+v", transfer)
-			}
-			if name == "ci-pr.yml" {
-				draftNode, readyNode := w.Jobs["draft"], w.Jobs["ready"]
-				var draft, ready job
-				if err := draftNode.Decode(&draft); err != nil {
-					t.Fatal(err)
-				}
-				if err := readyNode.Decode(&ready); err != nil {
-					t.Fatal(err)
-				}
-				if draft.Needs != "" || ready.Needs != "commit-stage" {
-					t.Fatal("PR Draft and Ready transitions must bracket the commit stage")
-				}
-			} else if _, exists := w.Jobs["ready"]; exists {
-				t.Fatal("push validation must not change PR state")
-			}
-			var acceptance struct {
-				Needs       []string          `yaml:"needs"`
-				Runner      string            `yaml:"runs-on"`
-				Permissions map[string]string `yaml:"permissions"`
-				Steps       []step            `yaml:"steps"`
-			}
-			acceptanceNode := w.Jobs["acceptance-stage"]
-			if err := acceptanceNode.Decode(&acceptance); err != nil {
-				t.Fatal(err)
-			}
-			wantNeeds := []string{"resolve", "commit-stage"}
-			if name == "ci-pr.yml" {
-				wantNeeds = append(wantNeeds, "ready")
-			}
-			if !reflect.DeepEqual(acceptance.Needs, wantNeeds) ||
-				acceptance.Runner != "${{ matrix.runner }}" ||
-				!reflect.DeepEqual(acceptance.Permissions, map[string]string{"contents": "read"}) ||
-				len(acceptance.Steps) != 3 {
-				t.Fatalf("acceptance stage must depend on the same-run producer and ready state: %+v", acceptance)
-			}
-			checkout, download, candidate := acceptance.Steps[0], acceptance.Steps[1], acceptance.Steps[2]
-			if checkout.Uses != "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" ||
-				!reflect.DeepEqual(checkout.With, map[string]string{
-					"ref": "${{ github.sha }}", "path": ".action", "persist-credentials": "false",
-				}) {
-				t.Fatalf("acceptance must checkout the exact producer source without credentials: %+v", checkout)
-			}
-			if !strings.HasPrefix(download.Uses, "actions/download-artifact@") ||
-				!reflect.DeepEqual(download.With, map[string]string{
-					"name": "ci-${{ matrix.target }}-${{ github.sha }}",
-					"path": "${{ runner.temp }}/product", "digest-mismatch": "error",
-				}) {
-				t.Fatalf("acceptance must download the same run's manifested artifact: %+v", download)
-			}
-			if candidate.Uses != "./.action/.github/actions/ci-acceptance" ||
-				!reflect.DeepEqual(candidate.With, map[string]string{
-					"target": "${{ matrix.target }}", "kind": "${{ matrix.kind }}",
-					"source-sha": "${{ github.sha }}", "artifact-directory": "${{ runner.temp }}/product",
-				}) {
-				t.Fatalf("acceptance must verify candidate identity and execute each matrix kind: %+v", candidate)
-			}
-			for _, step := range acceptance.Steps {
-				if step.Run != "" || step.Continue || step.If != "" || len(step.Env) != 0 {
-					t.Fatalf("untrusted candidate step must not have a privileged or skipped path: %+v", step)
-				}
-			}
-			if name == "ci-pr.yml" {
-				return // PR ci-pr gate is exercised in pr_code_gate_test.go.
-			}
-			var pass struct {
-				Needs []string `yaml:"needs"`
-				If    string   `yaml:"if"`
-				Steps []step   `yaml:"steps"`
-			}
-			passNode := w.Jobs["ci-push"]
-			if err := passNode.Decode(&pass); err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(pass.Needs, []string{"resolve", "commit-stage", "acceptance-stage"}) ||
-				pass.If != "always() && !cancelled()" || len(pass.Steps) != 1 ||
-				pass.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" ||
-				!strings.Contains(pass.Steps[0].Run, "length == 3 and all(.[]; .result == \"success\")") {
-				t.Fatalf("push pass must require all stages without treating cancellation as success: %+v", pass)
-			}
-		})
-	}
-}
-
 // PR validation stops after source screening and building the candidate.
 func TestPRScreeningOnly(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
@@ -172,6 +50,49 @@ func TestPRScreeningOnly(t *testing.T) {
 	}
 	if ready.Needs != "commit-stage" {
 		t.Fatal("Ready must follow Screening")
+	}
+}
+// Main produces release-ready artifacts after native and public-Action
+// inspection. PR development candidates do not establish release readiness.
+func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-push.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	for _, required := range []string{
+		"name: ci-push",
+		"branches: [main]",
+		"fetch-depth: 0",
+		"uses: ./.github/actions/release-metadata",
+		"uses: ./.github/actions/release-build",
+		"overwrite: 'true'",
+		"uses: ./.action/.github/actions/release-acceptance",
+		"needs.resolve.outputs.version",
+		"needs.resolve.outputs.build-matrix",
+		"needs.resolve.outputs.acceptance-matrix",
+		"matrix.target",
+		"source-sha:",
+		"always() && !cancelled()",
+		"length == 3 and all(.[]; .result == \"success\")",
+	} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("main release-ready validation lacks %q", required)
+		}
+	}
+	var w struct {
+		Jobs map[string]yaml.Node
+	}
+	if err := yaml.Unmarshal(data, &w); err != nil {
+		t.Fatal(err)
+	}
+	if len(w.Jobs) != 4 {
+		t.Fatalf("want exact resolve/build/inspection/gate jobs, got %v", w.Jobs)
+	}
+	for _, name := range []string{"resolve", "commit-stage", "acceptance-stage", "ci-push"} {
+		if _, exists := w.Jobs[name]; !exists {
+			t.Fatalf("missing %s", name)
+		}
 	}
 }
 func TestCandidateCompositeScenarios(t *testing.T) {
