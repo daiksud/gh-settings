@@ -34,7 +34,7 @@ def known_bridge_diagnostic(diagnostic):
         return False
     bridge = SCREENING_BRIDGE if path.name == 'ci-pr.yml' else BRIDGE
     kind, message = diagnostic.get('kind'), diagnostic.get('message')
-    if kind == 'action' and message == ACTION_MESSAGE.format(bridge=bridge):
+    if kind == 'action' and message == ACTION_MESSAGE.replace('{bridge}', bridge):
         start = line - 2
     elif kind == 'if-cond' and message == IF_MESSAGE:
         start = line - 1
