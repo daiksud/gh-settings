@@ -85,6 +85,18 @@ func TestGoCachePreservesCommitChecksAndTrustBoundary(t *testing.T) {
 	if cacheCount != 1 || saveCount != 1 {
 		t.Fatalf("want explicit restore/save, got %d/%d", cacheCount, saveCount)
 	}
+	// Delegated actions own the commands; the composite retains cache policy.
+	for _, name := range []string{"static-analysis", "unit-test", "build"} {
+		data, err := os.ReadFile(filepath.Join(root(), ".github/actions", name, "action.yml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for command := range checks {
+			if strings.Contains(string(data), command) {
+				checks[command] = true
+			}
+		}
+	}
 	for command, found := range checks {
 		if !found {
 			t.Errorf("missing unconditional check: %s", command)
@@ -169,6 +181,38 @@ esac`,
 	for _, changed := range []string{"DISTRO", "COMPILER", "LIBC", "GO_VERSION", "GO_ENV"} {
 		if run(changed) == original {
 			t.Errorf("%s change reused environment identity", changed)
+		}
+	}
+}
+
+
+func TestCommitStageDelegatesSingleResponsibilityActions(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/commit-stage/action.yml"))
+	if err != nil { t.Fatal(err) }
+	var action struct { Runs struct { Steps []step } }
+	if err := yaml.Unmarshal(data, &action); err != nil { t.Fatal(err) }
+	found := []string{}
+	for _, s := range action.Runs.Steps {
+		if strings.HasPrefix(s.Uses, "./.github/actions/") {
+			found = append(found, s.Uses)
+		}
+		if strings.Contains(s.Run, "go test ") || strings.Contains(s.Run, "go build ") ||
+			strings.Contains(s.Run, "go vet ") || strings.Contains(s.Run, "gofmt -l") {
+			t.Fatal("commit-stage must delegate source and build operations to focused Actions")
+		}
+	}
+	want := []string{
+		"./.github/actions/setup-tools",
+		"./.github/actions/static-analysis",
+		"./.github/actions/unit-test",
+		"./.github/actions/build",
+	}
+	if len(found) != len(want) {
+		t.Fatalf("delegated actions: got %v, want %v", found, want)
+	}
+	for i := range want {
+		if found[i] != want[i] {
+			t.Fatalf("delegated action order: got %v, want %v", found, want)
 		}
 	}
 }

@@ -100,7 +100,7 @@ mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTIN
 git diff --check
 ```
 
-The existing Markdown check validates relative files and heading fragments. When moving a page or heading, update links in Markdown, frontmatter source references, and any plain-text commands or paths. When adding a root document, include it in the [CI Markdown check](.github/actions/commit-stage/action.yml).
+The existing Markdown check validates relative files and heading fragments. When moving a page or heading, update links in Markdown, frontmatter source references, and any plain-text commands or paths. When adding a root document, include it in the [CI Markdown check](.github/actions/static-analysis/action.yml).
 
 ## Releases
 
