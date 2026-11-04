@@ -53,7 +53,7 @@ runs:
           "$RUNNER_TEMP/accepted-$artifact_target" "$GITHUB_OUTPUT"
     - name: Run native product acceptance
       if: inputs.target == 'linux-amd64' || inputs.target == 'darwin-arm64'
-      uses: ./.action/.github/actions/acceptance-stage
+      uses: ./.action/.github/actions/integration-test
       with:
         binary-path: ${{ steps.artifact.outputs.asset-path }}
         binary-sha256: ${{ steps.artifact.outputs.sha256 }}
@@ -69,7 +69,7 @@ runs:
         cache: false
     - name: Validate the candidate public Action
       if: inputs.target == 'candidate-action'
-      uses: ./.action/.github/actions/candidate-smoke
+      uses: ./.action/.github/actions/e2e-test
       with:
         source-sha: ${{ inputs.source-sha }}
         cli-version: ${{ inputs.version }}

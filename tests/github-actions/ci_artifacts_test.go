@@ -102,8 +102,8 @@ func TestCICompositesPreserveSameCandidate(t *testing.T) {
 		t.Fatalf("commit stage must produce a manifested binary: %+v", commit)
 	}
 	if len(acceptance) != 4 ||
-		acceptance[1].Uses != "./.action/.github/actions/acceptance-stage" ||
-		acceptance[3].Uses != "./.action/.github/actions/candidate-smoke" ||
+		acceptance[1].Uses != "./.action/.github/actions/integration-test" ||
+		acceptance[3].Uses != "./.action/.github/actions/e2e-test" ||
 		acceptance[1].If != "inputs.kind == 'process'" ||
 		acceptance[3].If != "inputs.kind == 'public-action'" {
 		t.Fatalf("acceptance must run process and public Action checks on transferred bytes: %+v", acceptance)

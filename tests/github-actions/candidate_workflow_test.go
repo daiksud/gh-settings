@@ -98,7 +98,7 @@ func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
 }
 
 func TestCandidateCompositeScenarios(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/candidate-smoke/action.yml"))
+	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/e2e-test/action.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
