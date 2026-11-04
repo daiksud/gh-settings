@@ -9,6 +9,9 @@ runs:
     - name: Test release version resolution
       shell: bash
       run: python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
+    - name: Test main CI artifact reuse and integrity
+      shell: bash
+      run: python3 -m unittest discover -s .github/scripts -p 'test_release_ci.py' -q
     - name: Test release recovery without GitHub
       shell: bash
       run: bash tests/release.sh

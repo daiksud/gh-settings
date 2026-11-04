@@ -1,0 +1,29 @@
+name: Reuse inspected main artifacts
+description: Verify archived release products from the latest successful exact-SHA ci-push run.
+inputs:
+  ci-run-id:
+    description: Validated ci-push run ID, empty when no run was found.
+    required: false
+    default: ''
+  version:
+    description: Frozen release version.
+    required: true
+  source-sha:
+    description: Frozen main commit.
+    required: true
+outputs:
+  reused:
+    description: True only when both native products are verified and ready for handoff.
+    value: ${{ steps.lookup.outputs.reused }}
+runs:
+  using: composite
+  steps:
+    - name: Download and verify both exact main products
+      id: lookup
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_SHA: ${{ inputs.source-sha }}
+        CI_RUN_ID: ${{ inputs.ci-run-id }}
+        RELEASE_VERSION: ${{ inputs.version }}
+      run: python3 .github/scripts/release-ci.py reuse "$CI_RUN_ID" "$RELEASE_VERSION"

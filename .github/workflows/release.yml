@@ -18,8 +18,9 @@ jobs:
   resolve:
     runs-on: ubuntu-slim
     timeout-minutes: 10
-    permissions: {contents: read}
+    permissions: {contents: read, actions: read}
     outputs:
+      ci-run-id: ${{ steps.ci.outputs.ci-run-id }}
       source-sha: ${{ github.sha }}
       version: ${{ steps.metadata.outputs.version }}
       previous-tag: ${{ steps.metadata.outputs.previous-tag }}
@@ -68,6 +69,13 @@ jobs:
       - name: Lock dependencies of workspace Actions
         if: ${{ false }}
         uses: $/.github/actions/lock-workspace-dependencies
+      - name: Require successful main CI, when present
+        id: ci
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: python3 .github/scripts/release-ci.py status
       - name: Resolve release metadata and validated target matrices
         id: metadata
         uses: ./.github/actions/release-metadata
@@ -75,8 +83,49 @@ jobs:
           source-sha: ${{ github.sha }}
         env:
           GH_TOKEN: ${{ github.token }}
-  commit-stage:
+  reuse:
     needs: resolve
+    runs-on: ubuntu-slim
+    timeout-minutes: 12
+    permissions: {contents: read, actions: read}
+    outputs:
+      reused: ${{ steps.lookup.outputs.reused }}
+    steps:
+      - name: Checkout frozen main to verify candidate artifacts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Recover exact-SHA CI products
+        id: lookup
+        uses: ./.github/actions/release-reuse
+        with:
+          source-sha: ${{ github.sha }}
+          version: ${{ needs.resolve.outputs.version }}
+          ci-run-id: ${{ needs.resolve.outputs.ci-run-id }}
+      - name: Transfer verified Linux product into this release run
+        if: steps.lookup.outputs.reused == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-linux-amd64
+          path: ${{ runner.temp }}/reused-release/linux-amd64
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+          retention-days: 1
+      - name: Transfer verified macOS product into this release run
+        if: steps.lookup.outputs.reused == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-darwin-arm64
+          path: ${{ runner.temp }}/reused-release/darwin-arm64
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+          retention-days: 1
+  commit-stage:
+    needs: [resolve, reuse]
+    if: needs.reuse.outputs.reused != 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     permissions: {contents: read}
@@ -95,8 +144,10 @@ jobs:
           target: ${{ matrix.target }}
           version: ${{ needs.resolve.outputs.version }}
           source-sha: ${{ github.sha }}
+          overwrite: 'true'
   acceptance-stage:
-    needs: [resolve, commit-stage]
+    needs: [resolve, reuse, commit-stage]
+    if: needs.reuse.outputs.reused != 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     permissions: {contents: read}
@@ -116,11 +167,36 @@ jobs:
           target: ${{ matrix.target }}
           version: ${{ needs.resolve.outputs.version }}
           source-sha: ${{ github.sha }}
+  delivery-gate:
+    needs: [resolve, reuse, commit-stage, acceptance-stage]
+    if: always()
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    permissions: {}
+    steps:
+      - name: Require reuse or complete fresh Screening and Inspection
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          jq -e '
+            .resolve.result == "success" and
+            .reuse.result == "success" and
+            (
+              (.reuse.outputs.reused == "true" and
+               .["commit-stage"].result == "skipped" and
+               .["acceptance-stage"].result == "skipped") or
+              (.reuse.outputs.reused != "true" and
+               .["commit-stage"].result == "success" and
+               .["acceptance-stage"].result == "success")
+            )
+          ' <<< "$RESULTS" > /dev/null
   release:
-    needs: [resolve, commit-stage, acceptance-stage]
+    needs: [resolve, delivery-gate]
+    if: always() && needs.resolve.result == 'success' && needs.delivery-gate.result == 'success'
     runs-on: ubuntu-slim
     timeout-minutes: 15
-    permissions: {contents: write}
+    permissions: {contents: write, actions: read}
     steps:
       - name: Checkout frozen main and complete release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -128,6 +204,18 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Recheck main and ci-push before publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          EXPECTED_RUN: ${{ needs.resolve.outputs.ci-run-id }}
+        run: |
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          [[ "$current_main" == "$SOURCE_SHA" ]] || {
+            echo 'main advanced during release; abort publication' >&2
+            exit 1
+          }
+          python3 .github/scripts/release-ci.py status "$EXPECTED_RUN"
       - name: Publish accepted release artifacts
         uses: ./.github/actions/release-publish
         with:
@@ -139,6 +227,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
   verify-release:
     needs: [resolve, release]
+    if: always() && needs.resolve.result == 'success' && needs.release.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions: {contents: read}
