@@ -185,7 +185,6 @@ esac`,
 	}
 }
 
-
 func TestCommitStageDelegatesSingleResponsibilityActions(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/commit-stage/action.yml"))
 	if err != nil {
