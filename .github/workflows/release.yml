@@ -193,6 +193,7 @@ jobs:
           ' <<< "$RESULTS" > /dev/null
   release:
     needs: [resolve, delivery-gate]
+    if: always() && needs.resolve.result == 'success' && needs.delivery-gate.result == 'success'
     runs-on: ubuntu-slim
     timeout-minutes: 15
     permissions: {contents: write, actions: read}
@@ -226,6 +227,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
   verify-release:
     needs: [resolve, release]
+    if: always() && needs.resolve.result == 'success' && needs.release.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions: {contents: read}

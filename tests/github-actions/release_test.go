@@ -87,7 +87,7 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	if err := publishNode.Decode(&publish); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(needs(t, publish.Needs), []string{"resolve", "delivery-gate"}) || !reflect.DeepEqual(publish.Permissions, map[string]string{"contents": "write", "actions": "read"}) || publish.If != "" || publish.Continue {
+	if !reflect.DeepEqual(needs(t, publish.Needs), []string{"resolve", "delivery-gate"}) || !reflect.DeepEqual(publish.Permissions, map[string]string{"contents": "write", "actions": "read"}) || publish.If != "always() && needs.resolve.result == 'success' && needs.delivery-gate.result == 'success'" || publish.Continue {
 		t.Fatalf("publication overrides the ordinary accepted-product gate: %+v", publish)
 	}
 	publishAction := publish.Steps[len(publish.Steps)-1]
@@ -102,7 +102,7 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	if err := verifyNode.Decode(&verify); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(needs(t, verify.Needs), []string{"resolve", "release"}) || !reflect.DeepEqual(verify.Permissions, map[string]string{"contents": "read"}) || verify.If != "" || verify.Continue {
+	if !reflect.DeepEqual(needs(t, verify.Needs), []string{"resolve", "release"}) || !reflect.DeepEqual(verify.Permissions, map[string]string{"contents": "read"}) || verify.If != "always() && needs.resolve.result == 'success' && needs.release.result == 'success'" || verify.Continue {
 		t.Fatalf("published verification gate changed: %+v", verify)
 	}
 	verifyAction := verify.Steps[len(verify.Steps)-1]
