@@ -11,9 +11,9 @@ No workflow publishes the shared `pass` commit status.
 ## Staged code validation
 
 Every PR event (including title/body edits) runs Draft, metadata resolution,
-Commit stage, Ready and Acceptance stage. The final `ci-pr` job succeeds only
-when every prerequisite succeeds. A failed, skipped or cancelled prerequisite
-cannot report success. The separate `ci-push` aggregate checks main after merge.
+Screening (source checks, unit tests and build), and Ready. The final `ci-pr` job succeeds only
+when every Screening prerequisite succeeds. PR Inspection is not performed. A failed, skipped or cancelled prerequisite
+cannot report success. The separate `ci-push` aggregate checks Screening and Inspection on main.
 The PR aggregate uses `always()` so cancelled prerequisites are evaluated as
 non-success rather than skipping the required job.
 

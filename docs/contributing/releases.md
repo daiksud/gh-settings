@@ -1,6 +1,6 @@
 # Maintainer releases
 
-The [manual release workflow](../../.github/workflows/release.yml) builds and accepts its own platform binaries. Merging code neither calculates a persistent version nor authorizes publication. The [README](../../README.md) owns installation; the [Actions guide](../github-actions.md#published-package-and-consumer-pins) owns consumer pins.
+The [manual release workflow](../../.github/workflows/release.yml) currently builds and accepts its own platform binaries. The main CI prepares separately inspected, release-ready Linux/macOS artifacts for reuse by the follow-up release phase in #591. Merging code neither calculates a persistent version nor authorizes publication. The [README](../../README.md) owns installation; the [Actions guide](../github-actions.md#published-package-and-consumer-pins) owns consumer pins.
 
 ## Automatic version calculation
 

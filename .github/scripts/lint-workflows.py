@@ -10,9 +10,9 @@ ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = {ROOT / '.github/workflows' / f'{name}.yml'
              for name in ('ci-pr', 'ci-push', 'release')}
 BRIDGE = '$/.github/actions/lock-workspace-dependencies'
+SCREENING_BRIDGE = '$/.github/actions/lock-workspace-dependencies-screening'
 IF_LINE = 'if: ${{ false }}'
-USES_LINE = f'uses: {BRIDGE}'
-ACTION_MESSAGE = (f'specifying action "{BRIDGE}" in invalid format because ref is missing. '
+ACTION_MESSAGE = ('specifying action "{bridge}" in invalid format because ref is missing. '
                   'available formats are "{owner}/{repo}@{ref}" or '
                   '"{owner}/{repo}/{path}@{ref}"')
 IF_MESSAGE = 'constant expression "false" in condition. remove the if: section'
@@ -32,8 +32,9 @@ def known_bridge_diagnostic(diagnostic):
         lines = path.read_text().splitlines()
     except (OSError, UnicodeError):
         return False
+    bridge = SCREENING_BRIDGE if path.name == 'ci-pr.yml' else BRIDGE
     kind, message = diagnostic.get('kind'), diagnostic.get('message')
-    if kind == 'action' and message == ACTION_MESSAGE:
+    if kind == 'action' and message == ACTION_MESSAGE.replace('{bridge}', bridge):
         start = line - 2
     elif kind == 'if-cond' and message == IF_MESSAGE:
         start = line - 1
@@ -41,7 +42,7 @@ def known_bridge_diagnostic(diagnostic):
         return False
     return (0 <= start < len(lines) - 1
             and lines[start].strip() == IF_LINE
-            and lines[start + 1].strip() == USES_LINE)
+            and lines[start + 1].strip() == f'uses: {bridge}')
 
 
 def main():
