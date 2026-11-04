@@ -14,7 +14,10 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const workspaceLockBridge = "$/.github/actions/lock-workspace-dependencies"
+const (
+	workspaceLockBridge = "$/.github/actions/lock-workspace-dependencies"
+	workspaceScreeningBridge = "$/.github/actions/lock-workspace-dependencies-screening"
+)
 
 type lockInventoryStep struct {
 	Uses string         `yaml:"uses"`
@@ -128,7 +131,7 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 			if step.Uses == "" {
 				continue
 			}
-			if step.Uses == workspaceLockBridge {
+			if step.Uses == workspaceLockBridge || step.Uses == workspaceScreeningBridge {
 				if !workflowFile {
 					return fmt.Errorf("runtime composite must not execute bridge: %s", name)
 				}
@@ -136,7 +139,8 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 			}
 			if local, ok := lockInventoryLocalDirectory(step.Uses); ok {
 				bridgeDir, _ := lockInventoryLocalDirectory(workspaceLockBridge)
-				if local == bridgeDir {
+				screeningDir, _ := lockInventoryLocalDirectory(workspaceScreeningBridge)
+				if local == bridgeDir || local == screeningDir {
 					return fmt.Errorf("runtime local Action must not execute bridge: %s", name)
 				}
 				if local == ".." || strings.HasPrefix(local, "../") {
@@ -168,10 +172,17 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 		return err
 	}
 	bridgeCount := 0
+	bridgeAction := workspaceLockBridge
+	if strings.HasSuffix(workflow, "/ci-pr.yml") {
+		bridgeAction = workspaceScreeningBridge
+	}
 	for jobName, job := range doc.Jobs {
 		for _, step := range job.Steps {
-			if step.Uses != workspaceLockBridge {
+			if step.Uses != workspaceLockBridge && step.Uses != workspaceScreeningBridge {
 				continue
+			}
+			if step.Uses != bridgeAction {
+				return fmt.Errorf("%s: wrong dependency bridge %s", workflow, step.Uses)
 			}
 			bridgeCount++
 			condition := strings.TrimSpace(step.If.Value)
@@ -187,7 +198,7 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 	if err != nil {
 		return err
 	}
-	bridgeDir, _ := lockInventoryLocalDirectory(workspaceLockBridge)
+	bridgeDir, _ := lockInventoryLocalDirectory(bridgeAction)
 	bridge, err := lockInventoryDocumentRead(read, path.Join(bridgeDir, "action.yml"))
 	if err != nil {
 		return err
@@ -260,7 +271,11 @@ func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, source := range []string{"action.yml", ".github/actions/commit-stage/action.yml"} {
+			required := []string{".github/actions/commit-stage/action.yml"}
+			if name != "ci-pr" {
+				required = append(required, "action.yml")
+			}
+			for _, source := range required {
 				if !visited[source] {
 					t.Fatalf("%s did not traverse %s", workflow, source)
 				}
@@ -271,7 +286,7 @@ func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
 
 func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
 	const workflow = ".github/workflows/ci-pr.yml"
-	bridgeDir, _ := lockInventoryLocalDirectory(workspaceLockBridge)
+	bridgeDir, _ := lockInventoryLocalDirectory(workspaceScreeningBridge)
 	bridgeFile := path.Join(bridgeDir, "action.yml")
 	for _, test := range []struct{ name, file, from, to, want string }{
 		{"omitted-runtime-dependency", bridgeFile, `(?m)^    - uses: actions/cache/restore@[^\n]+\n`, "", "bridge differs"},
