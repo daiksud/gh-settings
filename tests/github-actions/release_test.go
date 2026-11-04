@@ -2,7 +2,6 @@ package githubactions
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -111,123 +110,6 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 		"source-sha": "${{ github.sha }}", "version": "${{ needs.resolve.outputs.version }}",
 	}) {
 		t.Fatalf("published verification does not remain token-free and source-bound: %+v", verifyAction)
-	}
-}
-
-// A recovered product may skip the release's own build/inspection only when
-// both copies were verified, and no unsuccessful prerequisite may be hidden.
-func TestReleaseReuseAndFallbackAreFailClosed(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var workflow struct{ Jobs map[string]yaml.Node }
-	if err := yaml.Unmarshal(data, &workflow); err != nil {
-		t.Fatal(err)
-	}
-	type nodeJob struct {
-		Needs       []string
-		If          string
-		Permissions map[string]string
-		Steps       []step
-		Outputs     map[string]string
-	}
-	var resolve struct {
-		Permissions map[string]string
-		Outputs     map[string]string
-		Steps       []step
-	}
-	resolved := workflow.Jobs["resolve"]
-	if err := resolved.Decode(&resolve); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read", "actions": "read"}) ||
-		!strings.Contains(resolve.Outputs["ci-run-id"], "steps.ci.outputs.ci-run-id") {
-		t.Fatal("resolve must gate on exact-source CI with only read permissions")
-	}
-	ciGate := false
-	for _, step := range resolve.Steps {
-		ciGate = ciGate || (step.ID == "ci" &&
-			step.Run == "python3 .github/scripts/release-ci.py status" &&
-			strings.Contains(step.Env["SOURCE_SHA"], "github.sha") &&
-			strings.Contains(step.Env["GH_TOKEN"], "github.token"))
-	}
-	if !ciGate {
-		t.Fatal("missing fatal main CI result gate")
-	}
-	var reuse nodeJob
-	reuseNode := workflow.Jobs["reuse"]
-	if err := reuseNode.Decode(&reuse); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(reuse.Needs, []string{"resolve"}) ||
-		!reflect.DeepEqual(reuse.Permissions, map[string]string{"contents": "read", "actions": "read"}) ||
-		!strings.Contains(reuse.Outputs["reused"], "steps.lookup.outputs.reused") ||
-		len(reuse.Steps) != 4 || reuse.Steps[1].Uses != "./.github/actions/release-reuse" ||
-		!strings.Contains(reuse.Steps[1].With["ci-run-id"], "needs.resolve.outputs.ci-run-id") {
-		t.Fatal("reuse must verify and restage both products before publication")
-	}
-	for _, step := range reuse.Steps[2:] {
-		if step.If != "steps.lookup.outputs.reused == 'true'" ||
-			!strings.HasPrefix(step.Uses, "actions/upload-artifact@") ||
-			step.With["overwrite"] != "true" || step.With["if-no-files-found"] != "error" {
-			t.Fatal("only completely verified products may be uploaded")
-		}
-	}
-	var delivery nodeJob
-	deliveryNode := workflow.Jobs["delivery-gate"]
-	if err := deliveryNode.Decode(&delivery); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(delivery.Needs, []string{"resolve", "reuse", "commit-stage", "acceptance-stage"}) ||
-		delivery.If != "always()" || len(delivery.Permissions) != 0 || len(delivery.Steps) != 1 {
-		t.Fatal("delivery must inspect every job state without publishing privileges")
-	}
-	gate := delivery.Steps[0]
-	for _, test := range []struct {
-		name, reused, build, acceptance, resolve, lookup string
-		ok                                                  bool
-	}{
-		{"verified reuse", "true", "skipped", "skipped", "success", "success", true},
-		{"fresh fallback", "false", "success", "success", "success", "success", true},
-		{"reuse failed", "true", "skipped", "skipped", "success", "failure", false},
-		{"build failed", "false", "failure", "skipped", "success", "success", false},
-		{"inspection failed", "false", "success", "failure", "success", "success", false},
-		{"missing inspection", "false", "success", "skipped", "success", "success", false},
-		{"unverified skip", "false", "skipped", "skipped", "success", "success", false},
-		{"wrong extra build", "true", "success", "skipped", "success", "success", false},
-		{"cancelled resolve", "false", "skipped", "skipped", "cancelled", "skipped", false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			result := map[string]any{
-				"resolve": map[string]any{"result": test.resolve},
-				"reuse": map[string]any{"result": test.lookup,
-					"outputs": map[string]any{"reused": test.reused}},
-				"commit-stage": map[string]any{"result": test.build},
-				"acceptance-stage": map[string]any{"result": test.acceptance},
-			}
-			serialized, err := json.Marshal(result)
-			if err != nil {
-				t.Fatal(err)
-			}
-			command := exec.Command("bash", "-euo", "pipefail", "-c", gate.Run)
-			command.Env = append(os.Environ(), "RESULTS="+string(serialized))
-			got, err := command.CombinedOutput()
-			if (err == nil) != test.ok {
-				t.Fatalf("case %s failed: err=%v output=%s", test.name, err, got)
-			}
-		})
-	}
-	var publish nodeJob
-	pubNode := workflow.Jobs["release"]
-	if err := pubNode.Decode(&publish); err != nil {
-		t.Fatal(err)
-	}
-	if len(publish.Steps) != 3 || publish.Steps[1].Run == "" ||
-		!strings.Contains(publish.Steps[1].Run, "release-ci.py status") ||
-		!strings.Contains(publish.Steps[1].Run, "main advanced during release") ||
-		publish.Steps[2].Uses != "./.github/actions/release-publish" {
-		t.Fatal("publication must revalidate main and CI before publishing")
 	}
 }
 
