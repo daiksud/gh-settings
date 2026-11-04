@@ -11,7 +11,7 @@ import (
 )
 
 func TestCandidateCompositeCallers(t *testing.T) {
-	for _, name := range []string{"ci-pr.yml", "ci-push.yml"} {
+	for _, name := range []string{"ci-pr.yml"} {
 		t.Run(name, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", name))
 			if err != nil {
@@ -132,6 +132,49 @@ func TestCandidateCompositeCallers(t *testing.T) {
 	}
 }
 
+// Main produces release-ready artifacts after native and public-Action
+// inspection. PR development candidates do not establish release readiness.
+func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-push.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(data)
+	for _, required := range []string{
+		"name: ci-push",
+		"branches: [main]",
+		"fetch-depth: 0",
+		"uses: ./.github/actions/release-metadata",
+		"uses: ./.github/actions/release-build",
+		"overwrite: 'true'",
+		"uses: ./.action/.github/actions/release-acceptance",
+		"needs.resolve.outputs.version",
+		"needs.resolve.outputs.build-matrix",
+		"needs.resolve.outputs.acceptance-matrix",
+		"matrix.target",
+		"source-sha:",
+		"always() && !cancelled()",
+		"length == 3 and all(.[]; .result == \"success\")",
+	} {
+		if !strings.Contains(source, required) {
+			t.Fatalf("main release-ready validation lacks %q", required)
+		}
+	}
+	var w struct {
+		Jobs map[string]yaml.Node
+	}
+	if err := yaml.Unmarshal(data, &w); err != nil {
+		t.Fatal(err)
+	}
+	if len(w.Jobs) != 4 {
+		t.Fatalf("want exact resolve/build/inspection/gate jobs, got %v", w.Jobs)
+	}
+	for _, name := range []string{"resolve", "commit-stage", "acceptance-stage", "ci-push"} {
+		if _, exists := w.Jobs[name]; !exists {
+			t.Fatalf("missing %s", name)
+		}
+	}
+}
 func TestCandidateCompositeScenarios(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/candidate-smoke/action.yml"))
 	if err != nil {
