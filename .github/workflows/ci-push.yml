@@ -56,6 +56,7 @@ jobs:
           target: ${{ matrix.target }}
           version: ${{ needs.resolve.outputs.version }}
           source-sha: ${{ github.sha }}
+          overwrite: 'true'
   acceptance-stage:
     needs: [resolve, commit-stage]
     runs-on: ${{ matrix.runner }}

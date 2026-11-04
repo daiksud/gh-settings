@@ -146,6 +146,7 @@ func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
 		"fetch-depth: 0",
 		"uses: ./.github/actions/release-metadata",
 		"uses: ./.github/actions/release-build",
+		"overwrite: 'true'",
 		"uses: ./.action/.github/actions/release-acceptance",
 		"needs.resolve.outputs.version",
 		"needs.resolve.outputs.build-matrix",
