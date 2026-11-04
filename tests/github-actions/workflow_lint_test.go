@@ -19,7 +19,9 @@ func TestWorkflowLintOnlyAcceptsLiteralInertBridgeDiagnostics(t *testing.T) {
 		t.Fatal(err)
 	}
 	const bridge = "$/.github/actions/lock-workspace-dependencies"
+	const screening = "$/.github/actions/lock-workspace-dependencies-screening"
 	actionMessage := `specifying action "` + bridge + `" in invalid format because ref is missing. available formats are "{owner}/{repo}@{ref}" or "{owner}/{repo}/{path}@{ref}"`
+	screeningMessage := strings.ReplaceAll(actionMessage, bridge, screening)
 	ifMessage := `constant expression "false" in condition. remove the if: section`
 	for _, test := range []struct {
 		name, file, source, message, stderr string
@@ -27,14 +29,14 @@ func TestWorkflowLintOnlyAcceptsLiteralInertBridgeDiagnostics(t *testing.T) {
 		line, status                        int
 		valid                               bool
 	}{
-		{name: "inert same-repo reference", file: "ci-pr.yml", kind: "action", line: 4, message: actionMessage, status: 1, valid: true},
+		{name: "inert same-repo reference", file: "ci-pr.yml", kind: "action", line: 4, message: screeningMessage, status: 1, valid: true},
 		{name: "intentional false guard", file: "release.yml", kind: "if-cond", line: 3, message: ifMessage, status: 1, valid: true},
-		{name: "other same-repo reference", file: "ci-pr.yml", kind: "action", line: 4, message: strings.ReplaceAll(actionMessage, bridge, "$/.github/actions/other"), status: 1},
+		{name: "other same-repo reference", file: "ci-pr.yml", kind: "action", line: 4, message: strings.ReplaceAll(screeningMessage, screening, "$/.github/actions/other"), status: 1},
 		{name: "unrelated false guard", file: "ci-pr.yml", kind: "if-cond", line: 2, message: ifMessage, status: 1},
 		{name: "other workflow", file: "other.yml", kind: "action", line: 4, message: actionMessage, status: 1},
-		{name: "enabled bridge", file: "ci-pr.yml", source: "steps:\n  - name: Inventory\n    if: ${{ true }}\n    uses: " + bridge + "\n", kind: "action", line: 4, message: actionMessage, status: 1},
-		{name: "tool failure", file: "ci-pr.yml", kind: "action", line: 4, message: actionMessage, status: 2},
-		{name: "stderr failure", file: "ci-pr.yml", kind: "action", line: 4, message: actionMessage, status: 1, stderr: "tool error"},
+		{name: "enabled bridge", file: "ci-pr.yml", source: "steps:\n  - name: Inventory\n    if: ${{ true }}\n    uses: " + screening + "\n", kind: "action", line: 4, message: screeningMessage, status: 1},
+		{name: "tool failure", file: "ci-pr.yml", kind: "action", line: 4, message: screeningMessage, status: 2},
+		{name: "stderr failure", file: "ci-pr.yml", kind: "action", line: 4, message: screeningMessage, status: 1, stderr: "tool error"},
 		{name: "no diagnostics failure", file: "ci-pr.yml", message: "EMPTY", status: 1},
 		{name: "malformed output", file: "ci-pr.yml", message: "MALFORMED", status: 1},
 		{name: "non-array output", file: "ci-pr.yml", message: "OBJECT", status: 1},
@@ -58,6 +60,9 @@ func TestWorkflowLintOnlyAcceptsLiteralInertBridgeDiagnostics(t *testing.T) {
 			source := test.source
 			if source == "" {
 				source = "steps:\n  - name: Inventory\n    if: ${{ false }}\n    uses: " + bridge + "\n"
+				if test.file == "ci-pr.yml" {
+					source = "steps:\n  - name: Inventory\n    if: ${{ false }}\n    uses: " + screening + "\n"
+				}
 			}
 			if err := os.WriteFile(workflow, []byte(source), 0644); err != nil {
 				t.Fatal(err)

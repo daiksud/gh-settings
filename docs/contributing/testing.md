@@ -97,21 +97,30 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_
 
 ## CI validation
 
-The [PR code](../../.github/workflows/ci-pr.yml) and [main](../../.github/workflows/ci-push.yml) workflows retain the product stages below. The separate [PRLint workflow](../../.github/workflows/prlint.yml) validates title/body edits without repeating product work. PR Draft/Ready transitions and approval automation are described in [repository automation](repository-automation.md#pr-lifecycle); [PR validation](pr-validation.md) documents the independent code/message checks and required-context boundary.
+The [PR workflow](../../.github/workflows/ci-pr.yml) runs Screening only:
+static analysis, Go race and offline tests, and a native Linux build.
+Its required `ci-pr` job aggregates Draft, metadata resolution, Screening,
+and Ready; failed, skipped or cancelled dependencies never report success.
+The separate [PRLint workflow](../../.github/workflows/prlint.yml) checks
+title/body edits and proposed squash messages.
 
-| Stage | Work and handoff |
-| --- | --- |
-| `prlint` (PR only) | Validate title/body with commitlint and reject invalid Conventional Commits; [Dependabot-authored PRs skip the job](pr-validation.md#message-and-settings-validation) |
-| Commit stage | Formatting, modules, vet, race tests, workflow/shell checks, release/installer fixtures, Markdown/local links, and one product build |
-| Acceptance stage (process) | Download the same run's manifested product, verify source SHA, target, binary name, digest and version, then execute the tagged process suite |
-| Acceptance stage (public Action) | Verify the identical candidate on Ubuntu 24.04 x64 and exercise the published Action interface against a local fixture without rebuilding the product |
-| `pass` | Require successful matrix resolution, commit, and all acceptance legs; PR message validation is required separately. Metadata-only edits do not publish a new code result; failed, cancelled, or skipped prerequisites cannot produce success |
+The [main workflow](../../.github/workflows/ci-push.yml) runs full Screening
+and Inspection. It resolves the release version for the exact `main` SHA,
+builds Linux amd64 and macOS arm64 natively using
+[release-build](../../.github/actions/release-build/action.yml), and tests
+those same product binaries and the public Action through
+[release-acceptance](../../.github/actions/release-acceptance/action.yml).
+Each artifact has a source/version/target/SHA-256 manifest and is retained
+for seven days for use by the manual release workflow.
 
-The [PR CI](../../.github/workflows/ci-pr.yml) uses the [CI commit composite](../../.github/actions/ci-commit/action.yml) and its Linux-only candidate and acceptance matrices. The [main CI](../../.github/workflows/ci-push.yml) now resolves the release version for the exact main SHA, builds Linux amd64 and macOS arm64 natively with [release-build](../../.github/actions/release-build/action.yml), and inspects those products plus the candidate public Action via [release-acceptance](../../.github/actions/release-acceptance/action.yml). The resulting seven-day artifacts include source/version/target identity and a binary digest. Manual release still builds and accepts its own products until the separately planned artifact-reuse phase of #591.
-
-Each acceptance matrix leg downloads the same run's artifact with digest mismatch treated as an error and checks out the exact producer source separately into `.action`. The [CI acceptance composite](../../.github/actions/ci-acceptance/action.yml) validates manifest identity against the checkout and bytes before choosing the process or public-Action acceptance path. The [process acceptance composite](../../.github/actions/acceptance-stage/action.yml) additionally verifies the embedded version and runs the tagged process suite with test caching disabled. No acceptance leg rebuilds the product.
-
-All runners install required tools from pinned mise configuration. The public-Action leg uses Ubuntu 24.04 x64 and Go only to compile its local API fixture; commit and process checks use `ubuntu-slim`. The single-CPU runner's [15-minute job limit](https://docs.github.com/en/actions/reference/runners/github-hosted-runners#single-cpu-runners) still applies. The mise tool cache is disabled, artifacts are retained for one day, and main candidate artifacts are not yet consumed by the release workflow.
+PR Screening invokes [commit-stage](../../.github/actions/commit-stage/action.yml)
+without artifact upload or process/public-Action acceptance. The Go build
+cache restores compilation and module data, never binary artifacts; a cache
+hit does not skip source checks. The [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml)
+and [full CI/release inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
+enumerate transitive external Action pins for the generated
+[actions.lock](../../.github/workflows/actions.lock). Inert inventory steps
+do not run; runtime workspace Actions retain their correct checkout scope.
 
 ### Go cache in commit CI
 
@@ -288,4 +297,4 @@ Superseded workspace parser/type files were removed after their safety/presence 
 
 ## Cross-workflow release gate tests
 
-The offline [release CI tests](../../.github/scripts/test_release_ci.py) cover exact-source main-run selection, latest-run failure and cancellation blocking, artifact provenance, missing/expired artifacts, archive SHA-256 mismatch, version mismatch, binary corruption and fallback. The [release orchestration tests](../../tests/github-actions/release_test.go) check both accepted reuse (with deliberately skipped fallback jobs) and successful full fallback, rejecting all other gate outcomes. The tests do not dispatch or publish a hosted release; manual production release verification remains separately authorized.
+The offline [release CI tests](../../.github/scripts/test_release_ci.py) cover exact-source main-run selection, latest-run failure and cancellation blocking, artifact provenance, missing/expired artifacts, archive SHA-256 mismatch, version mismatch, binary corruption and fallback. The [release orchestration tests](../../tests/github-actions/release_test.go) check the job dependency and publication boundaries; the Python tests exercise successful reuse, corrupted artifacts, failed CI and fallback outcomes. The tests do not dispatch or publish a hosted release; manual production release verification remains separately authorized.

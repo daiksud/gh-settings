@@ -59,13 +59,13 @@ func TestPRWorkflowNamedAggregateCheck(t *testing.T) {
 	if err := checkNode.Decode(&check); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(check.Needs, []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}) ||
+	if !reflect.DeepEqual(check.Needs, []string{"draft", "resolve", "commit-stage", "ready"}) ||
 		check.If != "always()" || len(check.Permissions) != 0 || len(check.Steps) != 1 {
 		t.Fatal("ci-pr must evaluate all stages even on cancellation, with no write permissions")
 	}
 	if check.Steps[0].Uses != "" || check.Steps[0].Continue ||
 		check.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" ||
-		!strings.Contains(check.Steps[0].Run, `length == 5 and all(.[]; .result == "success")`) {
+		!strings.Contains(check.Steps[0].Run, `length == 4 and all(.[]; .result == "success")`) {
 		t.Fatal("ci-pr must fail when any prerequisite does not succeed")
 	}
 }
@@ -92,7 +92,7 @@ func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
 	if check.If != "always()" {
 		t.Fatal("cancellation must not skip the required native aggregate")
 	}
-	names := []string{"draft", "resolve", "commit-stage", "ready", "acceptance-stage"}
+	names := []string{"draft", "resolve", "commit-stage", "ready"}
 	for _, tc := range []struct {
 		name, failed, outcome string
 		wantOK                bool
@@ -104,7 +104,6 @@ func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
 		{"cancelled-resolve", "resolve", "cancelled", false},
 		{"cancelled-commit", "commit-stage", "cancelled", false},
 		{"cancelled-ready", "ready", "cancelled", false},
-		{"cancelled-acceptance", "acceptance-stage", "cancelled", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			results := make(map[string]map[string]string)
