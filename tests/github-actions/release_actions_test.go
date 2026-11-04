@@ -220,13 +220,13 @@ func TestReleaseWorkflowCanonicalBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != "c57d3e7965fe2f2923fa7ff3bbfabf2da27d1629bfdc51486c214d818c3a5f42" {
+	if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != "cb0b4436278280f97c65f792ac61a1dfc7d12ec5855ec0f213a7956fe376ed8b" {
 		t.Fatalf("canonical release workflow digest=%s", got)
 	}
 	if strings.Contains(string(data), "${{ needs.resolve.outputs.source-sha }}") {
 		t.Fatal("downstream jobs must consume the immutable dispatch SHA directly")
 	}
-	if !reflect.DeepEqual(strings.Count(string(data), "permissions: {contents: write}"), 1) {
+	if !reflect.DeepEqual(strings.Count(string(data), "permissions: {contents: write, actions: read}"), 1) {
 		t.Fatal("only publication may request contents write")
 	}
 }

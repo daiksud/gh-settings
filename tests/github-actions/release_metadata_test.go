@@ -30,7 +30,8 @@ func TestReleaseMetadataIsResolvedBeforeProductBuilds(t *testing.T) {
 		t.Fatal("version calculation must not add a publication trigger or manual version override")
 	}
 	resolve := workflow.Jobs["resolve"]
-	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read"}) || !reflect.DeepEqual(resolve.Outputs, map[string]string{
+	if !reflect.DeepEqual(resolve.Permissions, map[string]string{"contents": "read", "actions": "read"}) || !reflect.DeepEqual(resolve.Outputs, map[string]string{
+		"ci-run-id": "${{ steps.ci.outputs.ci-run-id }}",
 		"source-sha": "${{ github.sha }}", "version": "${{ steps.metadata.outputs.version }}",
 		"previous-tag": "${{ steps.metadata.outputs.previous-tag }}", "previous-sha": "${{ steps.metadata.outputs.previous-sha }}",
 		"build-matrix": "${{ steps.metadata.outputs.build-matrix }}", "acceptance-matrix": "${{ steps.metadata.outputs.acceptance-matrix }}",
