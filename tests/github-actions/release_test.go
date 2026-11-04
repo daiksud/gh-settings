@@ -2,6 +2,7 @@ package githubactions
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,7 +14,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func TestReleaseWorkflowDelegatesThreeStages(t *testing.T) {
+func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -22,7 +23,7 @@ func TestReleaseWorkflowDelegatesThreeStages(t *testing.T) {
 	if err := yaml.Unmarshal(data, &release); err != nil {
 		t.Fatal(err)
 	}
-	wantJobs := []string{"resolve", "commit-stage", "acceptance-stage", "release", "verify-release"}
+	wantJobs := []string{"resolve", "reuse", "commit-stage", "acceptance-stage", "delivery-gate", "release", "verify-release"}
 	if len(release.Jobs) != len(wantJobs) {
 		t.Fatalf("release job inventory changed: %v", release.Jobs)
 	}
@@ -59,12 +60,12 @@ func TestReleaseWorkflowDelegatesThreeStages(t *testing.T) {
 	if err := buildNode.Decode(&build); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(needs(t, build.Needs), []string{"resolve"}) || build.Runner != "${{ matrix.runner }}" || !reflect.DeepEqual(build.Permissions, map[string]string{"contents": "read"}) || build.If != "" || build.Continue || build.Strategy.FailFast || build.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.build-matrix) }}" {
+	if !reflect.DeepEqual(needs(t, build.Needs), []string{"resolve", "reuse"}) || build.Runner != "${{ matrix.runner }}" || !reflect.DeepEqual(build.Permissions, map[string]string{"contents": "read"}) || build.If != "needs.reuse.outputs.reused != 'true'" || build.Continue || build.Strategy.FailFast || build.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.build-matrix) }}" {
 		t.Fatalf("matrix build gate changed: %+v", build)
 	}
 	buildAction := build.Steps[len(build.Steps)-1]
 	if buildAction.Uses != "./.github/actions/release-build" || !reflect.DeepEqual(buildAction.With, map[string]string{
-		"target": "${{ matrix.target }}", "version": "${{ needs.resolve.outputs.version }}", "source-sha": "${{ github.sha }}",
+		"target": "${{ matrix.target }}", "version": "${{ needs.resolve.outputs.version }}", "source-sha": "${{ github.sha }}", "overwrite": "true",
 	}) {
 		t.Fatalf("build does not delegate the frozen target identity: %+v", buildAction)
 	}
@@ -73,7 +74,7 @@ func TestReleaseWorkflowDelegatesThreeStages(t *testing.T) {
 	if err := acceptanceNode.Decode(&acceptance); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(needs(t, acceptance.Needs), []string{"resolve", "commit-stage"}) || acceptance.Runner != "${{ matrix.runner }}" || acceptance.Strategy.FailFast || acceptance.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.acceptance-matrix) }}" || !reflect.DeepEqual(acceptance.Permissions, map[string]string{"contents": "read"}) || acceptance.If != "" || acceptance.Continue {
+	if !reflect.DeepEqual(needs(t, acceptance.Needs), []string{"resolve", "reuse", "commit-stage"}) || acceptance.Runner != "${{ matrix.runner }}" || acceptance.Strategy.FailFast || acceptance.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.acceptance-matrix) }}" || !reflect.DeepEqual(acceptance.Permissions, map[string]string{"contents": "read"}) || acceptance.If != "needs.reuse.outputs.reused != 'true'" || acceptance.Continue {
 		t.Fatalf("matrix acceptance gate changed: %+v", acceptance)
 	}
 	acceptAction := acceptance.Steps[len(acceptance.Steps)-1]
@@ -87,7 +88,7 @@ func TestReleaseWorkflowDelegatesThreeStages(t *testing.T) {
 	if err := publishNode.Decode(&publish); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(needs(t, publish.Needs), []string{"resolve", "commit-stage", "acceptance-stage"}) || !reflect.DeepEqual(publish.Permissions, map[string]string{"contents": "write"}) || publish.If != "" || publish.Continue {
+	if !reflect.DeepEqual(needs(t, publish.Needs), []string{"resolve", "delivery-gate"}) || !reflect.DeepEqual(publish.Permissions, map[string]string{"contents": "write", "actions": "read"}) || publish.If != "" || publish.Continue {
 		t.Fatalf("publication overrides the ordinary accepted-product gate: %+v", publish)
 	}
 	publishAction := publish.Steps[len(publish.Steps)-1]
