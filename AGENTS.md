@@ -20,7 +20,7 @@ under the [code-review policy](.agents/skills/code-review/SKILL.md).
 
 ## Repository settings changes
 
-Use the reviewed `.github/settings.yml` and manual `apply-settings` workflow
+Use the reviewed `.github/settings.yml` and manual `settings-apply` workflow
 for this repository's normal settings changes. Read the
 [settings change procedure](docs/contributing/repository-automation.md#repository-settings-changes)
 before choosing an execution path or recovering created resource IDs. After
