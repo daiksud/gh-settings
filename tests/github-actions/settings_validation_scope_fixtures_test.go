@@ -23,7 +23,7 @@ jobs:
 
 func settingsValidationFixtureWorkflows() map[string][]byte {
 	return map[string][]byte{
-		settingsWorkflowPath: []byte("on: {workflow_dispatch: null}\njobs:\n  settings-apply:\n    environment: gh-settings\n"),
+		settingsWorkflowPath:   []byte("on: {workflow_dispatch: null}\njobs:\n  settings-apply:\n    environment: gh-settings\n"),
 		settingsPRWorkflowPath: []byte(settingsValidationFixture),
 	}
 }
