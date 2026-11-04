@@ -40,7 +40,7 @@ Each release contains those two raw executables, `SHA256SUMS`, and notes with so
 | Stage | Required behavior |
 | --- | --- |
 | Resolve | Require the dispatched main commit to remain current, check an optional reviewed source pin, derive the version or recognize an exact retry, freeze the predecessor, and emit allowlisted build/acceptance matrices from that trusted source |
-| Reuse | Look up the exact-source main `ci-push` result; require success, verify both artifact archives and contained source/version/target/SHA-256 manifests, then upload verified bytes to the current release run. Missing/expired products or digest/version mismatches warn and select full fallback; API and authentication failures abort | 
+| Reuse | Look up the exact-source main `ci-push` result; require success, verify both artifact archives and contained source/version/target/SHA-256 manifests, then upload verified bytes to the current release run. Missing/expired products or digest/version mismatches warn and select full fallback; API and authentication failures abort |
 | Commit stage (fallback only) | Run source checks in the Linux lane, build Linux and macOS on native runners, and upload source/version/asset/SHA-256 manifests |
 | Acceptance stage (fallback only) | Download only this run's manifested products, verify exact inventory and bytes, run both native harnesses, and exercise the candidate root Action against a separate consumer |
 | Delivery gate | Require either fully verified reused artifacts with build and Inspection skipped, or complete successful fallback Screening and Inspection; no failed/skipped work may be represented as acceptance |
