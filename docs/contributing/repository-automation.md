@@ -52,7 +52,7 @@ resource-specific behavior.
 
 | Workflow | Trigger and responsibility |
 | --- | --- |
-| [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR events run staged code validation and publish the native `ci-pr` aggregate check |
+| [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR events run Screening only and publish the native `ci-pr` aggregate check |
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; build native release-ready binaries and inspect them, ending in `ci-push` |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Trusted PR-target events validate the merge declaration only; the validation check is `settings-validate` |
@@ -92,7 +92,7 @@ instructions](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-w
 ### Workspace composite coverage
 
 `ci-pr`, `ci-push`, and `release` keep their workspace-local Action references.
-Their acceptance jobs check frozen source out under `.action`, create a separate
+The main and release acceptance jobs check frozen source out under `.action`, create a separate
 configuration-only consumer at the workspace root, and execute that candidate
 Action. Release verification separately checks the published tag out under
 `.published`. A `$/` reference instead resolves from the workflow's repository at
@@ -100,9 +100,10 @@ its commit, independent of those workspace checkouts. Replacing these paths
 mechanically would change which Action is exercised; `.action` and `.published`
 are checkout destinations, not source repository paths.
 
-Each of these three workflows calls the
-[dependency inventory composite](../../.github/actions/lock-workspace-dependencies/action.yml)
-through `$/` in one step guarded by literal `${{ false }}`. That step never runs;
+`ci-push` and `release` call the
+[full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml),
+while `ci-pr` calls a [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml),
+each through `$/` in one step guarded by literal `${{ false }}`. That step never runs;
 it enumerates the existing external Action references so the lockfile generator
 can record them for the same workflow. `--ignore-local-actions` retains the
 runtime `./` references. An inventory in a different workflow does not supply a
@@ -157,7 +158,7 @@ announcement](https://github.blog/changelog/2026-10-28-github-actions-workflow-l
 
 ## PR lifecycle
 
-Every PR event sets Draft, resolves the static build and acceptance matrices, runs commit-stage, then marks the PR Ready before process and public-Action acceptance. Both acceptance legs verify the same manifested binary from commit-stage without rebuilding it. The final native `ci-pr` aggregate job succeeds only when every prerequisite succeeded. Title/body edits rerun the same stages rather than introducing skipped-success required checks.
+Every PR event sets Draft, resolves its build matrix, runs source checks and a native build, then marks the PR Ready. The final native `ci-pr` aggregate succeeds only when all Screening dependencies succeeded. Main CI, rather than PR CI, owns the process and public-Action Inspection of release-ready artifacts. Title/body edits rerun the same stages rather than introducing skipped-success required checks.
 
 The independent `prlint` job checks the current title and body together as the proposed squash message, except for Dependabot-authored PRs. Its job-level skip preserves the required check. GitHub's required-check settings enforce this separately from the code reporter; the reporter does not query or enforce rulesets. See [PR validation](pr-validation.md#message-and-settings-validation) for the author condition, required-check semantics and failure behavior.
 
