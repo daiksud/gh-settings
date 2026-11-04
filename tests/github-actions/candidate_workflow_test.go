@@ -154,7 +154,8 @@ func TestPRScreeningOnly(t *testing.T) {
 		Needs string `yaml:"needs"`
 		Steps []step `yaml:"steps"`
 	}
-	if err := workflow.Jobs["commit-stage"].Decode(&commit); err != nil {
+	buildNode := workflow.Jobs["commit-stage"]
+	if err := buildNode.Decode(&commit); err != nil {
 		t.Fatal(err)
 	}
 	if commit.Needs != "resolve" || len(commit.Steps) != 2 ||
@@ -165,7 +166,8 @@ func TestPRScreeningOnly(t *testing.T) {
 	var ready struct {
 		Needs string `yaml:"needs"`
 	}
-	if err := workflow.Jobs["ready"].Decode(&ready); err != nil {
+	readyNode := workflow.Jobs["ready"]
+	if err := readyNode.Decode(&ready); err != nil {
 		t.Fatal(err)
 	}
 	if ready.Needs != "commit-stage" {
