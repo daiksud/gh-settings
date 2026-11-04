@@ -58,7 +58,7 @@ resource-specific behavior.
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Trusted PR-target events validate the merge declaration only; the validation check is `settings-validate` |
 | [`apply-settings.yml`](../../.github/workflows/apply-settings.yml) | Manual dispatch from `main`; one Environment-bound direct apply job |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or PR CI completion; approve completed reviews matching HEAD with thumbs-up |
-| [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
+| [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; require successful matching main CI, reuse verified products when available, otherwise run Screening/Inspection, then publish and verify |
 
 Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
 
@@ -336,3 +336,5 @@ Logs distinguish approval, withholding because a required Codex signal is absent
 Use [repository rules](https://github.com/daiksud/gh-settings/rules), [Environments](https://github.com/daiksud/gh-settings/settings/environments), and [Actions settings](https://github.com/daiksud/gh-settings/settings/actions) when diagnosing blocked or unexpected execution. Follow [verification before use](../github-actions.md#verify-the-protection-before-use): confirm the required check results and their actual workflow/source for the intended commit, the selected Environment's branch/tag and reviewer restrictions, bypass settings, App installation/credential bindings, and whether GitHub permits the workflow event.
 
 [Operational fixtures](../../tests/github-actions/operational_test.go) and the [test evidence boundaries](testing.md#release-and-publication-evidence) help distinguish source correctness from those external settings. Release dispatch and recovery have their own [maintainer runbook](releases.md).
+
+The manual `release` workflow uses the `actions: read` job permission only for reading CI runs and their artifacts. No CI artifact is executed or published without matching archive digest, source SHA, version, target and product SHA-256. Artifact incompatibility triggers a warning and a full fresh build/Inspection; GitHub API/authentication failures or failed `ci-push` abort. The privileged publication job repeats the main/CI checks before writing a release.

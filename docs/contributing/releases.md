@@ -1,6 +1,6 @@
 # Maintainer releases
 
-The [manual release workflow](../../.github/workflows/release.yml) currently builds and accepts its own platform binaries. The main CI prepares separately inspected, release-ready Linux/macOS artifacts for reuse by the follow-up release phase in #591. Merging code neither calculates a persistent version nor authorizes publication. The [README](../../README.md) owns installation; the [Actions guide](../github-actions.md#published-package-and-consumer-pins) owns consumer pins.
+The [manual release workflow](../../.github/workflows/release.yml) first checks the latest matching main `ci-push` run. It reuses that successful run's verified Linux and macOS products, or rebuilds and reinspects both products if the artifacts are missing, expired or fail identity checks. A failed, cancelled or unfinished `ci-push` blocks release rather than triggering a rebuild. Merging code neither calculates a persistent version nor authorizes publication. The [README](../../README.md) owns installation; the [Actions guide](../github-actions.md#published-package-and-consumer-pins) owns consumer pins.
 
 ## Automatic version calculation
 
@@ -26,7 +26,7 @@ gh workflow run release.yml --repo daiksud/gh-settings --ref main
 
 Optionally add `-f source_sha=FULL_40_CHARACTER_SHA` to pin the reviewed main commit. Resolution stops if main moved before it starts, if an explicit pin differs, or if the metadata source differs from the checkout. No workflow dispatch from a non-main ref, issue comment, or PR merge publishes a release.
 
-The workflow calculates the version before building, freezes the source SHA and previous published baseline, then requires native tests, candidate Action acceptance, and exact binary identity checks before publication. Source changes after resolution do not enter the release.
+The workflow requires successful main CI when a matching run exists, calculates the version, and freezes the source SHA and published baseline. It verifies the matching run's artifacts or performs all native builds and acceptance checks again. Before publication it rechecks main and the selected CI result; any failed or incomplete CI blocks release. Source changes after resolution do not enter the release.
 
 ## Release assets and validation
 
@@ -40,14 +40,16 @@ Each release contains those two raw executables, `SHA256SUMS`, and notes with so
 | Stage | Required behavior |
 | --- | --- |
 | Resolve | Require the dispatched main commit to remain current, check an optional reviewed source pin, derive the version or recognize an exact retry, freeze the predecessor, and emit allowlisted build/acceptance matrices from that trusted source |
-| Commit stage | Run source checks in the Linux lane, build Linux and macOS once on their native runners, and upload each executable with a source/version/asset/SHA-256 manifest |
-| Acceptance stage | Download only this run's manifested products, verify exact inventory and bytes, run both native harnesses, and exercise the candidate root Action against a separate consumer |
-| Release | Redownload and reverify both accepted manifests, generate new notes, create/validate the tag and draft, upload only missing matching assets, recheck identity, and publish |
+| Reuse | Look up the exact-source main `ci-push` result; require success, verify both artifact archives and contained source/version/target/SHA-256 manifests, then upload verified bytes to the current release run. Missing/expired products or digest/version mismatches warn and select full fallback; API and authentication failures abort | 
+| Commit stage (fallback only) | Run source checks in the Linux lane, build Linux and macOS on native runners, and upload source/version/asset/SHA-256 manifests |
+| Acceptance stage (fallback only) | Download only this run's manifested products, verify exact inventory and bytes, run both native harnesses, and exercise the candidate root Action against a separate consumer |
+| Delivery gate | Require either fully verified reused artifacts with build and Inspection skipped, or complete successful fallback Screening and Inspection; no failed/skipped work may be represented as acceptance |
+| Release | Recheck exact main and `ci-push` status; redownload and reverify both release-run manifests, generate notes, create/validate the tag and draft, upload only missing matching assets, recheck identity, and publish |
 | Verify release | Check out the published tag separately, compare actual public downloads byte-for-byte with accepted manifests, and run the published root Action with real downloads for a separate consumer |
 
-Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The release workflow delegates product-specific work to five local Actions while retaining one byte-identical orchestration contract shared with gh-qw: metadata, build, acceptance, publish, and verify. Those wrappers own the pinned artifact transfer and manifest checks; no matrix job output supplies a product hash to publication. The shared [acceptance-stage](../../.github/actions/acceptance-stage/action.yml) compiles its harness separately, without rebuilding the accepted product. All manual versions share one non-cancelling concurrency group; this does not promise FIFO queue delivery.
+Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The release workflow delegates metadata, artifact reuse, build, acceptance, publish and verification to focused local Actions. Only the version-resolution logic remains shared with gh-qw; gh-settings uses its own release gates and manifests. Those wrappers own the pinned artifact transfer and manifest checks; no matrix job output supplies a product hash to publication. The shared [acceptance-stage](../../.github/actions/acceptance-stage/action.yml) compiles its harness separately, without rebuilding the accepted product. All manual versions share one non-cancelling concurrency group; this does not promise FIFO queue delivery.
 
-Both native acceptance lanes and the `candidate-action` lane must succeed before publication. Failure, skipping, or cancellation cannot be overridden. The candidate's bounded download fixture establishes pre-publication integration, not published-download identity. Post-publication verification independently establishes the tag and public-download identity. [Release gate tests](../../tests/github-actions/release_test.go) and [local Action tests](../../tests/github-actions/release_actions_test.go) protect orchestration bytes, source/version/manifests, dependency bindings, and tamper rejection. Fixture and PR validation do not execute a hosted release.
+All three main-CI inspection lanes must succeed before their products can be reused. Otherwise all fallback native and candidate-Action acceptance lanes must succeed before publication. Failure, unexpected skipping or cancellation cannot be overridden. The candidate's bounded download fixture establishes pre-publication integration, not published-download identity. Post-publication verification independently establishes the tag and public-download identity. [Release gate tests](../../tests/github-actions/release_test.go) and [local Action tests](../../tests/github-actions/release_actions_test.go) protect orchestration bytes, source/version/manifests, dependency bindings, and tamper rejection. Fixture and PR validation do not execute a hosted release.
 
 ## Release notes from committed messages
 
@@ -142,3 +144,9 @@ PR/main CI builds one candidate and exercises it through process acceptance and 
 | Raw executables and reviewed messages | [ADR 0015](../adr/0015-raw-extension-binaries.md), [ADR 0016](../adr/0016-conventional-pr-titles.md), [ADR 0024](../adr/0024-code-review-policy.md) |
 
 The [release specification](../features/release.feature.md) maps behavior to tests. Identical [Python version tests](../../.github/scripts/test_release_version.py) use temporary Git repositories for version precedence, exact ranges, metadata failures and retry identity. [Go notes tests](../../scripts/release-metadata/main_test.go) cover committed category precedence, formal footers, escaping, fixed ranges, and failures. [Release fixtures](../../tests/release.sh) exercise the generated body through new publication and recovery with a local `gh` stand-in, retaining notes and validating artifact identity. These tests neither publish a release nor prove GitHub's live rendering; only an explicitly authorized release run establishes that operational evidence.
+
+### Cross-run artifact reuse
+
+The release resolver queries the source commit's latest `ci-push.yml` push run on `main`. A failed, cancelled, timed-out or pending result stops release immediately; older successful attempts are not substitutes. If no run exists, fresh Screening and Inspection are required. GitHub API/authentication or provenance errors also stop release.
+
+For successful CI, the reuse step requires unique, unexpired Linux and macOS artifacts. Each archive's SHA-256 is compared with the recorded GitHub artifact digest, then the exact two-file inventory and source/version/target/binary SHA-256 manifest are checked. Missing, expired, mismatched-version or corrupted artifacts are rejected with an Actions warning and Job Summary entry; they trigger full validation, not publication. Both accepted products are transferred into the release run using the original release artifact names. Publication and post-publication verification continue to consume these same-run artifacts, whether they came from CI reuse or a fresh build. The release job rechecks main and CI success immediately before publication.
