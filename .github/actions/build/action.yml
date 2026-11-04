@@ -1,0 +1,42 @@
+name: Build
+description: Build exactly one native executable with source, version and SHA-256 outputs.
+inputs:
+  binary-name:
+    description: Output executable name.
+    required: false
+    default: gh-settings
+  version:
+    description: Explicit version (empty uses the candidate version).
+    required: false
+    default: ''
+outputs:
+  binary-path:
+    description: Native product executable path.
+    value: ${{ steps.build.outputs.binary-path }}
+  binary-sha256:
+    description: SHA-256 of the native executable.
+    value: ${{ steps.build.outputs.binary-sha256 }}
+  source-sha:
+    description: Checked-out source SHA used to build.
+    value: ${{ steps.build.outputs.source-sha }}
+  cli-version:
+    description: Version embedded in the product binary.
+    value: ${{ steps.build.outputs.cli-version }}
+runs:
+  using: composite
+  steps:
+    - name: Build the product binary once
+      id: build
+      shell: bash
+      env:
+        BINARY_NAME: ${{ inputs.binary-name }}
+        BUILD_VERSION: ${{ inputs.version }}
+      run: |
+        version="${BUILD_VERSION:-$(cat action/cli-version)}"
+        [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+        source_sha="$(git rev-parse HEAD)"
+        [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+        go build -trimpath -ldflags "-X main.version=$version" -o "$RUNNER_TEMP/$BINARY_NAME" .
+        printf 'binary-path=%s\n' "$RUNNER_TEMP/$BINARY_NAME" >> "$GITHUB_OUTPUT"
+        printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+        printf 'source-sha=%s\ncli-version=%s\n' "$source_sha" "$version" >> "$GITHUB_OUTPUT"

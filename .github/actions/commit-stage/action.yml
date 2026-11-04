@@ -1,5 +1,5 @@
 name: Commit stage
-description: Check source and build the product binary once.
+description: Compose independent source checks and one native build while retaining Go cache.
 inputs:
   cache-go:
     description: Reuse Go compilation and module downloads in unprivileged PR/main CI.
@@ -29,11 +29,8 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Install development tools
-      uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-      with:
-        version: 2026.10.8
-        cache: false
+    - name: Set up pinned build tools
+      uses: ./.github/actions/setup-tools
     - name: Resolve Go cache identity
       id: go-cache
       if: inputs.cache-go == 'true' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
@@ -66,58 +63,16 @@ runs:
         key: go-ci-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu-slim-${{ steps.go-cache.outputs.environment }}-${{ hashFiles('go.mod', 'go.sum', 'mise.toml', '.github/actions/commit-stage/action.yml') }}-${{ github.sha }}
         restore-keys: |
           go-ci-v1-${{ runner.os }}-${{ runner.arch }}-ubuntu-slim-${{ steps.go-cache.outputs.environment }}-${{ hashFiles('go.mod', 'go.sum', 'mise.toml', '.github/actions/commit-stage/action.yml') }}-
-    - name: Check GitHub workflows and shell scripts
-      shell: bash
-      run: |
-        python3 .github/scripts/lint-workflows.py .github/workflows/*.yml examples/github-actions/*.yml
-        shellcheck scripts/publish-release.sh tests/release.sh tests/github-actions/*.sh
-        shellcheck action/*.sh
-        shellcheck .github/scripts/*.sh
-    - name: Verify Go formatting
-      shell: bash
-      run: |
-        unformatted="$(gofmt -l .)"
-        if [[ -n "$unformatted" ]]; then
-          printf 'Run gofmt on:\n%s\n' "$unformatted"
-          exit 1
-        fi
-    - name: Verify modules
-      shell: bash
-      run: |
-        go mod download
-        go mod verify
-        go mod tidy -diff
-    - name: Static analysis
-      shell: bash
-      run: go vet ./...
-    - name: Test with race detection
-      shell: bash
-      run: go test -race -count=1 -vet=off ./...
-    - name: Test release recovery without GitHub
-      shell: bash
-      run: bash tests/release.sh
-    - name: Test settings examples without GitHub
-      shell: bash
-      run: |
-        bash tests/github-actions/action-install.sh
-    - name: Build the product binary once
+    - name: Run static analysis
+      uses: ./.github/actions/static-analysis
+    - name: Run source tests
+      uses: ./.github/actions/unit-test
+    - name: Build executable
       id: build
-      shell: bash
-      env:
-        BINARY_NAME: ${{ inputs.binary-name }}
-        BUILD_VERSION: ${{ inputs.version }}
-      run: |
-        version="${BUILD_VERSION:-$(cat action/cli-version)}"
-        [[ "$version" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-        source_sha="$(git rev-parse HEAD)"
-        [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
-        go build -trimpath -ldflags "-X main.version=$version" -o "$RUNNER_TEMP/$BINARY_NAME" .
-        printf 'binary-path=%s\n' "$RUNNER_TEMP/$BINARY_NAME" >> "$GITHUB_OUTPUT"
-        printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
-        printf 'source-sha=%s\ncli-version=%s\n' "$source_sha" "$version" >> "$GITHUB_OUTPUT"
-    - name: Check Markdown and local links
-      shell: bash
-      run: rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTING.md AGENTS.md .agents .github/pull_request_template.md docs examples/github-actions
+      uses: ./.github/actions/build
+      with:
+        binary-name: ${{ inputs.binary-name }}
+        version: ${{ inputs.version }}
     # Save while the nested composite's step outputs are still in scope.
     - name: Save Go compilation and modules after successful checks
       if: inputs.cache-go == 'true' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && steps.go-cache-restore.outputs.cache-hit != 'true' && steps.go-cache-restore.outputs.cache-primary-key != ''
