@@ -172,9 +172,9 @@ The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rul
 
 | Check | Source and purpose | Limit |
 | --- | --- | --- |
-| `ci-pr` | [PR code CI](../../.github/workflows/ci-pr.yml) aggregates the build and acceptance stages | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `ci-pr` | [PR code CI](../../.github/workflows/ci-pr.yml) aggregates source checks and native builds (Screening only) | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
 | `prlint` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
-| `settings-pr` | The [trusted PR workflow](../../.github/workflows/settings-pr.yml) validates the verified PR merge declaration with its pinned operational consumer, without an Environment or App token | Validate only; no remote settings observation or PR plan is performed |
+| `settings-pr` | The [PR workflow](../../.github/workflows/settings-pr.yml) validates the default PR merge declaration with its pinned operational consumer, without an Environment or App token | Validate only; no remote settings observation or PR plan is performed |
 
 See [required-check setup](../github-actions.md#protect-main-with-required-checks) for branch freshness and trusted check-source requirements. Requiring these names from GitHub Actions does not by itself prove that their intended workflows evaluated the proposed change.
 
@@ -186,7 +186,7 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Active settings workflows
 
-The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. The PR workflow definition selects the PR validation pin; changes to the pin require review. Before a declaration uses a schema or capability those packages do not support, first merge the compatible published package pins into main and verify the updated trusted workflow. Changing a pin only inside the declaration PR does not change that PR's trusted validator. Keep the main apply pin compatible with the tracked declaration. The operational pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.
+The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. The PR workflow definition selects the PR validation pin; changes to the pin require review. Before a declaration uses a schema or capability those packages do not support, review the compatible published package pins together with the declaration and verify the resulting PR workflow. The ordinary `pull_request` workflow is candidate-controlled, not a trusted-base validator. Keep the main apply pin compatible with the tracked declaration. The operational pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.
 
 The PR caller uses ordinary `pull_request` events with the default opened,
 synchronize and reopened activities targeting main. There is no
@@ -199,7 +199,7 @@ plan-eligibility output. Validation uses the standard GitHub Actions run lifecyc
 or publish a replacement `settings-plan` success.
 
 The apply caller runs only on `workflow_dispatch`, with a job condition requiring
-`refs/heads/main`. Its single `apply` job references Environment `gh-settings`
+`refs/heads/main`. Its single `settings-apply` job references Environment `gh-settings`
 and contains checkout of the triggering `github.sha`, App token creation, and
 direct apply. Repository-scoped concurrency retains the existing
 `settings-main` group and does not cancel an in-progress apply. No push or PR
@@ -283,8 +283,8 @@ selects no Environment and creates no App token. It does not execute PR scripts
 or local Actions. A validation failure fails the required check. No PR plan or remote settings observation follows validation.
 
 This checks the operational declaration against its actual package contract.
-The separate required `ci-pr` builds and tests the candidate source, including
-current-format process and public Action fixtures. The candidate decoder still
+The separate required `ci-pr` screens and builds the candidate source. Main
+`ci-push` owns process and public Action Inspection of the built products. The candidate decoder still
 rejects obsolete configuration; no compatibility decoder or translation is used.
 The tracked declaration uses the current UI contract. Validation does not
 apply it; a manual dispatch from main performs direct apply after a permitted merge.
