@@ -54,11 +54,11 @@ repository:
       template_repository: false
       default_branch: main
       features:
-        wikis: true
+        wikis: false
         issues: true
         sponsorships: false
         discussions: false
-        projects: true
+        projects: false
         pull_requests: true
         issue_permissions:
           creation_allowed_by: all_users
