@@ -36,7 +36,21 @@ type ForkPullRequestWorkflows struct {
 	RequireApprovalForForkPullRequestWorkflows             *bool
 }
 
+type ActionsCache struct {
+	CacheRetention         *int
+	CacheSizeEvictionLimit *int
+}
+type ActionsAccessChoice string
+
+const (
+	NotAccessible                            ActionsAccessChoice = "not_accessible"
+	AccessibleFromRepositoriesOwnedByUser    ActionsAccessChoice = "accessible_from_repositories_owned_by_user"
+	AccessibleFromRepositoriesInOrganization ActionsAccessChoice = "accessible_from_repositories_in_organization"
+)
+
 type ActionsGeneral struct {
+	Cache                                                      *ActionsCache
+	Access                                                     *ActionsAccessChoice
 	ForkPullRequestWorkflows                                   *ForkPullRequestWorkflows
 	ApprovalForRunningForkPullRequestWorkflowsFromContributors *ForkApprovalChoice
 	CheckWorkflowRunStatusArtifactAndLogRetention              *int

@@ -55,6 +55,17 @@ func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclar
 	if !result.SelectedActions.Empty() && ui.ActionsPermissions != nil && *ui.ActionsPermissions != uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows {
 		return settings.ActionsPolicyDeclaration{}, fmt.Errorf("selected action controls require the selected non-owner %s choice or omission", settings.ActionsPermissionsPath)
 	}
+	if ui.Cache != nil {
+		result.CacheRetentionDays = copyUIActionsValue(ui.Cache.CacheRetention)
+		result.CacheSizeGB = copyUIActionsValue(ui.Cache.CacheSizeEvictionLimit)
+	}
+	if ui.Access != nil {
+		value, valid := settings.ActionsAccessValueForChoice(*ui.Access)
+		if !valid {
+			return settings.ActionsPolicyDeclaration{}, fmt.Errorf("unsupported %s UI choice", settings.ActionsAccessPath)
+		}
+		result.AccessLevel = &value
+	}
 	var err error
 	result.DefaultWorkflowPermissions, err = declareUIActionsWorkflow(ui.WorkflowPermissions)
 	if err != nil {

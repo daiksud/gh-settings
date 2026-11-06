@@ -22,6 +22,9 @@ type RepositoryWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	ActionsAccess       func(repository.Repository) (settings.ActionsAccessObservation, error)
+	CacheStorage        func(repository.Repository) (settings.CacheStorageObservation, error)
+	CacheRetention      func(repository.Repository) (settings.CacheRetentionObservation, error)
 	Dependabot          func(repository.Repository) (settings.DependabotObservation, error)
 	ImmutableReleases   func(repository.Repository) (settings.ImmutableReleasesObservation, error)
 	Pages               func(repository.Repository) (settings.PagesObservation, error)
@@ -42,6 +45,12 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadActionsAccess     func(repository.Repository) (settings.ActionsAccessObservation, error)
+	ActionsAccess         func(repository.Repository, string) (bool, error)
+	ReadCacheStorage      func(repository.Repository) (settings.CacheStorageObservation, error)
+	CacheStorage          func(repository.Repository, int) (bool, error)
+	ReadCacheRetention    func(repository.Repository) (settings.CacheRetentionObservation, error)
+	CacheRetention        func(repository.Repository, int) (bool, error)
 	ReadDependabot        func(repository.Repository) (settings.DependabotObservation, error)
 	Dependabot            func(repository.Repository, settings.SecurityChange) (settings.DependabotWriteResult, error)
 	ReadImmutableReleases func(repository.Repository) (settings.ImmutableReleasesObservation, error)

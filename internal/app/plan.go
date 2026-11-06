@@ -164,6 +164,42 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.Actions = append(comparison.Actions, changes...)
 	}
+	if desired.Actions.CacheRetentionDays != nil {
+		observed, err := read.CacheRetention(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.general.cache.cache_retention", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareCacheRetention(observed, desired.Actions)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.general.cache.cache_retention", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Actions = append(comparison.Actions, changes...)
+	}
+	if desired.Actions.CacheSizeGB != nil {
+		observed, err := read.CacheStorage(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.general.cache.cache_size_eviction_limit", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareCacheStorage(observed, desired.Actions)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.general.cache.cache_size_eviction_limit", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Actions = append(comparison.Actions, changes...)
+	}
+	if desired.Actions.AccessLevel != nil {
+		observed, err := read.ActionsAccess(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.general.access", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareActionsAccess(observed, desired.Actions)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.general.access", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Actions = append(comparison.Actions, changes...)
+	}
 	if desired.Actions.ForkApprovalPolicy != nil {
 		o, err := read.ForkApproval(repo)
 		if err != nil {

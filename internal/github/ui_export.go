@@ -55,6 +55,10 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Actions workflow permissions: %w", err)
 	}
+	actions, err = WithActionsCacheAccessPolicyUI(actions, source.Actions)
+	if err != nil {
+		return uimodel.Repository{}, fmt.Errorf("export Actions cache and access: %w", err)
+	}
 	actions, err = WithActionsRetentionPolicyUI(actions, source.Actions.RetentionDays)
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Actions retention: %w", err)

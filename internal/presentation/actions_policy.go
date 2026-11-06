@@ -42,6 +42,10 @@ func actionsDisplayValue(field string, value any) any {
 		return value
 	}
 	switch field {
+	case "actions.access_level":
+		if choice, valid := settings.ActionsAccessChoiceForValue(v); valid {
+			return string(choice)
+		}
 	case "actions.fork_pr_approval_policy":
 		if choice, valid := settings.ForkApprovalChoiceForValue(v); valid {
 			return string(choice)
