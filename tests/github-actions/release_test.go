@@ -62,11 +62,26 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	if !reflect.DeepEqual(needs(t, build.Needs), []string{"resolve", "reuse"}) || build.Runner != "${{ matrix.runner }}" || !reflect.DeepEqual(build.Permissions, map[string]string{"contents": "read"}) || build.If != "needs.reuse.outputs.reused != 'true'" || build.Continue || build.Strategy.FailFast || build.Strategy.Matrix != "${{ fromJSON(needs.resolve.outputs.build-matrix) }}" {
 		t.Fatalf("matrix build gate changed: %+v", build)
 	}
-	buildAction := build.Steps[len(build.Steps)-1]
-	if buildAction.Uses != "./.github/actions/release-build" || !reflect.DeepEqual(buildAction.With, map[string]string{
-		"target": "${{ matrix.target }}", "version": "${{ needs.resolve.outputs.version }}", "source-sha": "${{ github.sha }}", "overwrite": "true",
-	}) {
-		t.Fatalf("build does not delegate the frozen target identity: %+v", buildAction)
+	var buildAction, packageStep, uploadStep step
+	for _, s := range build.Steps {
+		switch {
+		case s.Uses == "./.github/actions/build":
+			buildAction = s
+		case strings.Contains(s.Run, "release-artifact.sh write"):
+			packageStep = s
+		case strings.HasPrefix(s.Uses, "actions/upload-artifact@"):
+			uploadStep = s
+		}
+	}
+	if !reflect.DeepEqual(buildAction.With, map[string]string{
+		"binary-name": "gh-settings-${{ matrix.target }}",
+		"version": "${{ needs.resolve.outputs.version }}",
+	}) || packageStep.ID != "package" ||
+		!strings.Contains(packageStep.Run, "built binary source differs from frozen commit") ||
+		uploadStep.With["name"] != "release-${{ matrix.target }}" ||
+		uploadStep.With["path"] != "${{ steps.package.outputs.artifact-dir }}" ||
+		uploadStep.With["overwrite"] != "true" {
+		t.Fatalf("native build and packaging must be separate source-bound steps: %+v", build.Steps)
 	}
 	var acceptance releaseJob
 	acceptanceNode := release.Jobs["acceptance-stage"]
