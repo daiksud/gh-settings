@@ -52,7 +52,7 @@ resource-specific behavior.
 
 | Workflow | Trigger and responsibility |
 | --- | --- |
-| [`ci-pr.yml`](../../.github/workflows/ci-pr.yml) | PR events run Screening only and publish the native `ci-pr` aggregate check |
+| [`pr.yml`](../../.github/workflows/pr.yml) | Default pull_request activities run the single `screening` job for source checks, unit tests, and a native build |
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
 | [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; build native release-ready binaries and inspect them, ending in `ci-push` |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Default pull_request events validate the PR merge declaration only; the validation check is `settings-pr` |
@@ -65,7 +65,7 @@ Release publication has no Issue-comment bridge. The owner starts [`release.yml`
 ## Workflow dependency lockfile
 
 [The generated lockfile](../../.github/workflows/actions.lock) covers
-`approve-codex-review`, `ci-pr`, `ci-push`, `labeler`, `prlint`, `release`,
+`approve-codex-review`, `pr`, `ci-push`, `labeler`, `prlint`, `release`,
 `settings-apply` and `settings-pr`. The run-only approval
 workflow has an empty dependency list. There is no dedicated lockfile
 verification workflow.
@@ -73,8 +73,11 @@ verification workflow.
 Use the official `github/gh-actions-lock` CLI at v0.4.1 to regenerate:
 
 ```sh
-gh actions-lock --no-interactive --no-narrow --ignore-local-actions .github/workflows/*.yml
+gh actions-lock --no-interactive --no-narrow --ignore-local-actions
 ```
+
+Omit workflow path arguments so the CLI scans the full workflow directory and
+removes lockfile entries for deleted workflows.
 
 Commit the generated lockfile with dependency changes, then run the same scope
 with `--verify` instead of `--no-interactive` to check upstream provenance.
@@ -91,7 +94,7 @@ instructions](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-w
 
 ### Workspace composite coverage
 
-`ci-pr`, `ci-push`, and `release` keep their workspace-local Action references.
+`pr`, `ci-push`, and `release` keep their workspace-local Action references.
 The main and release acceptance jobs check frozen source out under `.action`, create a separate
 configuration-only consumer at the workspace root, and execute that candidate
 Action. Release verification separately checks the published tag out under
@@ -102,7 +105,7 @@ are checkout destinations, not source repository paths.
 
 `ci-push` and `release` call the
 [full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml),
-while `ci-pr` calls a [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml),
+while `pr` calls a [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml),
 each through `$/` in one step guarded by literal `${{ false }}`. That step never runs;
 it enumerates the existing external Action references so the lockfile generator
 can record them for the same workflow. `--ignore-local-actions` retains the
@@ -125,13 +128,13 @@ The pinned actionlint 1.7.12 treats `$/` as an external Action missing a ref and
 also diagnoses a literal false condition. The
 [workflow lint wrapper](../../.github/scripts/lint-workflows.py) retains the
 normal actionlint checks and filters only those two exact structured diagnostics
-for the inventory step in `ci-pr`, `ci-push` and `release`. It verifies the actual
+for the inventory step in `pr`, `ci-push` and `release`. It verifies the actual
 source lines contain the adjacent literal-false condition and exact inventory
 reference. Other references, conditions, workflow paths and diagnostics remain
 errors. Invalid linter output and unexpected linter failures remain failures;
 this is not a blanket ignore of Action-format or condition checks.
 
-Use the wrapper in both [commit-stage](../../.github/actions/commit-stage/action.yml)
+Use the wrapper in both the [lint Action](../../.github/actions/lint/action.yml)
 and [local development](development.md#development-checks). The independent
 inventory tests validate the bridge and its dependencies because the old linter
 cannot resolve that `$/` call itself. This exception must not be extended to
@@ -158,21 +161,21 @@ announcement](https://github.blog/changelog/2026-10-28-github-actions-workflow-l
 
 ## PR lifecycle
 
-Every PR event sets Draft, resolves its build matrix, runs source checks and a native build, then marks the PR Ready. The final native `ci-pr` aggregate succeeds only when all Screening dependencies succeeded. Main CI, rather than PR CI, owns the process and public-Action Inspection of release-ready artifacts. Title/body edits rerun the same stages rather than introducing skipped-success required checks.
+The `pr` workflow uses the default `pull_request` activities: opened, synchronize, and reopened. Its single `screening` job runs source checks, unit tests, and a native Linux build on `ubuntu-slim`; GitHub reports that job's result directly. The workflow leaves the PR's Draft or Ready state unchanged. Title/body edits and draft/readiness transitions do not rerun Screening. Main CI owns process and public-Action Inspection of release-ready artifacts.
 
-The independent `prlint` job checks the current title and body together as the proposed squash message, except for Dependabot-authored PRs. Its job-level skip preserves the required check. GitHub's required-check settings enforce this separately from the code reporter; the reporter does not query or enforce rulesets. See [PR validation](pr-validation.md#message-and-settings-validation) for the author condition, required-check semantics and failure behavior.
+The independent `prlint` job checks the current title and body together as the proposed squash message, except for Dependabot-authored PRs. It reruns on metadata-only edits. Its job-level skip preserves the required check. GitHub's required-check settings enforce message validation separately from Screening. See [PR validation](pr-validation.md#message-and-settings-validation) for the author condition, required-check semantics and failure behavior.
 
-Jobs executing PR source have read permissions, no supplied secrets, and no persisted checkout credentials. Draft/Ready and code-status jobs have narrowly scoped write permissions but do not check out or execute PR code, local composites, or transferred artifacts. Fork token restrictions can block automatic state/status changes; the workflow does not bypass them.
+The `screening` job has Contents read permission, no supplied secrets, and no persisted checkout credentials. Its steps call the setup, cache, lint, unit-test, and build Actions directly. It does not request permission to change PR state or publish commit statuses.
 
 This validation pipeline does not merge, publish, or deploy. Use [testing](testing.md#ci-validation) to interpret its results. GitHub's protected-main and Environment configuration determine whether a reviewed change can reach apply; a passing source test does not configure those controls.
 
 ## Protected main and required checks
 
-The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. It requires `ci-pr`, `prlint` and `settings-pr` from GitHub Actions (App ID `15368`). Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
+The [declared default-branch Ruleset](https://github.com/daiksud/gh-settings/rules/24911852) selects the existing Ruleset by ID in [settings.yml](../../.github/settings.yml): one approval, stale approval dismissal, mandatory CODEOWNER approval, resolved review threads, linear history (without mandatory commit signatures), and strict required checks. The declaration requires `screening`, `prlint` and `settings-pr` from GitHub Actions (App ID `15368`). Repository merge configuration allows squash only. The declaration retains the existing repository-administrator bypass in `for_pull_requests_only` mode, CodeQL with Alerts `errors` and Security alerts `high_or_higher`, and code-quality severity `errors`. Retaining this configured bypass does not authorize its use: every change must satisfy ordinary approval, CI, and resolved-thread rules; see the [review policy](../../AGENTS.md#code-review). Do not add or broaden bypass actors. The manual main workflow applies this declaration only when dispatched after merge; inspect the actual live Ruleset and Actions permission rather than assuming that source is already enforced.
 
 | Check | Source and purpose | Limit |
 | --- | --- | --- |
-| `ci-pr` | [PR code CI](../../.github/workflows/ci-pr.yml) aggregates source checks and native builds (Screening only) | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
+| `screening` | The [pr workflow](../../.github/workflows/pr.yml) runs source checks, unit tests, and a native Linux build in one job | PR source controls its tests and CI; a successful result is not independent authorization for privileged code |
 | `prlint` | The [independent PRLint workflow](../../.github/workflows/prlint.yml) checks the current title/body | Syntax validation does not establish semantic type, coherent scope, or disclosed compatibility impact |
 | `settings-pr` | The [PR workflow](../../.github/workflows/settings-pr.yml) validates the default PR merge declaration with its pinned operational consumer, without an Environment or App token | Validate only; no remote settings observation or PR plan is performed |
 
@@ -226,7 +229,7 @@ There is no prepare/handoff job or main-side pre-approval plan. The validated de
 
 The ordinary Go suite retains the
 [Environment scope tests](../../tests/github-actions/settings_environment_scope_test.go)
-in `ci-pr` and `ci-push`. They allow the literal `gh-settings` Environment only
+in `pr` and `ci-push`. They allow the literal `gh-settings` Environment only
 in `.github/workflows/settings-apply.yml/jobs.settings-apply`, require manual dispatch,
 and require a single credential-free validation job in `settings-pr.yml`.
 They reject dynamic Environment names, workflow/job aliases and merges,
@@ -239,30 +242,19 @@ referenced Actions, and the tests themselves under the
 [apply-path guidance](../github-actions.md#protect-the-apply-path). Source tests
 do not configure live Environment, token, ruleset, or review settings.
 
-### Required-check transition
+### Required-check verification
 
-The desired Ruleset requires `ci-pr`, `prlint`, and `settings-pr`,
+The desired Ruleset requires `screening`, `prlint`, and `settings-pr`,
 all from GitHub Actions (App ID `15368`). The tracked
 [settings declaration](../../.github/settings.yml) names the same three checks.
-The retired `settings-plan` and `settings-env` are no longer required.
-
-The former credential-free `settings-validate` job was introduced by [PR
-#586](https://github.com/daiksud/gh-settings/pull/586). A fresh
-`pull_request_target` event after that merge successfully ran the job for
-[PR #589](https://github.com/daiksud/gh-settings/pull/589) on commit
-`782e1e40af9963eee090e9b25a3b107a2a3949f6`; see the
-[successful Settings PR run](https://github.com/daiksud/gh-settings/actions/runs/41738311031).
-The live Ruleset was subsequently updated to require the former
-`settings-validate` context. On November 4, 2026 it still required that name.
-The migration to `settings-pr` permits a temporary gap for this one check;
-review, manually apply, and read back the actual Ruleset before claiming the
-new check is enforced.
 
 A green required check alone does not authenticate its workflow identity.
-For subsequent policy changes, verify the current job producer, workflow
+Verify the current job producer, workflow
 revision, event and candidate SHA, as well as the live Ruleset and its source
-App. Review and merge declaration changes normally. Settings application is
-still separate and manual; validation does not authorize or perform apply.
+App. Review and merge declaration changes normally, manually apply from `main`,
+and read back the affected rule before reporting it as enforced. The
+[settings change procedure](#repository-settings-changes) owns application;
+PR validation does not authorize or perform apply.
 
 ## PR settings validation
 
@@ -283,7 +275,7 @@ selects no Environment and creates no App token. It does not execute PR scripts
 or local Actions. A validation failure fails the required check. No PR plan or remote settings observation follows validation.
 
 This checks the operational declaration against its actual package contract.
-The separate required `ci-pr` screens and builds the candidate source. Main
+The separate `screening` job screens and builds the candidate source. Main
 `ci-push` owns process and public Action Inspection of the built products. The candidate decoder still
 rejects obsolete configuration; no compatibility decoder or translation is used.
 The tracked declaration uses the current UI contract. Validation does not
@@ -303,7 +295,7 @@ The [approval workflow](../../.github/workflows/approve-codex-review.yml) submit
 
 The workflow reads the visible Summary table for both Completed status cells. It reads each review's full `commit_sha` from the same Summary's `codex-review-state:v1` JSON marker and compares it to the PR API's full HEAD SHA. Both SHAs must be 40 hexadecimal characters and equal HEAD; case is normalized. Missing, malformed or ambiguous review metadata withholds approval. The abbreviated table commits are not a fallback. Other JSON fields, including finding flags, do not add approval conditions. Base identity, timestamps, receipts, prior requests and other reviewers' changes-requested decisions are not checked. A retained thumbs-up can be reused only while the reviewed SHAs still match HEAD.
 
-Summary creation/edits and completion of `ci-pr` trigger reevaluation. CI success and the PR's source repository are not additional approval conditions. GitHub does not provide a reaction trigger here, so the workflow polls up to three minutes for a delayed thumbs-up. The exact Codex login `chatgpt-codex-connector[bot]` identifies both the summary author and the reaction actor; numeric account IDs and App metadata are not required. The newest summary is selected by comment ID. These identify the requested Codex signals.
+Summary creation/edits and completion of `pr` trigger reevaluation. CI success and the PR's source repository are not additional approval conditions. GitHub does not provide a reaction trigger here, so the workflow polls up to three minutes for a delayed thumbs-up. The exact Codex login `chatgpt-codex-connector[bot]` identifies both the summary author and the reaction actor; numeric account IDs and App metadata are not required. The newest summary is selected by comment ID. These identify the requested Codex signals.
 
 Each polling attempt reads the latest Summary and current reactions once. When the reviews are Completed and Codex thumbs-up is present, it obtains PR HEAD once, compares both full reviewed SHAs to that HEAD once, and reads every page of this PR's review history before submitting `event=APPROVE` with that verified SHA as `commit_id`. There is no second HEAD, Summary or reaction read in that attempt. The API response must confirm approval of the specified SHA.
 

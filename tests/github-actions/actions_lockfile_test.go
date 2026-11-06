@@ -173,8 +173,10 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 	}
 	bridgeCount := 0
 	bridgeAction := workspaceLockBridge
-	if strings.HasSuffix(workflow, "/ci-pr.yml") {
+	bridgeJob := "resolve"
+	if strings.HasSuffix(workflow, "/pr.yml") {
 		bridgeAction = workspaceScreeningBridge
+		bridgeJob = "screening"
 	}
 	for jobName, job := range doc.Jobs {
 		for _, step := range job.Steps {
@@ -186,8 +188,8 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 			}
 			bridgeCount++
 			condition := strings.TrimSpace(step.If.Value)
-			if jobName != "resolve" || (condition != "${{ false }}" && condition != "false") || step.Run != "" || len(step.With) != 0 || len(step.Env) != 0 {
-				return fmt.Errorf("%s: dependency bridge must be inert in resolve", workflow)
+			if jobName != bridgeJob || (condition != "${{ false }}" && condition != "false") || step.Run != "" || len(step.With) != 0 || len(step.Env) != 0 {
+				return fmt.Errorf("%s: dependency bridge must be inert in its designated job", workflow)
 			}
 		}
 	}
@@ -261,7 +263,7 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 }
 
 func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
-	for _, name := range []string{"ci-pr", "ci-push", "release"} {
+	for _, name := range []string{"pr", "ci-push", "release"} {
 		t.Run(name, func(t *testing.T) {
 			workflow := ".github/workflows/" + name + ".yml"
 			if err := validateWorkspaceActionLock(lockInventoryDiskRead, workflow); err != nil {
@@ -271,8 +273,8 @@ func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			required := []string{".github/actions/commit-stage/action.yml"}
-			if name != "ci-pr" {
+			required := []string{".github/actions/lint/action.yml", ".github/actions/unit-test/action.yml", ".github/actions/build/action.yml"}
+			if name != "pr" {
 				required = append(required, "action.yml")
 			}
 			for _, source := range required {
@@ -285,14 +287,14 @@ func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
 }
 
 func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
-	const workflow = ".github/workflows/ci-pr.yml"
+	const workflow = ".github/workflows/pr.yml"
 	bridgeDir, _ := lockInventoryLocalDirectory(workspaceScreeningBridge)
 	bridgeFile := path.Join(bridgeDir, "action.yml")
 	for _, test := range []struct{ name, file, from, to, want string }{
 		{"omitted-runtime-dependency", bridgeFile, `(?m)^    - uses: actions/cache/restore@[^\n]+\n`, "", "bridge differs"},
-		{"nested-only-pin-change", ".github/actions/commit-stage/action.yml", `actions/cache/save@[0-9a-f]{40}`, "actions/cache/save@1111111111111111111111111111111111111111", "bridge differs"},
-		{"nested-bridge-execution", ".github/actions/commit-stage/action.yml", `  steps:\n`, "  steps:\n    - uses: $/.github/actions/lock-workspace-dependencies\n", "must not execute bridge"},
-		{"nested-only-subpath-change", ".github/actions/commit-stage/action.yml", `actions/cache/save@`, "actions/cache/other-subpath@", "bridge differs"},
+		{"nested-only-pin-change", ".github/actions/save-go-cache/action.yml", `actions/cache/save@[0-9a-f]{40}`, "actions/cache/save@1111111111111111111111111111111111111111", "bridge differs"},
+		{"nested-bridge-execution", ".github/actions/save-go-cache/action.yml", `  steps:\n`, "  steps:\n    - uses: $/.github/actions/lock-workspace-dependencies\n", "must not execute bridge"},
+		{"nested-only-subpath-change", ".github/actions/save-go-cache/action.yml", `actions/cache/save@`, "actions/cache/other-subpath@", "bridge differs"},
 		{"bridge-must-never-run", workflow, `if: \$\{\{ false \}\}`, "if: ${{ true }}", "must be inert"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -318,7 +320,7 @@ func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
 }
 
 func TestWorkspaceActionLockRejectsMissingWorkflowPinDespiteGlobalEntry(t *testing.T) {
-	const workflow = ".github/workflows/ci-pr.yml"
+	const workflow = ".github/workflows/pr.yml"
 	data, err := lockInventoryDiskRead(".github/workflows/actions.lock")
 	if err != nil {
 		t.Fatal(err)

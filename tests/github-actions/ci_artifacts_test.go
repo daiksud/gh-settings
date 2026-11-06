@@ -93,12 +93,24 @@ func TestCICompositesPreserveSameCandidate(t *testing.T) {
 	}
 	commit := read("ci-commit")
 	acceptance := read("ci-acceptance")
-	if len(commit) != 3 || commit[1].Uses != "./.github/actions/commit-stage" ||
-		!strings.Contains(commit[2].Run, "manifest.json") ||
-		!strings.Contains(commit[2].Run, "binary_sha256") ||
-		!strings.Contains(commit[2].Run, "product_version") ||
-		!strings.Contains(commit[2].Run, "source_sha") ||
-		!strings.Contains(commit[2].Run, "target") {
+	var build, product step
+	for _, s := range commit {
+		switch s.ID {
+		case "build":
+			build = s
+		case "package":
+			product = s
+		}
+	}
+	if build.Uses != "./.github/actions/build" ||
+		product.Env["BINARY_PATH"] != "${{ steps.build.outputs.binary-path }}" ||
+		product.Env["BINARY_SHA256"] != "${{ steps.build.outputs.binary-sha256 }}" ||
+		product.Env["PRODUCT_VERSION"] != "${{ steps.build.outputs.cli-version }}" ||
+		!strings.Contains(product.Run, "manifest.json") ||
+		!strings.Contains(product.Run, "binary_sha256") ||
+		!strings.Contains(product.Run, "product_version") ||
+		!strings.Contains(product.Run, "source_sha") ||
+		!strings.Contains(product.Run, "target") {
 		t.Fatalf("commit stage must produce a manifested binary: %+v", commit)
 	}
 	if len(acceptance) != 4 ||

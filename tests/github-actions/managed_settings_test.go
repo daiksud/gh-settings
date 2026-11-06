@@ -110,7 +110,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				!*p.StrictRequiredStatusChecksPolicy || p.DoNotEnforceOnCreate == nil || *p.DoNotEnforceOnCreate {
 				t.Fatal("native required checks must retain strict enforcement on creation")
 			}
-			want := map[string]bool{"ci-pr": true, "prlint": true, "settings-pr": true}
+			want := map[string]bool{"screening": true, "prlint": true, "settings-pr": true}
 			for _, check := range *p.RequiredStatusChecks {
 				if !want[check.Context] || check.IntegrationID == nil || *check.IntegrationID != 15368 {
 					t.Fatalf("unexpected check or provider: %+v", check)

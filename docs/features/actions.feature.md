@@ -226,7 +226,7 @@ The [testing guide](../contributing/testing.md#ci-validation) owns fixture setup
 | Typed plan reports and credential-free Summary | [Report](../../internal/actions/plan_test.go) and [Summary](../../internal/actions/summary_test.go) owner tests; [plan-report](../../tests/acceptance/plan_report_test.go) and [Summary](../../tests/acceptance/summary_test.go) acceptance |
 | Root composite status/output/token wiring | [Composite tests](../../tests/github-actions/composite_test.go) |
 | Example and active caller composition | [Consumer tests](../../tests/github-actions/consumer_test.go) and [operational caller tests](../../tests/github-actions/operational_test.go) |
-| Actual same-source hosted validate, plan, direct apply, and failure paths | [Candidate assertions](../../tests/github-actions/candidate-plan.sh) run by [PR CI](../../.github/workflows/ci-pr.yml) and [main CI](../../.github/workflows/ci-push.yml) |
+| Actual same-source hosted validate, plan, direct apply, and failure paths | [Candidate assertions](../../tests/github-actions/candidate-plan.sh) run during [main CI](../../.github/workflows/ci-push.yml) Inspection and [release](../../.github/workflows/release.yml) Inspection when artifacts are rebuilt |
 
 Offline approval/token lifecycle checks use simulations. Candidate integration and Summary-file assertions do not establish released-download identity, Environment enforcement, actual token revocation, GitHub Summary publication, or a live settings update; see the [evidence table](../contributing/testing.md#release-and-publication-evidence). Reviewers check usage documentation against the contract and example files; Markdown CI verifies links and structure, not semantic equivalence.
 

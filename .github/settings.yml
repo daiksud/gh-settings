@@ -148,7 +148,7 @@ repository:
             require_branches_to_be_up_to_date_before_merging: true
             do_not_require_status_checks_on_creation: false
             required_status_checks:
-              - check: ci-pr
+              - check: screening
                 source: {app: 15368}
               - check: prlint
                 source: {app: 15368}
