@@ -286,7 +286,7 @@ func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
 	const workflow = ".github/workflows/pr.yml"
 	for _, test := range []struct{ name, file, from, to string }{
 		{"changed-workflow-pin", workflow, `jdx/mise-action@[0-9a-f]{40}`, "jdx/mise-action@1111111111111111111111111111111111111111"},
-		{"changed-nested-pin", ".github/actions/restore-go-cache/action.yml", `actions/cache/restore@[0-9a-f]{40}`, "actions/cache/restore@1111111111111111111111111111111111111111"},
+		{"changed-setup-go-pin", workflow, `actions/setup-go@[0-9a-f]{40}`, "actions/setup-go@1111111111111111111111111111111111111111"},
 		{"unexpected-remote-pin", workflow, `(?m)^      - name: Build executable\n`, "      - uses: actions/extra@1111111111111111111111111111111111111111\n      - name: Build executable\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

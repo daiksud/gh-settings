@@ -33,11 +33,10 @@ func TestPRScreeningOnly(t *testing.T) {
 	}
 	want := []string{
 		"jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca",
-		"./.github/actions/restore-go-cache",
+		"actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
 		"./.github/actions/lint",
 		"./.github/actions/unit-test",
 		"./.github/actions/build",
-		"actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
 	}
 	if !reflect.DeepEqual(actions, want) {
 		t.Fatalf("screening must run independent source checks and build without artifact upload: %v", actions)

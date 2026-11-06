@@ -115,72 +115,36 @@ those same product binaries and the public Action through
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
 
-After checkout, PR Screening calls `mise-action` directly, then
-[restore-go-cache](../../.github/actions/restore-go-cache/action.yml),
+After checkout, PR Screening uses `mise-action` for non-Go tools and
+`actions/setup-go` for Go installation and caching. It then calls
 [lint](../../.github/actions/lint/action.yml),
 [unit-test](../../.github/actions/unit-test/action.yml), and
-[build](../../.github/actions/build/action.yml). It invokes `actions/cache/save`
-directly after successful checks. A failed lint, unit-test, or build step fails
+[build](../../.github/actions/build/action.yml) in separate steps. A failed lint, unit-test, or build step fails
 `screening`. PR CI does not upload artifacts or run process/public-Action
 Inspection. The Go cache restores compilation and module data, never binary
 artifacts; a cache hit does not skip source checks.
 
-PR Screening uses no inert Action inventory. Its external setup and cache-save
-steps supply the Action pins in [actions.lock](../../.github/workflows/actions.lock).
+PR Screening uses no inert Action inventory. Its `mise-action` and
+`actions/setup-go` steps supply the external Action pins in
+[actions.lock](../../.github/workflows/actions.lock).
 The [full CI/release inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
 remains for the main and release workflows.
 
 ### Go cache in CI
 
-PR Screening enables the Go cache after installing the pinned Go toolchain.
-The reusable [ci-commit composite](../../.github/actions/ci-commit/action.yml)
-calls the same restore/save Actions, whose guards permit PR events and pushes
-to `main`. The current main and release workflows use `release-build` and do
-not opt into this cache; settings workflows do not use it.
-The cache holds the resolved `GOCACHE` and `GOMODCACHE` directories;
-product binaries, candidate manifests, credentials and settings observations
-are outside these paths.
-Cache restore errors are tolerated and ordinary cache misses compile from source.
-Module download, `go mod verify`, `go mod tidy -diff`, `go vet ./...`,
-`go test -race -count=1 -vet=off ./...` and the single product build always run,
-regardless of cache hit. `-count=1` prevents reuse of successful test results;
-Go may still reuse compiled packages, including race-instrumented packages.
+PR Screening uses `actions/setup-go` with the Go version from
+[go.mod](../../go.mod) and the module checksum from [go.sum](../../go.sum).
+Its standard cache lifecycle restores and saves Go module and build caches.
+No custom cache key, environment fingerprint, restore/save Action, or
+per-commit cache entry is maintained by the repository.
 
-The `go-ci-v1` namespace separates this cache from other workflows. Keys include
-runner OS/architecture, the `ubuntu-slim` runner family, actual Go version and
-build environment, distribution/compiler/libc identity, and a hash of module
-files, tool pins and the setup, cache, lint, unit-test, and build Actions.
-Changing dependencies, tools or build flags therefore starts a new cache family. Bump the namespace to
-invalidate all entries when changing cache policy. Each source SHA gets an
-immutable entry; a prefix restore reuses the latest compatible source entry
-and saves the newly compiled packages after lint, unit tests, and build succeed.
-The restore Action exposes paths and cache identity as outputs, which the
-calling workflow or composite passes explicitly to the save Action. There is no
-fallback across dependency or environment families. GitHub eviction can make
-any run cold; entries per revision trade storage for current compiled packages.
+The `mise-action` step installs only non-Go tools required by the lint and
+test commands. Main and release workflows continue to use their pinned
+toolchains and do not enable a separate Go cache.
 
-[GitHub cache scope rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
-allow PRs to restore compatible default-branch entries. A PR writes under its
-merge ref, so its reruns can reuse those entries, while main and other PRs
-cannot restore that PR's cache. The current main workflow does not populate
-this cache. Keys deliberately omit branch names, but keys alone are not a trust
-boundary. No `pull_request_target`,
-privileged consumer or release job restores this cache. Caches are readable by
-PR contributors and must never contain secrets. Module verification checks
-module contents; it does not authenticate compiled cache contents. The GitHub
-ref scope and separation from privileged workflows provide that boundary.
-
-To measure hosted performance, record a cold CI run after a namespace change,
-then rerun the same source for an exact hit. Compare another source revision
-of the same PR with unchanged cache-family inputs for a prefix hit.
-Record runner image, Go version,
-cache key/matched key, restored size, restore and save duration,
-module/vet/race/build step durations and total Screening duration. Confirm
-lint, unit-test, and build still execute and that `screening` passes.
-Compare several runs because runner load varies; include transfer overhead in
-the net saving. A changed module/tool/environment family must miss. Local
-cold/warm `GOCACHE`/`GOMODCACHE` timings demonstrate compilation reuse only,
-not hosted cache transfers, scope enforcement or ubuntu-slim performance.
+A cache hit never skips module validation, `go vet`, race-detected tests or
+the native build. Artifacts and manifests are not cached. PR-scoped caches
+must not contain secrets, and release jobs do not restore them.
 
 ### Hosted candidate composite
 

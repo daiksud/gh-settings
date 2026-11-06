@@ -65,12 +65,6 @@ func TestPRWorkflowScreeningCheck(t *testing.T) {
 		if s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" {
 			t.Fatalf("screening must not supply privileged credentials: %+v", s)
 		}
-		if strings.HasPrefix(s.Uses, "actions/cache/save@") {
-			if s.If != "steps.go-cache.outputs.cache-hit != 'true'" || !s.Continue {
-				t.Fatalf("best-effort cache save must not affect checks: %+v", s)
-			}
-			continue
-		}
 		if s.If != "" || s.Continue {
 			t.Fatalf("source checks must preserve failures: %+v", s)
 		}
