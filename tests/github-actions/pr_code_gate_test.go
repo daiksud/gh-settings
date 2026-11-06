@@ -70,7 +70,7 @@ func TestPRWorkflowScreeningCheck(t *testing.T) {
 		}
 	}
 	if len(check.Steps) == 0 || !strings.HasPrefix(check.Steps[0].Uses, "actions/checkout@") ||
-		check.Steps[0].With["ref"] != "${{ github.sha }}" || check.Steps[0].With["persist-credentials"] != "false" {
-		t.Fatal("screening must check out current validation source without persisting credentials")
+		len(check.Steps[0].With) != 0 {
+		t.Fatal("screening must check out the pull request candidate using default inputs")
 	}
 }
