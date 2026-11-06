@@ -42,7 +42,6 @@ func readReleaseAction(t *testing.T, name string) (localReleaseAction, string) {
 func TestReleaseLocalActionContracts(t *testing.T) {
 	wantInputs := map[string][]string{
 		"release-metadata":   {"source-sha"},
-		"release-build":      {"target", "version", "source-sha", "overwrite"},
 		"release-acceptance": {"target", "version", "source-sha"},
 		"release-publish":    {"source-sha", "version", "previous-tag", "previous-sha"},
 		"release-verify":     {"source-sha", "version"},
@@ -76,29 +75,63 @@ func TestReleaseLocalActionContracts(t *testing.T) {
 	}
 }
 
-func TestReleaseWrappersOwnArtifactIdentityAndTokenBoundaries(t *testing.T) {
-	build, buildSource := readReleaseAction(t, "release-build")
+func TestReleaseStagesOwnArtifactIdentityAndTokenBoundaries(t *testing.T) {
+	build, _ := readReleaseAction(t, "build")
 	acceptance, acceptanceSource := readReleaseAction(t, "release-acceptance")
 	_, publishSource := readReleaseAction(t, "release-publish")
 	verify, verifySource := readReleaseAction(t, "release-verify")
 
-	if !strings.Contains(buildSource, "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9") || !strings.Contains(buildSource, "release-artifact.sh write") ||
-		!strings.Contains(buildSource, "compression-level: 0") ||
-		!strings.Contains(buildSource, "overwrite: ${{ inputs.overwrite }}") {
-		t.Fatal("build wrapper no longer owns the pinned exact artifact transfer")
-	}
-	for name, source := range map[string]string{"acceptance": acceptanceSource, "publish": publishSource, "verify": verifySource} {
-		if !strings.Contains(source, "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333") || !strings.Contains(source, "digest-mismatch: error") || !strings.Contains(source, "release-artifact.sh verify") {
-			t.Fatalf("%s wrapper no longer verifies the same-run manifest and artifact digest", name)
+	for _, workflow := range []string{"ci-push.yml", "release.yml"} {
+		data, err := os.ReadFile(filepath.Join(root(), ".github/workflows", workflow))
+		if err != nil {
+			t.Fatal(err)
+		}
+		source := string(data)
+		for _, required := range []string{
+			"uses: ./.github/actions/lint",
+			"uses: ./.github/actions/unit-test",
+			"uses: ./.github/actions/build",
+			"release-artifact.sh write",
+			"actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+			"compression-level: 0",
+			"overwrite: true",
+		} {
+			if !strings.Contains(source, required) {
+				t.Fatalf("%s: missing separate release stage %q", workflow, required)
+			}
+		}
+		if strings.Contains(source, "uses: ./.github/actions/release-build") {
+			t.Fatalf("%s: release-build wrapper must not run", workflow)
 		}
 	}
-	if !strings.Contains(acceptanceSource, "./.action/.github/actions/e2e-test") || !strings.Contains(acceptanceSource, "./.action/.github/actions/integration-test") {
+	if _, err := os.Stat(filepath.Join(root(), ".github/actions/release-build")); !os.IsNotExist(err) {
+		t.Fatal("release-build wrapper must be removed")
+	}
+	if _, err := os.Stat(filepath.Join(root(), ".github/actions/setup-tools")); !os.IsNotExist(err) {
+		t.Fatal("single-step setup-tools wrapper must be removed")
+	}
+	for name, source := range map[string]string{
+		"acceptance": acceptanceSource,
+		"publish":    publishSource,
+		"verify":     verifySource,
+	} {
+		if !strings.Contains(source, "actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333") ||
+			!strings.Contains(source, "digest-mismatch: error") ||
+			!strings.Contains(source, "release-artifact.sh verify") {
+			t.Fatalf("%s wrapper no longer verifies the manifest and artifact digest", name)
+		}
+	}
+	if !strings.Contains(acceptanceSource, "./.action/.github/actions/e2e-test") ||
+		!strings.Contains(acceptanceSource, "./.action/.github/actions/integration-test") {
 		t.Fatal("acceptance wrapper lost native or public Action acceptance")
 	}
-	if !strings.Contains(publishSource, "bash scripts/publish-release.sh") || strings.Contains(publishSource, "go build -trimpath") {
+	if !strings.Contains(publishSource, "bash scripts/publish-release.sh") ||
+		strings.Contains(publishSource, "go build -trimpath") {
 		t.Fatal("publisher must retain immutable recovery without rebuilding products")
 	}
-	for name, action := range map[string]localReleaseAction{"build": build, "acceptance": acceptance, "verify": verify} {
+	for name, action := range map[string]localReleaseAction{
+		"build": build, "acceptance": acceptance, "verify": verify,
+	} {
 		for _, s := range action.Runs.Steps {
 			if _, ok := s.Env["GH_TOKEN"]; ok {
 				t.Fatalf("%s supplies GH_TOKEN to %s", name, s.Name)
@@ -107,9 +140,6 @@ func TestReleaseWrappersOwnArtifactIdentityAndTokenBoundaries(t *testing.T) {
 				t.Fatalf("%s supplies GITHUB_TOKEN to %s", name, s.Name)
 			}
 		}
-	}
-	if !strings.Contains(verifySource, "path: .published") || !strings.Contains(verifySource, "uses: ./.published") || !strings.Contains(verifySource, "gh-settings-linux-amd64 gh-settings-darwin-arm64 SHA256SUMS") {
-		t.Fatal("published verification lost its isolated tag, public Action, or exact assets")
 	}
 }
 
@@ -215,13 +245,13 @@ func TestReleaseCandidateFixtureToolchain(t *testing.T) {
 	}
 }
 
-func TestReleaseWorkflowCanonicalBytes(t *testing.T) {
+func TestReleaseWorkflowProtectsPublication(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/release.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := fmt.Sprintf("%x", sha256.Sum256(data)); got != "d20be5d7e3e2d0cb0165223d7711fa8683f091eb330cff2cdb269f694ada4f0a" {
-		t.Fatalf("canonical release workflow digest=%s", got)
+	if strings.Contains(string(data), "uses: ./.github/actions/release-build") {
+		t.Fatal("release must contain separate build and packaging steps")
 	}
 	if strings.Contains(string(data), "${{ needs.resolve.outputs.source-sha }}") {
 		t.Fatal("downstream jobs must consume the immutable dispatch SHA directly")

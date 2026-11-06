@@ -38,5 +38,10 @@ runs:
         [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
         go build -trimpath -ldflags "-X main.version=$version" -o "$RUNNER_TEMP/$BINARY_NAME" .
         printf 'binary-path=%s\n' "$RUNNER_TEMP/$BINARY_NAME" >> "$GITHUB_OUTPUT"
-        printf 'binary-sha256=%s\n' "$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+        if command -v sha256sum > /dev/null; then
+          digest="$(sha256sum "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)"
+        else
+          digest="$(shasum -a 256 "$RUNNER_TEMP/$BINARY_NAME" | cut -d ' ' -f 1)"
+        fi
+        printf 'binary-sha256=%s\n' "$digest" >> "$GITHUB_OUTPUT"
         printf 'source-sha=%s\ncli-version=%s\n' "$source_sha" "$version" >> "$GITHUB_OUTPUT"

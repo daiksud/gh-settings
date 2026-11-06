@@ -108,12 +108,18 @@ title/body edits and proposed squash messages.
 
 The [main workflow](../../.github/workflows/ci-push.yml) runs full Screening
 and Inspection. It resolves the release version for the exact `main` SHA,
-builds Linux amd64 and macOS arm64 natively using
-[release-build](../../.github/actions/release-build/action.yml), and tests
-those same product binaries and the public Action through
+builds Linux amd64 and macOS arm64 natively using the shared
+[build](../../.github/actions/build/action.yml) Action, then packages and
+uploads each product in separate workflow steps. It tests those same
+binaries and the public Action through
 [release-acceptance](../../.github/actions/release-acceptance/action.yml).
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
+
+Both main and release build jobs install the pinned `mise.toml` toolchain
+with `mise-action` cache enabled. They use one setup step on Linux and macOS,
+and the same build Action. PR Screening retains `setup-go` for Go compilation
+and module caching and installs only its non-Go lint tools with mise.
 
 After checkout, PR Screening uses `mise-action` for non-Go tools and
 `actions/setup-go` for Go installation and caching. It then calls
@@ -138,9 +144,10 @@ Its standard cache lifecycle restores and saves Go module and build caches.
 No custom cache key, environment fingerprint, restore/save Action, or
 per-commit cache entry is maintained by the repository.
 
-The `mise-action` step installs only non-Go tools required by the lint and
-test commands. Main and release workflows continue to use their pinned
-toolchains and do not enable a separate Go cache.
+The PR `mise-action` step installs only non-Go lint and test tools.
+Main and release build jobs install the full pinned toolchain using mise's
+built-in installation cache instead. Mise's tool cache does not store
+Go compilation results; only PR Screening uses the `setup-go` Go build cache.
 
 A cache hit never skips module validation, `go vet`, race-detected tests or
 the native build. Artifacts and manifests are not cached. PR-scoped caches
