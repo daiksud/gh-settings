@@ -103,22 +103,24 @@ its commit, independent of those workspace checkouts. Replacing these paths
 mechanically would change which Action is exercised; `.action` and `.published`
 are checkout destinations, not source repository paths.
 
-`ci-push` and `release` call the
-[full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml),
-while `pr` calls a [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml),
-each through `$/` in one step guarded by literal `${{ false }}`. That step never runs;
-it enumerates the existing external Action references so the lockfile generator
-can record them for the same workflow. `--ignore-local-actions` retains the
-runtime `./` references. An inventory in a different workflow does not supply a
-missing runtime pin. See [GitHub's local-path
-guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies#keeping-a-local-path-action).
+PR Screening invokes the external setup and cache-save Actions directly, so it
+does not need an inert dependency inventory. Its local cache-restore Action uses
+the same `actions/cache` repository pinned by the direct save step.
+
+`ci-push` and `release` still use the
+[full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
+through `$/` in a step guarded by `${{ false }}`. The step never runs and
+only enumerates transitive external dependencies for the lockfile generator.
+`--ignore-local-actions` preserves the workspace-relative action paths. See
+[GitHub's local-path guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/lock-workflow-dependencies#keeping-a-local-path-action).
 
 [Inventory tests](../../tests/github-actions/actions_lockfile_test.go) walk the
 runtime workflow and nested local composites, including the root Action reached
-through the frozen `.action` and `.published` checkouts. They compare the exact
-external references with the inert composite and the same workflow's generated
-lock entries. Changing a nested dependency requires updating the inventory and
-regenerating the lockfile. Existing candidate, consumer and release verification
+through the frozen `.action` and `.published` checkouts. For PR Screening, they compare external
+references directly against the same workflow's lock entries. For main and
+release, they compare the external references with the inert composite and the
+same workflow's generated lock entries. Changing a nested dependency requires
+regenerating the lockfile and updating the main/release inventory. Existing candidate, consumer and release verification
 checks still own checkout identity and execution isolation; the dependency
 inventory does not replace those checks or authorize a release.
 
@@ -128,7 +130,7 @@ The pinned actionlint 1.7.12 treats `$/` as an external Action missing a ref and
 also diagnoses a literal false condition. The
 [workflow lint wrapper](../../.github/scripts/lint-workflows.py) retains the
 normal actionlint checks and filters only those two exact structured diagnostics
-for the inventory step in `pr`, `ci-push` and `release`. It verifies the actual
+for the inventory step in `ci-push` and `release`. It verifies the actual
 source lines contain the adjacent literal-false condition and exact inventory
 reference. Other references, conditions, workflow paths and diagnostics remain
 errors. Invalid linter output and unexpected linter failures remain failures;
