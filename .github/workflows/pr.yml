@@ -1,0 +1,43 @@
+name: pr
+on:
+  pull_request:
+permissions: {}
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  screening:
+    runs-on: ubuntu-slim
+    timeout-minutes: 20
+    permissions: {contents: read}
+    steps:
+      - name: Checkout validation source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      # Inventory dependencies without changing workspace Action execution.
+      - name: Lock dependencies of workspace Actions
+        if: ${{ false }}
+        uses: $/.github/actions/lock-workspace-dependencies-screening
+      - name: Set up pinned build tools
+        uses: ./.github/actions/setup-tools
+      - name: Restore Go compilation and modules
+        id: go-cache
+        uses: ./.github/actions/restore-go-cache
+      - name: Lint source and workflows
+        uses: ./.github/actions/lint
+      - name: Run unit tests
+        uses: ./.github/actions/unit-test
+      - name: Build executable
+        uses: ./.github/actions/build
+      - name: Save Go compilation and modules after successful checks
+        uses: ./.github/actions/save-go-cache
+        with:
+          build-path: ${{ steps.go-cache.outputs.build-path }}
+          module-path: ${{ steps.go-cache.outputs.module-path }}
+          cache-hit: ${{ steps.go-cache.outputs.cache-hit }}
+          cache-primary-key: ${{ steps.go-cache.outputs.cache-primary-key }}

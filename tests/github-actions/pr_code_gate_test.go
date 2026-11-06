@@ -16,13 +16,13 @@ func TestPRWorkflowScreeningCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 	var w struct {
-		Name string `yaml:"name"`
-		On map[string]yaml.Node `yaml:"on"`
-		Permissions map[string]string `yaml:"permissions"`
-		Jobs map[string]yaml.Node `yaml:"jobs"`
+		Name        string               `yaml:"name"`
+		On          map[string]yaml.Node `yaml:"on"`
+		Permissions map[string]string    `yaml:"permissions"`
+		Jobs        map[string]yaml.Node `yaml:"jobs"`
 		Concurrency struct {
-			Group string `yaml:"group"`
-			Cancel bool `yaml:"cancel-in-progress"`
+			Group  string `yaml:"group"`
+			Cancel bool   `yaml:"cancel-in-progress"`
 		} `yaml:"concurrency"`
 	}
 	if err := yaml.Unmarshal(source, &w); err != nil {
@@ -41,14 +41,14 @@ func TestPRWorkflowScreeningCheck(t *testing.T) {
 		t.Fatal("screening must use its native job result without publishing statuses or changing PR state")
 	}
 	var check struct {
-		Name string `yaml:"name"`
-		Needs yaml.Node `yaml:"needs"`
-		If string `yaml:"if"`
-		Runner string `yaml:"runs-on"`
-		Strategy yaml.Node `yaml:"strategy"`
-		Continue bool `yaml:"continue-on-error"`
+		Name        string            `yaml:"name"`
+		Needs       yaml.Node         `yaml:"needs"`
+		If          string            `yaml:"if"`
+		Runner      string            `yaml:"runs-on"`
+		Strategy    yaml.Node         `yaml:"strategy"`
+		Continue    bool              `yaml:"continue-on-error"`
 		Permissions map[string]string `yaml:"permissions"`
-		Steps []step `yaml:"steps"`
+		Steps       []step            `yaml:"steps"`
 	}
 	checkNode, ok := w.Jobs["screening"]
 	if !ok {
