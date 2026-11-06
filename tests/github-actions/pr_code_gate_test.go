@@ -62,11 +62,17 @@ func TestPRWorkflowScreeningCheck(t *testing.T) {
 		t.Fatal("screening must run unconditionally as one read-only job and preserve failures")
 	}
 	for _, s := range check.Steps {
-		if s.Uses == workspaceScreeningBridge {
-			continue // The lock inventory is deliberately inert and checked separately.
+		if s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" {
+			t.Fatalf("screening must not supply privileged credentials: %+v", s)
 		}
-		if s.If != "" || s.Continue || s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" {
-			t.Fatalf("runtime screening steps must preserve failure propagation without supplied credentials: %+v", s)
+		if strings.HasPrefix(s.Uses, "actions/cache/save@") {
+			if s.If != "steps.go-cache.outputs.cache-hit != 'true'" || !s.Continue {
+				t.Fatalf("best-effort cache save must not affect checks: %+v", s)
+			}
+			continue
+		}
+		if s.If != "" || s.Continue {
+			t.Fatalf("source checks must preserve failures: %+v", s)
 		}
 	}
 	if len(check.Steps) == 0 || !strings.HasPrefix(check.Steps[0].Uses, "actions/checkout@") ||

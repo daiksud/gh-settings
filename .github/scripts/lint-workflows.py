@@ -8,9 +8,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = {ROOT / '.github/workflows' / f'{name}.yml'
-             for name in ('pr', 'ci-push', 'release')}
+             for name in ('ci-push', 'release')}
 BRIDGE = '$/.github/actions/lock-workspace-dependencies'
-SCREENING_BRIDGE = '$/.github/actions/lock-workspace-dependencies-screening'
 IF_LINE = 'if: ${{ false }}'
 ACTION_MESSAGE = ('specifying action "{bridge}" in invalid format because ref is missing. '
                   'available formats are "{owner}/{repo}@{ref}" or '
@@ -32,7 +31,7 @@ def known_bridge_diagnostic(diagnostic):
         lines = path.read_text().splitlines()
     except (OSError, UnicodeError):
         return False
-    bridge = SCREENING_BRIDGE if path.name == 'pr.yml' else BRIDGE
+    bridge = BRIDGE
     kind, message = diagnostic.get('kind'), diagnostic.get('message')
     if kind == 'action' and message == ACTION_MESSAGE.replace('{bridge}', bridge):
         start = line - 2

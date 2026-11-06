@@ -26,18 +26,18 @@ func TestPRScreeningOnly(t *testing.T) {
 	}
 	var actions []string
 	for _, s := range workflow.Jobs["screening"].Steps {
-		if s.Uses == workspaceScreeningBridge || strings.HasPrefix(s.Uses, "actions/checkout@") {
+		if strings.HasPrefix(s.Uses, "actions/checkout@") {
 			continue
 		}
 		actions = append(actions, s.Uses)
 	}
 	want := []string{
-		"./.github/actions/setup-tools",
+		"jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca",
 		"./.github/actions/restore-go-cache",
 		"./.github/actions/lint",
 		"./.github/actions/unit-test",
 		"./.github/actions/build",
-		"./.github/actions/save-go-cache",
+		"actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
 	}
 	if !reflect.DeepEqual(actions, want) {
 		t.Fatalf("screening must run independent source checks and build without artifact upload: %v", actions)

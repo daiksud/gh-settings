@@ -115,22 +115,20 @@ those same product binaries and the public Action through
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
 
-After checkout, PR Screening calls [setup-tools](../../.github/actions/setup-tools/action.yml),
+After checkout, PR Screening calls `mise-action` directly, then
 [restore-go-cache](../../.github/actions/restore-go-cache/action.yml),
 [lint](../../.github/actions/lint/action.yml),
-[unit-test](../../.github/actions/unit-test/action.yml),
-[build](../../.github/actions/build/action.yml), and
-[save-go-cache](../../.github/actions/save-go-cache/action.yml) directly as
-separate workflow steps. A failed lint, unit-test, or build step fails
+[unit-test](../../.github/actions/unit-test/action.yml), and
+[build](../../.github/actions/build/action.yml). It invokes `actions/cache/save`
+directly after successful checks. A failed lint, unit-test, or build step fails
 `screening`. PR CI does not upload artifacts or run process/public-Action
 Inspection. The Go cache restores compilation and module data, never binary
 artifacts; a cache hit does not skip source checks.
 
-The [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml)
-and [full CI/release inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
-enumerate transitive external Action pins for the generated
-[actions.lock](../../.github/workflows/actions.lock). Inert inventory steps
-do not run; runtime workspace Actions retain their correct checkout scope.
+PR Screening uses no inert Action inventory. Its external setup and cache-save
+steps supply the Action pins in [actions.lock](../../.github/workflows/actions.lock).
+The [full CI/release inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
+remains for the main and release workflows.
 
 ### Go cache in CI
 

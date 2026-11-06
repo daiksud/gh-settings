@@ -14,10 +14,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const (
-	workspaceLockBridge      = "$/.github/actions/lock-workspace-dependencies"
-	workspaceScreeningBridge = "$/.github/actions/lock-workspace-dependencies-screening"
-)
+const workspaceLockBridge = "$/.github/actions/lock-workspace-dependencies"
 
 type lockInventoryStep struct {
 	Uses string         `yaml:"uses"`
@@ -131,7 +128,7 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 			if step.Uses == "" {
 				continue
 			}
-			if step.Uses == workspaceLockBridge || step.Uses == workspaceScreeningBridge {
+			if step.Uses == workspaceLockBridge {
 				if !workflowFile {
 					return fmt.Errorf("runtime composite must not execute bridge: %s", name)
 				}
@@ -139,8 +136,7 @@ func lockInventoryClosure(read lockInventoryRead, workflow string) (map[string]b
 			}
 			if local, ok := lockInventoryLocalDirectory(step.Uses); ok {
 				bridgeDir, _ := lockInventoryLocalDirectory(workspaceLockBridge)
-				screeningDir, _ := lockInventoryLocalDirectory(workspaceScreeningBridge)
-				if local == bridgeDir || local == screeningDir {
+				if local == bridgeDir {
 					return fmt.Errorf("runtime local Action must not execute bridge: %s", name)
 				}
 				if local == ".." || strings.HasPrefix(local, "../") {
@@ -171,58 +167,58 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 	if err != nil {
 		return err
 	}
+
+	isPR := strings.HasSuffix(workflow, "/pr.yml")
 	bridgeCount := 0
-	bridgeAction := workspaceLockBridge
-	bridgeJob := "resolve"
-	if strings.HasSuffix(workflow, "/pr.yml") {
-		bridgeAction = workspaceScreeningBridge
-		bridgeJob = "screening"
-	}
 	for jobName, job := range doc.Jobs {
 		for _, step := range job.Steps {
-			if step.Uses != workspaceLockBridge && step.Uses != workspaceScreeningBridge {
+			if step.Uses != workspaceLockBridge {
 				continue
 			}
-			if step.Uses != bridgeAction {
-				return fmt.Errorf("%s: wrong dependency bridge %s", workflow, step.Uses)
+			if isPR {
+				return fmt.Errorf("%s: inert dependency inventory not allowed in Screening", workflow)
 			}
 			bridgeCount++
 			condition := strings.TrimSpace(step.If.Value)
-			if jobName != bridgeJob || (condition != "${{ false }}" && condition != "false") || step.Run != "" || len(step.With) != 0 || len(step.Env) != 0 {
-				return fmt.Errorf("%s: dependency bridge must be inert in its designated job", workflow)
+			if jobName != "resolve" || (condition != "${{ false }}" && condition != "false") ||
+				step.Run != "" || len(step.With) != 0 || len(step.Env) != 0 {
+				return fmt.Errorf("%s: dependency bridge must be inert in resolve", workflow)
 			}
 		}
 	}
-	if bridgeCount != 1 {
-		return fmt.Errorf("%s: expected one dependency bridge, got %d", workflow, bridgeCount)
+	if (isPR && bridgeCount != 0) || (!isPR && bridgeCount != 1) {
+		return fmt.Errorf("%s: unexpected dependency inventory count %d", workflow, bridgeCount)
 	}
 	runtime, _, err := lockInventoryClosure(read, workflow)
 	if err != nil {
 		return err
 	}
-	bridgeDir, _ := lockInventoryLocalDirectory(bridgeAction)
-	bridge, err := lockInventoryDocumentRead(read, path.Join(bridgeDir, "action.yml"))
-	if err != nil {
-		return err
-	}
-	if bridge.Runs.Using != "composite" {
-		return fmt.Errorf("bridge is not composite")
-	}
-	listed := map[string]bool{}
-	for _, step := range bridge.Runs.Steps {
-		if _, local := lockInventoryLocalDirectory(step.Uses); local || step.Uses == "" || step.Run != "" || step.If.Kind != 0 || len(step.With) != 0 || len(step.Env) != 0 {
-			return fmt.Errorf("bridge must contain only unconditional remote inventory entries")
-		}
-		if _, err := lockInventoryRemotePin(step.Uses); err != nil {
+	if !isPR {
+		bridgeDir, _ := lockInventoryLocalDirectory(workspaceLockBridge)
+		bridge, err := lockInventoryDocumentRead(read, path.Join(bridgeDir, "action.yml"))
+		if err != nil {
 			return err
 		}
-		if listed[step.Uses] {
-			return fmt.Errorf("duplicate bridge entry: %s", step.Uses)
+		if bridge.Runs.Using != "composite" {
+			return fmt.Errorf("bridge is not composite")
 		}
-		listed[step.Uses] = true
-	}
-	if !reflect.DeepEqual(lockInventorySorted(runtime), lockInventorySorted(listed)) {
-		return fmt.Errorf("%s: bridge differs from runtime dependencies: runtime=%v bridge=%v", workflow, lockInventorySorted(runtime), lockInventorySorted(listed))
+		listed := map[string]bool{}
+		for _, step := range bridge.Runs.Steps {
+			if _, local := lockInventoryLocalDirectory(step.Uses); local || step.Uses == "" ||
+				step.Run != "" || step.If.Kind != 0 || len(step.With) != 0 || len(step.Env) != 0 {
+				return fmt.Errorf("bridge must contain only unconditional remote inventory entries")
+			}
+			if _, err := lockInventoryRemotePin(step.Uses); err != nil {
+				return err
+			}
+			if listed[step.Uses] {
+				return fmt.Errorf("duplicate bridge entry: %s", step.Uses)
+			}
+			listed[step.Uses] = true
+		}
+		if !reflect.DeepEqual(lockInventorySorted(runtime), lockInventorySorted(listed)) {
+			return fmt.Errorf("%s: bridge differs from runtime dependencies", workflow)
+		}
 	}
 	data, err := read(".github/workflows/actions.lock")
 	if err != nil {
@@ -288,14 +284,10 @@ func TestWorkspaceActionLockInventoriesEveryWorkflow(t *testing.T) {
 
 func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
 	const workflow = ".github/workflows/pr.yml"
-	bridgeDir, _ := lockInventoryLocalDirectory(workspaceScreeningBridge)
-	bridgeFile := path.Join(bridgeDir, "action.yml")
-	for _, test := range []struct{ name, file, from, to, want string }{
-		{"omitted-runtime-dependency", bridgeFile, `(?m)^    - uses: actions/cache/restore@[^\n]+\n`, "", "bridge differs"},
-		{"nested-only-pin-change", ".github/actions/save-go-cache/action.yml", `actions/cache/save@[0-9a-f]{40}`, "actions/cache/save@1111111111111111111111111111111111111111", "bridge differs"},
-		{"nested-bridge-execution", ".github/actions/save-go-cache/action.yml", `  steps:\n`, "  steps:\n    - uses: $/.github/actions/lock-workspace-dependencies\n", "must not execute bridge"},
-		{"nested-only-subpath-change", ".github/actions/save-go-cache/action.yml", `actions/cache/save@`, "actions/cache/other-subpath@", "bridge differs"},
-		{"bridge-must-never-run", workflow, `if: \$\{\{ false \}\}`, "if: ${{ true }}", "must be inert"},
+	for _, test := range []struct{ name, file, from, to string }{
+		{"changed-workflow-pin", workflow, `jdx/mise-action@[0-9a-f]{40}`, "jdx/mise-action@1111111111111111111111111111111111111111"},
+		{"changed-nested-pin", ".github/actions/restore-go-cache/action.yml", `actions/cache/restore@[0-9a-f]{40}`, "actions/cache/restore@1111111111111111111111111111111111111111"},
+		{"unexpected-remote-pin", workflow, `(?m)^      - name: Build executable\n`, "      - uses: actions/extra@1111111111111111111111111111111111111111\n      - name: Build executable\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			original, err := lockInventoryDiskRead(test.file)
@@ -312,8 +304,8 @@ func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
 				}
 				return lockInventoryDiskRead(name)
 			}
-			if err := validateWorkspaceActionLock(read, workflow); err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("drift not rejected: %v", err)
+			if err := validateWorkspaceActionLock(read, workflow); err == nil || !strings.Contains(err.Error(), "lock inventory differs") {
+				t.Fatalf("dependency drift not rejected: %v", err)
 			}
 		})
 	}
