@@ -165,7 +165,11 @@ The `pr` workflow uses the default `pull_request` activities: opened, synchroniz
 
 The independent `prlint` job checks the current title and body together as the proposed squash message, except for Dependabot-authored PRs. It reruns on metadata-only edits. Its job-level skip preserves the required check. GitHub's required-check settings enforce message validation separately from Screening. See [PR validation](pr-validation.md#message-and-settings-validation) for the author condition, required-check semantics and failure behavior.
 
-The `screening` job has Contents read permission, no supplied secrets, and no persisted checkout credentials. Its steps call the setup, cache, lint, unit-test, and build Actions directly. It does not request permission to change PR state or publish commit statuses.
+The `screening` job has Contents read permission and no supplied secrets. Checkout uses its default
+credential persistence, so the read-only `GITHUB_TOKEN` is available to subsequent steps through
+Git configuration until checkout's post-job cleanup. PR-controlled source and checks can access
+that credential during the job. Its steps call the setup, cache, lint, unit-test, and build
+Actions directly. It does not request permission to change PR state or publish commit statuses.
 
 This validation pipeline does not merge, publish, or deploy. Use [testing](testing.md#ci-validation) to interpret its results. GitHub's protected-main and Environment configuration determine whether a reviewed change can reach apply; a passing source test does not configure those controls.
 
