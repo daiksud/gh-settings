@@ -27,16 +27,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-      # Temporary: obtain an official generated lockfile for this change.
-      - name: Generate dependency lockfile for review
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh extension install github/gh-actions-lock --pin v0.4.1
-          gh actions-lock --no-interactive --no-narrow --ignore-local-actions
-          echo '=== GENERATED ACTIONS.LOCK BEGIN ==='
-          cat .github/workflows/actions.lock
-          echo '=== GENERATED ACTIONS.LOCK END ==='
       - name: Lint source and workflows
         uses: ./.github/actions/lint
       - name: Run unit tests

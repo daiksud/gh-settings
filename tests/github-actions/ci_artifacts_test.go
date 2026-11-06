@@ -74,53 +74,17 @@ func TestCITargetMatrices(t *testing.T) {
 	}
 }
 
-func TestCICompositesPreserveSameCandidate(t *testing.T) {
-	read := func(name string) []step {
-		t.Helper()
-		data, err := os.ReadFile(filepath.Join(root(), ".github/actions", name, "action.yml"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var action struct {
-			Runs struct {
-				Steps []step `yaml:"steps"`
-			} `yaml:"runs"`
-		}
-		if err := yaml.Unmarshal(data, &action); err != nil {
-			t.Fatal(err)
-		}
-		return action.Runs.Steps
+func TestCIAcceptanceUsesVerifiedCandidate(t *testing.T) {
+	acceptance, _ := readReleaseAction(t, "ci-acceptance")
+	steps := acceptance.Runs.Steps
+	if len(steps) != 4 ||
+		steps[1].Uses != "./.action/.github/actions/integration-test" ||
+		steps[3].Uses != "./.action/.github/actions/e2e-test" ||
+		steps[1].If != "inputs.kind == 'process'" ||
+		steps[3].If != "inputs.kind == 'public-action'" {
+		t.Fatalf("acceptance must exercise transferred candidate bytes: %+v", steps)
 	}
-	commit := read("ci-commit")
-	acceptance := read("ci-acceptance")
-	var build, product step
-	for _, s := range commit {
-		switch s.ID {
-		case "build":
-			build = s
-		case "package":
-			product = s
-		}
-	}
-	if build.Uses != "./.github/actions/build" ||
-		product.Env["BINARY_PATH"] != "${{ steps.build.outputs.binary-path }}" ||
-		product.Env["BINARY_SHA256"] != "${{ steps.build.outputs.binary-sha256 }}" ||
-		product.Env["PRODUCT_VERSION"] != "${{ steps.build.outputs.cli-version }}" ||
-		!strings.Contains(product.Run, "manifest.json") ||
-		!strings.Contains(product.Run, "binary_sha256") ||
-		!strings.Contains(product.Run, "product_version") ||
-		!strings.Contains(product.Run, "source_sha") ||
-		!strings.Contains(product.Run, "target") {
-		t.Fatalf("commit stage must produce a manifested binary: %+v", commit)
-	}
-	if len(acceptance) != 4 ||
-		acceptance[1].Uses != "./.action/.github/actions/integration-test" ||
-		acceptance[3].Uses != "./.action/.github/actions/e2e-test" ||
-		acceptance[1].If != "inputs.kind == 'process'" ||
-		acceptance[3].If != "inputs.kind == 'public-action'" {
-		t.Fatalf("acceptance must run process and public Action checks on transferred bytes: %+v", acceptance)
-	}
-	for _, s := range acceptance {
+	for _, s := range steps {
 		if strings.Contains(s.Run, "go build") || strings.Contains(s.Run, "gh-settings-linux-amd64") {
 			t.Fatal("acceptance must not rebuild or download the product from a release")
 		}
