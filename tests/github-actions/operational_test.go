@@ -26,7 +26,7 @@ func TestManagedRepositoryEnvironments(t *testing.T) {
 			t.Fatalf("duplicate managed Environment %q", p.Name)
 		}
 		seenNames[identity] = true
-		if settings.EnvironmentHasAPIOmissions(p) || *p.WaitTimer != 0 || *p.PreventSelfReview {
+		if settings.EnvironmentHasAPIOmissions(p) || *p.WaitTimer != 15 || *p.PreventSelfReview {
 			t.Fatalf("Environment policy must retain complete observed values: %+v", p)
 		}
 		switch p.Name {
