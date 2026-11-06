@@ -108,9 +108,10 @@ title/body edits and proposed squash messages.
 
 The [main workflow](../../.github/workflows/ci-push.yml) runs full Screening
 and Inspection. It resolves the release version for the exact `main` SHA,
-builds Linux amd64 and macOS arm64 natively using
-[release-build](../../.github/actions/release-build/action.yml), and tests
-those same product binaries and the public Action through
+builds Linux amd64 and macOS arm64 natively using the shared
+[build](../../.github/actions/build/action.yml) Action, then packages and
+uploads each product in separate workflow steps. It tests those same
+binaries and the public Action through
 [release-acceptance](../../.github/actions/release-acceptance/action.yml).
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
