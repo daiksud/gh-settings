@@ -62,9 +62,6 @@ func TestPRWorkflowScreeningCheck(t *testing.T) {
 		t.Fatal("screening must run unconditionally as one read-only job and preserve failures")
 	}
 	for _, s := range check.Steps {
-		if s.Uses == workspaceScreeningBridge {
-			continue // The lock inventory is deliberately inert and checked separately.
-		}
 		if s.If != "" || s.Continue || s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" {
 			t.Fatalf("runtime screening steps must preserve failure propagation without supplied credentials: %+v", s)
 		}
