@@ -54,11 +54,11 @@ resource-specific behavior.
 | --- | --- |
 | [`pr.yml`](../../.github/workflows/pr.yml) | Default pull_request activities run the single `screening` job for source checks, unit tests, and a native build |
 | [`prlint.yml`](../../.github/workflows/prlint.yml) | PR creation, push, reopening, and edits validate title/body; the job skips Dependabot-authored PRs |
-| [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; build native release-ready binaries and inspect them, ending in `ci-push` |
+| [`ci-push.yml`](../../.github/workflows/ci-push.yml) | Pushes to `main`; install the cached mise toolchain, build native release-ready binaries, and inspect them, ending in `ci-push` |
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Default pull_request events validate the PR merge declaration only; the validation check is `settings-pr` |
 | [`settings-apply.yml`](../../.github/workflows/settings-apply.yml) | Manual dispatch from `main`; one Environment-bound direct apply job |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or PR CI completion; approve completed reviews matching HEAD with thumbs-up |
-| [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
+| [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; source checks, native build, packaging, acceptance, publication, and verification run as distinct steps or jobs |
 
 Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
 

@@ -45,18 +45,64 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.resolve.outputs.build-matrix) }}
     steps:
-      - name: Checkout exact main candidate
+      - name: Checkout exact source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Screen and build native release-ready candidate
-        uses: ./.github/actions/release-build
+      - name: Validate the frozen source and native target
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          [[ "$TARGET" == linux-amd64 || "$TARGET" == darwin-arm64 ]] || exit 1
+          [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || exit 1
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || exit 1
+      - name: Set up pinned tools with mise cache
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
-          target: ${{ matrix.target }}
+          version: 2026.10.8
+      - name: Lint source and workflows
+        if: matrix.target == 'linux-amd64'
+        uses: ./.github/actions/lint
+      - name: Run unit tests
+        if: matrix.target == 'linux-amd64'
+        uses: ./.github/actions/unit-test
+      - name: Build native executable
+        id: build
+        uses: ./.github/actions/build
+        with:
+          binary-name: gh-settings-${{ matrix.target }}
           version: ${{ needs.resolve.outputs.version }}
-          source-sha: ${{ github.sha }}
-          overwrite: 'true'
+      - name: Package artifact and identity manifest
+        id: package
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ needs.resolve.outputs.version }}
+          SOURCE_SHA: ${{ github.sha }}
+          BUILT_SOURCE_SHA: ${{ steps.build.outputs.source-sha }}
+          PRODUCT: ${{ steps.build.outputs.binary-path }}
+        run: |
+          [[ "$BUILT_SOURCE_SHA" == "$SOURCE_SHA" ]] || {
+            echo 'built binary source differs from frozen commit' >&2
+            exit 1
+          }
+          destination="$RUNNER_TEMP/release-$TARGET"
+          bash .github/scripts/release-artifact.sh write \
+            "$TARGET" "$VERSION" "$SOURCE_SHA" "$PRODUCT" "$destination"
+          printf 'artifact-dir=%s\n' "$destination" >> "$GITHUB_OUTPUT"
+      - name: Upload native product and manifest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.target }}
+          path: ${{ steps.package.outputs.artifact-dir }}
+          if-no-files-found: error
+          include-hidden-files: false
+          compression-level: 0
+          retention-days: 7
+          overwrite: true
   acceptance-stage:
     needs: [resolve, commit-stage]
     runs-on: ${{ matrix.runner }}
