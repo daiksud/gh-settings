@@ -103,9 +103,9 @@ its commit, independent of those workspace checkouts. Replacing these paths
 mechanically would change which Action is exercised; `.action` and `.published`
 are checkout destinations, not source repository paths.
 
-PR Screening invokes the external setup and cache-save Actions directly, so it
-does not need an inert dependency inventory. Its local cache-restore Action uses
-the same `actions/cache` repository pinned by the direct save step.
+PR Screening invokes `mise-action` and `actions/setup-go` directly and
+does not need an inert dependency inventory. Go cache restoration and storage
+use `setup-go` defaults rather than custom local Actions.
 
 `ci-push` and `release` still use the
 [full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
