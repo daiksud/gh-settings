@@ -172,8 +172,12 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 	bridgeCount := 0
 	for jobName, job := range doc.Jobs {
 		for _, step := range job.Steps {
-			if step.Uses != workspaceLockBridge { continue }
-			if isPR { return fmt.Errorf("%s: inert dependency inventory not allowed in Screening", workflow) }
+			if step.Uses != workspaceLockBridge {
+				continue
+			}
+			if isPR {
+				return fmt.Errorf("%s: inert dependency inventory not allowed in Screening", workflow)
+			}
 			bridgeCount++
 			condition := strings.TrimSpace(step.If.Value)
 			if jobName != "resolve" || (condition != "${{ false }}" && condition != "false") ||
@@ -186,20 +190,30 @@ func validateWorkspaceActionLock(read lockInventoryRead, workflow string) error 
 		return fmt.Errorf("%s: unexpected dependency inventory count %d", workflow, bridgeCount)
 	}
 	runtime, _, err := lockInventoryClosure(read, workflow)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	if !isPR {
 		bridgeDir, _ := lockInventoryLocalDirectory(workspaceLockBridge)
 		bridge, err := lockInventoryDocumentRead(read, path.Join(bridgeDir, "action.yml"))
-		if err != nil { return err }
-		if bridge.Runs.Using != "composite" { return fmt.Errorf("bridge is not composite") }
+		if err != nil {
+			return err
+		}
+		if bridge.Runs.Using != "composite" {
+			return fmt.Errorf("bridge is not composite")
+		}
 		listed := map[string]bool{}
 		for _, step := range bridge.Runs.Steps {
 			if _, local := lockInventoryLocalDirectory(step.Uses); local || step.Uses == "" ||
 				step.Run != "" || step.If.Kind != 0 || len(step.With) != 0 || len(step.Env) != 0 {
 				return fmt.Errorf("bridge must contain only unconditional remote inventory entries")
 			}
-			if _, err := lockInventoryRemotePin(step.Uses); err != nil { return err }
-			if listed[step.Uses] { return fmt.Errorf("duplicate bridge entry: %s", step.Uses) }
+			if _, err := lockInventoryRemotePin(step.Uses); err != nil {
+				return err
+			}
+			if listed[step.Uses] {
+				return fmt.Errorf("duplicate bridge entry: %s", step.Uses)
+			}
 			listed[step.Uses] = true
 		}
 		if !reflect.DeepEqual(lockInventorySorted(runtime), lockInventorySorted(listed)) {
@@ -277,11 +291,17 @@ func TestWorkspaceActionLockDetectsInventoryDrift(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			original, err := lockInventoryDiskRead(test.file)
-			if err != nil { t.Fatal(err) }
+			if err != nil {
+				t.Fatal(err)
+			}
 			changed := regexp.MustCompile(test.from).ReplaceAllLiteralString(string(original), test.to)
-			if changed == string(original) { t.Fatalf("missing mutation target in %s", test.file) }
+			if changed == string(original) {
+				t.Fatalf("missing mutation target in %s", test.file)
+			}
 			read := func(name string) ([]byte, error) {
-				if name == test.file { return []byte(changed), nil }
+				if name == test.file {
+					return []byte(changed), nil
+				}
 				return lockInventoryDiskRead(name)
 			}
 			if err := validateWorkspaceActionLock(read, workflow); err == nil || !strings.Contains(err.Error(), "lock inventory differs") {
