@@ -10,7 +10,7 @@ This guide is for people changing gh-settings itself: its code, tests, documenta
 4. Validate the affected behavior using the [testing guide](docs/contributing/testing.md). It explains local checks, acceptance tests, CI, and the limits of each kind of evidence.
 5. Open a PR explaining the problem, the resulting behavior, and how you verified it. Apply the [code-review policy](.agents/skills/code-review/SKILL.md), address review feedback, and let the required checks finish before merging.
 
-The repository's CI moves PRs through Draft and Ready states. Its review automation and settings workflows are described in [repository automation](docs/contributing/repository-automation.md); a successful bot workflow alone does not establish a current approval.
+The repository's `pr` workflow runs a single `screening` job when a PR is opened, updated with commits, or reopened. It leaves the PR's Draft or Ready state unchanged. Its review automation and settings workflows are described in [repository automation](docs/contributing/repository-automation.md); a successful bot workflow alone does not establish a current approval.
 
 ## Issues and pull requests
 
@@ -100,7 +100,7 @@ mise exec -- rumdl check --no-cache --deny-config-warnings README.md CONTRIBUTIN
 git diff --check
 ```
 
-The existing Markdown check validates relative files and heading fragments. When moving a page or heading, update links in Markdown, frontmatter source references, and any plain-text commands or paths. When adding a root document, include it in the [CI Markdown check](.github/actions/static-analysis/action.yml).
+The existing Markdown check validates relative files and heading fragments. When moving a page or heading, update links in Markdown, frontmatter source references, and any plain-text commands or paths. When adding a root document, include it in the [CI Markdown check](.github/actions/lint/action.yml).
 
 ## Releases
 

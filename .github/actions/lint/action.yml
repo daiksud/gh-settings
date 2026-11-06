@@ -1,4 +1,4 @@
-name: Static analysis
+name: Lint
 description: Check workflow and shell syntax, Go formatting, modules, vet, and Markdown.
 runs:
   using: composite

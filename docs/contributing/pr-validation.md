@@ -1,26 +1,26 @@
 # PR validation and required checks
 
-The updated declaration requires `ci-pr`, `prlint`, and `settings-pr` from
-GitHub Actions (App ID `15368`). Until the reviewed manual settings apply is
-completed, the live Ruleset may still require the old `settings-validate`.
-The retired `settings-plan` and `settings-env` checks are not required.
-Their owning workflows and boundaries are listed in the
+The tracked declaration requires `screening`, `prlint`, and `settings-pr` from
+GitHub Actions (App ID `15368`). Apply the reviewed declaration through
+`settings-apply` after merge and read back the live Ruleset before claiming
+these checks are enforced. Their owning workflows and boundaries are listed in the
 [repository automation guide](repository-automation.md#protected-main-and-required-checks).
-No workflow publishes the shared `pass` commit status.
+GitHub reports each job's native check result.
 
-## Staged code validation
+## PR screening
 
-Every PR event (including title/body edits) runs Draft, metadata resolution,
-Screening (source checks, unit tests and build), and Ready. The final `ci-pr` job succeeds only
-when every Screening prerequisite succeeds. PR Inspection is not performed. A failed, skipped or cancelled prerequisite
-cannot report success. The separate `ci-push` aggregate checks Screening and Inspection on main.
-The PR aggregate uses `always()` so cancelled prerequisites are evaluated as
-non-success rather than skipping the required job.
+The [pr workflow](../../.github/workflows/pr.yml) uses the default `pull_request`
+activities: opened, synchronize, and reopened. Its single `screening` job runs
+source lint, unit tests, and a native Linux build on `ubuntu-slim`.
+The job calls the focused local Actions directly; [testing](testing.md#ci-validation)
+describes the step sequence and cache behavior. A failed lint, unit-test, or
+build step fails the job. The separate `ci-push` aggregate checks Screening
+and process/public-Action Inspection on main.
 
 All PR-source execution uses read-only tokens and checkouts without persisted
-credentials. The Draft/Ready jobs change only PR state; the aggregate job has
-no write permission. Repeated metadata edits can rerun expensive CI, but they
-cannot create a skipped-success replacement for a prior failed job.
+credentials. Screening leaves the PR's Draft or Ready state unchanged.
+Title/body edits and draft/readiness transitions do not trigger this workflow;
+metadata-only edits remain the responsibility of `prlint`.
 
 ## Message and settings validation
 
@@ -46,25 +46,22 @@ Environment or App token and does not observe live settings. There is no PR plan
 The repository automation guide owns the
 [checkout and validation contract](repository-automation.md#pr-settings-validation)
 and the [package pins and credential boundaries](repository-automation.md#active-settings-workflows).
-Candidate code and current-format fixtures remain covered by `ci-pr`; they do
+Candidate code and current-format fixtures remain covered by `screening`; they do
 not establish that a pinned operational package supports a new declaration.
 
 The Environment scope tests still run in ordinary CI with candidate source.
 There is no independent trusted-main guard. These tests and workflow source do
 not establish live credential configuration.
 
-## Ruleset transition
-
-The retired checks were removed from the live Ruleset, and a fresh
-`settings-validate` run succeeded for PR #589 after the workflow migration
-in PR #586. The required context was then added to the live Ruleset.
-The [transition record](repository-automation.md#required-check-transition)
-identifies the observed workflow and run.
-
-The new tracked required-check list must be applied manually to match live state. Any future
-Ruleset changes still require a review of actual GitHub settings, and
-`settings-apply` remains a separate manual operation after merge.
-
-The new `settings-pr` workflow uses the default `pull_request` activities
+The `settings-pr` workflow uses the default `pull_request` activities
 (opened, synchronize and reopened) and an unconfigured checkout step on
 `ubuntu-slim`. Only `prlint` reruns automatically on metadata-only edits.
+
+## Ruleset enforcement
+
+Review the actual GitHub settings and the current check producer, workflow
+revision, event, and candidate SHA before relying on a required check.
+The [required-check verification procedure](repository-automation.md#required-check-verification)
+distinguishes source configuration from live enforcement. `settings-apply`
+remains a separate manual operation after merge; PR validation does not apply
+the declaration.

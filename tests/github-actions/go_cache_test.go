@@ -10,110 +10,105 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func TestGoCachePreservesCommitChecksAndTrustBoundary(t *testing.T) {
-	read := func(name string) ([]step, string, map[string]struct{ Default string }) {
-		t.Helper()
-		data, err := os.ReadFile(filepath.Join(root(), ".github/actions", name, "action.yml"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		var action struct {
-			Inputs map[string]struct{ Default string } `yaml:"inputs"`
-			Runs   struct{ Steps []step }              `yaml:"runs"`
-		}
-		if err := yaml.Unmarshal(data, &action); err != nil {
-			t.Fatal(err)
-		}
-		return action.Runs.Steps, string(data), action.Inputs
+func TestGoCachePreservesChecksAndTrustBoundary(t *testing.T) {
+	restore, _ := readReleaseAction(t, "restore-go-cache")
+	save, _ := readReleaseAction(t, "save-go-cache")
+	guard := "github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')"
+	if len(restore.Runs.Steps) != 2 || len(save.Runs.Steps) != 1 {
+		t.Fatal("cache actions must only resolve/restore and explicitly save Go cache data")
 	}
-	steps, _, inputs := read("commit-stage")
-	if inputs["cache-go"].Default != "false" {
-		t.Fatal("cache must be opt-in and never decide whether checks execute")
+	identity, restored, saved := restore.Runs.Steps[0], restore.Runs.Steps[1], save.Runs.Steps[0]
+	if identity.ID != "go-cache" || identity.If != guard || restored.ID != "restore" || restored.If != guard || !restored.Continue ||
+		!strings.HasPrefix(restored.Uses, "actions/cache/restore@") || restored.With["fail-on-cache-miss"] == "true" ||
+		restored.With["lookup-only"] == "true" || restored.With["enableCrossOsArchive"] == "true" {
+		t.Fatal("restore must tolerate unavailability without widening event/environment scope")
 	}
-	guard := "inputs.cache-go == 'true' && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))"
-	cacheCount, saveCount := 0, 0
-	checks := map[string]bool{
-		"go mod download": false, "go mod verify": false, "go mod tidy -diff": false,
-		"go vet ./...": false, "go test -race -count=1 -vet=off ./...": false,
-		"go build -trimpath": false,
+	if restored.With["path"] != "${{ steps.go-cache.outputs.build-path }}\n${{ steps.go-cache.outputs.module-path }}\n" {
+		t.Fatal("only resolved Go build/module cache paths may be cached")
 	}
-	for index, s := range steps {
-		if strings.HasPrefix(s.Uses, "actions/cache/save@") {
-			saveCount++
-			if index != len(steps)-1 || !s.Continue || s.If != guard+" && steps.go-cache-restore.outputs.cache-hit != 'true' && steps.go-cache-restore.outputs.cache-primary-key != ''" || s.With["key"] != "${{ steps.go-cache-restore.outputs.cache-primary-key }}" {
-				t.Fatal("save must be explicit after all checks, reuse the resolved key and tolerate unavailability")
-			}
-			if s.With["path"] != "${{ steps.go-cache.outputs.build-path }}\n${{ steps.go-cache.outputs.module-path }}\n" {
-				t.Fatal("save must use the same in-scope Go cache paths as restore")
-			}
-			continue
+	prefix := strings.TrimSpace(restored.With["restore-keys"])
+	if prefix == "" || strings.Contains(prefix, "\n") || restored.With["key"] != prefix+"${{ github.sha }}" {
+		t.Fatal("restore must stay within one compatible family and save per revision")
+	}
+	for _, required := range []string{"go-ci-v1-", "runner.os", "runner.arch", "ubuntu-slim", "steps.go-cache.outputs.environment", "'go.mod'", "'go.sum'", "'mise.toml'", "'.github/actions/restore-go-cache/action.yml'", "'.github/actions/save-go-cache/action.yml'", "'.github/actions/lint/action.yml'", "'.github/actions/unit-test/action.yml'", "'.github/actions/build/action.yml'"} {
+		if !strings.Contains(prefix, required) {
+			t.Fatalf("cache family missing %s", required)
 		}
-		if strings.HasPrefix(s.Uses, "actions/cache/restore@") {
-			cacheCount++
-			if s.If != guard || !s.Continue || s.With["fail-on-cache-miss"] == "true" || s.With["lookup-only"] == "true" || s.With["enableCrossOsArchive"] == "true" {
-				t.Fatal("cache must tolerate unavailability without widening event/environment scope")
-			}
-			if s.With["path"] != "${{ steps.go-cache.outputs.build-path }}\n${{ steps.go-cache.outputs.module-path }}\n" {
-				t.Fatal("only resolved Go build/module cache paths may be cached")
-			}
-			prefix := strings.TrimSpace(s.With["restore-keys"])
-			if prefix == "" || strings.Contains(prefix, "\n") || s.With["key"] != prefix+"${{ github.sha }}" {
-				t.Fatal("restore must stay within one compatible family and save per revision")
-			}
-			for _, required := range []string{"go-ci-v1-", "runner.os", "runner.arch", "ubuntu-slim", "steps.go-cache.outputs.environment", "'go.mod'", "'go.sum'", "'mise.toml'", "'.github/actions/commit-stage/action.yml'"} {
-				if !strings.Contains(prefix, required) {
-					t.Fatalf("cache family missing %s", required)
+	}
+	for name, value := range map[string]string{
+		"build-path":        "${{ steps.go-cache.outputs.build-path }}",
+		"module-path":       "${{ steps.go-cache.outputs.module-path }}",
+		"cache-hit":         "${{ steps.restore.outputs.cache-hit }}",
+		"cache-primary-key": "${{ steps.restore.outputs.cache-primary-key }}",
+	} {
+		output := restore.Outputs[name]
+		var definition struct{ Value string }
+		if err := output.Decode(&definition); err != nil || definition.Value != value {
+			t.Fatalf("restore output %s must retain the resolved value: %q %v", name, definition.Value, err)
+		}
+	}
+	if !strings.HasPrefix(saved.Uses, "actions/cache/save@") || !saved.Continue ||
+		saved.If != "("+guard+") && inputs.cache-hit != 'true' && inputs.cache-primary-key != ''" ||
+		saved.With["key"] != "${{ inputs.cache-primary-key }}" ||
+		saved.With["path"] != "${{ inputs.build-path }}\n${{ inputs.module-path }}\n" {
+		t.Fatal("save must use explicit resolved paths/key, skip exact hits and tolerate unavailability")
+	}
+
+	// Cache hits cannot make source checks optional or reuse cached test results.
+	checks := map[string][]string{
+		"lint":      {"go mod download", "go mod verify", "go mod tidy -diff", "go vet ./..."},
+		"unit-test": {"go test -race -count=1 -vet=off ./..."},
+		"build":     {"go build -trimpath"},
+	}
+	for name, commands := range checks {
+		action, _ := readReleaseAction(t, name)
+		for _, command := range commands {
+			found := false
+			for _, s := range action.Runs.Steps {
+				if strings.Contains(s.Run, command) {
+					found = true
+					if s.If != "" || s.Continue {
+						t.Fatalf("source check became optional: %s", command)
+					}
 				}
 			}
+			if !found {
+				t.Errorf("missing unconditional source check: %s", command)
+			}
+		}
+	}
+	ci, _ := readReleaseAction(t, "ci-commit")
+	order := []string{"setup-tools", "restore-go-cache", "lint", "unit-test", "build", "save-go-cache"}
+	position := 0
+	for _, s := range ci.Runs.Steps {
+		if !strings.HasPrefix(s.Uses, "./.github/actions/") {
 			continue
 		}
-		if s.ID == "go-cache" {
-			if s.If != guard {
-				t.Fatal("cache identity must use the same event guard")
-			}
-			continue
+		if position >= len(order) || s.Uses != "./.github/actions/"+order[position] || s.If != "" || s.Continue {
+			t.Fatalf("CI must restore, check, build and save without a cache-hit condition: %+v", s)
 		}
-		if s.If != "" || s.Continue {
-			t.Fatalf("commit check became optional: %s", s.Name)
-		}
-		for command := range checks {
-			if strings.Contains(s.Run, command) {
-				checks[command] = true
+		if order[position] == "save-go-cache" {
+			for _, name := range []string{"build-path", "module-path", "cache-hit", "cache-primary-key"} {
+				if s.With[name] != "${{ steps.go-cache.outputs."+name+" }}" {
+					t.Fatalf("cache save must receive the restore output %s", name)
+				}
 			}
 		}
+		position++
 	}
-	if cacheCount != 1 || saveCount != 1 {
-		t.Fatalf("want explicit restore/save, got %d/%d", cacheCount, saveCount)
+	if position != len(order) {
+		t.Fatal("CI omitted a source check or explicit cache step")
 	}
-	// Delegated actions own the commands; the composite retains cache policy.
-	for _, name := range []string{"static-analysis", "unit-test", "build"} {
-		data, err := os.ReadFile(filepath.Join(root(), ".github/actions", name, "action.yml"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		for command := range checks {
-			if strings.Contains(string(data), command) {
-				checks[command] = true
-			}
-		}
-	}
-	for command, found := range checks {
-		if !found {
-			t.Errorf("missing unconditional check: %s", command)
-		}
-	}
-	for name, want := range map[string]string{"ci-commit": "true", "release-build": ""} {
-		caller, _, _ := read(name)
-		for _, s := range caller {
-			if s.Uses == "./.github/actions/commit-stage" && s.With["cache-go"] != want {
-				t.Fatalf("%s cache opt-in = %q, want %q", name, s.With["cache-go"], want)
-			}
+	release, _ := readReleaseAction(t, "release-build")
+	for _, s := range release.Runs.Steps {
+		if strings.Contains(s.Uses, "go-cache") || strings.HasPrefix(s.Uses, "actions/cache/") {
+			t.Fatal("release builds must not opt in to the unprivileged CI cache")
 		}
 	}
 }
 
 func TestGoCacheEnvironmentFingerprint(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/commit-stage/action.yml"))
+	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/restore-go-cache/action.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,45 +176,6 @@ esac`,
 	for _, changed := range []string{"DISTRO", "COMPILER", "LIBC", "GO_VERSION", "GO_ENV"} {
 		if run(changed) == original {
 			t.Errorf("%s change reused environment identity", changed)
-		}
-	}
-}
-
-func TestCommitStageDelegatesSingleResponsibilityActions(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/actions/commit-stage/action.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var action struct {
-		Runs struct {
-			Steps []step
-		}
-	}
-	if err := yaml.Unmarshal(data, &action); err != nil {
-		t.Fatal(err)
-	}
-	found := []string{}
-	for _, s := range action.Runs.Steps {
-		if strings.HasPrefix(s.Uses, "./.github/actions/") {
-			found = append(found, s.Uses)
-		}
-		if strings.Contains(s.Run, "go test ") || strings.Contains(s.Run, "go build ") ||
-			strings.Contains(s.Run, "go vet ") || strings.Contains(s.Run, "gofmt -l") {
-			t.Fatal("commit-stage must delegate source and build operations to focused Actions")
-		}
-	}
-	want := []string{
-		"./.github/actions/setup-tools",
-		"./.github/actions/static-analysis",
-		"./.github/actions/unit-test",
-		"./.github/actions/build",
-	}
-	if len(found) != len(want) {
-		t.Fatalf("delegated actions: got %v, want %v", found, want)
-	}
-	for i := range want {
-		if found[i] != want[i] {
-			t.Fatalf("delegated action order: got %v, want %v", found, want)
 		}
 	}
 }

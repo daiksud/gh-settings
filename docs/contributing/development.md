@@ -54,7 +54,7 @@ To use the built checkout as a GitHub CLI extension, run `gh extension install .
 
 ## Development checks
 
-The [commit-stage Action](../../.github/actions/commit-stage/action.yml) orchestrates focused [static analysis](../../.github/actions/static-analysis/action.yml), [unit tests](../../.github/actions/unit-test/action.yml), and [build](../../.github/actions/build/action.yml) Actions. It retains the Go cache policy. Locally, inspect any filenames reported by `gofmt`, format those Go files, and run the relevant checks:
+The [PR workflow](../../.github/workflows/pr.yml) calls focused [lint](../../.github/actions/lint/action.yml), [unit-test](../../.github/actions/unit-test/action.yml), and [build](../../.github/actions/build/action.yml) Actions directly from its `screening` job, with tool setup and Go cache restore/save as separate steps. Locally, inspect any filenames reported by `gofmt`, format those Go files, and run the relevant checks:
 
 ```sh
 mise exec -- gofmt -l .

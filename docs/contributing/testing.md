@@ -1,6 +1,6 @@
 # Testing and CI
 
-Tests verify current product and workflow contracts at their owning boundaries. Use [development](development.md#development-checks) for tool setup and commands, [architecture](architecture.md) for ownership, and [repository automation](repository-automation.md) for PR state and operational workflows.
+Tests verify current product and workflow contracts at their owning boundaries. Use [development](development.md#development-checks) for tool setup and commands, [architecture](architecture.md) for ownership, and [repository automation](repository-automation.md) for PR checks and operational workflows.
 
 ## Test ownership
 
@@ -13,7 +13,7 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Application sequencing | [Application tests](../../internal/app/), [labels cases](../../internal/app/labels_test.go) | Validation/failure order, empty local no-ops, selective resource access, export composition, fresh labels reads, and partial writes |
 | CLI and Actions presentation | [CLI tests](../../internal/cli/), [Actions tests](../../internal/actions/), [label reports](../../internal/actions/labels_test.go) | Dispatch, diagnostics/status, typed field/label reports, metadata, escaped rendering, and Summary storage |
 | Composite and caller wiring | [Composite](../../tests/github-actions/composite_test.go), [consumer](../../tests/github-actions/consumer_test.go), [operational caller](../../tests/github-actions/operational_test.go) | Actual YAML composition, token exposure, output/status ordering, and caller-owned boundaries |
-| Independent PR gates | [Message workflow tests](../../tests/github-actions/pr_message_test.go), [code-result tests](../../tests/github-actions/pr_code_gate_test.go) | Metadata/code event separation, required-message activation, failed/skipped/cancelled jobs, stale revisions, API failures, and status publication |
+| Independent PR gates | [Message workflow tests](../../tests/github-actions/pr_message_test.go), [screening workflow tests](../../tests/github-actions/pr_code_gate_test.go) | Default PR activities, metadata/code event separation, direct screening steps, read-only execution, and independent message validation |
 | Installed process behavior | [Acceptance tests](../../tests/acceptance/) | The actual supplied binary, isolated Git/files, local API requests, stdout/stderr and exit codes |
 | Version calculation | [Python tests](../../.github/scripts/test_release_version.py) | Temporary Git history, SemVer precedence, fixed published boundaries, invalid catalogs, and immutable retry selection |
 | Release notes | [Go metadata tests](../../scripts/release-metadata/main_test.go) | Committed category precedence, formal footers, escaping, fixed Git ranges, and changed-baseline failures |
@@ -97,10 +97,12 @@ The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_
 
 ## CI validation
 
-The [PR workflow](../../.github/workflows/ci-pr.yml) runs Screening only:
-static analysis, Go race and offline tests, and a native Linux build.
-Its required `ci-pr` job aggregates Draft, metadata resolution, Screening,
-and Ready; failed, skipped or cancelled dependencies never report success.
+The [PR workflow](../../.github/workflows/pr.yml), named `pr`, runs Screening
+only: source lint, Go race and offline tests, and a native Linux build.
+Its single `screening` job uses `ubuntu-slim` and reports its result directly.
+Default `pull_request` activities run it when a PR is opened, updated with
+commits, or reopened. Title/body edits and draft/readiness transitions do not
+rerun it, and the workflow leaves the PR state unchanged.
 The separate [PRLint workflow](../../.github/workflows/prlint.yml) checks
 title/body edits and proposed squash messages.
 
@@ -113,21 +115,33 @@ those same product binaries and the public Action through
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
 
-PR Screening invokes [commit-stage](../../.github/actions/commit-stage/action.yml)
-without artifact upload or process/public-Action acceptance. The Go build
-cache restores compilation and module data, never binary artifacts; a cache
-hit does not skip source checks. The [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml)
+After checkout, PR Screening calls [setup-tools](../../.github/actions/setup-tools/action.yml),
+[restore-go-cache](../../.github/actions/restore-go-cache/action.yml),
+[lint](../../.github/actions/lint/action.yml),
+[unit-test](../../.github/actions/unit-test/action.yml),
+[build](../../.github/actions/build/action.yml), and
+[save-go-cache](../../.github/actions/save-go-cache/action.yml) directly as
+separate workflow steps. A failed lint, unit-test, or build step fails
+`screening`. PR CI does not upload artifacts or run process/public-Action
+Inspection. The Go cache restores compilation and module data, never binary
+artifacts; a cache hit does not skip source checks.
+
+The [Screening-only inventory](../../.github/actions/lock-workspace-dependencies-screening/action.yml)
 and [full CI/release inventory](../../.github/actions/lock-workspace-dependencies/action.yml)
 enumerate transitive external Action pins for the generated
 [actions.lock](../../.github/workflows/actions.lock). Inert inventory steps
 do not run; runtime workspace Actions retain their correct checkout scope.
 
-### Go cache in commit CI
+### Go cache in CI
 
-Only the CI commit composite enables the Go cache after installing the pinned
-Go toolchain. It caches the resolved `GOCACHE` and `GOMODCACHE` directories;
+PR Screening enables the Go cache after installing the pinned Go toolchain.
+The reusable [ci-commit composite](../../.github/actions/ci-commit/action.yml)
+calls the same restore/save Actions, whose guards permit PR events and pushes
+to `main`. The current main and release workflows use `release-build` and do
+not opt into this cache; settings workflows do not use it.
+The cache holds the resolved `GOCACHE` and `GOMODCACHE` directories;
 product binaries, candidate manifests, credentials and settings observations
-are outside these paths. Release builds and settings workflows do not opt in.
+are outside these paths.
 Cache restore errors are tolerated and ordinary cache misses compile from source.
 Module download, `go mod verify`, `go mod tidy -diff`, `go vet ./...`,
 `go test -race -count=1 -vet=off ./...` and the single product build always run,
@@ -137,21 +151,22 @@ Go may still reuse compiled packages, including race-instrumented packages.
 The `go-ci-v1` namespace separates this cache from other workflows. Keys include
 runner OS/architecture, the `ubuntu-slim` runner family, actual Go version and
 build environment, distribution/compiler/libc identity, and a hash of module
-files, tool pins and commit-stage implementation. Changing dependencies, tools
-or build flags therefore starts a new cache family. Bump the namespace to
+files, tool pins and the setup, cache, lint, unit-test, and build Actions.
+Changing dependencies, tools or build flags therefore starts a new cache family. Bump the namespace to
 invalidate all entries when changing cache policy. Each source SHA gets an
 immutable entry; a prefix restore reuses the latest compatible source entry
-and saves the newly compiled packages after all commit checks succeed, before
-packaging/upload. Explicit restore/save steps retain nested-composite output
-scope during save; no deferred post step reads these paths. There is no
+and saves the newly compiled packages after lint, unit tests, and build succeed.
+The restore Action exposes paths and cache identity as outputs, which the
+calling workflow or composite passes explicitly to the save Action. There is no
 fallback across dependency or environment families. GitHub eviction can make
 any run cold; entries per revision trade storage for current compiled packages.
 
 [GitHub cache scope rules](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching#restrictions-for-accessing-a-cache)
 allow PRs to restore compatible default-branch entries. A PR writes under its
 merge ref, so its reruns can reuse those entries, while main and other PRs
-cannot restore that PR's cache. Keys deliberately omit branch names to allow
-main-to-PR reuse; keys alone are not a trust boundary. No `pull_request_target`,
+cannot restore that PR's cache. The current main workflow does not populate
+this cache. Keys deliberately omit branch names, but keys alone are not a trust
+boundary. No `pull_request_target`,
 privileged consumer or release job restores this cache. Caches are readable by
 PR contributors and must never contain secrets. Module verification checks
 module contents; it does not authenticate compiled cache contents. The GitHub
@@ -159,11 +174,11 @@ ref scope and separation from privileged workflows provide that boundary.
 
 To measure hosted performance, record a cold CI run after a namespace change,
 then rerun the same source for an exact hit. Compare another source revision
-with unchanged cache-family inputs for a prefix hit, and a PR started after a
-successful main run for default-branch reuse. Record runner image, Go version,
+of the same PR with unchanged cache-family inputs for a prefix hit.
+Record runner image, Go version,
 cache key/matched key, restored size, restore and save duration,
-module/vet/race/build step durations and total commit-job duration. Confirm every
-check and both acceptance legs still execute and that the aggregate gate passes.
+module/vet/race/build step durations and total Screening duration. Confirm
+lint, unit-test, and build still execute and that `screening` passes.
 Compare several runs because runner load varies; include transfer overhead in
 the net saving. A changed module/tool/environment family must miss. Local
 cold/warm `GOCACHE`/`GOMODCACHE` timings demonstrate compilation reuse only,

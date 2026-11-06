@@ -28,10 +28,19 @@ runs:
         [[ "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'invalid build version' >&2; exit 1; }
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'invalid build source' >&2; exit 1; }
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'build checkout differs from frozen source' >&2; exit 1; }
-    - name: Check source and build Linux product
+    - name: Set up pinned Linux build tools
+      if: inputs.target == 'linux-amd64'
+      uses: ./.github/actions/setup-tools
+    - name: Run Linux lint checks
+      if: inputs.target == 'linux-amd64'
+      uses: ./.github/actions/lint
+    - name: Run Linux source tests
+      if: inputs.target == 'linux-amd64'
+      uses: ./.github/actions/unit-test
+    - name: Build native Linux product
       if: inputs.target == 'linux-amd64'
       id: linux
-      uses: ./.github/actions/commit-stage
+      uses: ./.github/actions/build
       with:
         binary-name: gh-settings-linux-amd64
         version: ${{ inputs.version }}

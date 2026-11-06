@@ -1,9 +1,7 @@
 package githubactions
 
 import (
-	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -12,12 +10,15 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func TestPRWorkflowNamedAggregateCheck(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
+func TestPRWorkflowScreeningCheck(t *testing.T) {
+	source, err := os.ReadFile(filepath.Join(root(), ".github/workflows/pr.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var w struct {
+		Name        string               `yaml:"name"`
+		On          map[string]yaml.Node `yaml:"on"`
+		Permissions map[string]string    `yaml:"permissions"`
 		Jobs        map[string]yaml.Node `yaml:"jobs"`
 		Concurrency struct {
 			Group  string `yaml:"group"`
@@ -27,103 +28,49 @@ func TestPRWorkflowNamedAggregateCheck(t *testing.T) {
 	if err := yaml.Unmarshal(source, &w); err != nil {
 		t.Fatal(err)
 	}
-	if w.Concurrency.Group != "ci-pr-${{ github.event.pull_request.number }}" || !w.Concurrency.Cancel {
-		t.Fatal("every PR event must validate one current candidate")
+	if w.Name != "pr" || len(w.On) != 1 || w.On["pull_request"].Tag != "!!null" {
+		t.Fatal("pr must use default pull_request events without filters or extra event types")
 	}
-	for _, old := range []string{"pass", "code-start", "code-result"} {
-		if _, exists := w.Jobs[old]; exists {
-			t.Fatalf("legacy job remains: %s", old)
-		}
+	if w.Concurrency.Group != "pr-${{ github.event.pull_request.number }}" || !w.Concurrency.Cancel {
+		t.Fatal("each PR must validate only its current candidate")
 	}
-	if strings.Contains(string(source), "/statuses/") || strings.Contains(string(source), "context=pass") {
-		t.Fatal("required checks must be native jobs, not manually published statuses")
+	if len(w.Jobs) != 1 || len(w.Permissions) != 0 {
+		t.Fatal("PR validation must contain only screening with no workflow write permissions")
 	}
-	var draft struct {
-		Needs string `yaml:"needs"`
-		If    string `yaml:"if"`
-	}
-	draftNode := w.Jobs["draft"]
-	if err := draftNode.Decode(&draft); err != nil {
-		t.Fatal(err)
-	}
-	if draft.Needs != "" || draft.If != "" {
-		t.Fatal("Draft must start every PR run")
+	if strings.Contains(string(source), "/statuses/") || strings.Contains(string(source), "gh pr ready") {
+		t.Fatal("screening must use its native job result without publishing statuses or changing PR state")
 	}
 	var check struct {
-		Needs       []string          `yaml:"needs"`
+		Name        string            `yaml:"name"`
+		Needs       yaml.Node         `yaml:"needs"`
 		If          string            `yaml:"if"`
+		Runner      string            `yaml:"runs-on"`
+		Strategy    yaml.Node         `yaml:"strategy"`
+		Continue    bool              `yaml:"continue-on-error"`
 		Permissions map[string]string `yaml:"permissions"`
 		Steps       []step            `yaml:"steps"`
 	}
-	checkNode := w.Jobs["ci-pr"]
+	checkNode, ok := w.Jobs["screening"]
+	if !ok {
+		t.Fatal("the native required check must be named screening")
+	}
 	if err := checkNode.Decode(&check); err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(check.Needs, []string{"draft", "resolve", "commit-stage", "ready"}) ||
-		check.If != "always()" || len(check.Permissions) != 0 || len(check.Steps) != 1 {
-		t.Fatal("ci-pr must evaluate all stages even on cancellation, with no write permissions")
+	if check.Name != "" || check.Needs.Kind != 0 || check.If != "" || check.Strategy.Kind != 0 || check.Continue ||
+		check.Runner != "ubuntu-slim" || !reflect.DeepEqual(check.Permissions, map[string]string{"contents": "read"}) {
+		t.Fatal("screening must run unconditionally as one read-only job and preserve failures")
 	}
-	if check.Steps[0].Uses != "" || check.Steps[0].Continue ||
-		check.Steps[0].Env["RESULTS"] != "${{ toJSON(needs) }}" ||
-		!strings.Contains(check.Steps[0].Run, `length == 4 and all(.[]; .result == "success")`) {
-		t.Fatal("ci-pr must fail when any prerequisite does not succeed")
+	for _, s := range check.Steps {
+		if s.Uses == workspaceScreeningBridge {
+			continue // The lock inventory is deliberately inert and checked separately.
+		}
+		if s.If != "" || s.Continue || s.Env["GH_TOKEN"] != "" || s.Env["GITHUB_TOKEN"] != "" {
+			t.Fatalf("runtime screening steps must preserve failure propagation without supplied credentials: %+v", s)
+		}
 	}
-}
-
-func TestPRWorkflowAggregateRejectsUnsuccessfulStages(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var w struct {
-		Jobs map[string]yaml.Node `yaml:"jobs"`
-	}
-	if err := yaml.Unmarshal(source, &w); err != nil {
-		t.Fatal(err)
-	}
-	var check struct {
-		If    string `yaml:"if"`
-		Steps []step `yaml:"steps"`
-	}
-	checkNode := w.Jobs["ci-pr"]
-	if err := checkNode.Decode(&check); err != nil {
-		t.Fatal(err)
-	}
-	if check.If != "always()" {
-		t.Fatal("cancellation must not skip the required native aggregate")
-	}
-	names := []string{"draft", "resolve", "commit-stage", "ready"}
-	for _, tc := range []struct {
-		name, failed, outcome string
-		wantOK                bool
-	}{
-		{"all-success", "", "", true},
-		{"failed-commit", "commit-stage", "failure", false},
-		{"skipped-ready", "ready", "skipped", false},
-		{"cancelled-draft", "draft", "cancelled", false},
-		{"cancelled-resolve", "resolve", "cancelled", false},
-		{"cancelled-commit", "commit-stage", "cancelled", false},
-		{"cancelled-ready", "ready", "cancelled", false},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			results := make(map[string]map[string]string)
-			for _, name := range names {
-				results[name] = map[string]string{"result": "success"}
-			}
-			if tc.failed != "" {
-				results[tc.failed]["result"] = tc.outcome
-			}
-			value, err := json.Marshal(results)
-			if err != nil {
-				t.Fatal(err)
-			}
-			cmd := exec.Command("bash", "-euo", "pipefail", "-c", check.Steps[0].Run)
-			isolated := t.TempDir()
-			cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "HOME=" + isolated, "XDG_CONFIG_HOME=" + isolated, "GH_CONFIG_DIR=" + isolated, "RESULTS=" + string(value)}
-			output, err := cmd.CombinedOutput()
-			if (err == nil) != tc.wantOK {
-				t.Fatalf("success=%t, want=%t: %s", err == nil, tc.wantOK, output)
-			}
-		})
+	if len(check.Steps) == 0 || !strings.HasPrefix(check.Steps[0].Uses, "actions/checkout@") ||
+		check.Steps[0].With["ref"] != "${{ github.sha }}" || check.Steps[0].With["persist-credentials"] != "false" {
+		t.Fatal("screening must check out current validation source without persisting credentials")
 	}
 }

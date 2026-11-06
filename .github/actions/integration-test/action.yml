@@ -2,10 +2,10 @@ name: Integration test
 description: Exercise the previously built product binary against the local API acceptance fixture.
 inputs:
   binary-path:
-    description: Downloaded product binary, built in commit-stage.
+    description: Downloaded product binary produced by the build Action.
     required: true
   binary-sha256:
-    description: Expected SHA-256 from commit-stage.
+    description: Expected SHA-256 from the build Action.
     required: true
   version:
     description: Expected candidate or release CLI version; empty skips the check.

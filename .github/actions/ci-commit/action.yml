@@ -24,11 +24,25 @@ runs:
         [[ "$TARGET" == linux-amd64 ]]
         [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
-    - name: Run existing commit checks and build once
+    - name: Set up pinned build tools
+      uses: ./.github/actions/setup-tools
+    - name: Restore Go compilation and modules
+      id: go-cache
+      uses: ./.github/actions/restore-go-cache
+    - name: Run lint checks
+      uses: ./.github/actions/lint
+    - name: Run source tests
+      uses: ./.github/actions/unit-test
+    - name: Build executable
       id: build
-      uses: ./.github/actions/commit-stage
+      uses: ./.github/actions/build
+    - name: Save Go compilation and modules after successful checks
+      uses: ./.github/actions/save-go-cache
       with:
-        cache-go: 'true'
+        build-path: ${{ steps.go-cache.outputs.build-path }}
+        module-path: ${{ steps.go-cache.outputs.module-path }}
+        cache-hit: ${{ steps.go-cache.outputs.cache-hit }}
+        cache-primary-key: ${{ steps.go-cache.outputs.cache-primary-key }}
     - name: Package candidate identity
       id: package
       shell: bash

@@ -22,7 +22,7 @@ const (
 	settingsValidateCheckName = "settings-pr"
 )
 
-// The ci-pr aggregate check runs this test with the rest of the Go suite.
+// The screening check runs this test with the rest of the Go suite.
 // Candidate source owns this check; it is not an independent trusted-main guard.
 func TestSettingsEnvironmentScope(t *testing.T) {
 	dir := os.Getenv("GH_SETTINGS_WORKFLOWS_DIR")

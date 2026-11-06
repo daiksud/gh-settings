@@ -10,46 +10,40 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// PR validation stops after source screening and building the candidate.
+// PR validation composes checks directly without transferring artifacts.
 func TestPRScreeningOnly(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/ci-pr.yml"))
+	data, err := os.ReadFile(filepath.Join(root(), ".github/workflows/pr.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var workflow struct {
-		Jobs map[string]yaml.Node `yaml:"jobs"`
+		Jobs map[string]struct {
+			Steps []step `yaml:"steps"`
+		} `yaml:"jobs"`
 	}
 	if err := yaml.Unmarshal(data, &workflow); err != nil {
 		t.Fatal(err)
 	}
-	if len(workflow.Jobs) != 5 {
-		t.Fatalf("expected draft, resolve, commit-stage, ready and aggregate: %v", workflow.Jobs)
+	var actions []string
+	for _, s := range workflow.Jobs["screening"].Steps {
+		if s.Uses == workspaceScreeningBridge || strings.HasPrefix(s.Uses, "actions/checkout@") {
+			continue
+		}
+		actions = append(actions, s.Uses)
 	}
-	if _, found := workflow.Jobs["acceptance-stage"]; found {
-		t.Fatal("PR must not run Inspection")
+	want := []string{
+		"./.github/actions/setup-tools",
+		"./.github/actions/restore-go-cache",
+		"./.github/actions/lint",
+		"./.github/actions/unit-test",
+		"./.github/actions/build",
+		"./.github/actions/save-go-cache",
 	}
-	var commit struct {
-		Needs string `yaml:"needs"`
-		Steps []step `yaml:"steps"`
+	if !reflect.DeepEqual(actions, want) {
+		t.Fatalf("screening must run independent source checks and build without artifact upload: %v", actions)
 	}
-	buildNode := workflow.Jobs["commit-stage"]
-	if err := buildNode.Decode(&commit); err != nil {
-		t.Fatal(err)
-	}
-	if commit.Needs != "resolve" || len(commit.Steps) != 2 ||
-		commit.Steps[1].Uses != "./.github/actions/commit-stage" ||
-		commit.Steps[1].With["cache-go"] != "true" {
-		t.Fatalf("Screening must perform source checks and build without artifact upload: %+v", commit)
-	}
-	var ready struct {
-		Needs string `yaml:"needs"`
-	}
-	readyNode := workflow.Jobs["ready"]
-	if err := readyNode.Decode(&ready); err != nil {
-		t.Fatal(err)
-	}
-	if ready.Needs != "commit-stage" {
-		t.Fatal("Ready must follow Screening")
+	if _, err := os.Stat(filepath.Join(root(), ".github/actions/commit-stage")); !os.IsNotExist(err) {
+		t.Fatal("the superseded commit-stage Action must be removed")
 	}
 }
 
