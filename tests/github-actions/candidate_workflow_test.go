@@ -64,7 +64,6 @@ func TestMainReleaseReadyCandidateWorkflow(t *testing.T) {
 		"uses: ./.github/actions/build",
 		"release-artifact.sh write",
 		"uses: actions/upload-artifact@",
-		"overwrite: 'true'",
 		"uses: ./.action/.github/actions/release-acceptance",
 		"needs.resolve.outputs.version",
 		"needs.resolve.outputs.build-matrix",
