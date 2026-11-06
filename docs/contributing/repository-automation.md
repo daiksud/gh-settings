@@ -58,7 +58,7 @@ resource-specific behavior.
 | [`settings-pr.yml`](../../.github/workflows/settings-pr.yml) | Default pull_request events validate the PR merge declaration only; the validation check is `settings-pr` |
 | [`settings-apply.yml`](../../.github/workflows/settings-apply.yml) | Manual dispatch from `main`; one Environment-bound direct apply job |
 | [`approve-codex-review.yml`](../../.github/workflows/approve-codex-review.yml) | Codex summary updates or PR CI completion; approve completed reviews matching HEAD with thumbs-up |
-| [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; shared resolve, commit, acceptance, release, and verification orchestration delegates product work to local Actions |
+| [`release.yml`](../../.github/workflows/release.yml) | Explicit manual dispatch from `main`; source checks, native build, packaging, acceptance, publication, and verification run as distinct steps or jobs |
 
 Release publication has no Issue-comment bridge. The owner starts [`release.yml`](../../.github/workflows/release.yml) directly with `workflow_dispatch` after main verification; version calculation happens within the workflow. This repository's other `issue_comment` workflows do not authorize or dispatch releases.
 
