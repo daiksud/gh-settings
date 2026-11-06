@@ -138,13 +138,51 @@ Its standard cache lifecycle restores and saves Go module and build caches.
 No custom cache key, environment fingerprint, restore/save Action, or
 per-commit cache entry is maintained by the repository.
 
-The `mise-action` step installs only non-Go tools needed by the lint and
-test commands. Build and release workflows continue to use the same
-source-controlled tool versions but do not enable a separate Go cache.
+The `mise-action` step installs only non-Go tools required by the lint and
+test commands. Main and release workflows continue to use their pinned
+toolchains and do not enable a separate Go cache.
 
-Cache hits do not skip module validation, `go vet`, race-detected tests or
-the native build. The build output and release candidate artifacts are not
-part of Go's compile/module cache.
+A cache hit never skips module validation, `go vet`, race-detected tests or
+the native build. Artifacts and manifests are not cached. PR-scoped caches
+must not contain secrets, and release jobs do not restore them.
+
+### Hosted candidate composite
+
+The public-Action acceptance leg delegates its scenarios to the existing [candidate composite](../../.github/actions/e2e-test/action.yml), passing the verified source, version, digest, and binary path. It creates a separate consumer that tracks only `.github/settings.yml`, without a root `action.yml` or `action/` helper directory. The process leg instead runs the built executable through the local API acceptance tests.
+
+[Fixture preparation](../../tests/github-actions/prepare-candidate-download.sh) verifies the transferred candidate's checksum, executable-reported version, and Action checkout source. A bounded [curl stand-in](../../tests/github-actions/candidate-curl.sh) serves only the unchanged installer's two fixed versioned asset/checksum URLs from those verified bytes, without network forwarding. Actual `uses: ./.action` expansion exercises installation, checksum/version validation, metadata, and settings operations. No product rebuild, public caller version/download override, committed version rewrite, or old-release fallback is used.
+
+The fixture supplies current-source bytes instead of downloading a published artifact, so candidate results do not establish published-artifact identity. The [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) owns supported-version and adoption guidance. Label-specific current-source behavior is covered by the owner/process tests above; the hosted API cases below remain representative repository-field cases.
+
+Credential-free validate must report all four outputs matching the independent consumer commit/origin and candidate version/checksum. Hosted logs record the distinct Action and consumer roots/SHAs. Missing or tampered artifacts, mismatched identities, and fixture/assertion failures fail the aggregate gate.
+
+### Candidate API and Summary cases
+
+Plan and direct apply use the same verified composite/binary with separate literal dummy read/write tokens. The [local API server](../../tests/github-actions/plan-fixture/main.go) requires Unix-socket transport, isolates GitHub CLI configuration, and records safe method/path observations. It accepts only the expected target/method/token combinations. Closed loopback HTTP/HTTPS proxies prevent ordinary HTTP transport from reaching an external service.
+
+The [candidate checks](../../tests/github-actions/candidate-plan.sh) exercise these representative repository-field cases:
+
+| Operation/case | API observation | Required result | Settings review |
+| --- | --- | --- | --- |
+| Plan changed string/false | One GET | Success and four matching outputs | Native false and escaped HTML/multiline diff |
+| Plan local read403 | One GET | Failure and four empty outputs | Categorical read failure |
+| Plan invalid boolean | Zero requests | Failure and four empty outputs | Categorical validation failure |
+| Apply empty string/false | One PATCH, no GET | Success and four matching outputs | None added |
+| Apply local write403 | One attempted PATCH, no GET | Failure and four empty outputs | None added |
+| Apply invalid boolean | Zero requests | Failure and four empty outputs | None added |
+| Apply empty `settings: {}` | Zero requests | Success and four matching outputs | None added |
+
+Apply requests are independently checked as the complete received native JSON object `{"description":"","has_issues":false}`, with every other field omitted. The server records the decoded request instead of manufacturing expected payloads. A failed write attempt does not establish the remote outcome.
+
+Every case preserves consumer configuration bytes and commit. The fixture must stay live even for zero-request cases, and an `always()` step stops/removes it. Expected failures use step-level `continue-on-error` only alongside mandatory assertions of the observed failure and empty outputs. Empty apply still meets the public composite's explicit-token and metadata requirements.
+
+For plan, a finite before/after snapshot identifies exactly one new nonempty Settings review. Assertions inspect the bytes written by the embedded Go step, excluding old files and scrubbed upload copies; they do not substitute another renderer or override the Summary destination. All apply cases require zero new reviews. Hosted file rendering establishes neither GitHub Summary publication nor a live settings update.
+
+### Composed callers and examples
+
+Local [composite](../../tests/github-actions/composite_test.go) and [caller](../../tests/github-actions/consumer_test.go) fixtures use current candidate package bytes, explicit typed reports, mock downloads/CLI behavior, and owned test-executable adapters. The actual Go Summary adapter is reused without rebuilding the product. Checks cover token-free setup/metadata/Summary, explicit execution tokens, original plan-status precedence, and four outputs only after required work. The [PR data-preparation fixture](../../tests/github-actions/pr_candidate_example_test.go) executes the sample's actual inline script with real filtered local Git objects and dummy API transport: malicious executable/YAML content is not executed, symlinks/identity/size/read failures fail, and credentials are neither logged nor persisted. It does not establish live installation permissions, private-fork visibility, effective protection or token revocation.
+
+Examples and active main callers use the same single-job apply pattern: three `uses` steps for checkout, token creation, and apply. [Operational tests](../../tests/github-actions/operational_test.go) separately verify this repository's Environment and credential bindings. Approval and token lifecycle stubs are simulations; these tests do not load pinned release-tag bytes or establish remote protection/revocation behavior.
 
 ## Release and publication evidence
 
