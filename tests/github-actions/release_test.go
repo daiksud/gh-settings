@@ -75,7 +75,7 @@ func TestReleaseWorkflowDelegatesReusableStages(t *testing.T) {
 	}
 	if !reflect.DeepEqual(buildAction.With, map[string]string{
 		"binary-name": "gh-settings-${{ matrix.target }}",
-		"version": "${{ needs.resolve.outputs.version }}",
+		"version":     "${{ needs.resolve.outputs.version }}",
 	}) || packageStep.ID != "package" ||
 		!strings.Contains(packageStep.Run, "built binary source differs from frozen commit") ||
 		uploadStep.With["name"] != "release-${{ matrix.target }}" ||
