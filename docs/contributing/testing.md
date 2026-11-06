@@ -121,8 +121,9 @@ with `mise-action` cache enabled. They use one setup step on Linux and macOS,
 and the same build Action. PR Screening retains `setup-go` for Go compilation
 and module caching and installs only its non-Go lint tools with mise.
 
-After checkout, PR Screening uses `mise-action` for non-Go tools and
-`actions/setup-go` for Go installation and caching. It then calls
+After checkout, PR Screening installs the pinned tools, including Go, with
+`mise-action`, then lets `actions/setup-go` cache the existing Go toolchain's
+module downloads and compilation results. It then calls
 [lint](../../.github/actions/lint/action.yml),
 [unit-test](../../.github/actions/unit-test/action.yml), and
 [build](../../.github/actions/build/action.yml) in separate steps. A failed lint, unit-test, or build step fails
@@ -138,20 +139,17 @@ remains for the main and release workflows.
 
 ### Go cache in CI
 
-PR Screening uses `actions/setup-go` with the Go version from
-[go.mod](../../go.mod) and the module checksum from [go.sum](../../go.sum).
-Its standard cache lifecycle restores and saves Go module and build caches.
-No custom cache key, environment fingerprint, restore/save Action, or
-per-commit cache entry is maintained by the repository.
+PR Screening and native build jobs in `ci-push` and `release` use the same
+two-step setup. `mise-action` installs tools declared in
+[mise.toml](../../mise.toml), including Go, using its installation cache.
+Then `actions/setup-go` finds that Go on PATH without specifying a version or
+version file, and caches Go module downloads and compilation results using
+[go.sum](../../go.sum). Go is not installed a second time.
 
-The PR `mise-action` step installs only non-Go lint and test tools.
-Main and release build jobs install the full pinned toolchain using mise's
-built-in installation cache instead. Mise's tool cache does not store
-Go compilation results; only PR Screening uses the `setup-go` Go build cache.
-
+No custom cache key, environment fingerprint or restore/save Action is needed.
 A cache hit never skips module validation, `go vet`, race-detected tests or
-the native build. Artifacts and manifests are not cached. PR-scoped caches
-must not contain secrets, and release jobs do not restore them.
+the native build. Release artifacts and manifests are not cached as Go
+build outputs, and these caches must not contain secrets.
 
 ### Hosted candidate composite
 

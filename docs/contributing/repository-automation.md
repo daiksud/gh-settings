@@ -103,9 +103,11 @@ its commit, independent of those workspace checkouts. Replacing these paths
 mechanically would change which Action is exercised; `.action` and `.published`
 are checkout destinations, not source repository paths.
 
-PR Screening invokes `mise-action` and `actions/setup-go` directly and
-does not need an inert dependency inventory. Go cache restoration and storage
-use `setup-go` defaults rather than custom local Actions.
+PR Screening and native build jobs in `ci-push` and `release` install the
+pinned toolchain with `mise-action`, then use `actions/setup-go` without a
+version input to cache the Go already on PATH. This separates mise's tool
+installation cache from Go's module/compilation cache without installing Go
+twice. No custom Go cache Actions are needed.
 
 `ci-push` and `release` still use the
 [full dependency inventory](../../.github/actions/lock-workspace-dependencies/action.yml)

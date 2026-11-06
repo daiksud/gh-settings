@@ -16,16 +16,13 @@ jobs:
     steps:
       - name: Checkout validation source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up lint and test tools
+      - name: Set up tools with mise
         uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: 2026.10.8
-          install_args: actionlint shellcheck rumdl jq
-          cache: false
-      - name: Set up Go with module and build caches
+      - name: Restore Go module and build caches
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: go.mod
           cache-dependency-path: go.sum
       - name: Lint source and workflows
         uses: ./.github/actions/lint
