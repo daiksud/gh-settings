@@ -198,6 +198,27 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if desired.Actions.CacheRetentionDays != nil {
+		wrote, err := applyCacheRetention(&result, repo, desired.Actions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.Actions.CacheSizeGB != nil {
+		wrote, err := applyCacheStorage(&result, repo, desired.Actions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.Actions.AccessLevel != nil {
+		wrote, err := applyActionsAccess(&result, repo, desired.Actions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if desired.Actions.ForkApprovalPolicy != nil {
 		wrote, err := applyForkApproval(&result, repo, desired.Actions, write)
 		if err != nil {

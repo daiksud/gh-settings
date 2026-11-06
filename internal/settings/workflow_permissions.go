@@ -16,7 +16,7 @@ func (d ActionsPolicyDeclaration) WorkflowPermissionsEmpty() bool {
 	return d.DefaultWorkflowPermissions == nil && d.CanApprovePullRequestReviews == nil
 }
 func (d ActionsPolicyDeclaration) Empty() bool {
-	return d.ExecutionEmpty() && d.WorkflowPermissionsEmpty() && d.RetentionEmpty() && d.ForkApprovalPolicy == nil && d.PrivateFork.Empty()
+	return d.CacheRetentionEmpty() && d.CacheStorageEmpty() && d.AccessEmpty() && d.ExecutionEmpty() && d.WorkflowPermissionsEmpty() && d.RetentionEmpty() && d.ForkApprovalPolicy == nil && d.PrivateFork.Empty()
 }
 
 // WithWorkflowPermissions adds an independently acquired complete policy.

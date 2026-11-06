@@ -280,3 +280,7 @@ Superseded workspace parser/type files were removed after their safety/presence 
 ## Cross-workflow release gate tests
 
 The offline [release CI tests](../../.github/scripts/test_release_ci.py) cover exact-source main-run selection, latest-run failure and cancellation blocking, artifact provenance, missing/expired artifacts, archive SHA-256 mismatch, version mismatch, binary corruption and fallback. The [release orchestration tests](../../tests/github-actions/release_test.go) check the job dependency and publication boundaries; the Python tests exercise successful reuse, corrupted artifacts, failed CI and fallback outcomes. The tests do not dispatch or publish a hosted release; manual production release verification remains separately authorized.
+
+## Actions cache and sharing controls
+
+The [built-product fixture](../../tests/acceptance/actions_general_controls_test.go) verifies the independent cache-retention, cache-storage and private-sharing export options through actual CLI processes. It checks exact one-member REST writes, fresh readback, omission and existing-flag isolation, matching repeated apply, UI plan/report/Summary and destination preservation on unavailable reads. The [behavior specification](../features/actions-general-controls.feature.md) records the supported bounds, permissions and failure contract. These local fixtures establish neither live mutation nor actual installation permissions or billing behavior.

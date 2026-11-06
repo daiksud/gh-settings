@@ -11,6 +11,9 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludeActionsAccess                              bool
+	IncludeCacheStorage                               bool
+	IncludeCacheRetention                             bool
 	IncludeDependabot                                 bool
 	IncludeArchive                                    bool
 	IncludePages                                      bool
@@ -235,6 +238,39 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Actions.RetentionDays = retention.RetentionDays
+	}
+	if checkout.IncludeCacheRetention {
+		observed, err := read.CacheRetention(repo)
+		if err != nil {
+			return err
+		}
+		d, err := observed.Declaration()
+		if err != nil {
+			return err
+		}
+		declaration.Actions.CacheRetentionDays = d.CacheRetentionDays
+	}
+	if checkout.IncludeCacheStorage {
+		observed, err := read.CacheStorage(repo)
+		if err != nil {
+			return err
+		}
+		d, err := observed.Declaration()
+		if err != nil {
+			return err
+		}
+		declaration.Actions.CacheSizeGB = d.CacheSizeGB
+	}
+	if checkout.IncludeActionsAccess {
+		observed, err := read.ActionsAccess(repo)
+		if err != nil {
+			return err
+		}
+		d, err := observed.Declaration()
+		if err != nil {
+			return err
+		}
+		declaration.Actions.AccessLevel = d.AccessLevel
 	}
 	if checkout.IncludeForkApproval {
 		o, err := read.ForkApproval(repo)

@@ -29,6 +29,8 @@ type uiReleasesDocument struct{ ImmutableRelease *bool }
 type uiActionsDocument struct{ General *uiActionsGeneralDocument }
 
 type uiActionsGeneralDocument struct {
+	Cache                                                      *uimodel.ActionsCache
+	Access                                                     *uimodel.ActionsAccessChoice
 	ActionsPermissions                                         *uiActionsPermissionsDocument
 	CheckWorkflowRunStatusArtifactAndLogRetention              *int
 	ApprovalForRunningForkPullRequestWorkflowsFromContributors *uimodel.ForkApprovalChoice
@@ -103,6 +105,7 @@ func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 
 func (document uiActionsGeneralDocument) model() uimodel.ActionsGeneral {
 	result := uimodel.ActionsGeneral{
+		Cache: document.Cache, Access: document.Access,
 		CheckWorkflowRunStatusArtifactAndLogRetention:              document.CheckWorkflowRunStatusArtifactAndLogRetention,
 		ApprovalForRunningForkPullRequestWorkflowsFromContributors: document.ApprovalForRunningForkPullRequestWorkflowsFromContributors,
 		ForkPullRequestWorkflows:                                   document.ForkPullRequestWorkflows,
@@ -157,6 +160,7 @@ func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDoc
 
 func uiActionsGeneralDocumentFromModel(model uimodel.ActionsGeneral) uiActionsGeneralDocument {
 	result := uiActionsGeneralDocument{
+		Cache: model.Cache, Access: model.Access,
 		CheckWorkflowRunStatusArtifactAndLogRetention:              model.CheckWorkflowRunStatusArtifactAndLogRetention,
 		ApprovalForRunningForkPullRequestWorkflowsFromContributors: model.ApprovalForRunningForkPullRequestWorkflowsFromContributors,
 		ForkPullRequestWorkflows:                                   model.ForkPullRequestWorkflows,

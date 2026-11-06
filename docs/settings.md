@@ -196,6 +196,44 @@ Narrow payloads, readback, redirect rejection and partial-failure reporting rema
 
 Use integer `repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention` (1–400 days). It translates to the existing retention endpoint. `export --retention` opts in; ordinary export does not acquire retention permissions. The server's maximum is read-only metadata and is never replayed as intent. Existing repository visibility, range and freshly observed cap checks apply; a plan/readback cannot invent missing cap information or prove licensing. Apply verifies the requested value and preserves failure/uncertainty reporting. See [retention](features/retention.feature.md).
 
+## Actions cache policy
+
+The optional `cache` section under `repository.settings.actions.general` manages two independent integer controls:
+
+| Field below `cache` | Value | Export option |
+| --- | --- | --- |
+| `cache_retention` | 1–365 days; public repositories are limited to 90 | `--cache-retention` |
+| `cache_size_eviction_limit` | 1–10000 GB | `--cache-storage` |
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    actions:
+      general:
+        cache:
+          cache_retention: 7
+          cache_size_eviction_limit: 10
+```
+
+These controls are independent of check/workflow/artifact/log retention and Actions execution policy. Omitted controls are neither read nor changed by plan/apply; selecting one export option does not acquire the other. Empty `cache: {}` declares nothing. Nulls, strings, fractions and out-of-range integers are invalid.
+
+A cache size eviction limit above 10 GB can incur additional charges. It is an eviction threshold, **not a spending budget**. Retention does not guarantee that caches survive until that age: eviction or manual deletion can remove them sooner. gh-settings manages repository limits only, not cache entries, usage, billing budgets, or organization/enterprise policy.
+
+Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
+
+## Private Actions and reusable workflow access
+
+Use `repository.settings.actions.general.access` to choose which other repositories may use this private repository's actions and reusable workflows:
+
+| UI choice | Sharing scope |
+| --- | --- |
+| `not_accessible` | Only workflows in this repository |
+| `accessible_from_repositories_owned_by_user` | Other private repositories owned by the same user |
+| `accessible_from_repositories_in_organization` | Other private repositories in the same organization |
+
+`export --actions-access` opts in. Public and internal repositories are unsupported; the user/organization choice must match the private repository's owner type. Unknown or unavailable access values fail rather than becoming `not_accessible`. Omitting access leaves it untouched. Access is independent of the Actions execution policy, workflow token permissions and fork controls, and does not invite collaborators or change repository visibility. Review the exposure of private actions and reusable workflows before enabling sharing. Apply performs fresh applicability/current-state checks, a declared-only PUT when needed, and independent readback; failures preserve uncertainty and earlier progress. See [GitHub's access API](https://docs.github.com/en/rest/actions/permissions#set-the-level-of-access-for-workflows-outside-of-the-repository).
+
 ## Actions execution policy
 
 All paths below are relative to `repository.settings.actions.general.actions_permissions`:

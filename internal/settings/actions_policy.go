@@ -9,10 +9,13 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-const ActionsPolicyFieldCount = 14
+const ActionsPolicyFieldCount = 17
 
 // ActionsPolicyDeclaration contains only explicitly managed repository policy values.
 type ActionsPolicyDeclaration struct {
+	CacheRetentionDays           *int                       `yaml:"cache_retention_days,omitempty" json:"cache_retention_days,omitempty"`
+	CacheSizeGB                  *int                       `yaml:"cache_size_gb,omitempty" json:"cache_size_gb,omitempty"`
+	AccessLevel                  *string                    `yaml:"access_level,omitempty" json:"access_level,omitempty"`
 	ForkApprovalPolicy           *string                    `yaml:"fork_pr_approval_policy,omitempty" json:"fork_pr_approval_policy,omitempty"`
 	PrivateFork                  PrivateForkDeclaration     `yaml:"private_fork_workflows,omitempty" json:"private_fork_workflows,omitempty"`
 	RetentionDays                *int                       `yaml:"artifact_and_log_retention_days,omitempty" json:"artifact_and_log_retention_days,omitempty"`
@@ -75,6 +78,19 @@ func ValidateActionPatterns(values []string) error {
 }
 
 func (d ActionsPolicyDeclaration) Validate() error {
+	if d.CacheRetentionDays != nil {
+		if err := ValidateCacheRetentionDays(*d.CacheRetentionDays); err != nil {
+			return err
+		}
+	}
+	if d.CacheSizeGB != nil {
+		if err := ValidateCacheSizeGB(*d.CacheSizeGB); err != nil {
+			return err
+		}
+	}
+	if d.AccessLevel != nil && !ValidActionsAccessLevel(*d.AccessLevel) {
+		return fmt.Errorf("%s must be a supported choice", ActionsAccessPath)
+	}
 	if d.ForkApprovalPolicy != nil && !ValidForkApprovalPolicy(*d.ForkApprovalPolicy) {
 		return fmt.Errorf("repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors must be a supported choice")
 	}
@@ -197,6 +213,21 @@ func (c ActionsPolicyChange) Values() (any, any) {
 
 func actionValue(field string, value any) (any, error) {
 	switch field {
+	case "actions.cache_retention_days", "actions.cache_size_gb":
+		maximum := 365
+		if field == "actions.cache_size_gb" {
+			maximum = 10000
+		}
+		if v, ok := value.(int); ok && v >= 1 && v <= maximum {
+			return v, nil
+		}
+		if v, ok := value.(float64); ok && v >= 1 && v <= float64(maximum) && v == float64(int(v)) {
+			return int(v), nil
+		}
+	case "actions.access_level":
+		if v, ok := value.(string); ok && ValidActionsAccessLevel(v) {
+			return v, nil
+		}
 	case "actions.artifact_and_log_retention_days":
 		if v, ok := value.(int); ok && ValidateRetentionDays(v) == nil {
 			return v, nil

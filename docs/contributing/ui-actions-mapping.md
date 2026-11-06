@@ -30,6 +30,9 @@ The UI prefix `A` below means `repository.settings.actions.general`. Labels and 
 | Allow or block specified actions and reusable workflows | `actions_permissions.allow_or_block_specified_actions_and_reusable_workflows` | Selected-actions `patterns_allowed` |
 | Check, workflow run, status, artifact and log retention | `check_workflow_run_status_artifact_and_log_retention` | Retention `days` |
 | Approval for running fork pull request workflows from contributors | `approval_for_running_fork_pull_request_workflows_from_contributors` | Public fork `approval_policy` |
+| Cache / Cache retention | `cache.cache_retention` | Cache `max_cache_retention_days` |
+| Cache / Cache size eviction limit | `cache.cache_size_eviction_limit` | Cache `max_cache_size_gb` |
+| Access | `access` | Access `access_level` |
 | Workflow permissions | `workflow_permissions.default_permissions` | Workflow `default_workflow_permissions` |
 | Allow GitHub Actions to create and approve pull requests | `workflow_permissions.allow_github_actions_to_create_and_approve_pull_requests` | Workflow `can_approve_pull_request_reviews` |
 | Fork pull request workflows / Run workflows from fork pull requests | `fork_pull_request_workflows.run_workflows_from_fork_pull_requests` | Private fork `run_workflows_from_fork_pull_requests` |
@@ -37,7 +40,7 @@ The UI prefix `A` below means `repository.settings.actions.general`. Labels and 
 | Send secrets and variables to workflows from fork pull requests | `fork_pull_request_workflows.send_secrets_and_variables_to_workflows_from_fork_pull_requests` | Private fork `send_secrets_and_variables` |
 | Require approval for fork pull request workflows | `fork_pull_request_workflows.require_approval_for_fork_pull_request_workflows` | Private fork `require_approval_for_fork_pr_workflows` |
 
-Cache retention/size, sharing access, runners and other unsupported controls remain outside this family. The existing endpoint clients retain their narrow acquisition scopes; observation conversion does not expand API access or follow `selected_actions_url`.
+Runners and other unadopted controls remain outside this family. Cache limits and private sharing access are adopted independently; see the [public contract](../settings.md#actions-cache-policy). The existing endpoint clients retain their narrow acquisition scopes; observation conversion does not expand API access or follow `selected_actions_url`.
 
 ## Finite choices
 
@@ -62,6 +65,14 @@ The last two labels display the actual owner in GitHub. The selected radio revea
 | `require_approval_for_all_external_contributors` | `all_external_contributors` |
 
 API tokens are not accepted as UI choices. Complete out-of-UI execution policy, workflow permission and public-fork approval strings now use their defined fallbacks with raw provenance and warnings under #480; unsupported identities and incomplete/malformed observations remain errors. Named observation-default candidates are `allow_all_actions_and_reusable_workflows`, `read_repository_contents_and_packages_permissions` and `require_approval_for_first_time_contributors`. The official settings guide identifies first-time contributors as the default public-fork approval policy.[^actions-settings] All three fallbacks are active. Execution projection preserves acquired enabled/SHA booleans: only enabled unknown policy displays the fallback and warns; disabled unknown policy remains known Disable with latent raw evidence. Disable/SHA-only writes preserve that raw policy; enabling explicitly owns a canonical policy. Exact fresh raw verification precedes success. Public-fork observations retain exact raw strings in their opaque observation; raw equality governs no-op and fresh write verification. None supplies defaults for omitted declarations, missing responses or denied acquisition. There is no invented retention or private-fork default.
+
+| UI private sharing access choice | Internal translation |
+| --- | --- |
+| `not_accessible` | `none` |
+| `accessible_from_repositories_owned_by_user` | `user` |
+| `accessible_from_repositories_in_organization` | `organization` |
+
+Access is private-only and owner-type checked; these are not execution-policy choices. Cache limits are independent integer controls, with complete acquired values rather than defaults. See the [process specification](../features/actions-general-controls.feature.md) for endpoint isolation and failure boundaries.
 
 ## Presence, hidden values and applicability
 

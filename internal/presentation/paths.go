@@ -72,6 +72,12 @@ func SettingPath(path string) string {
 		return "repository.settings.pages.enforce_https"
 	case "actions.fork_pr_approval_policy":
 		return "repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors"
+	case "actions.cache_retention_days":
+		return settings.CacheRetentionPath
+	case "actions.cache_size_gb":
+		return settings.CacheSizePath
+	case "actions.access_level":
+		return settings.ActionsAccessPath
 	case "actions.artifact_and_log_retention_days":
 		return "repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention"
 	case "actions.default_workflow_permissions":

@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
+gh settings export [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--actions-access] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -57,6 +57,8 @@ The [labels contract](settings.md#labels) uses ID-based listed-object ownership:
 Plan shows creates and ID-bound updates, including default-derived values. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
 
 ## Export behavior
+
+`export --cache-retention`, `export --cache-storage`, and `export --actions-access` independently select [cache limits](settings.md#actions-cache-policy) and [private sharing access](settings.md#private-actions-and-reusable-workflow-access). They compose with existing export flags; duplicates fail before API/file work. Ordinary export, `--actions`, and `--retention` do not acquire these resources. Access requires a private repository with a supported owner type. All selected reads must complete before saving; any denied, incomplete or invalid response preserves the destination. Cache storage reads require Actions read; cache retention/access reads require Administration read. All three updates require Administration write, plus their read permissions for preflight and verification.
 
 `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Other export selections compose with it.
 
@@ -152,7 +154,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
-| `repository.settings.actions.general` | Execution policy, workflow permissions, retention, public-fork approval, then private-fork workflows. Each uses its adopted preflight/readback contract. |
+| `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, sharing access, public-fork approval, then private-fork workflows. Each uses its adopted preflight/readback contract. |
 | `repository.settings.advanced_security` | Secret protection/push protection in dependency order, then private vulnerability reporting. |
 | `repository.settings.general.releases` | Immutable release policy after private reporting and before Pages. |
 | `repository.settings.pages` | Existing-site declared-only update with identity/visibility/readback checks. |
