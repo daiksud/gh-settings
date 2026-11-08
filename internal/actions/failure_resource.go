@@ -2,6 +2,7 @@ package actions
 
 import (
 	"github.com/daiksud/gh-settings/internal/app"
+	"github.com/daiksud/gh-settings/internal/settings"
 	"strings"
 )
 
@@ -9,6 +10,8 @@ import (
 // configuration values, API errors, credentials or resource names into Summary.
 var failureResources = []string{
 	"repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests",
+
+	settings.CodeQLConfigurationPath,
 	"repository.settings.advanced_security.code_security.codeql_analysis.default_setup",
 	"repository.settings.advanced_security.dependabot",
 	"repository.settings.general.danger_zone.archive_this_repository",

@@ -11,6 +11,7 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludeCodeQLConfiguration                        bool
 	IncludeActionsAccess                              bool
 	IncludeCacheStorage                               bool
 	IncludeCacheRetention                             bool
@@ -328,6 +329,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		declaration.Security.DependabotAlerts = d.DependabotAlerts
 		declaration.Security.DependabotSecurityUpdates = d.DependabotSecurityUpdates
+	}
+	if checkout.IncludeCodeQLConfiguration {
+		o, err := read.CodeQLConfiguration(repo)
+		if err != nil {
+			return err
+		}
+		d, err := o.Declaration()
+		if err != nil {
+			return err
+		}
+		declaration.Security.CodeQLConfiguration = d
 	}
 	if checkout.IncludeCodeQLDefaultSetup {
 		observed, err := read.CodeQLDefaultSetup(repo)

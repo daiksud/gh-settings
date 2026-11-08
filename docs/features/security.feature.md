@@ -247,3 +247,15 @@ Owning checks: `internal/settings/codeql_default_setup_test.go`, `internal/works
 - Enabling permits automated AI processing and may have billing/AI-credit effects. Successful configuration readback never proves completed scans or actual consumption. No explicit scan/fix/assignment operation is sent.
 
 Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/workspace/ui_ai_scan_test.go`, `internal/github/ai_scan_pull_requests_test.go`, `internal/app/ai_scan_pull_requests_test.go`, `internal/cli/ai_scan_pull_requests_test.go`, and `tests/acceptance/ai_scan_pull_requests_test.go`.
+
+## CodeQL default configuration controls
+
+- Optional `languages`, `query_suite` and `runner` (owned type/label pair) live under `repository.settings.advanced_security.code_security.codeql_analysis`. Omission preserves each control. Language sets are nonempty/unique and compare without order. All choices and runner-label requirements are strict.
+- Configuration requires complete personally owned public, already-configured default setup observations. Explicit disable plus configuration fails local validation. Declaring true does not auto-enable the prerequisite when configuring; configuration runs first and fails safely if not acquired. No advanced workflow files or runner capacity are created.
+- `--security codeql-configuration` explicitly exports all three controls after complete acquisition; disabled or incomplete state prevents saving. Existing enablement export remains scoped to its independent boolean.
+- Apply fresh-reads, skips matching configuration, sends only declared members in one PATCH, and compares all three controls and the unowned raw threat model on readback, including omitted companions. Standard runner owns clearing the old label with null. Pending/unknown effects fail without retry/rollback; asynchronous validation/analysis and Actions consumption can occur, and scan completion is never claimed.
+- CLI and Action Summary report closed typed configuration values at UI paths, with bounded counts, duplicate/unknown/invalid report rejection and escaped values.
+
+Owning checks: `internal/settings/codeql_configuration_test.go`, `internal/workspace/ui_codeql_configuration_test.go`, `internal/github/codeql_configuration_test.go`, `internal/app/codeql_configuration_test.go`, `internal/actions/codeql_configuration_test.go`, and `tests/acceptance/codeql_configuration_test.go`.
+
+Preview correction: threat-model configuration is excluded. The `threat_model` key is rejected before remote work for every value, never exported and never patched. Complete observations retain exact `remote`/`remote_and_local` only to preserve unowned state; unrelated supported updates must retain an existing Preview value, while changed raw readback fails with uncertain write effects. `threat_model` cannot become a managed report change or count. Adapter/model tests and real-binary acceptance cover Preview preservation, export omission, pre-API rejection and collateral-change detection.

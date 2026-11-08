@@ -252,6 +252,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.Security = append(comparison.Security, changes...)
 	}
+	if !desired.Security.CodeQLConfiguration.Empty() {
+		o, err := read.CodeQLConfiguration(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CodeQLConfigurationPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareCodeQLConfiguration(o, desired.Security.CodeQLConfiguration)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CodeQLConfigurationPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.CodeQLConfiguration = changes
+	}
 	if desired.Security.CodeQLDefaultSetup != nil {
 		observed, err := read.CodeQLDefaultSetup(repo)
 		if err != nil {

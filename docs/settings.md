@@ -141,7 +141,7 @@ An owner-enforced policy cannot be planned/applied as false. Apply runs after pr
 
 Use the optional boolean `repository.settings.advanced_security.code_security.codeql_analysis.default_setup` for a personally owned public repository. Omission leaves default setup unmanaged; false explicitly disables it. Null and other types fail. Ordinary export omits it; select `export --security codeql-default-setup` to export only its enablement.
 
-The public [default setup API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#update-a-code-scanning-default-setup-configuration) requires Administration read/write. Reads require public visibility, a User owner and a complete `configured` or `not-configured` state; missing/null/unknown states, 403 and 404 fail without fallback. Plan is read-only. Apply rereads before writing, skips a fresh matching state, and sends only `state`. Language selection, runner, query suite and threat model stay unmanaged; they are not part of this enablement control. No product, Actions prerequisite or advanced workflow configuration is automatically enabled or edited. Ineligible repositories fail through the public API.
+The public [default setup API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#update-a-code-scanning-default-setup-configuration) requires Administration read/write. Reads require public visibility, a User owner and a complete `configured` or `not-configured` state; missing/null/unknown states, 403 and 404 fail without fallback. Plan is read-only. Apply rereads before writing, skips a fresh matching state, and sends only `state`. Language selection, runner and query suite are separate [configuration controls](#codeql-default-configuration); they are not part of this enablement control. No product, Actions prerequisite or advanced workflow configuration is automatically enabled or edited. Ineligible repositories fail through the public API.
 
 Changing this setting can start CodeQL validation/analysis and consume Actions resources. Disabling stops default-setup scanning and may affect features that depend on its results, including Autofix and required scanning checks. Existing analyses are not deleted. HTTP 202 accepts asynchronous work; fresh readback confirms configuration state only, never completion or success of a scan. A mismatching readback may indicate pending validation and fails with uncertain write effects. No automatic retry or rollback occurs; inspect state before retrying. Local fixtures do not establish live entitlement, analysis results or consumption.
 
@@ -152,6 +152,32 @@ Use the optional boolean `repository.settings.advanced_security.code_security.ai
 The [public repository AI Scan API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#get-ai-scan-enablement-for-a-repository) requires Code scanning alerts read and Administration write. Acquisition requires public visibility, a User owner and exact `pr_scan` enabled/disabled. Missing/null/unknown values, 403/404 and incomplete applicability remain errors. Plan only reads. Apply rereads, skips a matching value, sends only `pr_scan` and confirms it with fresh readback. Other AI scans, CodeQL and product/prerequisite controls are not sent or automatically enabled.
 
 Enabling permits GitHub to process pull requests with AI; applicable billing and AI credits can apply. Disabling affects future AI findings. Neither configuration readback nor a successful PATCH establishes a completed scan, coverage, entitlement, grants or actual consumption. Write/readback errors retain unknown effects; there is no automatic retry or rollback. No alert fix, Copilot assignment, scan-execution or credits-purchase operation is performed.
+
+## CodeQL default configuration
+
+The optional controls below belong under `repository.settings.advanced_security.code_security.codeql_analysis`, alongside the independent `default_setup` boolean:
+
+```yaml
+languages: [github_actions, go, python]
+query_suite: extended
+runner:
+  type: labeled_runner
+  label: codeql-pool
+```
+
+| Control | Accepted values and ownership |
+| --- | --- |
+| `languages` | A nonempty unique set: `github_actions`, `c_cpp`, `csharp`, `go`, `java_kotlin`, `javascript_typescript`, `python`, `ruby`, `swift`. Order is immaterial; export/report order is canonical. Unsupported or undetected selections may be refused by GitHub. |
+| `query_suite` | `default` or `extended` |
+| `runner` | Owns the type/label pair. `type: standard_github_runner` forbids `label` and explicitly clears an old label through API null. `type: labeled_runner` requires a nonblank `label`; it can select an existing labeled GitHub or self-hosted runner. No runner/label/capacity is created. |
+
+Threat-model management is excluded: GitHub documents local sources as [public preview](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#including-local-sources-of-tainted-data-in-default-setup). `threat_model` is not an accepted YAML key, including stable-looking values. Configuration export never emits it and PATCH never sends it. A complete read retains the exact API `remote` or `remote_and_local` value as unowned preservation evidence; other types, missing/null or unknown values fail acquisition. Updating languages/query suite/runner on a repository using the Preview value must retain it exactly. Readback detects any collateral threat-model change; it never normalizes the Preview value to remote or claims to manage it.
+
+Omission leaves each control unmanaged. Null, invalid choices, duplicate/empty language lists and incomplete runner pairs fail before remote work. Declare a runner object to change the pair; omitting it preserves both members. This configuration requires an **already configured** default setup in a personally owned public repository. It never enables CodeQL or its prerequisites. If currently disabled, enable default setup in a separate operation and confirm it before configuring these controls. Configuration plus explicit `default_setup: false` is invalid; declaring true does not waive the already-configured requirement.
+
+Ordinary export and `--security codeql-default-setup` omit these controls. Select `export --security codeql-configuration` for all three configuration controls; combine distinct export families to include enablement or other security controls. Configuration export fails on disabled/incomplete acquisition, leaving the destination untouched. Reads require Administration read and complete exact state/languages/query suite/runner type and nullable label, plus the raw threat model solely for preservation. Unknown, missing, mistyped, denied or inaccessible observations are errors, not inferred defaults. Standard-runner null/empty labels represent the inactive label; a nonempty label with standard runner is rejected.
+
+Plan only reads and reports declared controls. Apply fresh-reads and sends a single PATCH containing only declared configuration members, never `state`. It verifies the resulting configuration **and omitted companions, including the raw unowned threat model** against the fresh pre-write state; concurrent changes can make verification fail. An unchanged declaration writes nothing. Configuration changes may launch asynchronous validation/analysis and consume Actions resources. HTTP 202 and matching readback confirm configuration only; pending/mismatching state, companion drift or denied verification retain unknown effects and fail without retry or rollback. No analysis completion, live grant, runner availability or billing outcome is established by fixtures. See the [public API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#update-a-code-scanning-default-setup-configuration).
 
 ## Private vulnerability reporting
 

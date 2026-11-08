@@ -72,6 +72,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 		}
 		fmt.Fprintln(&output, presentation.ActionsPolicyLine(change))
 	}
+	for _, c := range comparison.CodeQLConfiguration {
+		fmt.Fprintln(&output, presentation.CodeQLConfigurationLine(c))
+	}
 	for _, change := range comparison.Security {
 		fmt.Fprintln(&output, presentation.SecurityLine(change))
 	}

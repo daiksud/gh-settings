@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	CodeQLConfiguration     []PlanChange                      `json:"codeql_configuration,omitempty"`
 	Outcome                 string                            `json:"outcome"`
 	Target                  string                            `json:"target,omitempty"`
 	Managed                 int                               `json:"managed"`
@@ -186,6 +187,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 			entry.SecurityStatusNormalization = &normalization
 		}
 		report.Security = append(report.Security, entry)
+	}
+	for _, c := range result.Comparison.CodeQLConfiguration {
+		b, a := c.Values()
+		report.CodeQLConfiguration = append(report.CodeQLConfiguration, PlanChange{Field: c.Field(), Before: b, After: a})
 	}
 	for _, c := range result.Comparison.Pages {
 		b, a := c.Values()

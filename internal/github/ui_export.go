@@ -84,11 +84,18 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}
 		}
-		if !source.Security.DependabotEmpty() || !source.Security.SecretScanningEmpty() || source.Security.PrivateVulnerabilityReporting != nil || source.Security.CodeQLDefaultSetup != nil || source.Security.AIScanPullRequests != nil {
+		if !source.Security.DependabotEmpty() || !source.Security.SecretScanningEmpty() || source.Security.PrivateVulnerabilityReporting != nil || source.Security.CodeQLDefaultSetup != nil || source.Security.AIScanPullRequests != nil || !source.Security.CodeQLConfiguration.Empty() {
 			result.Settings.SecurityAndQuality = &uimodel.SecurityAndQuality{AdvancedSecurity: &uimodel.AdvancedSecurity{DependabotAlerts: copyUISecurityValue(source.Security.DependabotAlerts), DependabotSecurityUpdates: copyUISecurityValue(source.Security.DependabotSecurityUpdates), SecretProtection: copyUISecurityValue(source.Security.SecretScanning), PushProtection: copyUISecurityValue(source.Security.PushProtection), PrivateVulnerabilityReporting: copyUISecurityValue(source.Security.PrivateVulnerabilityReporting)}}
 		}
-		if source.Security.CodeQLDefaultSetup != nil {
-			result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity = &uimodel.CodeSecurity{CodeQLAnalysis: &uimodel.CodeQLAnalysis{DefaultSetup: copyUISecurityValue(source.Security.CodeQLDefaultSetup)}}
+		if source.Security.CodeQLDefaultSetup != nil || !source.Security.CodeQLConfiguration.Empty() {
+			result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity = &uimodel.CodeSecurity{CodeQLAnalysis: &uimodel.CodeQLAnalysis{DefaultSetup: copyUISecurityValue(source.Security.CodeQLDefaultSetup), Languages: source.Security.CodeQLConfiguration.Languages, QuerySuite: source.Security.CodeQLConfiguration.QuerySuite}}
+			if runner := source.Security.CodeQLConfiguration.Runner; runner != nil {
+				ui := &uimodel.CodeQLRunner{Type: runner.Type}
+				if runner.Type == "labeled_runner" {
+					ui.Label = copyUISecurityValue(&runner.Label)
+				}
+				result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity.CodeQLAnalysis.Runner = ui
+			}
 		}
 		if source.Security.AIScanPullRequests != nil {
 			advanced := result.Settings.SecurityAndQuality.AdvancedSecurity
