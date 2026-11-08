@@ -7,6 +7,7 @@ const SecurityFieldCount = 8
 // SecurityDeclaration owns only the adopted repository security controls.
 type SecurityDeclaration struct {
 	AIScanPullRequests            *bool `yaml:"ai_scan_pull_requests,omitempty"`
+	CodeQLConfiguration           CodeQLConfigurationDeclaration
 	CodeQLDefaultSetup            *bool `yaml:"codeql_default_setup,omitempty"`
 	DependabotAlerts              *bool `yaml:"dependabot_alerts,omitempty"`
 	DependabotSecurityUpdates     *bool `yaml:"dependabot_security_updates,omitempty"`
@@ -20,9 +21,16 @@ func (d SecurityDeclaration) SecretScanningEmpty() bool {
 	return d.SecretScanning == nil && d.PushProtection == nil
 }
 func (d SecurityDeclaration) Empty() bool {
-	return d.DependabotEmpty() && d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil && d.ImmutableReleases == nil && d.CodeQLDefaultSetup == nil && d.AIScanPullRequests == nil
+	return d.DependabotEmpty() && d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil && d.ImmutableReleases == nil && d.CodeQLDefaultSetup == nil && d.AIScanPullRequests == nil && d.CodeQLConfiguration.Empty()
 }
 func (d SecurityDeclaration) Validate() error {
+	if err := d.CodeQLConfiguration.Validate(); err != nil {
+		return fmt.Errorf("%s: %w", CodeQLConfigurationPath, err)
+	}
+	if !d.CodeQLConfiguration.Empty() && d.CodeQLDefaultSetup != nil && !*d.CodeQLDefaultSetup {
+		return fmt.Errorf("CodeQL configuration cannot accompany explicitly disabled default setup")
+	}
+
 	if d.DependabotAlerts != nil && !*d.DependabotAlerts && d.DependabotSecurityUpdates != nil && *d.DependabotSecurityUpdates {
 		return fmt.Errorf("repository.settings.advanced_security.dependabot.security_updates requires alerts")
 	}

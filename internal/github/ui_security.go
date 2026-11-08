@@ -1,6 +1,7 @@
 package github
 
 import (
+	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
@@ -13,6 +14,19 @@ func SecurityDeclaration(ui uimodel.SecuritySettings) (settings.SecurityDeclarat
 		}
 		if cs := ui.AdvancedSecurity.CodeSecurity; cs != nil && cs.CodeQLAnalysis != nil {
 			result.CodeQLDefaultSetup = copyUISecurityValue(cs.CodeQLAnalysis.DefaultSetup)
+			q := cs.CodeQLAnalysis
+			result.CodeQLConfiguration = settings.CodeQLConfigurationDeclaration{Languages: q.Languages, QuerySuite: q.QuerySuite, ThreatModel: q.ThreatModel}
+			if q.Runner != nil {
+				v := settings.CodeQLRunner{Type: q.Runner.Type}
+				if q.Runner.Label != nil {
+					v.Label = *q.Runner.Label
+				}
+				if q.Runner.Type == "standard_github_runner" && q.Runner.Label != nil {
+					return settings.SecurityDeclaration{}, fmt.Errorf("standard CodeQL runner forbids a label")
+				}
+				result.CodeQLConfiguration.Runner = &v
+			}
+
 		}
 		result.DependabotAlerts = copyUISecurityValue(ui.AdvancedSecurity.DependabotAlerts)
 		result.DependabotSecurityUpdates = copyUISecurityValue(ui.AdvancedSecurity.DependabotSecurityUpdates)

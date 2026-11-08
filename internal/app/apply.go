@@ -247,6 +247,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if !desired.Security.CodeQLConfiguration.Empty() {
+		wrote, err := applyCodeQLConfiguration(&result, repo, desired.Security.CodeQLConfiguration, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if desired.Security.CodeQLDefaultSetup != nil {
 		wrote, err := applyCodeQLDefaultSetup(&result, repo, desired.Security, write)
 		if err != nil {
