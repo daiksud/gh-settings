@@ -185,6 +185,27 @@ Use boolean `repository.settings.advanced_security.private_vulnerability_reporti
 
 This control applies to public repositories. Fresh visibility and complete status are required; private/internal applicability failures, malformed data, permission errors and redirects do not become disabled state. Apply reads fresh prerequisites, skips matching state, performs the narrow enable/disable operation and verifies readback. Earlier writes remain on later failure. No rollback, permission expansion or automatic retry occurs. See [private reporting](features/security.feature.md).
 
+## Security UI settings not managed by gh-settings
+
+As of **2026-11-08**, the following controls are not supported by gh-settings for personally owned public repositories. They can be available in GitHub's UI, subject to each feature's prerequisites. The investigation has not established a formal public API path for complete settings reads and updates in this repository scope; this does **not** establish that no API exists. Reassess support when GitHub publishes an applicable contract.
+
+| UI control | Unconfirmed settings API boundary |
+| --- | --- |
+| Independent Dependency graph enablement | Public dependency comparison, SBOM and snapshot APIs operate on dependency data; organization/enterprise configuration APIs do not establish a personal-repository setter. |
+| Automatic dependency submission | Submitting a dependency snapshot does not configure GitHub's automatic submission setting. |
+| Dependabot malware alerts | Existing vulnerability-alert enablement does not manage this separate toggle. |
+| Dependabot grouped security updates | Existing security-update enablement does not manage grouping. |
+| Dependabot GitHub preset ON/OFF | No complete public preset identity/read/update contract was confirmed for the development-dependency or package-malware dismissal presets. API access to auto-dismissed alerts does not configure the presets. |
+| Copilot Autofix / Agentic Autofix settings | Alert-specific fix generation, commits and assignment execute remediation rather than configure these repository controls. |
+| Global code-scanning check-run failure thresholds | [Ruleset scanning thresholds](#code-scanning-and-code-quality-parameters) are supported separately; they do not configure these global check-run settings. |
+| Private vulnerability reporting details: Require a CWE assignment, Daily advisory limit, Trusted reporters | The public enablement endpoint exposes only enabled state, not complete detail settings. |
+
+The existing [Dependabot alerts and security updates](#dependabot-alerts-and-security-updates) and [private reporting enablement](#private-vulnerability-reporting) remain supported. The alerts API intrinsically enables/disables Dependency graph too; this side effect is not independent graph management. Individual alert operations, advisory operations, Rulesets and organization/enterprise configuration are not substitutes for the missing settings contracts.
+
+Separate scope decisions also remain: Preview features (including CodeQL threat-model management), configuration-file creation/editing and custom Dependabot auto-triage rules are excluded. GitHub preset ON/OFF above is distinct from custom rules. [Code Security / Advanced Security product switches (#346)](https://github.com/daiksud/gh-settings/issues/346) await a separate adoption decision; they are not part of the API-unconfirmed list.
+
+Sources reviewed on 2026-11-08: [public REST definition](https://github.com/github/rest-api-description/blob/2f8f80e47ea4d3292cf4e37ba9d9b25475e06140/descriptions/api.github.com/api.github.com.json), [public GraphQL schema](https://docs.github.com/public/fpt/schema.docs.graphql), [GitHub preset documentation](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules), and the [scope inventory](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6719839333) with its [API recheck evidence](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6728386507). The public [Dependabot runner settings API](https://docs.github.com/en/rest/dependabot/runner-settings) was also assessed: labeled runners apply only to private/internal repositories with Actions enabled; public repositories report `standard`, so this does not add a configurable personal-public control.
+
 ## Default workflow permissions
 
 These fields belong to `repository.settings.actions.general.workflow_permissions`:
