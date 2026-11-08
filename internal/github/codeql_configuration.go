@@ -54,14 +54,8 @@ func (c *CodeQLDefaultSetupClient) ReadConfiguration(repo repository.Repository)
 	if label != nil {
 		s.Runner.Label = *label
 	}
-	switch *threat {
-	case "remote":
-		s.ThreatModel = "remote_sources"
-	case "remote_and_local":
-		s.ThreatModel = "remote_and_local_sources"
-	default:
-		return settings.CodeQLConfigurationObservation{}, fmt.Errorf("unsupported CodeQL threat model")
-	}
+	s.RawThreatModel = *threat
+
 	return settings.NewCodeQLConfigurationObservation(s)
 }
 
@@ -107,13 +101,7 @@ func (c *CodeQLDefaultSetupClient) UpdateConfiguration(repo repository.Repositor
 			payload["runner_label"] = d.Runner.Label
 		}
 	}
-	if d.ThreatModel != nil {
-		v := "remote"
-		if *d.ThreatModel == "remote_and_local_sources" {
-			v = "remote_and_local"
-		}
-		payload["threat_model"] = v
-	}
+
 	body, _ := json.Marshal(payload)
 	var response json.RawMessage
 	if err := c.rest.Patch(codeQLDefaultSetupPath(repo), bytes.NewReader(body), &response); err != nil {

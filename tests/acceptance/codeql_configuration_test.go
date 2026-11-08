@@ -16,7 +16,7 @@ import (
 func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
-	raw := map[string]any{"state": "configured", "languages": []string{"go"}, "query_suite": "default", "runner_type": "standard", "runner_label": nil, "threat_model": "remote"}
+	raw := map[string]any{"state": "configured", "languages": []string{"go"}, "query_suite": "default", "runner_type": "standard", "runner_label": nil, "threat_model": "remote_and_local"}
 	reads, writes := 0, 0
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
@@ -102,8 +102,27 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 	run("export", "--security", "codeql-configuration")
 	run("validate")
 	data, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if !strings.Contains(string(data), "query_suite: default") || strings.Contains(string(data), "default_setup:") {
+	if !strings.Contains(string(data), "query_suite: default") || strings.Contains(string(data), "default_setup:") || strings.Contains(string(data), "threat_model:") {
 		t.Fatal(string(data))
+	}
+	// Excluded Preview declarations fail before any remote acquisition or write.
+	for _, value := range []string{"remote_and_local_sources", "remote_sources", "remote_and_local", "null"} {
+		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {threat_model: "+value+"}}}}\n")); err != nil {
+			t.Fatal(err)
+		}
+		mu.Lock()
+		beforeReads, beforeWrites := reads, writes
+		mu.Unlock()
+		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
+		if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "unknown") {
+			t.Fatal(value, err, r.stderr.String())
+		}
+		mu.Lock()
+		unchanged := reads == beforeReads && writes == beforeWrites
+		mu.Unlock()
+		if !unchanged {
+			t.Fatal("excluded declaration contacted API")
+		}
 	}
 	input := repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {languages: [github_actions, go], query_suite: extended, runner: {type: labeled_runner, label: scan-pool}}}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
@@ -127,7 +146,7 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 		t.Fatal(got)
 	}
 	mu.Lock()
-	if writes != 1 || raw["state"] != "configured" || raw["threat_model"] != "remote" {
+	if writes != 1 || raw["state"] != "configured" || raw["threat_model"] != "remote_and_local" {
 		t.Fatal(raw, writes)
 	}
 	raw["state"] = "not-configured"

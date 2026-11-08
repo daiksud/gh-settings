@@ -52,7 +52,6 @@ func TestCodeQLConfigurationCompleteReads(t *testing.T) {
 }
 func TestCodeQLConfigurationNarrowWritesAndCompanionVerification(t *testing.T) {
 	suite := "extended"
-	threat := "remote_and_local_sources"
 	langs := []string{"github_actions", "javascript_typescript"}
 	for _, test := range []struct {
 		d    settings.CodeQLConfigurationDeclaration
@@ -62,7 +61,6 @@ func TestCodeQLConfigurationNarrowWritesAndCompanionVerification(t *testing.T) {
 		{settings.CodeQLConfigurationDeclaration{Languages: &langs}, map[string]any{"languages": []any{"actions", "javascript-typescript"}}},
 		{settings.CodeQLConfigurationDeclaration{Runner: &settings.CodeQLRunner{Type: "standard_github_runner"}}, map[string]any{"runner_type": "standard", "runner_label": nil}},
 		{settings.CodeQLConfigurationDeclaration{Runner: &settings.CodeQLRunner{Type: "labeled_runner", Label: "another-pool"}}, map[string]any{"runner_type": "labeled", "runner_label": "another-pool"}},
-		{settings.CodeQLConfigurationDeclaration{ThreatModel: &threat}, map[string]any{"threat_model": "remote_and_local"}},
 	} {
 		for _, mode := range []string{"ok", "accepted", "companion", "pending", "denied", "verify-denied"} {
 			raw := codeQLConfigRaw()
@@ -120,6 +118,48 @@ func TestCodeQLConfigurationNarrowWritesAndCompanionVerification(t *testing.T) {
 					t.Fatal("matching retried", changed, err, writes)
 				}
 			}
+		}
+	}
+}
+
+func TestCodeQLConfigurationPreservesExcludedPreviewThreatModel(t *testing.T) {
+	for _, drift := range []bool{false, true} {
+		raw := codeQLConfigRaw()
+		raw["threat_model"] = "remote_and_local"
+		writes := 0
+		c := &CodeQLDefaultSetupClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
+			if r.URL.Path == "/repos/owner/current" {
+				return actionsResponse(r, 200, `{"visibility":"public","owner":{"type":"User"}}`), nil
+			}
+			if r.Method == "GET" {
+				b, _ := json.Marshal(raw)
+				return actionsResponse(r, 200, string(b)), nil
+			}
+			var payload map[string]any
+			json.NewDecoder(r.Body).Decode(&payload)
+			if r.Method != "PATCH" || len(payload) != 1 || payload["query_suite"] != "extended" {
+				t.Fatal("Preview or unlisted setting sent", payload)
+			}
+			writes++
+			raw["query_suite"] = "extended"
+			if drift {
+				raw["threat_model"] = "remote"
+			}
+			return actionsResponse(r, 202, `{"run_id":42}`), nil
+		}).rest}
+		repo := repository.Repository{Owner: "owner", Name: "current"}
+		observed, err := c.ReadConfiguration(repo)
+		if err != nil {
+			t.Fatal(err)
+		}
+		state, _ := observed.State()
+		if state.RawThreatModel != "remote_and_local" {
+			t.Fatal("Preview value normalized", state)
+		}
+		suite := "extended"
+		changed, err := c.UpdateConfiguration(repo, settings.CodeQLConfigurationDeclaration{QuerySuite: &suite})
+		if (err == nil) == drift || changed == drift || writes != 1 {
+			t.Fatal(drift, changed, err, writes)
 		}
 	}
 }

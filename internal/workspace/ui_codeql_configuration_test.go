@@ -20,7 +20,6 @@ repository:
                     runner:
                         type: labeled_runner
                         label: scan-pool
-                    threat_model: remote_and_local_sources
 `
 	ui, err := DecodeConfig([]byte(input))
 	if err != nil {
@@ -37,7 +36,7 @@ repository:
 	if err != nil || string(encoded) != input {
 		t.Fatal(string(encoded), err)
 	}
-	for _, bad := range []string{"languages: []", "languages: [go, go]", "languages: [actions]", "query_suite: unknown", "runner: {type: standard_github_runner, label: ''}", "runner: {type: labeled_runner}", "threat_model: remote", "default_setup: false, query_suite: extended"} {
+	for _, bad := range []string{"languages: []", "languages: [go, go]", "languages: [actions]", "query_suite: unknown", "runner: {type: standard_github_runner, label: ''}", "runner: {type: labeled_runner}", "threat_model: remote", "threat_model: remote_sources", "threat_model: remote_and_local_sources", "default_setup: false, query_suite: extended"} {
 		ui, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {advanced_security: {code_security: {codeql_analysis: {" + bad + "}}}}}\n"))
 		if err == nil {
 			_, err = github.DeclarationFromUI(ui)

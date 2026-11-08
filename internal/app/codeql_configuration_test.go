@@ -10,7 +10,7 @@ import (
 func TestCodeQLConfigurationSelectivePlanApplyAndDisabledPrerequisite(t *testing.T) {
 	suite := "extended"
 	d := settings.Declaration{Security: settings.SecurityDeclaration{CodeQLConfiguration: settings.CodeQLConfigurationDeclaration{QuerySuite: &suite}}}
-	o, _ := settings.NewCodeQLConfigurationObservation(settings.CodeQLConfigurationState{Languages: []string{"go"}, QuerySuite: "default", Runner: settings.CodeQLRunner{Type: "standard_github_runner"}, ThreatModel: "remote_sources"})
+	o, _ := settings.NewCodeQLConfigurationObservation(settings.CodeQLConfigurationState{Languages: []string{"go"}, QuerySuite: "default", Runner: settings.CodeQLRunner{Type: "standard_github_runner"}, RawThreatModel: "remote"})
 	p, err := Plan(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Reader{CodeQLConfiguration: func(repository.Repository) (settings.CodeQLConfigurationObservation, error) { return o, nil }})
 	if err != nil || p.Comparison.Managed != 1 || len(p.Comparison.CodeQLConfiguration) != 1 {
 		t.Fatal(p, err)
