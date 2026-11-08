@@ -6,6 +6,8 @@ description: Planned declarations, complete observations, dependencies, and acce
 
 ## Status and scope
 
+For the remaining personal-public UI settings without a confirmed public settings API path, and the separately excluded controls, see [Security UI settings not managed by gh-settings](../settings.md#security-ui-settings-not-managed-by-gh-settings).
+
 [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a claim that unimplemented families are supported. Implementation PRs must update the public configuration, command, and Action references before claiming support.
 
 Manage repository feature enablement only. Exclude alert contents or dismissal, dependency/version-update files, scanning workflows/default setup/query suites, bypass actors/patterns, advisories/reports/notifications, contract purchases or product migration, and organization/enterprise security configuration attachment, detachment, or editing. Applying an enabled setting can cause GitHub to perform its documented background work; the CLI does not start a separate scan or manage its results.
