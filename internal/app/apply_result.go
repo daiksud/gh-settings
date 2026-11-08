@@ -29,6 +29,8 @@ const (
 	WorkflowPermissionsUpdate
 	SecretScanningRead
 	SecretScanningUpdate
+	CodeQLDefaultSetupRead
+	CodeQLDefaultSetupUpdate
 	PrivateReportingRead
 	PrivateReportingUpdate
 	ImmutableReleasesRead
@@ -103,7 +105,7 @@ func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus)
 	result.Operations[index].Status = status
 	result.Outcome = ApplyFailed
 	for _, operation := range result.Operations {
-		if operation.Status == OperationCompleted && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ActionsAccessRead && operation.Kind != CacheStorageRead && operation.Kind != CacheRetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
+		if operation.Status == OperationCompleted && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != CodeQLDefaultSetupRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ActionsAccessRead && operation.Kind != CacheStorageRead && operation.Kind != CacheRetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
 			result.Outcome = ApplyPartialFailure
 			break
 		}

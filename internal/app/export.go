@@ -25,6 +25,7 @@ type ExportCheckout struct {
 	IncludeRulesets                                   bool
 	IncludeEnvironments                               bool
 	IncludeSecretScanning                             bool
+	IncludeCodeQLDefaultSetup                         bool
 	IncludePrivateReporting                           bool
 	IncludeImmutableReleases                          bool
 	IncludeRetention                                  bool
@@ -326,6 +327,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		declaration.Security.DependabotAlerts = d.DependabotAlerts
 		declaration.Security.DependabotSecurityUpdates = d.DependabotSecurityUpdates
+	}
+	if checkout.IncludeCodeQLDefaultSetup {
+		observed, err := read.CodeQLDefaultSetup(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.Security.CodeQLDefaultSetup = &enabled
 	}
 	if checkout.IncludePrivateReporting {
 		observed, err := read.PrivateReporting(repo)

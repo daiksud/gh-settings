@@ -8,6 +8,9 @@ import (
 func SecurityDeclaration(ui uimodel.SecuritySettings) (settings.SecurityDeclaration, error) {
 	var result settings.SecurityDeclaration
 	if ui.AdvancedSecurity != nil {
+		if cs := ui.AdvancedSecurity.CodeSecurity; cs != nil && cs.CodeQLAnalysis != nil {
+			result.CodeQLDefaultSetup = copyUISecurityValue(cs.CodeQLAnalysis.DefaultSetup)
+		}
 		result.DependabotAlerts = copyUISecurityValue(ui.AdvancedSecurity.DependabotAlerts)
 		result.DependabotSecurityUpdates = copyUISecurityValue(ui.AdvancedSecurity.DependabotSecurityUpdates)
 		result.SecretScanning = copyUISecurityValue(ui.AdvancedSecurity.SecretProtection)

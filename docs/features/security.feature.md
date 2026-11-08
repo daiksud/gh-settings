@@ -229,3 +229,12 @@ The private same-version security report retains native API member identifiers/b
 - And earlier completed writes remain applied without rollback
 
 Test mapping: [closed observations](../../internal/settings/security_status_observation_test.go), [typed changes](../../internal/settings/security_status_change_test.go), [comparison](../../internal/settings/security_status_comparison_test.go), [raw dependencies](../../internal/settings/security_status_transitions_test.go), [typed decoder](../../internal/settings/security_status_json_test.go), [private reports and presentation](../../internal/actions/normalization_security_status_test.go), [scoped export](../../internal/app/normalization_security_export_test.go), [raw pair verification](../../internal/github/security_status_verification_test.go), [HTTP normalization/apply](../../internal/github/security_status_apply_test.go), and [executable commands](../../tests/acceptance/normalization_security_status_test.go).
+
+## CodeQL default setup enablement
+
+- Optional `repository.settings.advanced_security.code_security.codeql_analysis.default_setup` manages only personally owned public repository default-setup state; omission stays unmanaged and false disables.
+- Reads require complete applicability and exact configured/not-configured state. Plan is read-only. Export is explicitly selected with `--security codeql-default-setup` and does not export unrelated security settings.
+- Apply performs a fresh read, sends only state when needed and confirms enablement with another read. PATCH 202 can initiate asynchronous validation/analysis; pending/mismatching state remains uncertain and scan completion is never claimed. Prerequisites, advanced YAML and omitted configuration options are not enabled/changed.
+- Changes can consume Actions resources; disabling affects dependent scanning results/Autofix/checks. No scan execution command, deletion of analyses or live mutation is tested.
+
+Owning checks: `internal/settings/codeql_default_setup_test.go`, `internal/workspace/ui_codeql_test.go`, `internal/github/codeql_default_setup_test.go`, `internal/app/codeql_default_setup_test.go`, `internal/cli/codeql_default_setup_test.go`, and `tests/acceptance/codeql_default_setup_test.go`.

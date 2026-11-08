@@ -13,7 +13,13 @@ type SecuritySettings struct {
 	GeneralReleases  *SecurityGeneralReleases
 }
 
+type CodeSecurity struct {
+	CodeQLAnalysis *CodeQLAnalysis
+}
+type CodeQLAnalysis struct{ DefaultSetup *bool }
+
 type AdvancedSecurity struct {
+	CodeSecurity                  *CodeSecurity
 	DependabotAlerts              *bool
 	DependabotSecurityUpdates     *bool
 	SecretProtection              *bool

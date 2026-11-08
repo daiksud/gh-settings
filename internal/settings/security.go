@@ -2,10 +2,11 @@ package settings
 
 import "fmt"
 
-const SecurityFieldCount = 6
+const SecurityFieldCount = 7
 
 // SecurityDeclaration owns only the adopted repository security controls.
 type SecurityDeclaration struct {
+	CodeQLDefaultSetup            *bool `yaml:"codeql_default_setup,omitempty"`
 	DependabotAlerts              *bool `yaml:"dependabot_alerts,omitempty"`
 	DependabotSecurityUpdates     *bool `yaml:"dependabot_security_updates,omitempty"`
 	ImmutableReleases             *bool `yaml:"immutable_releases,omitempty"`
@@ -18,7 +19,7 @@ func (d SecurityDeclaration) SecretScanningEmpty() bool {
 	return d.SecretScanning == nil && d.PushProtection == nil
 }
 func (d SecurityDeclaration) Empty() bool {
-	return d.DependabotEmpty() && d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil && d.ImmutableReleases == nil
+	return d.DependabotEmpty() && d.SecretScanningEmpty() && d.PrivateVulnerabilityReporting == nil && d.ImmutableReleases == nil && d.CodeQLDefaultSetup == nil
 }
 func (d SecurityDeclaration) Validate() error {
 	if d.DependabotAlerts != nil && !*d.DependabotAlerts && d.DependabotSecurityUpdates != nil && *d.DependabotSecurityUpdates {
@@ -72,7 +73,7 @@ func (c SecurityChange) Normalization() SecurityStatusNormalization { return c.n
 func NewSecurityChange(field string, before, after any) (SecurityChange, error) {
 	b, bok := before.(bool)
 	a, aok := after.(bool)
-	if (field != DependabotAlertsField && field != DependabotUpdatesField && field != "security.secret_scanning" && field != "security.secret_scanning_push_protection" && field != "security.private_vulnerability_reporting" && field != "security.immutable_releases") || !bok || !aok || b == a {
+	if (field != "security.codeql_default_setup" && field != DependabotAlertsField && field != DependabotUpdatesField && field != "security.secret_scanning" && field != "security.secret_scanning_push_protection" && field != "security.private_vulnerability_reporting" && field != "security.immutable_releases") || !bok || !aok || b == a {
 		return SecurityChange{}, fmt.Errorf("invalid security comparison")
 	}
 	return SecurityChange{field: field, before: b, after: a}, nil
@@ -103,6 +104,8 @@ func ValidateSecurityChanges(changes []SecurityChange) error {
 			d.PushProtection = &v
 		case "security.immutable_releases":
 			d.ImmutableReleases = &v
+		case "security.codeql_default_setup":
+			d.CodeQLDefaultSetup = &v
 		case "security.private_vulnerability_reporting":
 			d.PrivateVulnerabilityReporting = &v
 		default:
