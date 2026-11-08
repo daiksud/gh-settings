@@ -100,7 +100,7 @@ repository:
     environments:
       - name: gh-settings
         deployment_protection_rules:
-          wait_timer: 15
+          wait_timer: 0
           prevent_self_review: false
           required_reviewers:
             - person: 155234749 # daiksud
