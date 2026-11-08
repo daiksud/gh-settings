@@ -84,12 +84,20 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}
 		}
-		if !source.Security.DependabotEmpty() || !source.Security.SecretScanningEmpty() || source.Security.PrivateVulnerabilityReporting != nil || source.Security.CodeQLDefaultSetup != nil {
+		if !source.Security.DependabotEmpty() || !source.Security.SecretScanningEmpty() || source.Security.PrivateVulnerabilityReporting != nil || source.Security.CodeQLDefaultSetup != nil || source.Security.AIScanPullRequests != nil {
 			result.Settings.SecurityAndQuality = &uimodel.SecurityAndQuality{AdvancedSecurity: &uimodel.AdvancedSecurity{DependabotAlerts: copyUISecurityValue(source.Security.DependabotAlerts), DependabotSecurityUpdates: copyUISecurityValue(source.Security.DependabotSecurityUpdates), SecretProtection: copyUISecurityValue(source.Security.SecretScanning), PushProtection: copyUISecurityValue(source.Security.PushProtection), PrivateVulnerabilityReporting: copyUISecurityValue(source.Security.PrivateVulnerabilityReporting)}}
 		}
 		if source.Security.CodeQLDefaultSetup != nil {
 			result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity = &uimodel.CodeSecurity{CodeQLAnalysis: &uimodel.CodeQLAnalysis{DefaultSetup: copyUISecurityValue(source.Security.CodeQLDefaultSetup)}}
 		}
+		if source.Security.AIScanPullRequests != nil {
+			advanced := result.Settings.SecurityAndQuality.AdvancedSecurity
+			if advanced.CodeSecurity == nil {
+				advanced.CodeSecurity = &uimodel.CodeSecurity{}
+			}
+			advanced.CodeSecurity.AIScan = &uimodel.AIScan{AIScanForPullRequests: copyUISecurityValue(source.Security.AIScanPullRequests)}
+		}
+
 		if source.Security.ImmutableReleases != nil {
 			if result.Settings.General == nil {
 				result.Settings.General = &uimodel.General{}

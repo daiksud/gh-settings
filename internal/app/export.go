@@ -26,6 +26,7 @@ type ExportCheckout struct {
 	IncludeEnvironments                               bool
 	IncludeSecretScanning                             bool
 	IncludeCodeQLDefaultSetup                         bool
+	IncludeAIScanPullRequests                         bool
 	IncludePrivateReporting                           bool
 	IncludeImmutableReleases                          bool
 	IncludeRetention                                  bool
@@ -338,6 +339,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Security.CodeQLDefaultSetup = &enabled
+	}
+	if checkout.IncludeAIScanPullRequests {
+		observed, err := read.AIScanPullRequests(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.Security.AIScanPullRequests = &enabled
 	}
 	if checkout.IncludePrivateReporting {
 		observed, err := read.PrivateReporting(repo)

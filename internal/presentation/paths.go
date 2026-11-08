@@ -58,6 +58,8 @@ func SettingPath(path string) string {
 		return settings.DependabotUpdatesPath
 	case "security.codeql_default_setup":
 		return "repository.settings.advanced_security.code_security.codeql_analysis.default_setup"
+	case "security.ai_scan_pull_requests":
+		return "repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests"
 	case "security.private_vulnerability_reporting":
 		return "repository.settings.advanced_security.private_vulnerability_reporting"
 	case "security.immutable_releases":
