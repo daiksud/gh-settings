@@ -30,6 +30,7 @@ var uiWordBoundary = regexp.MustCompile(`([a-z0-9])([A-Z])`)
 // Literal YAML fixtures, rather than this spelling mechanism, fix their contract.
 func uiControlName(name string) string {
 	name = strings.ReplaceAll(name, "GitHub", "Github")
+	name = strings.ReplaceAll(name, "CodeQL", "Codeql")
 	name = uiInitialismBoundary.ReplaceAllString(name, "${1}_${2}")
 	return strings.ToLower(uiWordBoundary.ReplaceAllString(name, "${1}_${2}"))
 }

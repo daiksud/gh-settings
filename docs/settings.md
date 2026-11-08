@@ -137,6 +137,14 @@ A complete successful 200 observation requires both enabled and owner-enforced b
 
 An owner-enforced policy cannot be planned/applied as false. Apply runs after private vulnerability reporting and before Pages, reads fresh state, skips a match, sends body-free PUT/DELETE, requires 204 and verifies fresh readback. A post-DELETE 404 confirms disabled intent under the same precondition; unknown owner enforcement remains unknown. Failed writes/readback can already have changed the policy; no retry or rollback occurs. Individual releases, tags and assets are never mutated by this feature, and disabling the policy does not make existing immutable releases editable. Administration read/write and applicable role must already exist. See [the full contract and evidence limits](features/immutable-releases.feature.md).
 
+## CodeQL default setup
+
+Use the optional boolean `repository.settings.advanced_security.code_security.codeql_analysis.default_setup` for a personally owned public repository. Omission leaves default setup unmanaged; false explicitly disables it. Null and other types fail. Ordinary export omits it; select `export --security codeql-default-setup` to export only its enablement.
+
+The public [default setup API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#update-a-code-scanning-default-setup-configuration) requires Administration read/write. Reads require public visibility, a User owner and a complete `configured` or `not-configured` state; missing/null/unknown states, 403 and 404 fail without fallback. Plan is read-only. Apply rereads before writing, skips a fresh matching state, and sends only `state`. Language selection, runner, query suite and threat model stay unmanaged; they are not part of this enablement control. No product, Actions prerequisite or advanced workflow configuration is automatically enabled or edited. Ineligible repositories fail through the public API.
+
+Changing this setting can start CodeQL validation/analysis and consume Actions resources. Disabling stops default-setup scanning and may affect features that depend on its results, including Autofix and required scanning checks. Existing analyses are not deleted. HTTP 202 accepts asynchronous work; fresh readback confirms configuration state only, never completion or success of a scan. A mismatching readback may indicate pending validation and fails with uncertain write effects. No automatic retry or rollback occurs; inspect state before retrying. Local fixtures do not establish live entitlement, analysis results or consumption.
+
 ## Private vulnerability reporting
 
 Use boolean `repository.settings.advanced_security.private_vulnerability_reporting`. Omission is unmanaged; false explicitly disables. It is independent from Secret protection. `export --security private-vulnerability-reporting` opts in; ordinary export does not read the endpoint.

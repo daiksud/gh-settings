@@ -56,6 +56,8 @@ func SettingPath(path string) string {
 		return settings.DependabotAlertsPath
 	case settings.DependabotUpdatesField:
 		return settings.DependabotUpdatesPath
+	case "security.codeql_default_setup":
+		return "repository.settings.advanced_security.code_security.codeql_analysis.default_setup"
 	case "security.private_vulnerability_reporting":
 		return "repository.settings.advanced_security.private_vulnerability_reporting"
 	case "security.immutable_releases":
