@@ -219,10 +219,12 @@ event starts this workflow.
 The token-creation step references `vars.ANSWER26_CLIENT_ID` and `secrets.ANSWER26_PRIVATE_KEY`, limits installation scope to the triggering owner/repository, and requests Administration write and Issues write. The resulting token is passed only to the Action's apply input; the token Action owns its normal post-job revocation. Source checks verify those bindings, not the remote App installation or actual token revocation.
 
 The configuration manages only the `gh-settings` Environment. It requires
-`daiksud` (User ID `155234749`) as reviewer, with self-review permitted, a fifteen-minute
-wait timer, administrator bypass disabled, and only the typed Branch `main` pattern.
-A manual dispatch waits for both the timer and the Environment's required approval. Read back
-the live reviewer policy and typed patterns after applying; source declarations
+`daiksud` (User ID `155234749`) as reviewer, with self-review permitted, no wait
+timer (`wait_timer: 0`), administrator bypass disabled, and only the typed Branch
+`main` pattern. A manual dispatch requires the Environment's reviewer approval.
+The live protection policy governs each run: changing the declaration does not
+bypass an existing wait timer or reviewer gate. Read back the live timer, reviewer
+policy, bypass setting and typed patterns after applying; source declarations
 do not establish deployed protection.
 
 `copilot` is absent from the declaration so subsequent apply does not recreate
