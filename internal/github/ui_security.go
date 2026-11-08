@@ -8,6 +8,9 @@ import (
 func SecurityDeclaration(ui uimodel.SecuritySettings) (settings.SecurityDeclaration, error) {
 	var result settings.SecurityDeclaration
 	if ui.AdvancedSecurity != nil {
+		if cs := ui.AdvancedSecurity.CodeSecurity; cs != nil && cs.AIScan != nil {
+			result.AIScanPullRequests = copyUISecurityValue(cs.AIScan.AIScanForPullRequests)
+		}
 		if cs := ui.AdvancedSecurity.CodeSecurity; cs != nil && cs.CodeQLAnalysis != nil {
 			result.CodeQLDefaultSetup = copyUISecurityValue(cs.CodeQLAnalysis.DefaultSetup)
 		}

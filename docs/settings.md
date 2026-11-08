@@ -145,6 +145,14 @@ The public [default setup API](https://docs.github.com/en/rest/code-scanning/cod
 
 Changing this setting can start CodeQL validation/analysis and consume Actions resources. Disabling stops default-setup scanning and may affect features that depend on its results, including Autofix and required scanning checks. Existing analyses are not deleted. HTTP 202 accepts asynchronous work; fresh readback confirms configuration state only, never completion or success of a scan. A mismatching readback may indicate pending validation and fails with uncertain write effects. No automatic retry or rollback occurs; inspect state before retrying. Local fixtures do not establish live entitlement, analysis results or consumption.
 
+## AI Scan for pull requests
+
+Use the optional boolean `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` for a personally owned public repository. Omission leaves it unmanaged; false disables it. Null/other types fail. Ordinary export omits this family; select `export --security ai-scan-pull-requests` to include this toggle. This excludes the separate Preview repository-wide and AI-application scans.
+
+The [public repository AI Scan API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#get-ai-scan-enablement-for-a-repository) requires Code scanning alerts read and Administration write. Acquisition requires public visibility, a User owner and exact `pr_scan` enabled/disabled. Missing/null/unknown values, 403/404 and incomplete applicability remain errors. Plan only reads. Apply rereads, skips a matching value, sends only `pr_scan` and confirms it with fresh readback. Other AI scans, CodeQL and product/prerequisite controls are not sent or automatically enabled.
+
+Enabling permits GitHub to process pull requests with AI; applicable billing and AI credits can apply. Disabling affects future AI findings. Neither configuration readback nor a successful PATCH establishes a completed scan, coverage, entitlement, grants or actual consumption. Write/readback errors retain unknown effects; there is no automatic retry or rollback. No alert fix, Copilot assignment, scan-execution or credits-purchase operation is performed.
+
 ## Private vulnerability reporting
 
 Use boolean `repository.settings.advanced_security.private_vulnerability_reporting`. Omission is unmanaged; false explicitly disables. It is independent from Secret protection. `export --security private-vulnerability-reporting` opts in; ordinary export does not read the endpoint.

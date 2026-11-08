@@ -238,3 +238,12 @@ Test mapping: [closed observations](../../internal/settings/security_status_obse
 - Changes can consume Actions resources; disabling affects dependent scanning results/Autofix/checks. No scan execution command, deletion of analyses or live mutation is tested.
 
 Owning checks: `internal/settings/codeql_default_setup_test.go`, `internal/workspace/ui_codeql_test.go`, `internal/github/codeql_default_setup_test.go`, `internal/app/codeql_default_setup_test.go`, `internal/cli/codeql_default_setup_test.go`, and `tests/acceptance/codeql_default_setup_test.go`.
+
+## AI Scan for pull requests
+
+- Optional `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` manages only the personal public repository pull-request AI scan toggle. Omission stays unmanaged; false disables. The two separate Preview scan controls are excluded.
+- Opt-in export uses `--security ai-scan-pull-requests`. Complete visibility/owner/enablement reads precede projection; missing/null/unknown/denied state fails. Plan is read-only.
+- Apply fresh-reads and sends only `pr_scan`, skipping a matching state. It confirms enabled/disabled state with fresh readback; failed writes or mismatches retain unknown effects. CodeQL, product switches and other AI scans remain undeclared and untouched by the payload.
+- Enabling permits automated AI processing and may have billing/AI-credit effects. Successful configuration readback never proves completed scans or actual consumption. No explicit scan/fix/assignment operation is sent.
+
+Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/workspace/ui_ai_scan_test.go`, `internal/github/ai_scan_pull_requests_test.go`, `internal/app/ai_scan_pull_requests_test.go`, `internal/cli/ai_scan_pull_requests_test.go`, and `tests/acceptance/ai_scan_pull_requests_test.go`.
