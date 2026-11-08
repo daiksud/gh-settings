@@ -2,6 +2,8 @@
 
 Manage a GitHub repository's settings as code, using a GitHub CLI extension or a [GitHub Action](docs/github-actions.md). Keep the intended values in `.github/settings.yml`, review differences with `plan`, and send declared values with `apply`.
 
+Feature adoption is limited to controls visible and configurable in GitHub's Web UI for **GitHub Free, personally owned public repositories**. All four conditions are required; API availability alone does not qualify a feature. See the [adoption scope and existing-feature audit limits](docs/settings.md#feature-adoption-scope); existing functionality has not been fully audited against this policy.
+
 The extension uses your existing `gh` authentication. Actions use one GitHub App with explicit, short-lived installation tokens scoped per job/target, without a required PAT or personal-login combination. Validation needs no API authentication; nonmutating plan may still require write grants for complete reads. See the [authentication and trust policy](docs/github-actions.md#authentication-and-app-permissions), including trusted-base PR data-only planning and protected-main apply.
 
 The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets own only listed objects; Environment omissions remain API-controlled.

@@ -2,6 +2,21 @@
 
 Follow [CONTRIBUTING](CONTRIBUTING.md) for development, verification, and documentation placement.
 
+## Project-wide feature adoption scope
+
+As of 2026-11-08, adopt settings only when **all** of these conditions hold:
+
+- The repository owner uses GitHub Free.
+- The repository is owned by a personal account.
+- The repository is public.
+- The control is visible and configurable in GitHub's Web UI under those conditions.
+
+Non-Free plans, organization ownership, private/internal repositories and controls hidden or unavailable in that UI are outside the adoption scope, even when a public API field exists. Verify this eligibility separately from the complete official public API read/update path needed for implementation. Reassess API-unconfirmed candidates under these same conditions. This replaces the earlier personal-public, price-independent Security scope and applies across gh-settings, not only to Security.
+
+Preview features, UI paths that create/edit feature configuration files, and custom Dependabot auto-triage remain excluded. GitHub preset ON/OFF is distinct from custom rules and must satisfy the scope above. Historical decisions and existing API/entitlement descriptions do not override this policy. See the [feature adoption policy](docs/settings.md#feature-adoption-scope).
+
+Existing functionality has not been fully audited against this narrower policy. Do not claim that all implemented features comply. This policy documentation does not remove features, change runtime behavior, authorize live settings changes or broaden previous exclusions; any implementation reconciliation requires separately scoped work.
+
 ## v0.x compatibility policy
 
 During v0.x, do not preserve superseded CLI or public Action interfaces, YAML
