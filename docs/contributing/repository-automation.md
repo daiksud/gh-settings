@@ -197,8 +197,8 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The settings workflows pin the immutable v0.33.0 package at
-`4ca411bf1accb2c6221f64b4f3bbb59fbe20d933`. The operational declaration is
+The settings workflows pin the immutable v0.34.0 package at
+`4c1cb187852b815e2f85df83f59df23251c3b7e5`. The operational declaration is
 validated directly with the current codec, including explicit Code Quality
 protection. Retired team-review and Preview additional-approval YAML controls
 are omitted. The package preserves the observed unowned Preview approval value
@@ -206,8 +206,9 @@ when updating an existing PR rule; omission does not request disabling it.
 
 Repository variables are supported under `settings.actions.variables`, but no
 repository variable is adopted here. The apply caller retains only its existing
-Administration and Issues token requests. Pinning this package grants no new
-permissions and does not dispatch settings-apply.
+Administration and Issues token requests. Copilot code-review custom instructions
+are supported by the package, but no Copilot setting is declared here. Pinning
+this package grants no new permissions and does not dispatch settings-apply.
 
 ## Active settings workflows
 
