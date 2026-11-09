@@ -9,6 +9,7 @@ import (
 type Declaration struct {
 	Repository   RepositoryDeclaration
 	Topics       TopicsDeclaration
+	Variables    *VariableDeclarations
 	Labels       *LabelDeclarations
 	Rulesets     *RulesetDeclarations
 	Environments *EnvironmentDeclarations
@@ -21,7 +22,7 @@ type Declaration struct {
 type TopicsDeclaration struct{ Names *[]string }
 
 func (d Declaration) Empty() bool {
-	return d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
+	return (d.Variables == nil || d.Variables.Len() == 0) && d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
 }
 
 // ValidateTopics follows GitHub's canonical topic naming rules.

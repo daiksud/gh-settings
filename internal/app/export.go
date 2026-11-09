@@ -2,6 +2,7 @@ package app
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	Variables                                         []string
 	IncludeCodeQLConfiguration                        bool
 	IncludeActionsAccess                              bool
 	IncludeCacheStorage                               bool
@@ -48,6 +50,10 @@ type ExportCheckout struct {
 
 // Export saves all observed fields only after a complete read.
 func Export(checkout ExportCheckout, read Reader) error {
+	selectedNames, err := settings.CanonicalVariableNames(checkout.Variables)
+	if err != nil {
+		return err
+	}
 	repo, err := checkout.Repository()
 	if err != nil {
 		return err
@@ -411,6 +417,32 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if record := o.FolderNormalization(); record != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
 			checkout.NormalizationWarning(record)
 		}
+	}
+	if len(selectedNames) > 0 {
+		slices.Sort(selectedNames)
+		values := make([]settings.RepositoryVariable, 0, len(selectedNames))
+		for _, name := range selectedNames {
+			observed, err := read.Variable(repo, name)
+			if err != nil {
+				return err
+			}
+			value, err := observed.Value()
+			if err != nil {
+				return err
+			}
+			if value == nil {
+				return fmt.Errorf("selected repository variable %q is absent", name)
+			}
+			if value.Name != name {
+				return fmt.Errorf("repository variable observation identity mismatch")
+			}
+			values = append(values, *value)
+		}
+		variables, err := settings.NewVariableDeclarations(values)
+		if err != nil {
+			return err
+		}
+		declaration.Variables = &variables
 	}
 	return save(declaration)
 }

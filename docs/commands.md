@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -55,6 +55,12 @@ The [topics contract](settings.md#topics) defines names, omission and explicit c
 The [labels contract](settings.md#labels) uses ID-based listed-object ownership: only listed objects are managed, and omitted/empty collections or unlisted objects cause no label writes. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
 
 Plan shows creates and ID-bound updates, including default-derived values. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
+
+## Repository variables commands
+
+Current source accepts [Actions repository variable declarations](settings.md#actions-repository-variables). `export --variable NAME` opts into one known non-sensitive name; repeat it for other names. Names validate before target/API work, including case-insensitive duplicate rejection. Ordinary export and `--actions` do not read variables. All selected individual GETs must succeed and find the requested names before saving; a failure preserves the existing output file. There is no bulk/all selection.
+
+Plan is read-only. Apply upserts only declared names, preserving unlisted variables and skipping equal values. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use this feature for secrets. Repository Variables read/write permissions are separate from Actions or Administration permissions.
 
 ## Export behavior
 
@@ -154,6 +160,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
+| `repository.settings.actions.variables` | Stable name-order fresh individual GET, conditional POST or value-only PATCH, then exact GET verification. No unlisted deletion. |
 | `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, then public-fork approval. Each uses its adopted preflight/readback contract. |
 | `repository.settings.advanced_security` | Secret protection/push protection in dependency order, then private vulnerability reporting. |
 | `repository.settings.general.releases` | Immutable release policy after private reporting and before Pages. |

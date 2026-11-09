@@ -73,6 +73,20 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Actions = &uimodel.ActionsSettings{General: &actions}
 	}
+	if source.Variables != nil {
+		values := make([]uimodel.RepositoryVariable, 0, source.Variables.Len())
+		for _, entry := range settings.SortedVariables(*source.Variables) {
+			value := entry.Value
+			values = append(values, uimodel.RepositoryVariable{Name: entry.Name, Value: &value})
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Actions == nil {
+			result.Settings.Actions = &uimodel.ActionsSettings{}
+		}
+		result.Settings.Actions.Variables = &values
+	}
 	if err := source.Security.Validate(); err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Security: %w", err)
 	}
