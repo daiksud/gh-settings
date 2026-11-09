@@ -31,6 +31,9 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	}
 	result.Labels = labels
 	if repository.Settings != nil {
+		if repository.Settings.Copilot != nil && repository.Settings.Copilot.CodeReview != nil {
+			result.CopilotInstructions = copyUIValue(repository.Settings.Copilot.CodeReview.UseCustomInstructions)
+		}
 		securityUI := uimodel.SecuritySettings{}
 		if repository.Settings.General != nil {
 			securityUI.GeneralReleases = repository.Settings.General.Releases

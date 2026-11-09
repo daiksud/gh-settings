@@ -51,7 +51,7 @@ This Free-only policy replaces the earlier personal-public Security investigatio
 
 ## Supported fields
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.variables`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.variables`, `copilot.code_review`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
 The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
@@ -283,6 +283,29 @@ These controls are independent of check/workflow/artifact/log retention and Acti
 A cache size eviction limit above 10 GB can incur additional charges. It is an eviction threshold, **not a spending budget**. Retention does not guarantee that caches survive until that age: eviction or manual deletion can remove them sooner. gh-settings manages repository limits only, not cache entries, usage, billing budgets, or organization/enterprise policy.
 
 Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
+
+## Copilot code review custom instructions
+
+`repository.settings.copilot.code_review.use_custom_instructions` corresponds to **Copilot → Code review → Use custom instructions**:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    copilot:
+      code_review:
+        use_custom_instructions: false
+```
+
+This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` are unmanaged; explicit false is managed. Null and non-booleans are invalid. Only this control is adopted here: review effort, MCP, approvals, licensing, access and automatic-review configuration remain separate. No instruction file is read, created or edited.
+
+The toggle changes whether future eligible Copilot reviews use repository instruction files. It does **not** enable Copilot code review, grant access, request a review or launch a workflow. Organization instructions apply independently. In the verified Free/personal/public UI, the No access banner expressly allowed storing settings for people with review access, and the toggle was enabled. Storing configuration is distinct from review entitlement and instruction consumption.
+
+Plan requires a complete acquired boolean and never writes. Apply reads fresh state, skips matches, PATCHes only `custom_instructions_enabled`, then requires matching independent GET readback. HTTP 404 is an error, not false; denied, incomplete, null or mistyped reads fail. Mutation/readback failures may have changed stored configuration; earlier successful writes remain and later operations stop. No rollback, automatic retry, concurrency lock or saved-plan application is provided.
+
+`export --copilot-custom-instructions` independently includes the stored boolean, including false. Ordinary export and `--actions` do not read this endpoint. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports show the UI path and native booleans; status-only output omits them.
+
+The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) documents repository administrators, classic `repo` scope and GitHub App support for GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings`. Exact fine-grained/App-token grants were not independently established by the owner-authenticated probe; callers must authorize this endpoint with their chosen credential. No grant is added automatically. The [behavior specification](features/copilot-custom-instructions.feature.md) records the verified storage/restoration and its limits.
 
 ## Actions repository variables
 

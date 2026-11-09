@@ -12,6 +12,7 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludeCopilotInstructions                        bool
 	Variables                                         []string
 	IncludeCodeQLConfiguration                        bool
 	IncludeActionsAccess                              bool
@@ -305,6 +306,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.Actions.PrivateFork = d
+	}
+	if checkout.IncludeCopilotInstructions {
+		observed, err := read.CopilotInstructions(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.CopilotInstructions = &enabled
 	}
 	if checkout.IncludeSecretScanning {
 		observed, err := read.SecretScanning(repo)

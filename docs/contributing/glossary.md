@@ -5,6 +5,8 @@ These terms describe the shared Go model. [Architecture](architecture.md#impleme
 | Term | Meaning | Go type |
 | --- | --- | --- |
 | Settings declaration | The repository, topics, and labels values selected for management; all omitted resources are unmanaged | `settings.Declaration` |
+| Copilot instruction declaration | Optional stored Use custom instructions boolean; nil is unmanaged and false remains explicit | `Declaration.CopilotInstructions` |
+| Copilot instruction observation/change | Acquired configuration boolean and closed unequal before/after values, independent of review access or execution | `settings.CopilotInstructionsObservation`, `settings.CopilotInstructionsChange` |
 | Repository declaration | Optional fields chosen by the maintainer; nil means omitted, while false and empty strings remain explicit values | `settings.RepositoryDeclaration` |
 | Topics declaration | A nil names pointer is unmanaged; an explicitly empty list clears the topic set | `settings.TopicsDeclaration` |
 | Labels declaration | A nil pointer is unmanaged; a present list owns the entire membership, with an empty list deleting all observed labels | `Declaration.Labels` as `*[]settings.LabelDeclaration` |

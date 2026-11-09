@@ -11,6 +11,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Validate](validate.feature.md) | Validate declarations locally. |
 | [Plan](plan.feature.md) | Compare declared values without writes. |
 | [Apply](apply.feature.md) | Apply declarations and report partial failure. |
+| [Copilot custom instructions](copilot-custom-instructions.feature.md) | Manage the stored repository Use custom instructions toggle. |
 | [Repository variables](repository-variables.feature.md) | Manage selected non-sensitive Actions repository variables. |
 | [Labels](labels.feature.md) | Manage selected label objects by ID. |
 | [Rulesets](rulesets.feature.md) | Manage selected repository rulesets. |

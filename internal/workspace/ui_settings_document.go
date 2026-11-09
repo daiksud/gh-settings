@@ -6,6 +6,7 @@ import "github.com/daiksud/gh-settings/internal/settings/uimodel"
 // remain independent of YAML grouping; they are never decoded as a second format.
 // Every scalar pointer preserves omission independently from explicit false/zero.
 type uiSettingsDocument struct {
+	Copilot          *uimodel.CopilotSettings
 	General          *uiGeneralDocument
 	Rulesets         *[]uimodel.Ruleset
 	Actions          *uiActionsDocument
@@ -70,7 +71,7 @@ type uiSecretProtectionDocument struct {
 }
 
 func (document uiSettingsDocument) model() uimodel.RepositorySettings {
-	result := uimodel.RepositorySettings{
+	result := uimodel.RepositorySettings{Copilot: document.Copilot,
 		Rulesets: document.Rulesets, Pages: document.Pages, Environments: document.Environments,
 	}
 	if general := document.General; general != nil {
@@ -126,7 +127,7 @@ func (document uiActionsGeneralDocument) model() uimodel.ActionsGeneral {
 }
 
 func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDocument {
-	result := uiSettingsDocument{Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
+	result := uiSettingsDocument{Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
 	if general := model.General; general != nil {
 		result.General = &uiGeneralDocument{
 			TemplateRepository: general.TemplateRepository, DefaultBranch: general.DefaultBranch,

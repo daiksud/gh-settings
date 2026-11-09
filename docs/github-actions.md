@@ -67,6 +67,10 @@ The pinned v0.27.0 label apply is ID-based and never deletes unlisted labels. An
 
 Current-source CLI and Action planning/apply accept [selected repository variables](settings.md#actions-repository-variables); this does not assert support in the pinned published package. Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. Do not store credentials in variables. No Secrets, Environment, Agents or organization variable endpoint is used, and no App grant or token-request permission is added by this implementation. Supply only the Variables permissions needed by the selected declaration.
 
+### Copilot custom instructions
+
+Current-source planning/apply support the [Use custom instructions toggle](settings.md#copilot-code-review-custom-instructions). Check that the selected published package supports the key before adding it to a declaration; this source addition does not update the caller's pin. The API stores only configuration, not Copilot access or review activation. No instructions file, review request, workflow/token grant or license is created. Exact App-token permission grants and instruction consumption were not verified by the owner-authenticated storage probe. Full reports show native booleans; the existing status-only lifecycle hides the control and values in its published Summary.
+
 ## Consumer files
 
 The [copyable PR/main examples](../examples/github-actions/README.md) need two workflow files plus `.github/settings.yml`. No caller script, root `action.yml` or copied `action/` directory is required.
