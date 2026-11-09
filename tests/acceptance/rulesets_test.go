@@ -83,15 +83,11 @@ func TestRulesetsIDOwnedLifecycleAndWriteback(t *testing.T) {
 						items = append(items, map[string]any{"id": s["id"], "name": s["name"], "source_type": "Repository", "source": "OWNER/CURRENT"})
 					}
 				}
-				items = append(items, map[string]any{"id": 9, "name": "push", "source_type": "Repository", "source": "owner/current"}, map[string]any{"id": 99, "name": "basic", "source_type": "Organization", "source": "owner"})
+				items = append(items, map[string]any{"id": 99, "name": "basic", "source_type": "Organization", "source": "owner"})
 				json.NewEncoder(w).Encode(items)
 				return
 			}
 			id := strings.TrimPrefix(r.URL.Path, "/repos/owner/current/rulesets/")
-			if id == "9" {
-				fmt.Fprint(w, `{"id":9,"name":"push","target":"push","source_type":"Repository","source":"owner/current","enforcement":"active","bypass_actors":[],"rules":[]}`)
-				return
-			}
 			if state, ok := states[id]; ok {
 				json.NewEncoder(w).Encode(state)
 				return
@@ -159,7 +155,7 @@ func TestRulesetsIDOwnedLifecycleAndWriteback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "rulesets:") || !strings.Contains(string(data), "ruleset_name: push") {
+	if !strings.Contains(string(data), "rulesets:") || !strings.Contains(string(data), "ruleset_name: basic") {
 		t.Fatal(string(data))
 	}
 	run("validate")
@@ -267,7 +263,6 @@ repository:
 	wantExport := []any{
 		map[string]any{"id": 7, "ruleset_name": "basic", "enforcement_status": "active", "target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}}, "bypass_list": []any{}, "rules": map[string]any{"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": false, "require_signed_commits": false}},
 		map[string]any{"id": 8, "ruleset_name": "old", "enforcement_status": "active", "target_branches": map[string]any{"include_default_branch": true, "include_all_branches": false, "include_by_pattern": []any{}, "exclude_by_pattern": []any{}}, "bypass_list": []any{}, "rules": map[string]any{"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": false, "require_signed_commits": false}},
-		map[string]any{"id": 9, "ruleset_name": "push", "enforcement_status": "active", "target_pushes": true, "bypass_list": []any{}, "rules": map[string]any{"restrict_creations": false, "restrict_deletions": false, "block_force_pushes": false, "require_linear_history": false, "require_signed_commits": false}},
 	}
 	if !reflect.DeepEqual(exported, wantExport) {
 		t.Fatalf("exported=%v want=%v", exported, wantExport)

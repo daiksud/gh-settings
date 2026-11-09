@@ -91,11 +91,8 @@ func validateRule(r RulesetRule, complete bool) error {
 	if r.Type != "copilot_code_review" && p.hasCopilot() {
 		return fmt.Errorf("Copilot parameters do not belong to %s", r.Type)
 	}
-	if p.hasPush() && !isPushRule(r.Type) {
-		return fmt.Errorf("push parameters do not belong to %s", r.Type)
-	}
-	if isPushRule(r.Type) {
-		return validatePushRule(r)
+	if p.hasPush() || isPushRule(r.Type) {
+		return fmt.Errorf("push Ruleset parameters are unsupported in %s", r.Type)
 	}
 	switch r.Type {
 	case "update":

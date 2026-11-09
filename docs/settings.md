@@ -452,7 +452,7 @@ An export followed by validate/plan roundtrips exact supported acquired values, 
 
 ## Rulesets
 
-`repository.settings.rulesets` selects whole repository-owned branch, tag or push Rulesets by optional positive numeric ID. No ID means create-only; a collision requires explicit ID adoption. Unknown/wrong-target/type IDs fail without create fallback. Unlisted objects are not deleted. Omission/`[]` selects nothing. Names compare exactly without trimming/case folding; duplicate names/IDs and colliding renames fail.
+`repository.settings.rulesets` selects whole repository-owned branch or tag Rulesets by optional positive numeric ID. No ID means create-only; a collision requires explicit ID adoption. Unknown/wrong-target/type IDs fail without create fallback. Unlisted objects are not deleted. Omission/`[]` selects nothing. Names compare exactly without trimming/case folding; duplicate names/IDs and colliding renames fail.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -466,7 +466,7 @@ repository:
         rules: {restrict_deletions: true}
 ```
 
-To delete one repository-owned branch/tag/push Ruleset, declare only its exact positive ID, current name and explicit deletion selection:
+To delete one repository-owned branch/tag Ruleset, declare only its exact positive ID, current name and explicit deletion selection:
 
 ```yaml
 repository:
@@ -483,9 +483,9 @@ Plan displays the complete selected policy changing to `absent`. Apply reacquire
 
 Deletion uses [GitHub's repository Ruleset DELETE endpoint](https://docs.github.com/en/rest/repos/rules#delete-a-repository-ruleset) with Administration write permission. Complete bypass visibility is required before any deletion. Explicit deletion removes the whole selected Ruleset. Any acquired unsupported protection prevents deletion; an omitted API field does not establish that its underlying protection is disabled. Organization/Enterprise-level policy, legacy branch protection, grants, releases and bypass configuration are outside this operation. Implementation verification uses local fixtures and does not delete live protection.
 
-Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active` or `disabled`) and exactly one of `target_branches`/`target_tags`/`target_pushes: true`. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting all target selectors is invalid. No protected scope is guessed.
+Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active` or `disabled`) and exactly one of `target_branches`/`target_tags`. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting all target selectors is invalid. No protected scope is guessed.
 
-Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`, `restrict_code_coverage` and push restrictions. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
+Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`, `restrict_code_coverage`. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
 
 `restrict_creations: true` allows only bypass actors to create matching branches or tags. `restrict_updates: {allow_fetch_and_merge: false}` allows only bypass actors to update them; selecting an empty object supplies a declaration-only false default. Explicit true allows pulling upstream changes. Both rules support branch and tag targets. Export preserves the acquired upstream-sync flag; an absent, null or malformed flag is an acquisition error. Updates adding, changing or removing either rule require independent whole-policy GET verification after mutation acknowledgment. These repository rules use the standard Rulesets plan availability and Administration write permission; no organization-wide Ruleset is managed. See [GitHub's rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [REST parameter contract](https://docs.github.com/en/rest/repos/rules).
 
@@ -609,36 +609,19 @@ rules:
 
 GitHub's [coverage REST announcement](https://github.blog/changelog/2026-09-18-manage-the-code-coverage-ruleset-condition-with-the-rest-api/) makes this repository-level rule available on GitHub Team and Enterprise Cloud, including data residency, with Code Quality enabled and coverage uploads configured; Enterprise Server is excluded. Those prerequisites do not make organization-owned Rulesets part of this tool's scope. The rule evaluates uploaded line coverage and does not wait for uploads. Make each coverage-upload job's check required separately to prevent early merging ([coverage setup](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage)). This rule does not enable Code Quality, configure uploads or alter status checks.
 
-### Push Rulesets
+### Unsupported Push Rulesets
 
-Select `target_pushes: true` without a branch/tag target. Push Rulesets apply to every push across the repository and its entire fork network; they have no ref-name conditions. Only the root repository's bypass actors can bypass the inherited push policy. This interface manages only policy owned by the selected repository, never an organization/Enterprise Ruleset or another repository's inherited policy. A mismatched repository source fails before mutation.
+`target_pushes` and the `restrict_file_paths`, `restrict_file_path_length`, `restrict_file_extensions` and `restrict_file_size` controls are not accepted, including false or empty declarations. [GitHub limits Push Rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository) to paid-plan private/internal repositories and their forks, outside the [Free/personal/public scope](#feature-adoption-scope). No compatibility alias or automatic migration is provided.
 
-```yaml
-ruleset_name: push-files
-enforcement_status: active
-target_pushes: true
-rules:
-  restrict_file_paths:
-    restricted_file_paths: ['secrets/**']
-    allowed_exceptions: ['secrets/example']
-  restrict_file_path_length: {maximum_file_path_length: 240}
-  restrict_file_extensions: {restricted_file_extensions: ['.exe']}
-  restrict_file_size: {maximum_file_size: 20, allowed_exceptions: []}
-```
-
-Each selected rule requires the shown parameters. Ref-only rules are invalid on a push target; push restrictions are invalid on branch/tag targets. Omitted groups remove their rule on an owned object; `rules: {}` selects an empty rule list and never deletes the Ruleset. Collections are exact case-sensitive sets with stable ordering. Restricted paths and extensions allow at most 200 entries of at most 200 characters each; blank strings, control characters and duplicate entries fail. Paths and allowed exceptions use GitHub's `fnmatch` syntax. Maximum path length is 1–32767 characters. Maximum file size is 1–100 MB, excluding Git LFS. GitHub validates pattern applicability; no local pattern rewrite occurs.
-
-For path/size restrictions, `allowed_exceptions` is required even when empty. The API calls this `ignored_file_paths` and marks it optional, but an omitted response cannot establish the stored exception policy. Acquisition therefore fails if the field is absent/null rather than assuming `[]`, preserving the existing export destination and preventing updates from incomplete reads. Complete mutation acknowledgment and independent GET must confirm every requested restriction and exception, including actual rule removal. No deployment, repository permissions, bypass actor or security setting is created to satisfy eligibility.
-
-[Generic GitHub documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository#creating-a-push-ruleset) lists GitHub Team private/internal repositories and their forks. The [Enterprise Cloud version](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository#creating-a-push-ruleset) lists Enterprise Cloud private/internal repositories and forks. These are version-specific availability statements, not organization/Enterprise-level management scope. Confirm eligibility for the target account with GitHub; the CLI neither infers entitlement from ownership nor expands credentials. [Repository Rulesets REST](https://docs.github.com/en/rest/repos/rules) supplies the four public rule schemas; mutations require repository Administration write and complete bypass visibility. The [official OpenAPI schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) supplies numeric bounds and nullable push conditions. Local fixture verification does not establish live entitlement or enforcement.
+An acquired repository-owned Push Ruleset or file-restriction rule fails complete acquisition. Export preserves its destination; plan, updates and explicit deletion stop before a Rulesets write. Unsupported policy is never silently omitted or converted into a branch/tag policy. Inherited organization/enterprise policy remains outside ownership.
 
 ### Plan, apply, and export
 
-Complete supported observations, including bypass visibility, are required. Unknown writable fields/rules, missing values, invalid types, unreadable details and failed pages stop mutation/export. Inherited organization/enterprise Rulesets remain outside mutation ownership. Repository-owned push Rulesets are acquired and exported completely; unknown or incomplete push policy stops the operation. Other protection can still affect effective behavior.
+Complete supported observations, including bypass visibility, are required. Unknown writable fields/rules, missing values, invalid types, unreadable details and failed pages stop mutation/export. Inherited organization/enterprise Rulesets remain outside mutation ownership. Repository-owned Push Rulesets are unsupported and stop complete acquisition before any Rulesets mutation or export. Other protection can still affect effective behavior.
 
 Plan shows only listed creates/ID updates and default-derived reductions; it never invents deletion of unlisted objects. A nonempty collection counts once as managed. Apply reads fresh state after earlier families, prepares selected operations before the first Rulesets write and writes in stable name order. Fresh comparable matches make no write.
 
-POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis/coverage changes and every push-target mutation require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
+POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis/coverage changes require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
 
 Unsupported protection is never omitted to produce a usable policy. Acquired Evaluate enforcement, merge queue, metadata restrictions, license compliance, or a present review-dismissal restriction stop Ruleset export, comparison and mutation. Review-dismissal absence in an API response does not prove the stored restriction is disabled. These controls are not accepted configuration. See the [Rulesets specification](features/rulesets.feature.md) and [UI mapping](contributing/ui-ruleset-mapping.md).
 

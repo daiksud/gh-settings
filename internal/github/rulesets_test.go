@@ -25,14 +25,14 @@ func TestReadRulesetsCompleteOwnershipAndTargets(t *testing.T) {
 		var body string
 		switch r.URL.Path {
 		case "/repos/owner/current/rulesets":
-			body = `[{"id":7,"name":"basic","source_type":"Repository","source":"owner/current"},{"id":8,"name":"push","source_type":"Repository","source":"owner/current"},{"id":9,"name":"basic","source_type":"Organization","source":"owner"}]`
+			body = `[{"id":7,"name":"basic","source_type":"Repository","source":"owner/current"},{"id":8,"name":"second","source_type":"Repository","source":"owner/current"},{"id":9,"name":"basic","source_type":"Organization","source":"owner"}]`
 			if r.URL.Query().Get("per_page") != "100" || r.URL.Query().Get("page") != "1" {
 				t.Fatal(r.URL)
 			}
 		case "/repos/owner/current/rulesets/7":
 			body = basicRulesetJSON
 		case "/repos/owner/current/rulesets/8":
-			body = pushRulesetJSON
+			body = strings.Replace(strings.Replace(basicRulesetJSON, `"id":7`, `"id":8`, 1), `"name":"basic"`, `"name":"second"`, 1)
 		default:
 			t.Fatal("unexpected path", r.URL)
 		}

@@ -64,11 +64,6 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		p := ui.RestrictCodeCoverage
 		result = append(result, settings.RulesetRule{Type: "code_coverage", Parameters: &settings.RuleParameters{MinimumCoverage: copyUIRulesetValue(p.MinimumLineCoveragePercentage), MaxCoverageDrop: copyUIRulesetValue(p.MaximumLineCoverageDrop)}})
 	}
-	push, err := declareUIRulesetPushRules(ui)
-	if err != nil {
-		return nil, err
-	}
-	result = append(result, push...)
 	return &result, nil
 }
 
@@ -123,8 +118,6 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 		case "code_coverage":
 			p := rule.Parameters
 			result.RestrictCodeCoverage = &uimodel.CodeCoverageRule{MinimumLineCoveragePercentage: copyUIRulesetValue(p.MinimumCoverage), MaximumLineCoverageDrop: copyUIRulesetValue(p.MaxCoverageDrop)}
-		case "file_path_restriction", "max_file_path_length", "file_extension_restriction", "max_file_size":
-			observeUIRulesetPushRule(&result, rule)
 		default:
 			return uimodel.RulesetRules{}, fmt.Errorf("ruleset rule has no prepared UI mapping: %s", rule.Type)
 		}
