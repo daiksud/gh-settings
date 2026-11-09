@@ -5,16 +5,53 @@ import (
 	"path/filepath"
 	"testing"
 
+	"go.yaml.in/yaml/v4"
+
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-// Read the operational declaration through the same current codec and adapter
-// as the CLI; policy assertions below retain independent native expectations.
+// The operational Action is still pinned to v0.31. Keep its legacy protection
+// intent intact. Only this test projects the remaining fields through today's
+// codec; this is not a runtime migration or acceptance of retired YAML controls.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := workspace.DecodeConfig(data); err == nil {
+		t.Fatal("operational legacy controls unexpectedly became current YAML")
+	}
+	var raw map[string]any
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		t.Fatal(err)
+	}
+	repository := raw["repository"].(map[string]any)
+	configuration := repository["settings"].(map[string]any)
+	rulesets := configuration["rulesets"].([]any)
+	if len(rulesets) != 1 {
+		t.Fatal("unexpected operational Rulesets")
+	}
+	rules := rulesets[0].(map[string]any)["rules"].(map[string]any)
+	quality, ok := rules["require_code_quality_results"].(map[string]any)
+	if !ok || len(quality) != 1 || quality["severity"] != "errors" {
+		t.Fatal("pinned apply must retain Code Quality protection")
+	}
+	pr := rules["require_a_pull_request_before_merging"].(map[string]any)
+	if pr["require_an_additional_approval_for_unattributed_copilot_pull_requests"] != true {
+		t.Fatal("pinned apply must retain Preview approval true")
+	}
+	teams, ok := pr["require_review_from_specific_teams"].([]any)
+	if !ok || len(teams) != 0 {
+		t.Fatal("pinned empty team companion changed")
+	}
+	delete(rules, "require_code_quality_results")
+	delete(pr, "require_an_additional_approval_for_unattributed_copilot_pull_requests")
+	delete(pr, "require_review_from_specific_teams")
+	// Test-only current view: never write this projection or feed it to apply.
+	data, err = yaml.Marshal(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
