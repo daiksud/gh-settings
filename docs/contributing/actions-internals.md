@@ -46,6 +46,7 @@ The [Actions-owned report](../../internal/actions/plan.go) has these fields:
 | `target` | Available origin owner/repository; omitted for unmanaged, validation or target-resolution failure. |
 | `managed` | Number of managed fields/collections in a successful comparison; nonempty label selections count once, empty labels count zero. Zero on failure does not mean unmanaged. |
 | `changes` | Ordered repository/topic field/before/after entries; values remain native strings, booleans or topic string arrays. Field paths are `repository.FIELD` or `topics.names`. Empty comparisons, failures and label-only changes use an empty array. |
+| `copilot_custom_instructions` | Optional singleton native boolean change with fixed UI `field`, `before` and `after`. Reconstruction rejects unknown paths, types, equal values and duplicate controls; counts as one scalar. Status-only output hides it. |
 | `variables` | Optional selected repository-variable changes: canonical `name`, optional string `before` (absent means create), required nonempty string `after`. Plaintext, never apply input. A nonempty managed selection counts once. |
 | `labels` | Optional typed create/update entries with `operation`, identity name, update `id`, and complete supported `before`/`after` objects. Omitted when no label operations exist. The ID-based format is unreleased. |
 | `diagnostic` | Static categorical failure text; omitted on success. No raw error, token, environment dump or request header is serialized. |

@@ -8,6 +8,7 @@ type Repository struct {
 }
 
 type RepositorySettings struct {
+	Copilot            *CopilotSettings
 	General            *General
 	Rulesets           *[]Ruleset
 	Actions            *ActionsSettings
@@ -25,3 +26,6 @@ type ActionsSettings struct {
 	Variables *[]RepositoryVariable
 }
 type SecurityAndQuality struct{ AdvancedSecurity *AdvancedSecurity }
+
+type CopilotSettings struct{ CodeReview *CopilotCodeReview }
+type CopilotCodeReview struct{ UseCustomInstructions *bool }

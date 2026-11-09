@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	CopilotInstructions     []PlanChange                      `json:"copilot_custom_instructions,omitempty"`
 	Variables               []VariablePlanChange              `json:"variables,omitempty"`
 	CodeQLConfiguration     []PlanChange                      `json:"codeql_configuration,omitempty"`
 	Outcome                 string                            `json:"outcome"`
@@ -109,6 +110,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.Variables {
 		before, after := change.Values()
 		report.Variables = append(report.Variables, VariablePlanChange{Name: change.Name(), Before: before, After: &after})
+	}
+	for _, change := range result.Comparison.CopilotInstructions {
+		before, after := change.Values()
+		report.CopilotInstructions = append(report.CopilotInstructions, PlanChange{Field: change.Field(), Before: before, After: after})
 	}
 	for _, change := range result.Comparison.Rulesets {
 		display := change.Display()

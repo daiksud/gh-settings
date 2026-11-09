@@ -87,6 +87,12 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Actions.Variables = &values
 	}
+	if source.CopilotInstructions != nil {
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.Copilot = &uimodel.CopilotSettings{CodeReview: &uimodel.CopilotCodeReview{UseCustomInstructions: copyUIValue(source.CopilotInstructions)}}
+	}
 	if err := source.Security.Validate(); err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Security: %w", err)
 	}

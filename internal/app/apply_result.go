@@ -62,6 +62,7 @@ const (
 	CacheRetentionRead
 	CacheRetentionUpdate
 	VariableUpsert
+	CopilotInstructionsUpdate
 )
 
 type ApplyOperationStatus uint8

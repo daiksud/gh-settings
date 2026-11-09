@@ -240,6 +240,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if desired.CopilotInstructions != nil {
+		wrote, err := applyCopilotInstructions(&result, repo, *desired.CopilotInstructions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if !desired.Security.SecretScanningEmpty() {
 		wrote, err := applySecretScanning(&result, repo, desired.Security, write)
 		if err != nil {
@@ -344,5 +351,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return (desired.Variables != nil && desired.Variables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }
