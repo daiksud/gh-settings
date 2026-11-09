@@ -65,7 +65,7 @@ func TestScanningAlertsStrictConfirmationAndScopedFreshWarnings(t *testing.T) {
 	} {
 		t.Run(tc.intent+"/"+tc.ack+"/"+tc.read, func(t *testing.T) {
 			var operations, warnings []string
-			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			client := rulesetMutationClient(t, scanningAlertsChange(t, tc.intent), transportFunc(func(req *http.Request) (*http.Response, error) {
 				operations = append(operations, req.Method)
 				mode := tc.read
 				if req.URL.Path != "/repos/owner/current/rulesets/7" {

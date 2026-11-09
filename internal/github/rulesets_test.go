@@ -179,7 +179,7 @@ func TestRulesetsCRUDExactPolicyAndActorNull(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+			client := rulesetMutationClient(t, change, transportFunc(func(r *http.Request) (*http.Response, error) {
 				if r.Method != method || r.URL.Path != path {
 					t.Fatal(r)
 				}

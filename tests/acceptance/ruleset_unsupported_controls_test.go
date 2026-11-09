@@ -73,7 +73,7 @@ func TestUnsupportedRulesetReadsBlockExportUpdateAndDeletion(t *testing.T) {
 	}{
 		{name: "evaluate", evaluate: true},
 		{name: "push"},
-		{name: "quality", rule: `{"type":"code_quality","parameters":{"severity":"errors"}}`},
+		{name: "quality incomplete", rule: `{"type":"code_quality","parameters":{}}`},
 		{name: "coverage", rule: `{"type":"code_coverage","parameters":{"minimum_coverage":0,"max_coverage_drop":0}}`},
 		{name: "teams", rule: `{"type":"pull_request","parameters":` + strings.Replace(pr, `"required_reviewers":[]`, `"required_reviewers":[{"reviewer":{"type":"Team","id":1},"minimum_approvals":0,"file_patterns":[]}]`, 1) + `}`},
 		{name: "file_path_restriction", rule: `{"type":"file_path_restriction","parameters":{}}`},

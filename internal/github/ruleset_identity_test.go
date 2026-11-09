@@ -63,7 +63,7 @@ func TestRulesetMutationRequiresReturnedIdentityAndCompletePolicy(t *testing.T) 
 		} {
 			t.Run(operation+"/"+test.name, func(t *testing.T) {
 				calls := 0
-				client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+				client := rulesetMutationClient(t, change, transportFunc(func(req *http.Request) (*http.Response, error) {
 					calls++
 					wantMethod, wantPath := "POST", "/repos/owner/current/rulesets"
 					if operation == "update" {
@@ -81,7 +81,7 @@ func TestRulesetMutationRequiresReturnedIdentityAndCompletePolicy(t *testing.T) 
 			})
 		}
 		if operation == "update" {
-			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			client := rulesetMutationClient(t, change, transportFunc(func(req *http.Request) (*http.Response, error) {
 				return labelsResponse(req, 200, strings.Replace(valid, `"id":7`, `"id":8`, 1)), nil
 			}))
 			if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err == nil {

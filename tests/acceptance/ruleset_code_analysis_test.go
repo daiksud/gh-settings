@@ -28,6 +28,10 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 		t.Fatal(err)
 	}
 	json.Unmarshal(data, &baseline)
+	// Unsupported intent remains absent from YAML while the exact acquired rule survives updates.
+	for _, policy := range []map[string]any{state, baseline} {
+		policy["rules"] = append(policy["rules"].([]any), map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "FUTURE_SEVERITY"}})
+	}
 	var mu sync.Mutex
 	writes := 0
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {

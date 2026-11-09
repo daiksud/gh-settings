@@ -81,7 +81,7 @@ func TestRulesetBypassPrewriteWarningsKeepIdentityOwnershipAndIndependentSinks(t
 						want = append(want, event{kind: "DeployKey", record: record("KEY_MODE")}, event{kind: "Team", actorID: 2, record: record("TWO_MODE")}, event{kind: "Team", actorID: 10, record: record("TEN_MODE")})
 					}
 					var operations []string
-					client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+					client := rulesetMutationClient(t, change, transportFunc(func(req *http.Request) (*http.Response, error) {
 						operations = append(operations, req.Method)
 						if req.URL.Path != "/repos/owner/current/rulesets/7" {
 							t.Fatal(req.URL)

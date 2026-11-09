@@ -20,6 +20,9 @@ type RulesetDeclaration struct {
 	Conditions   *RulesetConditions `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 	BypassActors *[]BypassActor     `json:"bypass_actors,omitempty" yaml:"bypass_actors,omitempty"`
 	Rules        *[]RulesetRule     `json:"rules,omitempty" yaml:"rules,omitempty"`
+
+	// Acquired metadata only; it is never YAML/JSON intent or an export control.
+	unownedCodeQualitySeverity *string
 }
 type RulesetConditions struct {
 	RefName *RefNameCondition `json:"ref_name,omitempty" yaml:"ref_name,omitempty"`
@@ -165,6 +168,7 @@ func actorKey(a BypassActor) string {
 	return fmt.Sprintf("%s:%d", a.ActorType, *a.ActorID)
 }
 func cloneRuleset(d RulesetDeclaration) RulesetDeclaration {
+	d.unownedCodeQualitySeverity = copyRuleValue(d.unownedCodeQualitySeverity)
 	d.Delete = copyRuleValue(d.Delete)
 	if d.ID != nil {
 		v := *d.ID
