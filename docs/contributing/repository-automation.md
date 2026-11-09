@@ -197,9 +197,17 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The settings workflows still use the immutable v0.31.0 consumer. Code Quality remains managed in current source and must stay explicitly declared to retain it. The pinned consumer differs for the excluded Preview companion: omitted unattributed Copilot approval defaults false. Keep those explicit operational values, including the empty team companion, in `.github/settings.yml` until a compatible published consumer is reviewed and pinned. Removing current public support does not authorize deleting those values or dispatching settings-apply. Current-source YAML intentionally rejects the retired team-review and Preview additional-approval controls; this pinned operational document is not a current-source example or a feature-adoption exception.
+The settings workflows pin the immutable v0.33.0 package at
+`4ca411bf1accb2c6221f64b4f3bbb59fbe20d933`. The operational declaration is
+validated directly with the current codec, including explicit Code Quality
+protection. Retired team-review and Preview additional-approval YAML controls
+are omitted. The package preserves the observed unowned Preview approval value
+when updating an existing PR rule; omission does not request disabling it.
 
-The repository-automation tests assert the preserved pinned companions, then use a test-only projection to check the remaining settings with the current codec. That projection is never saved or passed to apply. No runtime migration, compatibility alias, release or pin update is provided by the support removal.
+Repository variables are supported under `settings.actions.variables`, but no
+repository variable is adopted here. The apply caller retains only its existing
+Administration and Issues token requests. Pinning this package grants no new
+permissions and does not dispatch settings-apply.
 
 ## Active settings workflows
 
