@@ -106,7 +106,7 @@ Plan reads only managed resources, retaining existing field/resource ordering an
 | Ruleset operations and parameters | [Rulesets](../../tests/acceptance/rulesets_test.go), [PR/check parameters](../../tests/acceptance/ruleset_parameters_test.go) |
 | Workflow permissions and retention | [Workflow](../../tests/acceptance/workflow_permissions_test.go), [retention](../../tests/acceptance/retention_test.go) |
 | Secret scanning and public reporting | [Secret scanning](../../tests/acceptance/security_test.go), [reporting](../../tests/acceptance/private_reporting_test.go) |
-| Fork workflow policies | [Fork app sequencing](../../internal/app/fork_workflows_test.go), [fork process/Summary](../../tests/acceptance/fork_workflows_test.go) |
+| Fork workflow policies | [Fork app sequencing](../../internal/app/fork_workflows_test.go), [fork process/Summary](../../tests/acceptance/normalization_fork_approval_test.go) |
 
 The dedicated feature specifications own conditional reads, dependencies, cap checks and visibility boundaries. The same typed comparison feeds credential-free Summary validation; no saved report becomes apply input.
 

@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--actions-access] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
+gh settings export [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -58,7 +58,7 @@ Plan shows creates and ID-bound updates, including default-derived values. Color
 
 ## Export behavior
 
-`export --cache-retention`, `export --cache-storage`, and `export --actions-access` independently select [cache limits](settings.md#actions-cache-policy) and [private sharing access](settings.md#private-actions-and-reusable-workflow-access). They compose with existing export flags; duplicates fail before API/file work. Ordinary export, `--actions`, and `--retention` do not acquire these resources. Access requires a private repository with a supported owner type. All selected reads must complete before saving; any denied, incomplete or invalid response preserves the destination. Cache storage reads require Actions read; cache retention/access reads require Administration read. All three updates require Administration write, plus their read permissions for preflight and verification.
+`export --cache-retention` and `export --cache-storage` independently select [cache limits](settings.md#actions-cache-policy). They compose with other export flags; duplicates fail before API/file work. Ordinary export, `--actions` and `--retention` do not acquire them. Complete selected reads are required before saving. Cache storage needs Actions read; cache retention needs repository metadata and Administration read. Both updates need Administration write and their preflight/readback permissions.
 
 `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Other export selections compose with it.
 
@@ -154,7 +154,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
-| `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, sharing access, public-fork approval, then private-fork workflows. Each uses its adopted preflight/readback contract. |
+| `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, then public-fork approval. Each uses its adopted preflight/readback contract. |
 | `repository.settings.advanced_security` | Secret protection/push protection in dependency order, then private vulnerability reporting. |
 | `repository.settings.general.releases` | Immutable release policy after private reporting and before Pages. |
 | `repository.settings.pages` | Existing-site declared-only update with identity/visibility/readback checks. |
@@ -183,7 +183,7 @@ Contributors can find the [behavior specifications](features/README.md), [testin
 
 ## Fork workflow export choices
 
-`gh settings export --fork-approval` adds the public-repository contributor approval enum. `gh settings export --private-fork-workflows` adds the four private-repository execution/token/secrets/approval booleans. Both require existing Administration read credentials and preserve ordinary export requests when omitted. They compose with `--rulesets`, `--actions`, `--workflow-permissions`, `--retention` and distinct `--security` selections; duplicate flags fail before export. Selecting both fork families fails because their adopted visibility scopes differ, preserving an existing destination.
+`gh settings export --fork-approval` adds the public contributor approval choice and requires Administration read. Ordinary export does not acquire it. It composes with the other supported export selections; duplicates fail before remote work. Private-only export flags are [unsupported](settings.md#excluded-private-actions-controls).
 
 Plan and the credential-free Action Summary use the UI paths, booleans and approval choices. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 

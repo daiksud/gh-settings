@@ -128,17 +128,16 @@ func TestUIFromExportDeclarationRulesetUnsupportedValues(t *testing.T) {
 
 func TestUIFromExportDeclarationActions(t *testing.T) {
 	source := uiExportBase()
-	source.Actions = settings.ActionsPolicyDeclaration{Enabled: rulesetPtr(true), AllowedActions: rulesetPtr("selected"), SHAPinningRequired: rulesetPtr(false), SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: rulesetPtr(false), VerifiedAllowed: rulesetPtr(true), PatternsAllowed: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"})}, DefaultWorkflowPermissions: rulesetPtr("read"), CanApprovePullRequestReviews: rulesetPtr(false), RetentionDays: rulesetPtr(30), ForkApprovalPolicy: rulesetPtr("first_time_contributors"), PrivateFork: settings.PrivateForkDeclaration{Run: rulesetPtr(true), WriteTokens: rulesetPtr(false), Secrets: rulesetPtr(true), Approval: rulesetPtr(false)}}
-	want := &uimodel.ActionsGeneral{ActionsPermissions: rulesetPtr(uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows), RequireActionsToBePinnedToAFullLengthCommitSHA: rulesetPtr(false), AllowActionsCreatedByGitHub: rulesetPtr(false), AllowActionsByMarketplaceVerifiedCreators: rulesetPtr(true), AllowOrBlockSpecifiedActionsAndReusableWorkflows: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"}), WorkflowPermissions: rulesetPtr(uimodel.ReadRepositoryContentsAndPackagesPermissions), AllowGitHubActionsToCreateAndApprovePullRequests: rulesetPtr(false), CheckWorkflowRunStatusArtifactAndLogRetention: rulesetPtr(30), ApprovalForRunningForkPullRequestWorkflowsFromContributors: rulesetPtr(uimodel.RequireApprovalForFirstTimeContributors), ForkPullRequestWorkflows: &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: rulesetPtr(true), SendWriteTokensToWorkflowsFromForkPullRequests: rulesetPtr(false), SendSecretsAndVariablesToWorkflowsFromForkPullRequests: rulesetPtr(true), RequireApprovalForForkPullRequestWorkflows: rulesetPtr(false)}}
+	source.Actions = settings.ActionsPolicyDeclaration{Enabled: rulesetPtr(true), AllowedActions: rulesetPtr("selected"), SHAPinningRequired: rulesetPtr(false), SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: rulesetPtr(false), VerifiedAllowed: rulesetPtr(true), PatternsAllowed: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"})}, DefaultWorkflowPermissions: rulesetPtr("read"), CanApprovePullRequestReviews: rulesetPtr(false), RetentionDays: rulesetPtr(30), ForkApprovalPolicy: rulesetPtr("first_time_contributors")}
+	want := &uimodel.ActionsGeneral{ActionsPermissions: rulesetPtr(uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows), RequireActionsToBePinnedToAFullLengthCommitSHA: rulesetPtr(false), AllowActionsCreatedByGitHub: rulesetPtr(false), AllowActionsByMarketplaceVerifiedCreators: rulesetPtr(true), AllowOrBlockSpecifiedActionsAndReusableWorkflows: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"}), WorkflowPermissions: rulesetPtr(uimodel.ReadRepositoryContentsAndPackagesPermissions), AllowGitHubActionsToCreateAndApprovePullRequests: rulesetPtr(false), CheckWorkflowRunStatusArtifactAndLogRetention: rulesetPtr(30), ApprovalForRunningForkPullRequestWorkflowsFromContributors: rulesetPtr(uimodel.RequireApprovalForFirstTimeContributors)}
 	got, err := UIFromExportDeclaration(source)
 	if err != nil || got.Settings == nil || got.Settings.Actions == nil || !reflect.DeepEqual(got.Settings.Actions.General, want) {
 		t.Fatalf("Actions export changed: %#v, %v", got, err)
 	}
-	*source.Actions.Enabled, *source.Actions.PrivateFork.Run = false, false
+	*source.Actions.Enabled = false
 	got, err = UIFromExportDeclaration(source)
 	want.ActionsPermissions = rulesetPtr(uimodel.DisableActions)
 	want.AllowActionsCreatedByGitHub, want.AllowActionsByMarketplaceVerifiedCreators, want.AllowOrBlockSpecifiedActionsAndReusableWorkflows = nil, nil, nil
-	want.ForkPullRequestWorkflows = &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: rulesetPtr(false)}
 	if err != nil || got.Settings == nil || got.Settings.Actions == nil || !reflect.DeepEqual(got.Settings.Actions.General, want) {
 		t.Fatalf("disabled latent Actions leaked: %#v, %v", got, err)
 	}
@@ -167,6 +166,7 @@ func TestUIFromExportDeclarationActionsScopesAndErrors(t *testing.T) {
 	for _, policy := range []settings.ActionsPolicyDeclaration{
 		{Enabled: rulesetPtr(true), AllowedActions: rulesetPtr("all"), SHAPinningRequired: rulesetPtr(false), RetentionDays: rulesetPtr(0)},
 		{DefaultWorkflowPermissions: rulesetPtr("read"), CanApprovePullRequestReviews: rulesetPtr(false), ForkApprovalPolicy: rulesetPtr("unknown")},
+		{AccessLevel: rulesetPtr("user")},
 		{PrivateFork: settings.PrivateForkDeclaration{Run: rulesetPtr(true)}},
 	} {
 		source := uiExportBase()

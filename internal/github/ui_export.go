@@ -55,9 +55,9 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Actions workflow permissions: %w", err)
 	}
-	actions, err = WithActionsCacheAccessPolicyUI(actions, source.Actions)
+	actions, err = WithActionsCachePolicyUI(actions, source.Actions)
 	if err != nil {
-		return uimodel.Repository{}, fmt.Errorf("export Actions cache and access: %w", err)
+		return uimodel.Repository{}, fmt.Errorf("export Actions cache: %w", err)
 	}
 	actions, err = WithActionsRetentionPolicyUI(actions, source.Actions.RetentionDays)
 	if err != nil {
@@ -66,10 +66,6 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	actions, err = WithActionsForkApprovalPolicyUI(actions, source.Actions.ForkApprovalPolicy)
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Actions contributor approval: %w", err)
-	}
-	actions, err = WithActionsPrivateForkPolicyUI(actions, source.Actions.PrivateFork)
-	if err != nil {
-		return uimodel.Repository{}, fmt.Errorf("export Actions fork workflows: %w", err)
 	}
 	if actions != (uimodel.ActionsGeneral{}) {
 		if result.Settings == nil {

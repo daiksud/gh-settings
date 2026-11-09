@@ -1,11 +1,15 @@
 package github
 
 import (
+	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-func WithActionsCacheAccessPolicyUI(ui uimodel.ActionsGeneral, policy settings.ActionsPolicyDeclaration) (uimodel.ActionsGeneral, error) {
+func WithActionsCachePolicyUI(ui uimodel.ActionsGeneral, policy settings.ActionsPolicyDeclaration) (uimodel.ActionsGeneral, error) {
+	if policy.AccessLevel != nil || !policy.PrivateFork.Empty() {
+		return uimodel.ActionsGeneral{}, fmt.Errorf("private-only Actions controls are unsupported")
+	}
 	if err := policy.Validate(); err != nil {
 		return uimodel.ActionsGeneral{}, err
 	}
@@ -21,10 +25,6 @@ func WithActionsCacheAccessPolicyUI(ui uimodel.ActionsGeneral, policy settings.A
 			cache.CacheSizeEvictionLimit = copyUIActionsValue(policy.CacheSizeGB)
 		}
 		ui.Cache = &cache
-	}
-	if policy.AccessLevel != nil {
-		choice, _ := settings.ActionsAccessChoiceForValue(*policy.AccessLevel)
-		ui.Access = &choice
 	}
 	return ui, nil
 }

@@ -15,10 +15,10 @@ func TestActionsGeneralExportFlags(t *testing.T) {
 	}{
 		{[]string{"export", "--cache-retention"}, cli.ExportOptions{CacheRetention: true}, true},
 		{[]string{"export", "--cache-storage"}, cli.ExportOptions{CacheStorage: true}, true},
-		{[]string{"export", "--actions-access"}, cli.ExportOptions{ActionsAccess: true}, true},
-		{[]string{"export", "--cache-retention", "--cache-storage", "--actions-access", "--retention", "--actions"}, cli.ExportOptions{CacheRetention: true, CacheStorage: true, ActionsAccess: true, Retention: true, Actions: true}, true},
+		{[]string{"export", "--actions-access"}, cli.ExportOptions{}, false},
+		{[]string{"export", "--cache-retention", "--cache-storage", "--retention", "--actions"}, cli.ExportOptions{CacheRetention: true, CacheStorage: true, Retention: true, Actions: true}, true},
 	}
-	for _, flag := range []string{"--cache-retention", "--cache-storage", "--actions-access"} {
+	for _, flag := range []string{"--cache-retention", "--cache-storage"} {
 		tests = append(tests, struct {
 			args  []string
 			want  cli.ExportOptions
