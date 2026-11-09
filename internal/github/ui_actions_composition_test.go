@@ -3,7 +3,6 @@ package github
 import (
 	"encoding/json"
 	"github.com/cli/go-gh/v2/pkg/repository"
-	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 	"net/http"
 	"reflect"
@@ -86,12 +85,5 @@ func TestUIActionsRawAcquisitionScopeAndFailures(t *testing.T) {
 		if _, err := client.ReadActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, false); err == nil {
 			t.Fatal("incomplete/invalid observation accepted")
 		}
-	}
-	partial, err := ActionsDeclaration(uimodel.ActionsGeneral{ForkPullRequestWorkflows: &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: actionsUIPtr(true)}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := settings.ComparePrivateFork(settings.NewPrivateForkObservation([4]bool{}), partial.PrivateFork); err == nil {
-		t.Fatal("latent credentials defaulted on enable")
 	}
 }

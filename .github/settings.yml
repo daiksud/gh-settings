@@ -78,7 +78,7 @@ repository:
         require_contributors_to_sign_off_on_web_based_commits: false
       danger_zone:
         archive_this_repository: false
-    # Existing values only. Inactive selected-action and private-fork controls
+    # Existing values only. Inactive selected-action controls
     # remain omitted; this public target does not adopt private policy values.
     actions:
       general:

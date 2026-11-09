@@ -30,12 +30,10 @@ type uiActionsDocument struct{ General *uiActionsGeneralDocument }
 
 type uiActionsGeneralDocument struct {
 	Cache                                                      *uimodel.ActionsCache
-	Access                                                     *uimodel.ActionsAccessChoice
 	ActionsPermissions                                         *uiActionsPermissionsDocument
 	CheckWorkflowRunStatusArtifactAndLogRetention              *int
 	ApprovalForRunningForkPullRequestWorkflowsFromContributors *uimodel.ForkApprovalChoice
 	WorkflowPermissions                                        *uiWorkflowPermissionsDocument
-	ForkPullRequestWorkflows                                   *uimodel.ForkPullRequestWorkflows
 }
 
 type uiActionsPermissionsDocument struct {
@@ -106,10 +104,9 @@ func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 
 func (document uiActionsGeneralDocument) model() uimodel.ActionsGeneral {
 	result := uimodel.ActionsGeneral{
-		Cache: document.Cache, Access: document.Access,
+		Cache: document.Cache,
 		CheckWorkflowRunStatusArtifactAndLogRetention:              document.CheckWorkflowRunStatusArtifactAndLogRetention,
 		ApprovalForRunningForkPullRequestWorkflowsFromContributors: document.ApprovalForRunningForkPullRequestWorkflowsFromContributors,
-		ForkPullRequestWorkflows:                                   document.ForkPullRequestWorkflows,
 	}
 	if permissions := document.ActionsPermissions; permissions != nil {
 		result.ActionsPermissions = permissions.Policy
@@ -161,10 +158,9 @@ func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDoc
 
 func uiActionsGeneralDocumentFromModel(model uimodel.ActionsGeneral) uiActionsGeneralDocument {
 	result := uiActionsGeneralDocument{
-		Cache: model.Cache, Access: model.Access,
+		Cache: model.Cache,
 		CheckWorkflowRunStatusArtifactAndLogRetention:              model.CheckWorkflowRunStatusArtifactAndLogRetention,
 		ApprovalForRunningForkPullRequestWorkflowsFromContributors: model.ApprovalForRunningForkPullRequestWorkflowsFromContributors,
-		ForkPullRequestWorkflows:                                   model.ForkPullRequestWorkflows,
 	}
 	if model.ActionsPermissions != nil || model.RequireActionsToBePinnedToAFullLengthCommitSHA != nil ||
 		model.AllowActionsCreatedByGitHub != nil || model.AllowActionsByMarketplaceVerifiedCreators != nil ||

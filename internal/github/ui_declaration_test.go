@@ -143,9 +143,8 @@ func TestDeclarationFromUIActions(t *testing.T) {
 		AllowOrBlockSpecifiedActionsAndReusableWorkflows: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"}),
 		WorkflowPermissions: rulesetPtr(uimodel.ReadAndWritePermissions), AllowGitHubActionsToCreateAndApprovePullRequests: rulesetPtr(false),
 		CheckWorkflowRunStatusArtifactAndLogRetention: rulesetPtr(30), ApprovalForRunningForkPullRequestWorkflowsFromContributors: rulesetPtr(uimodel.RequireApprovalForAllExternalContributors),
-		ForkPullRequestWorkflows: &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: rulesetPtr(true), SendWriteTokensToWorkflowsFromForkPullRequests: rulesetPtr(false)},
 	}
-	want := settings.ActionsPolicyDeclaration{Enabled: rulesetPtr(true), AllowedActions: rulesetPtr("selected"), SHAPinningRequired: rulesetPtr(true), SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: rulesetPtr(false), VerifiedAllowed: rulesetPtr(true), PatternsAllowed: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"})}, DefaultWorkflowPermissions: rulesetPtr("write"), CanApprovePullRequestReviews: rulesetPtr(false), RetentionDays: rulesetPtr(30), ForkApprovalPolicy: rulesetPtr("all_external_contributors"), PrivateFork: settings.PrivateForkDeclaration{Run: rulesetPtr(true), WriteTokens: rulesetPtr(false)}}
+	want := settings.ActionsPolicyDeclaration{Enabled: rulesetPtr(true), AllowedActions: rulesetPtr("selected"), SHAPinningRequired: rulesetPtr(true), SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: rulesetPtr(false), VerifiedAllowed: rulesetPtr(true), PatternsAllowed: rulesetPtr([]string{"example/a@v1", "!example/b@*", "example/a@v1"})}, DefaultWorkflowPermissions: rulesetPtr("write"), CanApprovePullRequestReviews: rulesetPtr(false), RetentionDays: rulesetPtr(30), ForkApprovalPolicy: rulesetPtr("all_external_contributors")}
 	got, err := DeclarationFromUI(uimodel.Repository{Settings: &uimodel.RepositorySettings{Actions: &uimodel.ActionsSettings{General: &ui}}})
 	if err != nil || !reflect.DeepEqual(got.Actions, want) {
 		t.Fatalf("Actions %#v; want %#v; error=%v", got.Actions, want, err)

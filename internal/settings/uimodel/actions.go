@@ -29,13 +29,6 @@ const (
 )
 
 // Owner in a choice represents the repository owner shown in the live UI label.
-type ForkPullRequestWorkflows struct {
-	RunWorkflowsFromForkPullRequests                       *bool
-	SendWriteTokensToWorkflowsFromForkPullRequests         *bool
-	SendSecretsAndVariablesToWorkflowsFromForkPullRequests *bool
-	RequireApprovalForForkPullRequestWorkflows             *bool
-}
-
 type ActionsCache struct {
 	CacheRetention         *int
 	CacheSizeEvictionLimit *int
@@ -50,8 +43,6 @@ const (
 
 type ActionsGeneral struct {
 	Cache                                                      *ActionsCache
-	Access                                                     *ActionsAccessChoice
-	ForkPullRequestWorkflows                                   *ForkPullRequestWorkflows
 	ApprovalForRunningForkPullRequestWorkflowsFromContributors *ForkApprovalChoice
 	CheckWorkflowRunStatusArtifactAndLogRetention              *int
 	ActionsPermissions                                         *ActionsPermissionChoice

@@ -13,11 +13,6 @@ repository:
   settings:
     actions:
       general:
-        fork_pull_request_workflows:
-          run_workflows_from_fork_pull_requests: true
-          send_write_tokens_to_workflows_from_fork_pull_requests: false
-          send_secrets_and_variables_to_workflows_from_fork_pull_requests: true
-          require_approval_for_fork_pull_request_workflows: false
         approval_for_running_fork_pull_request_workflows_from_contributors: require_approval_for_first_time_contributors
         check_workflow_run_status_artifact_and_log_retention: 0
         actions_permissions:
@@ -31,7 +26,6 @@ repository:
           allow_github_actions_to_create_and_approve_pull_requests: false
 `
 	want := &uimodel.ActionsGeneral{
-		ForkPullRequestWorkflows:                                   &uimodel.ForkPullRequestWorkflows{RunWorkflowsFromForkPullRequests: uiConfigPtr(true), SendWriteTokensToWorkflowsFromForkPullRequests: uiConfigPtr(false), SendSecretsAndVariablesToWorkflowsFromForkPullRequests: uiConfigPtr(true), RequireApprovalForForkPullRequestWorkflows: uiConfigPtr(false)},
 		ApprovalForRunningForkPullRequestWorkflowsFromContributors: uiConfigPtr(uimodel.RequireApprovalForFirstTimeContributors), CheckWorkflowRunStatusArtifactAndLogRetention: uiConfigPtr(0),
 		ActionsPermissions: uiConfigPtr(uimodel.AllowOwnerAndSelectNonOwnerActionsAndReusableWorkflows), RequireActionsToBePinnedToAFullLengthCommitSHA: uiConfigPtr(true),
 		AllowActionsCreatedByGitHub: uiConfigPtr(false), AllowActionsByMarketplaceVerifiedCreators: uiConfigPtr(true),

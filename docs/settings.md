@@ -252,18 +252,7 @@ A complete successful public-fork policy GET with an out-of-UI string projects t
 
 Apply checks exact raw values before skipping a write and in fresh readback after PUT. A retained unknown value fails verification with possible write effects; a canonical exact match remains a no-op. Each successful managed apply read can warn: the initial application read, updater preflight and a normalized readback. Pure plan readers emit no stderr; detailed plan/Summary carry the decision warning, while status-only Summary suppresses values.
 
-Use `export --fork-approval` for that public-repository control. Private repository fork controls are under `repository.settings.actions.general.fork_pull_request_workflows`; use `export --private-fork-workflows`:
-
-| Checkbox | Type |
-| --- | --- |
-| `run_workflows_from_fork_pull_requests` | boolean |
-| `send_write_tokens_to_workflows_from_fork_pull_requests` | boolean |
-| `send_secrets_and_variables_to_workflows_from_fork_pull_requests` | boolean |
-| `require_approval_for_fork_pull_request_workflows` | boolean |
-
-Visibility/applicability and complete observations are required; internal repositories are not silently classified. Omitted controls remain unmanaged. A differing private companion needs an explicitly declared run-workflows value; enabling a currently disabled group requires all four values so latent settings are not guessed or replayed. Matching partial intent can remain a no-op. Export omits companions hidden behind disabled run-workflows while retaining their actual raw state internally.
-
-Narrow payloads, readback, redirect rejection and partial-failure reporting remain required. Upper policy may refuse or ignore changes. No retry/rollback or credential expansion occurs. These settings affect execution security; successful configuration does not establish effective enforcement. See [fork workflows](features/fork-workflows.feature.md).
+Use `export --fork-approval` for this public-repository control. Visibility, complete observations, narrow payloads, readback, redirect rejection and partial-failure reporting remain required. Upper policy may refuse or ignore changes; no retry, rollback or credential expansion occurs. See [fork workflows](features/fork-workflows.feature.md).
 
 ## Check, run, status, artifact and log retention
 
@@ -295,17 +284,11 @@ A cache size eviction limit above 10 GB can incur additional charges. It is an e
 
 Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
 
-## Private Actions and reusable workflow access
+## Excluded private Actions controls
 
-Use `repository.settings.actions.general.access` to choose which other repositories may use this private repository's actions and reusable workflows:
+As of 2026-11-09, `repository.settings.actions.general.access` and `.fork_pull_request_workflows` are unsupported, including empty mappings and explicit false. The former shares a private repository's actions/workflows; the latter controls private fork workflow execution, tokens, secrets and approval. Neither satisfies the Free/personal/public adoption policy. See GitHub's [private Actions sharing documentation](https://docs.github.com/en/actions/how-tos/reuse-automations/share-with-your-organization) and [fork workflow settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
 
-| UI choice | Sharing scope |
-| --- | --- |
-| `not_accessible` | Only workflows in this repository |
-| `accessible_from_repositories_owned_by_user` | Other private repositories owned by the same user |
-| `accessible_from_repositories_in_organization` | Other private repositories in the same organization |
-
-`export --actions-access` opts in. Public and internal repositories are unsupported; the user/organization choice must match the private repository's owner type. Unknown or unavailable access values fail rather than becoming `not_accessible`. Omitting access leaves it untouched. Access is independent of the Actions execution policy, workflow token permissions and fork controls, and does not invite collaborators or change repository visibility. Review the exposure of private actions and reusable workflows before enabling sharing. Apply performs fresh applicability/current-state checks, a declared-only PUT when needed, and independent readback; failures preserve uncertainty and earlier progress. See [GitHub's access API](https://docs.github.com/en/rest/actions/permissions#set-the-level-of-access-for-workflows-outside-of-the-repository).
+The old `--actions-access` and `--private-fork-workflows` export options are rejected before repository/API/file work. No alias or migration is provided. Public contributor approval, Actions execution, workflow permissions, retention and cache controls remain separate. Removing these YAML management paths does not change live settings: their dedicated endpoints are not selected by supported public intent, so no private nested state is read-modify-written. Internal raw identities remain available for validation; an attempted private-only export projection fails instead of silently dropping values.
 
 ## Actions execution policy
 
