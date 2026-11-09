@@ -28,9 +28,9 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 		t.Fatal(err)
 	}
 	json.Unmarshal(data, &baseline)
-	// Unsupported intent remains absent from YAML while the exact acquired rule survives updates.
+	// Code Quality is a supported managed rule and must survive other declared rule edits.
 	for _, policy := range []map[string]any{state, baseline} {
-		policy["rules"] = append(policy["rules"].([]any), map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "FUTURE_SEVERITY"}})
+		policy["rules"] = append(policy["rules"].([]any), map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "errors"}})
 	}
 	var mu sync.Mutex
 	writes := 0
@@ -136,6 +136,7 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 				"require_approval_of_the_most_recent_reviewable_push": false,
 				"require_conversation_resolution_before_merging":      true,
 			},
+			"require_code_quality_results":  map[string]any{"severity": "errors"},
 			"require_code_scanning_results": map[string]any{"code_scanning_tools": []any{map[string]any{"tool_name": "CodeQL", "security_alerts": "high_or_higher", "alerts": "errors"}}},
 		},
 	}

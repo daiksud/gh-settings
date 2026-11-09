@@ -34,7 +34,10 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 		copy["enforcement"] = value
 		record = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: enforcement, Fallback: string(settings.DefaultRulesetEnforcementChoice)}
 	}
-	rules := raw["rules"]
+	rules, quality, err := prepareRulesetQualityRules(raw["rules"])
+	if err != nil {
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
+	}
 	rules, approvals, err := prepareRulesetRequiredApprovalsRules(rules)
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
@@ -61,5 +64,5 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
-	return policy, settings.RulesetNormalizations{Enforcement: record, RequiredApprovals: approvals, MergeMethods: methods, ScanningAlerts: scanning, ScanningSecurityAlerts: scanningSecurity, BypassModes: bypass}, nil
+	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality, RequiredApprovals: approvals, MergeMethods: methods, ScanningAlerts: scanning, ScanningSecurityAlerts: scanningSecurity, BypassModes: bypass}, nil
 }

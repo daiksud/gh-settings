@@ -20,9 +20,6 @@ type RulesetDeclaration struct {
 	Conditions   *RulesetConditions `json:"conditions,omitempty" yaml:"conditions,omitempty"`
 	BypassActors *[]BypassActor     `json:"bypass_actors,omitempty" yaml:"bypass_actors,omitempty"`
 	Rules        *[]RulesetRule     `json:"rules,omitempty" yaml:"rules,omitempty"`
-
-	// Acquired metadata only; it is never YAML/JSON intent or an export control.
-	unownedCodeQualitySeverity *string
 }
 type RulesetConditions struct {
 	RefName *RefNameCondition `json:"ref_name,omitempty" yaml:"ref_name,omitempty"`
@@ -73,7 +70,7 @@ func validRulesetText(value string) bool {
 	return true
 }
 func supportedRule(kind string) bool {
-	return slices.Contains([]string{"copilot_code_review", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "required_deployments"}, kind)
+	return slices.Contains([]string{"copilot_code_review", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.Delete != nil {
@@ -168,7 +165,6 @@ func actorKey(a BypassActor) string {
 	return fmt.Sprintf("%s:%d", a.ActorType, *a.ActorID)
 }
 func cloneRuleset(d RulesetDeclaration) RulesetDeclaration {
-	d.unownedCodeQualitySeverity = copyRuleValue(d.unownedCodeQualitySeverity)
 	d.Delete = copyRuleValue(d.Delete)
 	if d.ID != nil {
 		v := *d.ID

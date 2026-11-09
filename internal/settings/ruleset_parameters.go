@@ -190,6 +190,16 @@ func validateRule(r RulesetRule, complete bool) error {
 				return fmt.Errorf("invalid code scanning alert threshold")
 			}
 		}
+	case "code_quality":
+		if p == nil || p.Severity == nil {
+			return fmt.Errorf("code_quality requires supported severity")
+		}
+		if _, valid := RulesetQualitySeverityChoiceForValue(*p.Severity); !valid {
+			return fmt.Errorf("code_quality requires supported severity")
+		}
+		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil || p.hasCoverage() {
+			return fmt.Errorf("parameters do not belong to code_quality")
+		}
 	default:
 		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {
 			return fmt.Errorf("rule %q has no parameters", r.Type)

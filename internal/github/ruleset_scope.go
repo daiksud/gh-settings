@@ -59,12 +59,14 @@ func (client *Client) preflightRulesetUnmanaged(repo repository.Repository, chan
 	if err := requiredRuleJSON(raw, "id", &id); err != nil || id != change.ID() {
 		return fmt.Errorf("Ruleset preflight ID mismatch")
 	}
-	current, _, err := decodeObservedRulesetPolicy(raw)
+	current, records, err := decodeObservedRulesetPolicy(raw)
 	if err != nil {
 		return fmt.Errorf("unsupported or incomplete Ruleset preflight; no update sent: %w", err)
 	}
-	if !reflect.DeepEqual(settings.RulesetUnownedCodeQuality(&current), settings.RulesetUnownedCodeQuality(change.Before())) {
-		return fmt.Errorf("unowned Code Quality rule changed before update; no update sent")
+	// Code Quality is managed again, but whole-object writes must not overwrite
+	// a rule added or changed since acquisition, including normalized raw values.
+	if !reflect.DeepEqual(rulesetQualitySnapshot(&current, records.QualitySeverity), rulesetQualitySnapshot(change.Before(), change.Normalizations().QualitySeverity)) {
+		return fmt.Errorf("Code Quality rule changed before update; no update sent")
 	}
 	actual, present := settings.RulesetPreviewApproval(&current)
 	expected, wasPresent := settings.RulesetPreviewApproval(change.Before())
@@ -74,35 +76,17 @@ func (client *Client) preflightRulesetUnmanaged(repo repository.Repository, chan
 	return nil
 }
 
-// A closed, known API shape can be retained without supporting public intent.
-// Unknown members, duplicate rules and malformed values cannot be replayed safely.
-func splitUnownedCodeQuality(rules []map[string]json.RawMessage) ([]map[string]json.RawMessage, *string, error) {
-	owned := make([]map[string]json.RawMessage, 0, len(rules))
-	var severity *string
-	for _, rule := range rules {
-		var kind string
-		if err := requiredRuleJSON(rule, "type", &kind); err != nil {
-			return nil, nil, err
+func rulesetQualitySnapshot(policy *settings.RulesetDeclaration, record settings.ObservationNormalization) *string {
+	if policy != nil && policy.Rules != nil {
+		for _, rule := range *policy.Rules {
+			if rule.Type == "code_quality" && rule.Parameters != nil && rule.Parameters.Severity != nil {
+				value := *rule.Parameters.Severity
+				if record != (settings.ObservationNormalization{}) {
+					value = record.RawValue
+				}
+				return &value
+			}
 		}
-		if kind != "code_quality" {
-			owned = append(owned, rule)
-			continue
-		}
-		if severity != nil || len(rule) != 2 {
-			return nil, nil, fmt.Errorf("duplicate or unknown unowned Code Quality rule members")
-		}
-		var params map[string]json.RawMessage
-		if err := requiredRuleJSON(rule, "parameters", &params); err != nil {
-			return nil, nil, err
-		}
-		if len(params) != 1 {
-			return nil, nil, fmt.Errorf("unknown or missing unowned Code Quality parameters")
-		}
-		var value string
-		if err := requiredRuleJSON(params, "severity", &value); err != nil {
-			return nil, nil, err
-		}
-		severity = &value
 	}
-	return owned, severity, nil
+	return nil
 }
