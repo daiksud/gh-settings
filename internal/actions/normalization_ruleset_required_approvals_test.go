@@ -34,12 +34,9 @@ func approvalsReportChange(t *testing.T, raw, count int, both bool) settings.Rul
 		(*after.Rules)[0].Parameters.RequiredApprovingReviewCount = &count
 	}
 	if both {
-		disabled, severity := "disabled", "errors"
+		disabled := "disabled"
 		before.Enforcement, after.Enforcement = &disabled, &disabled
 		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-		records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "<QUALITY_RAW>", Fallback: "errors"}
-		*before.Rules = append(*before.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}})
-		*after.Rules = append(*after.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}})
 	}
 	c, err := settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)
 	if err != nil {
@@ -51,7 +48,7 @@ func approvalsReportChange(t *testing.T, raw, count int, both bool) settings.Rul
 func TestRulesetRequiredApprovalsPrivateReportKeepsTypedEvidenceAndPrivacy(t *testing.T) {
 	for _, both := range []bool{false, true} {
 		for _, raw := range []int{-1, 11} {
-			for _, count := range []int{0, 10, -1} {
+			for _, count := range []int{0, 10} {
 				change := approvalsReportChange(t, raw, count, both)
 				path := filepath.Join(t.TempDir(), "plan.json")
 				var stdout, stderr bytes.Buffer
@@ -70,7 +67,7 @@ func TestRulesetRequiredApprovalsPrivateReportKeepsTypedEvidenceAndPrivacy(t *te
 					t.Fatal("typed metadata lost", string(data))
 				}
 				entry := report.Rulesets[0]
-				if (entry.EnforcementNormalization != nil) != both || (entry.QualitySeverityNormalization != nil) != both || both && (*entry.EnforcementNormalization != change.Normalizations().Enforcement || *entry.QualitySeverityNormalization != change.Normalizations().QualitySeverity) {
+				if (entry.EnforcementNormalization != nil) != both || entry.QualitySeverityNormalization != nil || both && *entry.EnforcementNormalization != change.Normalizations().Enforcement {
 					t.Fatal("companions lost or invented", entry)
 				}
 				content, err := actions.RenderSummary(report, summaryMetadata())
@@ -108,9 +105,7 @@ func TestRulesetRequiredApprovalsReportRejectsForgeryAndPresentZero(t *testing.T
 		func(r *actions.PlanReport) {
 			*r.Rulesets[0].EnforcementNormalization = settings.ObservationNormalization{}
 		},
-		func(r *actions.PlanReport) {
-			*r.Rulesets[0].QualitySeverityNormalization = settings.ObservationNormalization{}
-		},
+
 		func(r *actions.PlanReport) { r.Rulesets[0].RequiredApprovalsNormalization.RawValue = 0 },
 		func(r *actions.PlanReport) { r.Rulesets[0].RequiredApprovalsNormalization.Fallback = 1 },
 		func(r *actions.PlanReport) { r.Rulesets[0].RequiredApprovalsNormalization.Path = "other" },
@@ -141,7 +136,7 @@ func TestRulesetRequiredApprovalsReportRejectsForgeryAndPresentZero(t *testing.T
 	} {
 		change := approvalsReportChange(t, 11, 0, true)
 		records := change.Normalizations()
-		report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Rulesets: []actions.RulesetPlanChange{{Operation: "update", Before: change.Display().Before(), After: change.Display().After(), EnforcementNormalization: &records.Enforcement, QualitySeverityNormalization: &records.QualitySeverity, RequiredApprovalsNormalization: &records.RequiredApprovals}}}
+		report := actions.PlanReport{Outcome: "changed", Target: "owner/current", Managed: 1, Changes: []actions.PlanChange{}, Rulesets: []actions.RulesetPlanChange{{Operation: "update", Before: change.Display().Before(), After: change.Display().After(), EnforcementNormalization: &records.Enforcement, RequiredApprovalsNormalization: &records.RequiredApprovals}}}
 		if _, err := actions.RenderSummary(report, summaryMetadata()); err != nil {
 			t.Fatal("valid triple proof rejected", err)
 		}

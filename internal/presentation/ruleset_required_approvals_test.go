@@ -14,7 +14,7 @@ const approvalsDisplayPolicy = `{"id":7,"name":"policy","target":"branch","enfor
 func TestRulesetRequiredApprovalsPresentationUsesTypedNumbersAndRemoval(t *testing.T) {
 	for _, both := range []bool{false, true} {
 		for _, raw := range []int{-1, 11} {
-			for _, count := range []int{0, 1, 10, -1} {
+			for _, count := range []int{0, 1, 10} {
 				var before, after settings.RulesetDeclaration
 				if err := json.Unmarshal([]byte(approvalsDisplayPolicy), &before); err != nil {
 					t.Fatal(err)
@@ -28,12 +28,7 @@ func TestRulesetRequiredApprovalsPresentationUsesTypedNumbersAndRemoval(t *testi
 					disabled := "disabled"
 					before.Enforcement, after.Enforcement = &disabled, &disabled
 					records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-					records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
-					severity := "errors"
-					*before.Rules = append([]settings.RulesetRule{{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}}}, *before.Rules...)
-					*after.Rules = append([]settings.RulesetRule{{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}}}, *after.Rules...)
 					prefix = `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "policy".` + "\n" + `repository.settings.rulesets.enforcement_status (Ruleset 7 "policy"): "disabled" (normalized observation) → "disabled" (write required)` + "\n"
-					suffix = "\n" + `Warning: repository.settings.rulesets.rules.require_code_quality_results.severity: observed "FUTURE_SEVERITY" is outside UI choices; using "errors" (projection only). Ruleset 7 "policy".` + "\n" + `repository.settings.rulesets.rules.require_code_quality_results.severity (Ruleset 7 "policy"): "errors" (normalized observation) → "errors" (write required)`
 				}
 				afterText := strconv.Itoa(count) + " (write required)"
 				if count == -1 {

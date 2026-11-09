@@ -35,9 +35,6 @@ func rulesetApprovalsChange(t *testing.T, count int, both bool) settings.Ruleset
 	if both {
 		before.Enforcement, after.Enforcement = actionsPointer("disabled"), actionsPointer("disabled")
 		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-		records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
-		*before.Rules = append(*before.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: actionsPointer("errors")}})
-		*after.Rules = append(*after.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: actionsPointer("errors")}})
 	}
 	c, err := settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)
 	if err != nil {
@@ -50,7 +47,6 @@ func rulesetApprovalsChange(t *testing.T, count int, both bool) settings.Ruleset
 func approvalsIntendedPayload(count int, both bool) map[string]any {
 	rules := []any{}
 	if both {
-		rules = append(rules, map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "errors"}})
 	}
 	if count != -1 {
 		rules = append(rules, map[string]any{"type": "pull_request", "parameters": map[string]any{"allowed_merge_methods": []any{"squash"}, "dismiss_stale_reviews_on_push": false, "require_code_owner_review": false, "require_extra_approval_for_unattributed_changes": false, "require_last_push_approval": false, "required_approving_review_count": float64(count), "required_review_thread_resolution": false, "required_reviewers": []any{}}})
@@ -70,16 +66,22 @@ func TestNormalizedRulesetRequiredApprovalsHTTPVerificationRequiresRawCountOrAbs
 			ack, read string
 			wantErr   bool
 		}{
-			{"zero", 0, "canonical", "canonical", false}, {"ten", 10, "canonical", "canonical", false}, {"remove", -1, "canonical", "canonical", false},
+			{"zero", 0, "canonical", "canonical", false}, {"ten", 10, "canonical", "canonical", false},
 			{"retained11", 0, "canonical", "11", true}, {"retainednegative", 0, "canonical", "negative", true}, {"differentcount", 10, "canonical", "11", true},
-			{"remove retained11", -1, "canonical", "11", true}, {"remove retainedcanonical", -1, "canonical", "retained", true},
-			{"badack", 0, "11", "canonical", true}, {"removal badack", -1, "retained", "canonical", true},
+
+			{"badack", 0, "11", "canonical", true},
 			{"nullread", 0, "canonical", "null", true}, {"wrongID", 0, "canonical", "wrongID", true}, {"foreign", 0, "canonical", "foreign", true}, {"denied", 0, "canonical", "denied", true},
 		} {
 			t.Run(fmt.Sprintf("%t/%s", both, test.name), func(t *testing.T) {
 				var operations []string
 				client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 					operations = append(operations, req.Method)
+					if len(operations) == 1 && req.Method == "GET" {
+						body := approvalsIntendedPayload(0, both)
+						body["id"], body["source_type"], body["source"] = 7, "Repository", "owner/current"
+						data, _ := json.Marshal(body)
+						return labelsResponse(req, 200, string(data)), nil
+					}
 					if req.URL.Path != "/repos/owner/current/rulesets/7" {
 						t.Fatal(req.URL)
 					}
@@ -131,9 +133,9 @@ func TestNormalizedRulesetRequiredApprovalsHTTPVerificationRequiresRawCountOrAbs
 					return labelsResponse(req, 200, string(encoded)), nil
 				}))
 				id, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, rulesetApprovalsChange(t, test.count, both))
-				want := []string{"PUT", "GET"}
+				want := []string{"GET", "PUT", "GET"}
 				if test.ack != "canonical" {
-					want = []string{"PUT"}
+					want = []string{"GET", "PUT"}
 				}
 				if (err != nil) != test.wantErr || id != 7 || !reflect.DeepEqual(operations, want) {
 					t.Fatal(id, err, operations, want)

@@ -102,8 +102,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				*p.RequiredApprovingReviewCount == 1 && p.RequireCodeOwnerReview != nil &&
 				*p.RequireCodeOwnerReview && p.DismissStaleReviewsOnPush != nil &&
 				*p.DismissStaleReviewsOnPush && p.RequiredReviewThreadResolution != nil &&
-				*p.RequiredReviewThreadResolution && p.RequireExtraApprovalForUnattributedChanges != nil &&
-				*p.RequireExtraApprovalForUnattributedChanges
+				*p.RequiredReviewThreadResolution && p.RequireExtraApprovalForUnattributedChanges == nil
 		case "required_status_checks":
 			p := rule.Parameters
 			if p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil ||
@@ -131,8 +130,8 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 			quality = p != nil && p.Severity != nil && *p.Severity == "errors"
 		}
 	}
-	if !approval || signatureRequired || !linear || !nativeChecks || !scanning || !quality {
-		t.Fatal("the main Ruleset must keep approvals, history, exactly three native checks, CodeQL and code quality, without requiring signatures")
+	if !approval || signatureRequired || !linear || !nativeChecks || !scanning || quality {
+		t.Fatal("the main Ruleset must keep approvals, history, exactly three native checks, CodeQL, without signatures or unadopted Code Quality intent")
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.

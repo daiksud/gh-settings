@@ -12,12 +12,12 @@ import (
 )
 
 func TestMergeMethodsWarningOwnsListsAndPrecedesWholeWrite(t *testing.T) {
-	for _, methods := range [][]string{{"merge", "rebase", "squash"}, {"squash"}, nil} {
+	for _, methods := range [][]string{{"merge", "rebase", "squash"}, {"squash"}} {
 		change := mergeMethodsChange(t, methods)
 		original := change.Normalizations()
 		calls := 0
 		client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
-			if calls != 1 {
+			if req.Method == "PUT" && calls != 1 {
 				t.Fatal("missing prewrite warning", calls)
 			}
 			if req.Method == "PUT" {

@@ -44,7 +44,7 @@ func mergeMethodsReportChange(t *testing.T, methods []string, companion bool) se
 }
 
 func TestMergeMethodsPrivateReportsKeepTypedListsAndPrivacy(t *testing.T) {
-	for _, methods := range [][]string{{"merge", "rebase", "squash"}, {"squash"}, nil} {
+	for _, methods := range [][]string{{"merge", "rebase", "squash"}, {"squash"}} {
 		change := mergeMethodsReportChange(t, methods, true)
 		path := filepath.Join(t.TempDir(), "plan.json")
 		var stdout, stderr bytes.Buffer

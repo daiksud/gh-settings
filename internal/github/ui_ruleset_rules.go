@@ -53,17 +53,6 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		}
 		result = append(result, settings.RulesetRule{Type: "code_scanning", Parameters: parameters})
 	}
-	if ui.RequireCodeQualityResults != nil {
-		parameters, err := declareUIRulesetQuality(*ui.RequireCodeQualityResults)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, settings.RulesetRule{Type: "code_quality", Parameters: parameters})
-	}
-	if ui.RestrictCodeCoverage != nil {
-		p := ui.RestrictCodeCoverage
-		result = append(result, settings.RulesetRule{Type: "code_coverage", Parameters: &settings.RuleParameters{MinimumCoverage: copyUIRulesetValue(p.MinimumLineCoveragePercentage), MaxCoverageDrop: copyUIRulesetValue(p.MaximumLineCoverageDrop)}})
-	}
 	return &result, nil
 }
 
@@ -109,15 +98,6 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 			if err != nil {
 				return uimodel.RulesetRules{}, err
 			}
-		case "code_quality":
-			var err error
-			result.RequireCodeQualityResults, err = observeUIRulesetQuality(rule.Parameters)
-			if err != nil {
-				return uimodel.RulesetRules{}, err
-			}
-		case "code_coverage":
-			p := rule.Parameters
-			result.RestrictCodeCoverage = &uimodel.CodeCoverageRule{MinimumLineCoveragePercentage: copyUIRulesetValue(p.MinimumCoverage), MaximumLineCoverageDrop: copyUIRulesetValue(p.MaxCoverageDrop)}
 		default:
 			return uimodel.RulesetRules{}, fmt.Errorf("ruleset rule has no prepared UI mapping: %s", rule.Type)
 		}

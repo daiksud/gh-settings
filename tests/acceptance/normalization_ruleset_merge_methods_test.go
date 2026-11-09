@@ -215,14 +215,14 @@ func TestRulesetMergeMethodsNormalizationAcrossExecutableCommands(t *testing.T) 
 		t.Fatal("effective UI export", string(data))
 	}
 	report, summary := filepath.Join(fixture.root, "methods.json"), filepath.Join(fixture.root, "methods.md")
-	for _, choice := range []string{"fallback", "subset", "removed"} {
+	for _, choice := range []string{"fallback", "subset"} {
 		input := intent(choice)
 		after := `["merge","squash","rebase"] (write required)`
 		if choice == "subset" {
 			after = `["squash"] (write required)`
 		}
 		if choice == "removed" {
-			after = "inactive (rule removed; write required)"
+			after = `["squash"] (write required)`
 		}
 		output, diagnostic, status = run("plan")
 		decision := `repository.settings.rulesets.rules.require_a_pull_request_before_merging.allowed_merge_methods (Ruleset 7 "basic"): ["merge","squash","rebase"] (normalized observation) → ` + after
@@ -258,7 +258,7 @@ func TestRulesetMergeMethodsNormalizationAcrossExecutableCommands(t *testing.T) 
 	output, diagnostic, status = run("action", "summary", report, summary)
 	data, err = os.ReadFile(summary)
 	visible := html.UnescapeString(string(data))
-	if err != nil || status != 0 || output != "" || diagnostic != "" || strings.Count(visible, warning) != 1 || !strings.Contains(visible, "inactive (rule removed; write required)") {
+	if err != nil || status != 0 || output != "" || diagnostic != "" || strings.Count(visible, warning) != 1 || !strings.Contains(visible, `["squash"] (write required)`) {
 		t.Fatal("detailed Summary", visible, diagnostic, err)
 	}
 	private := filepath.Join(fixture.root, "private.md")
@@ -280,12 +280,12 @@ func TestRulesetMergeMethodsNormalizationAcrossExecutableCommands(t *testing.T) 
 	}
 	checkSource(input)
 	mu.Lock()
-	if reads-beforeReads != 2 || writes != 1 {
+	if reads-beforeReads != 3 || writes != 1 {
 		t.Error("fresh GET or single PUT lost", reads-beforeReads, writes)
 	}
 	ignored = false
 	mu.Unlock()
-	for _, choice := range []string{"fallback", "subset", "removed"} {
+	for _, choice := range []string{"fallback", "subset"} {
 		mu.Lock()
 		reset([]any{"squash", "FUTURE_METHOD"})
 		mu.Unlock()
@@ -320,7 +320,7 @@ func TestRulesetMergeMethodsNormalizationAcrossExecutableCommands(t *testing.T) 
 	mu.Unlock()
 	input = intent("removed")
 	output, diagnostic, status = run("apply")
-	if status != 1 || output != "" || !strings.Contains(diagnostic, "writes may already have applied") {
+	if status != 1 || output != "" || !strings.Contains(diagnostic, "cannot remove PR rule") {
 		t.Fatal("retained canonical rule confirmed removal", status, output, diagnostic)
 	}
 	checkSource(input)

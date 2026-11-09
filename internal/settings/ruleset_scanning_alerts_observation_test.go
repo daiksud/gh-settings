@@ -7,9 +7,9 @@ import (
 )
 
 func normalizedScanningAlertsState(companions bool) RulesetState {
-	state := normalizedTeamApprovalsState(companions)
+	state := normalizedMergeMethodsState([]string{"METHOD_FUTURE"}, companions)
 	if !companions {
-		state.TeamApprovalsNormalizations = nil
+		state.MergeMethodsNormalization = RulesetMergeMethodsNormalization{}
 	}
 	state.Policy.Name = "scanning"
 	*state.Policy.Rules = append(*state.Policy.Rules, RulesetRule{Type: "code_scanning", Parameters: &RuleParameters{CodeScanningTools: &[]CodeScanningTool{
@@ -24,7 +24,7 @@ func normalizedScanningAlertsState(companions bool) RulesetState {
 	return state
 }
 func scanningAlertsRecords(state RulesetState) RulesetNormalizations {
-	records := teamApprovalsRecords(state)
+	records := RulesetNormalizations{Enforcement: state.EnforcementNormalization, RequiredApprovals: state.RequiredApprovalsNormalization, MergeMethods: state.MergeMethodsNormalization, BypassModes: state.BypassModeNormalizations}
 	records.ScanningAlerts = state.ScanningAlertsNormalizations
 	return records
 }

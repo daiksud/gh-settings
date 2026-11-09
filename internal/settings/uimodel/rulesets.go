@@ -29,10 +29,8 @@ type RulesetRules struct {
 	RequireAPullRequestBeforeMerging                                                                   *PullRequestRule
 	RequireStatusChecksToPass                                                                          *StatusChecksRule
 	RequireCodeScanningResults                                                                         *CodeScanningRule
-	RequireCodeQualityResults                                                                          *CodeQualityRule
 	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
 	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
-	RestrictCodeCoverage                                                                               *CodeCoverageRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -59,13 +57,6 @@ type CodeScanningRule struct{ CodeScanningTools *[]CodeScanningTool }
 type CopilotCodeReviewRule struct {
 	ReviewNewPushes         *bool
 	ReviewDraftPullRequests *bool
-}
-
-type CodeQualityRule struct{ Severity *CodeQualitySeverity }
-
-type CodeCoverageRule struct {
-	MinimumLineCoveragePercentage *float64
-	MaximumLineCoverageDrop       *float64
 }
 
 type StatusChecksRule struct {
@@ -96,23 +87,13 @@ const (
 func DefaultRulesetMergeMethods() []MergeMethod { return []MergeMethod{Merge, Squash, Rebase} }
 
 type PullRequestRule struct {
-	RequiredApprovals                                             *int
-	AllowedMergeMethods                                           *[]MergeMethod
-	DismissStalePullRequestApprovalsWhenNewCommitsArePushed       *bool
-	RequireReviewFromCodeOwners                                   *bool
-	RequireApprovalOfTheMostRecentReviewablePush                  *bool
-	RequireConversationResolutionBeforeMerging                    *bool
-	RequireAnAdditionalApprovalForUnattributedCopilotPullRequests *bool
-	RequireReviewFromSpecificTeams                                *[]TeamReview
+	RequiredApprovals                                       *int
+	AllowedMergeMethods                                     *[]MergeMethod
+	DismissStalePullRequestApprovalsWhenNewCommitsArePushed *bool
+	RequireReviewFromCodeOwners                             *bool
+	RequireApprovalOfTheMostRecentReviewablePush            *bool
+	RequireConversationResolutionBeforeMerging              *bool
 }
-
-type TeamReview struct {
-	Reviewer     int64
-	Approvals    *int
-	FilePatterns *[]string
-}
-
-const DefaultTeamReviewApprovals = 0
 
 type BypassRole string
 type BypassMode string

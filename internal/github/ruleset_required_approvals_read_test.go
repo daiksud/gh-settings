@@ -55,7 +55,7 @@ func TestUnifiedRulesetObservationDecoderOwnsTypedApprovalProvenance(t *testing.
 			}
 			if both {
 				want.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-				want.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
+
 			}
 			if err != nil || !reflect.DeepEqual(records, want) || !reflect.DeepEqual(raw, original) || policy.Rules == nil {
 				t.Fatal("aggregate or immutable source lost", policy, records, want, err)
@@ -142,9 +142,6 @@ func TestRulesetRequiredApprovalsHTTPReaderOwnsThreeRecordsAndAbsenceSilently(t 
 				if both {
 					if enf, err := values[i].RawEnforcement(); err != nil || enf != "FUTURE_ENFORCEMENT" {
 						t.Fatal(enf, err)
-					}
-					if q, err := values[i].RawQualitySeverity(); err != nil || q == nil || *q != "FUTURE_SEVERITY" {
-						t.Fatal(q, err)
 					}
 				}
 			}

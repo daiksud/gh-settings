@@ -81,6 +81,7 @@ func TestRulesetCodeAnalysisExportRetainsCompleteProtection(t *testing.T) {
 	json.Unmarshal(encoded, &actual)
 	delete(expected, "source_type")
 	delete(expected, "source")
+	delete(analysisParams(t, expected, "pull_request"), "require_extra_approval_for_unattributed_changes")
 	for _, value := range []map[string]any{expected, actual} {
 		slices.SortFunc(value["rules"].([]any), func(a, b any) int {
 			return strings.Compare(a.(map[string]any)["type"].(string), b.(map[string]any)["type"].(string))
@@ -92,11 +93,11 @@ func TestRulesetCodeAnalysisExportRetainsCompleteProtection(t *testing.T) {
 }
 
 func TestRulesetCodeAnalysisReadsRejectUnknownIncompleteAndMixed(t *testing.T) {
-	for _, mode := range []string{"missing-tools", "null-tools", "missing-threshold", "null-threshold", "wrong-threshold", "unknown-tool-field", "case-alias", "null-severity", "missing-severity", "unknown-severity", "wrong-type", "mixed"} {
+	for _, mode := range []string{"missing-tools", "null-tools", "missing-threshold", "null-threshold", "wrong-threshold", "unknown-tool-field", "case-alias", "mixed"} {
 		t.Run(mode, func(t *testing.T) {
 			var raw map[string]any
 			json.Unmarshal(analysisFixture(t), &raw)
-			scan, quality := analysisParams(t, raw, "code_scanning"), analysisParams(t, raw, "code_quality")
+			scan := analysisParams(t, raw, "code_scanning")
 			tool := scan["code_scanning_tools"].([]any)[0].(map[string]any)
 			switch mode {
 			case "missing-tools":
@@ -114,14 +115,6 @@ func TestRulesetCodeAnalysisReadsRejectUnknownIncompleteAndMixed(t *testing.T) {
 			case "case-alias":
 				tool["Tool"] = tool["tool"]
 				delete(tool, "tool")
-			case "null-severity":
-				quality["severity"] = nil
-			case "missing-severity":
-				delete(quality, "severity")
-			case "unknown-severity":
-				quality["severity"] = "none"
-			case "wrong-type":
-				quality["severity"] = true
 			case "mixed":
 				scan["severity"] = "errors"
 			}
@@ -142,7 +135,7 @@ func TestRulesetCodeAnalysisMutationVerifiesResponseAndIndependentReadback(t *te
 	// including removal of the last analysis rule.
 	rules := []settings.RulesetRule{}
 	for _, rule := range *policy.Rules {
-		if rule.Type == "code_scanning" || rule.Type == "code_quality" {
+		if rule.Type == "code_scanning" {
 			rules = append(rules, rule)
 		}
 	}
@@ -160,13 +153,14 @@ func TestRulesetCodeAnalysisMutationVerifiesResponseAndIndependentReadback(t *te
 					before, id, kind = &policy, 26024001, "update"
 				}
 				if operation == "update" {
-					// An independent quality threshold change leaves scanning intact.
+					// Change an owned scanning threshold.
 					rules := append([]settings.RulesetRule{}, *after.Rules...)
 					for i := range rules {
-						if rules[i].Type == "code_quality" {
+						if rules[i].Type == "code_scanning" {
 							p := *rules[i].Parameters
-							severity := "warnings"
-							p.Severity = &severity
+							tools := append([]settings.CodeScanningTool{}, (*p.CodeScanningTools)...)
+							tools[0].SecurityAlertsThreshold = "critical"
+							p.CodeScanningTools = &tools
 							rules[i].Parameters = &p
 						}
 					}
@@ -191,7 +185,7 @@ func TestRulesetCodeAnalysisMutationVerifiesResponseAndIndependentReadback(t *te
 						if mode == "readback-drift" {
 							body, _ = json.Marshal(policy)
 							if operation == "create" {
-								body = []byte(strings.Replace(string(body), `"severity":"errors"`, `"severity":"all"`, 1))
+								body = []byte(strings.Replace(string(body), `"security_alerts_threshold":"high_or_higher"`, `"security_alerts_threshold":"all"`, 1))
 							}
 						}
 						return rulesetMutationResponse(t, r, 200, string(body), 26024001), nil

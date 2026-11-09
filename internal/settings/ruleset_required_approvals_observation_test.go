@@ -13,8 +13,6 @@ func normalizedRequiredApprovalsState(id int64, name string, raw int, both bool)
 	if both {
 		state.Policy.Enforcement = rsText("disabled")
 		state.EnforcementNormalization = ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-		*state.Policy.Rules = append(*state.Policy.Rules, RulesetRule{Type: "code_quality", Parameters: &RuleParameters{Severity: rsText("errors")}})
-		state.QualitySeverityNormalization = ObservationNormalization{Path: RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
 	}
 	return state
 }
@@ -56,9 +54,6 @@ func TestRulesetRequiredApprovalsObservationOwnsTypedRawAndCompanions(t *testing
 				if both {
 					if enf, err := values[i].RawEnforcement(); err != nil || enf != "FUTURE_ENFORCEMENT" {
 						t.Fatal(enf, err)
-					}
-					if q, err := values[i].RawQualitySeverity(); err != nil || q == nil || *q != "FUTURE_SEVERITY" {
-						t.Fatal(q, err)
 					}
 				} else if values[i].EnforcementNormalization != (ObservationNormalization{}) || values[i].QualitySeverityNormalization != (ObservationNormalization{}) {
 					t.Fatal("invented companion")
@@ -114,9 +109,6 @@ func TestRulesetRequiredApprovalsObservationRejectsIncompleteAndForgedRecords(t 
 		}
 		if got, err := state.RawEnforcement(); err == nil || got != "" {
 			t.Fatal("cross-record enforcement escaped", got, err)
-		}
-		if got, err := state.RawQualitySeverity(); err == nil || got != nil {
-			t.Fatal("cross-record Quality escaped", got, err)
 		}
 		observed, err := NewRulesetObservation([]RulesetState{{ID: 9, Policy: basicPolicy("valid")}, state}, 0)
 		if err == nil || !reflect.DeepEqual(observed, RulesetObservation{}) {

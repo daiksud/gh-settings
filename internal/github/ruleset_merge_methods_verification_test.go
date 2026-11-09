@@ -58,12 +58,12 @@ func TestNormalizedMergeMethodsRequireStrictAcknowledgmentAndIndependentRead(t *
 	}{
 		{"fallback", []string{"merge", "rebase", "squash"}, "canonical", "canonical", false},
 		{"subset", []string{"squash"}, "canonical", "canonical", false},
-		{"remove", nil, "canonical", "canonical", false},
+
 		{"retained unknown", []string{"merge", "rebase", "squash"}, "canonical", "unknown", true},
 		{"different subset", []string{"squash"}, "canonical", "different", true},
-		{"removed rule retained", nil, "canonical", "retained", true},
+
 		{"unknown acknowledgment", []string{"merge", "rebase", "squash"}, "unknown", "canonical", true},
-		{"removal acknowledgment retains rule", nil, "retained", "canonical", true},
+
 		{"null member", []string{"squash"}, "canonical", "null member", true},
 		{"empty list", []string{"squash"}, "canonical", "empty", true},
 		{"missing list", []string{"squash"}, "canonical", "missing", true},
@@ -74,6 +74,12 @@ func TestNormalizedMergeMethodsRequireStrictAcknowledgmentAndIndependentRead(t *
 			var operations []string
 			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				operations = append(operations, req.Method)
+				if len(operations) == 1 && req.Method == "GET" {
+					body := mergeMethodsIntendedPayload([]string{"merge", "rebase", "squash"})
+					body["id"], body["source_type"], body["source"] = 7, "Repository", "owner/current"
+					encoded, _ := json.Marshal(body)
+					return labelsResponse(req, 200, string(encoded)), nil
+				}
 				if req.URL.Path != "/repos/owner/current/rulesets/7" {
 					t.Fatal(req.URL)
 				}
@@ -122,9 +128,9 @@ func TestNormalizedMergeMethodsRequireStrictAcknowledgmentAndIndependentRead(t *
 				return labelsResponse(req, 200, string(encoded)), nil
 			}))
 			id, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, mergeMethodsChange(t, test.methods))
-			want := []string{"PUT", "GET"}
+			want := []string{"GET", "PUT", "GET"}
 			if test.ack != "canonical" {
-				want = []string{"PUT"}
+				want = []string{"GET", "PUT"}
 			}
 			if (err != nil) != test.wantErr || id != 7 || !reflect.DeepEqual(operations, want) {
 				t.Fatal(id, err, operations, want)

@@ -78,24 +78,12 @@ func TestUIRulesetsRawReadComposition(t *testing.T) {
 		t.Fatal(got, err)
 	}
 	ui := got.Rulesets[0]
-	if ui.ID == nil || *ui.ID != 7 || ui.RulesetName != "Policy" || *ui.BypassList == nil || *(*ui.BypassList)[0].Role != "maintain" || *ui.Rules.RequireCodeQualityResults.Severity != "warnings_and_higher" || (*ui.Rules.RequireCodeScanningResults.CodeScanningTools)[0].ToolName != "CodeQL" || *ui.Rules.RequireAPullRequestBeforeMerging.RequiredApprovals != 1 || *(*ui.Rules.RequireStatusChecksToPass.RequiredStatusChecks)[0].Source.App != 17 {
+	if ui.ID == nil || *ui.ID != 7 || ui.RulesetName != "Policy" || *ui.BypassList == nil || *(*ui.BypassList)[0].Role != "maintain" || (*ui.Rules.RequireCodeScanningResults.CodeScanningTools)[0].ToolName != "CodeQL" || *ui.Rules.RequireAPullRequestBeforeMerging.RequiredApprovals != 1 || *(*ui.Rules.RequireStatusChecksToPass.RequiredStatusChecks)[0].Source.App != 17 {
 		t.Fatalf("mapped policy=%+v", ui)
 	}
 }
 
-const uiRulesetExpectedPayload = `{
- "name":"Policy","target":"branch","enforcement":"active",
- "conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},
- "bypass_actors":[{"actor_type":"RepositoryRole","actor_id":2,"bypass_mode":"always"}],
- "rules":[
-  {"type":"code_quality","parameters":{"severity":"warnings"}},
-  {"type":"code_scanning","parameters":{"code_scanning_tools":[{"tool":"CodeQL","alerts_threshold":"errors","security_alerts_threshold":"high_or_higher"}]}},
-  {"type":"deletion"}, {"type":"non_fast_forward"},
-  {"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[{"reviewer":{"type":"Team","id":12},"minimum_approvals":2,"file_patterns":["*.go","!generated/*"]}]}},
-  {"type":"required_linear_history"}, {"type":"required_signatures"},
-  {"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"ci","integration_id":17}],"strict_required_status_checks_policy":true,"do_not_enforce_on_create":false}}
- ]
-}`
+const uiRulesetExpectedPayload = `{"name":"Policy","target":"branch","enforcement":"active","conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"bypass_actors":[{"actor_type":"RepositoryRole","actor_id":2,"bypass_mode":"always"}],"rules":[{"type":"code_scanning","parameters":{"code_scanning_tools":[{"tool":"CodeQL","alerts_threshold":"errors","security_alerts_threshold":"high_or_higher"}]}},{"type":"deletion"},{"type":"non_fast_forward"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[]}},{"type":"required_linear_history"},{"type":"required_signatures"},{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"ci","integration_id":17}],"strict_required_status_checks_policy":true,"do_not_enforce_on_create":false}}]}`
 
 func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 	for _, update := range []bool{false, true} {
@@ -103,9 +91,9 @@ func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 		ui.TargetBranches.IncludeDefaultBranch = rulesetPtr(true)
 		ui.BypassList = rulesetPtr([]uimodel.BypassEntry{{Role: rulesetPtr(uimodel.BypassRole("maintain")), BypassMode: rulesetPtr(uimodel.BypassMode("always"))}})
 		ui.Rules = uimodel.RulesetRules{RestrictDeletions: rulesetPtr(true), BlockForcePushes: rulesetPtr(true), RequireLinearHistory: rulesetPtr(true), RequireSignedCommits: rulesetPtr(true),
-			RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{RequiredApprovals: rulesetPtr(1), AllowedMergeMethods: rulesetPtr([]uimodel.MergeMethod{"squash"}), RequireReviewFromCodeOwners: rulesetPtr(true), RequireConversationResolutionBeforeMerging: rulesetPtr(true), RequireReviewFromSpecificTeams: rulesetPtr([]uimodel.TeamReview{{Reviewer: 12, Approvals: rulesetPtr(2), FilePatterns: rulesetPtr([]string{"*.go", "!generated/*"})}})},
+			RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{RequiredApprovals: rulesetPtr(1), AllowedMergeMethods: rulesetPtr([]uimodel.MergeMethod{"squash"}), RequireReviewFromCodeOwners: rulesetPtr(true), RequireConversationResolutionBeforeMerging: rulesetPtr(true)},
 			RequireStatusChecksToPass:        &uimodel.StatusChecksRule{RequiredStatusChecks: rulesetPtr([]uimodel.StatusCheck{{Check: "ci", Source: uimodel.CheckSource{App: rulesetPtr(int64(17))}}}), RequireBranchesToBeUpToDateBeforeMerging: rulesetPtr(true)},
-			RequireCodeScanningResults:       &uimodel.CodeScanningRule{CodeScanningTools: rulesetPtr([]uimodel.CodeScanningTool{{ToolName: "CodeQL", Alerts: "errors", SecurityAlerts: "high_or_higher"}})}, RequireCodeQualityResults: &uimodel.CodeQualityRule{Severity: rulesetPtr(uimodel.CodeQualitySeverity("warnings_and_higher"))},
+			RequireCodeScanningResults:       &uimodel.CodeScanningRule{CodeScanningTools: rulesetPtr([]uimodel.CodeScanningTool{{ToolName: "CodeQL", Alerts: "errors", SecurityAlerts: "high_or_higher"}})},
 		}
 		states := []settings.RulesetState{}
 		id, method, path := int64(19), "POST", "/repos/owner/current/rulesets"
@@ -136,6 +124,7 @@ func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 		if err := json.Unmarshal([]byte(uiRulesetExpectedPayload), &response); err != nil {
 			t.Fatal(err)
 		}
+		delete(analysisParams(t, want, "pull_request"), "require_extra_approval_for_unattributed_changes")
 		response["id"] = id
 		response["source_type"] = "Repository"
 		response["source"] = "owner/current"
@@ -144,7 +133,16 @@ func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 		calls := 0
 		client := topicsClient(t, func(req *http.Request) (*http.Response, error) {
 			calls++
-			if calls == 1 {
+			if req.Method == "GET" && calls == 1 && method == "PUT" {
+				raw, _ := json.Marshal(changes[0].Before())
+				return rulesetMutationResponse(t, req, 200, string(raw), id), nil
+			}
+			writeCall := 1
+			if method == "PUT" {
+				writeCall = 2
+			}
+
+			if calls == writeCall {
 				var got map[string]any
 				if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
 					t.Fatal(err)
@@ -152,13 +150,13 @@ func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 				if req.Method != method || req.URL.Path != path || !reflect.DeepEqual(got, want) {
 					t.Fatalf("request=%s %s payload=%v want %v", req.Method, req.URL, got, want)
 				}
-			} else if calls != 2 || req.Method != "GET" || req.URL.Path != fmt.Sprintf("/repos/owner/current/rulesets/%d", id) || req.URL.Query().Get("includes_parents") != "false" {
+			} else if calls != writeCall+1 || req.Method != "GET" || req.URL.Path != fmt.Sprintf("/repos/owner/current/rulesets/%d", id) || req.URL.Query().Get("includes_parents") != "false" {
 				t.Fatal("unexpected readback", req.Method, req.URL)
 			}
 			return labelsResponse(req, 200, string(body)), nil
 		})
 		gotID, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0])
-		if err != nil || gotID != id || calls != 2 {
+		if err != nil || gotID != id || calls != 2+map[bool]int{true: 1}[method == "PUT"] {
 			t.Fatal(gotID, calls, err)
 		}
 	}

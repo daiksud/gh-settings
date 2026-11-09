@@ -33,6 +33,12 @@ func TestRulesetMergeMethodsReconciliationRetainsSelectedEvidence(t *testing.T) 
 					after.Rules = nil
 				}
 				changes, err := ReconcileRulesets(observed, rsDesired(t, after))
+				if desired == "rule removed" || desired == "rules omitted" {
+					if err == nil {
+						t.Fatal("removed unowned container")
+					}
+					return
+				}
 				if err != nil || len(changes) != 1 || changes[0].ID() != 7 || changes[0].Operation() != "update" {
 					t.Fatal("selected normalized update lost", changes, err)
 				}

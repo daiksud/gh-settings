@@ -94,7 +94,7 @@ func TestMergeMethodsExportKeepsCompleteOwnedEvidenceAndScope(t *testing.T) {
 			var want []string
 			switch mode {
 			case "selected", "UI failure":
-				want = []string{"9:a:approvals", "9:a:methods", "7:z:" + settings.RulesetEnforcementPath, "7:z:approvals", "7:z:methods", "7:z:" + settings.RulesetQualitySeverityPath}
+				want = []string{"9:a:approvals", "9:a:methods", "7:z:" + settings.RulesetEnforcementPath, "7:z:approvals", "7:z:methods"}
 			case "only methods sink":
 				want = []string{"9:a:methods", "7:z:methods"}
 			}
