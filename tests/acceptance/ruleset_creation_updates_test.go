@@ -134,7 +134,7 @@ func TestRulesetCreationUpdatesExecutableLifecycle(t *testing.T) {
 			mu.Unlock()
 			run("apply", true)
 			mu.Lock()
-			if reads-before != 2 || writes != 1 {
+			if reads-before != 3 || writes != 1 {
 				t.Error("preflight plus independent GET required", reads-before, writes)
 			}
 			mu.Unlock()

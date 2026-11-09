@@ -32,7 +32,7 @@ func TestRulesetEnforcementWarningsRequireSelectedCompleteOwnedEvidence(t *testi
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var got []diagnostic
-			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			client := rulesetMutationClient(t, rulesetEnforcementChange(t, "active", true), transportFunc(func(req *http.Request) (*http.Response, error) {
 				if req.Method == "PUT" {
 					if test.sink && len(got) != 1 {
 						t.Fatal("selected prewrite evidence not warned", got)
@@ -69,7 +69,7 @@ func TestRulesetEnforcementWarningsRequireSelectedCompleteOwnedEvidence(t *testi
 			}
 		})
 	}
-	client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+	client := rulesetMutationClient(t, rulesetEnforcementChange(t, "active", true), transportFunc(func(req *http.Request) (*http.Response, error) {
 		return labelsResponse(req, 200, basicRulesetJSON), nil
 	}))
 	client.RulesetNormalizationWarning = func(int64, string, settings.ObservationNormalization) { t.Fatal("canonical update warned") }

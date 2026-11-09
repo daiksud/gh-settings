@@ -181,6 +181,10 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 	if err := requiredRuleJSON(policy, "rules", &rules); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
+	rules, quality, err := splitUnownedCodeQuality(rules)
+	if err != nil {
+		return settings.RulesetDeclaration{}, err
+	}
 	for _, r := range rules {
 		if v, ok := r["parameters"]; ok && bytes.Equal(bytes.TrimSpace(v), []byte("null")) {
 			return settings.RulesetDeclaration{}, fmt.Errorf("null rule parameters")
@@ -249,6 +253,9 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 	if err := settings.ValidateRuleset(result, true); err != nil {
 		return settings.RulesetDeclaration{}, err
 	}
+	if quality != nil {
+		return settings.WithObservedRulesetCodeQuality(result, *quality)
+	}
 	return result, nil
 }
 func (client *Client) ApplyRuleset(repo repository.Repository, change settings.RulesetChange) (int64, error) {
@@ -258,9 +265,9 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if change.Operation() != "create" && change.Operation() != "update" {
 		return 0, fmt.Errorf("invalid Ruleset operation")
 	}
-	_, beforePR := settings.RulesetPreviewApproval(change.Before())
-	_, afterPR := settings.RulesetPreviewApproval(change.After())
-	if change.Operation() == "update" && (beforePR || afterPR) {
+	// Always recheck: an unowned rule may have appeared since acquisition,
+	// including on a Ruleset with no PR rule or previous unowned companions.
+	if change.Operation() == "update" {
 		if err := client.preflightRulesetUnmanaged(repo, change); err != nil {
 			return 0, err
 		}
@@ -299,6 +306,20 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	payload["bypass_actors"], err = json.Marshal(actors)
 	if err != nil {
 		return 0, err
+	}
+	if quality := settings.RulesetUnownedCodeQuality(after); quality != nil {
+		var rules []json.RawMessage
+		if err := json.Unmarshal(payload["rules"], &rules); err != nil {
+			return 0, err
+		}
+		rule, err := json.Marshal(map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": *quality}})
+		if err != nil {
+			return 0, err
+		}
+		payload["rules"], err = json.Marshal(append(rules, rule))
+		if err != nil {
+			return 0, err
+		}
 	}
 	data, err = json.Marshal(payload)
 	if err != nil {
@@ -348,7 +369,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 			return fail(err)
 		}
 	}
-	needsReadback := !change.Normalizations().IsZero()
+	needsReadback := !change.Normalizations().IsZero() || settings.RulesetUnownedCodeQuality(after) != nil
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
@@ -405,6 +426,9 @@ func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[st
 		return err
 	}
 	actual, requested := values[0].Policy, declaration.Values()[0]
+	if !reflect.DeepEqual(settings.RulesetUnownedCodeQuality(&actual), settings.RulesetUnownedCodeQuality(&requested)) {
+		return fmt.Errorf("GitHub response did not retain the unowned Code Quality rule")
+	}
 	if value, present := settings.RulesetPreviewApproval(&requested); present && value == nil {
 		if err := settings.PreserveRulesetUnmanagedParameters(&actual, &requested); err != nil {
 			return err

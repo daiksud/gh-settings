@@ -286,7 +286,7 @@ func TestRulesetScanningSecurityAlertsNormalizationAcrossExecutableCommands(t *t
 	}
 	checkSource(input)
 	mu.Lock()
-	if reads-beforeReads != 2 || writes != 1 {
+	if reads-beforeReads != 3 || writes != 1 {
 		t.Error("single PUT/fresh GET lost", reads, writes)
 	}
 	ignored = false

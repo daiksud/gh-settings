@@ -172,7 +172,7 @@ func TestRulesetCodeAnalysisMutationVerifiesResponseAndIndependentReadback(t *te
 				}
 				after = *change.After()
 				calls := 0
-				client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+				client := rulesetMutationClient(t, change, transportFunc(func(r *http.Request) (*http.Response, error) {
 					calls++
 					if r.Method == "GET" {
 						if r.URL.Path != "/repos/owner/current/rulesets/26024001" || r.URL.Query().Get("includes_parents") != "false" {

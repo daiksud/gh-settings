@@ -225,7 +225,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 	afterReads := reads7
 	ignored = false
 	mu.Unlock()
-	if afterReads-beforeReads != 2 {
+	if afterReads-beforeReads != 3 {
 		t.Fatal("did not independently read back basic Ruleset", beforeReads, afterReads)
 	}
 	output, diagnostic, status = run("apply")

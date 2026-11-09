@@ -137,7 +137,7 @@ func TestCopilotRulesetStrictIndependentReadback(t *testing.T) {
 					t.Fatal(err)
 				}
 				calls := []string{}
-				client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+				client := rulesetMutationClient(t, change, transportFunc(func(req *http.Request) (*http.Response, error) {
 					calls = append(calls, req.Method)
 					if req.URL.Path != "/repos/owner/current/rulesets/7" {
 						t.Fatal(req.URL)

@@ -21,7 +21,7 @@ func rejectUnsupportedRulesetScope(raw map[string]json.RawMessage) error {
 		if err := requiredRuleJSON(rule, "type", &kind); err != nil {
 			return err
 		}
-		if kind == "code_quality" || kind == "code_coverage" {
+		if kind == "code_coverage" {
 			return fmt.Errorf("unsupported Ruleset rule %q outside Free/public non-Preview scope", kind)
 		}
 		if kind != "pull_request" {
@@ -63,10 +63,46 @@ func (client *Client) preflightRulesetUnmanaged(repo repository.Repository, chan
 	if err != nil {
 		return fmt.Errorf("unsupported or incomplete Ruleset preflight; no update sent: %w", err)
 	}
+	if !reflect.DeepEqual(settings.RulesetUnownedCodeQuality(&current), settings.RulesetUnownedCodeQuality(change.Before())) {
+		return fmt.Errorf("unowned Code Quality rule changed before update; no update sent")
+	}
 	actual, present := settings.RulesetPreviewApproval(&current)
 	expected, wasPresent := settings.RulesetPreviewApproval(change.Before())
 	if present != wasPresent || !reflect.DeepEqual(actual, expected) {
 		return fmt.Errorf("unowned PR additional-approval value changed before update; no update sent")
 	}
 	return nil
+}
+
+// A closed, known API shape can be retained without supporting public intent.
+// Unknown members, duplicate rules and malformed values cannot be replayed safely.
+func splitUnownedCodeQuality(rules []map[string]json.RawMessage) ([]map[string]json.RawMessage, *string, error) {
+	owned := make([]map[string]json.RawMessage, 0, len(rules))
+	var severity *string
+	for _, rule := range rules {
+		var kind string
+		if err := requiredRuleJSON(rule, "type", &kind); err != nil {
+			return nil, nil, err
+		}
+		if kind != "code_quality" {
+			owned = append(owned, rule)
+			continue
+		}
+		if severity != nil || len(rule) != 2 {
+			return nil, nil, fmt.Errorf("duplicate or unknown unowned Code Quality rule members")
+		}
+		var params map[string]json.RawMessage
+		if err := requiredRuleJSON(rule, "parameters", &params); err != nil {
+			return nil, nil, err
+		}
+		if len(params) != 1 {
+			return nil, nil, fmt.Errorf("unknown or missing unowned Code Quality parameters")
+		}
+		var value string
+		if err := requiredRuleJSON(params, "severity", &value); err != nil {
+			return nil, nil, err
+		}
+		severity = &value
+	}
+	return owned, severity, nil
 }

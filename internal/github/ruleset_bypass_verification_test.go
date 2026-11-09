@@ -52,7 +52,7 @@ func TestNormalizedRulesetBypassBasicUpdatesRequireStrictFreshGET(t *testing.T) 
 				t.Fatal(err)
 			}
 			var operations []string
-			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			client := rulesetMutationClient(t, change, transportFunc(func(req *http.Request) (*http.Response, error) {
 				operations = append(operations, req.Method)
 				if req.URL.Path != "/repos/owner/current/rulesets/7" {
 					t.Fatal("wrong selected target", req.URL)
