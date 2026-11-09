@@ -102,6 +102,22 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += labels.Managed
 		comparison.Labels = labels.Labels
 	}
+	if desired.Variables != nil && desired.Variables.Len() > 0 {
+		comparison.Managed++
+		for _, value := range settings.SortedVariables(*desired.Variables) {
+			observed, err := read.Variable(repo, value.Name)
+			if err != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: err}
+			}
+			change, err := settings.CompareVariable(observed, value)
+			if err != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: err}
+			}
+			if change != nil {
+				comparison.Variables = append(comparison.Variables, *change)
+			}
+		}
+	}
 	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
 		observed, err := read.Rulesets(repo)
 		if err != nil {

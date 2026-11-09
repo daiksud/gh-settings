@@ -63,6 +63,10 @@ Listing needs Issues or Pull requests read, except public resources can be liste
 
 The pinned v0.27.0 label apply is ID-based and never deletes unlisted labels. An ID-less collision fails with ID guidance. The CLI disables ID writeback whenever `GITHUB_ACTIONS=true`; created label/Ruleset IDs remain available in output or error diagnostics for manual adoption. See the [labels contract](settings.md#labels).
 
+### Repository variables and plaintext reporting
+
+Current-source CLI and Action planning/apply accept [selected repository variables](settings.md#actions-repository-variables); this does not assert support in the pinned published package. Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. Do not store credentials in variables. No Secrets, Environment, Agents or organization variable endpoint is used, and no App grant or token-request permission is added by this implementation. Supply only the Variables permissions needed by the selected declaration.
+
 ## Consumer files
 
 The [copyable PR/main examples](../examples/github-actions/README.md) need two workflow files plus `.github/settings.yml`. No caller script, root `action.yml` or copied `action/` directory is required.
@@ -84,6 +88,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
+| Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
 | Actions cache size eviction limit | Actions read | Administration write plus Actions read for preflight/readback |

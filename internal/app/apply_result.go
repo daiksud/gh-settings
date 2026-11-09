@@ -61,6 +61,7 @@ const (
 	CacheStorageUpdate
 	CacheRetentionRead
 	CacheRetentionUpdate
+	VariableUpsert
 )
 
 type ApplyOperationStatus uint8
@@ -76,6 +77,7 @@ const (
 // ApplyOperation records only what this execution established for one operation.
 // A failed write has an unknown remote effect, rather than an unapplied status.
 type ApplyOperation struct {
+	VariableName    string
 	Kind            ApplyOperationKind
 	SecurityField   string
 	LabelName       string

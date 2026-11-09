@@ -52,6 +52,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 			fmt.Fprintln(&output, presentation.LabelLine(change))
 		}
 	}
+	for _, change := range comparison.Variables {
+		fmt.Fprintln(&output, presentation.VariableLine(change))
+	}
 	for _, change := range comparison.Rulesets {
 		fmt.Fprintln(&output, presentation.RulesetLine(change.Display()))
 	}

@@ -16,5 +16,12 @@ type RepositorySettings struct {
 	Environments       *[]Environment
 }
 
-type ActionsSettings struct{ General *ActionsGeneral }
+type RepositoryVariable struct {
+	Name  string
+	Value *string
+}
+type ActionsSettings struct {
+	General   *ActionsGeneral
+	Variables *[]RepositoryVariable
+}
 type SecurityAndQuality struct{ AdvancedSecurity *AdvancedSecurity }

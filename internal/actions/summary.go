@@ -159,6 +159,9 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	for _, change := range report.comparison.CommitMessages {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.CommitMessageLine(change)))
 	}
+	for _, change := range report.comparison.Variables {
+		fmt.Fprintln(&content, quoteHTML(presentation.VariableLine(change)))
+	}
 	for _, change := range report.comparison.Labels.Values() {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))
 	}
@@ -210,7 +213,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err != nil {
 		return validatedPlanReport{}, err
 	}
-	maxManaged := settings.RepositoryFieldCount() + 4 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
+	maxManaged := settings.RepositoryFieldCount() + 5 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
 	scalarChanges := len(report.CodeQLConfiguration) + len(report.Changes) + 2*len(report.CommitMessages) + len(report.Actions) + executionManaged + len(report.Security) + minimumPagesReportFields(report.Pages)
 	if report.Changes == nil || report.Managed < scalarChanges || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
@@ -230,7 +233,14 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err != nil {
 		return validatedPlanReport{}, err
 	}
+	variables, err := validateVariableReport(report.Variables)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
 	collections := 0
+	if len(variables) > 0 {
+		collections++
+	}
 	if labels.Len() > 0 {
 		collections++
 	}
@@ -243,7 +253,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if report.Managed < scalarChanges+collections {
 		return validatedPlanReport{}, fmt.Errorf("invalid collection managed count")
 	}
-	hasChanges := len(report.CodeQLConfiguration) > 0 || len(report.Changes) > 0 || len(report.CommitMessages) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(environments) > 0 || len(report.Actions) > 0 || len(execution) > 0 || len(report.Security) > 0 || len(report.Pages) > 0
+	hasChanges := len(variables) > 0 || len(report.CodeQLConfiguration) > 0 || len(report.Changes) > 0 || len(report.CommitMessages) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(environments) > 0 || len(report.Actions) > 0 || len(execution) > 0 || len(report.Security) > 0 || len(report.Pages) > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
@@ -269,7 +279,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err := validateCommitMessageContexts(report.CommitMessageContexts, report.Changes); err != nil {
 		return validatedPlanReport{}, err
 	}
-	comparison := settings.Comparison{Managed: report.Managed, CommitMessages: commitMessages, CommitMessageContexts: report.CommitMessageContexts, Labels: labels, Environments: environments, ActionsExecution: execution}
+	comparison := settings.Comparison{Variables: variables, Managed: report.Managed, CommitMessages: commitMessages, CommitMessageContexts: report.CommitMessageContexts, Labels: labels, Environments: environments, ActionsExecution: execution}
 	for _, raw := range report.Actions {
 		if raw.SecurityStatusNormalization != nil {
 			return validatedPlanReport{}, fmt.Errorf("security status normalization cannot describe an Actions comparison")
