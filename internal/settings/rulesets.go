@@ -70,7 +70,7 @@ func validRulesetText(value string) bool {
 	return true
 }
 func supportedRule(kind string) bool {
-	return slices.Contains([]string{"copilot_code_review", "code_coverage", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "code_quality", "required_deployments"}, kind)
+	return slices.Contains([]string{"copilot_code_review", "creation", "update", "deletion", "non_fast_forward", "required_linear_history", "required_signatures", "pull_request", "required_status_checks", "code_scanning", "required_deployments"}, kind)
 }
 func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 	if d.Delete != nil {
@@ -115,7 +115,7 @@ func ValidateRuleset(d RulesetDeclaration, complete bool) error {
 				return fmt.Errorf("unsupported or duplicate ruleset rule %q", r.Type)
 			}
 			seen[r.Type] = true
-			if (r.Type == "pull_request" || r.Type == "copilot_code_review" || r.Type == "code_coverage") && d.Target != nil && *d.Target != "branch" {
+			if (r.Type == "pull_request" || r.Type == "copilot_code_review") && d.Target != nil && *d.Target != "branch" {
 				return fmt.Errorf("%s rule requires branch target", r.Type)
 			}
 			if err := validateRule(r, complete); err != nil {
@@ -488,6 +488,9 @@ func NewRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 }
 
 func newRulesetChange(operation string, id int64, before, after *RulesetDeclaration, normalizations RulesetNormalizations) (RulesetChange, error) {
+	if err := validateRulesetUnmanagedChange(before, after); err != nil {
+		return RulesetChange{}, err
+	}
 	if !normalizations.IsZero() {
 		if err := validateRulesetNormalizationChange(operation, id, before, after, normalizations); err != nil {
 			return RulesetChange{}, err
@@ -589,6 +592,9 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior, id := cloneRuleset(before.Policy), before.ID
 		prior.ID = &id
 		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, ScanningSecurityAlerts: before.ScanningSecurityAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
+		if err := PreserveRulesetUnmanagedParameters(&prior, &after); err != nil {
+			return nil, err
+		}
 		if normalizations.IsZero() && reflect.DeepEqual(prior, after) {
 			continue
 		}

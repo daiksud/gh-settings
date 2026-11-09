@@ -60,9 +60,6 @@ func TestRulesetBypassObservationOwnsIdentityBoundRawModes(t *testing.T) {
 				if enf, err := values[0].RawEnforcement(); err != nil || enf != "FUTURE_ENFORCEMENT" {
 					t.Fatal("enforcement companion lost", enf, err)
 				}
-				if quality, err := values[0].RawQualitySeverity(); err != nil || quality == nil || *quality != "FUTURE_SEVERITY" {
-					t.Fatal("quality companion lost", quality, err)
-				}
 				if count, err := values[0].RawRequiredApprovals(); err != nil || count == nil || *count != 11 {
 					t.Fatal("approvals companion lost", count, err)
 				}
@@ -148,9 +145,6 @@ func TestRulesetBypassObservationRejectsIncompleteOrForgedEvidence(t *testing.T)
 		}
 		if got, err := state.RawEnforcement(); err == nil || got != "" {
 			t.Fatal("cross-record enforcement escaped", got, err)
-		}
-		if got, err := state.RawQualitySeverity(); err == nil || got != nil {
-			t.Fatal("cross-record quality escaped", got, err)
 		}
 		if got, err := state.RawRequiredApprovals(); err == nil || got != nil {
 			t.Fatal("cross-record approvals escaped", got, err)

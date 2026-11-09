@@ -92,13 +92,11 @@ repository:
             require_review_from_code_owners: true
             require_approval_of_the_most_recent_reviewable_push: false
             require_conversation_resolution_before_merging: true
-            require_an_additional_approval_for_unattributed_copilot_pull_requests: false
 `
 	want := &uimodel.PullRequestRule{
 		RequiredApprovals: uiConfigPtr(0), AllowedMergeMethods: uiConfigPtr([]uimodel.MergeMethod{uimodel.Squash, uimodel.Rebase}),
 		DismissStalePullRequestApprovalsWhenNewCommitsArePushed: uiConfigPtr(false), RequireReviewFromCodeOwners: uiConfigPtr(true),
 		RequireApprovalOfTheMostRecentReviewablePush: uiConfigPtr(false), RequireConversationResolutionBeforeMerging: uiConfigPtr(true),
-		RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: uiConfigPtr(false),
 	}
 	got, err := DecodeConfig([]byte(input))
 	if err != nil {
@@ -143,16 +141,11 @@ repository:
           - {user: 21, bypass_mode: always}
           - {deploy_keys: true, bypass_mode: always}
         rules:
-          require_a_pull_request_before_merging:
-            require_review_from_specific_teams:
-              - reviewer: 12
-                approvals: 0
-                file_patterns: ['*.go', '!generated/*', '*.go']
+          require_a_pull_request_before_merging: {}
       - ruleset_name: empty
         bypass_list: []
         rules:
-          require_a_pull_request_before_merging:
-            require_review_from_specific_teams: []
+          require_a_pull_request_before_merging: {}
 `
 	want := []uimodel.Ruleset{
 		{RulesetName: "main", BypassList: uiConfigPtr([]uimodel.BypassEntry{
@@ -161,11 +154,8 @@ repository:
 			{App: uiConfigPtr(int64(17)), BypassMode: uiConfigPtr(uimodel.Exempt)},
 			{User: uiConfigPtr(int64(21)), BypassMode: uiConfigPtr(uimodel.Always)},
 			{DeployKeys: uiConfigPtr(true), BypassMode: uiConfigPtr(uimodel.Always)},
-		}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{
-
-			RequireReviewFromSpecificTeams: uiConfigPtr([]uimodel.TeamReview{{Reviewer: 12, Approvals: uiConfigPtr(0), FilePatterns: uiConfigPtr([]string{"*.go", "!generated/*", "*.go"})}}),
-		}}},
-		{RulesetName: "empty", BypassList: uiConfigPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{RequireReviewFromSpecificTeams: uiConfigPtr([]uimodel.TeamReview{})}}},
+		}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{}}},
+		{RulesetName: "empty", BypassList: uiConfigPtr([]uimodel.BypassEntry{}), Rules: uimodel.RulesetRules{RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{}}},
 	}
 	got, err := DecodeConfig([]byte(input))
 	if err != nil || !reflect.DeepEqual(*got.Settings.Rulesets, want) {
@@ -212,8 +202,6 @@ repository:
           require_code_scanning_results:
             code_scanning_tools:
               - {tool_name: CodeQL, security_alerts: high_or_higher, alerts: errors}
-          require_code_quality_results:
-            severity: warnings_and_higher
       - ruleset_name: empty
         rules:
           require_status_checks_to_pass: {required_status_checks: []}
@@ -223,7 +211,6 @@ repository:
 		{RulesetName: "main", Rules: uimodel.RulesetRules{
 			RequireStatusChecksToPass:  &uimodel.StatusChecksRule{RequiredStatusChecks: uiConfigPtr([]uimodel.StatusCheck{{Check: "ci", Source: uimodel.CheckSource{AnySource: uiConfigPtr(true)}}, {Check: "build", Source: uimodel.CheckSource{App: uiConfigPtr(int64(17))}}}), RequireBranchesToBeUpToDateBeforeMerging: uiConfigPtr(true), DoNotRequireStatusChecksOnCreation: uiConfigPtr(false)},
 			RequireCodeScanningResults: &uimodel.CodeScanningRule{CodeScanningTools: uiConfigPtr([]uimodel.CodeScanningTool{{ToolName: "CodeQL", SecurityAlerts: "high_or_higher", Alerts: "errors"}})},
-			RequireCodeQualityResults:  &uimodel.CodeQualityRule{Severity: uiConfigPtr(uimodel.CodeQualitySeverity("warnings_and_higher"))},
 		}},
 		{RulesetName: "empty", Rules: uimodel.RulesetRules{RequireStatusChecksToPass: &uimodel.StatusChecksRule{RequiredStatusChecks: uiConfigPtr([]uimodel.StatusCheck{})}, RequireCodeScanningResults: &uimodel.CodeScanningRule{CodeScanningTools: uiConfigPtr([]uimodel.CodeScanningTool{})}}},
 	}

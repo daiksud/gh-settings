@@ -24,6 +24,12 @@ func TestRulesetRequiredApprovalsReconciliationKeepsSelectedWholeObjectIntent(t 
 				ruleOf(t, after, "pull_request").RequiredApprovingReviewCount = paramInt(count)
 			}
 			changes, err := ReconcileRulesets(observed, rsDesired(t, after))
+			if count == -1 {
+				if err == nil {
+					t.Fatal("removed unowned container")
+				}
+				continue
+			}
 			want := RulesetNormalizations{Enforcement: state.EnforcementNormalization, QualitySeverity: state.QualitySeverityNormalization, RequiredApprovals: state.RequiredApprovalsNormalization}
 			if err != nil || len(changes) != 1 || changes[0].ID() != 7 || !reflect.DeepEqual(changes[0].Normalizations(), want) || !reflect.DeepEqual(changes[0].Display().Normalizations(), want) {
 				t.Fatal("selected whole update/evidence lost", changes, err)

@@ -10,6 +10,9 @@ import (
 // decodeObservedRulesetPolicy projects acquired scalar, list and bypass values; mutation
 // verification continues to use the strict decoder against raw responses.
 func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, settings.RulesetNormalizations, error) {
+	if err := rejectUnsupportedRulesetScope(raw); err != nil {
+		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
+	}
 	var enforcement string
 	if err := requiredRuleJSON(raw, "enforcement", &enforcement); err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
@@ -31,19 +34,12 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 		copy["enforcement"] = value
 		record = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: enforcement, Fallback: string(settings.DefaultRulesetEnforcementChoice)}
 	}
-	rules, quality, err := prepareRulesetQualityRules(raw["rules"])
-	if err != nil {
-		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
-	}
+	rules := raw["rules"]
 	rules, approvals, err := prepareRulesetRequiredApprovalsRules(rules)
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
 	rules, methods, err := prepareRulesetMergeMethodsRules(rules)
-	if err != nil {
-		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
-	}
-	rules, teams, err := prepareRulesetTeamApprovalsRules(rules)
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
@@ -65,5 +61,5 @@ func decodeObservedRulesetPolicy(raw map[string]json.RawMessage) (settings.Rules
 	if err != nil {
 		return settings.RulesetDeclaration{}, settings.RulesetNormalizations{}, err
 	}
-	return policy, settings.RulesetNormalizations{Enforcement: record, QualitySeverity: quality, RequiredApprovals: approvals, MergeMethods: methods, TeamApprovals: teams, ScanningAlerts: scanning, ScanningSecurityAlerts: scanningSecurity, BypassModes: bypass}, nil
+	return policy, settings.RulesetNormalizations{Enforcement: record, RequiredApprovals: approvals, MergeMethods: methods, ScanningAlerts: scanning, ScanningSecurityAlerts: scanningSecurity, BypassModes: bypass}, nil
 }

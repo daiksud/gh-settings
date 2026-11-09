@@ -40,22 +40,3 @@ func observeUIRulesetScanning(p *settings.RuleParameters) (*uimodel.CodeScanning
 	}
 	return &uimodel.CodeScanningRule{CodeScanningTools: &tools}, nil
 }
-
-func declareUIRulesetQuality(ui uimodel.CodeQualityRule) (*settings.RuleParameters, error) {
-	if ui.Severity == nil {
-		return nil, fmt.Errorf("require_code_quality_results requires severity")
-	}
-	severity, valid := settings.RulesetQualitySeverityValueForChoice(*ui.Severity)
-	if !valid {
-		return nil, fmt.Errorf("unsupported UI severity choice %q", *ui.Severity)
-	}
-	return &settings.RuleParameters{Severity: &severity}, nil
-}
-
-func observeUIRulesetQuality(p *settings.RuleParameters) (*uimodel.CodeQualityRule, error) {
-	severity, valid := settings.RulesetQualitySeverityChoiceForValue(*p.Severity)
-	if !valid {
-		return nil, fmt.Errorf("severity is outside UI choices")
-	}
-	return &uimodel.CodeQualityRule{Severity: &severity}, nil
-}

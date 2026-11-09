@@ -25,7 +25,7 @@ func TestRulesetParameterFamiliesRemainIsolated(t *testing.T) {
 		{"code_quality", `{"severity":"errors"}`},
 	}
 	for _, receiver := range fixtures {
-		if isPushRule(receiver.kind) {
+		if isPushRule(receiver.kind) || receiver.kind == "code_quality" || receiver.kind == "code_coverage" {
 			continue
 		}
 		var own map[string]json.RawMessage

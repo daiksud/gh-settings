@@ -29,27 +29,8 @@ func TestUIRulesetScanningChoices(t *testing.T) {
 	}
 }
 
-func TestUIRulesetQualityChoices(t *testing.T) {
-	for _, test := range []struct{ ui, api string }{{"errors", "errors"}, {"warnings_and_higher", "warnings"}, {"notes_and_higher", "notes"}, {"all", "all"}} {
-		ui := uiRulesetBase()
-		ui.Rules.RequireCodeQualityResults = &uimodel.CodeQualityRule{Severity: rulesetPtr(uimodel.CodeQualitySeverity(test.ui))}
-		got, err := RulesetDeclaration(ui)
-		if err != nil || (*got.Rules)[0].Type != "code_quality" || !reflect.DeepEqual((*got.Rules)[0].Parameters.Severity, &test.api) {
-			t.Fatalf("rules=%+v err=%v", got.Rules, err)
-		}
-		source := apiRulesetBase()
-		source.Rules = rulesetPtr([]settings.RulesetRule{{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &test.api}}})
-		observed, err := RulesetObservation(source)
-		if err != nil || !reflect.DeepEqual(observed.Rules.RequireCodeQualityResults, ui.Rules.RequireCodeQualityResults) {
-			t.Fatalf("quality=%+v err=%v", observed.Rules, err)
-		}
-	}
-}
-
 func TestUIRulesetAnalysisRequiresExplicitChoices(t *testing.T) {
 	for _, rules := range []uimodel.RulesetRules{
-		{RequireCodeQualityResults: &uimodel.CodeQualityRule{}},
-		{RequireCodeQualityResults: &uimodel.CodeQualityRule{Severity: rulesetPtr(uimodel.CodeQualitySeverity("warnings"))}},
 		{RequireCodeScanningResults: &uimodel.CodeScanningRule{}},
 		{RequireCodeScanningResults: &uimodel.CodeScanningRule{CodeScanningTools: rulesetPtr([]uimodel.CodeScanningTool{{ToolName: "CodeQL", Alerts: "UNKNOWN", SecurityAlerts: "high_or_higher"}})}},
 	} {

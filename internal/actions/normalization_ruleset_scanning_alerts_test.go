@@ -15,7 +15,7 @@ import (
 
 func scanningAlertsReportChange(t *testing.T, mode string, companions bool) settings.RulesetChange {
 	t.Helper()
-	base := teamApprovalsReportChange(t, "equal", true)
+	base := bypassReportChange(t, "BYPASS_FUTURE", false, true)
 	before, after := base.Before(), base.After()
 	before.Name, after.Name = "<SCAN_OBJECT>", "<SCAN_OBJECT>"
 	for _, policy := range []*settings.RulesetDeclaration{before, after} {

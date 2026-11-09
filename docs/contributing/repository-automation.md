@@ -195,6 +195,12 @@ depends on its live reviewer configuration. Inspect actual check-source identity
 and [verify the protection](../github-actions.md#verify-the-protection-before-use).
 Neither a source comment nor `environment: gh-settings` establishes a reviewer gate.
 
+## Operational declaration and current-source scope
+
+The settings workflows still use the immutable v0.31.0 consumer. Its whole-Ruleset omission rules differ from current source: omitted Code Quality removes that rule and omitted unattributed Copilot approval defaults false. Keep those explicit operational values, including the empty team companion, in `.github/settings.yml` until a compatible published consumer is reviewed and pinned. Removing current public support does not authorize deleting those values or dispatching settings-apply. Current-source YAML intentionally rejects these retired controls; this pinned operational document is not a current-source example or a feature-adoption exception.
+
+The repository-automation tests assert the preserved pinned companions, then use a test-only projection to check the remaining settings with the current codec. That projection is never saved or passed to apply. No runtime migration, compatibility alias, release or pin update is provided by the support removal.
+
 ## Active settings workflows
 
 The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. The PR workflow definition selects the PR validation pin; changes to the pin require review. Before a declaration uses a schema or capability those packages do not support, review the compatible published package pins together with the declaration and verify the resulting PR workflow. The ordinary `pull_request` workflow is candidate-controlled, not a trusted-base validator. Keep the main apply pin compatible with the tracked declaration. The operational pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.

@@ -35,7 +35,7 @@ func bypassReportChange(t *testing.T, raw string, remove, companions bool) setti
 		{ActorType: "DeployKey", Normalization: settings.ObservationNormalization{Path: settings.RulesetBypassModePath, RawValue: "KEY_MODE", Fallback: "always"}},
 	}}
 	if companions {
-		rules := `[{"type":"code_quality","parameters":{"severity":"errors"}},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false,"required_reviewers":[]}}]`
+		rules := `[{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":0,"required_review_thread_resolution":false,"required_reviewers":[]}}]`
 		if err := json.Unmarshal([]byte(rules), &before.Rules); err != nil {
 			t.Fatal(err)
 		}
@@ -43,7 +43,6 @@ func bypassReportChange(t *testing.T, raw string, remove, companions bool) setti
 			t.Fatal(err)
 		}
 		records.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-		records.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "QUALITY_MODE", Fallback: "errors"}
 		records.RequiredApprovals = settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 11, Fallback: 0}
 	}
 	change, err := settings.NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)

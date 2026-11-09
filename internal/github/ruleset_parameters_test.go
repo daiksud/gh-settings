@@ -14,7 +14,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const fullReviewRulesetJSON = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[{"reviewer":{"type":"Team","id":22},"minimum_approvals":1,"file_patterns":["**","!docs/**","docs/README.md","**"]}]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368},{"context":"any-source","integration_id":null}],"strict_required_status_checks_policy":true}}]}`
+const fullReviewRulesetJSON = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368},{"context":"any-source","integration_id":null}],"strict_required_status_checks_policy":true}}]}`
 
 func TestReadReviewRulesetCompleteAndAnySourceIdentity(t *testing.T) {
 	policy, e := decodeRulesetPolicyFromTest([]byte(fullReviewRulesetJSON))
@@ -24,7 +24,7 @@ func TestReadReviewRulesetCompleteAndAnySourceIdentity(t *testing.T) {
 	for _, r := range *policy.Rules {
 		switch r.Type {
 		case "pull_request":
-			if *r.Parameters.RequireExtraApprovalForUnattributedChanges || !reflect.DeepEqual(*(*r.Parameters.RequiredReviewers)[0].FilePatterns, []string{"**", "!docs/**", "docs/README.md", "**"}) {
+			if *r.Parameters.RequireExtraApprovalForUnattributedChanges || len(*r.Parameters.RequiredReviewers) != 0 {
 				t.Fatal("read changed policy", r)
 			}
 		case "required_status_checks":
@@ -36,7 +36,7 @@ func TestReadReviewRulesetCompleteAndAnySourceIdentity(t *testing.T) {
 	}
 }
 func TestReadReviewRulesetRejectsNullUnknownAndIncomplete(t *testing.T) {
-	for _, pair := range [][2]string{{`"require_last_push_approval":false,`, ``}, {`"required_approving_review_count":1`, `"required_approving_review_count":"1"`}, {`"allowed_merge_methods":["squash"]`, `"allowed_merge_methods":null`}, {`"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`}, {`"require_last_push_approval":false`, `"require_last_push_approval":false,"future_switch":false`}, {`"minimum_approvals":1`, `"minimum_approvals":null`}, {`"type":"Team","id":22`, `"type":"Team","id":22,"future":true`}, {`"file_patterns":["**","!docs/**","docs/README.md","**"]`, `"file_patterns":null`}, {`"context":"pass","integration_id":15368`, `"context":"pass","integration_id":15368,"future":false`}, {`"strict_required_status_checks_policy":true`, `"strict_required_status_checks_policy":null`}, {`"do_not_enforce_on_create":false`, `"do_not_enforce_on_create":null`}, {`"required_status_checks":[`, `"Required_status_checks":[`}} {
+	for _, pair := range [][2]string{{`"require_last_push_approval":false,`, ``}, {`"required_approving_review_count":1`, `"required_approving_review_count":"1"`}, {`"allowed_merge_methods":["squash"]`, `"allowed_merge_methods":null`}, {`"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`}, {`"require_last_push_approval":false`, `"require_last_push_approval":false,"future_switch":false`}, {`"context":"pass","integration_id":15368`, `"context":"pass","integration_id":15368,"future":false`}, {`"strict_required_status_checks_policy":true`, `"strict_required_status_checks_policy":null`}, {`"do_not_enforce_on_create":false`, `"do_not_enforce_on_create":null`}, {`"required_status_checks":[`, `"Required_status_checks":[`}} {
 		body := strings.Replace(fullReviewRulesetJSON, pair[0], pair[1], 1)
 		if body == fullReviewRulesetJSON {
 			t.Fatal(pair)
@@ -69,10 +69,7 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
       parameters:
         required_approving_review_count: 0
         require_code_owner_review: false
-        required_reviewers:
-          - reviewer: {type: Team, id: 22}
-            minimum_approvals: 1
-            file_patterns: ['!docs/**', '**', 'docs/README.md', '**']
+        required_reviewers: []
     - type: required_status_checks
       parameters: {required_status_checks: [], strict_required_status_checks_policy: false}
 `), &policies); e != nil {
@@ -111,10 +108,6 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 				if p["required_approving_review_count"] != float64(0) || p["require_code_owner_review"] != false || p["dismiss_stale_reviews_on_push"] != false || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false {
 					t.Fatal("lost declared defaults", p)
 				}
-				reviewer := p["required_reviewers"].([]any)[0].(map[string]any)
-				if reviewer["minimum_approvals"] != float64(1) || !reflect.DeepEqual(reviewer["file_patterns"], []any{"!docs/**", "**", "docs/README.md", "**"}) {
-					t.Fatal("reviewer changed", reviewer)
-				}
 				if p["dismissal_restriction"] != nil || p["allowed_merge_methods"] == nil {
 					t.Fatal("unsupported parameter or supported defaults changed", p)
 				}
@@ -128,7 +121,7 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 		}
 		return rulesetMutationResponse(t, r, 200, string(data), 7), nil
 	}))
-	if _, e := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0]); e != nil || calls != 2 {
+	if _, e := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0]); e != nil || calls != 3 {
 		t.Fatal(calls, e)
 	}
 	after := *changes[0].After()
@@ -169,7 +162,7 @@ func TestReviewRulesetResponseRefusesSilentPolicyLoss(t *testing.T) {
 		}
 	}
 	afterData, _ := json.Marshal(after)
-	for _, pair := range [][2]string{{`"require_extra_approval_for_unattributed_changes":false,`, ``}, {`"required_approving_review_count":0`, `"required_approving_review_count":1`}, {`"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":true`}, {`"integration_id":15368`, `"integration_id":null`}, {`"file_patterns":["**","!docs/**","docs/README.md","**"]`, `"file_patterns":["!docs/**","**","docs/README.md","**"]`}} {
+	for _, pair := range [][2]string{{`"require_extra_approval_for_unattributed_changes":false,`, ``}, {`"required_approving_review_count":0`, `"required_approving_review_count":1`}, {`"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":true`}, {`"integration_id":15368`, `"integration_id":null`}} {
 		bad := strings.Replace(string(afterData), pair[0], pair[1], 1)
 		if bad == string(afterData) {
 			t.Fatal("bad response fixture", pair)
@@ -230,41 +223,14 @@ func TestCreateReviewRulesetExactPolicyAndResponse(t *testing.T) {
 	}
 }
 
-func TestRemovingReviewAndChecksStillVerifiesResponse(t *testing.T) {
+func TestRemovingReviewAndChecksRefusesUnownedLoss(t *testing.T) {
 	before, err := decodeRulesetPolicyFromTest([]byte(fullReviewRulesetJSON))
 	if err != nil {
 		t.Fatal(err)
 	}
 	after := before
 	after.Rules = &[]settings.RulesetRule{{Type: "deletion"}}
-	change, err := settings.NewRulesetChange("update", 7, &before, &after)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, ignored := range []bool{false, true} {
-		calls := 0
-		client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
-			calls++
-			if r.Method == "GET" && r.URL.Path == "/repos/owner/current/rulesets/7" {
-				data, _ := json.Marshal(after)
-				return rulesetMutationResponse(t, r, 200, string(data), 7), nil
-			}
-			data, _ := io.ReadAll(r.Body)
-			if r.Method != "PUT" || r.URL.Path != "/repos/owner/current/rulesets/7" {
-				t.Fatal(r.Method, r.URL)
-			}
-			if ignored {
-				return labelsResponse(r, 200, fullReviewRulesetJSON), nil
-			}
-			return rulesetMutationResponse(t, r, 200, string(data), 7), nil
-		}))
-		_, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
-		wantCalls := 2
-		if ignored {
-			wantCalls = 1
-		}
-		if calls != wantCalls || (err != nil) != ignored || (ignored && !strings.Contains(err.Error(), "writes may already have applied")) {
-			t.Fatal("removal response not verified", ignored, calls, err)
-		}
+	if _, err := settings.NewRulesetChange("update", 7, &before, &after); err == nil {
+		t.Fatal("removed unowned PR setting")
 	}
 }

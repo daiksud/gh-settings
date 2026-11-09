@@ -55,12 +55,6 @@
       }
     },
     {
-      "type": "code_quality",
-      "parameters": {
-        "severity": "errors"
-      }
-    },
-    {
       "type": "required_deployments",
       "parameters": {
         "required_deployment_environments": [
