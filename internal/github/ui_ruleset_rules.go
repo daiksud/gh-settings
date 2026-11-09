@@ -53,6 +53,13 @@ func declareUIRulesetRules(ui uimodel.RulesetRules) (*[]settings.RulesetRule, er
 		}
 		result = append(result, settings.RulesetRule{Type: "code_scanning", Parameters: parameters})
 	}
+	if ui.RequireCodeQualityResults != nil {
+		parameters, err := declareUIRulesetQuality(*ui.RequireCodeQualityResults)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, settings.RulesetRule{Type: "code_quality", Parameters: parameters})
+	}
 	return &result, nil
 }
 
@@ -95,6 +102,12 @@ func observeUIRulesetRules(rules []settings.RulesetRule) (uimodel.RulesetRules, 
 		case "code_scanning":
 			var err error
 			result.RequireCodeScanningResults, err = observeUIRulesetScanning(rule.Parameters)
+			if err != nil {
+				return uimodel.RulesetRules{}, err
+			}
+		case "code_quality":
+			var err error
+			result.RequireCodeQualityResults, err = observeUIRulesetQuality(rule.Parameters)
 			if err != nil {
 				return uimodel.RulesetRules{}, err
 			}

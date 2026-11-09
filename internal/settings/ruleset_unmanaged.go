@@ -5,24 +5,6 @@ import (
 	"reflect"
 )
 
-// RulesetUnownedCodeQuality returns a detached acquired severity, never intent.
-func RulesetUnownedCodeQuality(policy *RulesetDeclaration) *string {
-	if policy == nil {
-		return nil
-	}
-	return copyRuleValue(policy.unownedCodeQualitySeverity)
-}
-
-// WithObservedRulesetCodeQuality attaches the strictly decoded preservation value.
-// It deliberately does not add a supported rule or a UI/YAML field.
-func WithObservedRulesetCodeQuality(policy RulesetDeclaration, severity string) (RulesetDeclaration, error) {
-	if !validRulesetText(severity) {
-		return RulesetDeclaration{}, fmt.Errorf("invalid acquired unowned Code Quality severity")
-	}
-	policy.unownedCodeQualitySeverity = copyRuleValue(&severity)
-	return policy, nil
-}
-
 // RulesetPreviewApproval is acquired preservation metadata, never public intent.
 // A nil value is permitted only for a new PR rule whose server default is unknown.
 func RulesetPreviewApproval(policy *RulesetDeclaration) (*bool, bool) {
@@ -39,12 +21,6 @@ func RulesetPreviewApproval(policy *RulesetDeclaration) (*bool, bool) {
 // PreserveRulesetUnmanagedParameters retains known acquired unowned values exactly.
 // Removing their containers cannot preserve them and is refused before any write.
 func PreserveRulesetUnmanagedParameters(before, after *RulesetDeclaration) error {
-	if quality := RulesetUnownedCodeQuality(before); quality != nil {
-		if after == nil {
-			return fmt.Errorf("cannot delete Ruleset while preserving its unowned Code Quality rule")
-		}
-		after.unownedCodeQualitySeverity = quality
-	}
 	value, present := RulesetPreviewApproval(before)
 	if !present {
 		return nil
@@ -65,9 +41,6 @@ func PreserveRulesetUnmanagedParameters(before, after *RulesetDeclaration) error
 }
 
 func validateRulesetUnmanagedChange(before, after *RulesetDeclaration) error {
-	if !reflect.DeepEqual(RulesetUnownedCodeQuality(before), RulesetUnownedCodeQuality(after)) {
-		return fmt.Errorf("unowned Code Quality rule must be retained; cannot create, change or delete it")
-	}
 	expected, present := RulesetPreviewApproval(before)
 	if !present {
 		return nil

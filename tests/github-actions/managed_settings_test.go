@@ -47,7 +47,6 @@ func readManagedDeclaration(t *testing.T) settings.Declaration {
 	if !ok || len(teams) != 0 {
 		t.Fatal("pinned empty team companion changed")
 	}
-	delete(rules, "require_code_quality_results")
 	delete(pr, "require_an_additional_approval_for_unattributed_copilot_pull_requests")
 	delete(pr, "require_review_from_specific_teams")
 	// Test-only current view: never write this projection or feed it to apply.
@@ -167,8 +166,8 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 			quality = p != nil && p.Severity != nil && *p.Severity == "errors"
 		}
 	}
-	if !approval || signatureRequired || !linear || !nativeChecks || !scanning || quality {
-		t.Fatal("the main Ruleset must keep approvals, history, exactly three native checks, CodeQL, without signatures or unadopted Code Quality intent")
+	if !approval || signatureRequired || !linear || !nativeChecks || !scanning || !quality {
+		t.Fatal("the main Ruleset must keep approvals, history, exactly three native checks, CodeQL and Code Quality, without signatures")
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.

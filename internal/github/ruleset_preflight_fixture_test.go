@@ -31,6 +31,14 @@ func rulesetMutationClient(t *testing.T, change settings.RulesetChange, next tra
 			t.Fatal(err)
 		}
 		body["id"], body["source_type"], body["source"] = change.ID(), "Repository", "owner/current"
+		if record := change.Normalizations().QualitySeverity; record != (settings.ObservationNormalization{}) {
+			for _, item := range body["rules"].([]any) {
+				rule := item.(map[string]any)
+				if rule["type"] == "code_quality" {
+					rule["parameters"].(map[string]any)["severity"] = record.RawValue
+				}
+			}
+		}
 		data, err = json.Marshal(body)
 		if err != nil {
 			t.Fatal(err)
