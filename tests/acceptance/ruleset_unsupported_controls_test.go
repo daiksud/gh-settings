@@ -26,6 +26,12 @@ func TestRemovedRulesetDeclarationsFailBeforeRemoteWork(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, control := range []string{
+		"enforcement_status: active\n        target_pushes: false\n        rules: {}",
+		"enforcement_status: active\n        target_pushes: true\n        rules: {}",
+		"enforcement_status: active\n        rules: {restrict_file_paths: {}}",
+		"enforcement_status: active\n        rules: {restrict_file_path_length: {}}",
+		"enforcement_status: active\n        rules: {restrict_file_extensions: {}}",
+		"enforcement_status: active\n        rules: {restrict_file_size: {}}",
 		"enforcement_status: evaluate\n        rules: {}",
 		"enforcement_status: active\n        rules: {require_merge_queue: {}}",
 		"enforcement_status: active\n        rules: {restrict_commit_message: {requirement: must_contain_matching_pattern, pattern: issue}}",
@@ -61,6 +67,12 @@ func TestUnsupportedRulesetReadsBlockExportUpdateAndDeletion(t *testing.T) {
 		evaluate   bool
 	}{
 		{name: "evaluate", evaluate: true},
+		{name: "push"},
+		{name: "file_path_restriction", rule: `{"type":"file_path_restriction","parameters":{}}`},
+		{name: "max_file_path_length", rule: `{"type":"max_file_path_length","parameters":{}}`},
+		{name: "file_extension_restriction", rule: `{"type":"file_extension_restriction","parameters":{}}`},
+		{name: "max_file_size", rule: `{"type":"max_file_size","parameters":{}}`},
+
 		{name: "queue", rule: `{"type":"merge_queue","parameters":{"check_response_timeout_minutes":60,"grouping_strategy":"ALLGREEN","max_entries_to_build":5,"max_entries_to_merge":5,"merge_method":"SQUASH","min_entries_to_merge":1,"min_entries_to_merge_wait_minutes":0}}`},
 		{name: "license", rule: `{"type":"license_compliance_scanning"}`},
 	}
@@ -82,7 +94,10 @@ func TestUnsupportedRulesetReadsBlockExportUpdateAndDeletion(t *testing.T) {
 			if err := json.Unmarshal([]byte(acceptanceRuleset), &state); err != nil {
 				t.Fatal(err)
 			}
-			if test.evaluate {
+			if test.name == "push" {
+				state["target"] = "push"
+				state["conditions"] = nil
+			} else if test.evaluate {
 				state["enforcement"] = "evaluate"
 			} else {
 				var rule map[string]any

@@ -119,7 +119,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		if err := requiredRuleJSON(raw, "target", &target); err != nil {
 			return settings.RulesetObservation{}, err
 		}
-		if target != "branch" && target != "tag" && target != "push" {
+		if target != "branch" && target != "tag" {
 			return settings.RulesetObservation{}, fmt.Errorf("unsupported Ruleset target %q", target)
 		}
 		policy, normalizations, err := decodeObservedRulesetPolicy(raw)
@@ -140,10 +140,6 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 		default:
 			return settings.RulesetDeclaration{}, fmt.Errorf("unknown Ruleset response field %q", key)
 		}
-	}
-	// Push targets have no ref conditions; the documented response permits null.
-	if bytes.Equal(bytes.TrimSpace(policy["conditions"]), []byte("null")) && bytes.Equal(bytes.TrimSpace(policy["target"]), []byte(`"push"`)) {
-		delete(policy, "conditions")
 	}
 	// The API uses ignored/null actor IDs for actors without numeric identity.
 	var actors []map[string]json.RawMessage
@@ -331,7 +327,7 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
 	}
-	needsReadback := !change.Normalizations().IsZero() || (after.Target != nil && *after.Target == "push") || (change.Before() != nil && change.Before().Target != nil && *change.Before().Target == "push")
+	needsReadback := !change.Normalizations().IsZero()
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
