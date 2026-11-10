@@ -26,6 +26,7 @@ type RepositoryVariable struct {
 type AgentsSettings struct{ Variables *[]RepositoryVariable }
 
 type ActionsSettings struct {
+	Policies  *[]ActionsEventPolicy
 	General   *ActionsGeneral
 	Variables *[]RepositoryVariable
 }

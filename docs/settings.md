@@ -9,6 +9,8 @@ sources:
     resource: https://docs.github.com/en/rest/issues/labels
   - id: github-repository-openapi
     resource: https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json
+  - id: github-actions-policies
+    resource: https://docs.github.com/en/rest/actions/policies
   - id: ui-inventory
     resource: contributing/ui-repository-mapping.md
 ---
@@ -51,7 +53,7 @@ This Free-only policy replaces the earlier personal-public Security investigatio
 
 ## Supported fields
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
 The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
@@ -405,6 +407,95 @@ As of 2026-11-09, `repository.settings.actions.general.access` and `.fork_pull_r
 
 The old `--actions-access` and `--private-fork-workflows` export options are rejected before repository/API/file work. No alias or migration is provided. Public contributor approval, Actions execution, workflow permissions, retention and cache controls remain separate. Removing these YAML management paths does not change live settings: their dedicated endpoints are not selected by supported public intent, so no private nested state is read-modify-written. Internal raw identities remain available for validation; an attempted private-only export projection fails instead of silently dropping values.
 
+## Actions event policies
+
+`repository.settings.actions.policies` manages repository-owned policies in
+**Settings → Actions → Policies**, restricted to **All workflows** and the
+**Restrict events** rule. These are separate objects from the
+[Actions execution policy](#actions-execution-policy). Omission or `policies: []`
+selects nothing, makes no policy API request and deletes nothing. Unlisted
+policies remain untouched; removing an entry stops managing it.
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    actions:
+      policies:
+        - policy_name: Restrict workflow events
+          enforcement_status: disabled
+          restrict_events:
+            allowed_events: [pull_request, push, workflow_dispatch]
+```
+
+| Attribute | Contract |
+| --- | --- |
+| `id` | Optional positive integer REST ID of an existing policy owned by the target repository; omission means create-only |
+| `policy_name` | Required nonempty/non-whitespace string without control characters; identity and collisions use exact spelling |
+| `enforcement_status` | Required `disabled` or `active`; neither is inferred |
+| `restrict_events.allowed_events` | Required nonempty array of unique supported event strings; compared as a set and exported in sorted order |
+
+Supported events are `branch_protection_rule`, `check_run`, `check_suite`,
+`create`, `delete`, `deployment`, `deployment_status`, `discussion`,
+`discussion_comment`, `fork`, `gollum`, `image_version`, `issue_comment`, `issues`,
+`label`, `merge_group`, `milestone`, `page_build`, `project`, `project_card`,
+`project_column`, `public`, `pull_request`, `pull_request_review`,
+`pull_request_review_comment`, `pull_request_target`, `push`, `registry_package`,
+`release`, `repository_dispatch`, `schedule`, `status`, `watch`, `workflow_call`,
+`workflow_dispatch` and `workflow_run`.
+
+Duplicate IDs or exact names, missing required fields, nulls, unknown keys and
+unsupported event/enforcement values fail locally. A no-ID entry never adopts
+an existing name: a collision fails and identifies the existing ID. An ID must
+exist in this repository; missing or foreign IDs never fall back to creation.
+An ID-bound declaration replaces the complete supported event object and may
+rename it to a noncolliding name. Renames cannot rely on another planned rename
+freeing the name. There is no delete declaration or name-based update.
+
+Only implicit All workflows targeting is accepted. Remote omitted/null/empty
+`conditions`, or `workflow_path` with `include: [~ALL]` or `include: []` and
+`exclude: []`, represent All workflows. Any other targeting, actor restriction,
+Preview rule, unknown rule/field or unsupported event/enforcement value is not
+lossily converted. A complete unsupported object's ID/name is retained so
+unlisted objects stay unmanaged; selecting it for update or including it in a
+full collection export fails. Incomplete or inconsistent reads always fail.
+Workflow-path patterns, actor controls, Preview lockfile controls, OIDC,
+workflow authoring and other configuration-file authoring are excluded.
+
+Plan acquires the complete repository collection and details before showing
+creates/ID-bound updates. Apply freshly acquires and preflights the whole
+collection before its first policy write, skips matches and rechecks each
+selected update's detail immediately before mutation. Drift or newly unsupported
+state fails rather than overwriting it. Create uses POST and update uses PUT at
+the [official repository Actions policies API](https://docs.github.com/en/rest/actions/policies).
+Writes omit `conditions`: create uses All workflows and update preserves the
+preflight-verified All workflows targeting. Complete write acknowledgment and
+an independent final GET must both match the requested identity, name,
+enforcement, event set and supported targeting.
+
+Failures stop later policy writes; earlier successful changes remain applied.
+A write/verification failure may leave the remote effect uncertain. Known new
+IDs remain available for recovery, including acknowledgment/readback failures;
+uncertain creation is never automatically retried. There is no transaction,
+rollback or concurrency lock. Inspect remote state and record the correct ID
+before retrying. Local apply records confirmed creations using
+[guarded ID writeback](#apply-id-writeback), with `policy_name` as selector;
+`--no-writeback` and `GITHUB_ACTIONS=true` suppress it.
+
+`export --actions-policies` independently selects the full repository collection,
+including IDs, sorted by exact policy name with sorted events. Ordinary export
+and `--actions` do not select it. All pages and details must be complete and
+representable before saving; a failure preserves the existing destination.
+Fine-grained and GitHub App tokens require **Administration write even for
+list/GET, export and plan**, as well as writes, according to the official API.
+The client never grants permissions or substitutes empty state for denied reads.
+
+The Free/personal/public UI and disabled-policy API storage were verified;
+active enforcement is covered by local mocks only. Storage readback does not
+establish workflow blocking or a particular token's grants. See the
+[behavior specification](features/actions-event-policies.feature.md) and
+[adoption evidence](https://github.com/daiksud/gh-settings/issues/647).
+
 ## Actions execution policy
 
 All paths below are relative to `repository.settings.actions.general.actions_permissions`:
@@ -530,7 +621,7 @@ Duplicate IDs and Unicode-simple-folded names fail without trimming. ID-less col
 
 ### Apply ID writeback
 
-Normal CLI apply records each confirmed created Label/Ruleset ID in the original current-schema collection immediately after creation, before another write. Rulesets use `ruleset_name` as their selector. Existing IDs and unrelated values remain; comments are retained where supported and formatting may normalize. Regular `.github` and file entries plus the initial byte snapshot and earlier ID additions are required. Aliased/merged collection entries are not rewritten.
+Normal CLI apply records each confirmed created Label/Ruleset/Actions policy ID in the original current-schema collection immediately after creation, before another write. Rulesets use `ruleset_name` and Actions policies use `policy_name` as their selectors. Existing IDs and unrelated values remain; comments are retained where supported and formatting may normalize. Regular `.github` and file entries plus the initial byte snapshot and earlier ID additions are required. Aliased/merged collection entries are not rewritten.
 
 `apply --no-writeback` disables this local update. `GITHUB_ACTIONS=true` always disables it, including public Action use. Created IDs remain in output/recovery diagnostics; no Git commit or push is performed. Plan never writes. A confirmed creation survives writeback/later remote failure; add its ID before retrying. Unverified responses do not supply a confirmed writable ID. There is no automatic create retry, delete or rollback. Guarded file replacement is atomic, not a concurrent-editor lock. Label reads/mutations need the existing Issues or Pull requests grants; Administration alone does not replace them.[^github-labels] See [Labels](features/labels.feature.md).
 
@@ -540,7 +631,7 @@ The version marker is independent of the CLI release. Only one YAML mapping docu
 
 Unknown/duplicate/non-string keys, unsupported tags, malformed/multiple documents, wrong shapes, invalid choices and wrong scalar types fail before remote work. Aliases/merges are validated after resolution. Strings must remain strings, booleans must be true/false and integers must fit their declared range. Explicit null is invalid except the nullable Pages custom-domain scalar. Empty strings, zero, false and empty arrays retain their distinct contracts. No desired defaults are populated from observation metadata or planned #480 fallbacks.
 
-Scalar omission is unmanaged. Labels/Rulesets own only listed whole objects with their stated defaults. Environment omissions are API-controlled, not promised preservation. Topics and explicitly declared inner lists have their authoritative collection semantics. These distinctions remain the same through CLI and public Action use.
+Scalar omission is unmanaged. Labels/Rulesets/Actions policies own only listed whole objects with their stated field rules. Environment omissions are API-controlled, not promised preservation. Topics and explicitly declared inner lists have their authoritative collection semantics. These distinctions remain the same through CLI and public Action use.
 
 ## Exported values
 

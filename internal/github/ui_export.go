@@ -73,6 +73,23 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Actions = &uimodel.ActionsSettings{General: &actions}
 	}
+	if source.ActionsPolicies != nil {
+		values := make([]uimodel.ActionsEventPolicy, 0, source.ActionsPolicies.Len())
+		for _, entry := range source.ActionsPolicies.Values() {
+			value, err := ActionsEventPolicyUI(entry)
+			if err != nil {
+				return uimodel.Repository{}, fmt.Errorf("export Actions policies: %w", err)
+			}
+			values = append(values, value)
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Actions == nil {
+			result.Settings.Actions = &uimodel.ActionsSettings{}
+		}
+		result.Settings.Actions.Policies = &values
+	}
 	if source.Variables != nil {
 		values := variableValuesUI(*source.Variables)
 		if result.Settings == nil {

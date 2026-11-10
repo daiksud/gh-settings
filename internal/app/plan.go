@@ -166,6 +166,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.CopilotReviewEffort = changes
 	}
+	if desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0 {
+		observed, err := read.ActionsPolicies(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.policies", Target: repo, Err: err}
+		}
+		policies, err := settings.CompareActionsPolicies(observed, desired.ActionsPolicies)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.policies", Target: repo, Err: err}
+		}
+		comparison.Managed += policies.Managed
+		comparison.ActionsPolicies = policies.ActionsPolicies
+	}
 	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
 		observed, err := read.Rulesets(repo)
 		if err != nil {

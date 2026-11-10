@@ -67,6 +67,9 @@ const (
 	CopilotMCPUpdate
 	PullRequestLimitsUpdate
 	AgentVariableUpsert
+	ActionsPoliciesRead
+	ActionsEventPolicyCreate
+	ActionsEventPolicyUpdate
 )
 
 type ApplyOperationStatus uint8
@@ -82,13 +85,14 @@ const (
 // ApplyOperation records only what this execution established for one operation.
 // A failed write has an unknown remote effect, rather than an unapplied status.
 type ApplyOperation struct {
-	VariableName    string
-	Kind            ApplyOperationKind
-	SecurityField   string
-	LabelName       string
-	RulesetName     string
-	EnvironmentName string
-	Status          ApplyOperationStatus
+	ActionsPolicyName string
+	VariableName      string
+	Kind              ApplyOperationKind
+	SecurityField     string
+	LabelName         string
+	RulesetName       string
+	EnvironmentName   string
+	Status            ApplyOperationStatus
 }
 
 // ApplyResult retains known execution progress without claiming readback or rollback.
@@ -116,7 +120,7 @@ func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus)
 	result.Operations[index].Status = status
 	result.Outcome = ApplyFailed
 	for _, operation := range result.Operations {
-		if operation.Status == OperationCompleted && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != CodeQLConfigurationRead && operation.Kind != CodeQLDefaultSetupRead && operation.Kind != AIScanPullRequestsRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ActionsAccessRead && operation.Kind != CacheStorageRead && operation.Kind != CacheRetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
+		if operation.Status == OperationCompleted && operation.Kind != ActionsPoliciesRead && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != CodeQLConfigurationRead && operation.Kind != CodeQLDefaultSetupRead && operation.Kind != AIScanPullRequestsRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ActionsAccessRead && operation.Kind != CacheStorageRead && operation.Kind != CacheRetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
 			result.Outcome = ApplyPartialFailure
 			break
 		}

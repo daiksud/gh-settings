@@ -19,6 +19,14 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Release notes | [Go metadata tests](../../scripts/release-metadata/main_test.go) | Committed category precedence, formal footers, escaping, fixed Git ranges, and changed-baseline failures |
 | Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go), [local Action tests](../../tests/github-actions/release_actions_test.go) | Mock publication/recovery, canonical orchestration, manifested artifact identity/tamper rejection, stored-note preservation, and declared source/version/gate relationships |
 
+[Actions event policy scenarios](../features/actions-event-policies.feature.md)
+map strict codec, domain reconciliation, complete API acquisition/mutation,
+application sequencing, typed reports and snapshot-ID recording to their owners.
+[Process acceptance](../../tests/acceptance/actions_event_policies_test.go)
+checks the built CLI's independent export selection, create/update/repeat apply,
+partial ID recovery and destination preservation. These local fixtures use dummy
+credentials; active-policy tests do not establish live event enforcement.
+
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
 
 Markdown checks use the pinned rumdl from [mise.toml](../../mise.toml) and [.rumdl.toml](../../.rumdl.toml). MD051 checks local heading fragments and MD057 checks relative file links; external HTTP availability is not a CI dependency.

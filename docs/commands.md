@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--pull-request-limits] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--pull-request-limits] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -55,6 +55,31 @@ The [topics contract](settings.md#topics) defines names, omission and explicit c
 The [labels contract](settings.md#labels) uses ID-based listed-object ownership: only listed objects are managed, and omitted/empty collections or unlisted objects cause no label writes. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
 
 Plan shows creates and ID-bound updates, including default-derived values. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
+
+## Actions event policy commands
+
+`export --actions-policies` independently selects the complete
+[Actions event policy collection](settings.md#actions-event-policies), including
+IDs, sorted by policy name and event name. It composes with other export options;
+duplicates fail before repository/API/file work. Ordinary export and `--actions`
+do not read it. All pages/details must be complete and supported before saving;
+unsupported policies or failed reads preserve the existing destination.
+
+`validate` checks the complete listed objects locally. Omission and `[]` make no
+policy requests. Plan reports creates and ID-bound updates without writing.
+Apply preflights the full collection, skips matches, guards updates against fresh
+detail drift, and independently verifies acknowledgment and final GET. No ID
+means create-only; exact name collisions fail. IDs select repository-owned
+objects, including rename, without create fallback. Unlisted policies remain
+unchanged; there is no deletion or atomic rollback.
+
+Confirmed new IDs use guarded source-file writeback unless `--no-writeback` or
+`GITHUB_ACTIONS=true` suppresses it. Known IDs remain in recovery diagnostics even
+when a later step fails. An uncertain create is never retried automatically;
+inspect remote state and record the ID before retrying. Fine-grained/App tokens
+need **Administration write for observation as well as mutation**, including
+export and plan. Current-source support does not establish support in the
+selected published package or live active-policy enforcement.
 
 ## Copilot custom instructions commands
 
