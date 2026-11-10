@@ -30,6 +30,7 @@ type uiGeneralDocument struct {
 type uiReleasesDocument struct{ ImmutableRelease *bool }
 
 type uiActionsDocument struct {
+	Policies  *[]uimodel.ActionsEventPolicy
 	General   *uiActionsGeneralDocument
 	Variables *[]uimodel.RepositoryVariable
 }
@@ -87,7 +88,7 @@ func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 		}
 	}
 	if document.Actions != nil {
-		result.Actions = &uimodel.ActionsSettings{Variables: document.Actions.Variables}
+		result.Actions = &uimodel.ActionsSettings{Variables: document.Actions.Variables, Policies: document.Actions.Policies}
 		if document.Actions.General != nil {
 			general := document.Actions.General.model()
 			result.Actions.General = &general
@@ -141,7 +142,7 @@ func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDoc
 		}
 	}
 	if model.Actions != nil {
-		result.Actions = &uiActionsDocument{Variables: model.Actions.Variables}
+		result.Actions = &uiActionsDocument{Variables: model.Actions.Variables, Policies: model.Actions.Policies}
 		if model.Actions.General != nil {
 			general := uiActionsGeneralDocumentFromModel(*model.Actions.General)
 			result.Actions.General = &general

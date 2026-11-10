@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	ActionsPolicies         ActionsEventPolicyPlanChanges     `json:"actions_policies,omitempty"`
 	CopilotReviewEffort     []PlanChange                      `json:"copilot_review_effort,omitempty"`
 	CopilotInstructions     []PlanChange                      `json:"copilot_custom_instructions,omitempty"`
 	CopilotMCP              []PlanChange                      `json:"copilot_mcp,omitempty"`
@@ -58,6 +59,12 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	if planErr == nil {
 		if err := presentation.ValidateRulesetChanges(result.Comparison.Rulesets); err != nil {
 			planErr = &app.PlanError{Stage: "read-failure", Path: "repository.settings.rulesets", Target: result.Target, Err: err}
+			result.Comparison = settings.Comparison{}
+		}
+	}
+	if planErr == nil {
+		if err := presentation.ValidateActionsEventPolicyChanges(result.Comparison.ActionsPolicies); err != nil {
+			planErr = &app.PlanError{Stage: "read-failure", Path: "repository.settings.actions.policies", Target: result.Target, Err: err}
 			result.Comparison = settings.Comparison{}
 		}
 	}
@@ -134,6 +141,13 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.CopilotReviewEffort {
 		before, after := change.Values()
 		report.CopilotReviewEffort = append(report.CopilotReviewEffort, PlanChange{Field: change.Field(), Before: before, After: after})
+	}
+	for _, change := range result.Comparison.ActionsPolicies {
+		entry := ActionsEventPolicyPlanChange{Operation: change.Operation(), After: actionsEventPolicyReport(change.After())}
+		if before := change.Before(); before != nil {
+			entry.Before = actionsEventPolicyReport(*before)
+		}
+		report.ActionsPolicies = append(report.ActionsPolicies, entry)
 	}
 	for _, change := range result.Comparison.Rulesets {
 		display := change.Display()

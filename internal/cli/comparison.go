@@ -70,6 +70,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	for _, change := range comparison.CopilotReviewEffort {
 		fmt.Fprintln(&output, presentation.CopilotReviewEffortLine(change))
 	}
+	for _, change := range comparison.ActionsPolicies {
+		fmt.Fprintln(&output, presentation.ActionsEventPolicyLine(change))
+	}
 	for _, change := range comparison.Rulesets {
 		fmt.Fprintln(&output, presentation.RulesetLine(change.Display()))
 	}

@@ -9,6 +9,7 @@ import (
 // Only fixed resource paths are retained: diagnostics must never echo arbitrary
 // configuration values, API errors, credentials or resource names into Summary.
 var failureResources = []string{
+	"repository.settings.actions.policies",
 	settings.PullRequestLimitsPath,
 	settings.CopilotReviewEffortPath,
 	settings.CopilotInstructionsPath,

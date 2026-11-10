@@ -12,6 +12,7 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludeActionsPolicies                            bool
 	IncludeCopilotReviewEffort                        bool
 	IncludeCopilotInstructions                        bool
 	IncludeCopilotMCP                                 bool
@@ -126,6 +127,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 		return err
 	}
 	declaration.Labels = &validated
+	if checkout.IncludeActionsPolicies {
+		observed, err := read.ActionsPolicies(repo)
+		if err != nil {
+			return fmt.Errorf("read Actions policies: %w", err)
+		}
+		policies, err := settings.ExportActionsPolicies(observed)
+		if err != nil {
+			return fmt.Errorf("export Actions policies: %w", err)
+		}
+		declaration.ActionsPolicies = &policies
+	}
 	if checkout.IncludeRulesets {
 		observed, err := read.Rulesets(repo)
 		if err != nil {
