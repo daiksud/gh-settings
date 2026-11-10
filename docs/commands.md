@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -58,9 +58,15 @@ Plan shows creates and ID-bound updates, including default-derived values. Color
 
 ## Copilot custom instructions commands
 
-Current source accepts the [Use custom instructions boolean](settings.md#copilot-code-review-custom-instructions). `export --copilot-custom-instructions` explicitly selects this setting and composes with other options; duplicate flags fail before target/API/file work. Ordinary export and `--actions` acquire no Copilot code-review settings. A complete true/false read is required before saving.
+Current source accepts the [Use custom instructions boolean](settings.md#copilot-code-review-custom-instructions). `export --copilot-custom-instructions` explicitly selects this setting and composes with other options; duplicate flags fail before target/API/file work. Without an explicit Copilot selection, ordinary export and `--actions` acquire no Copilot code-review settings. A complete true/false read is required before saving.
 
 Plan shows the native boolean comparison. Apply reads fresh state, skips a match and verifies narrow PATCH updates. The flag stores configuration without enabling or requesting reviews and does not read or edit instruction files. API permission and review-entitlement boundaries remain separate; this option does not expand either.
+
+## Copilot review effort commands
+
+`export --copilot-review-effort` selects only the [Review effort level](settings.md#copilot-code-review-effort-level). It composes with `--copilot-custom-instructions` and other export options; duplicate flags fail before target/API/file work. Complete selected acquisition is required before saving, and a failure preserves the existing file.
+
+Plan and detailed Action reports show `default`, `lite` or `balanced` at `repository.settings.copilot.code_review.review_effort_level`. Default is an observable configured-null state, not proof that GitHub erased an unavailable saved override. Apply reads fresh availability, skips observable matches, sends only the declared effort when needed and independently verifies readback. Unsupported or unavailable observations are errors, never successful fallback. This command neither enables nor requests Copilot reviews.
 
 ## Repository variables commands
 
@@ -170,6 +176,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.settings.agents.variables` | After Actions variables, the same selected-name upsert and verification using only Agents endpoints. No unlisted deletion. |
 | `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, then public-fork approval. Each uses its adopted preflight/readback contract. |
 | `repository.settings.copilot.code_review.use_custom_instructions` | Fresh GET, conditional single-boolean PATCH and independent GET verification; no review activation or instruction-file changes. |
+| `repository.settings.copilot.code_review.review_effort_level` | Fresh effort/availability GET, conditional single-field PATCH and independent GET verification; Default uses observable configured-null comparison, not proof of hidden-override erasure. |
 | `repository.settings.advanced_security` | Secret protection/push protection in dependency order, then private vulnerability reporting. |
 | `repository.settings.general.releases` | Immutable release policy after private reporting and before Pages. |
 | `repository.settings.pages` | Existing-site declared-only update with identity/visibility/readback checks. |

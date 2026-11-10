@@ -22,6 +22,7 @@ type RepositoryWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	CopilotReviewEffort func(repository.Repository) (settings.CopilotReviewEffortObservation, error)
 	CopilotInstructions func(repository.Repository) (settings.CopilotInstructionsObservation, error)
 	AgentVariable       func(repository.Repository, string) (settings.VariableObservation, error)
 	Variable            func(repository.Repository, string) (settings.VariableObservation, error)
@@ -51,6 +52,7 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	CopilotReviewEffort     func(repository.Repository, string) (bool, error)
 	CopilotInstructions     func(repository.Repository, bool) (bool, error)
 	AgentVariable           func(repository.Repository, settings.RepositoryVariable) (bool, error)
 	Variable                func(repository.Repository, settings.RepositoryVariable) (bool, error)
