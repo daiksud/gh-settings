@@ -74,11 +74,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		result.Settings.Actions = &uimodel.ActionsSettings{General: &actions}
 	}
 	if source.Variables != nil {
-		values := make([]uimodel.RepositoryVariable, 0, source.Variables.Len())
-		for _, entry := range settings.SortedVariables(*source.Variables) {
-			value := entry.Value
-			values = append(values, uimodel.RepositoryVariable{Name: entry.Name, Value: &value})
-		}
+		values := variableValuesUI(*source.Variables)
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}
 		}
@@ -86,6 +82,13 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 			result.Settings.Actions = &uimodel.ActionsSettings{}
 		}
 		result.Settings.Actions.Variables = &values
+	}
+	if source.AgentsVariables != nil {
+		values := variableValuesUI(*source.AgentsVariables)
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.Agents = &uimodel.AgentsSettings{Variables: &values}
 	}
 	if source.CopilotInstructions != nil {
 		if result.Settings == nil {

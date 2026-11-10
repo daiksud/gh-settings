@@ -23,3 +23,12 @@ func VariablesDeclaration(values *[]uimodel.RepositoryVariable) (*settings.Varia
 	}
 	return &result, nil
 }
+
+func variableValuesUI(variables settings.VariableDeclarations) []uimodel.RepositoryVariable {
+	values := make([]uimodel.RepositoryVariable, 0, variables.Len())
+	for _, entry := range settings.SortedVariables(variables) {
+		value := entry.Value
+		values = append(values, uimodel.RepositoryVariable{Name: entry.Name, Value: &value})
+	}
+	return values
+}

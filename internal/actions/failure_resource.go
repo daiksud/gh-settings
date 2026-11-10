@@ -11,6 +11,7 @@ import (
 var failureResources = []string{
 	settings.CopilotInstructionsPath,
 	"repository.settings.actions.variables",
+	"repository.settings.agents.variables",
 	"repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests",
 
 	settings.CodeQLConfigurationPath,

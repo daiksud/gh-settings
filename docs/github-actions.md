@@ -65,7 +65,7 @@ The pinned v0.27.0 label apply is ID-based and never deletes unlisted labels. An
 
 ### Repository variables and plaintext reporting
 
-Current-source CLI and Action planning/apply accept [selected repository variables](settings.md#actions-repository-variables); this does not assert support in the pinned published package. Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. Do not store credentials in variables. No Secrets, Environment, Agents or organization variable endpoint is used, and no App grant or token-request permission is added by this implementation. Supply only the Variables permissions needed by the selected declaration.
+Current-source CLI and Action planning/apply accept separate [Actions repository variables](settings.md#actions-repository-variables) and [Agents repository variables](settings.md#agents-repository-variables); this does not assert support in the pinned published package. Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. The same name in both families retains separate values and resource labels. Do not store credentials in variables. No Secrets, Environment or organization variable endpoint is used, and no App grant or token-request permission is added by this implementation. Supply only the **Variables** or **Agent variables** permissions needed by the respective selected declaration.
 
 ### Copilot custom instructions
 
@@ -93,6 +93,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
+| Agents repository variables (current source) | Repository Agent variables read for selected names | Repository Agent variables write, including fresh read and exact readback |
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
 | Actions cache size eviction limit | Actions read | Administration write plus Actions read for preflight/readback |

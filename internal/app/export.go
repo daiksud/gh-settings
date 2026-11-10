@@ -14,6 +14,7 @@ import (
 type ExportCheckout struct {
 	IncludeCopilotInstructions                        bool
 	Variables                                         []string
+	AgentsVariables                                   []string
 	IncludeCodeQLConfiguration                        bool
 	IncludeActionsAccess                              bool
 	IncludeCacheStorage                               bool
@@ -54,6 +55,10 @@ func Export(checkout ExportCheckout, read Reader) error {
 	selectedNames, err := settings.CanonicalVariableNames(checkout.Variables)
 	if err != nil {
 		return err
+	}
+	selectedAgentsNames, err := settings.CanonicalVariableNames(checkout.AgentsVariables)
+	if err != nil {
+		return fmt.Errorf("repository.settings.agents.variables: %w", err)
 	}
 	repo, err := checkout.Repository()
 	if err != nil {
@@ -430,31 +435,13 @@ func Export(checkout ExportCheckout, read Reader) error {
 			checkout.NormalizationWarning(record)
 		}
 	}
-	if len(selectedNames) > 0 {
-		slices.Sort(selectedNames)
-		values := make([]settings.RepositoryVariable, 0, len(selectedNames))
-		for _, name := range selectedNames {
-			observed, err := read.Variable(repo, name)
-			if err != nil {
-				return err
-			}
-			value, err := observed.Value()
-			if err != nil {
-				return err
-			}
-			if value == nil {
-				return fmt.Errorf("selected repository variable %q is absent", name)
-			}
-			if value.Name != name {
-				return fmt.Errorf("repository variable observation identity mismatch")
-			}
-			values = append(values, *value)
-		}
-		variables, err := settings.NewVariableDeclarations(values)
-		if err != nil {
-			return err
-		}
-		declaration.Variables = &variables
+	declaration.Variables, err = exportVariables(repo, selectedNames, read.Variable)
+	if err != nil {
+		return err
+	}
+	declaration.AgentsVariables, err = exportVariables(repo, selectedAgentsNames, read.AgentVariable)
+	if err != nil {
+		return fmt.Errorf("repository.settings.agents.variables: %w", err)
 	}
 	return save(declaration)
 }

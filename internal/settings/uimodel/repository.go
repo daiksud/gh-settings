@@ -8,6 +8,7 @@ type Repository struct {
 }
 
 type RepositorySettings struct {
+	Agents             *AgentsSettings
 	Copilot            *CopilotSettings
 	General            *General
 	Rulesets           *[]Ruleset
@@ -21,6 +22,8 @@ type RepositoryVariable struct {
 	Name  string
 	Value *string
 }
+type AgentsSettings struct{ Variables *[]RepositoryVariable }
+
 type ActionsSettings struct {
 	General   *ActionsGeneral
 	Variables *[]RepositoryVariable

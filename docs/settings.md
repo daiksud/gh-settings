@@ -51,7 +51,7 @@ This Free-only policy replaces the earlier personal-public Security investigatio
 
 ## Supported fields
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.variables`, `copilot.code_review`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.variables`, `agents.variables`, `copilot.code_review`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
 The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
@@ -327,9 +327,29 @@ Both `name` and nonempty string `value` are required. Names contain only ASCII l
 
 Plan reads each selected name individually and shows creates or value updates. Apply reads fresh state, creates absent names with POST, updates changed values with value-only PATCH, skips equal values, and requires exact individual GET readback after a mutation. Only GET 404 means absent under the caller-permissions precondition. Other failed/incomplete reads fail. Mutations and verification failures can have remote effects; earlier writes remain applied, without rollback, retry or concurrency protection.
 
-Ordinary export does not read variables. Repeat `export --variable NAME` to acquire only known non-sensitive names by individual GET. A selected missing name fails before saving. Variables are **plaintext**: YAML, exported files, detailed plans and Summary can contain their values. Never put secrets or credentials in variables; the tool does not classify or mask values. Secrets, Environment, organization and Agents variables are outside this feature, and their endpoints are never selected.
+Ordinary export does not read variables. Repeat `export --variable NAME` to acquire only known non-sensitive names by individual GET. A selected missing name fails before saving. Variables are **plaintext**: YAML, exported files, detailed plans and Summary can contain their values. Never put secrets or credentials in variables; the tool does not classify or mask values. Secrets, Environment and organization variables are outside these repository-variable features. [Agents variables](#agents-repository-variables) have a separate declaration and export selection; Actions selections never access Agents endpoints.
 
 GitHub's [Variables REST API](https://docs.github.com/en/rest/actions/variables) requires repository Variables read for reads and write for mutations with fine-grained/App tokens. An empty-value create was rejected with HTTP 422 (`Variable value cannot be empty.`); validation rejects empty desired values before requests. No whitespace-trimming rule is inferred. GitHub enforces its [variable limits](https://docs.github.com/en/actions/reference/workflows-and-actions/variables#limits-for-configuration-variables); server rejections are errors. No permission is granted automatically. Free/personal/public UI eligibility and API persistence were observed separately; this is not a runtime entitlement gate. See the [behavior specification](features/repository-variables.feature.md).
+
+## Agents repository variables
+
+`repository.settings.agents.variables` corresponds to **Secrets and variables → Agents → Variables → Repository variables**. This current-source feature manages only explicitly named, non-sensitive repository Agents variables:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    agents:
+      variables:
+        - name: PROJECT_CONTEXT
+          value: public-documentation
+```
+
+The [name/value, omission and upsert rules above](#actions-repository-variables) also apply to Agents variables: names are canonical uppercase, values are required nonempty strings, omission and `[]` select nothing, and unlisted variables remain unchanged. No deletion or rename is supported. Plan reads only selected names; apply reads fresh state, conditionally creates or updates, then verifies the exact value. Failed reads do not become empty state, and failed mutations or verification can have unknown effects without rollback.
+
+Repeat `export --agent-variable NAME` to read only known non-sensitive Agents names. Ordinary export, `--actions` and `--variable` do not read Agents variables. Both export flags can select the same canonical name independently, and the two YAML groups can hold different values for that name. A missing, incomplete or failed selected read prevents saving the export. Values are **plaintext** in configuration, exported files, detailed plans, reports and Summary; never use this feature for secrets or credentials.
+
+The [Agents Variables REST API](https://docs.github.com/en/rest/agents/variables) uses `/repos/{owner}/{repo}/agents/variables` and requires the repository **Agent variables** permission at read level for acquisition and write level for mutation with fine-grained/App tokens. This is separate from the **Variables** permission for Actions variables. No permission or token request is added automatically. The Free/personal/public UI and API persistence were verified separately; the probe does not prove actual agent consumption or access for an untested credential. See the [behavior specification](features/repository-variables.feature.md) for evidence and its limits.
 
 ## Excluded private Actions controls
 

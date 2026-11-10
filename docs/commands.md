@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--copilot-custom-instructions] [--variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -64,9 +64,9 @@ Plan shows the native boolean comparison. Apply reads fresh state, skips a match
 
 ## Repository variables commands
 
-Current source accepts [Actions repository variable declarations](settings.md#actions-repository-variables). `export --variable NAME` opts into one known non-sensitive name; repeat it for other names. Names validate before target/API work, including case-insensitive duplicate rejection. Ordinary export and `--actions` do not read variables. All selected individual GETs must succeed and find the requested names before saving; a failure preserves the existing output file. There is no bulk/all selection.
+Current source accepts separate [Actions](settings.md#actions-repository-variables) and [Agents](settings.md#agents-repository-variables) repository variable declarations. `export --variable NAME` selects one known non-sensitive Actions name; `export --agent-variable NAME` selects one Agents name. Repeat either flag for other names. Names validate before target/API work, including case-insensitive duplicate rejection within each family. The same canonical name can be selected in both families independently. Ordinary export and `--actions` do not read variables. All selected individual GETs must succeed and find the requested names before saving; a failure preserves the existing output file. There is no bulk/all selection.
 
-Plan is read-only. Apply upserts only declared names, preserving unlisted variables and skipping equal values. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use this feature for secrets. Repository Variables read/write permissions are separate from Actions or Administration permissions.
+Plan is read-only and identifies the selected family. Apply upserts only declared names, preserving unlisted variables and skipping equal values. Actions variables are processed before Agents variables, with stable name order within each family. Earlier successful writes remain applied after a later failure. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use these features for secrets. Actions variables require the repository **Variables** read/write permission; Agents variables require the separate **Agent variables** read/write permission. Neither grants access to the other family.
 
 ## Export behavior
 
@@ -167,6 +167,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
 | `repository.settings.actions.variables` | Stable name-order fresh individual GET, conditional POST or value-only PATCH, then exact GET verification. No unlisted deletion. |
+| `repository.settings.agents.variables` | After Actions variables, the same selected-name upsert and verification using only Agents endpoints. No unlisted deletion. |
 | `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, then public-fork approval. Each uses its adopted preflight/readback contract. |
 | `repository.settings.copilot.code_review.use_custom_instructions` | Fresh GET, conditional single-boolean PATCH and independent GET verification; no review activation or instruction-file changes. |
 | `repository.settings.advanced_security` | Secret protection/push protection in dependency order, then private vulnerability reporting. |

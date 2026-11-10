@@ -167,9 +167,16 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		hasWrites = hasWrites || wrote
 	}
 	if desired.Variables != nil && desired.Variables.Len() > 0 {
-		wrote, err := applyVariables(&result, repo, *desired.Variables, write)
+		wrote, err := applyVariables(&result, repo, *desired.Variables, VariableUpsert, write.Variable)
 		if err != nil {
 			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0 {
+		wrote, err := applyVariables(&result, repo, *desired.AgentsVariables, AgentVariableUpsert, write.AgentVariable)
+		if err != nil {
+			return result, fmt.Errorf("apply Agents variables: %w", err)
 		}
 		hasWrites = hasWrites || wrote
 	}
@@ -351,5 +358,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || (desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }

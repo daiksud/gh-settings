@@ -27,11 +27,23 @@ func variablesPath(repo repository.Repository) string {
 }
 
 func (c *Client) ReadVariable(repo repository.Repository, name string) (settings.VariableObservation, error) {
+	return c.readVariable(variablesPath(repo), name)
+}
+
+func agentVariablesPath(repo repository.Repository) string {
+	return "repos/" + repo.Owner + "/" + repo.Name + "/agents/variables"
+}
+
+func (c *Client) ReadAgentVariable(repo repository.Repository, name string) (settings.VariableObservation, error) {
+	return c.readVariable(agentVariablesPath(repo), name)
+}
+
+func (c *Client) readVariable(path, name string) (settings.VariableObservation, error) {
 	canonical, err := settings.VariableName(name)
 	if err != nil {
 		return settings.VariableObservation{}, err
 	}
-	response, err := c.rest.Request(http.MethodGet, variablesPath(repo)+"/"+canonical, nil)
+	response, err := c.rest.Request(http.MethodGet, path+"/"+canonical, nil)
 	if err != nil {
 		var httpErr *api.HTTPError
 		if errors.As(err, &httpErr) {
@@ -71,12 +83,20 @@ type variablePreWriteFailure struct{ error }
 func (*variablePreWriteFailure) ReadFailedBeforeWrite() {}
 
 func (c *Client) UpsertVariable(repo repository.Repository, desired settings.RepositoryVariable) (bool, error) {
+	return c.upsertVariable(variablesPath(repo), desired)
+}
+
+func (c *Client) UpsertAgentVariable(repo repository.Repository, desired settings.RepositoryVariable) (bool, error) {
+	return c.upsertVariable(agentVariablesPath(repo), desired)
+}
+
+func (c *Client) upsertVariable(collectionPath string, desired settings.RepositoryVariable) (bool, error) {
 	validated, err := settings.NewVariableDeclarations([]settings.RepositoryVariable{desired})
 	if err != nil {
 		return false, &variablePreWriteFailure{err}
 	}
 	desired = validated.Values()[0]
-	observation, err := c.ReadVariable(repo, desired.Name)
+	observation, err := c.readVariable(collectionPath, desired.Name)
 	if err != nil {
 		return false, &variablePreWriteFailure{err}
 	}
@@ -87,7 +107,7 @@ func (c *Client) UpsertVariable(repo repository.Repository, desired settings.Rep
 	if before != nil && before.Value == desired.Value {
 		return false, nil
 	}
-	method, path, status := http.MethodPost, variablesPath(repo), http.StatusCreated
+	method, path, status := http.MethodPost, collectionPath, http.StatusCreated
 	payload := map[string]string{"value": desired.Value}
 	if before == nil {
 		payload["name"] = desired.Name
@@ -103,7 +123,7 @@ func (c *Client) UpsertVariable(repo repository.Repository, desired settings.Rep
 	if response.StatusCode != status {
 		return false, fmt.Errorf("unexpected repository variable write status %d (write effects may already have applied)", response.StatusCode)
 	}
-	actual, err := c.ReadVariable(repo, desired.Name)
+	actual, err := c.readVariable(collectionPath, desired.Name)
 	if err != nil {
 		return false, fmt.Errorf("verify repository variable %q failed (write effects may already have applied)", desired.Name)
 	}
