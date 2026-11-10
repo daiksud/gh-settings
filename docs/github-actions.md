@@ -268,3 +268,13 @@ Complete family reads require Administration read plus applicable actor authoriz
 [Pages configuration](settings.md#pages-configuration) through validate/plan/apply and UI-named Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Existing caller grants and Action inputs are unchanged; no export input exists. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Complete Source intent creates missing sites; explicit deploy-from-branch with exact `branch: none` deletes them. Partial creation intent and deletion conflicts fail. Confirmed creation remains reported if an optional follow-up fails. Site visibility is not managed.
 
 The Summary shares Actions workflow-permission and contributor-approval, Security and Pages display paths and choices with CLI plans. Private plan transport fields retain their internal identities; these are not public YAML field names.
+
+### Persistent pull request limits
+
+The Action accepts the same optional [Pull request limits declaration](settings.md#persistent-pull-request-limits)
+as the CLI, under `repository.settings.interaction_limits.pull_request_limits`.
+Its token must already authorize the administrator-only creation-cap endpoint.
+Detailed plans/Summaries retain the three distinct UI controls and native values;
+status-only reports hide them. Omitted controls, temporary restrictions and
+exemptions remain unmanaged. A failed post-PATCH confirmation reports possible
+applied effects without retrying the write or rolling back earlier operations.

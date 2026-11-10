@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--pull-request-limits] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -225,3 +225,14 @@ Actions workflow permissions, fork contributor approval, Security and Pages diff
 `export --pages` acquires [Pages configuration](settings.md#pages-configuration). Target GET 404 exports explicit `source: deploy_from_a_branch` and `branch: none`, without folder/domain/HTTPS. Applying that export intentionally deletes any site present at apply time. Other read failures preserve the destination; ordinary export makes no Pages request.
 
 Plan remains read-only and displays creation, deletion or declared configuration differences. Apply creates absent sites only with complete explicit Source intent, directly deletes with the exact Branch none selector, and updates present sites without erasing omitted controls. Contradictory deletion and incomplete creation intent fail before Pages writes. A confirmed creation followed by optional domain/HTTPS failure remains applied and is reported as partial progress; no automatic rollback or write retry occurs. Site visibility and deployment readiness are not managed.
+
+## Persistent pull request limits commands
+
+`export --pull-request-limits` selects all three [persistent cap controls](settings.md#persistent-pull-request-limits),
+including latent values while disabled. The flag composes with other export
+options; duplicates fail before target/API/file work. Ordinary export makes no
+cap request. Administrator access and complete typed acquisition are required;
+failed export preserves the existing file. Plan remains read-only. Apply uses
+fresh preflight, narrow PATCH and bounded independent confirmation, with honest
+uncertain effects on readback failure. Temporary restrictions and exemptions
+are not selected.
