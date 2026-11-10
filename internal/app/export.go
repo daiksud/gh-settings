@@ -14,6 +14,7 @@ import (
 type ExportCheckout struct {
 	IncludeCopilotReviewEffort                        bool
 	IncludeCopilotInstructions                        bool
+	IncludeCopilotMCP                                 bool
 	Variables                                         []string
 	AgentsVariables                                   []string
 	IncludeCodeQLConfiguration                        bool
@@ -323,6 +324,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.CopilotInstructions = &enabled
+	}
+	if checkout.IncludeCopilotMCP {
+		observed, err := read.CopilotMCP(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.CopilotMCP = &enabled
 	}
 	if checkout.IncludeCopilotReviewEffort {
 		observed, err := read.CopilotReviewEffort(repo)

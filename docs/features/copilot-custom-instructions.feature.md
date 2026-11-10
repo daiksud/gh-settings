@@ -10,13 +10,13 @@ description: Declare the repository Use custom instructions toggle without enabl
 
 - `repository.settings.copilot.code_review.use_custom_instructions` is an optional boolean. Omission and empty page mappings are unmanaged; explicit true and false remain distinct. Null, non-booleans and unadopted sibling controls are invalid.
 - A complete acquired boolean observation is required for comparison of a declared setting. An unread setting must not become false. One declared toggle counts as one managed value, whether matching or different.
-- The [review effort level](copilot-review-effort.feature.md) is separately selectable. Instruction files are neither read nor created/edited; MCP, approvals, licensing, access and automatic-review rules remain unmanaged by this toggle.
+- The [review effort level](copilot-review-effort.feature.md) is separately selectable. Instruction files are neither read nor created/edited; The [MCP toggle](copilot-mcp.feature.md), approvals, licensing, access and automatic-review rules remain unmanaged by this toggle.
 
 ### Rule: Preserve configuration without activating reviews
 
 - Plan reads only when declared and never writes. Apply reads fresh state, skips a matching value, PATCHes only `custom_instructions_enabled`, and requires matching independent GET readback.
 - Denied, missing, malformed and non-boolean reads fail. Mutation/verification failures can have remote effects; earlier successful writes remain applied and later writes stop. There is no rollback, automatic retry or saved-plan apply.
-- Ordinary export makes no Copilot code-review settings request. `--copilot-custom-instructions` selects only the supported boolean and saves only after successful acquisition.
+- Without an explicit Copilot selection, ordinary export makes no Copilot code-review settings request. `--copilot-custom-instructions` selects only the supported boolean and saves only after successful acquisition.
 - This toggle controls future eligible reviewers' use of repository instruction files. It does not enable Copilot code review, grant access, change licensing, request reviews or launch workflows. Organization instructions apply independently.
 
 ### UI and API evidence

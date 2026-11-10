@@ -297,7 +297,7 @@ repository:
         use_custom_instructions: false
 ```
 
-This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` are unmanaged; explicit false is managed. Null and non-booleans are invalid. The [review effort level](#copilot-code-review-effort-level) is independently selectable. MCP, approvals, licensing, access and automatic-review configuration remain separate. No instruction file is read, created or edited.
+This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` are unmanaged; explicit false is managed. Null and non-booleans are invalid. The [review effort level](#copilot-code-review-effort-level) is independently selectable. The [MCP toggle](#copilot-code-review-mcp-tools), approvals, licensing, access and automatic-review configuration remain separate. No instruction file is read, created or edited.
 
 The toggle changes whether future eligible Copilot reviews use repository instruction files. It does **not** enable Copilot code review, grant access, request a review or launch a workflow. Organization instructions apply independently. In the verified Free/personal/public UI, the No access banner expressly allowed storing settings for people with review access, and the toggle was enabled. Storing configuration is distinct from review entitlement and instruction consumption.
 
@@ -306,6 +306,29 @@ Plan requires a complete acquired boolean and never writes. Apply reads fresh st
 `export --copilot-custom-instructions` independently includes the stored boolean, including false. Unless another Copilot control is explicitly selected, ordinary export and `--actions` do not read this endpoint. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports show the UI path and native booleans; status-only output omits them.
 
 The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) documents repository administrators, classic `repo` scope and GitHub App support for GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings`. Exact fine-grained/App-token grants were not independently established by the owner-authenticated probe; callers must authorize this endpoint with their chosen credential. No grant is added automatically. The [behavior specification](features/copilot-custom-instructions.feature.md) records the verified storage/restoration and its limits.
+
+## Copilot code review MCP tools
+
+`repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests` corresponds to **Copilot → Code review → Allow Copilot to use MCP tools when reviewing pull requests**:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    copilot:
+      code_review:
+        allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false
+```
+
+This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` leave it unmanaged; explicit false is managed. Null and non-booleans are invalid. Custom instructions and review effort remain independently selectable.
+
+The toggle stores whether future eligible Copilot reviews may use MCP tools. It does not configure MCP servers, create or edit MCP configuration or secrets, grant permissions, enable or request reviews, launch workflows, manage billing or establish entitlement. The personally owned public repository under GitHub Free exposed a configurable toggle even with a No access banner. Configurable storage does not establish actual MCP use or review access.
+
+Plan requires a complete typed settings read and never writes. Apply reads fresh settings, skips a matching boolean and PATCHes only `mcp_enabled` when needed. An independent GET must confirm the requested boolean and preservation of all acquired sibling settings, including custom instructions, configured/effective review effort, available effort choices and severity filtering. Missing, null or non-boolean MCP values, incomplete or malformed sibling settings, denied reads and HTTP 404 are errors rather than false. A configured-null review effort remains a valid sibling value and is preserved as observed. A preservation mismatch fails verification without attributing a concurrent change to this write. Preflight is not a concurrency lock. Mutation/readback failures may leave unknown effects; earlier successful writes remain and later operations stop. There is no automatic retry, rollback or saved-plan application.
+
+`export --copilot-mcp` explicitly includes the stored boolean, including false. It composes with `--copilot-custom-instructions`, `--copilot-review-effort` and other options without selecting their settings. Ordinary export and `--actions` do not select any Copilot setting. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports use the fixed UI path and native booleans; status-only output hides the control and values.
+
+The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) defines GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings` and `mcp_enabled`. Repository administrators and classic `repo` scope are documented, and GitHub App tokens are supported; exact fine-grained/App-token grants were not independently established. The credential must already authorize this endpoint; gh-settings does not expand grants. See GitHub's [code-review configuration guide](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review) and the [behavior specification](features/copilot-mcp.feature.md).
 
 ## Copilot code review effort level
 
@@ -328,7 +351,7 @@ Plan is read-only. A selected read requires complete, correctly typed configured
 
 Apply reads fresh state and availability, skips an observable match, and PATCHes only `review_effort` when a change is needed. `default` sends `inherit`; the other choices send their literal API strings. An independent GET must confirm the requested observable state. Sibling controls, including custom instructions, MCP and severity filtering, are not included in this effort PATCH. Their complete typed values must remain unchanged in readback; a mismatch fails verification without claiming whether the cause was this write or a concurrent change. Mutation or readback failures can leave unknown effects; earlier successful writes remain applied and later work stops. There is no rollback, automatic retry, concurrency lock or saved-plan application.
 
-`export --copilot-review-effort` explicitly includes the observable choice. It composes with `--copilot-custom-instructions`, but neither flag selects the other control. Ordinary export and `--actions` do not select effort. Failed acquisition leaves the existing output file unchanged. Detailed CLI/Action reports show the fixed UI path and string choices; status-only output hides them.
+`export --copilot-review-effort` explicitly includes the observable choice. It composes with `--copilot-custom-instructions` and `--copilot-mcp`, but each flag selects only its own control. Ordinary export and `--actions` do not select effort. Failed acquisition leaves the existing output file unchanged. Detailed CLI/Action reports show the fixed UI path and string choices; status-only output hides them.
 
 The same endpoint and [credential boundaries](#copilot-code-review-custom-instructions) apply. GitHub documents the [configuration control](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review), [effort choices and Preview status](https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review) and [GET/PATCH schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json). The [behavior specification](features/copilot-review-effort.feature.md) records test ownership and the limits of the live storage evidence.
 

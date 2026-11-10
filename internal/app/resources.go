@@ -24,6 +24,7 @@ type RepositoryWriteEffectsFailure interface {
 type Reader struct {
 	CopilotReviewEffort func(repository.Repository) (settings.CopilotReviewEffortObservation, error)
 	CopilotInstructions func(repository.Repository) (settings.CopilotInstructionsObservation, error)
+	CopilotMCP          func(repository.Repository) (settings.CopilotMCPObservation, error)
 	AgentVariable       func(repository.Repository, string) (settings.VariableObservation, error)
 	Variable            func(repository.Repository, string) (settings.VariableObservation, error)
 	CodeQLConfiguration func(repository.Repository) (settings.CodeQLConfigurationObservation, error)
@@ -54,6 +55,7 @@ type Reader struct {
 type Writer struct {
 	CopilotReviewEffort     func(repository.Repository, string) (bool, error)
 	CopilotInstructions     func(repository.Repository, bool) (bool, error)
+	CopilotMCP              func(repository.Repository, bool) (bool, error)
 	AgentVariable           func(repository.Repository, settings.RepositoryVariable) (bool, error)
 	Variable                func(repository.Repository, settings.RepositoryVariable) (bool, error)
 	ReadCodeQLConfiguration func(repository.Repository) (settings.CodeQLConfigurationObservation, error)

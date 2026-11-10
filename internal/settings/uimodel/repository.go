@@ -32,6 +32,7 @@ type SecurityAndQuality struct{ AdvancedSecurity *AdvancedSecurity }
 
 type CopilotSettings struct{ CodeReview *CopilotCodeReview }
 type CopilotCodeReview struct {
-	UseCustomInstructions *bool
-	ReviewEffortLevel     *string
+	UseCustomInstructions                              *bool
+	AllowCopilotToUseMCPToolsWhenReviewingPullRequests *bool
+	ReviewEffortLevel                                  *string
 }

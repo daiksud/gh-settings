@@ -11,6 +11,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Validate](validate.feature.md) | Validate declarations locally. |
 | [Plan](plan.feature.md) | Compare declared values without writes. |
 | [Apply](apply.feature.md) | Apply declarations and report partial failure. |
+| [Copilot MCP tools](copilot-mcp.feature.md) | Manage the stored MCP tools permission toggle without configuring servers or executing reviews. |
 | [Copilot review effort](copilot-review-effort.feature.md) | Manage the observable repository review effort choice without enabling reviews. |
 | [Copilot custom instructions](copilot-custom-instructions.feature.md) | Manage the stored repository Use custom instructions toggle. |
 | [Repository variables](repository-variables.feature.md) | Manage selected non-sensitive Actions repository variables. |

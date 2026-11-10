@@ -9,8 +9,8 @@ description: Declare the observable repository review effort choice without enab
 ### Rule: Select effort independently
 
 - `repository.settings.copilot.code_review.review_effort_level` accepts only `default`, `lite` and `balanced`. Null, non-string, empty, API spelling `inherit`, unknown values and Preview `max` fail local validation.
-- Omission and empty page mappings leave effort unmanaged. The custom-instructions toggle is independently selectable. One declared effort counts as one managed scalar, even when matching.
-- `export --copilot-review-effort` opts into effort only and composes with `--copilot-custom-instructions` and other export flags. Duplicate flags fail before target, API or file work. Without either Copilot selection, ordinary export performs no code-review settings request.
+- Omission and empty page mappings leave effort unmanaged. The custom-instructions and [MCP](copilot-mcp.feature.md) toggles are independently selectable. One declared effort counts as one managed scalar, even when matching.
+- `export --copilot-review-effort` opts into effort only and composes with `--copilot-custom-instructions`, `--copilot-mcp` and other export flags. Duplicate flags fail before target, API or file work. Without an explicit Copilot selection, ordinary export performs no code-review settings request.
 
 ### Rule: Compare observable configuration honestly
 
