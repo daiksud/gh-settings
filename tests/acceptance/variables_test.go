@@ -15,21 +15,30 @@ import (
 )
 
 func TestRepositoryVariablesProcess(t *testing.T) {
+	for _, family := range []struct{ name, flag string }{{"actions", "--variable"}, {"agents", "--agent-variable"}} {
+		t.Run(family.name, func(t *testing.T) { testRepositoryVariablesProcess(t, family.name, family.flag) })
+	}
+}
+
+func testRepositoryVariablesProcess(t *testing.T, family, flag string) {
+	endpoint := "/repos/owner/current/" + family + "/variables"
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
 	variables := map[string]string{"UNMANAGED": "keep-external"}
 	var requests []string
+	apiCalls := 0
 	redirect := false
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
+		apiCalls++
 		w.Header().Set("Content-Type", "application/json")
-		if strings.Contains(r.URL.Path, "/actions/variables") || r.URL.Path == "/unexpected" {
+		if strings.HasPrefix(r.URL.Path, endpoint) || r.URL.Path == "/unexpected" {
 			requests = append(requests, r.Method+" "+r.URL.Path)
 			if r.Header.Get("X-GitHub-Api-Version") != "2026-03-10" {
 				t.Errorf("wrong Variables version: %q", r.Header.Get("X-GitHub-Api-Version"))
 			}
-			name := strings.TrimPrefix(r.URL.Path, "/repos/owner/current/actions/variables/")
+			name := strings.TrimPrefix(r.URL.Path, endpoint+"/")
 			if redirect {
 				w.Header().Set("Location", "/unexpected")
 				w.WriteHeader(307)
@@ -52,7 +61,7 @@ func TestRepositoryVariablesProcess(t *testing.T) {
 			}
 			switch r.Method {
 			case "POST":
-				if r.URL.Path != "/repos/owner/current/actions/variables" || !reflect.DeepEqual(body, map[string]string{"name": "DISPLAY_NAME", "value": "日本語-v2"}) {
+				if r.URL.Path != endpoint || !reflect.DeepEqual(body, map[string]string{"name": "DISPLAY_NAME", "value": "日本語-v2"}) {
 					t.Errorf("unexpected POST %s %v", r.URL.Path, body)
 				}
 				variables[body["name"]] = body["value"]
@@ -97,7 +106,7 @@ func TestRepositoryVariablesProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	declaration := func(value string) string {
-		return "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      variables:\n        - name: display_name\n          value: " + value + "\n"
+		return "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    " + family + ":\n      variables:\n        - name: display_name\n          value: " + value + "\n"
 	}
 	input := declaration("日本語-v2")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
@@ -119,7 +128,7 @@ func TestRepositoryVariablesProcess(t *testing.T) {
 		}
 		requests = nil
 	}
-	path := "/repos/owner/current/actions/variables/DISPLAY_NAME"
+	path := endpoint + "/DISPLAY_NAME"
 	if err := writeSettingsFile(fixture.work, declaration("''")); err != nil {
 		t.Fatal(err)
 	}
@@ -128,10 +137,40 @@ func TestRepositoryVariablesProcess(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
-	run([]string{"plan"}, "repository.settings.actions.variables: create \"DISPLAY_NAME\" value=\"日本語-v2\"\n", false)
+	run([]string{"validate"}, "", false)
+	mu.Lock()
+	callsBeforePlan := apiCalls
+	mu.Unlock()
+	if callsBeforePlan != 0 {
+		t.Fatal("local validation made API requests", callsBeforePlan)
+	}
+	run([]string{"plan"}, "repository.settings."+family+".variables: create \"DISPLAY_NAME\" value=\"日本語-v2\"\n", false)
 	expect("GET " + path)
+	reportPath := filepath.Join(fixture.root, "variables-plan.json")
+	run([]string{"action", "plan", reportPath}, "", false)
+	expect("GET " + path)
+	reportData, err := os.ReadFile(reportPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report map[string]json.RawMessage
+	if err := json.Unmarshal(reportData, &report); err != nil {
+		t.Fatal(err)
+	}
+	key, otherKey := "variables", "agents_variables"
+	if family == "agents" {
+		key, otherKey = otherKey, key
+	}
+	var changes []struct {
+		Name   string  `json:"name"`
+		Before *string `json:"before"`
+		After  string  `json:"after"`
+	}
+	if json.Unmarshal(report[key], &changes) != nil || len(changes) != 1 || changes[0].Name != "DISPLAY_NAME" || changes[0].Before != nil || changes[0].After != "日本語-v2" || report[otherKey] != nil || string(report["outcome"]) != `"changed"` || string(report["managed"]) != "1" {
+		t.Fatalf("wrong family report: %s", reportData)
+	}
 	run([]string{"apply"}, "Applied repository settings.\n", false)
-	expect("GET "+path, "POST /repos/owner/current/actions/variables", "GET "+path)
+	expect("GET "+path, "POST "+endpoint, "GET "+path)
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
@@ -143,14 +182,14 @@ func TestRepositoryVariablesProcess(t *testing.T) {
 	}
 	run([]string{"apply"}, "Applied repository settings.\n", false)
 	expect("GET "+path, "PATCH "+path, "GET "+path)
-	run([]string{"export", "--variable", "display_name"}, "", false)
+	run([]string{"export", flag, "display_name"}, "", false)
 	expect("GET " + path)
 	output, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil || !strings.Contains(string(output), "DISPLAY_NAME") || !strings.Contains(string(output), "updated-v3") || strings.Contains(string(output), "UNMANAGED") {
 		t.Fatal(string(output), err)
 	}
-	run([]string{"export", "--variable", "MISSING"}, "", true)
-	expect("GET /repos/owner/current/actions/variables/MISSING")
+	run([]string{"export", flag, "MISSING"}, "", true)
+	expect("GET " + endpoint + "/MISSING")
 	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
 		t.Fatal(err)
 	}

@@ -63,6 +63,13 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 			return settings.Declaration{}, fmt.Errorf("repository.settings.rulesets: %w", err)
 		}
 		result.Rulesets = rulesets
+		if repository.Settings.Agents != nil {
+			variables, err := VariablesDeclaration(repository.Settings.Agents.Variables)
+			if err != nil {
+				return settings.Declaration{}, fmt.Errorf("repository.settings.agents.variables: %w", err)
+			}
+			result.AgentsVariables = variables
+		}
 		if repository.Settings.Actions != nil {
 			variables, err := VariablesDeclaration(repository.Settings.Actions.Variables)
 			if err != nil {

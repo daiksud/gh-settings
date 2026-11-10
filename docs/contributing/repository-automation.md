@@ -204,8 +204,10 @@ protection. Retired team-review and Preview additional-approval YAML controls
 are omitted. The package preserves the observed unowned Preview approval value
 when updating an existing PR rule; omission does not request disabling it.
 
-Repository variables are supported under `settings.actions.variables`, but no
-repository variable is adopted here. The apply caller retains only its existing
+Actions repository variables are supported by that package under
+`settings.actions.variables`, but no repository variable is adopted here.
+Agents repository variables are a current-source addition and are not declared
+here or added to the pinned package by this change. The apply caller retains only its existing
 Administration and Issues token requests. Copilot code-review custom instructions
 are supported by the package, but no Copilot setting is declared here. Pinning
 this package grants no new permissions and does not dispatch settings-apply.
