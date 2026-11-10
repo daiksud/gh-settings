@@ -5,6 +5,8 @@ These terms describe the shared Go model. [Architecture](architecture.md#impleme
 | Term | Meaning | Go type |
 | --- | --- | --- |
 | Settings declaration | The repository, topics, and labels values selected for management; all omitted resources are unmanaged | `settings.Declaration` |
+| Copilot review effort declaration | Optional `default`, `lite` or `balanced` choice; nil is unmanaged independently of custom instructions | `Declaration.CopilotReviewEffort` |
+| Copilot review effort observation/change | Acquired configured/effective effort and availability, with a closed observable-choice comparison; configured null does not prove raw override erasure | `settings.CopilotReviewEffortObservation`, `settings.CopilotReviewEffortChange` |
 | Copilot instruction declaration | Optional stored Use custom instructions boolean; nil is unmanaged and false remains explicit | `Declaration.CopilotInstructions` |
 | Copilot instruction observation/change | Acquired configuration boolean and closed unequal before/after values, independent of review access or execution | `settings.CopilotInstructionsObservation`, `settings.CopilotInstructionsChange` |
 | Repository declaration | Optional fields chosen by the maintainer; nil means omitted, while false and empty strings remain explicit values | `settings.RepositoryDeclaration` |

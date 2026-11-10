@@ -10,7 +10,7 @@ description: Declare the repository Use custom instructions toggle without enabl
 
 - `repository.settings.copilot.code_review.use_custom_instructions` is an optional boolean. Omission and empty page mappings are unmanaged; explicit true and false remain distinct. Null, non-booleans and unadopted sibling controls are invalid.
 - A complete acquired boolean observation is required for comparison of a declared setting. An unread setting must not become false. One declared toggle counts as one managed value, whether matching or different.
-- Only the Use custom instructions toggle is supported. Instruction files are neither read nor created/edited; review effort, MCP, approvals, licensing, access and automatic-review rules remain unmanaged.
+- The [review effort level](copilot-review-effort.feature.md) is separately selectable. Instruction files are neither read nor created/edited; MCP, approvals, licensing, access and automatic-review rules remain unmanaged by this toggle.
 
 ### Rule: Preserve configuration without activating reviews
 

@@ -33,6 +33,12 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	if repository.Settings != nil {
 		if repository.Settings.Copilot != nil && repository.Settings.Copilot.CodeReview != nil {
 			result.CopilotInstructions = copyUIValue(repository.Settings.Copilot.CodeReview.UseCustomInstructions)
+			result.CopilotReviewEffort = copyUIValue(repository.Settings.Copilot.CodeReview.ReviewEffortLevel)
+			if result.CopilotReviewEffort != nil {
+				if err := settings.ValidateCopilotReviewEffort(*result.CopilotReviewEffort); err != nil {
+					return settings.Declaration{}, err
+				}
+			}
 		}
 		securityUI := uimodel.SecuritySettings{}
 		if repository.Settings.General != nil {

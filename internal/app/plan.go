@@ -130,6 +130,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.CopilotInstructions = changes
 	}
+	if desired.CopilotReviewEffort != nil {
+		observed, err := read.CopilotReviewEffort(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotReviewEffortPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareCopilotReviewEffort(observed, desired.CopilotReviewEffort)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotReviewEffortPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.CopilotReviewEffort = changes
+	}
 	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
 		observed, err := read.Rulesets(repo)
 		if err != nil {

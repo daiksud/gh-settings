@@ -297,15 +297,40 @@ repository:
         use_custom_instructions: false
 ```
 
-This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` are unmanaged; explicit false is managed. Null and non-booleans are invalid. Only this control is adopted here: review effort, MCP, approvals, licensing, access and automatic-review configuration remain separate. No instruction file is read, created or edited.
+This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` are unmanaged; explicit false is managed. Null and non-booleans are invalid. The [review effort level](#copilot-code-review-effort-level) is independently selectable. MCP, approvals, licensing, access and automatic-review configuration remain separate. No instruction file is read, created or edited.
 
 The toggle changes whether future eligible Copilot reviews use repository instruction files. It does **not** enable Copilot code review, grant access, request a review or launch a workflow. Organization instructions apply independently. In the verified Free/personal/public UI, the No access banner expressly allowed storing settings for people with review access, and the toggle was enabled. Storing configuration is distinct from review entitlement and instruction consumption.
 
 Plan requires a complete acquired boolean and never writes. Apply reads fresh state, skips matches, PATCHes only `custom_instructions_enabled`, then requires matching independent GET readback. HTTP 404 is an error, not false; denied, incomplete, null or mistyped reads fail. Mutation/readback failures may have changed stored configuration; earlier successful writes remain and later operations stop. No rollback, automatic retry, concurrency lock or saved-plan application is provided.
 
-`export --copilot-custom-instructions` independently includes the stored boolean, including false. Ordinary export and `--actions` do not read this endpoint. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports show the UI path and native booleans; status-only output omits them.
+`export --copilot-custom-instructions` independently includes the stored boolean, including false. Unless another Copilot control is explicitly selected, ordinary export and `--actions` do not read this endpoint. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports show the UI path and native booleans; status-only output omits them.
 
 The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) documents repository administrators, classic `repo` scope and GitHub App support for GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings`. Exact fine-grained/App-token grants were not independently established by the owner-authenticated probe; callers must authorize this endpoint with their chosen credential. No grant is added automatically. The [behavior specification](features/copilot-custom-instructions.feature.md) records the verified storage/restoration and its limits.
+
+## Copilot code review effort level
+
+`repository.settings.copilot.code_review.review_effort_level` corresponds to **Copilot → Code review → Review effort level**:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    copilot:
+      code_review:
+        review_effort_level: lite
+```
+
+The optional string accepts `default`, `lite` and `balanced`. Omission leaves effort unmanaged, independently of `use_custom_instructions`. Null, empty strings, API spelling `inherit`, unknown choices and Preview `max` are invalid declarations. This control does not enable reviews, request a review, grant access, change licensing or edit instruction files. Stored configuration does not establish review entitlement or actual review execution.
+
+GitHub reports configured effort, effective effort and available efforts separately. A configured `lite` or `balanced` remains an explicit override, even when its value equals the inherited effective effort. `default` compares against configured null, not against effective `balanced`. GitHub can also return configured null for a stored override that is no longer available. Therefore export and comparison use `default` only as the **observable** default state: it does not prove that an underlying override was erased. A matching configured-null state produces no difference and apply skips it; applying this declaration is not a forced reset of a hidden override.
+
+Plan is read-only. A selected read requires complete, correctly typed configured/effective effort and availability. Unsupported configured or effective choices, including Preview Max, fail rather than being converted to a supported choice. Available choices may include Max without selecting or exporting it. An explicit `lite` or `balanced` must be available in the acquired state; it is not silently replaced by another choice.
+
+Apply reads fresh state and availability, skips an observable match, and PATCHes only `review_effort` when a change is needed. `default` sends `inherit`; the other choices send their literal API strings. An independent GET must confirm the requested observable state. Sibling controls, including custom instructions, MCP and severity filtering, are not included in this effort PATCH. Their complete typed values must remain unchanged in readback; a mismatch fails verification without claiming whether the cause was this write or a concurrent change. Mutation or readback failures can leave unknown effects; earlier successful writes remain applied and later work stops. There is no rollback, automatic retry, concurrency lock or saved-plan application.
+
+`export --copilot-review-effort` explicitly includes the observable choice. It composes with `--copilot-custom-instructions`, but neither flag selects the other control. Ordinary export and `--actions` do not select effort. Failed acquisition leaves the existing output file unchanged. Detailed CLI/Action reports show the fixed UI path and string choices; status-only output hides them.
+
+The same endpoint and [credential boundaries](#copilot-code-review-custom-instructions) apply. GitHub documents the [configuration control](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review), [effort choices and Preview status](https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review) and [GET/PATCH schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json). The [behavior specification](features/copilot-review-effort.feature.md) records test ownership and the limits of the live storage evidence.
 
 ## Actions repository variables
 

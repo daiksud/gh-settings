@@ -31,4 +31,7 @@ type ActionsSettings struct {
 type SecurityAndQuality struct{ AdvancedSecurity *AdvancedSecurity }
 
 type CopilotSettings struct{ CodeReview *CopilotCodeReview }
-type CopilotCodeReview struct{ UseCustomInstructions *bool }
+type CopilotCodeReview struct {
+	UseCustomInstructions *bool
+	ReviewEffortLevel     *string
+}

@@ -62,6 +62,7 @@ const (
 	CacheRetentionRead
 	CacheRetentionUpdate
 	VariableUpsert
+	CopilotReviewEffortUpdate
 	CopilotInstructionsUpdate
 	AgentVariableUpsert
 )
