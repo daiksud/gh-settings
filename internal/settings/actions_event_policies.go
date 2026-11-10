@@ -8,14 +8,25 @@ import (
 	"unicode/utf8"
 )
 
-// ActionsEventPolicy owns one repository event policy.
+// ActionsEventPolicy owns one repository policy with actor and/or event restrictions.
 // ID zero requests creation; positive IDs select existing repository objects.
 type ActionsEventPolicy struct {
-	ID              int64
-	Name            string
-	Enforcement     string
+	ID          int64
+	Name        string
+	Enforcement string
+	// Nil rules preserve the observed restriction on update. An empty actor list
+	// enables an allowlist containing no actors; an empty event list is invalid.
+	Actors          *[]ActionsPolicyActor
+	DisableActors   bool
+	DisableEvents   bool
 	Events          []string
 	TargetWorkflows *ActionsWorkflowTarget
+}
+
+// ActionsPolicyActor is the complete identity of an allowed actor.
+type ActionsPolicyActor struct {
+	Type string
+	ID   int64
 }
 
 // ActionsWorkflowTarget selects workflow paths. Nil on a declaration preserves an
@@ -102,7 +113,7 @@ func validateActionsPolicyName(name string) error {
 	return nil
 }
 
-// ValidateActionsEventPolicy validates the complete supported writable object.
+// ValidateActionsEventPolicy validates a declaration, including explicit rule removal.
 func ValidateActionsEventPolicy(policy ActionsEventPolicy) error {
 	if err := ValidateActionsWorkflowTarget(policy.TargetWorkflows); err != nil {
 		return err
@@ -116,7 +127,40 @@ func ValidateActionsEventPolicy(policy ActionsEventPolicy) error {
 	if policy.Enforcement != "disabled" && policy.Enforcement != "active" {
 		return fmt.Errorf("Actions policy %q enforcement must be disabled or active", policy.Name)
 	}
-	if len(policy.Events) == 0 {
+	if policy.DisableActors && policy.DisableEvents {
+		return fmt.Errorf("Actions policy %q cannot disable every restriction", policy.Name)
+	}
+	if policy.DisableActors && policy.Actors != nil {
+		return fmt.Errorf("Actions policy %q cannot disable restrict_actors and supply allowed actors", policy.Name)
+	}
+	if policy.DisableEvents && policy.Events != nil {
+		return fmt.Errorf("Actions policy %q cannot disable restrict_events and supply allowed events", policy.Name)
+	}
+	if policy.ID == 0 && policy.Actors == nil && policy.Events == nil {
+		return fmt.Errorf("Actions policy %q creation requires at least one active restriction", policy.Name)
+	}
+	if policy.Actors != nil {
+		seen := map[ActionsPolicyActor]bool{}
+		for _, actor := range *policy.Actors {
+			switch actor.Type {
+			case "User":
+				if actor.ID <= 0 {
+					return fmt.Errorf("Actions policy %q User actor id must be positive", policy.Name)
+				}
+			case "RepositoryRole":
+				if actor.ID != 2 && actor.ID != 4 && actor.ID != 5 {
+					return fmt.Errorf("Actions policy %q has unsupported RepositoryRole actor id %d", policy.Name, actor.ID)
+				}
+			default:
+				return fmt.Errorf("Actions policy %q has unsupported actor type %q", policy.Name, actor.Type)
+			}
+			if seen[actor] {
+				return fmt.Errorf("Actions policy %q has duplicate actor %s/%d", policy.Name, actor.Type, actor.ID)
+			}
+			seen[actor] = true
+		}
+	}
+	if policy.Events != nil && len(policy.Events) == 0 {
 		return fmt.Errorf("Actions policy %q restrict_events must not be empty", policy.Name)
 	}
 	seen := map[string]bool{}
@@ -132,7 +176,25 @@ func ValidateActionsEventPolicy(policy ActionsEventPolicy) error {
 	return nil
 }
 
+// ValidateActionsEventPolicyState validates a resolved policy, not update intent.
+func ValidateActionsEventPolicyState(policy ActionsEventPolicy) error {
+	if policy.DisableActors || policy.DisableEvents {
+		return fmt.Errorf("Actions policy %q effective state must not contain disable intent", policy.Name)
+	}
+	if err := ValidateActionsEventPolicy(policy); err != nil {
+		return err
+	}
+	if policy.Actors == nil && policy.Events == nil {
+		return fmt.Errorf("Actions policy %q requires at least one active restriction", policy.Name)
+	}
+	return nil
+}
+
 func cloneActionsEventPolicy(policy ActionsEventPolicy) ActionsEventPolicy {
+	if policy.Actors != nil {
+		actors := slices.Clone(*policy.Actors)
+		policy.Actors = &actors
+	}
 	policy.TargetWorkflows = CanonicalActionsWorkflowTarget(policy.TargetWorkflows)
 	policy.Events = slices.Clone(policy.Events)
 	return policy
@@ -140,6 +202,20 @@ func cloneActionsEventPolicy(policy ActionsEventPolicy) ActionsEventPolicy {
 func canonicalActionsEventPolicy(policy ActionsEventPolicy) ActionsEventPolicy {
 	policy = cloneActionsEventPolicy(policy)
 	slices.Sort(policy.Events)
+	if policy.Actors != nil {
+		slices.SortFunc(*policy.Actors, func(a, b ActionsPolicyActor) int {
+			if order := strings.Compare(a.Type, b.Type); order != 0 {
+				return order
+			}
+			if a.ID < b.ID {
+				return -1
+			}
+			if a.ID > b.ID {
+				return 1
+			}
+			return 0
+		})
+	}
 	return policy
 }
 
@@ -213,7 +289,7 @@ func NewActionsPolicyObservation(values []ActionsEventPolicyState) (ActionsPolic
 			if value.Policy.ID != value.ID || value.Policy.Name != value.Name {
 				return ActionsPolicyObservation{}, fmt.Errorf("Actions policy observation identity mismatch for id %d", value.ID)
 			}
-			if err := ValidateActionsEventPolicy(*value.Policy); err != nil {
+			if err := ValidateActionsEventPolicyState(*value.Policy); err != nil {
 				return ActionsPolicyObservation{}, err
 			}
 			policy := canonicalActionsEventPolicy(*value.Policy)
@@ -244,22 +320,47 @@ type ActionsEventPolicyChange struct {
 	after  ActionsEventPolicy
 }
 
+// resolveActionsEventPolicy preserves omitted rules and consumes removal intent.
+func resolveActionsEventPolicy(before *ActionsEventPolicy, after ActionsEventPolicy) ActionsEventPolicy {
+	if before != nil {
+		if after.TargetWorkflows == nil {
+			after.TargetWorkflows = before.TargetWorkflows
+		}
+		if after.Actors == nil && !after.DisableActors {
+			after.Actors = before.Actors
+		}
+		if after.Events == nil && !after.DisableEvents {
+			after.Events = before.Events
+		}
+	}
+	if after.DisableActors {
+		after.Actors = nil
+	}
+	if after.DisableEvents {
+		after.Events = nil
+	}
+	after.DisableActors, after.DisableEvents = false, false
+	return canonicalActionsEventPolicy(after)
+}
+
 func NewActionsEventPolicyChange(before *ActionsEventPolicy, after ActionsEventPolicy) (ActionsEventPolicyChange, error) {
 	if err := ValidateActionsEventPolicy(after); err != nil {
 		return ActionsEventPolicyChange{}, err
 	}
-	if before != nil && after.TargetWorkflows == nil {
-		after.TargetWorkflows = CanonicalActionsWorkflowTarget(before.TargetWorkflows)
+	if before != nil {
+		if err := ValidateActionsEventPolicyState(*before); err != nil {
+			return ActionsEventPolicyChange{}, err
+		}
 	}
-	after = canonicalActionsEventPolicy(after)
+	after = resolveActionsEventPolicy(before, after)
+	if err := ValidateActionsEventPolicyState(after); err != nil {
+		return ActionsEventPolicyChange{}, err
+	}
 	if before == nil {
 		if after.ID != 0 {
 			return ActionsEventPolicyChange{}, fmt.Errorf("Actions policy creation must omit id")
 		}
 		return ActionsEventPolicyChange{after: after}, nil
-	}
-	if err := ValidateActionsEventPolicy(*before); err != nil {
-		return ActionsEventPolicyChange{}, err
 	}
 	if before.ID <= 0 || after.ID != before.ID {
 		return ActionsEventPolicyChange{}, fmt.Errorf("Actions policy update requires matching positive id")
@@ -269,6 +370,26 @@ func NewActionsEventPolicyChange(before *ActionsEventPolicy, after ActionsEventP
 		return ActionsEventPolicyChange{}, fmt.Errorf("unchanged Actions policy")
 	}
 	return ActionsEventPolicyChange{before: &owned, after: after}, nil
+}
+
+// NewActionsEventPolicyStateChange reconstructs a change from complete resolved
+// states. Unlike a declaration, an absent rule in after means removal.
+func NewActionsEventPolicyStateChange(before *ActionsEventPolicy, after ActionsEventPolicy) (ActionsEventPolicyChange, error) {
+	if err := ValidateActionsEventPolicyState(after); err != nil {
+		return ActionsEventPolicyChange{}, err
+	}
+	if before != nil {
+		if err := ValidateActionsEventPolicyState(*before); err != nil {
+			return ActionsEventPolicyChange{}, err
+		}
+		after.DisableActors = before.Actors != nil && after.Actors == nil
+		after.DisableEvents = before.Events != nil && after.Events == nil
+	}
+	// Nil targeting in a complete state means All workflows, not omission.
+	if after.TargetWorkflows == nil {
+		after.TargetWorkflows = CanonicalActionsWorkflowTarget(&ActionsWorkflowTarget{})
+	}
+	return NewActionsEventPolicyChange(before, after)
 }
 func (c ActionsEventPolicyChange) Before() *ActionsEventPolicy {
 	if c.before == nil {
@@ -287,7 +408,14 @@ func (c ActionsEventPolicyChange) Operation() string {
 	return "update"
 }
 func equalActionsEventPolicies(a, b ActionsEventPolicy) bool {
-	return a.ID == b.ID && a.Name == b.Name && a.Enforcement == b.Enforcement && slices.Equal(a.Events, b.Events) && EqualActionsWorkflowTargets(a.TargetWorkflows, b.TargetWorkflows)
+	actorsEqual := a.Actors == nil && b.Actors == nil
+	if a.Actors != nil && b.Actors != nil {
+		actorsEqual = slices.Equal(*a.Actors, *b.Actors)
+	}
+	return a.ID == b.ID && a.Name == b.Name && a.Enforcement == b.Enforcement &&
+		actorsEqual && (a.Events == nil) == (b.Events == nil) && slices.Equal(a.Events, b.Events) &&
+		a.DisableActors == b.DisableActors && a.DisableEvents == b.DisableEvents &&
+		EqualActionsWorkflowTargets(a.TargetWorkflows, b.TargetWorkflows)
 }
 
 // ReconcileActionsPolicies selects only declared IDs and never adopts by name.
@@ -324,10 +452,11 @@ func ReconcileActionsPolicies(observed ActionsPolicyObservation, desired *Action
 				return nil, fmt.Errorf("Actions policy id %d is unsupported: %s", after.ID, state.Unsupported)
 			}
 			before = state.Policy
-			if after.TargetWorkflows == nil {
-				after.TargetWorkflows = CanonicalActionsWorkflowTarget(before.TargetWorkflows)
+			resolved := resolveActionsEventPolicy(before, after)
+			if err := ValidateActionsEventPolicyState(resolved); err != nil {
+				return nil, err
 			}
-			if equalActionsEventPolicies(*before, after) {
+			if equalActionsEventPolicies(*before, resolved) {
 				continue
 			}
 		}

@@ -116,3 +116,57 @@ func TestUIActionsWorkflowTargetRoundTripAndStrictTypes(t *testing.T) {
 		}
 	}
 }
+
+func TestUIActionsActorRestrictionsRoundTripAndPresence(t *testing.T) {
+	for _, body := range []string{
+		`{}`, `{restrict_actors: {enabled: false}}`, `{restrict_events: {enabled: false}}`,
+		`{restrict_actors: {allowed_actors: []}}`, `{restrict_actors: {enabled: true, allowed_actors: []}}`,
+		`{restrict_actors: {allowed_actors: [{user: 123}, {role: write}, {role: maintain}, {role: repository_admin}]}, restrict_events: {allowed_events: [push]}}`,
+	} {
+		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [" + body + "]}}}\n"
+		value, err := DecodeConfig([]byte(input))
+		if err != nil {
+			t.Fatal(body, err)
+		}
+		data, err := EncodeConfig(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		again, err := DecodeConfig(data)
+		if err != nil || !reflect.DeepEqual(value, again) {
+			t.Fatalf("lost restriction presence: %s: %v", data, err)
+		}
+		stable, err := EncodeConfig(again)
+		if err != nil || string(stable) != string(data) {
+			t.Fatalf("unstable restriction encoding: %s: %v", stable, err)
+		}
+	}
+}
+
+func TestUIActionsActorRestrictionsRejectUnsafeYAML(t *testing.T) {
+	for _, body := range []string{
+		`{restrict_actors: null}`, `{restrict_actors: []}`, `{restrict_actors: {enabled: null}}`,
+		`{restrict_actors: {enabled: 'false'}}`, `{restrict_actors: {enabled: 0}}`,
+		`{restrict_actors: {allowed_actors: null}}`, `{restrict_actors: {allowed_actors: {}}}`,
+		`{restrict_actors: {allowed_actors: [null]}}`, `{restrict_actors: {allowed_actors: [123]}}`,
+		`{restrict_actors: {allowed_actors: [{user: null}]}}`, `{restrict_actors: {allowed_actors: [{user: '123'}]}}`,
+		`{restrict_actors: {allowed_actors: [{user: true}]}}`, `{restrict_actors: {allowed_actors: [{user: 1.0}]}}`,
+		`{restrict_actors: {allowed_actors: [{user: 9223372036854775808}]}}`,
+		`{restrict_actors: {allowed_actors: [{role: null}]}}`, `{restrict_actors: {allowed_actors: [{role: 4}]}}`,
+		`{restrict_actors: {allowed_actors: [{team: 1}]}}`, `{restrict_actors: {allowed_actors: [{type: User, id: 1}]}}`,
+		`{restrict_actors: {allowed_actors: [{user: 1, user: 2}]}}`,
+		`{restrict_actors: {allowed_actors: [], allowed_actors: []}}`,
+		`{restrict_actors: {enabled: true, enabled: false}}`,
+		`{restrict_actors: {allowed_actors: !!str []}}`,
+		`{restrict_events: {enabled: null}}`, `{restrict_events: {enabled: 'true'}}`,
+		`{restrict_actors: {allowed_actors: [&bad {user: null}, *bad]}}`,
+		`{restrict_actors: {allowed_actors: [{<<: {team: 1}}]}}`,
+	} {
+		t.Run(body, func(t *testing.T) {
+			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [" + body + "]}}}\n"
+			if _, err := DecodeConfig([]byte(input)); err == nil {
+				t.Fatal("accepted unsafe actor shape")
+			}
+		})
+	}
+}

@@ -411,7 +411,7 @@ The old `--actions-access` and `--private-fork-workflows` export options are rej
 
 `repository.settings.actions.policies` manages repository-owned policies in
 **Settings → Actions → Policies**, with **Target workflows** inclusion/exclusion
-patterns and the **Restrict events** rule. These are separate objects from the
+patterns and the **Restrict events** and **Restrict actors** rules. These are separate objects from the
 [Actions execution policy](#actions-execution-policy). Omission or `policies: []`
 selects nothing, makes no policy API request and deletes nothing. Unlisted
 policies remain untouched; removing an entry stops managing it.
@@ -437,7 +437,42 @@ repository:
 | `policy_name` | Required nonempty/non-whitespace string without control characters; identity and collisions use exact spelling |
 | `enforcement_status` | Required `disabled` or `active`; neither is inferred |
 | `target_workflows` | Optional object with required `include` and `exclude` string arrays; declares the complete workflow selection |
-| `restrict_events.allowed_events` | Required nonempty array of unique supported event strings; compared as a set and exported in sorted order |
+| `restrict_events` | Optional object with `allowed_events`, or `enabled: false` to turn the rule off |
+| `restrict_events.allowed_events` | Required when the event rule is enabled; nonempty array of unique supported event strings, compared as a set and exported sorted |
+| `restrict_actors` | Optional object with `allowed_actors`, or `enabled: false` to turn the rule off |
+| `restrict_actors.allowed_actors` | Required when the actor rule is enabled; array of unique actor identities, including `[]` for checked with no allowed actors |
+
+Each allowed actor selects exactly one identity: `{user: 155234749}` for a
+positive REST user ID, or `{role: write}`, `{role: maintain}` or
+`{role: repository_admin}`. These roles map to the verified `RepositoryRole`
+IDs 4, 2 and 5. User IDs identify existing accounts; they are not login strings.
+No access is granted by adding an allowed actor. Other actor kinds and role IDs,
+including Bot, App, installation and team identities, are unsupported.
+
+A restriction object without `enabled`, or with `enabled: true`, requires its
+allowed array. `enabled: false` forbids that array and removes that rule.
+An empty actor array keeps **Restrict actors checked with no allowed actors**;
+it is not the same as turning the rule off. Empty event arrays remain invalid.
+Nulls, wrong types, unknown keys, duplicate identities and mixed actor identities
+fail locally.
+
+On creation, omitted restrictions are off and at least one rule must be enabled.
+On ID-selected updates, an omitted restriction preserves the freshly acquired
+rule, including its absence. Metadata-only updates may omit both restrictions.
+Explicitly disabling the final rule fails before writing. The complete effective
+policy must contain at least one supported restriction. For example:
+
+```yaml
+restrict_events:
+  enabled: false
+restrict_actors:
+  allowed_actors:
+    - role: repository_admin
+    - user: 155234749
+```
+
+This changes only the supported restriction selections on that policy; omitted
+workflow targeting still follows the preservation contract below.
 
 Supported events are `branch_protection_rule`, `check_run`, `check_suite`,
 `create`, `delete`, `deployment`, `deployment_status`, `discussion`,
@@ -476,12 +511,12 @@ existing policy's freshly acquired targeting on update. It does not reset or
 broaden an existing selection. To change targeting, declare both arrays. Remote
 omitted/null/empty `conditions`, or `workflow_path` with empty exclusions and
 empty includes or `[~ALL]`, represent All workflows. A present `workflow_path`
-requires both typed arrays. Unknown conditions, actor restrictions, Preview
-rules, unknown rules/fields and unsupported event/enforcement values are not
+requires both typed arrays. Unknown conditions, unsupported actor identities,
+Preview rules, unknown rules/fields and unsupported event/enforcement values are not
 lossily converted. A complete unsupported object's ID/name is retained so
 unlisted objects stay unmanaged; selecting it for update or including it in a
 full collection export fails. Incomplete or inconsistent reads always fail.
-Actor controls, Preview lockfile controls, OIDC, workflow authoring and other
+Unadopted actor types, Preview lockfile controls, OIDC, workflow authoring and other
 configuration-file authoring remain excluded.
 
 Plan acquires the complete repository collection and details before showing
@@ -494,7 +529,7 @@ Changed explicit targeting is sent as `conditions.workflow_path`; omitted
 targeting uses All workflows on create and preserves the preflight-verified
 selection on update. Unchanged targeting need not be resent. Complete write acknowledgment and
 an independent final GET must both match the requested identity, name,
-enforcement, event set and supported targeting.
+enforcement, event/actor rule presence and identity sets, and supported targeting.
 
 Failures stop later policy writes; earlier successful changes remain applied.
 A write/verification failure may leave the remote effect uncertain. Known new
@@ -507,7 +542,9 @@ before retrying. Local apply records confirmed creations using
 
 `export --actions-policies` independently selects the full repository collection,
 including IDs and explicit canonical `target_workflows`, sorted by exact policy
-name with sorted events and patterns. All workflows exports as `include: [~ALL]`
+name with sorted events, actor identities and patterns. Export explicitly emits
+`enabled: false` for absent restriction rules, so a snapshot does not accidentally
+preserve an existing rule. All workflows exports as `include: [~ALL]`
 and `exclude: []`, so a saved snapshot owns its complete selection. Ordinary export
 and `--actions` do not select it. All pages and details must be complete and
 representable before saving; a failure preserves the existing destination.
@@ -516,8 +553,9 @@ list/GET, export and plan**, as well as writes, according to the official API.
 The client never grants permissions or substitutes empty state for denied reads.
 
 The Free/personal/public UI and disabled-policy API storage, including
-include/exclude patterns, omitted-update preservation and explicit All workflows
-reset, were verified;
+include/exclude patterns, omitted-target preservation, explicit All workflows
+reset, User and the three RepositoryRole identities, actor-only/combined rules,
+checked-empty actors and unchecked-rule removal, were verified;
 local fixtures cover active/disabled metadata transitions. Actual enforcement
 and workflow execution were not tested. Storage readback does not establish
 workflow blocking or a particular token's grants. See the

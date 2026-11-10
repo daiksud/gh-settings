@@ -59,9 +59,9 @@ Plan shows creates and ID-bound updates, including default-derived values. Color
 ## Actions event policy commands
 
 `export --actions-policies` independently selects the complete
-[Actions event policy collection](settings.md#actions-event-policies), including
+[Actions event/actor policy collection](settings.md#actions-event-policies), including
 IDs and explicit workflow include/exclude selections, sorted by policy name,
-event name and pattern. It composes with other export options;
+event name, actor identity and pattern. It composes with other export options;
 duplicates fail before repository/API/file work. Ordinary export and `--actions`
 do not read it. All pages/details must be complete and supported before saving;
 unsupported policies or failed reads preserve the existing destination.

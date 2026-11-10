@@ -1,7 +1,7 @@
 ---
 type: Feature
-title: Manage repository Actions event policies
-description: Manage listed event policies and workflow targets by ID without adopting names or deleting unlisted policies.
+title: Manage repository Actions restriction policies
+description: Manage listed event/actor policies and workflow targets by ID without adopting names or deleting unlisted policies.
 ---
 
 ## Contract
@@ -16,8 +16,9 @@ caller and published-package boundaries.
 
 - `repository.settings.actions.policies` is an optional list with optional
   positive integer `id`, required `policy_name`, required `enforcement_status`
-  (`disabled` or `active`) and required
-  `restrict_events.allowed_events` (nonempty, unique supported strings), plus
+  (`disabled` or `active`), optional `restrict_events.allowed_events` (nonempty,
+  unique supported strings), optional `restrict_actors.allowed_actors` (unique
+  User or verified repository-role identities, including checked-empty), plus
   optional `target_workflows` with both `include` and `exclude` string arrays.
 - Omission and `[]` manage nothing and make no policy requests. Removing an entry
   stops ownership; unlisted policies are never updated or deleted.
@@ -25,8 +26,13 @@ caller and published-package boundaries.
   enforcement and unsupported/duplicate events fail before remote work.
 - No ID means create-only; exact remote-name collisions identify the existing ID
   and fail. An ID must exist in this repository and never falls back to create.
-  ID-bound updates replace the supported whole event object, may rename to a
-  noncolliding name, and compare event lists as sets. A planned rename cannot
+  ID-bound updates may rename to a noncolliding name and compare event and
+  actor lists as sets. Omitted restriction rules are preserved on updates and
+  off on creates; `enabled: false` explicitly removes only that restriction,
+  while `enabled: true` or omitted enabled requires its allowed list. False
+  with a list is invalid. At least one effective rule is required. Metadata-only
+  selected-ID updates may omit both rules. Checked-empty actors stay a present
+  rule; they never mean rule removal. A planned rename cannot
   release a name for another operation.
 - `target_workflows` owns both lists when supplied. At least one pattern is
   required; empty includes mean all except exclusions. `~ALL` is valid only as
@@ -39,10 +45,10 @@ caller and published-package boundaries.
   Remote omitted/null/empty conditions and empty or `[~ALL]` includes with empty
   exclusions are equivalent all-target states. A present `workflow_path` requires
   both complete typed arrays; unknown/malformed targeting must not become all.
-- Actor restrictions, Preview/unknown rules, fields, event or enforcement choices
+- Unsupported actor identities, Preview/unknown rules, fields, event or enforcement choices
   retain complete identity but cannot be selected for update or exported.
   Unlisted unsupported objects stay untouched; incomplete observations fail.
-- OIDC, actor restrictions, Preview lockfile controls and workflow/configuration-
+- OIDC, unadopted actor kinds, Preview lockfile controls and workflow/configuration-
   file authoring remain excluded. There is no delete input.
 
 ## Rule: Observe the whole collection and guard each mutation
@@ -54,12 +60,12 @@ caller and published-package boundaries.
   policy write. Exact matches are skipped. Each selected update also requires a
   fresh detail matching its baseline immediately before writing; drift or newly
   unsupported content stops it before mutation.
-- POST creation and PUT update contain name, enforcement and the single event
-  rule, with changed explicit targeting in `conditions.workflow_path`. Omitted
+- POST creation and PUT update contain name, enforcement and the complete
+  resolved event/actor rule set, with changed explicit targeting in `conditions.workflow_path`. Omitted
   targeting creates All workflows or preserves the preflight-verified selection
   during update. Unchanged targeting need not be resent.
 - Both a complete write acknowledgment and an independent final GET must match
-  the requested identity/name, enforcement, event set and supported targeting.
+  the requested identity/name, enforcement, rule presence, event/actor sets and targeting.
   Acknowledgment alone is not success. Redirects and failed/mismatching reads
   fail honestly, with known created IDs retained for recovery where available.
 - A failure stops later operations; earlier confirmed writes remain applied and
@@ -69,7 +75,8 @@ caller and published-package boundaries.
 ## Rule: Export independently and recover created identities
 
 - `export --actions-policies` selects the full collection, including IDs, sorted
-  by exact policy name with sorted events and patterns. Export always emits an
+  by exact policy name with sorted events, actors and patterns. Absent restriction
+  rules export explicitly as `enabled: false`. Export always emits an
   explicit canonical `target_workflows`, including `[~ALL]`/`[]` for all. It composes with other export flags;
   duplicate flags fail before target/API/file work. Ordinary export and
   `--actions` do not select it.
@@ -103,8 +110,14 @@ verified include/exclude patterns, omitted-update preservation
 and an explicit All workflows reset, then restored the empty collection. Local
 fixtures cover active/disabled metadata transitions; actual enforcement and
 workflow execution were not tested.
+On 2026-11-10, a further Disabled-only personal/public/Free probe verified
+Repository admin=RepositoryRole5, Write=4, Maintain=2, owner User identity,
+actor-only and combined event/actor storage, checked-empty actor lists and
+unchecked actor-rule removal. The created policy alone was deleted; DELETE204,
+list0, detail404 and the empty real UI restored the baseline. No Bot/App/team
+mapping or actor execution effect was tested.
 Neither successful storage readback nor fixture success proves actual event
-blocking. Published packages retain their own contracts; this source addition
+or actor blocking. Published packages retain their own contracts; this source addition
 does not repin callers or change a live policy.
 
 ## Test mapping
@@ -114,7 +127,7 @@ does not repin callers or change a live policy.
 | Strict YAML, omission, aliases/merges and round trips | [Policy codec](../../internal/workspace/ui_actions_event_policy_test.go) |
 | Supported values, identity, whole-object comparison, unsupported isolation and export ordering | [Policy model](../../internal/settings/actions_event_policies_test.go) |
 | UI/native translation and export composition | [Policy projection](../../internal/github/ui_actions_event_policy_test.go) |
-| Complete pagination/detail reads, ownership, targeting, exact writes, drift guard and independent verification | [API transport](../../internal/github/actions_policies_test.go) |
+| Complete pagination/detail reads, ownership, targeting, exact writes, drift guard and independent verification | [API transport](../../internal/github/actions_policies_test.go) and [actor transport](../../internal/github/actions_actor_policies_test.go) |
 | Fresh collection preflight, sorted operations, no-op/omission, creation recovery and partial failure | [Application](../../internal/app/actions_event_policies_test.go) |
 | Independent export option, CLI object presentation and ID recovery | [CLI](../../internal/cli/actions_event_policies_test.go) |
 | Typed closed reports, escaped Summary and status-only privacy | [Reports and Summary](../../internal/actions/actions_event_policies_test.go) |

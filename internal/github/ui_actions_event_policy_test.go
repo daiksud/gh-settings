@@ -61,7 +61,7 @@ func TestActionsPoliciesUIRejectsIncompleteOrInvalidDeclarations(t *testing.T) {
 		{"empty name", func(p *uimodel.ActionsEventPolicy) { p.PolicyName = actionsPolicyUIPtr("") }},
 		{"missing enforcement", func(p *uimodel.ActionsEventPolicy) { p.EnforcementStatus = nil }},
 		{"unsupported enforcement", func(p *uimodel.ActionsEventPolicy) { p.EnforcementStatus = actionsPolicyUIPtr("evaluate") }},
-		{"missing restriction", func(p *uimodel.ActionsEventPolicy) { p.RestrictEvents = nil }},
+		{"missing both restrictions", func(p *uimodel.ActionsEventPolicy) { p.RestrictEvents = nil }},
 		{"missing events", func(p *uimodel.ActionsEventPolicy) { p.RestrictEvents.AllowedEvents = nil }},
 		{"empty events", func(p *uimodel.ActionsEventPolicy) { p.RestrictEvents.AllowedEvents = actionsPolicyUIPtr([]string{}) }},
 		{"unknown event", func(p *uimodel.ActionsEventPolicy) {
@@ -109,7 +109,9 @@ func TestActionsPoliciesExportRetainsOtherActionsSettings(t *testing.T) {
 		t.Fatal("policies replaced other Actions settings")
 	}
 	again, err := DeclarationFromUI(ui)
-	if err != nil || !reflect.DeepEqual(again.ActionsPolicies.Values(), policies.Values()) || again.Variables.Len() != 1 || *again.Actions.RetentionDays != days {
+	expectedPolicies := policies.Values()
+	expectedPolicies[0].DisableActors = true
+	if err != nil || !reflect.DeepEqual(again.ActionsPolicies.Values(), expectedPolicies) || again.Variables.Len() != 1 || *again.Actions.RetentionDays != days {
 		t.Fatalf("export roundtrip lost values: %#v, %v", again, err)
 	}
 	// Explicit empty and omitted acquisition remain distinct in exported YAML intent.
@@ -159,5 +161,154 @@ func TestActionsPoliciesWorkflowTargetProjection(t *testing.T) {
 	(*ui.TargetWorkflows.Exclude)[0] = "mutated"
 	if value.TargetWorkflows.Exclude[0] != "skip" {
 		t.Fatal("projection alias")
+	}
+}
+
+func TestActionsPoliciesActorMappingAndOwnedValues(t *testing.T) {
+	actors := []uimodel.ActionsPolicyActor{
+		{User: actionsPolicyUIPtr(int64(123))},
+		{Role: actionsPolicyUIPtr("write")},
+		{Role: actionsPolicyUIPtr("maintain")},
+		{Role: actionsPolicyUIPtr("repository_admin")},
+	}
+	p := validActionsPolicyUI()
+	p.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: &actors}
+	policies := []uimodel.ActionsEventPolicy{p}
+	declared, err := ActionsPoliciesDeclaration(&policies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []settings.ActionsPolicyActor{{Type: "RepositoryRole", ID: 2}, {Type: "RepositoryRole", ID: 4}, {Type: "RepositoryRole", ID: 5}, {Type: "User", ID: 123}}
+	native := declared.Values()[0]
+	if native.Actors == nil || !reflect.DeepEqual(*native.Actors, want) {
+		t.Fatalf("actor mapping: %#v", native.Actors)
+	}
+	*actors[0].User = 999
+	if (*declared.Values()[0].Actors)[3].ID != 123 {
+		t.Fatal("actor input alias")
+	}
+	ui, err := ActionsEventPolicyUI(native)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ui.RestrictActors.Enabled != nil || ui.RestrictEvents.Enabled != nil {
+		t.Fatal("export needlessly enabled restrictions")
+	}
+	got := *ui.RestrictActors.AllowedActors
+	if *got[0].Role != "maintain" || *got[1].Role != "write" || *got[2].Role != "repository_admin" || *got[3].User != 123 {
+		t.Fatalf("reverse mapping: %#v", got)
+	}
+	*got[3].User = 456
+	if (*native.Actors)[3].ID != 123 {
+		t.Fatal("export alias")
+	}
+}
+
+func TestActionsPoliciesRestrictionsPresence(t *testing.T) {
+	for _, test := range []struct {
+		name                           string
+		events                         *uimodel.ActionsRestrictEvents
+		actors                         *uimodel.ActionsRestrictActors
+		disabledEvents, disabledActors bool
+		hasActors                      bool
+	}{
+		{name: "omitted"},
+		{name: "events off", events: &uimodel.ActionsRestrictEvents{Enabled: actionsPolicyUIPtr(false)}, disabledEvents: true},
+		{name: "actors off", actors: &uimodel.ActionsRestrictActors{Enabled: actionsPolicyUIPtr(false)}, disabledActors: true},
+		{name: "selected zero", actors: &uimodel.ActionsRestrictActors{AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{})}, hasActors: true},
+		{name: "enabled selected zero", actors: &uimodel.ActionsRestrictActors{Enabled: actionsPolicyUIPtr(true), AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{})}, hasActors: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			p := validActionsPolicyUI()
+			p.ID = actionsPolicyUIPtr(int64(17))
+			p.RestrictEvents = test.events
+			p.RestrictActors = test.actors
+			policies := []uimodel.ActionsEventPolicy{p}
+			result, err := ActionsPoliciesDeclaration(&policies)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := result.Values()[0]
+			if got.Events != nil || got.DisableEvents != test.disabledEvents || got.DisableActors != test.disabledActors || (got.Actors != nil) != test.hasActors {
+				t.Fatalf("lost presence: %#v", got)
+			}
+		})
+	}
+}
+
+func TestActionsPoliciesRejectInvalidActorDeclarationsAtomically(t *testing.T) {
+	for _, actor := range []uimodel.ActionsPolicyActor{
+		{}, {User: actionsPolicyUIPtr(int64(1)), Role: actionsPolicyUIPtr("write")},
+		{User: actionsPolicyUIPtr(int64(0))}, {User: actionsPolicyUIPtr(int64(-1))},
+		{Role: actionsPolicyUIPtr("read")}, {Role: actionsPolicyUIPtr("admin")}, {Role: actionsPolicyUIPtr("")},
+	} {
+		bad := validActionsPolicyUI()
+		bad.PolicyName = actionsPolicyUIPtr("bad")
+		bad.RestrictActors = &uimodel.ActionsRestrictActors{AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{actor})}
+		policies := []uimodel.ActionsEventPolicy{validActionsPolicyUI(), bad}
+		result, err := ActionsPoliciesDeclaration(&policies)
+		if err == nil || result != nil {
+			t.Fatalf("partial/invalid conversion: %#v, %v", result, err)
+		}
+	}
+	for _, restriction := range []*uimodel.ActionsRestrictActors{
+		{}, {Enabled: actionsPolicyUIPtr(true)},
+		{Enabled: actionsPolicyUIPtr(false), AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{})},
+		{AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{{User: actionsPolicyUIPtr(int64(1))}, {User: actionsPolicyUIPtr(int64(1))}})},
+		{AllowedActors: actionsPolicyUIPtr([]uimodel.ActionsPolicyActor{{Role: actionsPolicyUIPtr("write")}, {Role: actionsPolicyUIPtr("write")}})},
+	} {
+		p := validActionsPolicyUI()
+		p.RestrictActors = restriction
+		policies := []uimodel.ActionsEventPolicy{p}
+		if result, err := ActionsPoliciesDeclaration(&policies); err == nil || result != nil {
+			t.Fatal("accepted invalid restriction", restriction)
+		}
+	}
+	p := validActionsPolicyUI()
+	p.RestrictEvents.Enabled = actionsPolicyUIPtr(false)
+	policies := []uimodel.ActionsEventPolicy{p}
+	if _, err := ActionsPoliciesDeclaration(&policies); err == nil {
+		t.Fatal("accepted events with disabled restriction")
+	}
+}
+
+func TestActionsPolicyExportAbsentRestrictionsRoundTrips(t *testing.T) {
+	for _, actors := range []*[]settings.ActionsPolicyActor{nil, actionsPolicyUIPtr([]settings.ActionsPolicyActor{}), actionsPolicyUIPtr([]settings.ActionsPolicyActor{{Type: "User", ID: 9}})} {
+		for _, events := range [][]string{nil, {"push"}} {
+			if actors == nil && events == nil {
+				continue
+			}
+			original := settings.ActionsEventPolicy{ID: 17, Name: "export", Enforcement: "disabled", Actors: actors, Events: events}
+			ui, err := ActionsEventPolicyUI(original)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (events == nil) != (ui.RestrictEvents.Enabled != nil && !*ui.RestrictEvents.Enabled) {
+				t.Fatal("lost event off state")
+			}
+			if (actors == nil) != (ui.RestrictActors.Enabled != nil && !*ui.RestrictActors.Enabled) {
+				t.Fatal("lost actor off state")
+			}
+			values := []uimodel.ActionsEventPolicy{ui}
+			result, err := ActionsPoliciesDeclaration(&values)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := result.Values()[0]
+			if !reflect.DeepEqual(got.Events, original.Events) || !reflect.DeepEqual(got.Actors, original.Actors) || got.DisableEvents != (events == nil) || got.DisableActors != (actors == nil) {
+				t.Fatalf("lost exported restrictions: %#v", got)
+			}
+		}
+	}
+	none, err := ActionsEventPolicyUI(settings.ActionsEventPolicy{ID: 17, Name: "none", Enforcement: "active"})
+	if err == nil || !reflect.DeepEqual(none, uimodel.ActionsEventPolicy{}) {
+		t.Fatal("export accepted unrestricted state")
+	}
+	for _, actor := range []settings.ActionsPolicyActor{{Type: "Team", ID: 1}, {Type: "RepositoryRole", ID: 99}, {Type: "User", ID: 0}} {
+		value := settings.ActionsEventPolicy{Name: "bad", Enforcement: "active", Actors: actionsPolicyUIPtr([]settings.ActionsPolicyActor{actor})}
+		got, err := ActionsEventPolicyUI(value)
+		if err == nil || !reflect.DeepEqual(got, uimodel.ActionsEventPolicy{}) {
+			t.Fatal("partial/invalid export", got, err)
+		}
 	}
 }
