@@ -87,7 +87,7 @@ func TestActionsEventPolicyPrivateSummary(t *testing.T) {
 	dir := t.TempDir()
 	reportPath, summaryPath := filepath.Join(dir, "report"), filepath.Join(dir, "summary")
 	t.Setenv("SETTINGS_TARGET", "owner/current")
-	after := settings.ActionsEventPolicy{Name: "private-policy", Enforcement: "active", Events: []string{"push"}}
+	after := settings.ActionsEventPolicy{Name: "private-policy", Enforcement: "active", Events: []string{"push"}, TargetWorkflows: &settings.ActionsWorkflowTarget{Include: []string{"private-workflow"}, Exclude: []string{"secret-pattern"}}}
 	change, err := settings.NewActionsEventPolicyChange(nil, after)
 	if err != nil {
 		t.Fatal(err)
@@ -104,12 +104,51 @@ func TestActionsEventPolicyPrivateSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, value := range []string{"private-policy", "push", "active", "actions.policies"} {
+	for _, value := range []string{"private-policy", "push", "active", "actions.policies", "private-workflow", "secret-pattern", "target_workflows"} {
 		if strings.Contains(string(data), value) {
 			t.Fatal("private summary disclosure", string(data))
 		}
 	}
 	if !strings.Contains(string(data), "Outcome: changed") {
 		t.Fatal(string(data))
+	}
+}
+
+func TestActionsWorkflowTargetReportRoundTrip(t *testing.T) {
+	report := policyReportFixture()
+	report.ActionsPolicies[0].After.TargetWorkflows = &ActionsEventPolicyTargetReport{Include: []string{"<private-workflow>"}, Exclude: []string{}}
+	data, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded PlanReport
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	valid, err := validatePlanReport(decoded, "owner/current")
+	if err != nil {
+		t.Fatal(err)
+	}
+	detailed := renderSummary(valid, RunMetadata{}, []string{"owner", "current", "workflow"})
+	if !strings.Contains(detailed, "target_workflows") || !strings.Contains(detailed, "private-workflow") || strings.Contains(detailed, "<private-workflow>") {
+		t.Fatal(detailed)
+	}
+	report.ActionsPolicies[0].After.TargetWorkflows.Include[0] = "mutated"
+	if valid.comparison.ActionsPolicies[0].After().TargetWorkflows.Include[0] != "<private-workflow>" {
+		t.Fatal("target report aliased")
+	}
+	for _, target := range []string{`null`, `{"include":null,"exclude":[]}`, `{"include":[],"exclude":null}`, `{"include":[],"exclude":[],"actor":[]}`, `{"Include":[],"exclude":[]}`, `{"include":[null],"exclude":[]}`} {
+		value := `{"operation":"create","after":{"policy_name":"policy","enforcement_status":"active","restrict_events":{"allowed_events":["push"]},"target_workflows":` + target + `}}`
+		var entry ActionsEventPolicyPlanChange
+		if err := json.Unmarshal([]byte(value), &entry); err == nil {
+			t.Fatal("accepted malformed report", value)
+		}
+	}
+	for _, target := range []*ActionsEventPolicyTargetReport{{}, {Include: []string{}, Exclude: []string{"~ALL"}}, {Include: []string{"~ALL", "x"}, Exclude: []string{}}} {
+		r := policyReportFixture()
+		r.ActionsPolicies[0].After.TargetWorkflows = target
+		if _, err := validatePlanReport(r, "owner/current"); err == nil {
+			t.Fatal("accepted incomplete/invalid target", target)
+		}
 	}
 }

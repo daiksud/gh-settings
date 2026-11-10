@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -89,6 +88,7 @@ func decodeActionsEventPolicy(raw map[string]json.RawMessage, repo repository.Re
 	if enforcement != "active" && enforcement != "disabled" {
 		unsupported("unsupported Actions policy enforcement " + enforcement)
 	}
+	var targeting *settings.ActionsWorkflowTarget
 	if c, ok := raw["conditions"]; ok && !bytes.Equal(bytes.TrimSpace(c), []byte("null")) {
 		var conditions map[string]json.RawMessage
 		if err := json.Unmarshal(c, &conditions); err != nil || conditions == nil {
@@ -116,8 +116,12 @@ func decodeActionsEventPolicy(raw map[string]json.RawMessage, repo repository.Re
 			if err := requiredActionsPolicy(workflow, "exclude", &exclude); err != nil {
 				return state, err
 			}
-			if len(exclude) != 0 || !(len(include) == 0 || (len(include) == 1 && include[0] == "~ALL")) {
-				unsupported("Actions policy targets selected workflows")
+			targeting = &settings.ActionsWorkflowTarget{Include: include, Exclude: exclude}
+			if settings.EqualActionsWorkflowTargets(targeting, nil) {
+				targeting = nil
+			}
+			if err := settings.ValidateActionsWorkflowTarget(targeting); err != nil {
+				unsupported(err.Error())
 			}
 		}
 	}
@@ -156,7 +160,7 @@ func decodeActionsEventPolicy(raw map[string]json.RawMessage, repo repository.Re
 			return state, err
 		}
 	}
-	policy := settings.ActionsEventPolicy{ID: id, Name: name, Enforcement: enforcement, Events: events}
+	policy := settings.ActionsEventPolicy{ID: id, Name: name, Enforcement: enforcement, Events: events, TargetWorkflows: targeting}
 	if state.Unsupported == "" {
 		if err := settings.ValidateActionsEventPolicy(policy); err != nil {
 			unsupported(err.Error())
@@ -244,7 +248,7 @@ func equalActionsEventPolicy(a, b settings.ActionsEventPolicy) bool {
 	b.Events = slices.Clone(b.Events)
 	slices.Sort(a.Events)
 	slices.Sort(b.Events)
-	return reflect.DeepEqual(a, b)
+	return a.ID == b.ID && a.Name == b.Name && a.Enforcement == b.Enforcement && slices.Equal(a.Events, b.Events) && settings.EqualActionsWorkflowTargets(a.TargetWorkflows, b.TargetWorkflows)
 }
 func (client *Client) WriteActionsEventPolicy(repo repository.Repository, change settings.ActionsEventPolicyChange) (int64, error) {
 	desired := change.After()
@@ -271,7 +275,12 @@ func (client *Client) WriteActionsEventPolicy(repo repository.Repository, change
 		return 0, fmt.Errorf("Actions policy create cannot contain ID")
 	}
 	payload := map[string]any{"name": desired.Name, "enforcement": desired.Enforcement, "rules": []any{map[string]any{"type": "restrict_action_events", "parameters": map[string]any{"allowed_events": desired.Events}}}}
-	// Omission creates all-workflows policies and preserves preflight-verified all-workflows targeting on update.
+	// Omit unchanged conditions: GitHub preserves targeting on updates. Explicit
+	// changes use both required arrays; ~ALL is the nonempty All workflows reset.
+	if desired.TargetWorkflows != nil && (change.Before() == nil || !settings.EqualActionsWorkflowTargets(desired.TargetWorkflows, change.Before().TargetWorkflows)) {
+		target := settings.CanonicalActionsWorkflowTarget(desired.TargetWorkflows)
+		payload["conditions"] = map[string]any{"workflow_path": map[string]any{"include": target.Include, "exclude": target.Exclude}}
+	}
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return 0, &actionsPoliciesPreWriteFailure{err}

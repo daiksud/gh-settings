@@ -8,13 +8,79 @@ import (
 	"unicode/utf8"
 )
 
-// ActionsEventPolicy owns one repository policy applying to all workflows.
+// ActionsEventPolicy owns one repository event policy.
 // ID zero requests creation; positive IDs select existing repository objects.
 type ActionsEventPolicy struct {
-	ID          int64
-	Name        string
-	Enforcement string
-	Events      []string
+	ID              int64
+	Name            string
+	Enforcement     string
+	Events          []string
+	TargetWorkflows *ActionsWorkflowTarget
+}
+
+// ActionsWorkflowTarget selects workflow paths. Nil on a declaration preserves an
+// existing selection, or uses All workflows when creating a policy.
+type ActionsWorkflowTarget struct {
+	Include []string `json:"include"`
+	Exclude []string `json:"exclude"`
+}
+
+func ValidateActionsWorkflowTarget(target *ActionsWorkflowTarget) error {
+	if target == nil {
+		return nil
+	}
+	if len(target.Include)+len(target.Exclude) == 0 {
+		return fmt.Errorf("target_workflows requires at least one include or exclude pattern; use include: [~ALL] for All workflows")
+	}
+	for _, list := range [][]string{target.Include, target.Exclude} {
+		seen := map[string]bool{}
+		for _, pattern := range list {
+			if strings.TrimSpace(pattern) == "" || !utf8.ValidString(pattern) {
+				return fmt.Errorf("workflow pattern must be nonempty")
+			}
+			for _, r := range pattern {
+				if unicode.IsControl(r) {
+					return fmt.Errorf("workflow pattern must not contain control characters")
+				}
+			}
+			if seen[pattern] {
+				return fmt.Errorf("duplicate workflow pattern %q", pattern)
+			}
+			seen[pattern] = true
+		}
+	}
+	if slices.Contains(target.Exclude, "~ALL") || (slices.Contains(target.Include, "~ALL") && len(target.Include) != 1) {
+		return fmt.Errorf("~ALL is allowed only alone in workflow include")
+	}
+	return nil
+}
+
+// CanonicalActionsWorkflowTarget returns an owned, order-independent selection.
+// Empty includes and ~ALL both mean every workflow except the exclusions.
+func CanonicalActionsWorkflowTarget(target *ActionsWorkflowTarget) *ActionsWorkflowTarget {
+	if target == nil {
+		return nil
+	}
+	result := &ActionsWorkflowTarget{Include: append([]string{}, target.Include...), Exclude: append([]string{}, target.Exclude...)}
+	if len(result.Exclude) == 0 && len(result.Include) == 0 {
+		result.Include = []string{"~ALL"}
+	}
+	if len(result.Exclude) > 0 && len(result.Include) == 1 && result.Include[0] == "~ALL" {
+		result.Include = []string{}
+	}
+	slices.Sort(result.Include)
+	slices.Sort(result.Exclude)
+	return result
+}
+func EqualActionsWorkflowTargets(a, b *ActionsWorkflowTarget) bool {
+	if a == nil {
+		a = &ActionsWorkflowTarget{}
+	}
+	if b == nil {
+		b = &ActionsWorkflowTarget{}
+	}
+	a, b = CanonicalActionsWorkflowTarget(a), CanonicalActionsWorkflowTarget(b)
+	return slices.Equal(a.Include, b.Include) && slices.Equal(a.Exclude, b.Exclude)
 }
 
 var actionsPolicyEvents = []string{
@@ -38,6 +104,9 @@ func validateActionsPolicyName(name string) error {
 
 // ValidateActionsEventPolicy validates the complete supported writable object.
 func ValidateActionsEventPolicy(policy ActionsEventPolicy) error {
+	if err := ValidateActionsWorkflowTarget(policy.TargetWorkflows); err != nil {
+		return err
+	}
 	if policy.ID < 0 {
 		return fmt.Errorf("Actions policy id must be positive when supplied")
 	}
@@ -64,6 +133,7 @@ func ValidateActionsEventPolicy(policy ActionsEventPolicy) error {
 }
 
 func cloneActionsEventPolicy(policy ActionsEventPolicy) ActionsEventPolicy {
+	policy.TargetWorkflows = CanonicalActionsWorkflowTarget(policy.TargetWorkflows)
 	policy.Events = slices.Clone(policy.Events)
 	return policy
 }
@@ -178,6 +248,9 @@ func NewActionsEventPolicyChange(before *ActionsEventPolicy, after ActionsEventP
 	if err := ValidateActionsEventPolicy(after); err != nil {
 		return ActionsEventPolicyChange{}, err
 	}
+	if before != nil && after.TargetWorkflows == nil {
+		after.TargetWorkflows = CanonicalActionsWorkflowTarget(before.TargetWorkflows)
+	}
 	after = canonicalActionsEventPolicy(after)
 	if before == nil {
 		if after.ID != 0 {
@@ -214,7 +287,7 @@ func (c ActionsEventPolicyChange) Operation() string {
 	return "update"
 }
 func equalActionsEventPolicies(a, b ActionsEventPolicy) bool {
-	return a.ID == b.ID && a.Name == b.Name && a.Enforcement == b.Enforcement && slices.Equal(a.Events, b.Events)
+	return a.ID == b.ID && a.Name == b.Name && a.Enforcement == b.Enforcement && slices.Equal(a.Events, b.Events) && EqualActionsWorkflowTargets(a.TargetWorkflows, b.TargetWorkflows)
 }
 
 // ReconcileActionsPolicies selects only declared IDs and never adopts by name.
@@ -251,6 +324,9 @@ func ReconcileActionsPolicies(observed ActionsPolicyObservation, desired *Action
 				return nil, fmt.Errorf("Actions policy id %d is unsupported: %s", after.ID, state.Unsupported)
 			}
 			before = state.Policy
+			if after.TargetWorkflows == nil {
+				after.TargetWorkflows = CanonicalActionsWorkflowTarget(before.TargetWorkflows)
+			}
 			if equalActionsEventPolicies(*before, after) {
 				continue
 			}
@@ -286,7 +362,11 @@ func ExportActionsPolicies(observed ActionsPolicyObservation) (ActionsPolicyDecl
 		if value.Unsupported != "" {
 			return ActionsPolicyDeclarations{}, fmt.Errorf("cannot export Actions policy id %d: %s", value.ID, value.Unsupported)
 		}
-		policies = append(policies, *value.Policy)
+		policy := cloneActionsEventPolicy(*value.Policy)
+		if policy.TargetWorkflows == nil {
+			policy.TargetWorkflows = CanonicalActionsWorkflowTarget(&ActionsWorkflowTarget{})
+		}
+		policies = append(policies, policy)
 	}
 	slices.SortFunc(policies, func(a, b ActionsEventPolicy) int { return strings.Compare(a.Name, b.Name) })
 	return NewActionsPolicyDeclarations(policies)

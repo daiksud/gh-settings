@@ -60,7 +60,8 @@ Plan shows creates and ID-bound updates, including default-derived values. Color
 
 `export --actions-policies` independently selects the complete
 [Actions event policy collection](settings.md#actions-event-policies), including
-IDs, sorted by policy name and event name. It composes with other export options;
+IDs and explicit workflow include/exclude selections, sorted by policy name,
+event name and pattern. It composes with other export options;
 duplicates fail before repository/API/file work. Ordinary export and `--actions`
 do not read it. All pages/details must be complete and supported before saving;
 unsupported policies or failed reads preserve the existing destination.
@@ -71,7 +72,9 @@ Apply preflights the full collection, skips matches, guards updates against fres
 detail drift, and independently verifies acknowledgment and final GET. No ID
 means create-only; exact name collisions fail. IDs select repository-owned
 objects, including rename, without create fallback. Unlisted policies remain
-unchanged; there is no deletion or atomic rollback.
+unchanged; there is no deletion or atomic rollback. Omitted `target_workflows`
+uses All workflows for creation and preserves existing targeting for updates;
+declaring both arrays replaces the selection.
 
 Confirmed new IDs use guarded source-file writeback unless `--no-writeback` or
 `GITHUB_ACTIONS=true` suppresses it. Known IDs remain in recovery diagnostics even

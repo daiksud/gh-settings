@@ -12,10 +12,15 @@ import (
 
 // ActionsEventPolicyReport is a UI-shaped private report value, never API input.
 type ActionsEventPolicyReport struct {
-	ID             *int64                         `json:"id,omitempty"`
-	Name           string                         `json:"policy_name"`
-	Enforcement    string                         `json:"enforcement_status"`
-	RestrictEvents ActionsEventPolicyEventsReport `json:"restrict_events"`
+	ID              *int64                          `json:"id,omitempty"`
+	Name            string                          `json:"policy_name"`
+	Enforcement     string                          `json:"enforcement_status"`
+	RestrictEvents  ActionsEventPolicyEventsReport  `json:"restrict_events"`
+	TargetWorkflows *ActionsEventPolicyTargetReport `json:"target_workflows,omitempty"`
+}
+type ActionsEventPolicyTargetReport struct {
+	Include []string `json:"include"`
+	Exclude []string `json:"exclude"`
 }
 type ActionsEventPolicyEventsReport struct {
 	AllowedEvents []string `json:"allowed_events"`
@@ -82,6 +87,10 @@ func (entry *ActionsEventPolicyPlanChange) UnmarshalJSON(data []byte) error {
 }
 func actionsEventPolicyReport(value settings.ActionsEventPolicy) *ActionsEventPolicyReport {
 	result := &ActionsEventPolicyReport{Name: value.Name, Enforcement: value.Enforcement, RestrictEvents: ActionsEventPolicyEventsReport{AllowedEvents: append([]string(nil), value.Events...)}}
+	if value.TargetWorkflows != nil {
+		target := settings.CanonicalActionsWorkflowTarget(value.TargetWorkflows)
+		result.TargetWorkflows = &ActionsEventPolicyTargetReport{Include: target.Include, Exclude: target.Exclude}
+	}
 	if value.ID > 0 {
 		id := value.ID
 		result.ID = &id
@@ -90,6 +99,12 @@ func actionsEventPolicyReport(value settings.ActionsEventPolicy) *ActionsEventPo
 }
 func (value ActionsEventPolicyReport) policy() (settings.ActionsEventPolicy, error) {
 	policy := settings.ActionsEventPolicy{Name: value.Name, Enforcement: value.Enforcement, Events: append([]string(nil), value.RestrictEvents.AllowedEvents...)}
+	if value.TargetWorkflows != nil {
+		if value.TargetWorkflows.Include == nil || value.TargetWorkflows.Exclude == nil {
+			return policy, fmt.Errorf("target_workflows report requires include and exclude")
+		}
+		policy.TargetWorkflows = &settings.ActionsWorkflowTarget{Include: value.TargetWorkflows.Include, Exclude: value.TargetWorkflows.Exclude}
+	}
 	if value.ID != nil {
 		if *value.ID <= 0 {
 			return policy, fmt.Errorf("Actions policy report id must be positive")

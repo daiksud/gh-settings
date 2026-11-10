@@ -93,3 +93,26 @@ func TestUIActionsPoliciesMergedUnknownKeyRejected(t *testing.T) {
 		t.Fatalf("unknown merged key accepted: %v", err)
 	}
 }
+
+func TestUIActionsWorkflowTargetRoundTripAndStrictTypes(t *testing.T) {
+	prefix := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {policies: [{policy_name: events, enforcement_status: disabled, restrict_events: {allowed_events: [push]}, target_workflows: "
+	for _, target := range []string{`{include: ['.github/workflows/*.yml'], exclude: ['**/skip.yml']}`, `{include: [], exclude: ['skip.yml']}`, `{include: ['~ALL'], exclude: []}`} {
+		value, err := DecodeConfig([]byte(prefix + target + "}]}}}\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := EncodeConfig(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		again, err := DecodeConfig(data)
+		if err != nil || !reflect.DeepEqual(value, again) {
+			t.Fatal(string(data), err)
+		}
+	}
+	for _, target := range []string{`null`, `[]`, `{include: null, exclude: []}`, `{include: [], exclude: null}`, `{include: [null], exclude: []}`, `{include: [true], exclude: []}`, `{include: [], exclude: [], actor: []}`} {
+		if _, err := DecodeConfig([]byte(prefix + target + "}]}}}\n")); err == nil {
+			t.Fatal("accepted", target)
+		}
+	}
+}

@@ -47,7 +47,6 @@ func TestActionsPoliciesPreserveUnsupportedProtections(t *testing.T) {
 		{`"allowed_events":["push","pull_request"]`, `"allowed_events":["future_event"]`},
 		{`"parameters":{`, `"future_rule":true,"parameters":{`},
 		{`"allowed_events":`, `"future_parameter":true,"allowed_events":`},
-		{`"rules":`, `"conditions":{"workflow_path":{"include":[".github/workflows/one.yml"],"exclude":[]}},"rules":`},
 		{`"rules":`, `"conditions":{"repository_name":{"include":["*"]}},"rules":`},
 		{`"rules":[`, `"rules":[{"type":"restrict_actions_actors","parameters":{"allowed_actors":[]}},`},
 	}
