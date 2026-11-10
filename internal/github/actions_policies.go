@@ -129,16 +129,22 @@ func decodeActionsEventPolicy(raw map[string]json.RawMessage, repo repository.Re
 	if err := requiredActionsPolicy(raw, "rules", &rules); err != nil {
 		return state, err
 	}
-	if len(rules) != 1 {
-		unsupported("Actions policy must contain exactly one event rule")
+	if len(rules) == 0 || len(rules) > 2 {
+		unsupported("Actions policy must contain one or two supported restriction rules")
 	}
 	var events []string
+	var actors *[]settings.ActionsPolicyActor
+	seenRules := map[string]bool{}
 	for _, rule := range rules {
 		var kind string
 		if err := requiredActionsPolicy(rule, "type", &kind); err != nil {
 			return state, err
 		}
-		if kind != "restrict_action_events" {
+		if seenRules[kind] {
+			unsupported("duplicate Actions policy rule " + kind)
+		}
+		seenRules[kind] = true
+		if kind != "restrict_action_events" && kind != "restrict_actions_actors" {
 			unsupported("unsupported Actions policy rule " + kind)
 			continue
 		}
@@ -151,18 +157,44 @@ func decodeActionsEventPolicy(raw map[string]json.RawMessage, repo repository.Re
 		if err := requiredActionsPolicy(rule, "parameters", &params); err != nil {
 			return state, err
 		}
+		parameter := "allowed_events"
+		if kind == "restrict_actions_actors" {
+			parameter = "allowed_actors"
+		}
 		for key := range params {
-			if key != "allowed_events" {
-				unsupported("unknown Actions event parameters " + key)
+			if key != parameter {
+				unsupported("unknown Actions restriction parameter " + key)
 			}
 		}
-		if err := requiredActionsPolicy(params, "allowed_events", &events); err != nil {
-			return state, err
+		if kind == "restrict_action_events" {
+			if err := requiredActionsPolicy(params, parameter, &events); err != nil {
+				return state, err
+			}
+		} else {
+			var rawActors []map[string]json.RawMessage
+			if err := requiredActionsPolicy(params, parameter, &rawActors); err != nil {
+				return state, err
+			}
+			values := make([]settings.ActionsPolicyActor, len(rawActors))
+			for i, actor := range rawActors {
+				if err := requiredActionsPolicy(actor, "id", &values[i].ID); err != nil {
+					return state, err
+				}
+				if err := requiredActionsPolicy(actor, "type", &values[i].Type); err != nil {
+					return state, err
+				}
+				for key := range actor {
+					if key != "id" && key != "type" {
+						unsupported("unknown Actions actor field " + key)
+					}
+				}
+			}
+			actors = &values
 		}
 	}
-	policy := settings.ActionsEventPolicy{ID: id, Name: name, Enforcement: enforcement, Events: events, TargetWorkflows: targeting}
+	policy := settings.ActionsEventPolicy{ID: id, Name: name, Enforcement: enforcement, Events: events, Actors: actors, TargetWorkflows: targeting}
 	if state.Unsupported == "" {
-		if err := settings.ValidateActionsEventPolicy(policy); err != nil {
+		if err := settings.ValidateActionsEventPolicyState(policy); err != nil {
 			unsupported(err.Error())
 		} else {
 			state.Policy = &policy
@@ -248,11 +280,32 @@ func equalActionsEventPolicy(a, b settings.ActionsEventPolicy) bool {
 	b.Events = slices.Clone(b.Events)
 	slices.Sort(a.Events)
 	slices.Sort(b.Events)
-	return a.ID == b.ID && a.Name == b.Name && a.Enforcement == b.Enforcement && slices.Equal(a.Events, b.Events) && settings.EqualActionsWorkflowTargets(a.TargetWorkflows, b.TargetWorkflows)
+	return a.ID == b.ID && a.Name == b.Name && a.Enforcement == b.Enforcement && slices.Equal(a.Events, b.Events) && equalActionsPolicyActors(a.Actors, b.Actors) && settings.EqualActionsWorkflowTargets(a.TargetWorkflows, b.TargetWorkflows)
+}
+func equalActionsPolicyActors(a, b *[]settings.ActionsPolicyActor) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	left, right := slices.Clone(*a), slices.Clone(*b)
+	compare := func(a, b settings.ActionsPolicyActor) int {
+		if order := strings.Compare(a.Type, b.Type); order != 0 {
+			return order
+		}
+		if a.ID < b.ID {
+			return -1
+		}
+		if a.ID > b.ID {
+			return 1
+		}
+		return 0
+	}
+	slices.SortFunc(left, compare)
+	slices.SortFunc(right, compare)
+	return slices.Equal(left, right)
 }
 func (client *Client) WriteActionsEventPolicy(repo repository.Repository, change settings.ActionsEventPolicyChange) (int64, error) {
 	desired := change.After()
-	if err := settings.ValidateActionsEventPolicy(desired); err != nil {
+	if err := settings.ValidateActionsEventPolicyState(desired); err != nil {
 		return 0, &actionsPoliciesPreWriteFailure{err}
 	}
 	op := change.Operation()
@@ -274,7 +327,18 @@ func (client *Client) WriteActionsEventPolicy(repo repository.Repository, change
 	} else if desired.ID != 0 {
 		return 0, fmt.Errorf("Actions policy create cannot contain ID")
 	}
-	payload := map[string]any{"name": desired.Name, "enforcement": desired.Enforcement, "rules": []any{map[string]any{"type": "restrict_action_events", "parameters": map[string]any{"allowed_events": desired.Events}}}}
+	rules := []any{}
+	if desired.Events != nil {
+		rules = append(rules, map[string]any{"type": "restrict_action_events", "parameters": map[string]any{"allowed_events": desired.Events}})
+	}
+	if desired.Actors != nil {
+		actors := make([]map[string]any, len(*desired.Actors))
+		for i, actor := range *desired.Actors {
+			actors[i] = map[string]any{"id": actor.ID, "type": actor.Type}
+		}
+		rules = append(rules, map[string]any{"type": "restrict_actions_actors", "parameters": map[string]any{"allowed_actors": actors}})
+	}
+	payload := map[string]any{"name": desired.Name, "enforcement": desired.Enforcement, "rules": rules}
 	// Omit unchanged conditions: GitHub preserves targeting on updates. Explicit
 	// changes use both required arrays; ~ALL is the nonempty All workflows reset.
 	if desired.TargetWorkflows != nil && (change.Before() == nil || !settings.EqualActionsWorkflowTargets(desired.TargetWorkflows, change.Before().TargetWorkflows)) {

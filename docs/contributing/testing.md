@@ -24,7 +24,11 @@ map strict codec, domain reconciliation, complete API acquisition/mutation,
 application sequencing, typed reports and snapshot-ID recording to their owners.
 [Process acceptance](../../tests/acceptance/actions_event_policies_test.go)
 checks the built CLI's independent export selection, create/update/repeat apply,
-partial ID recovery and destination preservation. These local fixtures use dummy
+partial ID recovery and destination preservation. The [actor-policy process
+fixture](../../tests/acceptance/actions_actor_policies_test.go) also checks actor-only
+creation, combined policies, omitted-rule/target preservation, checked-empty versus
+explicit removal, complete private reports, status-only privacy, unsupported actor
+isolation and recoverable creation failure. These local fixtures use dummy
 credentials and cover active/disabled metadata transitions; actual enforcement
 and workflow execution were not tested.
 

@@ -43,12 +43,12 @@ func TestActionsPoliciesPreserveUnsupportedProtections(t *testing.T) {
 	replacements := [][2]string{
 		{`"enforcement":"active"`, `"enforcement":"evaluate"`},
 		{`"rules":`, `"future_protection":true,"rules":`},
-		{`"type":"restrict_action_events"`, `"type":"restrict_actions_actors"`},
+		{`"type":"restrict_action_events"`, `"type":"future_rule"`},
 		{`"allowed_events":["push","pull_request"]`, `"allowed_events":["future_event"]`},
 		{`"parameters":{`, `"future_rule":true,"parameters":{`},
 		{`"allowed_events":`, `"future_parameter":true,"allowed_events":`},
 		{`"rules":`, `"conditions":{"repository_name":{"include":["*"]}},"rules":`},
-		{`"rules":[`, `"rules":[{"type":"restrict_actions_actors","parameters":{"allowed_actors":[]}},`},
+		{`"rules":[`, `"rules":[{"type":"future_rule","parameters":{}},`},
 	}
 	for _, r := range replacements {
 		body := strings.Replace(eventPolicyJSON, r[0], r[1], 1)
@@ -215,7 +215,7 @@ func TestWriteActionsEventPolicyRecoveryAndPreflight(t *testing.T) {
 					case "readback-error":
 						return labelsResponse(r, 500, `{}`), nil
 					case "readback-mismatch", "unsupported-preflight":
-						body = strings.Replace(body, `"type":"restrict_action_events"`, `"type":"restrict_actions_actors"`, 1)
+						body = strings.Replace(body, `"type":"restrict_action_events"`, `"type":"future_rule"`, 1)
 					}
 				}
 				return labelsResponse(r, 200, body), nil

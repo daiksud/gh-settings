@@ -10,12 +10,15 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// ActionsEventPolicyReport is a UI-shaped private report value, never API input.
+// ActionsEventPolicyReport is a complete UI-shaped private report, never API input.
+// Its canonical restrictions use enabled:false for absence and an allowed list
+// for presence; enabled:true is intentionally not part of this report contract.
 type ActionsEventPolicyReport struct {
 	ID              *int64                          `json:"id,omitempty"`
 	Name            string                          `json:"policy_name"`
 	Enforcement     string                          `json:"enforcement_status"`
 	RestrictEvents  ActionsEventPolicyEventsReport  `json:"restrict_events"`
+	RestrictActors  ActionsEventPolicyActorsReport  `json:"restrict_actors"`
 	TargetWorkflows *ActionsEventPolicyTargetReport `json:"target_workflows,omitempty"`
 }
 type ActionsEventPolicyTargetReport struct {
@@ -23,7 +26,16 @@ type ActionsEventPolicyTargetReport struct {
 	Exclude []string `json:"exclude"`
 }
 type ActionsEventPolicyEventsReport struct {
-	AllowedEvents []string `json:"allowed_events"`
+	Enabled       *bool    `json:"enabled,omitempty"`
+	AllowedEvents []string `json:"allowed_events,omitempty"`
+}
+type ActionsEventPolicyActorsReport struct {
+	Enabled       *bool                            `json:"enabled,omitempty"`
+	AllowedActors *[]ActionsEventPolicyActorReport `json:"allowed_actors,omitempty"`
+}
+type ActionsEventPolicyActorReport struct {
+	User *int64  `json:"user,omitempty"`
+	Role *string `json:"role,omitempty"`
 }
 type ActionsEventPolicyPlanChanges []ActionsEventPolicyPlanChange
 
@@ -86,7 +98,38 @@ func (entry *ActionsEventPolicyPlanChange) UnmarshalJSON(data []byte) error {
 	return nil
 }
 func actionsEventPolicyReport(value settings.ActionsEventPolicy) *ActionsEventPolicyReport {
-	result := &ActionsEventPolicyReport{Name: value.Name, Enforcement: value.Enforcement, RestrictEvents: ActionsEventPolicyEventsReport{AllowedEvents: append([]string(nil), value.Events...)}}
+	disabled := false
+	result := &ActionsEventPolicyReport{Name: value.Name, Enforcement: value.Enforcement}
+	if value.Events == nil {
+		result.RestrictEvents.Enabled = &disabled
+	} else {
+		result.RestrictEvents.AllowedEvents = append([]string{}, value.Events...)
+	}
+	if value.Actors == nil {
+		result.RestrictActors.Enabled = &disabled
+	} else {
+		actors := make([]ActionsEventPolicyActorReport, 0, len(*value.Actors))
+		for _, actor := range *value.Actors {
+			entry := ActionsEventPolicyActorReport{}
+			if actor.Type == "User" {
+				id := actor.ID
+				entry.User = &id
+			} else {
+				role := ""
+				switch actor.ID {
+				case 4:
+					role = "write"
+				case 2:
+					role = "maintain"
+				case 5:
+					role = "repository_admin"
+				}
+				entry.Role = &role
+			}
+			actors = append(actors, entry)
+		}
+		result.RestrictActors.AllowedActors = &actors
+	}
 	if value.TargetWorkflows != nil {
 		target := settings.CanonicalActionsWorkflowTarget(value.TargetWorkflows)
 		result.TargetWorkflows = &ActionsEventPolicyTargetReport{Include: target.Include, Exclude: target.Exclude}
@@ -98,7 +141,51 @@ func actionsEventPolicyReport(value settings.ActionsEventPolicy) *ActionsEventPo
 	return result
 }
 func (value ActionsEventPolicyReport) policy() (settings.ActionsEventPolicy, error) {
-	policy := settings.ActionsEventPolicy{Name: value.Name, Enforcement: value.Enforcement, Events: append([]string(nil), value.RestrictEvents.AllowedEvents...)}
+	policy := settings.ActionsEventPolicy{Name: value.Name, Enforcement: value.Enforcement}
+	if enabled := value.RestrictEvents.Enabled; enabled != nil {
+		if *enabled || value.RestrictEvents.AllowedEvents != nil {
+			return policy, fmt.Errorf("invalid disabled event restriction report")
+		}
+	} else {
+		if value.RestrictEvents.AllowedEvents == nil {
+			return policy, fmt.Errorf("missing event restriction report")
+		}
+		policy.Events = append([]string{}, value.RestrictEvents.AllowedEvents...)
+	}
+	if enabled := value.RestrictActors.Enabled; enabled != nil {
+		if *enabled || value.RestrictActors.AllowedActors != nil {
+			return policy, fmt.Errorf("invalid disabled actor restriction report")
+		}
+	} else {
+		if value.RestrictActors.AllowedActors == nil || *value.RestrictActors.AllowedActors == nil {
+			return policy, fmt.Errorf("missing actor restriction report")
+		}
+		actors := make([]settings.ActionsPolicyActor, 0, len(*value.RestrictActors.AllowedActors))
+		for _, entry := range *value.RestrictActors.AllowedActors {
+			if (entry.User == nil) == (entry.Role == nil) {
+				return policy, fmt.Errorf("actor report requires exactly one identity")
+			}
+			actor := settings.ActionsPolicyActor{}
+			if entry.User != nil {
+				actor.Type = "User"
+				actor.ID = *entry.User
+			} else {
+				actor.Type = "RepositoryRole"
+				switch *entry.Role {
+				case "write":
+					actor.ID = 4
+				case "maintain":
+					actor.ID = 2
+				case "repository_admin":
+					actor.ID = 5
+				default:
+					return policy, fmt.Errorf("unsupported actor role report")
+				}
+			}
+			actors = append(actors, actor)
+		}
+		policy.Actors = &actors
+	}
 	if value.TargetWorkflows != nil {
 		if value.TargetWorkflows.Include == nil || value.TargetWorkflows.Exclude == nil {
 			return policy, fmt.Errorf("target_workflows report requires include and exclude")
@@ -111,7 +198,7 @@ func (value ActionsEventPolicyReport) policy() (settings.ActionsEventPolicy, err
 		}
 		policy.ID = *value.ID
 	}
-	return policy, settings.ValidateActionsEventPolicy(policy)
+	return policy, settings.ValidateActionsEventPolicyState(policy)
 }
 func validateActionsEventPolicyReport(entries []ActionsEventPolicyPlanChange) ([]settings.ActionsEventPolicyChange, error) {
 	var changes []settings.ActionsEventPolicyChange
@@ -131,7 +218,7 @@ func validateActionsEventPolicyReport(entries []ActionsEventPolicyPlanChange) ([
 			}
 			before = &value
 		}
-		change, err := settings.NewActionsEventPolicyChange(before, after)
+		change, err := settings.NewActionsEventPolicyStateChange(before, after)
 		if err != nil {
 			return nil, err
 		}

@@ -226,3 +226,14 @@ no write retry or exemption/temporary API is added. App selects the family for
 declared Plan intent or explicit export and preserves archive ordering and
 partial/uncertain progress. CLI and credential-free Action Summary share UI
 presentation, while private report reconstruction validates three closed fields.
+
+## Actions actor restrictions
+
+The existing policy collection also models actor-only and combined event/actor
+rules. Settings distinguishes omitted update intent, absent observed rules,
+checked-empty actors and explicit removal. UI projection maps verified role
+names and exact User IDs to native identities; the API retains unsupported
+identity without allowing lossy selected updates/export. Every write carries the
+complete resolved supported rule set and verifies presence plus actor identity
+in both acknowledgment and independent readback. Omitted workflow targets retain
+the existing selection. The configuration reference owns these semantics.

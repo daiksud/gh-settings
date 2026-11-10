@@ -72,7 +72,7 @@ caller's pin. Fine-grained/App tokens need **Administration write even for
 list/GET and plan**. Treat the plan credential as write-capable and protect its
 path accordingly; a read-only Administration token is insufficient.
 
-Only repository-owned event policies with supported workflow targeting are
+Only repository-owned event/actor policies with supported workflow targeting are
 managed. `target_workflows` declares include/exclude patterns; omission preserves
 existing targeting on update and uses All workflows on create. Unlisted
 objects remain unchanged, and there is no delete. GitHub Actions mode suppresses
