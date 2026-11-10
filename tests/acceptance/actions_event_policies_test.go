@@ -27,13 +27,14 @@ repository:
 `
 
 type actionsEventPoliciesFixture struct {
-	mu      sync.Mutex
-	fixture *apiFixture
-	env     []string
-	objects map[int]map[string]any
-	calls   []string
-	writes  int
-	failure string
+	mu       sync.Mutex
+	fixture  *apiFixture
+	env      []string
+	objects  map[int]map[string]any
+	calls    []string
+	writes   int
+	failure  string
+	payloads []map[string]any
 }
 
 func newActionsEventPoliciesFixture(t *testing.T, mode string) *actionsEventPoliciesFixture {
@@ -75,6 +76,9 @@ func newActionsEventPoliciesFixture(t *testing.T, mode string) *actionsEventPoli
 					fmt.Fprint(w, `{}`)
 					return
 				}
+				if f.failure == "target-readback" && f.writes > 0 {
+					f.objects[id]["conditions"] = map[string]any{"workflow_path": map[string]any{"include": []any{"wrong.yml"}, "exclude": []any{}}}
+				}
 				json.NewEncoder(w).Encode(f.objects[id])
 				return
 			}
@@ -84,8 +88,21 @@ func newActionsEventPoliciesFixture(t *testing.T, mode string) *actionsEventPoli
 					t.Error(err)
 				}
 				want := map[string]any{"name": "policy-canary", "enforcement": payload["enforcement"], "rules": []any{map[string]any{"type": "restrict_action_events", "parameters": map[string]any{"allowed_events": []any{"push"}}}}}
+				if len(f.payloads) > 0 {
+					if f.writes >= len(f.payloads) {
+						t.Errorf("unexpected extra policy write: %v", payload)
+						w.WriteHeader(500)
+						return
+					}
+					want = f.payloads[f.writes]
+				}
 				if !reflect.DeepEqual(payload, want) || payload["enforcement"] != "active" && payload["enforcement"] != "disabled" {
 					t.Error("unexpected payload", payload)
+				}
+				if r.Method == "PUT" && payload["conditions"] == nil && f.objects[17] != nil {
+					if conditions := f.objects[17]["conditions"]; conditions != nil {
+						payload["conditions"] = conditions
+					}
 				}
 				f.writes++
 				payload["id"], payload["source_type"], payload["source"], payload["target"] = 17, "Repository", "owner/current", "actions"
@@ -341,7 +358,7 @@ func TestActionsEventPoliciesExportIsolationAndSafetyProcess(t *testing.T) {
 		f.mu.Lock()
 		f.failure = failure
 		if failure == "unsupported" {
-			f.objects[17]["conditions"] = map[string]any{"workflow_path": map[string]any{"include": []any{"selected.yml"}, "exclude": []any{}}}
+			f.objects[17]["conditions"] = map[string]any{"unsupported_condition": map[string]any{}}
 		}
 		f.mu.Unlock()
 		f.run(t, true, "export", "--actions-policies")

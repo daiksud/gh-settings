@@ -11,7 +11,12 @@ import (
 func ActionsEventPolicyLine(change settings.ActionsEventPolicyChange) string {
 	value := func(policy settings.ActionsEventPolicy) string {
 		events, _ := json.Marshal(policy.Events)
-		return fmt.Sprintf("policy_name=%q enforcement_status=%q restrict_events.allowed_events=%s", policy.Name, policy.Enforcement, events)
+		target := ""
+		if policy.TargetWorkflows != nil {
+			data, _ := json.Marshal(settings.CanonicalActionsWorkflowTarget(policy.TargetWorkflows))
+			target = " target_workflows=" + string(data)
+		}
+		return fmt.Sprintf("policy_name=%q enforcement_status=%q restrict_events.allowed_events=%s", policy.Name, policy.Enforcement, events) + target
 	}
 	after := change.After()
 	identity := ""

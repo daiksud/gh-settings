@@ -20,7 +20,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Rulesets](rulesets.feature.md) | Manage selected repository rulesets. |
 | [Environments](environments.feature.md) | Manage supported named environment policies. |
 | [GitHub Actions](actions.feature.md) | Operate the public composite Action. |
-| [Actions event policies](actions-event-policies.feature.md) | Manage listed repository-owned All workflows event policies without implicit deletion. |
+| [Actions event policies](actions-event-policies.feature.md) | Manage listed repository-owned event policies and workflow targets without implicit deletion. |
 | [Actions execution](actions-execution-policy.feature.md) | Manage repository Actions policy. |
 | [Workflow permissions](workflow-permissions.feature.md) | Manage default Actions token and approval policy. |
 | [Fork workflows](fork-workflows.feature.md) | Manage fork pull-request workflow controls. |

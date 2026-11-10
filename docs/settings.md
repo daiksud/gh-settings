@@ -410,8 +410,8 @@ The old `--actions-access` and `--private-fork-workflows` export options are rej
 ## Actions event policies
 
 `repository.settings.actions.policies` manages repository-owned policies in
-**Settings → Actions → Policies**, restricted to **All workflows** and the
-**Restrict events** rule. These are separate objects from the
+**Settings → Actions → Policies**, with **Target workflows** inclusion/exclusion
+patterns and the **Restrict events** rule. These are separate objects from the
 [Actions execution policy](#actions-execution-policy). Omission or `policies: []`
 selects nothing, makes no policy API request and deletes nothing. Unlisted
 policies remain untouched; removing an entry stops managing it.
@@ -424,6 +424,9 @@ repository:
       policies:
         - policy_name: Restrict workflow events
           enforcement_status: disabled
+          target_workflows:
+            include: ['.github/workflows/ci*.yml']
+            exclude: ['.github/workflows/ci-experimental.yml']
           restrict_events:
             allowed_events: [pull_request, push, workflow_dispatch]
 ```
@@ -433,6 +436,7 @@ repository:
 | `id` | Optional positive integer REST ID of an existing policy owned by the target repository; omission means create-only |
 | `policy_name` | Required nonempty/non-whitespace string without control characters; identity and collisions use exact spelling |
 | `enforcement_status` | Required `disabled` or `active`; neither is inferred |
+| `target_workflows` | Optional object with required `include` and `exclude` string arrays; declares the complete workflow selection |
 | `restrict_events.allowed_events` | Required nonempty array of unique supported event strings; compared as a set and exported in sorted order |
 
 Supported events are `branch_protection_rule`, `check_run`, `check_suite`,
@@ -452,15 +456,33 @@ An ID-bound declaration replaces the complete supported event object and may
 rename it to a noncolliding name. Renames cannot rely on another planned rename
 freeing the name. There is no delete declaration or name-based update.
 
-Only implicit All workflows targeting is accepted. Remote omitted/null/empty
-`conditions`, or `workflow_path` with `include: [~ALL]` or `include: []` and
-`exclude: []`, represent All workflows. Any other targeting, actor restriction,
-Preview rule, unknown rule/field or unsupported event/enforcement value is not
+`target_workflows` corresponds to **Include by pattern** and **Exclude by
+pattern** in the UI. Both arrays are required when the object is supplied, and
+at least one must contain a pattern. Empty `include` means every workflow except
+the exclusions. `~ALL` represents **All workflows** and is valid only as the sole
+include entry, never in exclusions. For example, `include: [~ALL]` with
+`exclude: []` explicitly resets targeting to All workflows. An exclude-only
+selection uses `include: []` and one or more exclusion patterns.
+
+Patterns must be nonempty/non-whitespace strings without control characters;
+duplicates within either array are rejected. Case and exact pattern spelling
+are preserved. Comparisons treat each array as a set and exports sort it. All
+workflows normalize to `[~ALL]` with empty exclusions; exclude-only targeting
+uses an empty include array. The tool passes patterns to GitHub and does not
+emulate workflow matching.
+
+Omitting `target_workflows` creates an All workflows policy, but preserves an
+existing policy's freshly acquired targeting on update. It does not reset or
+broaden an existing selection. To change targeting, declare both arrays. Remote
+omitted/null/empty `conditions`, or `workflow_path` with empty exclusions and
+empty includes or `[~ALL]`, represent All workflows. A present `workflow_path`
+requires both typed arrays. Unknown conditions, actor restrictions, Preview
+rules, unknown rules/fields and unsupported event/enforcement values are not
 lossily converted. A complete unsupported object's ID/name is retained so
 unlisted objects stay unmanaged; selecting it for update or including it in a
 full collection export fails. Incomplete or inconsistent reads always fail.
-Workflow-path patterns, actor controls, Preview lockfile controls, OIDC,
-workflow authoring and other configuration-file authoring are excluded.
+Actor controls, Preview lockfile controls, OIDC, workflow authoring and other
+configuration-file authoring remain excluded.
 
 Plan acquires the complete repository collection and details before showing
 creates/ID-bound updates. Apply freshly acquires and preflights the whole
@@ -468,8 +490,9 @@ collection before its first policy write, skips matches and rechecks each
 selected update's detail immediately before mutation. Drift or newly unsupported
 state fails rather than overwriting it. Create uses POST and update uses PUT at
 the [official repository Actions policies API](https://docs.github.com/en/rest/actions/policies).
-Writes omit `conditions`: create uses All workflows and update preserves the
-preflight-verified All workflows targeting. Complete write acknowledgment and
+Changed explicit targeting is sent as `conditions.workflow_path`; omitted
+targeting uses All workflows on create and preserves the preflight-verified
+selection on update. Unchanged targeting need not be resent. Complete write acknowledgment and
 an independent final GET must both match the requested identity, name,
 enforcement, event set and supported targeting.
 
@@ -483,19 +506,24 @@ before retrying. Local apply records confirmed creations using
 `--no-writeback` and `GITHUB_ACTIONS=true` suppress it.
 
 `export --actions-policies` independently selects the full repository collection,
-including IDs, sorted by exact policy name with sorted events. Ordinary export
+including IDs and explicit canonical `target_workflows`, sorted by exact policy
+name with sorted events and patterns. All workflows exports as `include: [~ALL]`
+and `exclude: []`, so a saved snapshot owns its complete selection. Ordinary export
 and `--actions` do not select it. All pages and details must be complete and
 representable before saving; a failure preserves the existing destination.
 Fine-grained and GitHub App tokens require **Administration write even for
 list/GET, export and plan**, as well as writes, according to the official API.
 The client never grants permissions or substitutes empty state for denied reads.
 
-The Free/personal/public UI and disabled-policy API storage were verified;
+The Free/personal/public UI and disabled-policy API storage, including
+include/exclude patterns, omitted-update preservation and explicit All workflows
+reset, were verified;
 local fixtures cover active/disabled metadata transitions. Actual enforcement
 and workflow execution were not tested. Storage readback does not establish
 workflow blocking or a particular token's grants. See the
 [behavior specification](features/actions-event-policies.feature.md) and
-[adoption evidence](https://github.com/daiksud/gh-settings/issues/647).
+[event-policy adoption evidence](https://github.com/daiksud/gh-settings/issues/647)
+and [workflow-targeting evidence](https://github.com/daiksud/gh-settings/issues/649).
 
 ## Actions execution policy
 

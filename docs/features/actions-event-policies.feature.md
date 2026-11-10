@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Manage repository Actions event policies
-description: Manage listed All workflows event policies by ID without adopting names or deleting unlisted policies.
+description: Manage listed event policies and workflow targets by ID without adopting names or deleting unlisted policies.
 ---
 
 ## Contract
@@ -17,7 +17,8 @@ caller and published-package boundaries.
 - `repository.settings.actions.policies` is an optional list with optional
   positive integer `id`, required `policy_name`, required `enforcement_status`
   (`disabled` or `active`) and required
-  `restrict_events.allowed_events` (nonempty, unique supported strings).
+  `restrict_events.allowed_events` (nonempty, unique supported strings), plus
+  optional `target_workflows` with both `include` and `exclude` string arrays.
 - Omission and `[]` manage nothing and make no policy requests. Removing an entry
   stops ownership; unlisted policies are never updated or deleted.
 - Nulls, wrong types, unknown/API-shaped keys, duplicate IDs/exact names, invalid
@@ -27,14 +28,22 @@ caller and published-package boundaries.
   ID-bound updates replace the supported whole event object, may rename to a
   noncolliding name, and compare event lists as sets. A planned rename cannot
   release a name for another operation.
-- All workflows targeting is implicit. Remote omitted/null/empty conditions or
-  `workflow_path` with empty exclusions and either empty includes or `[~ALL]`
-  are equivalent. Other targeting, actors, Preview/unknown rules, fields, event
-  or enforcement choices retain complete identity but cannot be selected for
-  update or exported. Unlisted unsupported objects stay untouched; incomplete
-  observations fail rather than becoming empty/default state.
-- OIDC, actor restrictions, Preview lockfile controls, workflow path patterns and
-  workflow/configuration-file authoring are excluded. There is no delete input.
+- `target_workflows` owns both lists when supplied. At least one pattern is
+  required; empty includes mean all except exclusions. `~ALL` is valid only as
+  the sole include entry and never in exclusions. All workflows normalize to
+  `[~ALL]` with empty exclusions; exclude-only targeting uses empty includes.
+  Comparisons and exports sort each set. Invalid/blank/control-character
+  patterns and duplicates fail locally. Matching remains GitHub's responsibility.
+- Omitted targeting creates All workflows and preserves the acquired selection
+  on update. Explicit `[~ALL]` with empty exclusions resets to All workflows.
+  Remote omitted/null/empty conditions and empty or `[~ALL]` includes with empty
+  exclusions are equivalent all-target states. A present `workflow_path` requires
+  both complete typed arrays; unknown/malformed targeting must not become all.
+- Actor restrictions, Preview/unknown rules, fields, event or enforcement choices
+  retain complete identity but cannot be selected for update or exported.
+  Unlisted unsupported objects stay untouched; incomplete observations fail.
+- OIDC, actor restrictions, Preview lockfile controls and workflow/configuration-
+  file authoring remain excluded. There is no delete input.
 
 ## Rule: Observe the whole collection and guard each mutation
 
@@ -46,8 +55,9 @@ caller and published-package boundaries.
   fresh detail matching its baseline immediately before writing; drift or newly
   unsupported content stops it before mutation.
 - POST creation and PUT update contain name, enforcement and the single event
-  rule only. Conditions are omitted to create All workflows or preserve the
-  preflight-verified All workflows targeting during update.
+  rule, with changed explicit targeting in `conditions.workflow_path`. Omitted
+  targeting creates All workflows or preserves the preflight-verified selection
+  during update. Unchanged targeting need not be resent.
 - Both a complete write acknowledgment and an independent final GET must match
   the requested identity/name, enforcement, event set and supported targeting.
   Acknowledgment alone is not success. Redirects and failed/mismatching reads
@@ -59,7 +69,8 @@ caller and published-package boundaries.
 ## Rule: Export independently and recover created identities
 
 - `export --actions-policies` selects the full collection, including IDs, sorted
-  by exact policy name with sorted events. It composes with other export flags;
+  by exact policy name with sorted events and patterns. Export always emits an
+  explicit canonical `target_workflows`, including `[~ALL]`/`[]` for all. It composes with other export flags;
   duplicate flags fail before target/API/file work. Ordinary export and
   `--actions` do not select it.
 - All pages/details must be acquired and representable before saving. An
@@ -86,7 +97,10 @@ retries with another identity. Permission documentation does not certify a
 particular installation or token's grants.
 
 [Adoption evidence](https://github.com/daiksud/gh-settings/issues/647) covers the
-Free, personally owned public UI and a disabled-policy storage probe. Local
+Free, personally owned public UI and a disabled-policy storage probe. A further
+[disabled-only targeting probe](https://github.com/daiksud/gh-settings/issues/649)
+verified include/exclude patterns, omitted-update preservation
+and an explicit All workflows reset, then restored the empty collection. Local
 fixtures cover active/disabled metadata transitions; actual enforcement and
 workflow execution were not tested.
 Neither successful storage readback nor fixture success proves actual event

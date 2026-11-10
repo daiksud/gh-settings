@@ -128,3 +128,36 @@ func TestActionsPoliciesExportRetainsOtherActionsSettings(t *testing.T) {
 		t.Fatalf("unacquired policy export populated: %#v, %v", ui.Settings.Actions, err)
 	}
 }
+
+func TestActionsPoliciesWorkflowTargetProjection(t *testing.T) {
+	for _, target := range []*uimodel.ActionsWorkflowTarget{
+		{}, {Include: actionsPolicyUIPtr([]string{})}, {Exclude: actionsPolicyUIPtr([]string{})},
+	} {
+		policy := validActionsPolicyUI()
+		policy.TargetWorkflows = target
+		policies := []uimodel.ActionsEventPolicy{policy}
+		if _, err := ActionsPoliciesDeclaration(&policies); err == nil {
+			t.Fatal("accepted incomplete targeting", target)
+		}
+	}
+	policy := validActionsPolicyUI()
+	policy.TargetWorkflows = &uimodel.ActionsWorkflowTarget{Include: actionsPolicyUIPtr([]string{"z", "a"}), Exclude: actionsPolicyUIPtr([]string{"skip"})}
+	policies := []uimodel.ActionsEventPolicy{policy}
+	declared, err := ActionsPoliciesDeclaration(&policies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	(*policy.TargetWorkflows.Include)[0] = "mutated"
+	value := declared.Values()[0]
+	if !reflect.DeepEqual(value.TargetWorkflows.Include, []string{"a", "z"}) {
+		t.Fatal(value)
+	}
+	ui, err := ActionsEventPolicyUI(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	(*ui.TargetWorkflows.Exclude)[0] = "mutated"
+	if value.TargetWorkflows.Exclude[0] != "skip" {
+		t.Fatal("projection alias")
+	}
+}
