@@ -15,6 +15,7 @@ type ExportCheckout struct {
 	IncludeCopilotReviewEffort                        bool
 	IncludeCopilotInstructions                        bool
 	IncludeCopilotMCP                                 bool
+	IncludePullRequestLimits                          bool
 	Variables                                         []string
 	AgentsVariables                                   []string
 	IncludeCodeQLConfiguration                        bool
@@ -335,6 +336,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.CopilotMCP = &enabled
+	}
+	if checkout.IncludePullRequestLimits {
+		observed, err := read.PullRequestLimits(repo)
+		if err != nil {
+			return err
+		}
+		values, err := observed.Values()
+		if err != nil {
+			return err
+		}
+		declaration.PullRequestLimits = settings.PullRequestLimitsDeclaration{Enabled: &values.Enabled, Maximum: &values.Maximum, IncludeDrafts: &values.IncludeDrafts}
 	}
 	if checkout.IncludeCopilotReviewEffort {
 		observed, err := read.CopilotReviewEffort(repo)

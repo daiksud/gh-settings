@@ -213,3 +213,16 @@ The [review effort specification](../features/copilot-review-effort.feature.md) 
 ## Copilot code review MCP tools
 
 The [MCP toggle specification](../features/copilot-mcp.feature.md) adds an independently selected optional boolean through the existing layers. Settings owns declared/acquired state and closed comparisons; workspace owns strict UI YAML. GitHub owns complete typed acquisition, fresh preflight, an `mcp_enabled`-only PATCH and independent readback of the requested toggle and unchanged sibling settings. App selects acquisition only for declared intent or opt-in export, retains archive sequencing and distinguishes pre-write failures, confirmed writes and uncertain effects. Shared CLI/Action presentation uses the fixed UI path and native booleans; Action reconstruction validates the singleton scalar. No MCP configuration, secret, grant, review execution, entitlement or billing operation is introduced.
+
+## Persistent pull request limits
+
+The [cap specification](../features/pull-request-limits.feature.md) adds an
+independent optional three-control declaration and complete typed observation.
+Workspace owns strict UI YAML; settings owns declared-only comparison and bounded
+native changes. GitHub owns fresh cap acquisition, required-enabled/narrow-optional
+PATCH and independent confirmation of requested and known companion values.
+Only exact complete baseline readback can be polled within the client budget;
+no write retry or exemption/temporary API is added. App selects the family for
+declared Plan intent or explicit export and preserves archive ordering and
+partial/uncertain progress. CLI and credential-free Action Summary share UI
+presentation, while private report reconstruction validates three closed fields.

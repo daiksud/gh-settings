@@ -142,6 +142,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += managed
 		comparison.CopilotMCP = changes
 	}
+	if !desired.PullRequestLimits.Empty() {
+		observed, err := read.PullRequestLimits(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PullRequestLimitsPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.ComparePullRequestLimits(observed, desired.PullRequestLimits)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PullRequestLimitsPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.PullRequestLimits = changes
+	}
 	if desired.CopilotReviewEffort != nil {
 		observed, err := read.CopilotReviewEffort(repo)
 		if err != nil {

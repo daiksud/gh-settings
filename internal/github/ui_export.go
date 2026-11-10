@@ -95,6 +95,17 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 			return uimodel.Repository{}, err
 		}
 	}
+	if !source.PullRequestLimits.Empty() {
+		if err := source.PullRequestLimits.Validate(); err != nil {
+			return uimodel.Repository{}, err
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		c := source.PullRequestLimits
+		result.Settings.InteractionLimits = &uimodel.InteractionLimits{PullRequestLimits: &uimodel.PullRequestLimits{LimitOpenPullRequestsFromUsersWithoutWriteAccess: copyUIValue(c.Enabled), MaximumOpenPullRequestsPerUser: copyUIValue(c.Maximum), CountDraftPullRequestsTowardTheLimit: copyUIValue(c.IncludeDrafts)}}
+	}
+
 	if source.CopilotMCP != nil || source.CopilotInstructions != nil || source.CopilotReviewEffort != nil {
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}

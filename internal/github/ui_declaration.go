@@ -31,6 +31,14 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	}
 	result.Labels = labels
 	if repository.Settings != nil {
+		if page := repository.Settings.InteractionLimits; page != nil && page.PullRequestLimits != nil {
+			c := page.PullRequestLimits
+			result.PullRequestLimits = settings.PullRequestLimitsDeclaration{Enabled: copyUIValue(c.LimitOpenPullRequestsFromUsersWithoutWriteAccess), Maximum: copyUIValue(c.MaximumOpenPullRequestsPerUser), IncludeDrafts: copyUIValue(c.CountDraftPullRequestsTowardTheLimit)}
+			if err := result.PullRequestLimits.Validate(); err != nil {
+				return settings.Declaration{}, err
+			}
+		}
+
 		if repository.Settings.Copilot != nil && repository.Settings.Copilot.CodeReview != nil {
 			result.CopilotInstructions = copyUIValue(repository.Settings.Copilot.CodeReview.UseCustomInstructions)
 			result.CopilotMCP = copyUIValue(repository.Settings.Copilot.CodeReview.AllowCopilotToUseMCPToolsWhenReviewingPullRequests)

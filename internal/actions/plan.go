@@ -22,6 +22,7 @@ type PlanReport struct {
 	CopilotReviewEffort     []PlanChange                      `json:"copilot_review_effort,omitempty"`
 	CopilotInstructions     []PlanChange                      `json:"copilot_custom_instructions,omitempty"`
 	CopilotMCP              []PlanChange                      `json:"copilot_mcp,omitempty"`
+	PullRequestLimits       []PlanChange                      `json:"pull_request_limits,omitempty"`
 	Variables               []VariablePlanChange              `json:"variables,omitempty"`
 	AgentsVariables         []VariablePlanChange              `json:"agents_variables,omitempty"`
 	CodeQLConfiguration     []PlanChange                      `json:"codeql_configuration,omitempty"`
@@ -125,6 +126,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.CopilotMCP {
 		before, after := change.Values()
 		report.CopilotMCP = append(report.CopilotMCP, PlanChange{Field: change.Field(), Before: before, After: after})
+	}
+	for _, change := range result.Comparison.PullRequestLimits {
+		before, after := change.Values()
+		report.PullRequestLimits = append(report.PullRequestLimits, PlanChange{Field: change.Field(), Before: before, After: after})
 	}
 	for _, change := range result.Comparison.CopilotReviewEffort {
 		before, after := change.Values()

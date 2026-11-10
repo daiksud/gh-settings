@@ -65,6 +65,7 @@ const (
 	CopilotReviewEffortUpdate
 	CopilotInstructionsUpdate
 	CopilotMCPUpdate
+	PullRequestLimitsUpdate
 	AgentVariableUpsert
 )
 

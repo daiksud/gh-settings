@@ -11,6 +11,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Validate](validate.feature.md) | Validate declarations locally. |
 | [Plan](plan.feature.md) | Compare declared values without writes. |
 | [Apply](apply.feature.md) | Apply declarations and report partial failure. |
+| [Persistent pull request limits](pull-request-limits.feature.md) | Manage the persistent open PR cap without temporary restrictions or exemptions. |
 | [Copilot MCP tools](copilot-mcp.feature.md) | Manage the stored MCP tools permission toggle without configuring servers or executing reviews. |
 | [Copilot review effort](copilot-review-effort.feature.md) | Manage the observable repository review effort choice without enabling reviews. |
 | [Copilot custom instructions](copilot-custom-instructions.feature.md) | Manage the stored repository Use custom instructions toggle. |

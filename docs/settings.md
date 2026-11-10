@@ -51,7 +51,7 @@ This Free-only policy replaces the earlier personal-public Security investigatio
 
 ## Supported fields
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.variables`, `agents.variables`, `copilot.code_review`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
 The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
@@ -825,3 +825,53 @@ An explicit pattern list owns the observed collection, including `[]`; an omitte
 Apply sends declared fields in the Environment PUT and canonical types in separate pattern requests. It confirms fresh canonical Selected mode, creates required pairs before deleting obsolete raw identities, and retains the IDs of existing canonical companions. Before deletion, an individual GET must match the exact original type, case-sensitive name and ID. Creation acknowledgments remain strict; unsupported or malformed acknowledgments stop before deletion. Independent complete readback must confirm the requested canonical collection: a retained unsupported type cannot prove success merely because its fallback matches. Fresh owned warnings expose the acquired record, not a verification substitute.
 
 Acquisition failures make no Environment write. Later failures retain earlier or uncertain effects, report failure and do not trigger automatic retry or rollback. Caller YAML is unchanged. A complete canonical match is a silent no-op on repeat; omitted fields remain API-controlled. These source behaviors do not apply live settings or publish a release.
+
+## Persistent pull request limits
+
+Settings → Interaction limits → Pull request limits maps to:
+
+```yaml
+repository:
+  settings:
+    interaction_limits:
+      pull_request_limits:
+        limit_open_pull_requests_from_users_without_write_access: true
+        maximum_open_pull_requests_per_user: 2
+        count_draft_pull_requests_toward_the_limit: true
+```
+
+The enable and draft controls are optional booleans. The maximum is an optional
+integer from 1 through 1000. Omission leaves that control unmanaged, including
+latent maximum/draft values while disabled. Empty groups manage nothing. Null,
+quoted booleans/integers, fractions and API-shaped aliases are rejected.
+Moderation is a navigation category, not a configuration group.
+
+Plan selects the cap endpoint only when a cap control is declared. Apply
+acquires fresh complete cap state, skips
+exact matches and PATCHes required `enabled` plus only declared optional members.
+When enable is omitted, the required member carries the freshly observed value.
+Independent GET confirms the complete requested/preserved three-field state.
+Only a complete response equal to the pre-write baseline can be retried: at most
+three confirmation GETs, with one second between those stale observations. This
+is a client budget, not a GitHub propagation guarantee. Writes are never retried.
+Denied, malformed or other mismatching readback fails immediately. Failure after
+PATCH reports uncertain effects; earlier successful operations remain applied.
+Apply is not atomic and does not roll back.
+
+`export --pull-request-limits` explicitly includes all three stored values,
+including disabled/false and latent values. Ordinary export and unrelated flags
+make no cap request. Missing `include_drafts` is an acquisition error, even though
+it is optional in the published response schema; it never means false. Failed
+acquisition preserves an existing output file. CLI and detailed Action reports
+use these UI paths and native booleans/integers; status-only output hides values.
+
+The [official creation-cap API](https://docs.github.com/rest/interactions/repos#update-pull-request-creation-cap-for-a-repository)
+requires administrator access. Credentials must already authorize the endpoint;
+no grants are expanded. Adoption evidence covers GitHub Free personal public
+repositories with these visible controls, not other plans/owners/visibility.
+The cap limits users without write access and does not grant write access.
+Temporary Interaction restrictions, exemption lists and automatic exemption
+rules remain unmanaged. No exemption API is called or exemption state verified;
+companion preservation here means only the cap's three known fields. Configuration
+readback does not establish enforcement against external actors. See the
+[behavior specification](features/pull-request-limits.feature.md).

@@ -8,6 +8,7 @@ type Repository struct {
 }
 
 type RepositorySettings struct {
+	InteractionLimits  *InteractionLimits
 	Agents             *AgentsSettings
 	Copilot            *CopilotSettings
 	General            *General
@@ -35,4 +36,12 @@ type CopilotCodeReview struct {
 	UseCustomInstructions                              *bool
 	AllowCopilotToUseMCPToolsWhenReviewingPullRequests *bool
 	ReviewEffortLevel                                  *string
+}
+
+// InteractionLimits contains only the persistent Pull request limits controls.
+type InteractionLimits struct{ PullRequestLimits *PullRequestLimits }
+type PullRequestLimits struct {
+	LimitOpenPullRequestsFromUsersWithoutWriteAccess *bool
+	MaximumOpenPullRequestsPerUser                   *int
+	CountDraftPullRequestsTowardTheLimit             *bool
 }

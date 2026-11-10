@@ -9,6 +9,7 @@ import (
 type Declaration struct {
 	CopilotInstructions *bool
 	CopilotMCP          *bool
+	PullRequestLimits   PullRequestLimitsDeclaration
 	CopilotReviewEffort *string
 	Repository          RepositoryDeclaration
 	Topics              TopicsDeclaration
@@ -26,7 +27,7 @@ type Declaration struct {
 type TopicsDeclaration struct{ Names *[]string }
 
 func (d Declaration) Empty() bool {
-	return d.CopilotReviewEffort == nil && d.CopilotMCP == nil && d.CopilotInstructions == nil && (d.Variables == nil || d.Variables.Len() == 0) && (d.AgentsVariables == nil || d.AgentsVariables.Len() == 0) && d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
+	return d.CopilotReviewEffort == nil && d.PullRequestLimits.Empty() && d.CopilotMCP == nil && d.CopilotInstructions == nil && (d.Variables == nil || d.Variables.Len() == 0) && (d.AgentsVariables == nil || d.AgentsVariables.Len() == 0) && d.Repository.Empty() && d.Topics.Names == nil && (d.Labels == nil || d.Labels.Len() == 0) && (d.Rulesets == nil || d.Rulesets.Len() == 0) && (d.Environments == nil || d.Environments.Len() == 0) && d.Actions.Empty() && d.Security.Empty() && d.Pages.Empty()
 }
 
 // ValidateTopics follows GitHub's canonical topic naming rules.
