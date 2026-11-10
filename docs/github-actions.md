@@ -76,8 +76,9 @@ Only repository-owned, All workflows event policies are managed. Unlisted
 objects remain unchanged, and there is no delete. GitHub Actions mode suppresses
 local created-ID writeback; record confirmed IDs from output/recovery diagnostics
 before retrying. A failed write/readback can have an uncertain effect, and
-creation is never automatically retried. Disabled-policy storage verification
-and local active-policy mocks do not establish live event enforcement. Full
+creation is never automatically retried. Local fixtures cover active/disabled
+metadata transitions; actual enforcement and workflow execution were not tested.
+Disabled-policy storage readback does not establish event enforcement. Full
 reports identify selected policy objects; status-only Summary hides their names
 and values, while the intermediate report still follows the protected-report
 lifecycle.

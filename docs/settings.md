@@ -491,8 +491,9 @@ list/GET, export and plan**, as well as writes, according to the official API.
 The client never grants permissions or substitutes empty state for denied reads.
 
 The Free/personal/public UI and disabled-policy API storage were verified;
-active enforcement is covered by local mocks only. Storage readback does not
-establish workflow blocking or a particular token's grants. See the
+local fixtures cover active/disabled metadata transitions. Actual enforcement
+and workflow execution were not tested. Storage readback does not establish
+workflow blocking or a particular token's grants. See the
 [behavior specification](features/actions-event-policies.feature.md) and
 [adoption evidence](https://github.com/daiksud/gh-settings/issues/647).
 

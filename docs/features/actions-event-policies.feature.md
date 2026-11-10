@@ -86,8 +86,9 @@ retries with another identity. Permission documentation does not certify a
 particular installation or token's grants.
 
 [Adoption evidence](https://github.com/daiksud/gh-settings/issues/647) covers the
-Free, personally owned public UI and a disabled-policy storage probe. Active
-policy behavior is tested with local mocks, not live workflow enforcement.
+Free, personally owned public UI and a disabled-policy storage probe. Local
+fixtures cover active/disabled metadata transitions; actual enforcement and
+workflow execution were not tested.
 Neither successful storage readback nor fixture success proves actual event
 blocking. Published packages retain their own contracts; this source addition
 does not repin callers or change a live policy.

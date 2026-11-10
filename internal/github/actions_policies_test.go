@@ -242,3 +242,48 @@ func TestWriteActionsEventPolicyRecoveryAndPreflight(t *testing.T) {
 		})
 	}
 }
+
+func TestActionsPoliciesOwnershipIgnoresGitHubNameCase(t *testing.T) {
+	repo := repository.Repository{Owner: "Owner", Name: "CURRENT"}
+	for _, operation := range []string{"read", "create", "create-readback-failure"} {
+		t.Run(operation, func(t *testing.T) {
+			reads, writes := 0, 0
+			client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+				if !strings.HasPrefix(r.URL.Path, "/repos/Owner/CURRENT/actions/policies") {
+					t.Fatal(r.URL)
+				}
+				if r.Method == "POST" {
+					writes++
+					return labelsResponse(r, 201, eventPolicyJSON), nil
+				}
+				reads++
+				if operation == "create-readback-failure" {
+					return labelsResponse(r, 503, `{}`), nil
+				}
+				if strings.HasSuffix(r.URL.Path, "/policies") {
+					return labelsResponse(r, 200, `{"total_count":1,"policies":[`+eventPolicyJSON+`]}`), nil
+				}
+				return labelsResponse(r, 200, eventPolicyJSON), nil
+			}))
+			if operation == "read" {
+				observed, err := client.ReadActionsPolicies(repo)
+				if err != nil {
+					t.Fatal(err)
+				}
+				values, err := observed.Values()
+				if err != nil || len(values) != 1 || values[0].ID != 7 || reads != 2 || writes != 0 {
+					t.Fatal(values, err, reads, writes)
+				}
+			} else {
+				change, err := settings.NewActionsEventPolicyChange(nil, settings.ActionsEventPolicy{Name: "events", Enforcement: "active", Events: []string{"push", "pull_request"}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				id, err := client.WriteActionsEventPolicy(repo, change)
+				if id != 7 || (err != nil) != (operation == "create-readback-failure") || writes != 1 || reads != 1 {
+					t.Fatal(id, err, reads, writes)
+				}
+			}
+		})
+	}
+}

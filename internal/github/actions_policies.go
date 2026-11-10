@@ -56,7 +56,7 @@ func actionsPolicyIdentity(raw map[string]json.RawMessage, repo repository.Repos
 	if id <= 0 || strings.TrimSpace(name) == "" {
 		return 0, "", fmt.Errorf("invalid Actions policy identity")
 	}
-	if kind != "Repository" || source != repo.Owner+"/"+repo.Name || target != "actions" {
+	if kind != "Repository" || !strings.EqualFold(source, repo.Owner+"/"+repo.Name) || target != "actions" {
 		return 0, "", fmt.Errorf("Actions policy %d is not owned by target repository or has unexpected target", id)
 	}
 	return id, name, nil

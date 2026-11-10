@@ -25,7 +25,8 @@ application sequencing, typed reports and snapshot-ID recording to their owners.
 [Process acceptance](../../tests/acceptance/actions_event_policies_test.go)
 checks the built CLI's independent export selection, create/update/repeat apply,
 partial ID recovery and destination preservation. These local fixtures use dummy
-credentials; active-policy tests do not establish live event enforcement.
+credentials and cover active/disabled metadata transitions; actual enforcement
+and workflow execution were not tested.
 
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
 
