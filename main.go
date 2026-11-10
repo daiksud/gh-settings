@@ -20,7 +20,7 @@ var version = "dev"
 func main() {
 	checkout := workspace.NewCheckout(".")
 	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout) }
-	reader := app.Reader{CopilotReviewEffort: readCopilotReviewEffort, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
+	reader := app.Reader{CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	reader.Environments = readEnvironments
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
@@ -29,7 +29,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{IncludeCopilotReviewEffort: options.CopilotReviewEffort, IncludeCopilotInstructions: options.CopilotInstructions, Variables: options.Variables, AgentsVariables: options.AgentsVariables, IncludeCodeQLConfiguration: options.CodeQLConfiguration, IncludeDependabot: options.Dependabot, IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeSecretScanning: options.SecretScanning, IncludeCodeQLDefaultSetup: options.CodeQLDefaultSetup, IncludeAIScanPullRequests: options.AIScanPullRequests, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeCacheStorage: options.CacheStorage, IncludeCacheRetention: options.CacheRetention, IncludeForkApproval: options.ForkApproval}, reader)
+			return app.Export(app.ExportCheckout{IncludeCopilotReviewEffort: options.CopilotReviewEffort, IncludeCopilotMCP: options.CopilotMCP, IncludeCopilotInstructions: options.CopilotInstructions, Variables: options.Variables, AgentsVariables: options.AgentsVariables, IncludeCodeQLConfiguration: options.CodeQLConfiguration, IncludeDependabot: options.Dependabot, IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeSecretScanning: options.SecretScanning, IncludeCodeQLDefaultSetup: options.CodeQLDefaultSetup, IncludeAIScanPullRequests: options.AIScanPullRequests, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeCacheStorage: options.CacheStorage, IncludeCacheRetention: options.CacheRetention, IncludeForkApproval: options.ForkApproval}, reader)
 		},
 		Validate: func() (settings.Declaration, error) { return app.Validate(loadDeclaration) },
 		Plan: func() (app.PlanResult, error) {
@@ -45,7 +45,7 @@ func main() {
 			}
 			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
 				return readPagesForApply(repo, desired.Pages)
-			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
+			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotMCP: updateCopilotMCP, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
 			}, SecretScanning: writeSecretScanning, ReadCodeQLDefaultSetup: readCodeQLDefaultSetup, CodeQLDefaultSetup: writeCodeQLDefaultSetup, ReadAIScanPullRequests: readAIScanPullRequests, AIScanPullRequests: writeAIScanPullRequests, ReadPrivateReporting: readPrivateReporting, ReadImmutableReleases: readImmutableReleases, ImmutableReleases: writeImmutableReleases, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadCacheRetention: readCacheRetention, CacheRetention: writeCacheRetention, ReadCacheStorage: readCacheStorage, CacheStorage: writeCacheStorage, ReadActionsAccess: readActionsAccess, ActionsAccess: writeActionsAccess, ReadForkApproval: readForkApprovalForApply, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
 		},
@@ -503,9 +503,23 @@ func readCopilotInstructions(repo repository.Repository) (settings.CopilotInstru
 	}
 	return client.Read(repo)
 }
+func readCopilotMCP(repo repository.Repository) (settings.CopilotMCPObservation, error) {
+	client, err := github.NewCopilotMCPClient(repo.Host)
+	if err != nil {
+		return settings.CopilotMCPObservation{}, err
+	}
+	return client.Read(repo)
+}
 
 func updateCopilotInstructions(repo repository.Repository, desired bool) (bool, error) {
 	client, err := github.NewCopilotInstructionsClient(repo.Host)
+	if err != nil {
+		return false, err
+	}
+	return client.Update(repo, desired)
+}
+func updateCopilotMCP(repo repository.Repository, desired bool) (bool, error) {
+	client, err := github.NewCopilotMCPClient(repo.Host)
 	if err != nil {
 		return false, err
 	}

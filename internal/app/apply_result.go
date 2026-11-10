@@ -64,6 +64,7 @@ const (
 	VariableUpsert
 	CopilotReviewEffortUpdate
 	CopilotInstructionsUpdate
+	CopilotMCPUpdate
 	AgentVariableUpsert
 )
 
