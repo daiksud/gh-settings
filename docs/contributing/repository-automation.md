@@ -197,8 +197,8 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The settings workflows pin the immutable v0.38.0 package at
-`0c775795b4dd7fedef7d500f248fbdd782ff211a`. The operational declaration is
+The settings workflows pin the immutable v0.39.0 package at
+`29b1c0a093d100ee4d7535e077de3a6d6808343b`. The operational declaration is
 validated directly with the current codec, including explicit Code Quality
 protection. Retired team-review and Preview additional-approval YAML controls
 are omitted. The package preserves the observed unowned Preview approval value
@@ -212,7 +212,8 @@ level are supported by the package, but no Copilot setting is declared here.
 Persistent pull request limits and the Copilot MCP tools toggle are supported
 by the package, but neither is declared here. Actions event/actor restriction
 policies and workflow targeting are supported by the package; no policy is
-declared here. Pinning this package grants no new permissions and does not
+declared here. Environment variables are also supported by the package, but none
+are declared here. Pinning this package grants no new permissions and does not
 dispatch settings-apply.
 
 ## Active settings workflows
