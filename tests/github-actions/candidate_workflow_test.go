@@ -32,7 +32,7 @@ func TestPRScreeningOnly(t *testing.T) {
 		actions = append(actions, s.Uses)
 	}
 	want := []string{
-		"jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca",
+		"jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b",
 		"actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
 		"./.github/actions/lint",
 		"./.github/actions/unit-test",
