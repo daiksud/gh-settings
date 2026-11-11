@@ -197,8 +197,8 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 
 ## Operational declaration and current-source scope
 
-The settings workflows pin the immutable v0.40.0 package at
-`cb7a13caf14e25680c0a73871fdd5d955532aff7`. The operational declaration is
+The settings workflows pin the immutable v0.40.1 package at
+`be506a25af76356323c6cf4e07cd1dc8eaa4e760`. The operational declaration is
 validated directly with the current codec, including explicit Code Quality
 protection. Retired team-review and Preview additional-approval YAML controls
 are omitted. The package preserves the observed unowned Preview approval value
