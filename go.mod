@@ -4,7 +4,7 @@ go 1.26.7
 
 require (
 	github.com/cli/go-gh/v2 v2.17.0
-	go.yaml.in/yaml/v4 v4.0.0-rc.6
+	go.yaml.in/yaml/v4 v4.0.0
 )
 
 require (

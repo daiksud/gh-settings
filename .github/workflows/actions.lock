@@ -12,7 +12,7 @@ workflows:
         - 'jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca'
         - 'jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b'
     '.github/workflows/labeler.yml':
-        - 'actions/labeler@b7a88044754812b108a54feec878dd5c328bba59'
+        - 'actions/labeler@bc32c493030cc908233048429a1f81da3057fbbc'
     '.github/workflows/pr.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e'
@@ -50,9 +50,9 @@ dependencies:
         commit: 'sha1-9000827ccba6bdab643e8b6fd33ac0654aef8333'
         owner_id: 44036562
         repo_id: 192626254
-    'actions/labeler@b7a88044754812b108a54feec878dd5c328bba59':
+    'actions/labeler@bc32c493030cc908233048429a1f81da3057fbbc':
         ref: 'main'
-        commit: 'sha1-b7a88044754812b108a54feec878dd5c328bba59'
+        commit: 'sha1-bc32c493030cc908233048429a1f81da3057fbbc'
         owner_id: 44036562
         repo_id: 177139928
     'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e':
