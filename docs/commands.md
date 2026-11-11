@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--pull-request-limits] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -101,6 +101,20 @@ Plan shows native booleans at `repository.settings.copilot.code_review.allow_cop
 `export --copilot-review-effort` selects only the [Review effort level](settings.md#copilot-code-review-effort-level). It composes with `--copilot-custom-instructions`, `--copilot-mcp` and other export options; duplicate flags fail before target/API/file work. Complete selected acquisition is required before saving, and a failure preserves the existing file.
 
 Plan and detailed Action reports show `default`, `lite` or `balanced` at `repository.settings.copilot.code_review.review_effort_level`. Default is an observable configured-null state, not proof that GitHub erased an unavailable saved override. Apply reads fresh availability, skips observable matches, sends only the declared effort when needed and independently verifies readback. Unsupported or unavailable observations are errors, never successful fallback. This command neither enables nor requests Copilot reviews.
+
+## Pull request limit exemptions
+
+`export --pull-request-limit-exemptions` independently reads the complete
+[Exemption list](settings.md#pull-request-limit-exemption-list), requiring
+Administration write. It does not read or enable the cap. The existing
+`--pull-request-limits` selection continues to export only its three controls.
+
+An explicitly declared `exemption_list` owns complete membership; `[]` clears it,
+while omission makes no list request. Apply removes obsolete users before adding
+new users and verifies each stage; later failures do not roll back confirmed
+removals. It runs before separately selected cap controls. Detailed output
+contains membership, while status-only Summary omits it. No temporary restriction,
+automatic exemption rule or collaborator grant is managed.
 
 ## Environment variable commands
 
@@ -269,5 +283,6 @@ options; duplicates fail before target/API/file work. Ordinary export makes no
 cap request. Administrator access and complete typed acquisition are required;
 failed export preserves the existing file. Plan remains read-only. Apply uses
 fresh preflight, narrow PATCH and bounded independent confirmation, with honest
-uncertain effects on readback failure. Temporary restrictions and exemptions
-are not selected.
+uncertain effects on readback failure. Temporary restrictions and automatic
+exemption rules are not selected. The explicit Exemption list has its separate
+selection described above.

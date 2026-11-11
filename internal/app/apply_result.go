@@ -71,6 +71,7 @@ const (
 	ActionsEventPolicyCreate
 	ActionsEventPolicyUpdate
 	EnvironmentVariableUpsert
+	PullRequestExemptionsUpdate
 )
 
 type ApplyOperationStatus uint8

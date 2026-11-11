@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	PullRequestExemptions   []PullRequestExemptionsPlanChange `json:"pull_request_exemptions,omitempty"`
 	EnvironmentVariables    []EnvironmentVariablePlanChange   `json:"environment_variables,omitempty"`
 	ActionsPolicies         ActionsEventPolicyPlanChanges     `json:"actions_policies,omitempty"`
 	CopilotReviewEffort     []PlanChange                      `json:"copilot_review_effort,omitempty"`
@@ -138,6 +139,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.CopilotMCP {
 		before, after := change.Values()
 		report.CopilotMCP = append(report.CopilotMCP, PlanChange{Field: change.Field(), Before: before, After: after})
+	}
+	for _, change := range result.Comparison.PullRequestExemptions {
+		before, after := change.Values()
+		report.PullRequestExemptions = append(report.PullRequestExemptions, PullRequestExemptionsPlanChange{Before: before, After: after})
 	}
 	for _, change := range result.Comparison.PullRequestLimits {
 		before, after := change.Values()

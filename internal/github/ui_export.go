@@ -123,6 +123,20 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		result.Settings.InteractionLimits = &uimodel.InteractionLimits{PullRequestLimits: &uimodel.PullRequestLimits{LimitOpenPullRequestsFromUsersWithoutWriteAccess: copyUIValue(c.Enabled), MaximumOpenPullRequestsPerUser: copyUIValue(c.Maximum), CountDraftPullRequestsTowardTheLimit: copyUIValue(c.IncludeDrafts)}}
 	}
 
+	if source.PullRequestExemptions != nil {
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.InteractionLimits == nil {
+			result.Settings.InteractionLimits = &uimodel.InteractionLimits{}
+		}
+		if result.Settings.InteractionLimits.PullRequestLimits == nil {
+			result.Settings.InteractionLimits.PullRequestLimits = &uimodel.PullRequestLimits{}
+		}
+		logins := source.PullRequestExemptions.Logins()
+		result.Settings.InteractionLimits.PullRequestLimits.ExemptionList = &logins
+	}
+
 	if source.CopilotMCP != nil || source.CopilotInstructions != nil || source.CopilotReviewEffort != nil {
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}

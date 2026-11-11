@@ -12,6 +12,7 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludePullRequestExemptions                      bool
 	EnvironmentVariables                              []settings.EnvironmentVariableSelection
 	IncludeActionsPolicies                            bool
 	IncludeCopilotReviewEffort                        bool
@@ -353,6 +354,21 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		declaration.CopilotMCP = &enabled
+	}
+	if checkout.IncludePullRequestExemptions {
+		observed, err := read.PullRequestExemptions(repo)
+		if err != nil {
+			return err
+		}
+		logins, err := observed.Logins()
+		if err != nil {
+			return err
+		}
+		desired, err := settings.NewPullRequestExemptionsDeclaration(logins)
+		if err != nil {
+			return err
+		}
+		declaration.PullRequestExemptions = &desired
 	}
 	if checkout.IncludePullRequestLimits {
 		observed, err := read.PullRequestLimits(repo)

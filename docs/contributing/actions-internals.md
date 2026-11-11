@@ -132,3 +132,10 @@ Current-source CodeQL default configuration uses the optional `codeql_configurat
 Actions event policies use the separate `actions_policies` report array, independent of `actions` execution controls. Each create/update entry carries `operation` and complete `after`, with `before` required only for updates. Objects contain optional positive `id`, required `policy_name`, `enforcement_status`, and complete `restrict_events`/`restrict_actors` objects. Present rules carry their
 allowed lists; absent rules carry `enabled: false`. Empty actors remain a present
 rule. Actor entries are typed UI user IDs or verified role names. Creates omit IDs; updates retain the same positive ID on both sides and may rename. Closed reconstruction rejects null, unknown or incomplete values, unsupported events/status, duplicate names/IDs, deletes and no-op updates. Event and actor lists are copied into the validated domain model, preserving resolved removals rather than treating them as omitted update intent. The collection counts once toward managed resources; detailed CLI/Summary show supported whole-object changes, while status-only Summary suppresses policy names, IDs and values. The fixed failure resource is `repository.settings.actions.policies`. Reports remain same-version presentation data, never apply input.
+
+The optional `pull_request_exemptions` report collection contains at most one
+whole-membership change with required non-null string-array `before` and `after`
+values, including empty arrays. Reconstruction validates canonical supported
+User logins, uniqueness, the 100-user limit and actual inequality. The collection
+counts once; detailed rendering shares the CLI path while status-only output
+omits membership. Reports never become apply input.

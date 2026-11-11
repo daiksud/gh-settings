@@ -275,6 +275,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if desired.PullRequestExemptions != nil {
+		wrote, err := applyPullRequestExemptions(&result, repo, *desired.PullRequestExemptions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if !desired.PullRequestLimits.Empty() {
 		wrote, err := applyPullRequestLimits(&result, repo, desired.PullRequestLimits, write)
 		if err != nil {
@@ -393,5 +400,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) || (desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0) || desired.CopilotReviewEffort != nil || !desired.PullRequestLimits.Empty() || desired.CopilotMCP != nil || desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || (desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return desired.PullRequestExemptions != nil || !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) || (desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0) || desired.CopilotReviewEffort != nil || !desired.PullRequestLimits.Empty() || desired.CopilotMCP != nil || desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || (desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }

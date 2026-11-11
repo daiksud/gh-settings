@@ -10,6 +10,7 @@ import (
 // configuration values, API errors, credentials or resource names into Summary.
 var failureResources = []string{
 	"repository.settings.actions.policies",
+	settings.PullRequestExemptionsPath,
 	settings.PullRequestLimitsPath,
 	settings.CopilotReviewEffortPath,
 	settings.CopilotInstructionsPath,
