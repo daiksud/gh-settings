@@ -20,6 +20,7 @@ type EnvironmentDeploymentRule struct {
 }
 
 type Environment struct {
+	Variables                  *[]RepositoryVariable
 	DeploymentBranchesAndTags  *EnvironmentDeploymentChoice
 	DeploymentBranchOrTagRules *[]EnvironmentDeploymentRule
 	Name                       string

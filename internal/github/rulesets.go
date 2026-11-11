@@ -119,7 +119,7 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 		if err := requiredRuleJSON(raw, "target", &target); err != nil {
 			return settings.RulesetObservation{}, err
 		}
-		if target != "branch" && target != "tag" && target != "push" {
+		if target != "branch" && target != "tag" {
 			return settings.RulesetObservation{}, fmt.Errorf("unsupported Ruleset target %q", target)
 		}
 		policy, normalizations, err := decodeObservedRulesetPolicy(raw)
@@ -131,6 +131,9 @@ func (client *Client) ReadRulesets(repo repository.Repository) (settings.Ruleset
 	return settings.NewRulesetObservationWithUnmanagedIDs(values, 0, unmanagedIDs)
 }
 func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclaration, error) {
+	if err := rejectUnsupportedRulesetScope(raw); err != nil {
+		return settings.RulesetDeclaration{}, err
+	}
 	policy := map[string]json.RawMessage{}
 	for key, value := range raw {
 		switch key {
@@ -140,10 +143,6 @@ func decodeRulesetPolicy(raw map[string]json.RawMessage) (settings.RulesetDeclar
 		default:
 			return settings.RulesetDeclaration{}, fmt.Errorf("unknown Ruleset response field %q", key)
 		}
-	}
-	// Push targets have no ref conditions; the documented response permits null.
-	if bytes.Equal(bytes.TrimSpace(policy["conditions"]), []byte("null")) && bytes.Equal(bytes.TrimSpace(policy["target"]), []byte(`"push"`)) {
-		delete(policy, "conditions")
 	}
 	// The API uses ignored/null actor IDs for actors without numeric identity.
 	var actors []map[string]json.RawMessage
@@ -259,6 +258,13 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if change.Operation() != "create" && change.Operation() != "update" {
 		return 0, fmt.Errorf("invalid Ruleset operation")
 	}
+	// Always recheck: an unowned rule may have appeared since acquisition,
+	// including on a Ruleset with no PR rule or previous unowned companions.
+	if change.Operation() == "update" {
+		if err := client.preflightRulesetUnmanaged(repo, change); err != nil {
+			return 0, err
+		}
+	}
 	after := change.After()
 	if after == nil {
 		return 0, fmt.Errorf("missing Ruleset payload")
@@ -331,7 +337,18 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 	if err := verifyReviewRulesetResponse(*after, response); err != nil {
 		return fail(err)
 	}
-	needsReadback := !change.Normalizations().IsZero() || (after.Target != nil && *after.Target == "push") || (change.Before() != nil && change.Before().Target != nil && *change.Before().Target == "push")
+	// A new PR rule leaves the unowned Preview default to GitHub. Freeze the
+	// typed acknowledgment value for independent readback, without public intent.
+	if value, present := settings.RulesetPreviewApproval(after); present && value == nil {
+		actual, err := decodeRulesetPolicy(response)
+		if err != nil {
+			return fail(err)
+		}
+		if err := settings.PreserveRulesetUnmanagedParameters(&actual, after); err != nil {
+			return fail(err)
+		}
+	}
+	needsReadback := !change.Normalizations().IsZero()
 	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
 		if policy != nil && policy.Rules != nil {
 			for _, rule := range *policy.Rules {
@@ -388,6 +405,11 @@ func verifyReviewRulesetResponse(desired settings.RulesetDeclaration, raw map[st
 		return err
 	}
 	actual, requested := values[0].Policy, declaration.Values()[0]
+	if value, present := settings.RulesetPreviewApproval(&requested); present && value == nil {
+		if err := settings.PreserveRulesetUnmanagedParameters(&actual, &requested); err != nil {
+			return err
+		}
+	}
 	if !reflect.DeepEqual(actual, requested) {
 		return fmt.Errorf("GitHub response did not retain the requested Ruleset policy")
 	}

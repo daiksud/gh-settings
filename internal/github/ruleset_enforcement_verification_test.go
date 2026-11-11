@@ -45,7 +45,7 @@ func TestNormalizedRulesetBasicUpdatesRequireStrictFreshGET(t *testing.T) {
 				t.Run(desired+response+readback, func(t *testing.T) {
 					var operations []string
 					change := rulesetEnforcementChange(t, desired, true)
-					client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+					client := rulesetMutationClient(t, rulesetEnforcementChange(t, "active", false), transportFunc(func(req *http.Request) (*http.Response, error) {
 						operations = append(operations, req.Method)
 						mode := readback
 						if req.Method == "PUT" {
@@ -103,7 +103,7 @@ func TestNormalizedRulesetBasicUpdatesRequireStrictFreshGET(t *testing.T) {
 		}
 	}
 	var calls []string
-	client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+	client := rulesetMutationClient(t, rulesetEnforcementChange(t, "active", false), transportFunc(func(req *http.Request) (*http.Response, error) {
 		calls = append(calls, req.Method)
 		return labelsResponse(req, 200, basicRulesetJSON), nil
 	}))

@@ -11,10 +11,16 @@ guide](../github-actions.md) own user-facing behavior.
 | [Validate](validate.feature.md) | Validate declarations locally. |
 | [Plan](plan.feature.md) | Compare declared values without writes. |
 | [Apply](apply.feature.md) | Apply declarations and report partial failure. |
+| [Persistent pull request limits](pull-request-limits.feature.md) | Manage the persistent open PR cap without temporary restrictions or exemptions. |
+| [Copilot MCP tools](copilot-mcp.feature.md) | Manage the stored MCP tools permission toggle without configuring servers or executing reviews. |
+| [Copilot review effort](copilot-review-effort.feature.md) | Manage the observable repository review effort choice without enabling reviews. |
+| [Copilot custom instructions](copilot-custom-instructions.feature.md) | Manage the stored repository Use custom instructions toggle. |
+| [Repository variables](repository-variables.feature.md) | Manage selected non-sensitive Actions repository variables. |
 | [Labels](labels.feature.md) | Manage selected label objects by ID. |
 | [Rulesets](rulesets.feature.md) | Manage selected repository rulesets. |
-| [Environments](environments.feature.md) | Manage supported named environment policies. |
+| [Environments](environments.feature.md) | Manage supported named environment policies and explicitly selected non-sensitive variables. |
 | [GitHub Actions](actions.feature.md) | Operate the public composite Action. |
+| [Actions event policies](actions-event-policies.feature.md) | Manage listed repository-owned event policies and workflow targets without implicit deletion. |
 | [Actions execution](actions-execution-policy.feature.md) | Manage repository Actions policy. |
 | [Workflow permissions](workflow-permissions.feature.md) | Manage default Actions token and approval policy. |
 | [Fork workflows](fork-workflows.feature.md) | Manage fork pull-request workflow controls. |

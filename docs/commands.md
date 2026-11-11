@@ -2,9 +2,9 @@
 
 ## Environment export
 
-`gh settings export --environments` includes all supported named Environment policies and composes with other export options. It requires complete Environment/custom-protection reads and preserves the existing output-file safety contract. Ordinary export does not read Environments.
+`gh settings export --environments` includes all supported named Environment policies, never variables, and composes with other export options. It requires complete Environment/custom-protection reads and preserves the existing output-file safety contract. Ordinary export does not read Environments.
 
-`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); names select ordinary create-or-update, not numeric IDs. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries send an empty upsert body. Omitted built-in values remain API-controlled; the client promises neither preservation nor reset. Inspect plan before apply.
+`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); policy-selected names select ordinary create-or-update, not numeric IDs; [variable-only entries](#environment-variable-commands) do not upsert policy. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries send an empty upsert body. Omitted built-in values remain API-controlled; the client promises neither preservation nor reset. Inspect plan before apply.
 
 Environment deployment-mode observations follow the [raw-pair contract](settings.md#environment-deployment-mode-observation-normalization). Export warns only after complete selected acquisition, in folded-name order. Detailed plan/Summary label all Environment before-objects as effective policy and add a scoped normalized/write-required UI decision only for explicit mode intent. Status-only hides names and pair values. Omitted mode sends no field, retains API-controlled outcomes and emits no unowned warning; explicit mode requires canonical raw confirmation, while unknown-mode pattern intent requires explicit Selected.
 
@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--environments] [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--actions-access] [--fork-approval] [--private-fork-workflows] [--security FAMILY]...
+gh settings export [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -56,9 +56,81 @@ The [labels contract](settings.md#labels) uses ID-based listed-object ownership:
 
 Plan shows creates and ID-bound updates, including default-derived values. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
 
+## Actions event policy commands
+
+`export --actions-policies` independently selects the complete
+[Actions event/actor policy collection](settings.md#actions-event-policies), including
+IDs and explicit workflow include/exclude selections, sorted by policy name,
+event name, actor identity and pattern. It composes with other export options;
+duplicates fail before repository/API/file work. Ordinary export and `--actions`
+do not read it. All pages/details must be complete and supported before saving;
+unsupported policies or failed reads preserve the existing destination.
+
+`validate` checks the complete listed objects locally. Omission and `[]` make no
+policy requests. Plan reports creates and ID-bound updates without writing.
+Apply preflights the full collection, skips matches, guards updates against fresh
+detail drift, and independently verifies acknowledgment and final GET. No ID
+means create-only; exact name collisions fail. IDs select repository-owned
+objects, including rename, without create fallback. Unlisted policies remain
+unchanged; there is no deletion or atomic rollback. Omitted `target_workflows`
+uses All workflows for creation and preserves existing targeting for updates;
+declaring both arrays replaces the selection.
+
+Confirmed new IDs use guarded source-file writeback unless `--no-writeback` or
+`GITHUB_ACTIONS=true` suppresses it. Known IDs remain in recovery diagnostics even
+when a later step fails. An uncertain create is never retried automatically;
+inspect remote state and record the ID before retrying. Fine-grained/App tokens
+need **Administration write for observation as well as mutation**, including
+export and plan. Current-source support does not establish support in the
+selected published package or live active-policy enforcement.
+
+## Copilot custom instructions commands
+
+Current source accepts the [Use custom instructions boolean](settings.md#copilot-code-review-custom-instructions). `export --copilot-custom-instructions` explicitly selects this setting and composes with other options; duplicate flags fail before target/API/file work. Without an explicit Copilot selection, ordinary export and `--actions` acquire no Copilot code-review settings. A complete true/false read is required before saving.
+
+Plan shows the native boolean comparison. Apply reads fresh state, skips a match and verifies narrow PATCH updates. The flag stores configuration without enabling or requesting reviews and does not read or edit instruction files. API permission and review-entitlement boundaries remain separate; this option does not expand either.
+
+## Copilot MCP tools commands
+
+`export --copilot-mcp` selects only the [MCP tools boolean](settings.md#copilot-code-review-mcp-tools), including false. It composes with the other Copilot flags and export options; duplicates fail before target/API/file work. Ordinary export and `--actions` do not select it. Complete selected acquisition is required before saving; a failure preserves the existing file.
+
+Plan shows native booleans at `repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests`. Apply reads fresh complete settings, skips matches, PATCHes only `mcp_enabled` and independently verifies the requested boolean and unchanged sibling settings. Failures retain honest partial or unknown-effect reporting. This control does not configure MCP servers or secrets, grant access, request reviews or establish MCP execution.
+
+## Copilot review effort commands
+
+`export --copilot-review-effort` selects only the [Review effort level](settings.md#copilot-code-review-effort-level). It composes with `--copilot-custom-instructions`, `--copilot-mcp` and other export options; duplicate flags fail before target/API/file work. Complete selected acquisition is required before saving, and a failure preserves the existing file.
+
+Plan and detailed Action reports show `default`, `lite` or `balanced` at `repository.settings.copilot.code_review.review_effort_level`. Default is an observable configured-null state, not proof that GitHub erased an unavailable saved override. Apply reads fresh availability, skips observable matches, sends only the declared effort when needed and independently verifies readback. Unsupported or unavailable observations are errors, never successful fallback. This command neither enables nor requests Copilot reviews.
+
+## Pull request limit exemptions
+
+`export --pull-request-limit-exemptions` independently reads the complete
+[Exemption list](settings.md#pull-request-limit-exemption-list), requiring
+Administration write. It does not read or enable the cap. The existing
+`--pull-request-limits` selection continues to export only its three controls.
+
+An explicitly declared `exemption_list` owns complete membership; `[]` clears it,
+while omission makes no list request. Apply removes obsolete users before adding
+new users and verifies each stage; later failures do not roll back confirmed
+removals. It runs before separately selected cap controls. Detailed output
+contains membership, while status-only Summary omits it. No temporary restriction,
+automatic exemption rule or collaborator grant is managed.
+
+## Environment variable commands
+
+`export --environment-variable ENVIRONMENT NAME` selects one known non-sensitive [Environment variable](settings.md#environment-variables). Repeat the flag for additional Environment/name pairs; quote Environment names containing spaces. Names validate before target/API work, with duplicate pairs rejected using folded Environment identity and uppercase variable identity. Ordinary export and `--environments` make no variable requests. Every selected value must be acquired before the output file is saved.
+
+Variable-only declarations do not upsert an Environment or touch its policy, patterns or secrets. A missing Environment fails. Combined policy/variable declarations apply selected policy first, then variables in stable Environment/name order, before repository Actions and Agents variables. Earlier successful writes remain applied on later failure. Values are plaintext in detailed output; status-only Summary hides details. No bulk selection, deletion, rename or ID writeback is supported.
+
+## Repository variables commands
+
+Current source accepts separate [Actions](settings.md#actions-repository-variables) and [Agents](settings.md#agents-repository-variables) repository variable declarations. `export --variable NAME` selects one known non-sensitive Actions name; `export --agent-variable NAME` selects one Agents name. Repeat either flag for other names. Names validate before target/API work, including case-insensitive duplicate rejection within each family. The same canonical name can be selected in both families independently. Ordinary export and `--actions` do not read variables. All selected individual GETs must succeed and find the requested names before saving; a failure preserves the existing output file. There is no bulk/all selection.
+
+Plan is read-only and identifies the selected family. Apply upserts only declared names, preserving unlisted variables and skipping equal values. Actions variables are processed before Agents variables, with stable name order within each family. Earlier successful writes remain applied after a later failure. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use these features for secrets. Actions variables require the repository **Variables** read/write permission; Agents variables require the separate **Agent variables** read/write permission. Neither grants access to the other family.
+
 ## Export behavior
 
-`export --cache-retention`, `export --cache-storage`, and `export --actions-access` independently select [cache limits](settings.md#actions-cache-policy) and [private sharing access](settings.md#private-actions-and-reusable-workflow-access). They compose with existing export flags; duplicates fail before API/file work. Ordinary export, `--actions`, and `--retention` do not acquire these resources. Access requires a private repository with a supported owner type. All selected reads must complete before saving; any denied, incomplete or invalid response preserves the destination. Cache storage reads require Actions read; cache retention/access reads require Administration read. All three updates require Administration write, plus their read permissions for preflight and verification.
+`export --cache-retention` and `export --cache-storage` independently select [cache limits](settings.md#actions-cache-policy). They compose with other export flags; duplicates fail before API/file work. Ordinary export, `--actions` and `--retention` do not acquire them. Complete selected reads are required before saving. Cache storage needs Actions read; cache retention needs repository metadata and Administration read. Both updates need Administration write and their preflight/readback permissions.
 
 `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Other export selections compose with it.
 
@@ -68,7 +140,7 @@ Current source supports `export --security codeql-configuration` for [existing C
 
 `export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy) for required credentials and transition limits.
 
-`export --rulesets` additionally reads complete repository-owned branch, tag and push Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Complete out-of-UI enforcement, Required approvals, Allowed merge methods, Team reviewer Approvals, scanning Alerts, scanning Security alerts, Quality severity and bypass modes emit contextual normalization warnings in exported name order: enforcement, Required approvals, Allowed merge methods, Team reviewer Approvals (numeric reviewer ID order), scanning Alerts and Security alerts (each in tool-name order), Quality, then bypass actors ordered by type and numeric ID; other successful exact observations stay silent. See the [Rulesets contract](settings.md#rulesets) before adoption.
+`export --rulesets` additionally reads complete repository-owned branch and tag Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Complete out-of-UI enforcement, Required approvals, Allowed merge methods, scanning Alerts, scanning Security alerts, bypass modes emit contextual normalization warnings in exported name order: enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), then bypass actors ordered by type and numeric ID; other successful exact observations stay silent. See the [Rulesets contract](settings.md#rulesets) before adoption.
 
 Export uses the [repository and authentication rules](#repository-and-authentication) above. It reads repository settings, then topics, then every labels page, and serializes the complete supported configuration before opening the destination. Label reads use pages of 100 until a short page; a failed later page fails the operation before any file replacement. Unsupported fields and read-only metadata are excluded. Export preserves false and empty strings; the [settings reference](settings.md#exported-values) explains response normalization and invalid-response handling.
 
@@ -118,7 +190,7 @@ repository.settings.general.features.issues: true → false
 repository.about.topics: ["old"] → ["github-cli","settings-as-code"]
 ```
 
-One exact UI menu choice can produce two internal component comparisons. An out-of-UI merge/squash pair instead retains one warning and menu-level write-required decision with both raw strings, even if the declared choice equals its projected default. Both exact and normalized compound choices render as a single UI menu decision. Normalized Actions execution uses one UI policy decision at `repository.settings.actions.general.actions_permissions.policy` with visible-only projection warnings; an observed disabled repository remains known Disable and keeps latent raw policy private. Workflow defaults use `repository.settings.actions.general.workflow_permissions.default_permissions`; Secret Protection uses its `enabled` and `push_protection` children. Native comparison identifiers remain internal and are not YAML aliases. Actions execution/workflow permissions, public-fork approval, Security status strings, creation policies, merge/squash menu pairs, complete Pages modes and legacy folders, Ruleset enforcement/Required approvals/Allowed merge methods/Team reviewer Approvals/scanning Alerts/scanning Security alerts/Quality severity/bypass modes and Environment deployment modes have explicit normalization policies; other acquired values require their documented complete typed representations.
+One exact UI menu choice can produce two internal component comparisons. An out-of-UI merge/squash pair instead retains one warning and menu-level write-required decision with both raw strings, even if the declared choice equals its projected default. Both exact and normalized compound choices render as a single UI menu decision. Normalized Actions execution uses one UI policy decision at `repository.settings.actions.general.actions_permissions.policy` with visible-only projection warnings; an observed disabled repository remains known Disable and keeps latent raw policy private. Workflow defaults use `repository.settings.actions.general.workflow_permissions.default_permissions`; Secret Protection uses its `enabled` and `push_protection` children. Native comparison identifiers remain internal and are not YAML aliases. Actions execution/workflow permissions, public-fork approval, Security status strings, creation policies, merge/squash menu pairs, complete Pages modes and legacy folders, Ruleset enforcement/Required approvals/Allowed merge methods/scanning Alerts/scanning Security alerts/bypass modes and Environment deployment modes have explicit normalization policies; other acquired values require their documented complete typed representations.
 
 Strings are double-quoted with Go string escaping, including quotes, backslashes, newlines and control characters. Booleans use `true` or `false`; topics use sorted JSON arrays. Equal exact managed values are omitted; normalized projections retain their explicit write-required decisions. When all managed values match, output is `No differences for managed repository settings.`
 
@@ -131,7 +203,7 @@ repository.labels: update "help wanted" (id 123) description: "Old description" 
 
 A nonempty label selection counts as one managed item; an empty selection manages nothing. The effective whole supported object is compared, including default-derived description clearing.
 
-Ruleset operations show only selected whole supported objects, with UI control names, numeric IDs and fixed-default changes. Environment objects show requested fields of the effective before policy and the actual request; omitted fields remain API-controlled and are not shown as managed values. Unlisted Rulesets never appear as deletes. ID updates can rename; ID-less collisions fail instead of adopting existing names. Normalized enforcement, Required approvals, Allowed merge methods, Team reviewer Approvals (numeric reviewer ID order), scanning Alerts and Security alerts (each in tool-name order), Quality severity and bypass modes add independent contextual warnings and UI decisions marked normalized/write-required, followed by one complete effective policy. Allowed merge methods warnings retain original list order, while desired choices use named UI order. Team reviewer warnings retain exact numeric Team ID; both scanning threshold warnings retain exact tool names. Bypass warnings identify the selected UI actor and its ID when applicable. Removing a normalized PR or Quality rule shows an inactive/rule-removed decision; removing a scanning tool shows an inactive/tool-removed decision; removing a Team reviewer shows an inactive/reviewer-removed decision; removing a bypass actor shows an inactive/actor-removed decision. Each requires confirmed absence. Fallback-equal selected intent stays actionable; unlisted normalized IDs remain undisclosed. See the [raw enforcement](settings.md#ruleset-enforcement-observation-normalization), [Required approvals](settings.md#ruleset-required-approvals-observation-normalization), [Allowed merge methods](settings.md#ruleset-allowed-merge-methods-observation-normalization), [Team reviewer Approvals](settings.md#ruleset-team-reviewer-approvals-observation-normalization), [scanning Alerts](settings.md#ruleset-scanning-alerts-observation-normalization), [scanning Security alerts](settings.md#ruleset-scanning-security-alerts-observation-normalization), [Quality severity](settings.md#ruleset-quality-severity-observation-normalization) and [bypass-mode](settings.md#ruleset-bypass-mode-observation-normalization) contracts for strict mutation response/fresh GET verification. A projected fallback never substitutes for exact raw confirmation.
+Ruleset operations show only selected whole supported objects, with UI control names, numeric IDs and fixed-default changes. Environment objects show requested fields of the effective before policy and the actual request; omitted fields remain API-controlled and are not shown as managed values. Unlisted Rulesets never appear as deletes. ID updates can rename; ID-less collisions fail instead of adopting existing names. Normalized enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), bypass modes add independent contextual warnings and UI decisions marked normalized/write-required, followed by one complete effective policy. Allowed merge methods warnings retain original list order, while desired choices use named UI order. Both scanning threshold warnings retain exact tool names. Bypass warnings identify the selected UI actor and its ID when applicable. removing a scanning tool shows an inactive/tool-removed decision; removing a bypass actor shows an inactive/actor-removed decision. Each requires confirmed absence. Fallback-equal selected intent stays actionable; unlisted normalized IDs remain undisclosed. See the [raw enforcement](settings.md#ruleset-enforcement-observation-normalization), [Required approvals](settings.md#ruleset-required-approvals-observation-normalization), [Allowed merge methods](settings.md#ruleset-allowed-merge-methods-observation-normalization), [scanning Alerts](settings.md#ruleset-scanning-alerts-observation-normalization), [scanning Security alerts](settings.md#ruleset-scanning-security-alerts-observation-normalization), [bypass-mode](settings.md#ruleset-bypass-mode-observation-normalization) contracts for strict mutation response/fresh GET verification. A projected fallback never substitutes for exact raw confirmation.
 
 Successful comparison exits 0 whether differences exist or not. File, validation, origin, authentication, API, decoding and output errors exit 1 with a diagnostic on stderr. Read and partial-apply errors identify the affected UI resource where known. Failures before output leave stdout empty. Plan changes neither configuration nor GitHub settings. Its output is an observation, not a saved execution plan or drift protection for apply.
 
@@ -154,7 +226,13 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
-| `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, sharing access, public-fork approval, then private-fork workflows. Each uses its adopted preflight/readback contract. |
+| `repository.settings.environments[].variables` | After selected Environment policies, fresh selected-name GET and conditional POST/PATCH with exact GET verification. Variable-only intent sends no policy PUT. |
+| `repository.settings.actions.variables` | Stable name-order fresh individual GET, conditional POST or value-only PATCH, then exact GET verification. No unlisted deletion. |
+| `repository.settings.agents.variables` | After Actions variables, the same selected-name upsert and verification using only Agents endpoints. No unlisted deletion. |
+| `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, then public-fork approval. Each uses its adopted preflight/readback contract. |
+| `repository.settings.copilot.code_review.use_custom_instructions` | Fresh GET, conditional single-boolean PATCH and independent GET verification; no review activation or instruction-file changes. |
+| `repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests` | Fresh complete GET, conditional MCP-only PATCH and independent GET verification of the toggle and unchanged sibling settings. |
+| `repository.settings.copilot.code_review.review_effort_level` | Fresh effort/availability GET, conditional single-field PATCH and independent GET verification; Default uses observable configured-null comparison, not proof of hidden-override erasure. |
 | `repository.settings.advanced_security` | Secret protection/push protection in dependency order, then private vulnerability reporting. |
 | `repository.settings.general.releases` | Immutable release policy after private reporting and before Pages. |
 | `repository.settings.pages` | Existing-site declared-only update with identity/visibility/readback checks. |
@@ -183,7 +261,7 @@ Contributors can find the [behavior specifications](features/README.md), [testin
 
 ## Fork workflow export choices
 
-`gh settings export --fork-approval` adds the public-repository contributor approval enum. `gh settings export --private-fork-workflows` adds the four private-repository execution/token/secrets/approval booleans. Both require existing Administration read credentials and preserve ordinary export requests when omitted. They compose with `--rulesets`, `--actions`, `--workflow-permissions`, `--retention` and distinct `--security` selections; duplicate flags fail before export. Selecting both fork families fails because their adopted visibility scopes differ, preserving an existing destination.
+`gh settings export --fork-approval` adds the public contributor approval choice and requires Administration read. Ordinary export does not acquire it. It composes with the other supported export selections; duplicates fail before remote work. Private-only export flags are [unsupported](settings.md#excluded-private-actions-controls).
 
 Plan and the credential-free Action Summary use the UI paths, booleans and approval choices. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 
@@ -196,3 +274,15 @@ Actions workflow permissions, fork contributor approval, Security and Pages diff
 `export --pages` acquires [Pages configuration](settings.md#pages-configuration). Target GET 404 exports explicit `source: deploy_from_a_branch` and `branch: none`, without folder/domain/HTTPS. Applying that export intentionally deletes any site present at apply time. Other read failures preserve the destination; ordinary export makes no Pages request.
 
 Plan remains read-only and displays creation, deletion or declared configuration differences. Apply creates absent sites only with complete explicit Source intent, directly deletes with the exact Branch none selector, and updates present sites without erasing omitted controls. Contradictory deletion and incomplete creation intent fail before Pages writes. A confirmed creation followed by optional domain/HTTPS failure remains applied and is reported as partial progress; no automatic rollback or write retry occurs. Site visibility and deployment readiness are not managed.
+
+## Persistent pull request limits commands
+
+`export --pull-request-limits` selects all three [persistent cap controls](settings.md#persistent-pull-request-limits),
+including latent values while disabled. The flag composes with other export
+options; duplicates fail before target/API/file work. Ordinary export makes no
+cap request. Administrator access and complete typed acquisition are required;
+failed export preserves the existing file. Plan remains read-only. Apply uses
+fresh preflight, narrow PATCH and bounded independent confirmation, with honest
+uncertain effects on readback failure. Temporary restrictions and automatic
+exemption rules are not selected. The explicit Exemption list has its separate
+selection described above.

@@ -25,7 +25,7 @@ func TestRulesetReviewReportPreservesOrderFalseAndZero(t *testing.T) {
         require_last_push_approval: false
         required_approving_review_count: 1
         required_review_thread_resolution: true
-        required_reviewers: [{reviewer: {type: Team, id: 21}, minimum_approvals: 0, file_patterns: ['**', '!docs/**', '**']}]
+        required_reviewers: []
     - type: required_status_checks
       parameters:
         required_status_checks: [{context: '<ci>', integration_id: 9}]
@@ -45,8 +45,6 @@ func TestRulesetReviewReportPreservesOrderFalseAndZero(t *testing.T) {
 			no := false
 			r.Parameters.RequiredApprovingReviewCount = &zero
 			r.Parameters.RequireCodeOwnerReview = &no
-			patterns := (*r.Parameters.RequiredReviewers)[0].FilePatterns
-			(*patterns)[0], (*patterns)[1] = (*patterns)[1], (*patterns)[0]
 		} else if r.Type == "required_status_checks" {
 			empty := []settings.RequiredStatusCheck{}
 			r.Parameters.RequiredStatusChecks = &empty
@@ -66,7 +64,7 @@ func TestRulesetReviewReportPreservesOrderFalseAndZero(t *testing.T) {
 		t.Fatal(e)
 	}
 	visible := html.UnescapeString(rendered)
-	for _, want := range []string{`"required_approvals":0`, `"require_review_from_code_owners":false`, `"required_status_checks":[]`, `"file_patterns":["!docs/**","**","**"]`} {
+	for _, want := range []string{`"required_approvals":0`, `"require_review_from_code_owners":false`, `"required_status_checks":[]`} {
 		if !strings.Contains(visible, want) {
 			t.Fatal("missing typed/order value", want, visible)
 		}
@@ -75,7 +73,7 @@ func TestRulesetReviewReportPreservesOrderFalseAndZero(t *testing.T) {
 		t.Fatal("unescaped report")
 	}
 	// Reports remain a closed presentation protocol, never a raw policy passthrough.
-	for _, pair := range [][2]string{{`"require_code_owner_review":true`, `"require_code_owner_review":true,"dismissal_restriction":{"enabled":true,"allowed_actors":[]}`}, {`"minimum_approvals":0`, `"minimum_approvals":null`}, {`"strict_required_status_checks_policy":true`, `"Strict_required_status_checks_policy":true`}, {`"required_approving_review_count":0`, `"required_approving_review_count":0,"future":false`}} {
+	for _, pair := range [][2]string{{`"require_code_owner_review":true`, `"require_code_owner_review":true,"dismissal_restriction":{"enabled":true,"allowed_actors":[]}`}, {`"strict_required_status_checks_policy":true`, `"Strict_required_status_checks_policy":true`}, {`"required_approving_review_count":0`, `"required_approving_review_count":0,"future":false`}} {
 		invalid := strings.Replace(string(data), pair[0], pair[1], 1)
 		if invalid == string(data) {
 			t.Fatal(pair)

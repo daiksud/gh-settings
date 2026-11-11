@@ -55,9 +55,9 @@ func TestSquashCommitReportAndSummary(t *testing.T) {
 			}
 		}
 	}
-	for _, count := range []int{62, 63} {
+	for _, count := range []int{73, 74} {
 		_, err := actions.RenderSummary(actions.PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: count, Changes: []actions.PlanChange{}}, summaryMetadata())
-		if (err == nil) != (count == 62) {
+		if (err == nil) != (count == 73) {
 			t.Fatalf("count=%d err=%v", count, err)
 		}
 	}

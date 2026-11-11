@@ -59,13 +59,6 @@ func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclar
 		result.CacheRetentionDays = copyUIActionsValue(ui.Cache.CacheRetention)
 		result.CacheSizeGB = copyUIActionsValue(ui.Cache.CacheSizeEvictionLimit)
 	}
-	if ui.Access != nil {
-		value, valid := settings.ActionsAccessValueForChoice(*ui.Access)
-		if !valid {
-			return settings.ActionsPolicyDeclaration{}, fmt.Errorf("unsupported %s UI choice", settings.ActionsAccessPath)
-		}
-		result.AccessLevel = &value
-	}
 	var err error
 	result.DefaultWorkflowPermissions, err = declareUIActionsWorkflow(ui.WorkflowPermissions)
 	if err != nil {
@@ -74,10 +67,6 @@ func ActionsDeclaration(ui uimodel.ActionsGeneral) (settings.ActionsPolicyDeclar
 	result.CanApprovePullRequestReviews = copyUIActionsValue(ui.AllowGitHubActionsToCreateAndApprovePullRequests)
 	result.RetentionDays = copyUIActionsValue(ui.CheckWorkflowRunStatusArtifactAndLogRetention)
 	result.ForkApprovalPolicy, err = declareUIActionsForkApproval(ui.ApprovalForRunningForkPullRequestWorkflowsFromContributors)
-	if err != nil {
-		return settings.ActionsPolicyDeclaration{}, err
-	}
-	result.PrivateFork, err = declareUIActionsPrivateFork(ui.ForkPullRequestWorkflows)
 	if err != nil {
 		return settings.ActionsPolicyDeclaration{}, err
 	}

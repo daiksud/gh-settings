@@ -52,6 +52,33 @@ func RenderComparison(comparison settings.Comparison) []byte {
 			fmt.Fprintln(&output, presentation.LabelLine(change))
 		}
 	}
+	for _, change := range comparison.Variables {
+		fmt.Fprintln(&output, presentation.VariableLine(change))
+	}
+	for _, change := range comparison.EnvironmentVariables {
+		fmt.Fprintln(&output, presentation.EnvironmentVariableLine(change))
+	}
+	for _, change := range comparison.AgentsVariables {
+		fmt.Fprintln(&output, presentation.AgentVariableLine(change))
+	}
+	for _, change := range comparison.CopilotInstructions {
+		fmt.Fprintln(&output, presentation.CopilotInstructionsLine(change))
+	}
+	for _, change := range comparison.CopilotMCP {
+		fmt.Fprintln(&output, presentation.CopilotMCPLine(change))
+	}
+	for _, change := range comparison.PullRequestExemptions {
+		fmt.Fprintln(&output, presentation.PullRequestExemptionsLine(change))
+	}
+	for _, change := range comparison.PullRequestLimits {
+		fmt.Fprintln(&output, presentation.PullRequestLimitsLine(change))
+	}
+	for _, change := range comparison.CopilotReviewEffort {
+		fmt.Fprintln(&output, presentation.CopilotReviewEffortLine(change))
+	}
+	for _, change := range comparison.ActionsPolicies {
+		fmt.Fprintln(&output, presentation.ActionsEventPolicyLine(change))
+	}
 	for _, change := range comparison.Rulesets {
 		fmt.Fprintln(&output, presentation.RulesetLine(change.Display()))
 	}

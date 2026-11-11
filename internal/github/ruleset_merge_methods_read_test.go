@@ -55,7 +55,7 @@ func TestMergeMethodsCompleteDecoderPreservesAllEvidenceAndStrictVerification(t 
 			if normalized && (!slices.Equal(records.MergeMethods.RawValue, methods) || !slices.Equal(records.MergeMethods.Fallback, []string{"merge", "squash", "rebase"})) {
 				t.Fatal(records)
 			}
-			if companions && (records.Enforcement.RawValue != "FUTURE_ENFORCEMENT" || records.RequiredApprovals.RawValue != 11 || records.QualitySeverity.RawValue != "FUTURE_SEVERITY" || len(records.BypassModes) != 1 || records.BypassModes[0].Normalization.RawValue != "FUTURE_MODE") {
+			if companions && (records.Enforcement.RawValue != "FUTURE_ENFORCEMENT" || records.RequiredApprovals.RawValue != 11 || len(records.BypassModes) != 1 || records.BypassModes[0].Normalization.RawValue != "FUTURE_MODE") {
 				t.Fatal("companion evidence lost", records)
 			}
 			state := settings.RulesetState{ID: 7, Policy: policy, EnforcementNormalization: records.Enforcement, RequiredApprovalsNormalization: records.RequiredApprovals, MergeMethodsNormalization: records.MergeMethods, QualitySeverityNormalization: records.QualitySeverity, BypassModeNormalizations: records.BypassModes}
@@ -109,7 +109,7 @@ func TestMergeMethodsHTTPReadIsCompleteAndSilent(t *testing.T) {
 					if mode == "later denied" {
 						return labelsResponse(req, 403, `{"message":"denied"}`), nil
 					}
-					params := body["rules"].([]any)[1].(map[string]any)["parameters"].(map[string]any)
+					params := body["rules"].([]any)[0].(map[string]any)["parameters"].(map[string]any)
 					switch mode {
 					case "absent":
 						body["rules"] = []any{}

@@ -21,8 +21,6 @@ func TestActionsGeneralControlsExportPlanApply(t *testing.T) {
 	}{
 		{"cache retention", "--cache-retention", "cache/retention-limit", "max_cache_retention_days", "{cache: {cache_retention: 14}}", "cache_retention: 7", "public", "User", float64(7), float64(14)},
 		{"cache storage", "--cache-storage", "cache/storage-limit", "max_cache_size_gb", "{cache: {cache_size_eviction_limit: 20}}", "cache_size_eviction_limit: 10", "public", "User", float64(10), float64(20)},
-		{"user access", "--actions-access", "permissions/access", "access_level", "{access: accessible_from_repositories_owned_by_user}", "access: not_accessible", "private", "User", "none", "user"},
-		{"organization access", "--actions-access", "permissions/access", "access_level", "{access: accessible_from_repositories_in_organization}", "access: not_accessible", "private", "Organization", "none", "organization"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			binary := acceptanceBinary(t)

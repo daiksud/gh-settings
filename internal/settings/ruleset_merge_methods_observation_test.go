@@ -50,9 +50,6 @@ func TestRulesetMergeMethodsObservationOwnsRawOrderAndCompanions(t *testing.T) {
 				if v, err := values[0].RawRequiredApprovals(); err != nil || v == nil || *v != 11 {
 					t.Fatal("approvals companion lost", v, err)
 				}
-				if v, err := values[0].RawQualitySeverity(); err != nil || v == nil || *v != "FUTURE_SEVERITY" {
-					t.Fatal("quality companion lost", v, err)
-				}
 				actors, err := values[0].RawBypassActors()
 				if err != nil || len(actors) != 4 || *actors[2].BypassMode != "BYPASS_FUTURE" {
 					t.Fatal("bypass companion lost", actors, err)

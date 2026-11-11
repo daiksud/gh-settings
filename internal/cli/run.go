@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/presentation"
@@ -14,7 +15,15 @@ var errUnsupportedCommand = errors.New("unsupported command or arguments; usage:
 
 // ExportOptions selects independently acquired opt-in resources.
 type ExportOptions struct {
-	Dependabot, Rulesets, Environments, Actions, WorkflowPermissions, SecretScanning, CodeQLConfiguration, CodeQLDefaultSetup, AIScanPullRequests, PrivateReporting, ImmutableReleases, CacheRetention, CacheStorage, ActionsAccess, Retention, ForkApproval, PrivateFork, Archive, Pages bool
+	PullRequestExemptions                                                                                                                                                                                                                                     bool
+	EnvironmentVariables                                                                                                                                                                                                                                      []settings.EnvironmentVariableSelection
+	ActionsPolicies                                                                                                                                                                                                                                           bool
+	PullRequestLimits                                                                                                                                                                                                                                         bool
+	CopilotReviewEffort                                                                                                                                                                                                                                       bool
+	CopilotInstructions                                                                                                                                                                                                                                       bool
+	CopilotMCP                                                                                                                                                                                                                                                bool
+	Variables, AgentsVariables                                                                                                                                                                                                                                []string
+	Dependabot, Rulesets, Environments, Actions, WorkflowPermissions, SecretScanning, CodeQLConfiguration, CodeQLDefaultSetup, AIScanPullRequests, PrivateReporting, ImmutableReleases, CacheRetention, CacheStorage, Retention, ForkApproval, Archive, Pages bool
 }
 
 type ApplyOptions struct{ NoWriteback bool }
@@ -42,6 +51,59 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		for i := 1; i < len(args); i++ {
 			flag := args[i]
 			switch flag {
+			case "--copilot-custom-instructions":
+				if options.CopilotInstructions {
+					return errUnsupportedCommand
+				}
+				options.CopilotInstructions = true
+			case "--copilot-mcp":
+				if options.CopilotMCP {
+					return errUnsupportedCommand
+				}
+				options.CopilotMCP = true
+			case "--pull-request-limit-exemptions":
+				if options.PullRequestExemptions {
+					return errUnsupportedCommand
+				}
+				options.PullRequestExemptions = true
+			case "--pull-request-limits":
+				if options.PullRequestLimits {
+					return errUnsupportedCommand
+				}
+				options.PullRequestLimits = true
+			case "--copilot-review-effort":
+				if options.CopilotReviewEffort {
+					return errUnsupportedCommand
+				}
+				options.CopilotReviewEffort = true
+			case "--environment-variable":
+				if i+2 >= len(args) {
+					return errUnsupportedCommand
+				}
+				options.EnvironmentVariables = append(options.EnvironmentVariables, settings.EnvironmentVariableSelection{Environment: args[i+1], Name: args[i+2]})
+				var err error
+				options.EnvironmentVariables, err = settings.CanonicalEnvironmentVariableSelections(options.EnvironmentVariables)
+				if err != nil {
+					return err
+				}
+				i += 2
+			case "--variable", "--agent-variable":
+				if i+1 >= len(args) {
+					return errUnsupportedCommand
+				}
+				i++
+				name, err := settings.VariableName(args[i])
+				if err != nil {
+					return err
+				}
+				selection := &options.Variables
+				if flag == "--agent-variable" {
+					selection = &options.AgentsVariables
+				}
+				if slices.Contains(*selection, name) {
+					return fmt.Errorf("duplicate repository variable name %q", name)
+				}
+				*selection = append(*selection, name)
 			case "--security":
 				if i+1 >= len(args) {
 					return errUnsupportedCommand
@@ -92,11 +154,6 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 					return errUnsupportedCommand
 				}
 				options.ForkApproval = true
-			case "--private-fork-workflows":
-				if options.PrivateFork {
-					return errUnsupportedCommand
-				}
-				options.PrivateFork = true
 			case "--pages":
 				if options.Pages {
 					return errUnsupportedCommand
@@ -117,11 +174,6 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 					return errUnsupportedCommand
 				}
 				options.CacheStorage = true
-			case "--actions-access":
-				if options.ActionsAccess {
-					return errUnsupportedCommand
-				}
-				options.ActionsAccess = true
 			case "--retention":
 				if options.Retention {
 					return errUnsupportedCommand
@@ -137,6 +189,11 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 					return errUnsupportedCommand
 				}
 				options.Rulesets = true
+			case "--actions-policies":
+				if options.ActionsPolicies {
+					return errUnsupportedCommand
+				}
+				options.ActionsPolicies = true
 			case "--actions":
 				if options.Actions {
 					return errUnsupportedCommand
@@ -170,9 +227,10 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--pages] [--archive] [--rulesets] [--actions] [--workflow-permissions] [--cache-retention] [--cache-storage] [--actions-access] [--retention] [--fork-approval] [--private-fork-workflows] [--security <dependabot|secret-scanning|codeql-configuration|codeql-default-setup|ai-scan-pull-requests|private-vulnerability-reporting|immutable-releases>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply [--no-writeback]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --pages to include Pages configuration or the Branch none deletion declaration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security immutable-releases for the repository immutable release policy; Administration read is required and GET 404 means disabled.\nUse --security dependabot to include Dependabot alerts and security updates; required permissions are a precondition and GET 404 means disabled.\nUse --security codeql-configuration for existing CodeQL default configuration; complete Administration read is required.\nUse --security codeql-default-setup for CodeQL default setup enablement; Administration read is required.\nUse --security ai-scan-pull-requests for the AI Scan pull request toggle; Code scanning alerts read is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --cache-retention to include cache retention days; Metadata and Administration read are required.\nUse --cache-storage to include the cache size eviction limit; Actions read is required.\nUse --actions-access for private Actions and reusable workflow sharing; Metadata and Administration read are required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nUse --private-fork-workflows for private fork execution/token/secrets/approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly. New label and Ruleset IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--copilot-custom-instructions] [--copilot-mcp] [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-review-effort] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--cache-retention] [--cache-storage] [--retention] [--fork-approval] [--security <dependabot|secret-scanning|codeql-configuration|codeql-default-setup|ai-scan-pull-requests|private-vulnerability-reporting|immutable-releases>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply [--no-writeback]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --copilot-custom-instructions to export the stored Use custom instructions boolean; this does not enable or request Copilot review.\nUse --pull-request-limits to export all three persistent Pull request limits controls; administrator access is required. Temporary restrictions remain unmanaged.\nUse --pull-request-limit-exemptions to independently export the complete Exemption list; explicit lists replace membership and [] clears it. Administration write is required. Automatic exemption rules remain unmanaged.\nUse --copilot-mcp to export the stored MCP tools boolean; this does not configure servers, grant access or enable reviews.\nUse --copilot-review-effort to export the observable Default, Lite or Balanced review effort; Default does not prove an unavailable stored override is absent.\nUse --variable NAME to export only explicitly named non-sensitive repository Actions variables; repeat for each name. Values are plaintext; repository Variables read is required.\nUse --agent-variable NAME to export only explicitly named non-sensitive repository Agents variables; repeat for each name. Values are plaintext; repository Agent variables read is required.\nUse --environment-variable ENVIRONMENT NAME to export only explicitly named non-sensitive Environment variables; repeat for each pair. Values are plaintext; Environments read is required. This does not select Environment protection settings.\nUse --pages to include Pages configuration or the Branch none deletion declaration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions-policies to include complete repository Actions event/actor policies; Administration write is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security immutable-releases for the repository immutable release policy; Administration read is required and GET 404 means disabled.\nUse --security dependabot to include Dependabot alerts and security updates; required permissions are a precondition and GET 404 means disabled.\nUse --security codeql-configuration for existing CodeQL default configuration; complete Administration read is required.\nUse --security codeql-default-setup for CodeQL default setup enablement; Administration read is required.\nUse --security ai-scan-pull-requests for the AI Scan pull request toggle; Code scanning alerts read is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --cache-retention to include cache retention days; Metadata and Administration read are required.\nUse --cache-storage to include the cache size eviction limit; Actions read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly. New label, Ruleset and Actions policy IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
+
 		if _, err := fmt.Fprintln(stdout, "Use --environments with export to include complete supported named Environment policies; Actions read is required. Environment names select whole objects for create-or-update, never numeric-ID writeback or unlisted deletion."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
@@ -187,6 +245,9 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		if err := presentation.ValidateRulesetChanges(result.Comparison.Rulesets); err != nil {
 			return fmt.Errorf("repository.settings.rulesets: %w", err)
+		}
+		if err := presentation.ValidateActionsEventPolicyChanges(result.Comparison.ActionsPolicies); err != nil {
+			return fmt.Errorf("repository.settings.actions.policies: %w", err)
 		}
 		data = RenderComparison(result.Comparison)
 	case "apply":
@@ -229,6 +290,8 @@ func createdCollectionPath(collection string) string {
 	switch collection {
 	case "labels":
 		return "repository.labels"
+	case "actions_policies":
+		return "repository.settings.actions.policies"
 	case "rulesets":
 		return "repository.settings.rulesets"
 	default:
@@ -246,12 +309,30 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		}
 		path := ""
 		switch op.Kind {
+		case app.CopilotReviewEffortUpdate:
+			path = settings.CopilotReviewEffortPath
+		case app.CopilotInstructionsUpdate:
+			path = settings.CopilotInstructionsPath
+		case app.CopilotMCPUpdate:
+			path = settings.CopilotMCPPath
+		case app.PullRequestExemptionsUpdate:
+			path = settings.PullRequestExemptionsPath
+		case app.PullRequestLimitsUpdate:
+			path = settings.PullRequestLimitsPath
+		case app.EnvironmentVariableUpsert:
+			path = fmt.Sprintf("repository.settings.environments[%q].variables[%q]", op.EnvironmentName, op.VariableName)
+		case app.AgentVariableUpsert:
+			path = "repository.settings.agents.variables"
+		case app.VariableUpsert:
+			path = "repository.settings.actions.variables"
 		case app.RepositoryUpdate:
 			path = "repository"
 		case app.TopicsUpdate:
 			path = "repository.about.topics"
 		case app.LabelsRead, app.LabelCreate, app.LabelUpdate, app.LabelDelete:
 			path = "repository.labels"
+		case app.ActionsPoliciesRead, app.ActionsEventPolicyCreate, app.ActionsEventPolicyUpdate:
+			path = "repository.settings.actions.policies"
 		case app.RulesetsRead, app.RulesetCreate, app.RulesetUpdate, app.RulesetDelete:
 			path = "repository.settings.rulesets"
 		case app.EnvironmentsRead, app.EnvironmentUpsert:

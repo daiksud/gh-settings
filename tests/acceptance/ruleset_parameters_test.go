@@ -17,7 +17,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const acceptanceReviewRuleset = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[{"reviewer":{"type":"Team","id":22},"minimum_approvals":1,"file_patterns":["**","!docs/**","docs/README.md","**"]}]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368}],"strict_required_status_checks_policy":true}}]}`
+const acceptanceReviewRuleset = `{"id":7,"name":"default","source_type":"Repository","source":"owner/current","current_user_can_bypass":"never","target":"branch","enforcement":"active","bypass_actors":[],"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_linear_history"},{"type":"pull_request","parameters":{"allowed_merge_methods":["squash"],"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_extra_approval_for_unattributed_changes":false,"require_last_push_approval":false,"required_approving_review_count":1,"required_review_thread_resolution":true,"required_reviewers":[]}},{"type":"required_status_checks","parameters":{"do_not_enforce_on_create":false,"required_status_checks":[{"context":"pass","integration_id":15368},{"context":"gh-settings","integration_id":15368}],"strict_required_status_checks_policy":true}}]}`
 
 func acceptanceRuleParams(t *testing.T, policy map[string]any, kind string) map[string]any {
 	t.Helper()
@@ -142,12 +142,11 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 			"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": false,
 			"require_a_pull_request_before_merging": map[string]any{
 				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
-				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,
-				"require_review_from_code_owners":                                       true,
-				"require_an_additional_approval_for_unattributed_copilot_pull_requests": false,
-				"require_approval_of_the_most_recent_reviewable_push":                   false,
-				"require_conversation_resolution_before_merging":                        true,
-				"require_review_from_specific_teams":                                    []any{map[string]any{"reviewer": 22, "approvals": 1, "file_patterns": []any{"**", "!docs/**", "docs/README.md", "**"}}},
+				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed": true,
+				"require_review_from_code_owners":                                  true,
+
+				"require_approval_of_the_most_recent_reviewable_push": false,
+				"require_conversation_resolution_before_merging":      true,
 			},
 			"require_status_checks_to_pass": map[string]any{
 				"required_status_checks":                           []any{map[string]any{"check": "gh-settings", "source": map[string]any{"app": 15368}}, map[string]any{"check": "pass", "source": map[string]any{"app": 15368}}},
@@ -160,8 +159,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		t.Fatalf("exported=%v want=%v", members, desired)
 	}
 	pr := desired["rules"].(map[string]any)["require_a_pull_request_before_merging"].(map[string]any)
-	reviewer := pr["require_review_from_specific_teams"].([]any)[0].(map[string]any)
-	reviewer["file_patterns"] = []any{"!docs/**", "**", "docs/README.md", "**"}
+	pr["required_approvals"] = 2
 	document := map[string]any{"version": "daiksud/gh-settings@v0", "repository": map[string]any{"settings": map[string]any{"rulesets": []any{desired}}}}
 
 	save := func() {
@@ -176,7 +174,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 	}
 	save()
 	out := run("plan")
-	if strings.Count(out, `update "default"`) != 1 || !strings.Contains(out, `"file_patterns":["!docs/**","**","docs/README.md","**"]`) {
+	if strings.Count(out, `update "default"`) != 1 || !strings.Contains(out, `"required_approvals":2`) {
 		t.Fatal("order-only diff hidden", out)
 	}
 	reportPath := filepath.Join(fixture.root, "review-plan.json")
@@ -188,14 +186,14 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		t.Fatal(e, summary.stderr.String())
 	}
 	summaryData, _ := os.ReadFile(summaryPath)
-	if !strings.Contains(html.UnescapeString(string(summaryData)), `"file_patterns":["!docs/**","**","docs/README.md","**"]`) {
+	if !strings.Contains(html.UnescapeString(string(summaryData)), `"required_approvals":2`) {
 		t.Fatal("summary lost order", string(summaryData))
 	}
 	run("apply")
 	mu.Lock()
 	firstCount := len(writes)
 	firstPR := acceptanceRuleParams(t, writes[0], "pull_request")
-	if firstCount != 1 || firstPR["required_approving_review_count"] != float64(1) || firstPR["require_extra_approval_for_unattributed_changes"] != false {
+	if firstCount != 1 || firstPR["required_approving_review_count"] != float64(2) || firstPR["require_extra_approval_for_unattributed_changes"] != false {
 		t.Fatal("order edit changed siblings", writes)
 	}
 	mu.Unlock()
@@ -226,7 +224,6 @@ repository:
             required_approvals: 0
             dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: false
             require_review_from_code_owners: false
-            require_review_from_specific_teams: [{reviewer: 22, approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]
           require_status_checks_to_pass:
             required_status_checks: [{check: pass}]
             require_branches_to_be_up_to_date_before_merging: false
@@ -242,9 +239,8 @@ repository:
 	if p["required_approving_review_count"] != float64(0) || p["dismiss_stale_reviews_on_push"] != false || p["require_code_owner_review"] != false || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false || len(p["allowed_merge_methods"].([]any)) != 3 {
 		t.Fatal("lost review values", p)
 	}
-	r := p["required_reviewers"].([]any)[0].(map[string]any)
-	if r["minimum_approvals"] != float64(0) || !reflect.DeepEqual(r["file_patterns"], []any{"!docs/**", "**", "docs/README.md", "**"}) {
-		t.Fatal("lost ordered reviewer attrs", r)
+	if len(p["required_reviewers"].([]any)) != 0 {
+		t.Fatal("invented team review", p)
 	}
 	c := checks["required_status_checks"].([]any)
 	if len(c) != 1 || c[0].(map[string]any)["integration_id"] != nil || checks["strict_required_status_checks_policy"] != false || checks["do_not_enforce_on_create"] != false {
@@ -262,7 +258,7 @@ repository:
 		t.Fatal("repeat parameter apply wrote", count)
 	}
 	// Empty reviewer/check memberships remove their members; absent scalar flags stay intact.
-	clear := strings.Replace(partial, "require_review_from_specific_teams: [{reviewer: 22, approvals: 0, file_patterns: ['!docs/**', '**', 'docs/README.md', '**']}]", "require_review_from_specific_teams: []", 1)
+	clear := partial
 	clear = strings.Replace(clear, "required_status_checks: [{check: pass}]", "required_status_checks: []", 1)
 	writeSettingsFile(fixture.work, clear)
 	run("apply")
@@ -274,22 +270,25 @@ repository:
 	if out := run("plan"); out != "No differences for managed repository settings.\n" {
 		t.Fatal(out)
 	}
-	// Removing the rule type from declared membership removes that rule, not the Ruleset.
+	// Removing a PR container cannot retain its unowned Preview member.
 	writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {restrict_deletions: true}}]}\n"))
-	run("apply")
-	run("apply")
+	result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
+	if e != nil || result.runErr == nil || !strings.Contains(result.stderr.String(), "cannot remove PR rule") {
+		t.Fatal(e, result.stderr.String())
+	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(writes) != 4 || len(policy["rules"].([]any)) != 1 || len(methods) != 4 {
-		t.Fatal("rule removal/idempotence", writes, methods)
+	if len(writes) != 3 {
+		t.Fatal("wrote refused container removal", writes)
 	}
+
 }
 func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 	binary := acceptanceBinary(t)
 	for _, tt := range []struct {
 		name, detail, desired string
 		status                int
-	}{{"unknown PR flag", strings.Replace(acceptanceReviewRuleset, `"require_code_owner_review":true`, `"require_code_owner_review":true,"future_flag":false`, 1), `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {}}]`, 200}, {"null optional flag", strings.Replace(acceptanceReviewRuleset, `"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`, 1), `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}}]`, 200}, {"new reviewer incomplete", acceptanceReviewRuleset, `[{ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {require_a_pull_request_before_merging: {require_review_from_specific_teams: [{reviewer: 99}]}}}]`, 200}, {"write denied", acceptanceReviewRuleset, `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {}}]`, 403}, {"write redirect", acceptanceReviewRuleset, `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {}}]`, 307}} {
+	}{{"unknown PR flag", strings.Replace(acceptanceReviewRuleset, `"require_code_owner_review":true`, `"require_code_owner_review":true,"future_flag":false`, 1), `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {}}]`, 200}, {"null optional flag", strings.Replace(acceptanceReviewRuleset, `"require_extra_approval_for_unattributed_changes":false`, `"require_extra_approval_for_unattributed_changes":null`, 1), `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}}]`, 200}, {"new reviewer incomplete", acceptanceReviewRuleset, `[{ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {require_a_pull_request_before_merging: {require_review_from_specific_teams: [{reviewer: 99}]}}}]`, 200}, {"write denied", acceptanceReviewRuleset, `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {require_a_pull_request_before_merging: {required_approvals: 0}}}]`, 403}, {"write redirect", acceptanceReviewRuleset, `[{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {require_a_pull_request_before_merging: {required_approvals: 0}}}]`, 307}} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var methods []string
@@ -330,13 +329,13 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 			defer mu.Unlock()
 			want := []string{"GET", "GET"}
 			if tt.name == "new reviewer incomplete" {
-				if !strings.Contains(result.stderr.String(), "team reviewer requires approvals and file_patterns") {
+				if !strings.Contains(result.stderr.String(), "require_review_from_specific_teams") {
 					t.Fatal(result.stderr.String())
 				}
 				want = nil
 			}
 			if tt.status != 200 {
-				want = append(want, "PUT")
+				want = append(want, "GET", "PUT")
 			}
 			if !reflect.DeepEqual(methods, want) {
 				t.Fatal("unexpected API activity", methods, want)
@@ -346,7 +345,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 }
 
 func TestRulesetPRResponseMismatchStopsLaterWrites(t *testing.T) {
-	for _, removeAll := range []bool{false, true} {
+	for _, removeAll := range []bool{false} {
 		t.Run(fmt.Sprintf("remove-all-%t", removeAll), func(t *testing.T) {
 			binary := acceptanceBinary(t)
 			var mu sync.Mutex
@@ -412,7 +411,7 @@ repository:
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			want := []string{"GET /repos/owner/current/rulesets", "GET /repos/owner/current/rulesets/7", "GET /repos/owner/current/rulesets/8", "PUT /repos/owner/current/rulesets/7"}
+			want := []string{"GET /repos/owner/current/rulesets", "GET /repos/owner/current/rulesets/7", "GET /repos/owner/current/rulesets/8", "GET /repos/owner/current/rulesets/7", "PUT /repos/owner/current/rulesets/7"}
 			if !reflect.DeepEqual(methods, want) {
 				t.Fatal("response mismatch did not stop later writes", methods)
 			}

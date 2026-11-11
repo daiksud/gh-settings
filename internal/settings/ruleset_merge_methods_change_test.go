@@ -28,6 +28,12 @@ func TestRulesetMergeMethodsChangesOwnEvidenceForEqualityChoiceAndRemoval(t *tes
 			records := mergeMethodRecords(state)
 			want := mergeMethodRecords(normalizedMergeMethodsState([]string{"squash", "future"}, companions))
 			change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)
+			if desired == "removed" {
+				if err == nil {
+					t.Fatal("removed unowned container")
+				}
+				continue
+			}
 			if err != nil || change.ID() != 7 || !reflect.DeepEqual(change.Normalizations(), want) {
 				t.Fatal("selected methods evidence lost", desired, change, err)
 			}

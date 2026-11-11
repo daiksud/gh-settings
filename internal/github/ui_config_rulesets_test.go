@@ -33,16 +33,12 @@ repository:
             require_review_from_code_owners: true
             require_approval_of_the_most_recent_reviewable_push: false
             require_conversation_resolution_before_merging: true
-            require_an_additional_approval_for_unattributed_copilot_pull_requests: false
-            require_review_from_specific_teams:
-              - {reviewer: 12, approvals: 2, file_patterns: ['*.go', '!generated/*']}
           require_status_checks_to_pass:
             required_status_checks: [{check: ci, source: {app: 17}}]
             require_branches_to_be_up_to_date_before_merging: true
             do_not_require_status_checks_on_creation: false
           require_code_scanning_results:
             code_scanning_tools: [{tool_name: CodeQL, security_alerts: high_or_higher, alerts: errors}]
-          require_code_quality_results: {severity: warnings_and_higher}
 `
 
 func TestUIConfigRulesetExactRequests(t *testing.T) {
@@ -83,6 +79,7 @@ func TestUIConfigRulesetExactRequests(t *testing.T) {
 			if err := json.Unmarshal([]byte(uiRulesetExpectedPayload), &response); err != nil {
 				t.Fatal(err)
 			}
+			delete(analysisParams(t, want, "pull_request"), "require_extra_approval_for_unattributed_changes")
 			response["id"], response["source_type"], response["source"] = id, "Repository", "owner/current"
 			response["current_user_can_bypass"] = "never"
 			body, err := json.Marshal(response)
@@ -92,7 +89,16 @@ func TestUIConfigRulesetExactRequests(t *testing.T) {
 			calls := 0
 			client := topicsClient(t, func(req *http.Request) (*http.Response, error) {
 				calls++
-				if calls == 1 {
+				if req.Method == "GET" && calls == 1 && method == "PUT" {
+					raw, _ := json.Marshal(changes[0].Before())
+					return rulesetMutationResponse(t, req, 200, string(raw), id), nil
+				}
+				writeCall := 1
+				if method == "PUT" {
+					writeCall = 2
+				}
+
+				if calls == writeCall {
 					var got map[string]any
 					if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
 						t.Fatal(err)
@@ -100,13 +106,13 @@ func TestUIConfigRulesetExactRequests(t *testing.T) {
 					if req.Method != method || req.URL.Path != path || !reflect.DeepEqual(got, want) {
 						t.Fatalf("request=%s %s payload=%v; want %v", req.Method, req.URL, got, want)
 					}
-				} else if calls != 2 || req.Method != "GET" || req.URL.Path != fmt.Sprintf("/repos/owner/current/rulesets/%d", id) || req.URL.Query().Get("includes_parents") != "false" {
+				} else if calls != writeCall+1 || req.Method != "GET" || req.URL.Path != fmt.Sprintf("/repos/owner/current/rulesets/%d", id) || req.URL.Query().Get("includes_parents") != "false" {
 					t.Fatalf("unexpected readback: %s %s", req.Method, req.URL)
 				}
 				return labelsResponse(req, 200, string(body)), nil
 			})
 			gotID, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, changes[0])
-			if err != nil || gotID != id || calls != 2 {
+			if err != nil || gotID != id || calls != 2+map[bool]int{true: 1}[method == "PUT"] {
 				t.Fatalf("id=%d calls=%d error=%v", gotID, calls, err)
 			}
 		})

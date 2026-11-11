@@ -27,7 +27,7 @@ func TestRulesetQualityWarningsComposeOnlyCompleteOwnedFreshEvidence(t *testing.
 			} {
 				t.Run(desired+test.mode, func(t *testing.T) {
 					var got []diagnostic
-					client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+					client := rulesetMutationClient(t, rulesetQualityChange(t, desired, both), transportFunc(func(req *http.Request) (*http.Response, error) {
 						var body map[string]any
 						json.Unmarshal([]byte(qualityRulesetJSON), &body)
 						if both {

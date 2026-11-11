@@ -24,6 +24,12 @@ func TestMergeMethodsFreshWarningsNeverSupplyVerificationValues(t *testing.T) {
 			var operations []string
 			client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				operations = append(operations, req.Method)
+				if len(operations) == 1 && req.Method == "GET" {
+					body := mergeMethodsIntendedPayload([]string{"merge", "rebase", "squash"})
+					body["id"], body["source_type"], body["source"] = 7, "Repository", "owner/current"
+					encoded, _ := json.Marshal(body)
+					return labelsResponse(req, 200, string(encoded)), nil
+				}
 				body := mergeMethodsReadBody([]string{"merge", "rebase", "squash"}, false)
 				if req.Method == "GET" {
 					if mode == "denied" {
@@ -66,7 +72,7 @@ func TestMergeMethodsFreshWarningsNeverSupplyVerificationValues(t *testing.T) {
 				}
 				want = append(want, event{name: name, raw: []string{"squash", "FRESH_METHOD"}})
 			}
-			if id != 7 || (err != nil) != (mode != "canonical") || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(operations, []string{"PUT", "GET"}) {
+			if id != 7 || (err != nil) != (mode != "canonical") || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(operations, []string{"GET", "PUT", "GET"}) {
 				t.Fatal(id, err, got, want, operations)
 			}
 			if err != nil && !strings.Contains(err.Error(), "writes may already have applied") {

@@ -60,7 +60,7 @@ func TestRulesetObservedBypassDecoderRetainsExactEvidenceAndStrictVerification(t
 			}
 			if companions {
 				want.Enforcement = settings.ObservationNormalization{Path: settings.RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}
-				want.QualitySeverity = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "FUTURE_SEVERITY", Fallback: "errors"}
+
 				want.RequiredApprovals = settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 11, Fallback: 0}
 			}
 			if err != nil || !reflect.DeepEqual(records, want) || !reflect.DeepEqual(raw, original) {

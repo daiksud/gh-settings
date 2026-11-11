@@ -17,7 +17,6 @@ type Ruleset struct {
 	EnforcementStatus *EnforcementStatus
 	TargetBranches    *BranchTargets
 	TargetTags        *TagTargets
-	TargetPushes      *bool
 	BypassList        *[]BypassEntry
 	Rules             RulesetRules
 }
@@ -33,11 +32,6 @@ type RulesetRules struct {
 	RequireCodeQualityResults                                                                          *CodeQualityRule
 	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
 	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
-	RestrictCodeCoverage                                                                               *CodeCoverageRule
-	RestrictFilePaths                                                                                  *FilePathsRule
-	RestrictFilePathLength                                                                             *FilePathLengthRule
-	RestrictFileExtensions                                                                             *FileExtensionsRule
-	RestrictFileSize                                                                                   *FileSizeRule
 }
 
 type UpdateRule struct{ AllowFetchAndMerge *bool }
@@ -61,16 +55,10 @@ type CodeScanningTool struct {
 }
 
 type CodeScanningRule struct{ CodeScanningTools *[]CodeScanningTool }
+type CodeQualityRule struct{ Severity *CodeQualitySeverity }
 type CopilotCodeReviewRule struct {
 	ReviewNewPushes         *bool
 	ReviewDraftPullRequests *bool
-}
-
-type CodeQualityRule struct{ Severity *CodeQualitySeverity }
-
-type CodeCoverageRule struct {
-	MinimumLineCoveragePercentage *float64
-	MaximumLineCoverageDrop       *float64
 }
 
 type StatusChecksRule struct {
@@ -101,23 +89,13 @@ const (
 func DefaultRulesetMergeMethods() []MergeMethod { return []MergeMethod{Merge, Squash, Rebase} }
 
 type PullRequestRule struct {
-	RequiredApprovals                                             *int
-	AllowedMergeMethods                                           *[]MergeMethod
-	DismissStalePullRequestApprovalsWhenNewCommitsArePushed       *bool
-	RequireReviewFromCodeOwners                                   *bool
-	RequireApprovalOfTheMostRecentReviewablePush                  *bool
-	RequireConversationResolutionBeforeMerging                    *bool
-	RequireAnAdditionalApprovalForUnattributedCopilotPullRequests *bool
-	RequireReviewFromSpecificTeams                                *[]TeamReview
+	RequiredApprovals                                       *int
+	AllowedMergeMethods                                     *[]MergeMethod
+	DismissStalePullRequestApprovalsWhenNewCommitsArePushed *bool
+	RequireReviewFromCodeOwners                             *bool
+	RequireApprovalOfTheMostRecentReviewablePush            *bool
+	RequireConversationResolutionBeforeMerging              *bool
 }
-
-type TeamReview struct {
-	Reviewer     int64
-	Approvals    *int
-	FilePatterns *[]string
-}
-
-const DefaultTeamReviewApprovals = 0
 
 type BypassRole string
 type BypassMode string
@@ -153,15 +131,3 @@ type TagTargets struct {
 
 // DeploymentsRule selects the environments that must deploy before merging.
 type DeploymentsRule struct{ RequiredDeploymentEnvironments *[]string }
-
-// Push rules select whole rules; exception lists must be explicitly acquired.
-type FilePathsRule struct {
-	RestrictedFilePaths *[]string
-	AllowedExceptions   *[]string
-}
-type FilePathLengthRule struct{ MaximumFilePathLength *int }
-type FileExtensionsRule struct{ RestrictedFileExtensions *[]string }
-type FileSizeRule struct {
-	MaximumFileSize   *int
-	AllowedExceptions *[]string
-}

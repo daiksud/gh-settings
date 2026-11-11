@@ -22,9 +22,6 @@ func exportApprovalsState(t *testing.T, id int64, name string, raw int, both boo
 	state.Policy.Rules = &rules
 	state.RequiredApprovalsNormalization = settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: raw, Fallback: 0}
 	if both {
-		severity := "errors"
-		*state.Policy.Rules = append(*state.Policy.Rules, settings.RulesetRule{Type: "code_quality", Parameters: &settings.RuleParameters{Severity: &severity}})
-		state.QualitySeverityNormalization = settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "Q_SEVERITY", Fallback: "errors"}
 	}
 	return state
 }
@@ -111,7 +108,6 @@ func TestRulesetRequiredApprovalsExportOrdersTypedWarningsAndPreservesAbsence(t 
 						want = append(want, warning{id: 7, name: "z", integer: settings.RulesetRequiredApprovalsNormalization{Path: settings.RulesetRequiredApprovalsPath, RawValue: 11, Fallback: 0}})
 					}
 					if both && sinks&1 != 0 {
-						want = append(want, warning{id: 7, name: "z", text: settings.ObservationNormalization{Path: settings.RulesetQualitySeverityPath, RawValue: "Q_SEVERITY", Fallback: "errors"}})
 					}
 				}
 				failed := mode == "read" || mode == "unacquired" || mode == "ui"

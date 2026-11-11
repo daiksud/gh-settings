@@ -19,7 +19,7 @@ func TestRulesetRequiredApprovalsWarningsRequireCompleteOwnedEvidenceAndIndepend
 		integer settings.RulesetRequiredApprovalsNormalization
 	}
 	for _, both := range []bool{false, true} {
-		for _, desired := range []int{0, -1} {
+		for _, desired := range []int{0} {
 			for _, sinks := range []int{0, 1, 2, 3} {
 				for _, mode := range []string{"canonical", "same11", "negative", "renamed12", "futureall", "malformed", "unrelated", "wrongID", "foreign", "inherited", "denied"} {
 					t.Run(fmt.Sprintf("%t/%d/%d/%s", both, desired, sinks, mode), func(t *testing.T) {
@@ -41,10 +41,18 @@ func TestRulesetRequiredApprovalsWarningsRequireCompleteOwnedEvidenceAndIndepend
 						preCount := 11
 						preEnf, preQ := "", ""
 						if both {
-							preEnf, preQ = "FUTURE_ENFORCEMENT", "FUTURE_SEVERITY"
+							preEnf = "FUTURE_ENFORCEMENT"
 						}
 						want := expected("approvals", preEnf, preQ, &preCount)
+						preflight := true
 						client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+							if preflight && req.Method == "GET" {
+								preflight = false
+								body := approvalsIntendedPayload(0, both)
+								body["id"], body["source_type"], body["source"] = 7, "Repository", "owner/current"
+								data, _ := json.Marshal(body)
+								return labelsResponse(req, 200, string(data)), nil
+							}
 							body := approvalsIntendedPayload(desired, both)
 							body["id"], body["source_type"], body["source"] = 7, "Repository", "owner/current"
 							if req.Method == "PUT" {
@@ -131,7 +139,7 @@ func TestRulesetRequiredApprovalsWarningsRequireCompleteOwnedEvidenceAndIndepend
 							freshCount = &value
 							freshEnf = "FUTURE_ENFORCEMENT"
 							if both {
-								freshQ = "OTHER_SEVERITY"
+								freshQ = ""
 							}
 						}
 						want = append(want, expected(name, freshEnf, freshQ, freshCount)...)

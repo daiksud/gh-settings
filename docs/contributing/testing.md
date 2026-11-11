@@ -19,6 +19,19 @@ Tests verify current product and workflow contracts at their owning boundaries. 
 | Release notes | [Go metadata tests](../../scripts/release-metadata/main_test.go) | Committed category precedence, formal footers, escaping, fixed Git ranges, and changed-baseline failures |
 | Release publication logic | [Release shell tests](../../tests/release.sh), [release gate tests](../../tests/github-actions/release_test.go), [local Action tests](../../tests/github-actions/release_actions_test.go) | Mock publication/recovery, canonical orchestration, manifested artifact identity/tamper rejection, stored-note preservation, and declared source/version/gate relationships |
 
+[Actions event policy scenarios](../features/actions-event-policies.feature.md)
+map strict codec, domain reconciliation, complete API acquisition/mutation,
+application sequencing, typed reports and snapshot-ID recording to their owners.
+[Process acceptance](../../tests/acceptance/actions_event_policies_test.go)
+checks the built CLI's independent export selection, create/update/repeat apply,
+partial ID recovery and destination preservation. The [actor-policy process
+fixture](../../tests/acceptance/actions_actor_policies_test.go) also checks actor-only
+creation, combined policies, omitted-rule/target preservation, checked-empty versus
+explicit removal, complete private reports, status-only privacy, unsupported actor
+isolation and recoverable creation failure. These local fixtures use dummy
+credentials and cover active/disabled metadata transitions; actual enforcement
+and workflow execution were not tested.
+
 [Feature specifications](../features/) map behavior to ordinary Go or shell tests. No separate BDD runner interprets those Markdown files. Keep detailed parser/type matrices at their owner and use representative acceptance cases to prove composition, rather than duplicating every low-level case.
 
 Markdown checks use the pinned rumdl from [mise.toml](../../mise.toml) and [.rumdl.toml](../../.rumdl.toml). MD051 checks local heading fragments and MD057 checks relative file links; external HTTP availability is not a CI dependency.
@@ -49,14 +62,13 @@ The [Ruleset mapping](ui-ruleset-mapping.md) records the supported UI controls a
 | [Bypass](../../internal/github/ui_ruleset_bypass_test.go) | Three verified role IDs, dynamic actor IDs, three UI modes, marker validation and target restrictions |
 | [Simple rules](../../internal/github/ui_ruleset_rules_test.go) | Four singleton false/true checkbox mappings and complete observed absence |
 | [PR settings](../../internal/github/ui_ruleset_pr_test.go) | Singleton flags, finite count choices, merge methods and complete read projection |
-| [Team reviewers](../../internal/github/ui_ruleset_reviewers_test.go) | Numeric Team identity, explicit approvals and ordered/repeated/negated patterns |
 | [Checks](../../internal/github/ui_ruleset_checks_test.go) | Singleton flags, empty collections, Any source vs App identity, raw null source and owned values |
 | [Analysis](../../internal/github/ui_ruleset_analysis_test.go) | All 20 scanning threshold combinations, four quality choices and required desired values |
 | [Collection/transport](../../internal/github/ui_ruleset_collection_test.go) | Acquired IDs, sorting, no partial projection, raw eight-rule reads, exact no-ID POST/selected-ID PUT and independent readback |
 
 [Unsupported Ruleset acceptance](../../tests/acceptance/ruleset_unsupported_controls_test.go) rejects removed declarations before remote work, including false/empty values, and verifies that unsupported observed enforcement, rule types and review-dismissal parameters block export, update and explicit deletion without writes or configuration replacement. These local cases preserve supported PR behavior and do not change live protection.
 
-Expected payloads and choices are literal fixtures, independent of production maps. Existing Ruleset owner tests retain denied/malformed/incomplete reads, pagination, inherited filtering and complete push acquisition, identity/target failures and partial-write coverage. Local conversion/transport tests do not establish live policy changes, effective enforcement, new YAML acceptance or normalization warnings.
+Expected payloads and choices are literal fixtures, independent of production maps. Existing Ruleset owner tests retain denied/malformed/incomplete reads, pagination, inherited filtering and unsupported Push rejection, identity/target failures and partial-write coverage. Local conversion/transport tests do not establish live policy changes, effective enforcement, new YAML acceptance or normalization warnings.
 
 Current-source [archive lifecycle model](../../internal/settings/archive_test.go), [API](../../internal/github/archive_test.go), [application](../../internal/app/archive_test.go), and [built-process acceptance](../../tests/acceptance/archive_test.go) tests verify typed state, target identity, narrow updates, ordered transitions, partial failures, and export opt-in. They use local fixtures only; live lifecycle permissions and recovery are not established.
 
@@ -258,12 +270,6 @@ Superseded workspace parser/type files were removed after their safety/presence 
 [Mapping](../../internal/settings/ruleset_merge_methods_mapping_test.go), [owned state](../../internal/settings/ruleset_merge_methods_observation_test.go), [closed changes](../../internal/settings/ruleset_merge_methods_change_test.go) and [reconciliation](../../internal/settings/ruleset_merge_methods_reconcile_test.go) cover typed raw lists, deep ownership, invalid evidence beside valid companions, fallback equality, declaration defaults and PR-rule removal. The [pure projector](../../internal/github/normalization_ruleset_merge_methods_test.go) rejects null elements and duplicates before whole-list projection; the [complete reader](../../internal/github/ruleset_merge_methods_read_test.go) requires complete policy and pagination with no partial observation. [Strict confirmation](../../internal/github/ruleset_merge_methods_verification_test.go) and [fresh diagnostics](../../internal/github/ruleset_merge_methods_readback_warning_test.go) keep raw verification independent from warnings.
 
 [Export](../../internal/app/normalization_ruleset_merge_methods_export_test.go), [presentation](../../internal/presentation/ruleset_merge_methods_test.go) and [private reports](../../internal/actions/normalization_ruleset_merge_methods_test.go) verify scoped owned callbacks, raw-order/named-choice display, typed closed lists, removal and privacy. The [built-executable sequence](../../tests/acceptance/normalization_ruleset_merge_methods_test.go) fails against the preserved pre-feature binary and passes export, plan, report/Summary, literal updates, rejected raw drift, canonical repetition, actual removal, unlisted privacy and destination-preserving errors against the candidate. All use isolated local APIs and dummy credentials; they establish no live settings change or published artifact behavior.
-
-### Ruleset Team reviewer Approvals normalization
-
-[Owned state](../../internal/settings/ruleset_team_approvals_observation_test.go), [closed changes](../../internal/settings/ruleset_team_approvals_change_test.go) and [reconciliation](../../internal/settings/ruleset_team_approvals_reconcile_test.go) cover exact Team-ID binding, typed zero, owned counts/patterns, canonical companions, range and identity failures, replacement/removal and independent normalization records. The [pure projector](../../internal/github/normalization_ruleset_team_approvals_test.go) and [complete reader/fresh diagnostics](../../internal/github/ruleset_team_approvals_read_test.go) keep missing/malformed or partial acquisition unavailable. [Strict confirmation](../../internal/github/ruleset_team_approvals_verification_test.go) checks original acknowledgment and independent GET rather than projected policy.
-
-[Export](../../internal/app/normalization_ruleset_team_approvals_export_test.go), [pre-write warnings](../../internal/github/ruleset_team_approvals_warning_test.go), [presentation](../../internal/presentation/ruleset_team_approvals_test.go) and [private reports](../../internal/actions/normalization_ruleset_team_approvals_test.go) cover numeric-ID ordering, explicit integer metadata, ownership, removal and privacy. The [built-executable sequence](../../tests/acceptance/normalization_ruleset_team_approvals_test.go) fails against the preserved pre-feature binary and verifies candidate export/plan/report/Summary/apply, literal mutations, raw mismatch, canonical repetition and malformed-count destination preservation. All fixtures are local and use dummy credentials; they establish no live configuration or published artifact behavior.
 
 ### Ruleset scanning Alerts normalization
 

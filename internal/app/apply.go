@@ -152,6 +152,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 			result.Operations[index].Status = OperationCompleted
 		}
 	}
+	if desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0 {
+		wrote, err := applyActionsPolicies(&result, repo, desired.ActionsPolicies, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
 		wrote, err := applyRulesets(&result, repo, desired.Rulesets, write)
 		if err != nil {
@@ -163,6 +170,27 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		wrote, err := applyEnvironments(&result, repo, desired.Environments, write)
 		if err != nil {
 			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
+		wrote, err := applyEnvironmentVariables(&result, repo, desired.EnvironmentVariables, write.EnvironmentVariable)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.Variables != nil && desired.Variables.Len() > 0 {
+		wrote, err := applyVariables(&result, repo, *desired.Variables, VariableUpsert, write.Variable)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0 {
+		wrote, err := applyVariables(&result, repo, *desired.AgentsVariables, AgentVariableUpsert, write.AgentVariable)
+		if err != nil {
+			return result, fmt.Errorf("apply Agents variables: %w", err)
 		}
 		hasWrites = hasWrites || wrote
 	}
@@ -228,6 +256,41 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 	}
 	if !desired.Actions.PrivateFork.Empty() {
 		wrote, err := applyPrivateFork(&result, repo, desired.Actions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.CopilotInstructions != nil {
+		wrote, err := applyCopilotInstructions(&result, repo, *desired.CopilotInstructions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.CopilotMCP != nil {
+		wrote, err := applyCopilotMCP(&result, repo, *desired.CopilotMCP, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.PullRequestExemptions != nil {
+		wrote, err := applyPullRequestExemptions(&result, repo, *desired.PullRequestExemptions, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if !desired.PullRequestLimits.Empty() {
+		wrote, err := applyPullRequestLimits(&result, repo, desired.PullRequestLimits, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if desired.CopilotReviewEffort != nil {
+		wrote, err := applyCopilotReviewEffort(&result, repo, *desired.CopilotReviewEffort, write)
 		if err != nil {
 			return result, err
 		}
@@ -337,5 +400,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return desired.PullRequestExemptions != nil || !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) || (desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0) || desired.CopilotReviewEffort != nil || !desired.PullRequestLimits.Empty() || desired.CopilotMCP != nil || desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || (desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }

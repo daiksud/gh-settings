@@ -17,12 +17,13 @@ The [UI model](../../internal/settings/uimodel/environments.go) has display term
 
 ## Verified UI controls
 
-English controls were inspected on 2026-10-28 in an existing gh-settings Environment. The Required reviewers and Wait timer groups were revealed in an unsaved form; a reload confirmed their original unchecked state. The deployment mode menu and an empty Add deployment branch or tag rule dialog were inspected without selecting a new policy, adding a rule or saving. Secrets/variables are unrelated to this mapping and no values are included here.[^environments-ui]
+English controls were inspected on 2026-10-28 in an existing gh-settings Environment. The Required reviewers and Wait timer groups were revealed in an unsaved form; a reload confirmed their original unchecked state. The deployment mode menu and an empty Add deployment branch or tag rule dialog were inspected without selecting a new policy, adding a rule or saving. Secrets remain outside this mapping. The later [Environment variables contract](../settings.md#environment-variables) adds independently selected non-sensitive values.[^environments-ui]
 
 The UI prefix `E` means `repository.settings.environments[]`.
 
 | UI location / control | UI path below `E` | Internal API conversion |
 | --- | --- | --- |
+| Environment variables / Name and Value | `variables[].name`, `variables[].value` | Independently scoped typed variable declarations; not Environment policy PUT members |
 | Selected Environment name | `name` | Name-addressed resource identity; never numeric environment ID |
 | Deployment protection rules / Wait timer; Time to wait (minutes) | `deployment_protection_rules.wait_timer` | Integer `wait_timer`; zero encodes the unchecked group, positive values the displayed minutes |
 | Deployment protection rules / Required reviewers | `deployment_protection_rules.required_reviewers` | Typed numeric principal list to API `reviewers`; explicit empty list encodes an unchecked group |
@@ -53,6 +54,8 @@ Environment names remain identity, using the existing Unicode simple-fold compar
 
 Omitted built-in fields remain **API-controlled on the name-addressed PUT**. They are not promised unmanaged retention: the adapter sends no observed values for omitted timer, reviewer, self-review, administrator-bypass or branch-policy members, and accepts the API's resulting values for them. The current reconciliation still forces the necessary upsert/readback for requests with such omissions. False, zero, empty reviewers and explicit null policy remain present when selected. An environment name alone is still a name-only request, not implicit defaults.[^current-contract]
 
+Variable collections have separate ownership. When `variables` is present and no policy group is selected, mapping emits only scoped variable intent, including a no-op for an empty list. Name-only entries still select policy. Export merges separately acquired variables into the matching UI entry without fabricating policy.
+
 Pattern collections have separate ownership. Omission means no pattern CRUD; explicit `[]` owns and clears that environment's selected pattern collection only. Patterns require an explicit Selected branches and tags choice, or an acquired existing environment in that mode when the menu is omitted. Explicit patterns plus No restriction/Protected branches only are invalid. Desired pattern lists are canonical typed sets. Acquired lists validate unique raw pairs and IDs before projection; exact raw duplicates fail. Root `EnvironmentCollectionDeclaration` also preserves omitted selection versus explicit `[]` as pointer presence. Neither empty case implies deleting environments.
 
 Complete acquired custom mode must include its complete pattern list and matching identity metadata. A normalized equal pair with raw custom flag true also acquires every pattern page, keeping that list latent in separate state rather than active effective policy. Explicit acquired empty list is known empty; inactive/unrequested effective-policy patterns remain nil and cannot become clearing intent. Separately acquired latent state does not make those patterns active. Projection validates pattern metadata consistency, owns copied principal/field pointers and returns no partial UI collection on error. Unknown or unavailable observations cannot become absent/default environments.
@@ -61,7 +64,7 @@ Complete acquired custom mode must include its complete pattern list and matchin
 
 The existing client inventories names completely before selected detail reads, validates built-in protection data and rejects custom protection apps. Name-addressed PUT refreshes repository identity/archive state and sends only declared built-ins/policy. The independently owned pattern collection never enters that payload. Explicit mode is confirmed against its raw nullable pair in the acknowledgment and fresh read; omitted mode remains API-controlled without preservation or unowned diagnostics. Unknown-mode pattern intent requires explicit Selected, and the intermediate fresh read must prove canonical Selected before CRUD. Mode entry and pattern operations are separate calls: create desired missing entries first, then freshly verify the original raw type/name/ID of each obsolete entry before deletion. New IDs stay metadata. A failure can leave the mode and earlier pattern changes applied; there is no transaction, rollback or intermediate enforcement guarantee.
 
-Readback verifies requested members without claiming that omitted built-ins retained prior values. Required inventory/detail/custom-protection/pattern reads must be complete. HTTP 404, permission failures, unknown controls or malformed data remain errors, not absence. No environment deletion, renaming, custom protection apps, secrets, variables or new permission/security setting is introduced by these preparation helpers.
+Readback verifies requested members without claiming that omitted built-ins retained prior values. Required inventory/detail/custom-protection/pattern reads must be complete. HTTP 404, permission failures, unknown controls or malformed data remain errors, not absence. No Environment deletion, renaming, custom protection apps, secrets or permission grants are introduced by these mappings. Variables use the separately scoped conversion described above.
 
 ## Validation and activation handoff
 

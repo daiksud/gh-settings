@@ -45,6 +45,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		return PlanResult{}, &PlanError{Stage: "target-failure", Err: err}
 	}
 	var comparison settings.Comparison
+	createdEnvironments := map[string]bool{}
 	if desired.Repository.Archived != nil {
 		state, err := read.Archive(repo)
 		if err == nil {
@@ -102,6 +103,94 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += labels.Managed
 		comparison.Labels = labels.Labels
 	}
+	if desired.Variables != nil && desired.Variables.Len() > 0 {
+		changes, err := planVariables(repo, *desired.Variables, read.Variable)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.Variables = changes
+	}
+	if desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0 {
+		changes, err := planVariables(repo, *desired.AgentsVariables, read.AgentVariable)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.agents.variables", Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.AgentsVariables = changes
+	}
+	if desired.CopilotInstructions != nil {
+		observed, err := read.CopilotInstructions(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotInstructionsPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareCopilotInstructions(observed, desired.CopilotInstructions)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotInstructionsPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.CopilotInstructions = changes
+	}
+	if desired.CopilotMCP != nil {
+		observed, err := read.CopilotMCP(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotMCPPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareCopilotMCP(observed, desired.CopilotMCP)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotMCPPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.CopilotMCP = changes
+	}
+	if desired.PullRequestExemptions != nil {
+		observed, err := read.PullRequestExemptions(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PullRequestExemptionsPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.ComparePullRequestExemptions(observed, desired.PullRequestExemptions)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PullRequestExemptionsPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.PullRequestExemptions = changes
+	}
+	if !desired.PullRequestLimits.Empty() {
+		observed, err := read.PullRequestLimits(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PullRequestLimitsPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.ComparePullRequestLimits(observed, desired.PullRequestLimits)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.PullRequestLimitsPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.PullRequestLimits = changes
+	}
+	if desired.CopilotReviewEffort != nil {
+		observed, err := read.CopilotReviewEffort(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotReviewEffortPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareCopilotReviewEffort(observed, desired.CopilotReviewEffort)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.CopilotReviewEffortPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.CopilotReviewEffort = changes
+	}
+	if desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0 {
+		observed, err := read.ActionsPolicies(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.policies", Target: repo, Err: err}
+		}
+		policies, err := settings.CompareActionsPolicies(observed, desired.ActionsPolicies)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.policies", Target: repo, Err: err}
+		}
+		comparison.Managed += policies.Managed
+		comparison.ActionsPolicies = policies.ActionsPolicies
+	}
 	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
 		observed, err := read.Rulesets(repo)
 		if err != nil {
@@ -125,6 +214,29 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		}
 		comparison.Managed++
 		comparison.Environments = changes
+		for _, change := range changes {
+			if change.Operation() == "create" {
+				createdEnvironments[settings.EnvironmentIdentity(change.Name())] = true
+			}
+		}
+	}
+	if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
+		comparison.Managed++
+	}
+	for _, selected := range desired.EnvironmentVariables {
+		changes, err := planVariables(repo, selected.Variables, func(repo repository.Repository, name string) (settings.VariableObservation, error) {
+			if createdEnvironments[settings.EnvironmentIdentity(selected.Environment)] {
+				return settings.NewAbsentVariableObservation(), nil
+			}
+			return read.EnvironmentVariable(repo, selected.Environment, name)
+		})
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments.variables", Target: repo, Err: err}
+		}
+
+		for _, change := range changes {
+			comparison.EnvironmentVariables = append(comparison.EnvironmentVariables, settings.EnvironmentVariableChange{Environment: selected.Environment, Change: change})
+		}
 	}
 	if !desired.Actions.ExecutionEmpty() {
 		observed, err := read.Actions(repo, !desired.Actions.SelectedActions.Empty())

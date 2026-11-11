@@ -126,8 +126,8 @@ repository:
 	mu.Unlock()
 	run("apply")
 	mu.Lock()
-	if writes != 1 || details-before != 2 {
-		t.Error("apply requires inventory detail plus independent readback", writes, details-before)
+	if writes != 1 || details-before != 3 {
+		t.Error("apply requires inventory detail, fresh preflight and independent readback", writes, details-before)
 	}
 	mu.Unlock()
 	if out := run("plan"); out != "No differences for managed repository settings.\n" {

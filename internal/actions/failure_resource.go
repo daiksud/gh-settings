@@ -9,6 +9,15 @@ import (
 // Only fixed resource paths are retained: diagnostics must never echo arbitrary
 // configuration values, API errors, credentials or resource names into Summary.
 var failureResources = []string{
+	"repository.settings.actions.policies",
+	settings.PullRequestExemptionsPath,
+	settings.PullRequestLimitsPath,
+	settings.CopilotReviewEffortPath,
+	settings.CopilotInstructionsPath,
+	settings.CopilotMCPPath,
+	"repository.settings.actions.variables",
+	"repository.settings.agents.variables",
+	"repository.settings.environments.variables",
 	"repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests",
 
 	settings.CodeQLConfigurationPath,

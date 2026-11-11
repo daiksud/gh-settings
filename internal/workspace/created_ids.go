@@ -32,7 +32,7 @@ func (checkout Checkout) PrepareApply() (uimodel.Repository, func(string, string
 func createdIDRecorder(root string, snapshot []byte) func(string, string, int64) error {
 	expected := bytes.Clone(snapshot)
 	return func(collection, name string, id int64) error {
-		if id <= 0 || (collection != "labels" && collection != "rulesets") {
+		if id <= 0 || (collection != "labels" && collection != "rulesets" && collection != "actions_policies") {
 			return fmt.Errorf("invalid created object identity")
 		}
 		var document yaml.Node
@@ -59,6 +59,10 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		if collection == "rulesets" {
 			entries = mappingValue(mappingValue(repository, "settings"), "rulesets")
 			nameKey, path = "ruleset_name", "repository.settings.rulesets"
+		}
+		if collection == "actions_policies" {
+			entries = mappingValue(mappingValue(mappingValue(repository, "settings"), "actions"), "policies")
+			nameKey, path = "policy_name", "repository.settings.actions.policies"
 		}
 		if entries == nil || entries.Kind != yaml.SequenceNode {
 			return fmt.Errorf("cannot write ID into aliased or missing %s", path)

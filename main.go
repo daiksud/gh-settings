@@ -20,7 +20,7 @@ var version = "dev"
 func main() {
 	checkout := workspace.NewCheckout(".")
 	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout) }
-	reader := app.Reader{CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
+	reader := app.Reader{ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	reader.Environments = readEnvironments
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
@@ -29,7 +29,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func(options cli.ExportOptions) error {
-			return app.Export(app.ExportCheckout{IncludeCodeQLConfiguration: options.CodeQLConfiguration, IncludeDependabot: options.Dependabot, IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeSecretScanning: options.SecretScanning, IncludeCodeQLDefaultSetup: options.CodeQLDefaultSetup, IncludeAIScanPullRequests: options.AIScanPullRequests, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeActionsAccess: options.ActionsAccess, IncludeCacheStorage: options.CacheStorage, IncludeCacheRetention: options.CacheRetention, IncludeForkApproval: options.ForkApproval, IncludePrivateFork: options.PrivateFork}, reader)
+			return app.Export(app.ExportCheckout{IncludeActionsPolicies: options.ActionsPolicies, IncludeCopilotReviewEffort: options.CopilotReviewEffort, IncludeCopilotMCP: options.CopilotMCP, IncludePullRequestLimits: options.PullRequestLimits, IncludePullRequestExemptions: options.PullRequestExemptions, IncludeCopilotInstructions: options.CopilotInstructions, Variables: options.Variables, AgentsVariables: options.AgentsVariables, EnvironmentVariables: options.EnvironmentVariables, IncludeCodeQLConfiguration: options.CodeQLConfiguration, IncludeDependabot: options.Dependabot, IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeSecretScanning: options.SecretScanning, IncludeCodeQLDefaultSetup: options.CodeQLDefaultSetup, IncludeAIScanPullRequests: options.AIScanPullRequests, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeCacheStorage: options.CacheStorage, IncludeCacheRetention: options.CacheRetention, IncludeForkApproval: options.ForkApproval}, reader)
 		},
 		Validate: func() (settings.Declaration, error) { return app.Validate(loadDeclaration) },
 		Plan: func() (app.PlanResult, error) {
@@ -45,7 +45,7 @@ func main() {
 			}
 			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
 				return readPagesForApply(repo, desired.Pages)
-			}, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
+			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotMCP: updateCopilotMCP, PullRequestLimits: updatePullRequestLimits, PullRequestExemptions: updatePullRequestExemptions, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, EnvironmentVariable: upsertEnvironmentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, ReadActionsPolicies: readActionsPolicies, ActionsEventPolicy: writeActionsEventPolicy, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
 			}, SecretScanning: writeSecretScanning, ReadCodeQLDefaultSetup: readCodeQLDefaultSetup, CodeQLDefaultSetup: writeCodeQLDefaultSetup, ReadAIScanPullRequests: readAIScanPullRequests, AIScanPullRequests: writeAIScanPullRequests, ReadPrivateReporting: readPrivateReporting, ReadImmutableReleases: readImmutableReleases, ImmutableReleases: writeImmutableReleases, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadCacheRetention: readCacheRetention, CacheRetention: writeCacheRetention, ReadCacheStorage: readCacheStorage, CacheStorage: writeCacheStorage, ReadActionsAccess: readActionsAccess, ActionsAccess: writeActionsAccess, ReadForkApproval: readForkApprovalForApply, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
 		},
@@ -459,3 +459,148 @@ func writeCodeQLConfiguration(repo repository.Repository, d settings.CodeQLConfi
 	}
 	return c.UpdateConfiguration(repo, d)
 }
+
+func readVariable(repo repository.Repository, name string) (settings.VariableObservation, error) {
+	client, err := github.NewVariablesClient(repo.Host)
+	if err != nil {
+		return settings.VariableObservation{}, err
+	}
+	return client.ReadVariable(repo, name)
+}
+
+func upsertVariable(repo repository.Repository, value settings.RepositoryVariable) (bool, error) {
+	client, err := github.NewVariablesClient(repo.Host)
+	if err != nil {
+		return false, &variableClientReadFailure{err}
+	}
+	return client.UpsertVariable(repo, value)
+}
+
+func readAgentVariable(repo repository.Repository, name string) (settings.VariableObservation, error) {
+	client, err := github.NewVariablesClient(repo.Host)
+	if err != nil {
+		return settings.VariableObservation{}, err
+	}
+	return client.ReadAgentVariable(repo, name)
+}
+
+func upsertAgentVariable(repo repository.Repository, value settings.RepositoryVariable) (bool, error) {
+	client, err := github.NewVariablesClient(repo.Host)
+	if err != nil {
+		return false, &variableClientReadFailure{err}
+	}
+	return client.UpsertAgentVariable(repo, value)
+}
+
+type variableClientReadFailure struct{ error }
+
+func (*variableClientReadFailure) ReadFailedBeforeWrite() {}
+
+func readCopilotInstructions(repo repository.Repository) (settings.CopilotInstructionsObservation, error) {
+	client, err := github.NewCopilotInstructionsClient(repo.Host)
+	if err != nil {
+		return settings.CopilotInstructionsObservation{}, err
+	}
+	return client.Read(repo)
+}
+func readCopilotMCP(repo repository.Repository) (settings.CopilotMCPObservation, error) {
+	client, err := github.NewCopilotMCPClient(repo.Host)
+	if err != nil {
+		return settings.CopilotMCPObservation{}, err
+	}
+	return client.Read(repo)
+}
+func readPullRequestLimits(repo repository.Repository) (settings.PullRequestLimitsObservation, error) {
+	client, err := github.NewPullRequestLimitsClient(repo.Host)
+	if err != nil {
+		return settings.PullRequestLimitsObservation{}, err
+	}
+	return client.Read(repo)
+}
+
+func updateCopilotInstructions(repo repository.Repository, desired bool) (bool, error) {
+	client, err := github.NewCopilotInstructionsClient(repo.Host)
+	if err != nil {
+		return false, err
+	}
+	return client.Update(repo, desired)
+}
+func updateCopilotMCP(repo repository.Repository, desired bool) (bool, error) {
+	client, err := github.NewCopilotMCPClient(repo.Host)
+	if err != nil {
+		return false, err
+	}
+	return client.Update(repo, desired)
+}
+func updatePullRequestLimits(repo repository.Repository, desired settings.PullRequestLimitsDeclaration) (bool, error) {
+	client, err := github.NewPullRequestLimitsClient(repo.Host)
+	if err != nil {
+		return false, err
+	}
+	return client.Update(repo, desired)
+}
+
+func readCopilotReviewEffort(repo repository.Repository) (settings.CopilotReviewEffortObservation, error) {
+	client, err := github.NewCopilotReviewEffortClient(repo.Host)
+	if err != nil {
+		return settings.CopilotReviewEffortObservation{}, err
+	}
+	return client.Read(repo)
+}
+
+func updateCopilotReviewEffort(repo repository.Repository, desired string) (bool, error) {
+	client, err := github.NewCopilotReviewEffortClient(repo.Host)
+	if err != nil {
+		return false, err
+	}
+	return client.Update(repo, desired)
+}
+
+func readActionsPolicies(repo repository.Repository) (settings.ActionsPolicyObservation, error) {
+	client, err := github.NewActionsPoliciesClient(repo.Host)
+	if err != nil {
+		return settings.ActionsPolicyObservation{}, err
+	}
+	return client.ReadActionsPolicies(repo)
+}
+func writeActionsEventPolicy(repo repository.Repository, change settings.ActionsEventPolicyChange) (int64, error) {
+	client, err := github.NewActionsPoliciesClient(repo.Host)
+	if err != nil {
+		return 0, err
+	}
+	return client.WriteActionsEventPolicy(repo, change)
+}
+
+func readEnvironmentVariable(repo repository.Repository, environment, name string) (settings.VariableObservation, error) {
+	client, err := github.NewVariablesClient(repo.Host)
+	if err != nil {
+		return settings.VariableObservation{}, err
+	}
+	return client.ReadEnvironmentVariable(repo, environment, name)
+}
+func upsertEnvironmentVariable(repo repository.Repository, environment string, value settings.RepositoryVariable) (bool, error) {
+	client, err := github.NewVariablesClient(repo.Host)
+	if err != nil {
+		return false, &variableClientReadFailure{err}
+	}
+	return client.UpsertEnvironmentVariable(repo, environment, value)
+}
+
+func readPullRequestExemptions(repo repository.Repository) (settings.PullRequestExemptionsObservation, error) {
+	client, err := github.NewPullRequestLimitsClient(repo.Host)
+	if err != nil {
+		return settings.PullRequestExemptionsObservation{}, err
+	}
+	return client.ReadExemptions(repo)
+}
+func updatePullRequestExemptions(repo repository.Repository, desired settings.PullRequestExemptionsDeclaration) (bool, error) {
+	client, err := github.NewPullRequestLimitsClient(repo.Host)
+	if err != nil {
+		return false, &pullRequestExemptionsClientReadFailure{err}
+	}
+	return client.UpdateExemptions(repo, desired)
+}
+
+type pullRequestExemptionsClientReadFailure struct{ error }
+
+func (*pullRequestExemptionsClientReadFailure) ReadFailedBeforeWrite() {}

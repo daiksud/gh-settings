@@ -5,10 +5,19 @@ These terms describe the shared Go model. [Architecture](architecture.md#impleme
 | Term | Meaning | Go type |
 | --- | --- | --- |
 | Settings declaration | The repository, topics, and labels values selected for management; all omitted resources are unmanaged | `settings.Declaration` |
+| Copilot MCP declaration | Optional stored MCP tools boolean; nil is unmanaged and false remains explicit | `Declaration.CopilotMCP` |
+| Copilot MCP observation/change | Acquired stored boolean and closed unequal values, independent of MCP configuration or execution | `settings.CopilotMCPObservation`, `settings.CopilotMCPChange` |
+| Copilot review effort declaration | Optional `default`, `lite` or `balanced` choice; nil is unmanaged independently of custom instructions | `Declaration.CopilotReviewEffort` |
+| Copilot review effort observation/change | Acquired configured/effective effort and availability, with a closed observable-choice comparison; configured null does not prove raw override erasure | `settings.CopilotReviewEffortObservation`, `settings.CopilotReviewEffortChange` |
+| Copilot instruction declaration | Optional stored Use custom instructions boolean; nil is unmanaged and false remains explicit | `Declaration.CopilotInstructions` |
+| Copilot instruction observation/change | Acquired configuration boolean and closed unequal before/after values, independent of review access or execution | `settings.CopilotInstructionsObservation`, `settings.CopilotInstructionsChange` |
 | Repository declaration | Optional fields chosen by the maintainer; nil means omitted, while false and empty strings remain explicit values | `settings.RepositoryDeclaration` |
 | Topics declaration | A nil names pointer is unmanaged; an explicitly empty list clears the topic set | `settings.TopicsDeclaration` |
 | Labels declaration | A nil pointer is unmanaged; a present list owns the entire membership, with an empty list deleting all observed labels | `Declaration.Labels` as `*[]settings.LabelDeclaration` |
 | Label declaration | A required identifying name plus optional color/description; omitted attributes of retained labels preserve remote values | `settings.LabelDeclaration` |
+| Repository variable declarations | Owned canonical name/nonempty-value pairs selecting individual plaintext repository Actions variables; omitted or empty selects nothing, unlisted names are preserved | `settings.VariableDeclarations` |
+| Repository variable observation | Acquired present name/value or acquired absence, distinct from an incomplete read | `settings.VariableObservation` |
+| Repository variable change | A create with absent before value or value-only update; identity is a validated uppercase ASCII name | `settings.VariableChange` |
 | Observed repository state | All supported values from a complete successful repository read, with permitted null strings normalized to empty strings | `settings.RepositoryState` |
 | Observed topics | Topic names read from GitHub and compared as a set with stable sorted output | `[]string` |
 | Observed labels | Complete name/color/description values from every successfully read page; nullable response descriptions become empty strings | `[]settings.LabelState` |

@@ -195,6 +195,27 @@ depends on its live reviewer configuration. Inspect actual check-source identity
 and [verify the protection](../github-actions.md#verify-the-protection-before-use).
 Neither a source comment nor `environment: gh-settings` establishes a reviewer gate.
 
+## Operational declaration and current-source scope
+
+The settings workflows pin the immutable v0.40.0 package at
+`cb7a13caf14e25680c0a73871fdd5d955532aff7`. The operational declaration is
+validated directly with the current codec, including explicit Code Quality
+protection. Retired team-review and Preview additional-approval YAML controls
+are omitted. The package preserves the observed unowned Preview approval value
+when updating an existing PR rule; omission does not request disabling it.
+
+Actions and Agents repository variables are supported by that package under
+`settings.actions.variables` and `settings.agents.variables`, but neither family
+is declared here. The apply caller retains only its existing Administration and
+Issues token requests. Copilot code-review custom instructions and Review effort
+level are supported by the package, but no Copilot setting is declared here.
+Persistent pull request limits, including the selected Exemption list, and the
+Copilot MCP tools toggle are supported by the package, but none are declared here.
+Actions event/actor restriction policies and workflow targeting are supported by the package; no policy is
+declared here. Environment variables are also supported by the package, but none
+are declared here. Pinning this package grants no new permissions and does not
+dispatch settings-apply.
+
 ## Active settings workflows
 
 The active callers use independently pinned released packages; see the [published package and consumer pins](../github-actions.md#published-package-and-consumer-pins) for adoption requirements. The PR workflow definition selects the PR validation pin; changes to the pin require review. Before a declaration uses a schema or capability those packages do not support, review the compatible published package pins together with the declaration and verify the resulting PR workflow. The ordinary `pull_request` workflow is candidate-controlled, not a trusted-base validator. Keep the main apply pin compatible with the tracked declaration. The operational pins are independent of the local development [`action/cli-version`](../../action/cli-version); the invoked published tag or its matching pinned SHA selects the CLI. Publishing a release or changing examples does not automatically update these callers.

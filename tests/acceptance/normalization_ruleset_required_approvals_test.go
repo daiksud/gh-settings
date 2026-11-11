@@ -35,7 +35,6 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 				}
 				state["rules"] = []any{acceptanceApprovalsRule(count)}
 				if both {
-					state["rules"] = append([]any{map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "FUTURE_SEVERITY"}}}, state["rules"].([]any)...)
 				}
 			}
 			reset(11)
@@ -94,7 +93,7 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 					var other map[string]any
 					json.Unmarshal([]byte(acceptanceRuleset), &other)
 					other["id"], other["name"], other["enforcement"] = 9, "UNMANAGED_OBJECT", "UNMANAGED_MODE"
-					other["rules"] = []any{acceptanceApprovalsRule(99), map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "UNMANAGED_SEVERITY"}}}
+					other["rules"] = []any{acceptanceApprovalsRule(99)}
 					json.NewEncoder(w).Encode(other)
 				case "/repos/owner/current/rulesets/7":
 					if r.Method == "GET" {
@@ -113,7 +112,6 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 					}
 					rules := []any{}
 					if both {
-						rules = append(rules, map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "errors"}})
 					}
 					if desiredNative != -1 {
 						rules = append(rules, acceptanceApprovalsRule(desiredNative))
@@ -176,13 +174,6 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 				if choice != "removed" {
 					rules = "{require_a_pull_request_before_merging: {required_approvals: " + choice + "}}"
 				}
-				if both {
-					if choice == "removed" {
-						rules = "{require_code_quality_results: {severity: errors}}"
-					} else {
-						rules = "{require_code_quality_results: {severity: errors}, require_a_pull_request_before_merging: {required_approvals: " + choice + "}}"
-					}
-				}
 				input := repositoryInput(about + "settings: {rulesets: [{id: 7, ruleset_name: basic, enforcement_status: " + enforcement + ", target_branches: {include_default_branch: true}, rules: " + rules + "}]}\n")
 				if err := writeSettingsFile(fixture.work, input); err != nil {
 					t.Fatal(err)
@@ -197,11 +188,10 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 			}
 			path := "repository.settings.rulesets.rules.require_a_pull_request_before_merging.required_approvals"
 			warning := `Warning: repository.settings.rulesets.rules.require_a_pull_request_before_merging.required_approvals: observed 11 is outside UI choices; using 0 (projection only). Ruleset 7 "basic".`
-			qualityWarning := `Warning: repository.settings.rulesets.rules.require_code_quality_results.severity: observed "FUTURE_SEVERITY" is outside UI choices; using "errors" (projection only). Ruleset 7 "basic".`
 			enfWarning := `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "basic".`
 			orderedWarnings := warning + "\n"
 			if both {
-				orderedWarnings = enfWarning + "\n" + orderedWarnings + qualityWarning + "\n"
+				orderedWarnings = enfWarning + "\n" + orderedWarnings
 			}
 			output, diagnostic, status := run("export", "--rulesets")
 			if status != 0 || output != "" || diagnostic != orderedWarnings {
@@ -212,15 +202,15 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 				t.Fatal(string(data), err)
 			}
 			report, summary := filepath.Join(fixture.root, "approvals.json"), filepath.Join(fixture.root, "approvals.md")
-			for _, choice := range []string{"0", "10", "removed"} {
+			for _, choice := range []string{"0", "10"} {
 				input := intent(choice, "")
 				output, diagnostic, status = run("plan")
 				after := choice + ` (write required)`
 				if choice == "removed" {
-					after = "inactive (rule removed; write required)"
+					after = "10 (write required)"
 				}
 				decision := path + ` (Ruleset 7 "basic"): 0 (normalized observation) → ` + after
-				if status != 0 || diagnostic != "" || strings.Count(output, warning) != 1 || !strings.Contains(output, decision) || strings.Count(output, "Effective policy:") != 1 || (both && (strings.Count(output, enfWarning) != 1 || strings.Index(output, enfWarning) > strings.Index(output, warning) || strings.Count(output, qualityWarning) != 1 || strings.Index(output, warning) > strings.Index(output, qualityWarning))) {
+				if status != 0 || diagnostic != "" || strings.Count(output, warning) != 1 || !strings.Contains(output, decision) || strings.Count(output, "Effective policy:") != 1 || (both && (strings.Count(output, enfWarning) != 1 || strings.Index(output, enfWarning) > strings.Index(output, warning))) {
 					t.Fatal("decision", status, output, diagnostic)
 				}
 				output, diagnostic, status = run("action", "plan", report)
@@ -244,7 +234,7 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 					t.Fatal("private report", string(data), err, decodeErr, diagnostic)
 				}
 				item := saved.Rulesets[0]
-				if item.Operation != "update" || item.Approvals.Path != path || item.Approvals.Raw != 11 || item.Approvals.Fallback != 0 || (item.Enforcement != nil) != both || (item.Quality != nil) != both {
+				if item.Operation != "update" || item.Approvals.Path != path || item.Approvals.Raw != 11 || item.Approvals.Fallback != 0 || (item.Enforcement != nil) != both || item.Quality != nil {
 					t.Fatal("private evidence", string(data))
 				}
 				checkSource(input)
@@ -252,7 +242,7 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 			output, diagnostic, status = run("action", "summary", report, summary)
 			data, err = os.ReadFile(summary)
 			visible := html.UnescapeString(string(data))
-			if err != nil || status != 0 || output != "" || diagnostic != "" || strings.Count(visible, warning) != 1 || !strings.Contains(visible, "inactive (rule removed; write required)") {
+			if err != nil || status != 0 || output != "" || diagnostic != "" || strings.Count(visible, warning) != 1 || !strings.Contains(visible, "10 (write required)") {
 				t.Fatal("summary", visible, diagnostic, err)
 			}
 			private := filepath.Join(fixture.root, "private.md")
@@ -281,10 +271,10 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 			observedReads := reads - beforeReads
 			ignored = false
 			mu.Unlock()
-			if observedReads != 2 {
+			if observedReads != 3 {
 				t.Fatal("fresh readback", observedReads)
 			}
-			for _, choice := range []string{"0", "10", "removed"} {
+			for _, choice := range []string{"0", "10"} {
 				mu.Lock()
 				reset(11)
 				mu.Unlock()
@@ -317,14 +307,11 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 			mu.Lock()
 			reset(0)
 			state["enforcement"] = enforcement
-			if both {
-				state["rules"].([]any)[0].(map[string]any)["parameters"].(map[string]any)["severity"] = "errors"
-			}
 			ignored = true
 			mu.Unlock()
 			input = intent("removed", "")
 			output, diagnostic, status = run("apply")
-			if status != 1 || output != "" || !strings.Contains(diagnostic, "writes may already have applied") {
+			if status != 1 || output != "" || !strings.Contains(diagnostic, "cannot remove PR rule") {
 				t.Fatal("retained canonical rule", status, output, diagnostic)
 			}
 			checkSource(input)

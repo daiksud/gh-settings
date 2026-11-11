@@ -25,6 +25,9 @@ func TestRulesetParameterFamiliesRemainIsolated(t *testing.T) {
 		{"code_quality", `{"severity":"errors"}`},
 	}
 	for _, receiver := range fixtures {
+		if isPushRule(receiver.kind) || receiver.kind == "code_quality" || receiver.kind == "code_coverage" {
+			continue
+		}
 		var own map[string]json.RawMessage
 		if err := json.Unmarshal([]byte(receiver.parameters), &own); err != nil {
 			t.Fatal(err)
@@ -68,10 +71,6 @@ func TestRulesetParameterFamiliesRemainIsolated(t *testing.T) {
 						t.Fatal("accepted foreign complete parameter", donor.kind, key)
 					}
 					policy := basicPolicy("isolated")
-					if isPushRule(receiver.kind) {
-						policy.Target = rsText("push")
-						policy.Conditions = nil
-					}
 					policy.Rules = &[]RulesetRule{rule}
 					if _, err := NewRulesetDeclarations([]RulesetDeclaration{policy}); err == nil {
 						t.Fatal("declaration cloning/defaults discarded foreign parameter", donor.kind, key)

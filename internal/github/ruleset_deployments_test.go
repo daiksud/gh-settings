@@ -87,7 +87,7 @@ func deploymentsUpdateAndRemovalRequireIndependentReadback(t *testing.T, target 
 					t.Fatal(changes, err)
 				}
 				requests := []string{}
-				client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+				client := rulesetMutationClient(t, changes[0], transportFunc(func(r *http.Request) (*http.Response, error) {
 					requests = append(requests, r.Method)
 					if r.URL.Path != "/repos/owner/current/rulesets/7" {
 						t.Fatal(r.URL)

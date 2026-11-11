@@ -2,6 +2,7 @@ package app
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -11,6 +12,15 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	IncludePullRequestExemptions                      bool
+	EnvironmentVariables                              []settings.EnvironmentVariableSelection
+	IncludeActionsPolicies                            bool
+	IncludeCopilotReviewEffort                        bool
+	IncludeCopilotInstructions                        bool
+	IncludeCopilotMCP                                 bool
+	IncludePullRequestLimits                          bool
+	Variables                                         []string
+	AgentsVariables                                   []string
 	IncludeCodeQLConfiguration                        bool
 	IncludeActionsAccess                              bool
 	IncludeCacheStorage                               bool
@@ -48,6 +58,18 @@ type ExportCheckout struct {
 
 // Export saves all observed fields only after a complete read.
 func Export(checkout ExportCheckout, read Reader) error {
+	selectedNames, err := settings.CanonicalVariableNames(checkout.Variables)
+	if err != nil {
+		return err
+	}
+	selectedAgentsNames, err := settings.CanonicalVariableNames(checkout.AgentsVariables)
+	if err != nil {
+		return fmt.Errorf("repository.settings.agents.variables: %w", err)
+	}
+	selectedEnvironmentNames, err := settings.CanonicalEnvironmentVariableSelections(checkout.EnvironmentVariables)
+	if err != nil {
+		return fmt.Errorf("repository.settings.environments.variables: %w", err)
+	}
 	repo, err := checkout.Repository()
 	if err != nil {
 		return err
@@ -111,6 +133,17 @@ func Export(checkout ExportCheckout, read Reader) error {
 		return err
 	}
 	declaration.Labels = &validated
+	if checkout.IncludeActionsPolicies {
+		observed, err := read.ActionsPolicies(repo)
+		if err != nil {
+			return fmt.Errorf("read Actions policies: %w", err)
+		}
+		policies, err := settings.ExportActionsPolicies(observed)
+		if err != nil {
+			return fmt.Errorf("export Actions policies: %w", err)
+		}
+		declaration.ActionsPolicies = &policies
+	}
 	if checkout.IncludeRulesets {
 		observed, err := read.Rulesets(repo)
 		if err != nil {
@@ -300,6 +333,65 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		declaration.Actions.PrivateFork = d
 	}
+	if checkout.IncludeCopilotInstructions {
+		observed, err := read.CopilotInstructions(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.CopilotInstructions = &enabled
+	}
+	if checkout.IncludeCopilotMCP {
+		observed, err := read.CopilotMCP(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.CopilotMCP = &enabled
+	}
+	if checkout.IncludePullRequestExemptions {
+		observed, err := read.PullRequestExemptions(repo)
+		if err != nil {
+			return err
+		}
+		logins, err := observed.Logins()
+		if err != nil {
+			return err
+		}
+		desired, err := settings.NewPullRequestExemptionsDeclaration(logins)
+		if err != nil {
+			return err
+		}
+		declaration.PullRequestExemptions = &desired
+	}
+	if checkout.IncludePullRequestLimits {
+		observed, err := read.PullRequestLimits(repo)
+		if err != nil {
+			return err
+		}
+		values, err := observed.Values()
+		if err != nil {
+			return err
+		}
+		declaration.PullRequestLimits = settings.PullRequestLimitsDeclaration{Enabled: &values.Enabled, Maximum: &values.Maximum, IncludeDrafts: &values.IncludeDrafts}
+	}
+	if checkout.IncludeCopilotReviewEffort {
+		observed, err := read.CopilotReviewEffort(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		declaration.CopilotReviewEffort = &enabled
+	}
 	if checkout.IncludeSecretScanning {
 		observed, err := read.SecretScanning(repo)
 		if err != nil {
@@ -411,6 +503,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if record := o.FolderNormalization(); record != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
 			checkout.NormalizationWarning(record)
 		}
+	}
+	declaration.Variables, err = exportVariables(repo, selectedNames, read.Variable)
+	if err != nil {
+		return err
+	}
+	declaration.AgentsVariables, err = exportVariables(repo, selectedAgentsNames, read.AgentVariable)
+	if err != nil {
+		return fmt.Errorf("repository.settings.agents.variables: %w", err)
+	}
+	declaration.EnvironmentVariables, err = exportEnvironmentVariables(repo, selectedEnvironmentNames, read.EnvironmentVariable)
+	if err != nil {
+		return err
 	}
 	return save(declaration)
 }

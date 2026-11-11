@@ -135,15 +135,17 @@ The [workflow-permission feature](../features/workflow-permissions.feature.md) e
 
 ## Future direction
 
-Current-source Environments use name identity and whole supported policies with fixed defaults, superseding the existing-only/field-preservation parts of historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md). The [Environment specification](../features/environments.feature.md) maps codec, complete selected observation, ordinary upsert, readback, native reports and isolated acceptance tests in the existing layers. No numeric Environment ID enters declaration/writeback; unlisted names are untouched. Administrator bypass, custom-mode transitions, secrets/variables and deletion remain unsupported. This implementation does not authorize changes to this repository's live Environment controls.
+All future adoption follows the project-wide [GitHub Free/personal/public/UI eligibility policy](../settings.md#feature-adoption-scope). The existing capabilities and historical decisions below are not a completed audit against that policy; API availability and prior entitlement gates alone do not qualify additional work.
+
+Current-source Environments use name identity and whole supported policies with fixed defaults, superseding the existing-only/field-preservation parts of historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md). The [Environment specification](../features/environments.feature.md) maps codec, complete selected observation, ordinary upsert, readback, native reports and isolated acceptance tests in the existing layers. No numeric Environment ID enters declaration/writeback; unlisted names are untouched. Secrets and deletion remain unsupported. Selected non-sensitive variable ownership is described [below](#environment-variables). This implementation does not authorize changes to this repository's live Environment controls.
 
 Pages visibility and unadopted Actions endpoints remain outside current support. Existing-site Pages, Rulesets, and the documented Actions/security subsets are supported; organization-only custom properties are out of scope. Individual label issue/PR assignment management is not part of the labels feature.
 
 [ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. That historical ownership decision is superseded in unreleased source by the [ID-selected Rulesets specification](../features/rulesets.feature.md): name collisions require explicit adoption by ID, selected objects have fixed defaults, and unlisted objects are never deleted. Inherited/push Rulesets and legacy branch protection remain outside that managed collection; legacy protection implementation is deferred. Published and older CLI/Action packages do not support this feature.
 
-Other future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version calculation](releases.md#automatic-version-calculation) occurs during manually authorized release resolution.
+Other eligible future resources still require their own null, output, creation and identity decisions; the Rulesets decision does not resolve them. [Automatic version calculation](releases.md#automatic-version-calculation) occurs during manually authorized release resolution.
 
-[ADR 0026](../adr/0026-explicit-security-observations.md) accepts explicit per-family security observations and export selection. The [Security specification](../features/security.feature.md) records planned boolean declarations, permissions/availability, dependencies, failure semantics, and gates for #344–#347. Published implements Secret scanning and private vulnerability reporting for public repositories. Dependabot adopts GET 404-as-disabled under required permissions, retains provenance/unavailable pause, and completes DELETE 204 plus matching fresh family readback without an accepted-unverified status or permission-risk notice. Fresh per-member family preflight/readback, dependency order and partial progress remain in the existing owners. Its UI codec, explicit export and native CLI/Action reports share those contracts; paid-product adoption retains separate gates.
+[ADR 0026](../adr/0026-explicit-security-observations.md) accepts explicit per-family security observations and export selection. The [Security specification](../features/security.feature.md) records planned boolean declarations, permissions/availability, dependencies, failure semantics, and gates for #344–#347. Published implements Secret scanning and private vulnerability reporting for public repositories. Dependabot adopts GET 404-as-disabled under required permissions, retains provenance/unavailable pause, and completes DELETE 204 plus matching fresh family readback without an accepted-unverified status or permission-risk notice. Fresh per-member family preflight/readback, dependency order and partial progress remain in the existing owners. Its UI codec, explicit export and native CLI/Action reports share those contracts. Earlier paid-product adoption gates are historical; future adoption must satisfy the Free/personal/public/UI policy above.
 
 ## Repository archive lifecycle
 
@@ -195,3 +197,59 @@ credential fallback, individual release operation or rollback mechanism.
 The current marker and UI paths are owned by [the configuration reference](../settings.md). `DeclarationFromUI` composes the six prepared family mappings; `UIFromExportDeclaration` projects already-acquired values through the same conversions/pure policy helpers without fabricated IDs, caps or acquisition markers. File/Git handling remains in workspace, API mapping in GitHub and sequencing in app.
 
 Created-ID recording targets `repository.labels` and `repository.settings.rulesets`, selecting Rulesets by `ruleset_name`; snapshot/comment/mode/alias/concurrency guards remain. Out-of-UI observations use their explicit defaults with raw provenance and scoped warnings under #480. Exact and normalized decisions use UI paths and choices. Private same-version reports retain native identities and validated composite context; presentation projects Ruleset and Environment policies using the shared UI model. Source-level activation and normalization do not publish a release, update consumer pins or establish effective protection.
+
+## Actions repository variables
+
+[Selected variable declarations](../features/repository-variables.feature.md) use the existing layers: owned name/value declarations, acquired individual observations and typed changes in settings; strict UI lists in workspace; individual Variables REST requests and exact readback in github; selected-name sequencing in app; shared native presentation in CLI/Action reports. Export validates explicit name selections before target work, performs no collection-list request and saves only after complete acquisition. Apply records one adapter-owned fresh upsert per sorted name, distinguishing unchanged, pre-write read failure, unknown write effect and prior completed writes. No resource ID writeback or deletion is involved. Actions and Agents reuse the family-neutral variable domain model and private acquisition/upsert helpers, while keeping concrete endpoint methods, reader/writer callbacks, declarations, comparisons, apply operation kinds and report collections separate. Identical canonical names never merge across families.
+
+## Copilot code review instructions
+
+The [Use custom instructions specification](../features/copilot-custom-instructions.feature.md) adds one optional UI boolean to the existing declaration and strict codec. Settings owns acquired stored state and a closed boolean comparison, separate from access or review execution. The dedicated GitHub client reads only the code-review settings endpoint, PATCHes only the declared toggle, skips fresh matches and verifies independent readback. App selects that reader for declared Plan intent or explicit export; ordinary export is unchanged. Direct Apply records one adapter-owned update, distinguishing unchanged, confirmed write, pre-write failure and uncertain effects while retaining prior progress and existing archive ordering. Shared CLI/Action presentation uses the fixed UI path; report reconstruction validates the singleton scalar. No file-authoring, prerequisite activation or generic Copilot registry is added.
+
+## Copilot code review effort
+
+The [review effort specification](../features/copilot-review-effort.feature.md) adds an independent optional string choice alongside custom instructions. Settings retains configured effort, effective effort and availability before comparing the observable configured choice. Default corresponds to configured null, whose ambiguity is preserved in the public contract rather than inferred as a raw reset. GitHub owns complete typed acquisition, fresh availability validation, an effort-only PATCH and independent readback. App selects effort separately for declaration and opt-in export, preserves archive sequencing and records partial/uncertain writes. CLI and Action presentation share the fixed UI path and closed string values; Action reconstruction validates its own singleton scalar. The availability list can contain unadopted choices without making those choices valid desired or observed configured/effective intent.
+
+## Copilot code review MCP tools
+
+The [MCP toggle specification](../features/copilot-mcp.feature.md) adds an independently selected optional boolean through the existing layers. Settings owns declared/acquired state and closed comparisons; workspace owns strict UI YAML. GitHub owns complete typed acquisition, fresh preflight, an `mcp_enabled`-only PATCH and independent readback of the requested toggle and unchanged sibling settings. App selects acquisition only for declared intent or opt-in export, retains archive sequencing and distinguishes pre-write failures, confirmed writes and uncertain effects. Shared CLI/Action presentation uses the fixed UI path and native booleans; Action reconstruction validates the singleton scalar. No MCP configuration, secret, grant, review execution, entitlement or billing operation is introduced.
+
+## Persistent pull request limits
+
+The [cap specification](../features/pull-request-limits.feature.md) adds an
+independent optional three-control declaration and complete typed observation.
+Workspace owns strict UI YAML; settings owns declared-only comparison and bounded
+native changes. GitHub owns fresh cap acquisition, required-enabled/narrow-optional
+PATCH and independent confirmation of requested and known companion values.
+Only exact complete baseline readback can be polled within the client budget;
+no write retry or exemption/temporary API is added. App selects the family for
+declared Plan intent or explicit export and preserves archive ordering and
+partial/uncertain progress. CLI and credential-free Action Summary share UI
+presentation, while private report reconstruction validates three closed fields.
+
+## Actions actor restrictions
+
+The existing policy collection also models actor-only and combined event/actor
+rules. Settings distinguishes omitted update intent, absent observed rules,
+checked-empty actors and explicit removal. UI projection maps verified role
+names and exact User IDs to native identities; the API retains unsupported
+identity without allowing lossy selected updates/export. Every write carries the
+complete resolved supported rule set and verifies presence plus actor identity
+in both acknowledgment and independent readback. Omitted workflow targets retain
+the existing selection. The configuration reference owns these semantics.
+
+## Environment variables
+
+Environment variable intent is separate from policy declarations and comparisons, while the UI nests both under the named Environment. The workspace/UI mapping splits variable-only entries from whole-object policy upserts and merges independently selected exports without manufacturing protection intent. Settings reuses typed variable declarations and adds scoped identity; GitHub reuses private variable transport after a selected Environment identity check, without acquiring or rewriting protection. App runs selected policies before variable upserts and records both Environment and variable names in partial progress. Explicit export pairs, shared CLI/Action presentation and closed report reconstruction preserve scoped identity and plaintext-value boundaries. See the [public contract](../settings.md#environment-variables).
+
+## Pull request cap exemptions
+
+The independently selected Exemption list uses immutable login-set declarations
+and acquired User identities in settings, strict nested YAML in workspace and
+separate list methods on the existing GitHub cap client. App keeps list reads,
+export selection and authoritative reconciliation independent of scalar cap
+controls. Delete-before-add verification bounds replacement at 100 users and
+preserves retained IDs; a confirmed-removal/later-failure result remains partial
+progress. CLI and typed Action reports render one whole-list change, counted once.
+The [cap specification](../features/pull-request-limits.feature.md#selected-exemption-list)
+records fixture ownership and live-evidence limits.

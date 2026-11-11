@@ -2,7 +2,6 @@ package settings
 
 import (
 	"fmt"
-	"math"
 	"slices"
 	"strings"
 )
@@ -91,11 +90,8 @@ func validateRule(r RulesetRule, complete bool) error {
 	if r.Type != "copilot_code_review" && p.hasCopilot() {
 		return fmt.Errorf("Copilot parameters do not belong to %s", r.Type)
 	}
-	if p.hasPush() && !isPushRule(r.Type) {
-		return fmt.Errorf("push parameters do not belong to %s", r.Type)
-	}
-	if isPushRule(r.Type) {
-		return validatePushRule(r)
+	if p.hasPush() || isPushRule(r.Type) {
+		return fmt.Errorf("push Ruleset parameters are unsupported in %s", r.Type)
 	}
 	switch r.Type {
 	case "update":
@@ -130,7 +126,7 @@ func validateRule(r RulesetRule, complete bool) error {
 		if p.hasChecks() || p.hasAnalysis() {
 			return fmt.Errorf("parameters do not belong to pull_request")
 		}
-		if complete && (p == nil || p.AllowedMergeMethods == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireExtraApprovalForUnattributedChanges == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil || p.RequiredReviewers == nil) {
+		if complete && (p == nil || p.AllowedMergeMethods == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil || p.RequiredReviewers == nil) {
 			return fmt.Errorf("pull_request requires complete review parameters")
 		}
 		if p == nil {
@@ -152,31 +148,8 @@ func validateRule(r RulesetRule, complete bool) error {
 				seen[v] = true
 			}
 		}
-		if p.RequiredReviewers != nil {
-			if len(*p.RequiredReviewers) > 15 {
-				return fmt.Errorf("at most 15 required reviewers are supported")
-			}
-			seen := map[string]bool{}
-			for _, v := range *p.RequiredReviewers {
-				key := reviewActorKey(v.Reviewer)
-				if v.Reviewer.Type != "Team" || v.Reviewer.ID <= 0 || seen[key] {
-					return fmt.Errorf("invalid or duplicate required reviewer")
-				}
-				seen[key] = true
-				if complete && (v.MinimumApprovals == nil || v.FilePatterns == nil) {
-					return fmt.Errorf("new required reviewer requires minimum_approvals and file_patterns")
-				}
-				if v.MinimumApprovals != nil && !RulesetTeamApprovalsSupported(*v.MinimumApprovals) {
-					return fmt.Errorf("minimum_approvals must be between 0 and 10")
-				}
-				if v.FilePatterns != nil {
-					for _, pattern := range *v.FilePatterns {
-						if !validRulesetText(pattern) {
-							return fmt.Errorf("invalid reviewer file pattern")
-						}
-					}
-				}
-			}
+		if p.RequiredReviewers != nil && len(*p.RequiredReviewers) != 0 {
+			return fmt.Errorf("team required reviewers are outside the personal repository scope")
 		}
 	case "required_status_checks":
 		if p.hasPR() || p.hasAnalysis() {
@@ -226,18 +199,6 @@ func validateRule(r RulesetRule, complete bool) error {
 		}
 		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil || p.hasCoverage() {
 			return fmt.Errorf("parameters do not belong to code_quality")
-		}
-	case "code_coverage":
-		if p == nil || p.MinimumCoverage == nil || p.MaxCoverageDrop == nil {
-			return fmt.Errorf("code_coverage requires explicit minimum_coverage and max_coverage_drop")
-		}
-		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil || p.Severity != nil {
-			return fmt.Errorf("parameters do not belong to code_coverage")
-		}
-		for _, value := range []float64{*p.MinimumCoverage, *p.MaxCoverageDrop} {
-			if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || value > 100 {
-				return fmt.Errorf("code_coverage thresholds must be finite numbers between 0 and 100")
-			}
 		}
 	default:
 		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {

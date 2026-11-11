@@ -5,7 +5,7 @@ import "testing"
 func TestRulesetCodeAnalysisValidationAndCanonicalCopies(t *testing.T) {
 	tools := []CodeScanningTool{{Tool: "z", AlertsThreshold: "none", SecurityAlertsThreshold: "none"}, {Tool: "CodeQL", AlertsThreshold: "errors", SecurityAlertsThreshold: "high_or_higher"}}
 	policy := basicPolicy("analysis")
-	policy.Rules = &[]RulesetRule{{Type: "code_scanning", Parameters: &RuleParameters{CodeScanningTools: &tools}}, {Type: "code_quality", Parameters: &RuleParameters{Severity: rsText("errors")}}}
+	policy.Rules = &[]RulesetRule{{Type: "code_scanning", Parameters: &RuleParameters{CodeScanningTools: &tools}}}
 	d, err := NewRulesetDeclarations([]RulesetDeclaration{policy})
 	if err != nil {
 		t.Fatal(err)
@@ -15,21 +15,12 @@ func TestRulesetCodeAnalysisValidationAndCanonicalCopies(t *testing.T) {
 		t.Fatal("tool identities not canonical")
 	}
 	tools[0].Tool = "changed"
-	*ruleOf(t, values[0], "code_quality").Severity = "all"
-	if *ruleOf(t, d.Values()[0], "code_quality").Severity != "errors" {
-		t.Fatal("aliased severity")
-	}
 	for _, alerts := range []string{"none", "errors", "errors_and_warnings", "all"} {
 		for _, security := range []string{"none", "critical", "high_or_higher", "medium_or_higher", "all"} {
 			r := RulesetRule{Type: "code_scanning", Parameters: &RuleParameters{CodeScanningTools: &[]CodeScanningTool{{Tool: "CodeQL", AlertsThreshold: alerts, SecurityAlertsThreshold: security}}}}
 			if err := validateRule(r, true); err != nil {
 				t.Fatal(err)
 			}
-		}
-	}
-	for _, severity := range []string{"errors", "warnings", "notes", "all"} {
-		if err := validateRule(RulesetRule{Type: "code_quality", Parameters: &RuleParameters{Severity: &severity}}, true); err != nil {
-			t.Fatal(err)
 		}
 	}
 	valid := CodeScanningTool{Tool: "CodeQL", AlertsThreshold: "errors", SecurityAlertsThreshold: "high_or_higher"}

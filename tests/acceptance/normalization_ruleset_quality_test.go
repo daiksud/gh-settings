@@ -266,7 +266,7 @@ func TestRulesetQualityNormalizationAcrossExecutableCommands(t *testing.T) {
 			observedReads := reads - beforeReads
 			ignored = false
 			mu.Unlock()
-			if observedReads != 2 {
+			if observedReads != 3 {
 				t.Fatal("fresh readback", observedReads)
 			}
 			for _, choice := range []string{"errors", "warnings_and_higher", "notes_and_higher", "all", "removed"} {

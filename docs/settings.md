@@ -9,6 +9,8 @@ sources:
     resource: https://docs.github.com/en/rest/issues/labels
   - id: github-repository-openapi
     resource: https://github.com/github/rest-api-description/blob/58b1e0c00b39b9e46c24dc4a0ba6a2669c90e9c1/descriptions/api.github.com/api.github.com.json
+  - id: github-actions-policies
+    resource: https://docs.github.com/en/rest/actions/policies
   - id: ui-inventory
     resource: contributing/ui-repository-mapping.md
 ---
@@ -37,13 +39,23 @@ All existing and future gh-settings specifications assume the caller already has
 
 The exact string `version: daiksud/gh-settings@v0` is required. Superseded envelopes, navigation-category wrappers, scalar permission sections and API-shaped aliases are rejected. There is no compatibility decoder, migration or legacy-format fallback.
 
-This reference describes current source, not the contract of every published CLI or pinned Action. Read the [published package boundary](github-actions.md#published-package-and-consumer-pins) before adoption. Current-source output uses UI names and field-specific normalization warnings. Out-of-UI Actions execution/workflow permission strings, public-fork approval policies, Security status strings, creation policies, complete merge/squash message pairs, complete Pages modes and legacy folders, Ruleset enforcement/Quality severity/bypass-mode/scanning Alerts/scanning Security alerts strings, Required approvals and Team reviewer Approvals integers, Allowed merge methods lists and Environment deployment-mode pairs/ref-type strings use the explicit observation policies below; unsupported identities and malformed or incomplete observations still fail. Observed fallbacks never populate omitted desired fields. CLI and detailed Action Summary use UI paths and choices for exact and normalized decisions. Same-version private reports retain native identities and are not apply input.
+This reference describes current source, not the contract of every published CLI or pinned Action. Read the [published package boundary](github-actions.md#published-package-and-consumer-pins) before adoption. Current-source output uses UI names and field-specific normalization warnings. Out-of-UI Actions execution/workflow permission strings, public-fork approval policies, Security status strings, creation policies, complete merge/squash message pairs, complete Pages modes and legacy folders, Ruleset enforcement/bypass-mode/scanning Alerts/scanning Security alerts strings, Required approvals integers, Allowed merge methods lists and Environment deployment-mode pairs/ref-type strings use the explicit observation policies below; unsupported identities and malformed or incomplete observations still fail. Observed fallbacks never populate omitted desired fields. CLI and detailed Action Summary use UI paths and choices for exact and normalized decisions. Same-version private reports retain native identities and are not apply input.
+
+## Feature adoption scope
+
+As of **2026-11-08**, gh-settings adopts settings only when all four conditions hold: the owner uses **GitHub Free**, the repository is **personally owned**, it is **public**, and the control is **visible and configurable in GitHub's Web UI under those conditions**. A non-Free plan, organization ownership, private/internal visibility, or an unavailable/hidden UI control puts a setting outside the adoption scope. This applies throughout gh-settings, including General, Rulesets, Actions, Security, Pages and Environments.
+
+Eligibility and implementation feasibility are separate decisions. An API field alone does not establish eligibility; an eligible UI control still needs a confirmed official public API path for complete settings reads and updates before implementation. Evaluate the [API-unconfirmed Security controls](#security-ui-settings-not-managed-by-gh-settings) under the same four conditions. Adding an API for an excluded control does not bring it into scope.
+
+This Free-only policy replaces the earlier personal-public Security investigation's price-independent scope. Earlier issue inventories, API/entitlement descriptions and implementation decisions are historical evidence, not approval to adopt paid-plan, organization, private/internal or UI-hidden settings. Preview features, UI paths for creating/editing feature configuration files, and custom Dependabot auto-triage rules remain excluded. These file-authoring exclusions concern GitHub feature configuration, not gh-settings' own declaration file. GitHub preset ON/OFF is a separate candidate subject to the four conditions; [product-switch candidate #346](https://github.com/daiksud/gh-settings/issues/346) also requires a separate adoption decision within this scope.
+
+**Existing-feature audit is incomplete.** The field contracts below describe implemented behavior and technical applicability, including previously implemented capabilities with broader API/entitlement conditions; they do not certify that every capability meets this narrowed policy. Documenting this scope adds no runtime plan/ownership/visibility gate, removes no existing feature and changes no live setting. Any reconciliation of existing behavior needs separately scoped work.
 
 ## Supported fields
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
-The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` key, no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
+The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
 Under `repository.about`, `description` and `website` are strings, including `''`; `topics` is a direct string array. These translate to repository REST fields and the Topics endpoint. Nullable observed repository strings become empty strings through the existing reader; YAML null does not request that behavior.[^github-update-repository][^github-repository-openapi]
 
@@ -187,7 +199,7 @@ This control applies to public repositories. Fresh visibility and complete statu
 
 ## Security UI settings not managed by gh-settings
 
-As of **2026-11-08**, the following controls are not supported by gh-settings for personally owned public repositories. They can be available in GitHub's UI, subject to each feature's prerequisites. The investigation has not established a formal public API path for complete settings reads and updates in this repository scope; this does **not** establish that no API exists. Reassess support when GitHub publishes an applicable contract.
+As of **2026-11-08**, the following controls remain unsupported. The earlier personal-public investigation did not establish a formal public API path for complete settings reads and updates; this does **not** establish that no API exists or certify GitHub Free UI eligibility. UI availability can depend on prerequisites. First evaluate each control under the [Free/personal/public/visible-and-configurable adoption scope](#feature-adoption-scope), then confirm an applicable API contract. A control outside that scope remains excluded even if an API becomes available.
 
 | UI control | Unconfirmed settings API boundary |
 | --- | --- |
@@ -197,14 +209,14 @@ As of **2026-11-08**, the following controls are not supported by gh-settings fo
 | Dependabot grouped security updates | Existing security-update enablement does not manage grouping. |
 | Dependabot GitHub preset ON/OFF | No complete public preset identity/read/update contract was confirmed for the development-dependency or package-malware dismissal presets. API access to auto-dismissed alerts does not configure the presets. |
 | Copilot Autofix / Agentic Autofix settings | Alert-specific fix generation, commits and assignment execute remediation rather than configure these repository controls. |
-| Global code-scanning check-run failure thresholds | [Ruleset scanning thresholds](#code-scanning-and-code-quality-parameters) are supported separately; they do not configure these global check-run settings. |
+| Global code-scanning check-run failure thresholds | [Ruleset scanning thresholds](#code-scanning-parameters) are supported separately; they do not configure these global check-run settings. |
 | Private vulnerability reporting details: Require a CWE assignment, Daily advisory limit, Trusted reporters | The public enablement endpoint exposes only enabled state, not complete detail settings. |
 
 The existing [Dependabot alerts and security updates](#dependabot-alerts-and-security-updates) and [private reporting enablement](#private-vulnerability-reporting) remain supported. The alerts API intrinsically enables/disables Dependency graph too; this side effect is not independent graph management. Individual alert operations, advisory operations, Rulesets and organization/enterprise configuration are not substitutes for the missing settings contracts.
 
 Separate scope decisions also remain: Preview features (including CodeQL threat-model management), configuration-file creation/editing and custom Dependabot auto-triage rules are excluded. GitHub preset ON/OFF above is distinct from custom rules. [Code Security / Advanced Security product switches (#346)](https://github.com/daiksud/gh-settings/issues/346) await a separate adoption decision; they are not part of the API-unconfirmed list.
 
-Sources reviewed on 2026-11-08: [public REST definition](https://github.com/github/rest-api-description/blob/2f8f80e47ea4d3292cf4e37ba9d9b25475e06140/descriptions/api.github.com/api.github.com.json), [public GraphQL schema](https://docs.github.com/public/fpt/schema.docs.graphql), [GitHub preset documentation](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules), and the [scope inventory](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6719839333) with its [API recheck evidence](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6728386507). The public [Dependabot runner settings API](https://docs.github.com/en/rest/dependabot/runner-settings) was also assessed: labeled runners apply only to private/internal repositories with Actions enabled; public repositories report `standard`, so this does not add a configurable personal-public control.
+Sources reviewed on 2026-11-08: [public REST definition](https://github.com/github/rest-api-description/blob/2f8f80e47ea4d3292cf4e37ba9d9b25475e06140/descriptions/api.github.com/api.github.com.json), [public GraphQL schema](https://docs.github.com/public/fpt/schema.docs.graphql), [GitHub preset documentation](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules), and the [historical personal-public inventory](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6719839333) with its [API recheck evidence](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6728386507), both predating the Free-only policy. The public [Dependabot runner settings API](https://docs.github.com/en/rest/dependabot/runner-settings) was also assessed: labeled runners apply only to private/internal repositories with Actions enabled; public repositories report `standard`, so this does not add a configurable personal-public control.
 
 ## Default workflow permissions
 
@@ -242,18 +254,7 @@ A complete successful public-fork policy GET with an out-of-UI string projects t
 
 Apply checks exact raw values before skipping a write and in fresh readback after PUT. A retained unknown value fails verification with possible write effects; a canonical exact match remains a no-op. Each successful managed apply read can warn: the initial application read, updater preflight and a normalized readback. Pure plan readers emit no stderr; detailed plan/Summary carry the decision warning, while status-only Summary suppresses values.
 
-Use `export --fork-approval` for that public-repository control. Private repository fork controls are under `repository.settings.actions.general.fork_pull_request_workflows`; use `export --private-fork-workflows`:
-
-| Checkbox | Type |
-| --- | --- |
-| `run_workflows_from_fork_pull_requests` | boolean |
-| `send_write_tokens_to_workflows_from_fork_pull_requests` | boolean |
-| `send_secrets_and_variables_to_workflows_from_fork_pull_requests` | boolean |
-| `require_approval_for_fork_pull_request_workflows` | boolean |
-
-Visibility/applicability and complete observations are required; internal repositories are not silently classified. Omitted controls remain unmanaged. A differing private companion needs an explicitly declared run-workflows value; enabling a currently disabled group requires all four values so latent settings are not guessed or replayed. Matching partial intent can remain a no-op. Export omits companions hidden behind disabled run-workflows while retaining their actual raw state internally.
-
-Narrow payloads, readback, redirect rejection and partial-failure reporting remain required. Upper policy may refuse or ignore changes. No retry/rollback or credential expansion occurs. These settings affect execution security; successful configuration does not establish effective enforcement. See [fork workflows](features/fork-workflows.feature.md).
+Use `export --fork-approval` for this public-repository control. Visibility, complete observations, narrow payloads, readback, redirect rejection and partial-failure reporting remain required. Upper policy may refuse or ignore changes; no retry, rollback or credential expansion occurs. See [fork workflows](features/fork-workflows.feature.md).
 
 ## Check, run, status, artifact and log retention
 
@@ -285,17 +286,282 @@ A cache size eviction limit above 10 GB can incur additional charges. It is an e
 
 Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
 
-## Private Actions and reusable workflow access
+## Copilot code review custom instructions
 
-Use `repository.settings.actions.general.access` to choose which other repositories may use this private repository's actions and reusable workflows:
+`repository.settings.copilot.code_review.use_custom_instructions` corresponds to **Copilot → Code review → Use custom instructions**:
 
-| UI choice | Sharing scope |
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    copilot:
+      code_review:
+        use_custom_instructions: false
+```
+
+This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` are unmanaged; explicit false is managed. Null and non-booleans are invalid. The [review effort level](#copilot-code-review-effort-level) is independently selectable. The [MCP toggle](#copilot-code-review-mcp-tools), approvals, licensing, access and automatic-review configuration remain separate. No instruction file is read, created or edited.
+
+The toggle changes whether future eligible Copilot reviews use repository instruction files. It does **not** enable Copilot code review, grant access, request a review or launch a workflow. Organization instructions apply independently. In the verified Free/personal/public UI, the No access banner expressly allowed storing settings for people with review access, and the toggle was enabled. Storing configuration is distinct from review entitlement and instruction consumption.
+
+Plan requires a complete acquired boolean and never writes. Apply reads fresh state, skips matches, PATCHes only `custom_instructions_enabled`, then requires matching independent GET readback. HTTP 404 is an error, not false; denied, incomplete, null or mistyped reads fail. Mutation/readback failures may have changed stored configuration; earlier successful writes remain and later operations stop. No rollback, automatic retry, concurrency lock or saved-plan application is provided.
+
+`export --copilot-custom-instructions` independently includes the stored boolean, including false. Unless another Copilot control is explicitly selected, ordinary export and `--actions` do not read this endpoint. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports show the UI path and native booleans; status-only output omits them.
+
+The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) documents repository administrators, classic `repo` scope and GitHub App support for GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings`. Exact fine-grained/App-token grants were not independently established by the owner-authenticated probe; callers must authorize this endpoint with their chosen credential. No grant is added automatically. The [behavior specification](features/copilot-custom-instructions.feature.md) records the verified storage/restoration and its limits.
+
+## Copilot code review MCP tools
+
+`repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests` corresponds to **Copilot → Code review → Allow Copilot to use MCP tools when reviewing pull requests**:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    copilot:
+      code_review:
+        allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false
+```
+
+This is one optional boolean. Omission, `copilot: {}` and `code_review: {}` leave it unmanaged; explicit false is managed. Null and non-booleans are invalid. Custom instructions and review effort remain independently selectable.
+
+The toggle stores whether future eligible Copilot reviews may use MCP tools. It does not configure MCP servers, create or edit MCP configuration or secrets, grant permissions, enable or request reviews, launch workflows, manage billing or establish entitlement. The personally owned public repository under GitHub Free exposed a configurable toggle even with a No access banner. Configurable storage does not establish actual MCP use or review access.
+
+Plan requires a complete typed settings read and never writes. Apply reads fresh settings, skips a matching boolean and PATCHes only `mcp_enabled` when needed. An independent GET must confirm the requested boolean and preservation of all acquired sibling settings, including custom instructions, configured/effective review effort, available effort choices and severity filtering. Missing, null or non-boolean MCP values, incomplete or malformed sibling settings, denied reads and HTTP 404 are errors rather than false. A configured-null review effort remains a valid sibling value and is preserved as observed. A preservation mismatch fails verification without attributing a concurrent change to this write. Preflight is not a concurrency lock. Mutation/readback failures may leave unknown effects; earlier successful writes remain and later operations stop. There is no automatic retry, rollback or saved-plan application.
+
+`export --copilot-mcp` explicitly includes the stored boolean, including false. It composes with `--copilot-custom-instructions`, `--copilot-review-effort` and other options without selecting their settings. Ordinary export and `--actions` do not select any Copilot setting. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports use the fixed UI path and native booleans; status-only output hides the control and values.
+
+The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) defines GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings` and `mcp_enabled`. Repository administrators and classic `repo` scope are documented, and GitHub App tokens are supported; exact fine-grained/App-token grants were not independently established. The credential must already authorize this endpoint; gh-settings does not expand grants. See GitHub's [code-review configuration guide](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review) and the [behavior specification](features/copilot-mcp.feature.md).
+
+## Copilot code review effort level
+
+`repository.settings.copilot.code_review.review_effort_level` corresponds to **Copilot → Code review → Review effort level**:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    copilot:
+      code_review:
+        review_effort_level: lite
+```
+
+The optional string accepts `default`, `lite` and `balanced`. Omission leaves effort unmanaged, independently of `use_custom_instructions`. Null, empty strings, API spelling `inherit`, unknown choices and Preview `max` are invalid declarations. This control does not enable reviews, request a review, grant access, change licensing or edit instruction files. Stored configuration does not establish review entitlement or actual review execution.
+
+GitHub reports configured effort, effective effort and available efforts separately. A configured `lite` or `balanced` remains an explicit override, even when its value equals the inherited effective effort. `default` compares against configured null, not against effective `balanced`. GitHub can also return configured null for a stored override that is no longer available. Therefore export and comparison use `default` only as the **observable** default state: it does not prove that an underlying override was erased. A matching configured-null state produces no difference and apply skips it; applying this declaration is not a forced reset of a hidden override.
+
+Plan is read-only. A selected read requires complete, correctly typed configured/effective effort and availability. Unsupported configured or effective choices, including Preview Max, fail rather than being converted to a supported choice. Available choices may include Max without selecting or exporting it. An explicit `lite` or `balanced` must be available in the acquired state; it is not silently replaced by another choice.
+
+Apply reads fresh state and availability, skips an observable match, and PATCHes only `review_effort` when a change is needed. `default` sends `inherit`; the other choices send their literal API strings. An independent GET must confirm the requested observable state. Sibling controls, including custom instructions, MCP and severity filtering, are not included in this effort PATCH. Their complete typed values must remain unchanged in readback; a mismatch fails verification without claiming whether the cause was this write or a concurrent change. Mutation or readback failures can leave unknown effects; earlier successful writes remain applied and later work stops. There is no rollback, automatic retry, concurrency lock or saved-plan application.
+
+`export --copilot-review-effort` explicitly includes the observable choice. It composes with `--copilot-custom-instructions` and `--copilot-mcp`, but each flag selects only its own control. Ordinary export and `--actions` do not select effort. Failed acquisition leaves the existing output file unchanged. Detailed CLI/Action reports show the fixed UI path and string choices; status-only output hides them.
+
+The same endpoint and [credential boundaries](#copilot-code-review-custom-instructions) apply. GitHub documents the [configuration control](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review), [effort choices and Preview status](https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review) and [GET/PATCH schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json). The [behavior specification](features/copilot-review-effort.feature.md) records test ownership and the limits of the live storage evidence.
+
+## Actions repository variables
+
+`repository.settings.actions.variables` corresponds to **Secrets and variables → Actions → Variables → Repository variables**. Navigation-only sidebar groups are omitted from YAML. This current-source feature manages only explicitly named, non-sensitive repository variables:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    actions:
+      variables:
+        - name: BUILD_CHANNEL
+          value: stable
+        - name: OPTIONAL_LABEL
+          value: nightly
+```
+
+Both `name` and nonempty string `value` are required. Names contain only ASCII letters, digits and underscores, cannot start with a digit or `GITHUB_` (case insensitive), and are unique ignoring case. Internal identity and export names are uppercase. Missing/null/empty values are invalid; quote values that YAML would interpret as numbers or booleans. Omission and `[]` select nothing and make no variable requests; unlisted variables remain unchanged. There is no delete or rename declaration.
+
+Plan reads each selected name individually and shows creates or value updates. Apply reads fresh state, creates absent names with POST, updates changed values with value-only PATCH, skips equal values, and requires exact individual GET readback after a mutation. Only GET 404 means absent under the caller-permissions precondition. Other failed/incomplete reads fail. Mutations and verification failures can have remote effects; earlier writes remain applied, without rollback, retry or concurrency protection.
+
+Ordinary export does not read variables. Repeat `export --variable NAME` to acquire only known non-sensitive names by individual GET. A selected missing name fails before saving. Variables are **plaintext**: YAML, exported files, detailed plans and Summary can contain their values. Never put secrets or credentials in variables; the tool does not classify or mask values. Secrets and organization variables are outside these repository-variable features. [Environment variables](#environment-variables) have separate scoped selection. [Agents variables](#agents-repository-variables) have a separate declaration and export selection; Actions selections never access Agents endpoints.
+
+GitHub's [Variables REST API](https://docs.github.com/en/rest/actions/variables) requires repository Variables read for reads and write for mutations with fine-grained/App tokens. An empty-value create was rejected with HTTP 422 (`Variable value cannot be empty.`); validation rejects empty desired values before requests. No whitespace-trimming rule is inferred. GitHub enforces its [variable limits](https://docs.github.com/en/actions/reference/workflows-and-actions/variables#limits-for-configuration-variables); server rejections are errors. No permission is granted automatically. Free/personal/public UI eligibility and API persistence were observed separately; this is not a runtime entitlement gate. See the [behavior specification](features/repository-variables.feature.md).
+
+## Agents repository variables
+
+`repository.settings.agents.variables` corresponds to **Secrets and variables → Agents → Variables → Repository variables**. This current-source feature manages only explicitly named, non-sensitive repository Agents variables:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    agents:
+      variables:
+        - name: PROJECT_CONTEXT
+          value: public-documentation
+```
+
+The [name/value, omission and upsert rules above](#actions-repository-variables) also apply to Agents variables: names are canonical uppercase, values are required nonempty strings, omission and `[]` select nothing, and unlisted variables remain unchanged. No deletion or rename is supported. Plan reads only selected names; apply reads fresh state, conditionally creates or updates, then verifies the exact value. Failed reads do not become empty state, and failed mutations or verification can have unknown effects without rollback.
+
+Repeat `export --agent-variable NAME` to read only known non-sensitive Agents names. Ordinary export, `--actions` and `--variable` do not read Agents variables. Both export flags can select the same canonical name independently, and the two YAML groups can hold different values for that name. A missing, incomplete or failed selected read prevents saving the export. Values are **plaintext** in configuration, exported files, detailed plans, reports and Summary; never use this feature for secrets or credentials.
+
+The [Agents Variables REST API](https://docs.github.com/en/rest/agents/variables) uses `/repos/{owner}/{repo}/agents/variables` and requires the repository **Agent variables** permission at read level for acquisition and write level for mutation with fine-grained/App tokens. This is separate from the **Variables** permission for Actions variables. No permission or token request is added automatically. The Free/personal/public UI and API persistence were verified separately; the probe does not prove actual agent consumption or access for an untested credential. See the [behavior specification](features/repository-variables.feature.md) for evidence and its limits.
+
+## Excluded private Actions controls
+
+As of 2026-11-09, `repository.settings.actions.general.access` and `.fork_pull_request_workflows` are unsupported, including empty mappings and explicit false. The former shares a private repository's actions/workflows; the latter controls private fork workflow execution, tokens, secrets and approval. Neither satisfies the Free/personal/public adoption policy. See GitHub's [private Actions sharing documentation](https://docs.github.com/en/actions/how-tos/reuse-automations/share-with-your-organization) and [fork workflow settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
+
+The old `--actions-access` and `--private-fork-workflows` export options are rejected before repository/API/file work. No alias or migration is provided. Public contributor approval, Actions execution, workflow permissions, retention and cache controls remain separate. Removing these YAML management paths does not change live settings: their dedicated endpoints are not selected by supported public intent, so no private nested state is read-modify-written. Internal raw identities remain available for validation; an attempted private-only export projection fails instead of silently dropping values.
+
+## Actions event policies
+
+`repository.settings.actions.policies` manages repository-owned policies in
+**Settings → Actions → Policies**, with **Target workflows** inclusion/exclusion
+patterns and the **Restrict events** and **Restrict actors** rules. These are separate objects from the
+[Actions execution policy](#actions-execution-policy). Omission or `policies: []`
+selects nothing, makes no policy API request and deletes nothing. Unlisted
+policies remain untouched; removing an entry stops managing it.
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    actions:
+      policies:
+        - policy_name: Restrict workflow events
+          enforcement_status: disabled
+          target_workflows:
+            include: ['.github/workflows/ci*.yml']
+            exclude: ['.github/workflows/ci-experimental.yml']
+          restrict_events:
+            allowed_events: [pull_request, push, workflow_dispatch]
+```
+
+| Attribute | Contract |
 | --- | --- |
-| `not_accessible` | Only workflows in this repository |
-| `accessible_from_repositories_owned_by_user` | Other private repositories owned by the same user |
-| `accessible_from_repositories_in_organization` | Other private repositories in the same organization |
+| `id` | Optional positive integer REST ID of an existing policy owned by the target repository; omission means create-only |
+| `policy_name` | Required nonempty/non-whitespace string without control characters; identity and collisions use exact spelling |
+| `enforcement_status` | Required `disabled` or `active`; neither is inferred |
+| `target_workflows` | Optional object with required `include` and `exclude` string arrays; declares the complete workflow selection |
+| `restrict_events` | Optional object with `allowed_events`, or `enabled: false` to turn the rule off |
+| `restrict_events.allowed_events` | Required when the event rule is enabled; nonempty array of unique supported event strings, compared as a set and exported sorted |
+| `restrict_actors` | Optional object with `allowed_actors`, or `enabled: false` to turn the rule off |
+| `restrict_actors.allowed_actors` | Required when the actor rule is enabled; array of unique actor identities, including `[]` for checked with no allowed actors |
 
-`export --actions-access` opts in. Public and internal repositories are unsupported; the user/organization choice must match the private repository's owner type. Unknown or unavailable access values fail rather than becoming `not_accessible`. Omitting access leaves it untouched. Access is independent of the Actions execution policy, workflow token permissions and fork controls, and does not invite collaborators or change repository visibility. Review the exposure of private actions and reusable workflows before enabling sharing. Apply performs fresh applicability/current-state checks, a declared-only PUT when needed, and independent readback; failures preserve uncertainty and earlier progress. See [GitHub's access API](https://docs.github.com/en/rest/actions/permissions#set-the-level-of-access-for-workflows-outside-of-the-repository).
+Each allowed actor selects exactly one identity: `{user: 155234749}` for a
+positive REST user ID, or `{role: write}`, `{role: maintain}` or
+`{role: repository_admin}`. These roles map to the verified `RepositoryRole`
+IDs 4, 2 and 5. User IDs identify existing accounts; they are not login strings.
+No access is granted by adding an allowed actor. Other actor kinds and role IDs,
+including Bot, App, installation and team identities, are unsupported.
+
+A restriction object without `enabled`, or with `enabled: true`, requires its
+allowed array. `enabled: false` forbids that array and removes that rule.
+An empty actor array keeps **Restrict actors checked with no allowed actors**;
+it is not the same as turning the rule off. Empty event arrays remain invalid.
+Nulls, wrong types, unknown keys, duplicate identities and mixed actor identities
+fail locally.
+
+On creation, omitted restrictions are off and at least one rule must be enabled.
+On ID-selected updates, an omitted restriction preserves the freshly acquired
+rule, including its absence. Metadata-only updates may omit both restrictions.
+Explicitly disabling the final rule fails before writing. The complete effective
+policy must contain at least one supported restriction. For example:
+
+```yaml
+restrict_events:
+  enabled: false
+restrict_actors:
+  allowed_actors:
+    - role: repository_admin
+    - user: 155234749
+```
+
+This changes only the supported restriction selections on that policy; omitted
+workflow targeting still follows the preservation contract below.
+
+Supported events are `branch_protection_rule`, `check_run`, `check_suite`,
+`create`, `delete`, `deployment`, `deployment_status`, `discussion`,
+`discussion_comment`, `fork`, `gollum`, `image_version`, `issue_comment`, `issues`,
+`label`, `merge_group`, `milestone`, `page_build`, `project`, `project_card`,
+`project_column`, `public`, `pull_request`, `pull_request_review`,
+`pull_request_review_comment`, `pull_request_target`, `push`, `registry_package`,
+`release`, `repository_dispatch`, `schedule`, `status`, `watch`, `workflow_call`,
+`workflow_dispatch` and `workflow_run`.
+
+Duplicate IDs or exact names, missing required fields, nulls, unknown keys and
+unsupported event/enforcement values fail locally. A no-ID entry never adopts
+an existing name: a collision fails and identifies the existing ID. An ID must
+exist in this repository; missing or foreign IDs never fall back to creation.
+An ID-bound declaration replaces the complete supported event object and may
+rename it to a noncolliding name. Renames cannot rely on another planned rename
+freeing the name. There is no delete declaration or name-based update.
+
+`target_workflows` corresponds to **Include by pattern** and **Exclude by
+pattern** in the UI. Both arrays are required when the object is supplied, and
+at least one must contain a pattern. Empty `include` means every workflow except
+the exclusions. `~ALL` represents **All workflows** and is valid only as the sole
+include entry, never in exclusions. For example, `include: [~ALL]` with
+`exclude: []` explicitly resets targeting to All workflows. An exclude-only
+selection uses `include: []` and one or more exclusion patterns.
+
+Patterns must be nonempty/non-whitespace strings without control characters;
+duplicates within either array are rejected. Case and exact pattern spelling
+are preserved. Comparisons treat each array as a set and exports sort it. All
+workflows normalize to `[~ALL]` with empty exclusions; exclude-only targeting
+uses an empty include array. The tool passes patterns to GitHub and does not
+emulate workflow matching.
+
+Omitting `target_workflows` creates an All workflows policy, but preserves an
+existing policy's freshly acquired targeting on update. It does not reset or
+broaden an existing selection. To change targeting, declare both arrays. Remote
+omitted/null/empty `conditions`, or `workflow_path` with empty exclusions and
+empty includes or `[~ALL]`, represent All workflows. A present `workflow_path`
+requires both typed arrays. Unknown conditions, unsupported actor identities,
+Preview rules, unknown rules/fields and unsupported event/enforcement values are not
+lossily converted. A complete unsupported object's ID/name is retained so
+unlisted objects stay unmanaged; selecting it for update or including it in a
+full collection export fails. Incomplete or inconsistent reads always fail.
+Unadopted actor types, Preview lockfile controls, OIDC, workflow authoring and other
+configuration-file authoring remain excluded.
+
+Plan acquires the complete repository collection and details before showing
+creates/ID-bound updates. Apply freshly acquires and preflights the whole
+collection before its first policy write, skips matches and rechecks each
+selected update's detail immediately before mutation. Drift or newly unsupported
+state fails rather than overwriting it. Create uses POST and update uses PUT at
+the [official repository Actions policies API](https://docs.github.com/en/rest/actions/policies).
+Changed explicit targeting is sent as `conditions.workflow_path`; omitted
+targeting uses All workflows on create and preserves the preflight-verified
+selection on update. Unchanged targeting need not be resent. Complete write acknowledgment and
+an independent final GET must both match the requested identity, name,
+enforcement, event/actor rule presence and identity sets, and supported targeting.
+
+Failures stop later policy writes; earlier successful changes remain applied.
+A write/verification failure may leave the remote effect uncertain. Known new
+IDs remain available for recovery, including acknowledgment/readback failures;
+uncertain creation is never automatically retried. There is no transaction,
+rollback or concurrency lock. Inspect remote state and record the correct ID
+before retrying. Local apply records confirmed creations using
+[guarded ID writeback](#apply-id-writeback), with `policy_name` as selector;
+`--no-writeback` and `GITHUB_ACTIONS=true` suppress it.
+
+`export --actions-policies` independently selects the full repository collection,
+including IDs and explicit canonical `target_workflows`, sorted by exact policy
+name with sorted events, actor identities and patterns. Export explicitly emits
+`enabled: false` for absent restriction rules, so a snapshot does not accidentally
+preserve an existing rule. All workflows exports as `include: [~ALL]`
+and `exclude: []`, so a saved snapshot owns its complete selection. Ordinary export
+and `--actions` do not select it. All pages and details must be complete and
+representable before saving; a failure preserves the existing destination.
+Fine-grained and GitHub App tokens require **Administration write even for
+list/GET, export and plan**, as well as writes, according to the official API.
+The client never grants permissions or substitutes empty state for denied reads.
+
+The Free/personal/public UI and disabled-policy API storage, including
+include/exclude patterns, omitted-target preservation, explicit All workflows
+reset, User and the three RepositoryRole identities, actor-only/combined rules,
+checked-empty actors and unchecked-rule removal, were verified;
+local fixtures cover active/disabled metadata transitions. Actual enforcement
+and workflow execution were not tested. Storage readback does not establish
+workflow blocking or a particular token's grants. See the
+[behavior specification](features/actions-event-policies.feature.md) and
+[event-policy adoption evidence](https://github.com/daiksud/gh-settings/issues/647)
+and [workflow-targeting evidence](https://github.com/daiksud/gh-settings/issues/649).
 
 ## Actions execution policy
 
@@ -422,7 +688,7 @@ Duplicate IDs and Unicode-simple-folded names fail without trimming. ID-less col
 
 ### Apply ID writeback
 
-Normal CLI apply records each confirmed created Label/Ruleset ID in the original current-schema collection immediately after creation, before another write. Rulesets use `ruleset_name` as their selector. Existing IDs and unrelated values remain; comments are retained where supported and formatting may normalize. Regular `.github` and file entries plus the initial byte snapshot and earlier ID additions are required. Aliased/merged collection entries are not rewritten.
+Normal CLI apply records each confirmed created Label/Ruleset/Actions policy ID in the original current-schema collection immediately after creation, before another write. Rulesets use `ruleset_name` and Actions policies use `policy_name` as their selectors. Existing IDs and unrelated values remain; comments are retained where supported and formatting may normalize. Regular `.github` and file entries plus the initial byte snapshot and earlier ID additions are required. Aliased/merged collection entries are not rewritten.
 
 `apply --no-writeback` disables this local update. `GITHUB_ACTIONS=true` always disables it, including public Action use. Created IDs remain in output/recovery diagnostics; no Git commit or push is performed. Plan never writes. A confirmed creation survives writeback/later remote failure; add its ID before retrying. Unverified responses do not supply a confirmed writable ID. There is no automatic create retry, delete or rollback. Guarded file replacement is atomic, not a concurrent-editor lock. Label reads/mutations need the existing Issues or Pull requests grants; Administration alone does not replace them.[^github-labels] See [Labels](features/labels.feature.md).
 
@@ -432,7 +698,7 @@ The version marker is independent of the CLI release. Only one YAML mapping docu
 
 Unknown/duplicate/non-string keys, unsupported tags, malformed/multiple documents, wrong shapes, invalid choices and wrong scalar types fail before remote work. Aliases/merges are validated after resolution. Strings must remain strings, booleans must be true/false and integers must fit their declared range. Explicit null is invalid except the nullable Pages custom-domain scalar. Empty strings, zero, false and empty arrays retain their distinct contracts. No desired defaults are populated from observation metadata or planned #480 fallbacks.
 
-Scalar omission is unmanaged. Labels/Rulesets own only listed whole objects with their stated defaults. Environment omissions are API-controlled, not promised preservation. Topics and explicitly declared inner lists have their authoritative collection semantics. These distinctions remain the same through CLI and public Action use.
+Scalar omission is unmanaged. Labels/Rulesets/Actions policies own only listed whole objects with their stated field rules. Environment omissions are API-controlled, not promised preservation. Topics and explicitly declared inner lists have their authoritative collection semantics. These distinctions remain the same through CLI and public Action use.
 
 ## Exported values
 
@@ -442,7 +708,7 @@ An export followed by validate/plan roundtrips exact supported acquired values, 
 
 ## Rulesets
 
-`repository.settings.rulesets` selects whole repository-owned branch, tag or push Rulesets by optional positive numeric ID. No ID means create-only; a collision requires explicit ID adoption. Unknown/wrong-target/type IDs fail without create fallback. Unlisted objects are not deleted. Omission/`[]` selects nothing. Names compare exactly without trimming/case folding; duplicate names/IDs and colliding renames fail.
+`repository.settings.rulesets` selects whole repository-owned branch or tag Rulesets by optional positive numeric ID. No ID means create-only; a collision requires explicit ID adoption. Unknown/wrong-target/type IDs fail without create fallback. Unlisted objects are not deleted. Omission/`[]` selects nothing. Names compare exactly without trimming/case folding; duplicate names/IDs and colliding renames fail.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -456,7 +722,7 @@ repository:
         rules: {restrict_deletions: true}
 ```
 
-To delete one repository-owned branch/tag/push Ruleset, declare only its exact positive ID, current name and explicit deletion selection:
+To delete one repository-owned branch/tag Ruleset, declare only its exact positive ID, current name and explicit deletion selection:
 
 ```yaml
 repository:
@@ -473,9 +739,9 @@ Plan displays the complete selected policy changing to `absent`. Apply reacquire
 
 Deletion uses [GitHub's repository Ruleset DELETE endpoint](https://docs.github.com/en/rest/repos/rules#delete-a-repository-ruleset) with Administration write permission. Complete bypass visibility is required before any deletion. Explicit deletion removes the whole selected Ruleset. Any acquired unsupported protection prevents deletion; an omitted API field does not establish that its underlying protection is disabled. Organization/Enterprise-level policy, legacy branch protection, grants, releases and bypass configuration are outside this operation. Implementation verification uses local fixtures and does not delete live protection.
 
-Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active` or `disabled`) and exactly one of `target_branches`/`target_tags`/`target_pushes: true`. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting all target selectors is invalid. No protected scope is guessed.
+Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active` or `disabled`) and exactly one of `target_branches`/`target_tags`. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting all target selectors is invalid. No protected scope is guessed.
 
-Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`, `restrict_code_coverage` and push restrictions. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
+Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
 
 `restrict_creations: true` allows only bypass actors to create matching branches or tags. `restrict_updates: {allow_fetch_and_merge: false}` allows only bypass actors to update them; selecting an empty object supplies a declaration-only false default. Explicit true allows pulling upstream changes. Both rules support branch and tag targets. Export preserves the acquired upstream-sync flag; an absent, null or malformed flag is an acquisition error. Updates adding, changing or removing either rule require independent whole-policy GET verification after mutation acknowledgment. These repository rules use the standard Rulesets plan availability and Administration write permission; no organization-wide Ruleset is managed. See [GitHub's rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [REST parameter contract](https://docs.github.com/en/rest/repos/rules).
 
@@ -495,7 +761,7 @@ Apply uses fresh collection preflight and exact desired whole-object payloads. N
 
 For a present, complete code-quality rule, a correctly typed severity outside the four mapped UI choices projects to `errors`, with exact raw provenance bound to the positive Ruleset ID. Unknown, empty, whitespace and UI-spelling API strings follow this policy; missing/null/wrong-type required parameters remain acquisition errors. An absent rule stays absent. Neither observation fallback invents desired intent or makes an incomplete policy usable.
 
-Enforcement and Quality keep independent records on one whole-object change. Export warnings follow Ruleset name order, then enforcement, Required approvals and Quality within each object. Selected normalized equality still requires a write; unlisted IDs remain private. Plan and detailed Summary show normalized/write-required UI choices, or `inactive (rule removed; write required)` when desired policy removes the Quality group, followed by one effective policy. Same-version private reports validate each concrete record independently and retain status-only privacy; existing collection count stays one.
+Enforcement and Quality keep independent records on one whole-object change. Export warnings follow Ruleset name order and retain independent field provenance within each object. Selected normalized equality still requires a write; unlisted IDs remain private. Plan and detailed Summary show normalized/write-required UI choices, or `inactive (rule removed; write required)` when desired policy removes the Quality group, followed by one effective policy. Same-version private reports validate each concrete record independently and retain status-only privacy; existing collection count stays one.
 
 Apply sends only the complete desired policy and verifies the original mutation response plus an independent fresh GET. Unknown severity cannot prove an Errors match, and removing the rule requires actual absence: a retained canonical or unknown rule fails with uncertain effects. Warning projection never supplies verification values. Canonical equal policy remains a no-op; acquisition failures preserve export destinations and make no Ruleset write.
 
@@ -503,7 +769,7 @@ Apply sends only the complete desired policy and verifies the original mutation 
 
 A complete present PR rule acquires `required_approving_review_count` as an integer. UI choices are 0–10. Other integers, including -1 and API-only 11, project to the named 0 fallback while retaining exact integer provenance per positive Ruleset ID. No string, fraction, overflow, null or missing member supplies a count. An absent PR rule stays absent. Native transport validation remains separate from the UI range.
 
-A selected normalized count requires one whole-object update, including desired 0 matching the projection. Plan and detailed Summary show unquoted integers marked normalized/write-required, or inactive/rule-removed intent when the desired PR group is absent. Enforcement, Required approvals and Quality retain independent concrete records and warn in that order within name-sorted objects. Unlisted IDs stay unmanaged and private. Existing collection counts stay one; ordinary canonical equality stays a no-op.
+A selected normalized count requires one whole-object update, including desired 0 matching the projection. Plan and detailed Summary show unquoted integers marked normalized/write-required. Enforcement and Required approvals retain independent concrete records and warn in that order within name-sorted objects. Unlisted IDs stay unmanaged and private. Existing collection counts stay one; ordinary canonical equality stays a no-op.
 
 Private `required_approvals_normalization` metadata requires a string path and integer raw/fallback members, including explicit zero; present-zero, forged and ID-conflicting records fail closed. Report values never supply mutation input. Apply verifies original acknowledgment and independent fresh GET against exact desired whole policy: retained 11/-1 cannot confirm 0, and a retained canonical PR rule cannot confirm removal. Incomplete acquisition makes no Ruleset write and preserves export destinations; later failure retains earlier resource effects.
 
@@ -511,23 +777,11 @@ Private `required_approvals_normalization` metadata requires a string path and i
 
 A complete present pull-request rule requires a nonempty, unique list of strings. If any acquired `allowed_merge_methods` member is outside `merge`, `squash` and `rebase`, project the entire list to the named default: Merge, Squash, Rebase. Retain the exact original list and its order, including empty or whitespace strings, as owned ID-bound provenance. Missing/null lists, null or non-string members, empty lists, duplicates, incomplete policies and failed pagination remain acquisition errors. An absent PR rule stays absent.
 
-Export warns and saves only effective choices. Plan and detailed Summary show the original list, the normalized default and the selected desired choices in named UI order; fallback-equal selection still requires one whole-object update. Existing declared-object defaults apply when the methods field is omitted within a selected PR rule. Removing the PR rule shows an inactive/rule-removed decision without inventing an after-list. Unlisted IDs and omitted Ruleset collections remain undisclosed and unwritten.
+Export warns and saves only effective choices. Plan and detailed Summary show the original list, the normalized default and the selected desired choices in named UI order; fallback-equal selection still requires one whole-object update. Existing declared-object defaults apply when the methods field is omitted within a selected PR rule. Removing the PR rule is refused to preserve its unowned Preview member. Unlisted IDs and omitted Ruleset collections remain undisclosed and unwritten.
 
 Apply verifies the original mutation acknowledgment and an independent fresh GET against the desired whole policy. A retained unsupported list cannot confirm the full default, and a retained canonical PR rule cannot confirm removal. Fresh warnings are diagnostic evidence only. Incomplete acquisition preserves export destinations and makes no Ruleset write; later failures retain earlier or uncertain effects.
 
 Private `merge_methods_normalization` metadata requires a string path and present typed raw/fallback lists, rejects empty, forged and ID-conflicting evidence even beside valid companion records, and never supplies apply input or proves acquisition completeness. Status-only Summary hides policy/provenance; the existing collection count stays one.
-
-### Ruleset Team reviewer approvals observation normalization
-
-A complete Team reviewer acquires `minimum_approvals` as an integer. UI choices are 0–10; other integers project to the named 0 fallback while retaining the exact raw count bound to the positive Ruleset ID and positive Team ID. Records identify reviewers by ID, never list position. Canonical companions retain their own counts and file patterns. Only Team reviewers are supported, with unique IDs and at most 15 entries; normalization never invents a reviewer or replaces its identity.
-
-Missing/null counts, fractions, overflow, wrong types, missing/null file-pattern lists, invalid identities, duplicate reviewers and incomplete policy or pagination remain acquisition errors. File patterns preserve order, repetitions, negations and explicit emptiness. An absent PR rule stays absent; an explicit empty reviewer list stays empty. Observation defaults never fill missing declared `approvals` or `file_patterns` members.
-
-Requested export saves only effective UI policy after complete acquisition. Warnings include Ruleset ID/name and `reviewer=<Team ID>`, ordered by numeric reviewer ID after Allowed merge methods and before Quality severity. The diagnostic identity is context, not a new YAML key. Selected fallback-equal intent still requires one whole-object update. Plan and detailed Summary show each raw warning and normalized/write-required count, followed by one effective policy. Removing a reviewer shows `inactive (reviewer removed; write required)`; removing the PR rule shows `inactive (rule removed; write required)`. Replacing a Team ID removes the old reviewer and selects the new one rather than comparing unrelated counts. Unlisted Ruleset IDs remain unmanaged and undisclosed.
-
-Apply verifies the original acknowledgment and independent fresh GET against the exact desired whole policy. Retained out-of-range counts cannot confirm 0, a retained canonical reviewer cannot confirm reviewer removal, and a retained PR rule cannot confirm rule removal. Fresh warnings require complete owned readback and do not supply verification values. Failed acquisition makes no Ruleset write and preserves export destinations; a later failure reports earlier or uncertain effects honestly.
-
-Private reports retain typed, reviewer-bound `team_approvals_normalizations` with explicit integer zero and independently validated companion records. They cannot prove complete acquisition or supply apply input. Status-only Summary hides policy and provenance, and the existing collection count stays one.
 
 ### Ruleset scanning Alerts observation normalization
 
@@ -535,7 +789,7 @@ Each tool in a complete code-scanning rule acquires `alerts_threshold` as a stri
 
 Missing/null/non-string thresholds or names, invalid/duplicate names, malformed companion fields and incomplete acquisition remain errors. Security alerts retain their own independent [typed normalization policy](#ruleset-scanning-security-alerts-observation-normalization). An absent scanning rule stays absent; a present empty tool list stays empty. Each declared tool still requires its own Alerts and Security alerts choices; observed fallbacks do not fill omitted declarations.
 
-Requested export saves effective policy and warns after complete acquisition. Scanning Alerts warnings follow Team reviewer Approvals and precede Security alerts and Quality severity, ordered by exact tool name. Each includes Ruleset ID/name and `tool="name"` context. Selected fallback-equal or different choices require one whole-object update. Removing a tool or replacing its name retains the old tool's warning and `inactive (tool removed; write required)` decision; removing the scanning rule shows `inactive (rule removed; write required)`. Plan and detailed Summary show one effective policy. Unlisted Ruleset IDs stay unmanaged and undisclosed.
+Requested export saves effective policy and warns after complete acquisition. Scanning Alerts warnings precede Security alerts, ordered by exact tool name. Each includes Ruleset ID/name and `tool="name"` context. Selected fallback-equal or different choices require one whole-object update. Removing a tool or replacing its name retains the old tool's warning and `inactive (tool removed; write required)` decision; removing the scanning rule shows `inactive (rule removed; write required)`. Plan and detailed Summary show one effective policy. Unlisted Ruleset IDs stay unmanaged and undisclosed.
 
 Original acknowledgment and an independent fresh GET must confirm the exact desired whole policy. A retained unknown Alerts string cannot confirm Errors; a retained canonical tool or scanning rule cannot confirm removal. Contextual fresh warnings never supply successful verification values. Failed acquisition makes no Ruleset write and preserves export destinations; later failure retains honest reporting of earlier or uncertain effects. Private `scanning_alerts_normalizations` records are presentation evidence, not apply input or acquisition proof; status-only output stays private and collection count remains one.
 
@@ -545,13 +799,13 @@ Each complete tool's `security_alerts_threshold` string maps exactly to `none`, 
 
 Both thresholds may need normalization on the same tool. Retain both independently, keep canonical companions exact and preserve absent rules and explicit empty tool lists. Missing/null/non-string thresholds, invalid or duplicate tool identities and incomplete acquisition remain errors rather than fallback values. Desired Alerts and Security alerts remain explicitly required on every declared tool.
 
-Warnings and UI decisions order Alerts records first, then Security alerts records, each by exact tool name, before Quality severity. Selected fallback-equal intent stays write-required. Original acknowledgment and independent fresh GET must confirm the exact desired thresholds or actual removal: retained unknown strings cannot confirm High or higher, and retained canonical tools or rules cannot confirm absence. Plan and detailed Summary keep one effective policy; private `scanning_security_alerts_normalizations` records never supply apply input or prove acquisition. Status-only hides context and values, unlisted Rulesets stay unmanaged, and collection count remains one.
+Warnings and UI decisions order Alerts records first, then Security alerts records, each by exact tool name, before bypass modes. Selected fallback-equal intent stays write-required. Original acknowledgment and independent fresh GET must confirm the exact desired thresholds or actual removal: retained unknown strings cannot confirm High or higher, and retained canonical tools or rules cannot confirm absence. Plan and detailed Summary keep one effective policy; private `scanning_security_alerts_normalizations` records never supply apply input or prove acquisition. Status-only hides context and values, unlisted Rulesets stay unmanaged, and collection count remains one.
 
 ### Ruleset bypass-mode observation normalization
 
 A complete acquired `bypass_mode` string outside the native `always`, `exempt` and `pull_request` choices projects to the UI default `always`. Keep its exact raw string, including empty/whitespace values, bound to the Ruleset ID and the actor's exact type and optional numeric ID. Canonical companions keep their own identities and choices. Missing/null modes, malformed identities, duplicate actors, incomplete acquisition and unsupported actor/target applicability remain errors; normalization never invents an actor, role, grant or ID.
 
-Requested export warns after complete acquisition and saves only effective UI policy. Warnings follow Ruleset name order, then enforcement, Required approvals, Allowed merge methods, Team reviewer Approvals (numeric reviewer ID order), scanning Alerts and Security alerts (each in tool-name order), Quality and bypass actors ordered by type and numeric ID. Actor diagnostics include `actor_type` and include `actor_id` only when present. These are identity context, not public YAML aliases. Unlisted Ruleset IDs stay unmanaged and undisclosed in plan/apply.
+Requested export warns after complete acquisition and saves only effective UI policy. Warnings follow Ruleset name order, then enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), bypass actors ordered by type and numeric ID. Actor diagnostics include `actor_type` and include `actor_id` only when present. These are identity context, not public YAML aliases. Unlisted Ruleset IDs stay unmanaged and undisclosed in plan/apply.
 
 Selected normalized equality still requires one whole-object update. Plan and detailed Summary show the raw warning and `always` marked as a normalized observation, followed by the desired UI mode marked write-required. Removing an actor, explicitly or through existing whole-object declaration defaults, shows `inactive (actor removed; write required)`. Each operation has one effective-policy line; canonical equal objects remain no-ops. Observation fallback does not populate omitted desired resources or change whole-object ownership.
 
@@ -567,10 +821,9 @@ Private same-version reports retain actor-bound `bypass_mode_normalizations`, va
 | --- | --- |
 | `required_approvals` | 0; UI integers 0–10 |
 | `allowed_merge_methods` | all three: `merge`, `squash`, `rebase`; nonempty unique selected choices |
-| `dismiss_stale_pull_request_approvals_when_new_commits_are_pushed`, `require_review_from_code_owners`, `require_approval_of_the_most_recent_reviewable_push`, `require_conversation_resolution_before_merging`, `require_an_additional_approval_for_unattributed_copilot_pull_requests` | false |
-| `require_review_from_specific_teams` | empty; up to 15 `{reviewer: positive-team-id, approvals: 0..10, file_patterns: [...]}` entries; approvals and patterns required |
+| `dismiss_stale_pull_request_approvals_when_new_commits_are_pushed`, `require_review_from_code_owners`, `require_approval_of_the_most_recent_reviewable_push`, `require_conversation_resolution_before_merging` | false |
 
-Reviewer file patterns preserve order/repetition, including negations. Other independent collections canonicalize by identity.
+Independent supported collections canonicalize by identity.
 
 `rules.require_status_checks_to_pass` contains `required_status_checks` (`[{check: name, source: {any_source: true}}]` or `{source: {app: positive-id}}`), `require_branches_to_be_up_to_date_before_merging` and `do_not_require_status_checks_on_creation`. Defaults are empty checks and false flags. Omitted source means any source, not a retained App. Explicit source must select true Any source or App, not both. YAML null is invalid.
 
@@ -580,61 +833,43 @@ Reviewer file patterns preserve order/repetition, including negations. Other ind
 
 [Repository Rulesets REST](https://docs.github.com/en/rest/repos/rules#create-a-repository-ruleset) defines the `required_deployments` transport and requires repository Administration write permission for mutations. [Ruleset availability](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) depends on repository visibility and plan: public repositories support Free; private repositories require Pro, Team or Enterprise Cloud. Deployment environments have their own [availability requirements](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments). This is a repository-level rule; organization and Enterprise rulesets remain outside ownership. Mutations adding, changing or removing it require independent post-write GET confirmation in addition to the mutation response. Unknown or incomplete acquired policy stops export and updates rather than dropping protection.
 
-### Code scanning and code quality parameters
+### Code scanning parameters
 
 `rules.require_code_scanning_results` requires `code_scanning_tools`, each with `tool_name`, `alerts` (`none`, `errors`, `errors_and_warnings`, `all`) and `security_alerts` (`none`, `critical`, `high_or_higher`, `medium_or_higher`, `all`). Tool names are case-sensitive identities; duplicates fail and collection order canonicalizes by name. Explicit `[]` remains empty; no threshold default is inferred.
 
-`rules.require_code_quality_results` requires `severity`: `errors`, `warnings_and_higher`, `notes_and_higher` or `all`. These UI choices translate internally; API tokens are not aliases. Complete acquisition is required. The rules constrain merges; they do not enable analysis, create workflows, change entitlement or expand credentials. Include every supported protection that must remain. See [Code Analysis](features/rulesets.feature.md).
+### Code quality parameters
 
-### Code coverage thresholds
+`rules.require_code_quality_results` requires `severity`: `errors`, `warnings_and_higher`, `notes_and_higher` or `all`. The UI choices map to the public API values `errors`, `warnings`, `notes` and `all`; API tokens are not YAML aliases. This is a managed rule on the selected whole Ruleset: omitting the group removes it, so include every supported protection that must remain. Exact canonical equality is a no-op. Changes and removals require strict mutation-response confirmation plus an independent GET.
 
-`rules.restrict_code_coverage` is a branch-only rule with two required explicit numbers: `minimum_line_coverage_percentage` and `maximum_line_coverage_drop`. Both accept finite values from 0 to 100, including fractions; zero disables that threshold. Omitting this rule removes it. Both thresholds must also be present in acquired API state; missing, null, malformed or unknown data fails export/plan/apply without inferring zero or dropping protection.
+The scope correction on 2026-11-09 follows the user's observed availability of **Require code quality results** in a personal repository. The [official Rulesets reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-code-quality-results) documents the rule and Free public Rulesets, and the [public REST API](https://docs.github.com/en/rest/repos/rules#update-a-repository-ruleset) documents its severity field. Product entitlement descriptions are not evidence that this individual control is unavailable. The rule requires configured Code Quality analysis; managing it does not enable the product, start analysis, create workflows or change billing. Coverage remains a separate Preview exclusion. See [Code Quality normalization](#ruleset-quality-severity-observation-normalization).
 
-```yaml
-rules:
-  restrict_code_coverage:
-    minimum_line_coverage_percentage: 80.25
-    maximum_line_coverage_drop: 0
-```
+### Excluded branch controls and unowned Preview values
 
-GitHub's [coverage REST announcement](https://github.blog/changelog/2026-09-18-manage-the-code-coverage-ruleset-condition-with-the-rest-api/) makes this repository-level rule available on GitHub Team and Enterprise Cloud, including data residency, with Code Quality enabled and coverage uploads configured; Enterprise Server is excluded. Those prerequisites do not make organization-owned Rulesets part of this tool's scope. The rule evaluates uploaded line coverage and does not wait for uploads. Make each coverage-upload job's check required separately to prevent early merging ([coverage setup](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage)). This rule does not enable Code Quality, configure uploads or alter status checks.
+As of 2026-11-09, the public YAML does not accept `restrict_code_coverage`, `require_a_pull_request_before_merging.require_review_from_specific_teams` or `require_a_pull_request_before_merging.require_an_additional_approval_for_unattributed_copilot_pull_requests`, including empty collections and explicit false. Specific-team reviews do not satisfy the Free/personal/public adoption scope; coverage and unattributed Copilot additional approval are Preview exclusions. These exclusions follow the [official rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [coverage documentation](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage). They do not disable or remove live GitHub settings.
 
-### Push Rulesets
+Acquired `code_coverage`, nonempty PR `required_reviewers` and unknown or malformed rules still fail complete acquisition without dropping protection. Ordinary code-scanning merge protection, Code Quality thresholds, PR approval counts, public fork approval and automatic Copilot code review remain separate controls. All existing Ruleset updates independently recheck ownership, identity and unowned values before PUT; Code Quality presence and raw severity changes since acquisition also stop the update. Preflight is not an atomic lock: concurrent changes between GET and PUT can still race, and post-write failures report that writes may have applied without rollback.
 
-Select `target_pushes: true` without a branch/tag target. Push Rulesets apply to every push across the repository and its entire fork network; they have no ref-name conditions. Only the root repository's bypass actors can bypass the inherited push policy. This interface manages only policy owned by the selected repository, never an organization/Enterprise Ruleset or another repository's inherited policy. A mismatched repository source fails before mutation.
+The typed acquired PR additional-approval boolean is unowned preservation metadata. It is omitted from public YAML and is retained exactly on supported updates, including true and false. A missing, null or incorrectly typed value fails acquisition. A fresh detail GET checks it before PR-related updates; acknowledgment and independent readback must retain it. A new PR rule omits the member, lets GitHub choose its default and checks the typed acknowledgment value against independent readback. No false default is invented. Removing an existing PR rule or its whole Ruleset is refused before mutation because its unowned nested value cannot be preserved. This also applies when `rules` is omitted on a selected PR-containing object. Fresh reads do not lock concurrent edits; whole-object updates retain the documented concurrency limits.
 
-```yaml
-ruleset_name: push-files
-enforcement_status: active
-target_pushes: true
-rules:
-  restrict_file_paths:
-    restricted_file_paths: ['secrets/**']
-    allowed_exceptions: ['secrets/example']
-  restrict_file_path_length: {maximum_file_path_length: 240}
-  restrict_file_extensions: {restricted_file_extensions: ['.exe']}
-  restrict_file_size: {maximum_file_size: 20, allowed_exceptions: []}
-```
+### Unsupported Push Rulesets
 
-Each selected rule requires the shown parameters. Ref-only rules are invalid on a push target; push restrictions are invalid on branch/tag targets. Omitted groups remove their rule on an owned object; `rules: {}` selects an empty rule list and never deletes the Ruleset. Collections are exact case-sensitive sets with stable ordering. Restricted paths and extensions allow at most 200 entries of at most 200 characters each; blank strings, control characters and duplicate entries fail. Paths and allowed exceptions use GitHub's `fnmatch` syntax. Maximum path length is 1–32767 characters. Maximum file size is 1–100 MB, excluding Git LFS. GitHub validates pattern applicability; no local pattern rewrite occurs.
+`target_pushes` and the `restrict_file_paths`, `restrict_file_path_length`, `restrict_file_extensions` and `restrict_file_size` controls are not accepted, including false or empty declarations. [GitHub limits Push Rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository) to paid-plan private/internal repositories and their forks, outside the [Free/personal/public scope](#feature-adoption-scope). No compatibility alias or automatic migration is provided.
 
-For path/size restrictions, `allowed_exceptions` is required even when empty. The API calls this `ignored_file_paths` and marks it optional, but an omitted response cannot establish the stored exception policy. Acquisition therefore fails if the field is absent/null rather than assuming `[]`, preserving the existing export destination and preventing updates from incomplete reads. Complete mutation acknowledgment and independent GET must confirm every requested restriction and exception, including actual rule removal. No deployment, repository permissions, bypass actor or security setting is created to satisfy eligibility.
-
-[Generic GitHub documentation](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository#creating-a-push-ruleset) lists GitHub Team private/internal repositories and their forks. The [Enterprise Cloud version](https://docs.github.com/en/enterprise-cloud@latest/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository#creating-a-push-ruleset) lists Enterprise Cloud private/internal repositories and forks. These are version-specific availability statements, not organization/Enterprise-level management scope. Confirm eligibility for the target account with GitHub; the CLI neither infers entitlement from ownership nor expands credentials. [Repository Rulesets REST](https://docs.github.com/en/rest/repos/rules) supplies the four public rule schemas; mutations require repository Administration write and complete bypass visibility. The [official OpenAPI schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) supplies numeric bounds and nullable push conditions. Local fixture verification does not establish live entitlement or enforcement.
+An acquired repository-owned Push Ruleset or file-restriction rule fails complete acquisition. Export preserves its destination; plan, updates and explicit deletion stop before a Rulesets write. Unsupported policy is never silently omitted or converted into a branch/tag policy. Inherited organization/enterprise policy remains outside ownership.
 
 ### Plan, apply, and export
 
-Complete supported observations, including bypass visibility, are required. Unknown writable fields/rules, missing values, invalid types, unreadable details and failed pages stop mutation/export. Inherited organization/enterprise Rulesets remain outside mutation ownership. Repository-owned push Rulesets are acquired and exported completely; unknown or incomplete push policy stops the operation. Other protection can still affect effective behavior.
+Complete supported observations, including bypass visibility, are required. Unknown writable fields/rules, missing values, invalid types, unreadable details and failed pages stop mutation/export. Inherited organization/enterprise Rulesets remain outside mutation ownership. Repository-owned Push Rulesets are unsupported and stop complete acquisition before any Rulesets mutation or export. Other protection can still affect effective behavior.
 
 Plan shows only listed creates/ID updates and default-derived reductions; it never invents deletion of unlisted objects. A nonempty collection counts once as managed. Apply reads fresh state after earlier families, prepares selected operations before the first Rulesets write and writes in stable name order. Fresh comparable matches make no write.
 
-POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis/coverage changes and every push-target mutation require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
+POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis changes require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
 
 Unsupported protection is never omitted to produce a usable policy. Acquired Evaluate enforcement, merge queue, metadata restrictions, license compliance, or a present review-dismissal restriction stop Ruleset export, comparison and mutation. Review-dismissal absence in an API response does not prove the stored restriction is disabled. These controls are not accepted configuration. See the [Rulesets specification](features/rulesets.feature.md) and [UI mapping](contributing/ui-ruleset-mapping.md).
 
 ## Environments
 
-`repository.settings.environments` selects whole supported objects by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Omission/`[]` selects nothing; unlisted Environments are never deleted. Deletion/rename markers, secrets, variables and custom protection apps are unsupported.
+`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Omission/`[]` selects nothing; unlisted Environments are never deleted. Deletion/rename markers, secrets and custom protection apps are unsupported. Selected non-sensitive variables have the separate ownership described below.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -653,7 +888,7 @@ repository:
           - {ref_type: tag, name_pattern: 'v*'}
 ```
 
-Omitted built-in fields are omitted from PUT on create/update. GitHub controls their result; this promises neither preservation nor reset. Name-only intent sends an empty PUT, not an existence assertion. Plan marks omitted outcomes API-controlled instead of inventing defaults; a partial request can remain update intent even when current visible values look equal.
+For entries selecting a policy, omitted built-in fields are omitted from PUT on create/update. GitHub controls their result; this promises neither preservation nor reset. Name-only intent sends an empty PUT, not an existence assertion. Plan marks omitted outcomes API-controlled instead of inventing defaults; a partial request can remain update intent even when current visible values look equal.
 
 `deployment_protection_rules` contains optional `wait_timer` (0–43200 minutes), up to six unique `required_reviewers` (each `{person: positive-id}` or `{team: positive-id}`), `prevent_self_review` and `allow_administrators_to_bypass_configured_protection_rules`. True prevent-self-review cannot accompany an explicitly empty reviewer set. No null is accepted. Reviewer eligibility, grants and entitlement remain GitHub prerequisites; principals are not invited.
 
@@ -665,7 +900,31 @@ Reads require complete inventory, built-in/custom-protection details and typed p
 
 Administrator bypass is a real writable setting. Export requires/retains its complete boolean, even false. A prior temporary public-Environment experiment confirmed explicit false/true and retained preceding values on omission with other members fixed; this is not a platform-wide omission or entitlement guarantee. No default true is inserted.
 
-`export --environments` includes complete supported policy and active selected patterns without Environment/pattern IDs; ordinary export adds no Environment permissions. Existing Actions read, Administration write, custom protection visibility and account eligibility are required. See [Environment behavior](features/environments.feature.md) and [mapping](contributing/ui-environments-mapping.md).
+`export --environments` includes complete supported policy and active selected patterns without Environment/pattern IDs or variables; ordinary export adds no Environment permissions. Existing Actions read, Administration write, custom protection visibility and account eligibility are required. See [Environment behavior](features/environments.feature.md) and [mapping](contributing/ui-environments-mapping.md).
+
+### Environment variables
+
+`repository.settings.environments[].variables` selects explicit non-sensitive values in **Settings → Environments → the selected Environment → Environment variables**:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    environments:
+      - name: production
+        variables:
+          - {name: DISPLAY_NAME, value: 'Production'}
+```
+
+The [variable name/value rules](#actions-repository-variables) apply: canonical uppercase names, unique ignoring ASCII case within each Environment, required nonempty string values, no delete or rename, and no changes to unlisted variables. The same name in different Environments or repository variable families remains independent. Omitted `variables` and `variables: []` make no variable requests.
+
+An entry containing `name` and `variables` alone selects **only variables**, including when the variable list is empty. It never sends an Environment policy PUT, changes protection or secrets, or creates a missing Environment implicitly. A nonempty variable selection requires that Environment to exist. To manage policy and variables together, include the desired policy controls in the same entry; policy upserts run first, then selected variable upserts. Existing name-only entries still select the ordinary empty-body policy upsert. Declared policy fields retain the API-controlled omission behavior above; adding variables does not make those omissions preservation guarantees.
+
+Plan reads selected names only. When the same plan explicitly creates a missing Environment policy, its selected variables are shown as creates without requesting nonexistent variable endpoints. Apply checks the selected Environment identity, reads each variable fresh, creates an absent variable, updates a changed value, skips equality and verifies independent readback. Writes run in stable Environment/name order. Failed reads do not become empty state; later failures stop execution without rolling back earlier writes, and a failed write or verification can have uncertain effects.
+
+Repeat `export --environment-variable ENVIRONMENT NAME` for each known non-sensitive value. Ordinary export and `--environments` never discover or read variables. Missing Environments, absent selected variables, incomplete responses and read failures prevent saving. This flag composes with policy export without inventing policy intent for variable-only selections. Values are **plaintext** in YAML, exports, detailed plans, reports and Summary. Never use variables for secrets or credentials.
+
+The [Environment Variables REST API](https://docs.github.com/en/rest/actions/variables#get-an-environment-variable) uses name-addressed `/repos/{owner}/{repo}/environments/{environment_name}/variables` endpoints. Fine-grained/App tokens need **Environments** read for variables and write for mutations, plus **Actions** read for the Environment identity check. No access is granted automatically. UI creation/update/deletion and API persistence were verified on a Free, personally owned public test repository on 2026-11-11; both rejected an empty value. This is bounded adoption evidence, not a runtime entitlement check or proof of workflow consumption. See the [behavior specification](features/environments.feature.md#selected-environment-variables).
 
 ### Environment deployment mode observation normalization
 
@@ -681,7 +940,7 @@ Omitted mode stays omitted from PUT. Its server-selected result is neither prese
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted. Organization settings/custom properties/forking policy, collaborator grants/invitations/team access, repository renaming/visibility/transfer/deletion, legacy branch protection, inherited Rulesets, Pages visibility, Environment deletion/rename/custom apps/secrets/variables and unadopted Actions/security controls remain outside scope. A visible GitHub control or writable API field does not adopt it. See the [architecture](contributing/architecture.md) and proposed [access design](features/repository-access.feature.md) without treating proposals as configuration.
+Only the listed UI controls are accepted. Organization settings/custom properties/forking policy, collaborator grants/invitations/team access, repository renaming/visibility/transfer/deletion, legacy branch protection, inherited Rulesets, Pages visibility, Environment deletion/rename/custom apps/secrets and unadopted Actions/security controls remain outside scope. A visible GitHub control or writable API field does not adopt it. See the [architecture](contributing/architecture.md) and proposed [access design](features/repository-access.feature.md) without treating proposals as configuration.
 
 ## Pages configuration
 
@@ -748,3 +1007,112 @@ An explicit pattern list owns the observed collection, including `[]`; an omitte
 Apply sends declared fields in the Environment PUT and canonical types in separate pattern requests. It confirms fresh canonical Selected mode, creates required pairs before deleting obsolete raw identities, and retains the IDs of existing canonical companions. Before deletion, an individual GET must match the exact original type, case-sensitive name and ID. Creation acknowledgments remain strict; unsupported or malformed acknowledgments stop before deletion. Independent complete readback must confirm the requested canonical collection: a retained unsupported type cannot prove success merely because its fallback matches. Fresh owned warnings expose the acquired record, not a verification substitute.
 
 Acquisition failures make no Environment write. Later failures retain earlier or uncertain effects, report failure and do not trigger automatic retry or rollback. Caller YAML is unchanged. A complete canonical match is a silent no-op on repeat; omitted fields remain API-controlled. These source behaviors do not apply live settings or publish a release.
+
+## Persistent pull request limits
+
+Settings → Interaction limits → Pull request limits maps to:
+
+```yaml
+repository:
+  settings:
+    interaction_limits:
+      pull_request_limits:
+        limit_open_pull_requests_from_users_without_write_access: true
+        maximum_open_pull_requests_per_user: 2
+        count_draft_pull_requests_toward_the_limit: true
+```
+
+The enable and draft controls are optional booleans. The maximum is an optional
+integer from 1 through 1000. Omission leaves that control unmanaged, including
+latent maximum/draft values while disabled. Empty groups manage nothing. Null,
+quoted booleans/integers, fractions and API-shaped aliases are rejected.
+Moderation is a navigation category, not a configuration group.
+
+Plan selects the cap endpoint only when a cap control is declared. Apply
+acquires fresh complete cap state, skips
+exact matches and PATCHes required `enabled` plus only declared optional members.
+When enable is omitted, the required member carries the freshly observed value.
+Independent GET confirms the complete requested/preserved three-field state.
+Only a complete response equal to the pre-write baseline can be retried: at most
+three confirmation GETs, with one second between those stale observations. This
+is a client budget, not a GitHub propagation guarantee. Writes are never retried.
+Denied, malformed or other mismatching readback fails immediately. Failure after
+PATCH reports uncertain effects; earlier successful operations remain applied.
+Apply is not atomic and does not roll back.
+
+`export --pull-request-limits` explicitly includes all three stored values,
+including disabled/false and latent values. Ordinary export and unrelated flags
+make no cap request. Missing `include_drafts` is an acquisition error, even though
+it is optional in the published response schema; it never means false. Failed
+acquisition preserves an existing output file. CLI and detailed Action reports
+use these UI paths and native booleans/integers; status-only output hides values.
+
+The [official creation-cap API](https://docs.github.com/rest/interactions/repos#update-pull-request-creation-cap-for-a-repository)
+requires administrator access. Credentials must already authorize the endpoint;
+no grants are expanded. Adoption evidence covers GitHub Free personal public
+repositories with these visible controls, not other plans/owners/visibility.
+The cap limits users without write access and does not grant write access.
+Temporary Interaction restrictions and automatic exemption rules remain unmanaged.
+The separately selected Exemption list is described below; ordinary cap updates
+make no exemption request. Companion preservation in a cap update means only its
+three known fields. Configuration
+readback does not establish enforcement against external actors. See the
+[behavior specification](features/pull-request-limits.feature.md).
+
+### Pull request limit Exemption list
+
+`repository.settings.interaction_limits.pull_request_limits.exemption_list`
+manages the complete selected list of trusted User logins, independently of the
+three cap controls:
+
+```yaml
+repository:
+  settings:
+    interaction_limits:
+      pull_request_limits:
+        exemption_list: [trusted-user, another-user]
+```
+
+Omission leaves the list unmanaged and makes no list request. An explicit list
+owns all membership, so omitted users are removed; `[]` explicitly clears the
+list. Membership is case-insensitive and exported in sorted lowercase order.
+At most 100 distinct User logins are accepted. Logins are 1–39 ASCII letters,
+digits or single interior hyphens; surrounding whitespace, consecutive hyphens,
+nulls, duplicate names and API-shaped user objects are rejected. Bot and
+Organization identities are unsupported and stop acquisition rather than being
+dropped from the list. Numeric user IDs are acquired identity evidence, not YAML
+or writeback fields.
+
+Plan reads only the complete list. Apply reads fresh inventory and skips an
+exact match. Before any mutation, newly added logins are resolved through the
+public Users API and must identify supported User accounts. It removes obsolete users first and independently verifies the
+remaining membership and retained User IDs before adding users, avoiding a
+100-user list's temporary overflow during replacement. It then independently
+verifies exact desired membership and both retained and newly resolved User IDs. Each mutation uses only its
+computed user difference. A failure stops further work; confirmed removals can
+remain applied when addition fails. Writes are not retried and no rollback or
+concurrency protection is promised. This selected-list operation runs before
+separately declared cap controls; it never changes the cap, automatic exemption
+rules, temporary restrictions, collaborator grants or repository permissions.
+
+`export --pull-request-limit-exemptions` independently includes the complete
+list, including `[]`. Ordinary export and `--pull-request-limits` do not read it.
+A failed, incomplete, ambiguous or unsupported inventory prevents saving. CLI
+and detailed Action reports/Summary expose the selected membership; status-only
+output omits it. The collection counts as one managed value.
+
+The [official bypass-list API](https://docs.github.com/en/rest/interactions/repos#get-pull-request-creation-cap-bypass-list-for-a-repository)
+requires **Administration write**, including for reads. Its GET returns User
+objects; PUT adds and DELETE removes up to 100 logins per request. An unexpected
+pagination Link is rejected rather than treating a partial list as complete.
+Existing credentials must authorize these operations. Exemption allows listed
+contributors to exceed the cap without granting write access; callers must
+review the complete desired list before applying it.
+
+On 2026-11-11, the Free, personally owned public test repository exposed the
+Exemption list and Add users control after its cap was temporarily enabled.
+The existing empty list was acquired through the API. The owner was not offered
+as a UI search candidate, so no user was added and no live add/remove persistence
+or external-actor enforcement is claimed. The cap was restored to its disabled
+baseline and the list remained empty. Automated mutation evidence uses local
+fixtures. See the [behavior specification](features/pull-request-limits.feature.md).

@@ -159,8 +159,35 @@ func renderSummary(report validatedPlanReport, metadata RunMetadata, workflow []
 	for _, change := range report.comparison.CommitMessages {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.CommitMessageLine(change)))
 	}
+	for _, change := range report.comparison.CopilotInstructions {
+		fmt.Fprintln(&content, quoteHTML(presentation.CopilotInstructionsLine(change)))
+	}
+	for _, change := range report.comparison.CopilotMCP {
+		fmt.Fprintln(&content, quoteHTML(presentation.CopilotMCPLine(change)))
+	}
+	for _, change := range report.comparison.PullRequestExemptions {
+		fmt.Fprintln(&content, quoteHTML(presentation.PullRequestExemptionsLine(change)))
+	}
+	for _, change := range report.comparison.PullRequestLimits {
+		fmt.Fprintln(&content, quoteHTML(presentation.PullRequestLimitsLine(change)))
+	}
+	for _, change := range report.comparison.CopilotReviewEffort {
+		fmt.Fprintln(&content, quoteHTML(presentation.CopilotReviewEffortLine(change)))
+	}
+	for _, change := range report.comparison.Variables {
+		fmt.Fprintln(&content, quoteHTML(presentation.VariableLine(change)))
+	}
+	for _, change := range report.comparison.EnvironmentVariables {
+		fmt.Fprintln(&content, quoteHTML(presentation.EnvironmentVariableLine(change)))
+	}
+	for _, change := range report.comparison.AgentsVariables {
+		fmt.Fprintln(&content, quoteHTML(presentation.AgentVariableLine(change)))
+	}
 	for _, change := range report.comparison.Labels.Values() {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.LabelLine(change)))
+	}
+	for _, change := range report.comparison.ActionsPolicies {
+		fmt.Fprintln(&content, quoteHTML(presentation.ActionsEventPolicyLine(change)))
 	}
 	for _, change := range report.rulesets {
 		fmt.Fprintf(&content, "%s\n", quoteHTML(presentation.RulesetLine(change)))
@@ -210,8 +237,8 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err != nil {
 		return validatedPlanReport{}, err
 	}
-	maxManaged := settings.RepositoryFieldCount() + 4 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
-	scalarChanges := len(report.CodeQLConfiguration) + len(report.Changes) + 2*len(report.CommitMessages) + len(report.Actions) + executionManaged + len(report.Security) + minimumPagesReportFields(report.Pages)
+	maxManaged := settings.PullRequestLimitsFieldCount + 3 + settings.RepositoryFieldCount() + 9 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount // Collections count once; scalar policy controls retain their closed bounds.
+	scalarChanges := len(report.CopilotReviewEffort) + len(report.PullRequestLimits) + len(report.CopilotMCP) + len(report.CopilotInstructions) + len(report.CodeQLConfiguration) + len(report.Changes) + 2*len(report.CommitMessages) + len(report.Actions) + executionManaged + len(report.Security) + minimumPagesReportFields(report.Pages)
 	if report.Changes == nil || report.Managed < scalarChanges || report.Managed > maxManaged {
 		return validatedPlanReport{}, fmt.Errorf("invalid plan report comparison")
 	}
@@ -219,6 +246,10 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 		return validatedPlanReport{}, fmt.Errorf("invalid label report managed count")
 	}
 	labels, err := validateLabelReport(report.Labels)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	actionsPolicies, err := validateActionsEventPolicyReport(report.ActionsPolicies)
 	if err != nil {
 		return validatedPlanReport{}, err
 	}
@@ -230,7 +261,54 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err != nil {
 		return validatedPlanReport{}, err
 	}
+	variables, err := validateVariableReport(report.Variables)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	environmentVariables, err := validateEnvironmentVariableReport(report.EnvironmentVariables)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	agentsVariables, err := validateVariableReport(report.AgentsVariables)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	copilotInstructions, err := validateCopilotInstructionsReport(report.CopilotInstructions)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	pullRequestExemptions, err := validatePullRequestExemptionsReport(report.PullRequestExemptions)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	pullRequestLimits, err := validatePullRequestLimitsReport(report.PullRequestLimits)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	copilotMCP, err := validateCopilotMCPReport(report.CopilotMCP)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
+	copilotReviewEffort, err := validateCopilotReviewEffortReport(report.CopilotReviewEffort)
+	if err != nil {
+		return validatedPlanReport{}, err
+	}
 	collections := 0
+	if len(pullRequestExemptions) > 0 {
+		collections++
+	}
+	if len(actionsPolicies) > 0 {
+		collections++
+	}
+	if len(variables) > 0 {
+		collections++
+	}
+	if len(environmentVariables) > 0 {
+		collections++
+	}
+	if len(agentsVariables) > 0 {
+		collections++
+	}
 	if labels.Len() > 0 {
 		collections++
 	}
@@ -243,7 +321,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if report.Managed < scalarChanges+collections {
 		return validatedPlanReport{}, fmt.Errorf("invalid collection managed count")
 	}
-	hasChanges := len(report.CodeQLConfiguration) > 0 || len(report.Changes) > 0 || len(report.CommitMessages) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(environments) > 0 || len(report.Actions) > 0 || len(execution) > 0 || len(report.Security) > 0 || len(report.Pages) > 0
+	hasChanges := len(pullRequestExemptions) > 0 || len(environmentVariables) > 0 || len(actionsPolicies) > 0 || len(copilotReviewEffort) > 0 || len(pullRequestLimits) > 0 || len(copilotMCP) > 0 || len(copilotInstructions) > 0 || len(variables) > 0 || len(agentsVariables) > 0 || len(report.CodeQLConfiguration) > 0 || len(report.Changes) > 0 || len(report.CommitMessages) > 0 || labels.Len() > 0 || len(rulesets) > 0 || len(environments) > 0 || len(report.Actions) > 0 || len(execution) > 0 || len(report.Security) > 0 || len(report.Pages) > 0
 	valid := false
 	switch report.Outcome {
 	case "changed":
@@ -269,7 +347,7 @@ func validatePlanReport(report PlanReport, target string) (validatedPlanReport, 
 	if err := validateCommitMessageContexts(report.CommitMessageContexts, report.Changes); err != nil {
 		return validatedPlanReport{}, err
 	}
-	comparison := settings.Comparison{Managed: report.Managed, CommitMessages: commitMessages, CommitMessageContexts: report.CommitMessageContexts, Labels: labels, Environments: environments, ActionsExecution: execution}
+	comparison := settings.Comparison{ActionsPolicies: actionsPolicies, PullRequestLimits: pullRequestLimits, PullRequestExemptions: pullRequestExemptions, CopilotReviewEffort: copilotReviewEffort, CopilotMCP: copilotMCP, CopilotInstructions: copilotInstructions, Variables: variables, AgentsVariables: agentsVariables, EnvironmentVariables: environmentVariables, Managed: report.Managed, CommitMessages: commitMessages, CommitMessageContexts: report.CommitMessageContexts, Labels: labels, Environments: environments, ActionsExecution: execution}
 	for _, raw := range report.Actions {
 		if raw.SecurityStatusNormalization != nil {
 			return validatedPlanReport{}, fmt.Errorf("security status normalization cannot describe an Actions comparison")

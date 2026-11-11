@@ -4,12 +4,10 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
-
-	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
 const RulesetTeamApprovalsPath = "repository.settings.rulesets.rules.require_a_pull_request_before_merging.require_review_from_specific_teams.approvals"
-const DefaultRulesetTeamApprovals = uimodel.DefaultTeamReviewApprovals
+const DefaultRulesetTeamApprovals = 0
 
 func RulesetTeamApprovalsSupported(value int) bool { return value >= 0 && value <= 10 }
 

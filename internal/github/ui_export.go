@@ -55,9 +55,9 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Actions workflow permissions: %w", err)
 	}
-	actions, err = WithActionsCacheAccessPolicyUI(actions, source.Actions)
+	actions, err = WithActionsCachePolicyUI(actions, source.Actions)
 	if err != nil {
-		return uimodel.Repository{}, fmt.Errorf("export Actions cache and access: %w", err)
+		return uimodel.Repository{}, fmt.Errorf("export Actions cache: %w", err)
 	}
 	actions, err = WithActionsRetentionPolicyUI(actions, source.Actions.RetentionDays)
 	if err != nil {
@@ -67,15 +67,81 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Actions contributor approval: %w", err)
 	}
-	actions, err = WithActionsPrivateForkPolicyUI(actions, source.Actions.PrivateFork)
-	if err != nil {
-		return uimodel.Repository{}, fmt.Errorf("export Actions fork workflows: %w", err)
-	}
 	if actions != (uimodel.ActionsGeneral{}) {
 		if result.Settings == nil {
 			result.Settings = &uimodel.RepositorySettings{}
 		}
 		result.Settings.Actions = &uimodel.ActionsSettings{General: &actions}
+	}
+	if source.ActionsPolicies != nil {
+		values := make([]uimodel.ActionsEventPolicy, 0, source.ActionsPolicies.Len())
+		for _, entry := range source.ActionsPolicies.Values() {
+			value, err := ActionsEventPolicyUI(entry)
+			if err != nil {
+				return uimodel.Repository{}, fmt.Errorf("export Actions policies: %w", err)
+			}
+			values = append(values, value)
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Actions == nil {
+			result.Settings.Actions = &uimodel.ActionsSettings{}
+		}
+		result.Settings.Actions.Policies = &values
+	}
+	if source.Variables != nil {
+		values := variableValuesUI(*source.Variables)
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Actions == nil {
+			result.Settings.Actions = &uimodel.ActionsSettings{}
+		}
+		result.Settings.Actions.Variables = &values
+	}
+	if source.AgentsVariables != nil {
+		values := variableValuesUI(*source.AgentsVariables)
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.Agents = &uimodel.AgentsSettings{Variables: &values}
+	}
+	if source.CopilotReviewEffort != nil {
+		if err := settings.ValidateCopilotReviewEffort(*source.CopilotReviewEffort); err != nil {
+			return uimodel.Repository{}, err
+		}
+	}
+	if !source.PullRequestLimits.Empty() {
+		if err := source.PullRequestLimits.Validate(); err != nil {
+			return uimodel.Repository{}, err
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		c := source.PullRequestLimits
+		result.Settings.InteractionLimits = &uimodel.InteractionLimits{PullRequestLimits: &uimodel.PullRequestLimits{LimitOpenPullRequestsFromUsersWithoutWriteAccess: copyUIValue(c.Enabled), MaximumOpenPullRequestsPerUser: copyUIValue(c.Maximum), CountDraftPullRequestsTowardTheLimit: copyUIValue(c.IncludeDrafts)}}
+	}
+
+	if source.PullRequestExemptions != nil {
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.InteractionLimits == nil {
+			result.Settings.InteractionLimits = &uimodel.InteractionLimits{}
+		}
+		if result.Settings.InteractionLimits.PullRequestLimits == nil {
+			result.Settings.InteractionLimits.PullRequestLimits = &uimodel.PullRequestLimits{}
+		}
+		logins := source.PullRequestExemptions.Logins()
+		result.Settings.InteractionLimits.PullRequestLimits.ExemptionList = &logins
+	}
+
+	if source.CopilotMCP != nil || source.CopilotInstructions != nil || source.CopilotReviewEffort != nil {
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.Copilot = &uimodel.CopilotSettings{CodeReview: &uimodel.CopilotCodeReview{AllowCopilotToUseMCPToolsWhenReviewingPullRequests: copyUIValue(source.CopilotMCP), UseCustomInstructions: copyUIValue(source.CopilotInstructions), ReviewEffortLevel: copyUIValue(source.CopilotReviewEffort)}}
 	}
 	if err := source.Security.Validate(); err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Security: %w", err)
@@ -135,6 +201,36 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 			result.Settings = &uimodel.RepositorySettings{}
 		}
 		result.Settings.Environments = &environments
+	}
+	if len(source.EnvironmentVariables) != 0 {
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Environments == nil {
+			entries := []uimodel.Environment{}
+			result.Settings.Environments = &entries
+		}
+		for _, scoped := range source.EnvironmentVariables {
+			if _, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: scoped.Environment}}); err != nil {
+				return uimodel.Repository{}, err
+			}
+			values := variableValuesUI(scoped.Variables)
+			index := -1
+			for i, entry := range *result.Settings.Environments {
+				if settings.EnvironmentIdentity(entry.Name) == settings.EnvironmentIdentity(scoped.Environment) {
+					index = i
+					break
+				}
+			}
+			if index < 0 {
+				*result.Settings.Environments = append(*result.Settings.Environments, uimodel.Environment{Name: scoped.Environment, Variables: &values})
+			} else {
+				if (*result.Settings.Environments)[index].Variables != nil {
+					return uimodel.Repository{}, fmt.Errorf("duplicate environment variable export scope %q", scoped.Environment)
+				}
+				(*result.Settings.Environments)[index].Variables = &values
+			}
+		}
 	}
 	return result, nil
 }

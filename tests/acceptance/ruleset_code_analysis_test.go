@@ -28,6 +28,10 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 		t.Fatal(err)
 	}
 	json.Unmarshal(data, &baseline)
+	// Code Quality is a supported managed rule and must survive other declared rule edits.
+	for _, policy := range []map[string]any{state, baseline} {
+		policy["rules"] = append(policy["rules"].([]any), map[string]any{"type": "code_quality", "parameters": map[string]any{"severity": "errors"}})
+	}
 	var mu sync.Mutex
 	writes := 0
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +78,6 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 		delete(expected, "id")
 		delete(expected, "source")
 		delete(expected, "source_type")
-		acceptanceRuleParams(t, expected, "code_quality")["severity"] = "warnings"
 		acceptanceRuleParams(t, expected, "code_scanning")["code_scanning_tools"].([]any)[0].(map[string]any)["security_alerts_threshold"] = "critical"
 		for _, value := range []map[string]any{payload, expected} {
 			slices.SortFunc(value["rules"].([]any), func(a, b any) int {
@@ -127,14 +130,14 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 			"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": true,
 			"require_a_pull_request_before_merging": map[string]any{
 				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
-				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,
-				"require_review_from_code_owners":                                       true,
-				"require_an_additional_approval_for_unattributed_copilot_pull_requests": true,
-				"require_approval_of_the_most_recent_reviewable_push":                   false,
-				"require_conversation_resolution_before_merging":                        true,
+				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed": true,
+				"require_review_from_code_owners":                                  true,
+
+				"require_approval_of_the_most_recent_reviewable_push": false,
+				"require_conversation_resolution_before_merging":      true,
 			},
-			"require_code_scanning_results": map[string]any{"code_scanning_tools": []any{map[string]any{"tool_name": "CodeQL", "security_alerts": "high_or_higher", "alerts": "errors"}}},
 			"require_code_quality_results":  map[string]any{"severity": "errors"},
+			"require_code_scanning_results": map[string]any{"code_scanning_tools": []any{map[string]any{"tool_name": "CodeQL", "security_alerts": "high_or_higher", "alerts": "errors"}}},
 		},
 	}
 	policies := []any{policy}
@@ -157,7 +160,6 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 	if count != 0 {
 		t.Fatal("unchanged Ruleset export wrote", count)
 	}
-	policy["rules"].(map[string]any)["require_code_quality_results"].(map[string]any)["severity"] = "warnings_and_higher"
 	policy["rules"].(map[string]any)["require_code_scanning_results"].(map[string]any)["code_scanning_tools"].([]any)[0].(map[string]any)["security_alerts"] = "critical"
 	edited, err := yaml.Marshal(document)
 	if err != nil {
@@ -166,7 +168,7 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, string(edited)); err != nil {
 		t.Fatal(err)
 	}
-	if out := run("plan"); !strings.Contains(out, `"severity":"warnings_and_higher"`) || !strings.Contains(out, `"security_alerts":"critical"`) {
+	if out := run("plan"); !strings.Contains(out, `"security_alerts":"critical"`) {
 		t.Fatal("threshold change absent", out)
 	}
 	run("apply")

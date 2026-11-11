@@ -10,8 +10,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
 
-// Read the operational declaration through the same current codec and adapter
-// as the CLI; policy assertions below retain independent native expectations.
+// Decode the operational declaration directly with the adopted package contract.
 func readManagedDeclaration(t *testing.T) settings.Declaration {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(root(), ".github/settings.yml"))
@@ -102,8 +101,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				*p.RequiredApprovingReviewCount == 1 && p.RequireCodeOwnerReview != nil &&
 				*p.RequireCodeOwnerReview && p.DismissStaleReviewsOnPush != nil &&
 				*p.DismissStaleReviewsOnPush && p.RequiredReviewThreadResolution != nil &&
-				*p.RequiredReviewThreadResolution && p.RequireExtraApprovalForUnattributedChanges != nil &&
-				*p.RequireExtraApprovalForUnattributedChanges
+				*p.RequiredReviewThreadResolution && p.RequireExtraApprovalForUnattributedChanges == nil
 		case "required_status_checks":
 			p := rule.Parameters
 			if p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil ||
@@ -132,7 +130,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 		}
 	}
 	if !approval || signatureRequired || !linear || !nativeChecks || !scanning || !quality {
-		t.Fatal("the main Ruleset must keep approvals, history, exactly three native checks, CodeQL and code quality, without requiring signatures")
+		t.Fatal("the main Ruleset must keep approvals, history, exactly three native checks, CodeQL and Code Quality, without signatures")
 	}
 	// Management is not just documentation: changed security-relevant state
 	// produces a diff rather than silently becoming the new desired policy.

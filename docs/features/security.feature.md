@@ -6,7 +6,7 @@ description: Planned declarations, complete observations, dependencies, and acce
 
 ## Status and scope
 
-For the remaining personal-public UI settings without a confirmed public settings API path, and the separately excluded controls, see [Security UI settings not managed by gh-settings](../settings.md#security-ui-settings-not-managed-by-gh-settings).
+The project-wide [Free/personal/public/UI adoption policy](../settings.md#feature-adoption-scope) also applies to Security; the historical scope and implemented contracts below do not certify a completed eligibility audit. For API-unconfirmed settings, to be reassessed under that policy, and separately excluded controls, see [Security UI settings not managed by gh-settings](../settings.md#security-ui-settings-not-managed-by-gh-settings).
 
 [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a claim that unimplemented families are supported. Implementation PRs must update the public configuration, command, and Action references before claiming support.
 

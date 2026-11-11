@@ -63,6 +63,44 @@ Listing needs Issues or Pull requests read, except public resources can be liste
 
 The pinned v0.27.0 label apply is ID-based and never deletes unlisted labels. An ID-less collision fails with ID guidance. The CLI disables ID writeback whenever `GITHUB_ACTIONS=true`; created label/Ruleset IDs remain available in output or error diagnostics for manual adoption. See the [labels contract](settings.md#labels).
 
+### Actions event policies
+
+Current-source CLI and Action planning/apply support
+[Actions event policies](settings.md#actions-event-policies). Check the selected
+published package before adding this key; this source change does not update a
+caller's pin. Fine-grained/App tokens need **Administration write even for
+list/GET and plan**. Treat the plan credential as write-capable and protect its
+path accordingly; a read-only Administration token is insufficient.
+
+Only repository-owned event/actor policies with supported workflow targeting are
+managed. `target_workflows` declares include/exclude patterns; omission preserves
+existing targeting on update and uses All workflows on create. Unlisted
+objects remain unchanged, and there is no delete. GitHub Actions mode suppresses
+local created-ID writeback; record confirmed IDs from output/recovery diagnostics
+before retrying. A failed write/readback can have an uncertain effect, and
+creation is never automatically retried. Local fixtures cover active/disabled
+metadata transitions; actual enforcement and workflow execution were not tested.
+Disabled-policy storage readback does not establish event enforcement. Full
+reports identify selected policy objects; status-only Summary hides their names
+and values, while the intermediate report still follows the protected-report
+lifecycle.
+
+### Repository variables and plaintext reporting
+
+Current-source CLI and Action planning/apply accept separate [Actions repository variables](settings.md#actions-repository-variables) and [Agents repository variables](settings.md#agents-repository-variables); this does not assert support in the pinned published package. Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. The same name in both families retains separate values and resource labels. Do not store credentials in variables. No Secrets, Environment or organization variable endpoint is used, and no App grant or token-request permission is added by this implementation. Supply only the **Variables** or **Agent variables** permissions needed by the respective selected declaration.
+
+### Copilot MCP tools
+
+Current-source planning/apply support the independently declared [MCP tools toggle](settings.md#copilot-code-review-mcp-tools). Check support in the selected published package before using the key; this source change does not update the caller's pin. Full reports show native booleans at the fixed UI path; status-only Summary hides the control and values. The toggle stores configuration only, without managing MCP servers, secrets, grants, review entitlement, execution or billing. Repository administration and endpoint authorization remain caller prerequisites; exact fine-grained/App-token grants were not independently established. Apply verifies both the requested toggle and preservation of acquired sibling settings.
+
+### Copilot review effort
+
+Current-source planning/apply support the independently declared [Review effort level](settings.md#copilot-code-review-effort-level). Confirm support in the selected published package before adding the key; this source change does not update a caller's pin. Full reports use string choices at the UI path; status-only output hides them. Default means the API's observable configured-null state and is not proof of a cleared hidden override. Unavailable or unsupported effort observations fail rather than falling back. The existing Copilot endpoint credential and review-entitlement boundaries below apply equally; no permission, license or review is created.
+
+### Copilot custom instructions
+
+Current-source planning/apply support the [Use custom instructions toggle](settings.md#copilot-code-review-custom-instructions). Check that the selected published package supports the key before adding it to a declaration; this source addition does not update the caller's pin. The API stores only configuration, not Copilot access or review activation. No instructions file, review request, workflow/token grant or license is created. Exact App-token permission grants and instruction consumption were not verified by the owner-authenticated storage probe. Full reports show native booleans; the existing status-only lifecycle hides the control and values in its published Summary.
+
 ## Consumer files
 
 The [copyable PR/main examples](../examples/github-actions/README.md) need two workflow files plus `.github/settings.yml`. No caller script, root `action.yml` or copied `action/` directory is required.
@@ -84,6 +122,9 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
+| Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
+| Agents repository variables (current source) | Repository Agent variables read for selected names | Repository Agent variables write, including fresh read and exact readback |
+| Actions event policies (current source) | Administration **write**, including list/GET, export and plan ([official API](https://docs.github.com/en/rest/actions/policies)) | Administration write, complete preflight, fresh detail guard and independent acknowledgment/readback |
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
 | Actions cache size eviction limit | Actions read | Administration write plus Actions read for preflight/readback |
@@ -250,3 +291,13 @@ Complete family reads require Administration read plus applicable actor authoriz
 [Pages configuration](settings.md#pages-configuration) through validate/plan/apply and UI-named Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Existing caller grants and Action inputs are unchanged; no export input exists. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Complete Source intent creates missing sites; explicit deploy-from-branch with exact `branch: none` deletes them. Partial creation intent and deletion conflicts fail. Confirmed creation remains reported if an optional follow-up fails. Site visibility is not managed.
 
 The Summary shares Actions workflow-permission and contributor-approval, Security and Pages display paths and choices with CLI plans. Private plan transport fields retain their internal identities; these are not public YAML field names.
+
+### Persistent pull request limits
+
+The Action accepts the same optional [Pull request limits declaration](settings.md#persistent-pull-request-limits)
+as the CLI, under `repository.settings.interaction_limits.pull_request_limits`.
+Its token must already authorize the administrator-only creation-cap endpoint.
+Detailed plans/Summaries retain the three distinct UI controls and native values;
+status-only reports hide them. Omitted controls, temporary restrictions and
+exemptions remain unmanaged. A failed post-PATCH confirmation reports possible
+applied effects without retrying the write or rolling back earlier operations.
