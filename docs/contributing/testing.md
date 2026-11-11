@@ -206,8 +206,14 @@ Examples and active main callers use the same single-job apply pattern: three `u
 The [shared Python tests](../../.github/scripts/test_release_version.py) exercise version precedence, publication-order selection, complete frozen Git ranges and retry identity. The shared [unit-test Action](../../.github/actions/unit-test/action.yml) runs them in both PR Screening and main CI, alongside the release CI Python tests and offline recovery fixtures. There is no dedicated Python-test workflow. Run them locally when changing the resolver or its tests:
 
 ```sh
-python3 -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
+python3 -B -m unittest discover -s .github/scripts -p 'test_release_version.py' -q
 ```
+
+Python test commands disable bytecode generation so imports do not leave untracked
+`__pycache__` files before the native build. The
+[clean-build regression](../../tests/github-actions/unit_test_action_test.go)
+executes both unittest commands with importing fixtures and verifies the compiled
+binary's revision and `vcs.modified=false` metadata.
 
 The [Go metadata tests](../../scripts/release-metadata/main_test.go) cover categories and formal compatibility markers from committed messages, escaped text, and fixed Git boundaries. The [publisher fixtures](../../tests/release.sh) compare the complete generated body from fixture commits, reject PR metadata and native note-generation requests, and check generation failures before remote state and preservation of existing notes and artifacts during retries. These tests neither publish a release nor establish live GitHub rendering.
 
