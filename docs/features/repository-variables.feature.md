@@ -12,7 +12,7 @@ description: Upsert explicitly named non-sensitive repository variables while pr
 - Omission and `[]` select nothing and make no variable requests. Unlisted variables remain unchanged.
 - Names contain ASCII letters, digits and underscores, start with a letter or underscore, and cannot start with `GITHUB_` (case insensitive). Identity is case insensitive; canonical names are uppercase.
 - Missing/null/empty values fail locally. The Actions live probe rejected an empty value with HTTP 422; no whitespace-trimming restriction is inferred. Values are plaintext and must contain only non-sensitive information. No secret detection or masking is promised.
-- Only repository Actions and Agents variables are supported. Secrets, Environment and organization variables are excluded. There is no delete or rename declaration.
+- This feature covers repository Actions and Agents variables. [Environment variables](environments.feature.md#selected-environment-variables) have separate scoped ownership; secrets and organization variables are excluded. There is no delete or rename declaration.
 
 ### Rule: Read selected names and verify writes
 

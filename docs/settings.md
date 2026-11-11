@@ -377,7 +377,7 @@ Both `name` and nonempty string `value` are required. Names contain only ASCII l
 
 Plan reads each selected name individually and shows creates or value updates. Apply reads fresh state, creates absent names with POST, updates changed values with value-only PATCH, skips equal values, and requires exact individual GET readback after a mutation. Only GET 404 means absent under the caller-permissions precondition. Other failed/incomplete reads fail. Mutations and verification failures can have remote effects; earlier writes remain applied, without rollback, retry or concurrency protection.
 
-Ordinary export does not read variables. Repeat `export --variable NAME` to acquire only known non-sensitive names by individual GET. A selected missing name fails before saving. Variables are **plaintext**: YAML, exported files, detailed plans and Summary can contain their values. Never put secrets or credentials in variables; the tool does not classify or mask values. Secrets, Environment and organization variables are outside these repository-variable features. [Agents variables](#agents-repository-variables) have a separate declaration and export selection; Actions selections never access Agents endpoints.
+Ordinary export does not read variables. Repeat `export --variable NAME` to acquire only known non-sensitive names by individual GET. A selected missing name fails before saving. Variables are **plaintext**: YAML, exported files, detailed plans and Summary can contain their values. Never put secrets or credentials in variables; the tool does not classify or mask values. Secrets and organization variables are outside these repository-variable features. [Environment variables](#environment-variables) have separate scoped selection. [Agents variables](#agents-repository-variables) have a separate declaration and export selection; Actions selections never access Agents endpoints.
 
 GitHub's [Variables REST API](https://docs.github.com/en/rest/actions/variables) requires repository Variables read for reads and write for mutations with fine-grained/App tokens. An empty-value create was rejected with HTTP 422 (`Variable value cannot be empty.`); validation rejects empty desired values before requests. No whitespace-trimming rule is inferred. GitHub enforces its [variable limits](https://docs.github.com/en/actions/reference/workflows-and-actions/variables#limits-for-configuration-variables); server rejections are errors. No permission is granted automatically. Free/personal/public UI eligibility and API persistence were observed separately; this is not a runtime entitlement gate. See the [behavior specification](features/repository-variables.feature.md).
 
@@ -869,7 +869,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 
 ## Environments
 
-`repository.settings.environments` selects whole supported objects by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Omission/`[]` selects nothing; unlisted Environments are never deleted. Deletion/rename markers, secrets, variables and custom protection apps are unsupported.
+`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Omission/`[]` selects nothing; unlisted Environments are never deleted. Deletion/rename markers, secrets and custom protection apps are unsupported. Selected non-sensitive variables have the separate ownership described below.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -888,7 +888,7 @@ repository:
           - {ref_type: tag, name_pattern: 'v*'}
 ```
 
-Omitted built-in fields are omitted from PUT on create/update. GitHub controls their result; this promises neither preservation nor reset. Name-only intent sends an empty PUT, not an existence assertion. Plan marks omitted outcomes API-controlled instead of inventing defaults; a partial request can remain update intent even when current visible values look equal.
+For entries selecting a policy, omitted built-in fields are omitted from PUT on create/update. GitHub controls their result; this promises neither preservation nor reset. Name-only intent sends an empty PUT, not an existence assertion. Plan marks omitted outcomes API-controlled instead of inventing defaults; a partial request can remain update intent even when current visible values look equal.
 
 `deployment_protection_rules` contains optional `wait_timer` (0–43200 minutes), up to six unique `required_reviewers` (each `{person: positive-id}` or `{team: positive-id}`), `prevent_self_review` and `allow_administrators_to_bypass_configured_protection_rules`. True prevent-self-review cannot accompany an explicitly empty reviewer set. No null is accepted. Reviewer eligibility, grants and entitlement remain GitHub prerequisites; principals are not invited.
 
@@ -900,7 +900,31 @@ Reads require complete inventory, built-in/custom-protection details and typed p
 
 Administrator bypass is a real writable setting. Export requires/retains its complete boolean, even false. A prior temporary public-Environment experiment confirmed explicit false/true and retained preceding values on omission with other members fixed; this is not a platform-wide omission or entitlement guarantee. No default true is inserted.
 
-`export --environments` includes complete supported policy and active selected patterns without Environment/pattern IDs; ordinary export adds no Environment permissions. Existing Actions read, Administration write, custom protection visibility and account eligibility are required. See [Environment behavior](features/environments.feature.md) and [mapping](contributing/ui-environments-mapping.md).
+`export --environments` includes complete supported policy and active selected patterns without Environment/pattern IDs or variables; ordinary export adds no Environment permissions. Existing Actions read, Administration write, custom protection visibility and account eligibility are required. See [Environment behavior](features/environments.feature.md) and [mapping](contributing/ui-environments-mapping.md).
+
+### Environment variables
+
+`repository.settings.environments[].variables` selects explicit non-sensitive values in **Settings → Environments → the selected Environment → Environment variables**:
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    environments:
+      - name: production
+        variables:
+          - {name: DISPLAY_NAME, value: 'Production'}
+```
+
+The [variable name/value rules](#actions-repository-variables) apply: canonical uppercase names, unique ignoring ASCII case within each Environment, required nonempty string values, no delete or rename, and no changes to unlisted variables. The same name in different Environments or repository variable families remains independent. Omitted `variables` and `variables: []` make no variable requests.
+
+An entry containing `name` and `variables` alone selects **only variables**, including when the variable list is empty. It never sends an Environment policy PUT, changes protection or secrets, or creates a missing Environment implicitly. A nonempty variable selection requires that Environment to exist. To manage policy and variables together, include the desired policy controls in the same entry; policy upserts run first, then selected variable upserts. Existing name-only entries still select the ordinary empty-body policy upsert. Declared policy fields retain the API-controlled omission behavior above; adding variables does not make those omissions preservation guarantees.
+
+Plan reads selected names only. When the same plan explicitly creates a missing Environment policy, its selected variables are shown as creates without requesting nonexistent variable endpoints. Apply checks the selected Environment identity, reads each variable fresh, creates an absent variable, updates a changed value, skips equality and verifies independent readback. Writes run in stable Environment/name order. Failed reads do not become empty state; later failures stop execution without rolling back earlier writes, and a failed write or verification can have uncertain effects.
+
+Repeat `export --environment-variable ENVIRONMENT NAME` for each known non-sensitive value. Ordinary export and `--environments` never discover or read variables. Missing Environments, absent selected variables, incomplete responses and read failures prevent saving. This flag composes with policy export without inventing policy intent for variable-only selections. Values are **plaintext** in YAML, exports, detailed plans, reports and Summary. Never use variables for secrets or credentials.
+
+The [Environment Variables REST API](https://docs.github.com/en/rest/actions/variables#get-an-environment-variable) uses name-addressed `/repos/{owner}/{repo}/environments/{environment_name}/variables` endpoints. Fine-grained/App tokens need **Environments** read for variables and write for mutations, plus **Actions** read for the Environment identity check. No access is granted automatically. UI creation/update/deletion and API persistence were verified on a Free, personally owned public test repository on 2026-11-11; both rejected an empty value. This is bounded adoption evidence, not a runtime entitlement check or proof of workflow consumption. See the [behavior specification](features/environments.feature.md#selected-environment-variables).
 
 ### Environment deployment mode observation normalization
 
@@ -916,7 +940,7 @@ Omitted mode stays omitted from PUT. Its server-selected result is neither prese
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted. Organization settings/custom properties/forking policy, collaborator grants/invitations/team access, repository renaming/visibility/transfer/deletion, legacy branch protection, inherited Rulesets, Pages visibility, Environment deletion/rename/custom apps/secrets/variables and unadopted Actions/security controls remain outside scope. A visible GitHub control or writable API field does not adopt it. See the [architecture](contributing/architecture.md) and proposed [access design](features/repository-access.feature.md) without treating proposals as configuration.
+Only the listed UI controls are accepted. Organization settings/custom properties/forking policy, collaborator grants/invitations/team access, repository renaming/visibility/transfer/deletion, legacy branch protection, inherited Rulesets, Pages visibility, Environment deletion/rename/custom apps/secrets and unadopted Actions/security controls remain outside scope. A visible GitHub control or writable API field does not adopt it. See the [architecture](contributing/architecture.md) and proposed [access design](features/repository-access.feature.md) without treating proposals as configuration.
 
 ## Pages configuration
 

@@ -21,3 +21,7 @@ func variableLine(path string, change settings.VariableChange) string {
 	}
 	return fmt.Sprintf("%s value: %q → %q", prefix, *before, after)
 }
+
+func EnvironmentVariableLine(change settings.EnvironmentVariableChange) string {
+	return variableLine(fmt.Sprintf("repository.settings.environments[%q].variables", change.Environment), change.Change)
+}

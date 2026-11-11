@@ -18,7 +18,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Repository variables](repository-variables.feature.md) | Manage selected non-sensitive Actions repository variables. |
 | [Labels](labels.feature.md) | Manage selected label objects by ID. |
 | [Rulesets](rulesets.feature.md) | Manage selected repository rulesets. |
-| [Environments](environments.feature.md) | Manage supported named environment policies. |
+| [Environments](environments.feature.md) | Manage supported named environment policies and explicitly selected non-sensitive variables. |
 | [GitHub Actions](actions.feature.md) | Operate the public composite Action. |
 | [Actions event policies](actions-event-policies.feature.md) | Manage listed repository-owned event policies and workflow targets without implicit deletion. |
 | [Actions execution](actions-execution-policy.feature.md) | Manage repository Actions policy. |

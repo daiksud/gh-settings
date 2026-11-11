@@ -2,9 +2,9 @@
 
 ## Environment export
 
-`gh settings export --environments` includes all supported named Environment policies and composes with other export options. It requires complete Environment/custom-protection reads and preserves the existing output-file safety contract. Ordinary export does not read Environments.
+`gh settings export --environments` includes all supported named Environment policies, never variables, and composes with other export options. It requires complete Environment/custom-protection reads and preserves the existing output-file safety contract. Ordinary export does not read Environments.
 
-`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); names select ordinary create-or-update, not numeric IDs. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries send an empty upsert body. Omitted built-in values remain API-controlled; the client promises neither preservation nor reset. Inspect plan before apply.
+`validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); policy-selected names select ordinary create-or-update, not numeric IDs; [variable-only entries](#environment-variable-commands) do not upsert policy. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries send an empty upsert body. Omitted built-in values remain API-controlled; the client promises neither preservation nor reset. Inspect plan before apply.
 
 Environment deployment-mode observations follow the [raw-pair contract](settings.md#environment-deployment-mode-observation-normalization). Export warns only after complete selected acquisition, in folded-name order. Detailed plan/Summary label all Environment before-objects as effective policy and add a scoped normalized/write-required UI decision only for explicit mode intent. Status-only hides names and pair values. Omitted mode sends no field, retains API-controlled outcomes and emits no unowned warning; explicit mode requires canonical raw confirmation, while unknown-mode pattern intent requires explicit Selected.
 
@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--pull-request-limits] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--pull-request-limits] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -101,6 +101,12 @@ Plan shows native booleans at `repository.settings.copilot.code_review.allow_cop
 `export --copilot-review-effort` selects only the [Review effort level](settings.md#copilot-code-review-effort-level). It composes with `--copilot-custom-instructions`, `--copilot-mcp` and other export options; duplicate flags fail before target/API/file work. Complete selected acquisition is required before saving, and a failure preserves the existing file.
 
 Plan and detailed Action reports show `default`, `lite` or `balanced` at `repository.settings.copilot.code_review.review_effort_level`. Default is an observable configured-null state, not proof that GitHub erased an unavailable saved override. Apply reads fresh availability, skips observable matches, sends only the declared effort when needed and independently verifies readback. Unsupported or unavailable observations are errors, never successful fallback. This command neither enables nor requests Copilot reviews.
+
+## Environment variable commands
+
+`export --environment-variable ENVIRONMENT NAME` selects one known non-sensitive [Environment variable](settings.md#environment-variables). Repeat the flag for additional Environment/name pairs; quote Environment names containing spaces. Names validate before target/API work, with duplicate pairs rejected using folded Environment identity and uppercase variable identity. Ordinary export and `--environments` make no variable requests. Every selected value must be acquired before the output file is saved.
+
+Variable-only declarations do not upsert an Environment or touch its policy, patterns or secrets. A missing Environment fails. Combined policy/variable declarations apply selected policy first, then variables in stable Environment/name order, before repository Actions and Agents variables. Earlier successful writes remain applied on later failure. Values are plaintext in detailed output; status-only Summary hides details. No bulk selection, deletion, rename or ID writeback is supported.
 
 ## Repository variables commands
 
@@ -206,6 +212,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
+| `repository.settings.environments[].variables` | After selected Environment policies, fresh selected-name GET and conditional POST/PATCH with exact GET verification. Variable-only intent sends no policy PUT. |
 | `repository.settings.actions.variables` | Stable name-order fresh individual GET, conditional POST or value-only PATCH, then exact GET verification. No unlisted deletion. |
 | `repository.settings.agents.variables` | After Actions variables, the same selected-name upsert and verification using only Agents endpoints. No unlisted deletion. |
 | `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, then public-fork approval. Each uses its adopted preflight/readback contract. |

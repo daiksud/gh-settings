@@ -188,5 +188,35 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Environments = &environments
 	}
+	if len(source.EnvironmentVariables) != 0 {
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Environments == nil {
+			entries := []uimodel.Environment{}
+			result.Settings.Environments = &entries
+		}
+		for _, scoped := range source.EnvironmentVariables {
+			if _, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: scoped.Environment}}); err != nil {
+				return uimodel.Repository{}, err
+			}
+			values := variableValuesUI(scoped.Variables)
+			index := -1
+			for i, entry := range *result.Settings.Environments {
+				if settings.EnvironmentIdentity(entry.Name) == settings.EnvironmentIdentity(scoped.Environment) {
+					index = i
+					break
+				}
+			}
+			if index < 0 {
+				*result.Settings.Environments = append(*result.Settings.Environments, uimodel.Environment{Name: scoped.Environment, Variables: &values})
+			} else {
+				if (*result.Settings.Environments)[index].Variables != nil {
+					return uimodel.Repository{}, fmt.Errorf("duplicate environment variable export scope %q", scoped.Environment)
+				}
+				(*result.Settings.Environments)[index].Variables = &values
+			}
+		}
+	}
 	return result, nil
 }

@@ -12,6 +12,7 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	EnvironmentVariables                              []settings.EnvironmentVariableSelection
 	IncludeActionsPolicies                            bool
 	IncludeCopilotReviewEffort                        bool
 	IncludeCopilotInstructions                        bool
@@ -63,6 +64,10 @@ func Export(checkout ExportCheckout, read Reader) error {
 	selectedAgentsNames, err := settings.CanonicalVariableNames(checkout.AgentsVariables)
 	if err != nil {
 		return fmt.Errorf("repository.settings.agents.variables: %w", err)
+	}
+	selectedEnvironmentNames, err := settings.CanonicalEnvironmentVariableSelections(checkout.EnvironmentVariables)
+	if err != nil {
+		return fmt.Errorf("repository.settings.environments.variables: %w", err)
 	}
 	repo, err := checkout.Repository()
 	if err != nil {
@@ -490,6 +495,10 @@ func Export(checkout ExportCheckout, read Reader) error {
 	declaration.AgentsVariables, err = exportVariables(repo, selectedAgentsNames, read.AgentVariable)
 	if err != nil {
 		return fmt.Errorf("repository.settings.agents.variables: %w", err)
+	}
+	declaration.EnvironmentVariables, err = exportEnvironmentVariables(repo, selectedEnvironmentNames, read.EnvironmentVariable)
+	if err != nil {
+		return err
 	}
 	return save(declaration)
 }
