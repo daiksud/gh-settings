@@ -241,3 +241,15 @@ the existing selection. The configuration reference owns these semantics.
 ## Environment variables
 
 Environment variable intent is separate from policy declarations and comparisons, while the UI nests both under the named Environment. The workspace/UI mapping splits variable-only entries from whole-object policy upserts and merges independently selected exports without manufacturing protection intent. Settings reuses typed variable declarations and adds scoped identity; GitHub reuses private variable transport after a selected Environment identity check, without acquiring or rewriting protection. App runs selected policies before variable upserts and records both Environment and variable names in partial progress. Explicit export pairs, shared CLI/Action presentation and closed report reconstruction preserve scoped identity and plaintext-value boundaries. See the [public contract](../settings.md#environment-variables).
+
+## Pull request cap exemptions
+
+The independently selected Exemption list uses immutable login-set declarations
+and acquired User identities in settings, strict nested YAML in workspace and
+separate list methods on the existing GitHub cap client. App keeps list reads,
+export selection and authoritative reconciliation independent of scalar cap
+controls. Delete-before-add verification bounds replacement at 100 users and
+preserves retained IDs; a confirmed-removal/later-failure result remains partial
+progress. CLI and typed Action reports render one whole-list change, counted once.
+The [cap specification](../features/pull-request-limits.feature.md#selected-exemption-list)
+records fixture ownership and live-evidence limits.

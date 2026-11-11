@@ -33,6 +33,13 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	if repository.Settings != nil {
 		if page := repository.Settings.InteractionLimits; page != nil && page.PullRequestLimits != nil {
 			c := page.PullRequestLimits
+			if c.ExemptionList != nil {
+				exemptions, err := settings.NewPullRequestExemptionsDeclaration(*c.ExemptionList)
+				if err != nil {
+					return settings.Declaration{}, err
+				}
+				result.PullRequestExemptions = &exemptions
+			}
 			result.PullRequestLimits = settings.PullRequestLimitsDeclaration{Enabled: copyUIValue(c.LimitOpenPullRequestsFromUsersWithoutWriteAccess), Maximum: copyUIValue(c.MaximumOpenPullRequestsPerUser), IncludeDrafts: copyUIValue(c.CountDraftPullRequestsTowardTheLimit)}
 			if err := result.PullRequestLimits.Validate(); err != nil {
 				return settings.Declaration{}, err

@@ -42,6 +42,7 @@ type CopilotCodeReview struct {
 // InteractionLimits contains only the persistent Pull request limits controls.
 type InteractionLimits struct{ PullRequestLimits *PullRequestLimits }
 type PullRequestLimits struct {
+	ExemptionList                                    *[]string
 	LimitOpenPullRequestsFromUsersWithoutWriteAccess *bool
 	MaximumOpenPullRequestsPerUser                   *int
 	CountDraftPullRequestsTowardTheLimit             *bool
