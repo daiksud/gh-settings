@@ -28,10 +28,10 @@ workflows:
     '.github/workflows/settings-apply.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510'
-        - 'daiksud/gh-settings@0c775795b4dd7fedef7d500f248fbdd782ff211a'
+        - 'daiksud/gh-settings@29b1c0a093d100ee4d7535e077de3a6d6808343b'
     '.github/workflows/settings-pr.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'daiksud/gh-settings@0c775795b4dd7fedef7d500f248fbdd782ff211a'
+        - 'daiksud/gh-settings@29b1c0a093d100ee4d7535e077de3a6d6808343b'
 dependencies:
     'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1':
         ref: 'v7.0.1'
@@ -63,9 +63,9 @@ dependencies:
         commit: 'sha1-cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         owner_id: 44036562
         repo_id: 192625955
-    'daiksud/gh-settings@0c775795b4dd7fedef7d500f248fbdd782ff211a':
-        ref: 'v0.38.0'
-        commit: 'sha1-0c775795b4dd7fedef7d500f248fbdd782ff211a'
+    'daiksud/gh-settings@29b1c0a093d100ee4d7535e077de3a6d6808343b':
+        ref: 'v0.39.0'
+        commit: 'sha1-29b1c0a093d100ee4d7535e077de3a6d6808343b'
         owner_id: 155234749
         repo_id: 1414158260
     'jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca':

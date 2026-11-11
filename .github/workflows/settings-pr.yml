@@ -10,6 +10,6 @@ jobs:
     permissions: {contents: read}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: daiksud/gh-settings@0c775795b4dd7fedef7d500f248fbdd782ff211a # v0.38.0
+      - uses: daiksud/gh-settings@29b1c0a093d100ee4d7535e077de3a6d6808343b # v0.39.0
         with:
           command: validate
