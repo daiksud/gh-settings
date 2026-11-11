@@ -1,14 +1,14 @@
 ---
 type: Feature
-title: Named Environment policies
-description: Manage name-selected UI policies with API-controlled omissions and separately owned typed patterns.
+title: Named Environment policies and variables
+description: Manage name-selected UI policies, typed patterns and explicit non-sensitive variables with separate ownership.
 ---
 
-Status: implements named policies (#352), custom deployment branch/tag patterns (#353), and typed administrator-bypass management. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
+Status: implements named policies (#352), custom deployment branch/tag patterns (#353), typed administrator-bypass management, and selected non-sensitive variables. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
 
 ## Ownership and API-controlled omissions
 
-Public entries live under `repository.settings.environments`. Only listed names are managed. Omitted and empty collections select no objects and make no Environment requests. Names select ordinary REST create-or-update, not numeric identity. Changing a name selects another object; the old unlisted object remains. Deletion, rename, secrets, variables, deployment execution and numeric-ID writeback are outside this feature.
+Public entries live under `repository.settings.environments`. Only listed names are managed. The policy rules here apply to policy-selected entries; [variable-only entries](#selected-environment-variables) have independent ownership. Omitted and empty collections select no objects and make no Environment requests. Names select ordinary REST create-or-update, not numeric identity. Changing a name selects another object; the old unlisted object remains. Deletion, rename, secrets, deployment execution and numeric-ID writeback are outside this feature.
 
 Each listed policy owns supported settings as a whole, delegating omitted built-in request fields to GitHub rather than supplying client defaults or copying old values. Plan labels the effective before policy and displays the partial request with an API-controlled outcome warning. A partial request remains an update intent; full explicit matching requests can be no-ops. Readback verifies explicit requested values, not presumed omission outcomes. A name-only declaration sends `{}`, not a read-only existence assertion.
 
@@ -92,3 +92,29 @@ Status: implemented in current source. Release publication is a separate operati
 - Later failures preserve earlier effects, return nonzero status without success output, retain fresh scoped diagnostics and leave caller YAML unchanged. No corrective retry or rollback occurs. Confirmed canonical repeat is silent and makes no write.
 
 Test mapping: [mapping and observation](../../internal/settings/environment_ref_type_observation_test.go), [reader completeness and collisions](../../internal/github/environment_ref_type_read_test.go), [raw deletion identity](../../internal/github/environment_ref_type_delete_test.go), [Update intent and fresh confirmation](../../internal/github/environment_ref_type_update_test.go), [strict creation confirmation](../../internal/github/environment_ref_type_update_failure_test.go), [private reports](../../internal/actions/normalization_environment_ref_type_test.go), [executable export](../../tests/acceptance/normalization_environment_ref_type_test.go), [executable plan/report/apply](../../tests/acceptance/normalization_environment_ref_type_commands_test.go), [owned UI projection](../../internal/github/ui_environment_ref_type_observation_test.go), [export warnings, effective policy and failure preservation](../../internal/app/normalization_environment_ref_type_export_test.go), [scoped fresh-state warnings](../../internal/github/environment_ref_type_warning_test.go).
+
+## Selected Environment variables
+
+- Each entry may select `variables`, an array of required nonempty `name`/string `value` pairs. Variable names canonicalize to uppercase and reject duplicates within the folded Environment identity. The same name in different Environments and repository families remains independent.
+- Omitted and empty variable lists select no values. Unlisted values remain unchanged; there is no deletion or rename declaration. Values are explicitly non-sensitive plaintext, not Secrets.
+- An entry with `name` and `variables` only selects no Environment policy. It sends no policy PUT or pattern CRUD, even for an empty list. Missing Environments fail instead of being created. A name-only entry retains ordinary policy-upsert behavior; explicitly combined policy/variable intent applies the policy first.
+- Plan reads selected individual names. If the same plan explicitly creates a missing Environment policy, it shows the selected variables as creates without reading nonexistent variable endpoints. Apply checks the Environment identity, reads fresh variable state, conditionally POSTs or PATCHes and verifies an independent GET. It skips matching values. Failed Environment reads never become missing variables, and variable 404 is absence only after the Environment check succeeds.
+- Environment names are escaped as one URL segment. No unselected Environment, repository variable family or Secret is read or changed.
+- `--environment-variable ENVIRONMENT NAME` opts into each known value during export. Ordinary export and `--environments` do not discover variables. Missing, malformed, denied or incomplete selected reads preserve the destination.
+- Stable Environment/name-order execution retains prior completed writes and later unexecuted operations after failure. Failed mutations/readback may have applied; there is no rollback. Detailed output contains values, escaped in Summary; status-only output exposes no variable details.
+
+### Live adoption evidence
+
+On 2026-11-11, a disposable Environment in the Free, personally owned public `daiksud/test-gh-settings-public` repository exposed configurable Environment variables. UI create/update/delete and API create/update/readback/delete succeeded; the UI and API rejected an empty value. The pinned API version also accepted a slash-containing Environment name as one escaped path segment and value-only PATCH. Temporary variables and Environments were removed and the final Environment collection was empty. This verifies bounded UI/API availability and persistence, not workflow consumption, all credential permissions or effective protection. Automated tests use local fixtures and dummy credentials, not live mutations.
+
+### Variable test mapping
+
+| Boundary | Executable evidence |
+| --- | --- |
+| Scoped identity, selection and empty ownership | `internal/settings/environment_variables_test.go` |
+| Strict YAML, variable-only versus combined policy intent and round trip | `internal/workspace/ui_environment_variables_test.go` |
+| Escaped paths, existing-Environment guard, selected variable reads/writes and readback failures | `internal/github/environment_variables_test.go` |
+| Selected plan/export, no policy upsert and honest partial progress | `internal/app/environment_variables_test.go` |
+| Explicit export pairs and typed CLI presentation | `internal/cli/environment_variables_test.go` |
+| Closed scoped reports, escaped detailed Summary and status-only privacy | `internal/actions/environment_variables_test.go` |
+| Actual executable selection, exact requests, preservation and failure behavior | `tests/acceptance/environment_variables_test.go` |

@@ -79,7 +79,16 @@ func EnvironmentCollectionDeclaration(entries *[]uimodel.Environment) (*settings
 	if entries == nil {
 		return nil, nil
 	}
-	value, err := EnvironmentDeclarations(*entries)
+	if _, err := EnvironmentDeclarations(*entries); err != nil {
+		return nil, err
+	}
+	selected := make([]uimodel.Environment, 0, len(*entries))
+	for _, entry := range *entries {
+		if entry.Variables == nil || entry.DeploymentProtectionRules != nil || entry.DeploymentBranchesAndTags != nil || entry.DeploymentBranchOrTagRules != nil {
+			selected = append(selected, entry)
+		}
+	}
+	value, err := EnvironmentDeclarations(selected)
 	if err != nil {
 		return nil, err
 	}
@@ -187,4 +196,25 @@ func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment
 		ui.DeploymentBranchOrTagRules = &patterns
 	}
 	return ui, nil
+}
+
+// EnvironmentVariablesDeclaration splits value selection from policy ownership.
+func EnvironmentVariablesDeclaration(entries *[]uimodel.Environment) ([]settings.EnvironmentVariableDeclaration, error) {
+	if entries == nil {
+		return nil, nil
+	}
+	if _, err := EnvironmentDeclarations(*entries); err != nil {
+		return nil, err
+	}
+	var result []settings.EnvironmentVariableDeclaration
+	for _, entry := range *entries {
+		variables, err := VariablesDeclaration(entry.Variables)
+		if err != nil {
+			return nil, fmt.Errorf("environment %q variables: %w", entry.Name, err)
+		}
+		if variables != nil {
+			result = append(result, settings.EnvironmentVariableDeclaration{Environment: entry.Name, Variables: *variables})
+		}
+	}
+	return result, nil
 }

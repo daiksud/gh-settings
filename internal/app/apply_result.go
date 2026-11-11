@@ -70,6 +70,7 @@ const (
 	ActionsPoliciesRead
 	ActionsEventPolicyCreate
 	ActionsEventPolicyUpdate
+	EnvironmentVariableUpsert
 )
 
 type ApplyOperationStatus uint8

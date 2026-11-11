@@ -45,6 +45,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		return PlanResult{}, &PlanError{Stage: "target-failure", Err: err}
 	}
 	var comparison settings.Comparison
+	createdEnvironments := map[string]bool{}
 	if desired.Repository.Archived != nil {
 		state, err := read.Archive(repo)
 		if err == nil {
@@ -201,6 +202,29 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		}
 		comparison.Managed++
 		comparison.Environments = changes
+		for _, change := range changes {
+			if change.Operation() == "create" {
+				createdEnvironments[settings.EnvironmentIdentity(change.Name())] = true
+			}
+		}
+	}
+	if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
+		comparison.Managed++
+	}
+	for _, selected := range desired.EnvironmentVariables {
+		changes, err := planVariables(repo, selected.Variables, func(repo repository.Repository, name string) (settings.VariableObservation, error) {
+			if createdEnvironments[settings.EnvironmentIdentity(selected.Environment)] {
+				return settings.NewAbsentVariableObservation(), nil
+			}
+			return read.EnvironmentVariable(repo, selected.Environment, name)
+		})
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments.variables", Target: repo, Err: err}
+		}
+
+		for _, change := range changes {
+			comparison.EnvironmentVariables = append(comparison.EnvironmentVariables, settings.EnvironmentVariableChange{Environment: selected.Environment, Change: change})
+		}
 	}
 	if !desired.Actions.ExecutionEmpty() {
 		observed, err := read.Actions(repo, !desired.Actions.SelectedActions.Empty())

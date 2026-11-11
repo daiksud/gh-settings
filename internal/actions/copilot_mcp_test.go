@@ -70,7 +70,7 @@ func TestCopilotMCPPlanReport(t *testing.T) {
 }
 
 func TestCopilotMCPManagedBound(t *testing.T) {
-	maxManaged := settings.PullRequestLimitsFieldCount + 3 + settings.RepositoryFieldCount() + 7 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount
+	maxManaged := settings.PullRequestLimitsFieldCount + 3 + settings.RepositoryFieldCount() + 8 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount
 	report := PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: maxManaged, Changes: []PlanChange{}}
 	if _, err := validatePlanReport(report, "owner/current"); err != nil {
 		t.Fatal("maximum declared scalar count rejected", err)

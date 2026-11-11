@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	EnvironmentVariables    []EnvironmentVariablePlanChange   `json:"environment_variables,omitempty"`
 	ActionsPolicies         ActionsEventPolicyPlanChanges     `json:"actions_policies,omitempty"`
 	CopilotReviewEffort     []PlanChange                      `json:"copilot_review_effort,omitempty"`
 	CopilotInstructions     []PlanChange                      `json:"copilot_custom_instructions,omitempty"`
@@ -121,6 +122,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.Variables {
 		before, after := change.Values()
 		report.Variables = append(report.Variables, VariablePlanChange{Name: change.Name(), Before: before, After: &after})
+	}
+	for _, change := range result.Comparison.EnvironmentVariables {
+		before, after := change.Change.Values()
+		report.EnvironmentVariables = append(report.EnvironmentVariables, EnvironmentVariablePlanChange{Environment: change.Environment, Name: change.Change.Name(), Before: before, After: &after})
 	}
 	for _, change := range result.Comparison.AgentsVariables {
 		before, after := change.Values()

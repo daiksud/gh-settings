@@ -16,6 +16,7 @@ var failureResources = []string{
 	settings.CopilotMCPPath,
 	"repository.settings.actions.variables",
 	"repository.settings.agents.variables",
+	"repository.settings.environments.variables",
 	"repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests",
 
 	settings.CodeQLConfigurationPath,
