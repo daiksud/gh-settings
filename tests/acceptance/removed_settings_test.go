@@ -31,7 +31,7 @@ func TestRemovedOrganizationSettingsRejectBeforeRemoteWork(t *testing.T) {
 		before := fixture.reads.Load()
 		for _, command := range []string{"validate", "plan", "apply"} {
 			r, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{command}, false)
-			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || (!strings.Contains(r.stderr.String(), "unknown") || !strings.Contains(r.stderr.String(), unknownKey)) {
+			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || (!strings.Contains(withoutExportInfo(r.stderr.String()), "unknown") || !strings.Contains(withoutExportInfo(r.stderr.String()), unknownKey)) {
 				t.Fatalf("%s %s: error=%v stderr=%s", command, body, err, r.stderr.String())
 			}
 		}

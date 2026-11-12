@@ -35,7 +35,7 @@ gh settings export
 
 ### 2. Edit the declaration
 
-Edit the saved `.github/settings.yml`. The default export covers the standard resources; other supported groups require explicit export options. See the [export reference](docs/commands.md#export-behavior). Remove any resources or fields you do not want to manage. For example:
+Edit the saved `.github/settings.yml`. The default export covers standard resources and automatically observes supported Security families. Unavailable Security families produce info and are omitted initially or retained from an existing declaration; other supported groups require explicit export options. See the [export reference](docs/commands.md#export-behavior). Remove any resources or fields you do not want to manage. For example:
 
 ```yaml
 version: daiksud/gh-settings@v0

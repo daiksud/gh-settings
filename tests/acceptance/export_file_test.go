@@ -57,7 +57,7 @@ func TestExportSavesAtCheckoutRoot(t *testing.T) {
 			}},
 		},
 	}
-	if !reflect.DeepEqual(actual, want) || result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+	if !reflect.DeepEqual(actual, want) || result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("YAML=%#v execution=%v stdout=%q stderr=%q", actual, result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	if _, err := os.Lstat(filepath.Join(subdir, ".github")); !os.IsNotExist(err) {
@@ -132,7 +132,7 @@ func TestExportRejectsUnsafeDestination(t *testing.T) {
 				t.Fatal(err)
 			}
 			exit, ok := result.runErr.(*exec.ExitError)
-			if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), ".github") {
+			if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), ".github") {
 				t.Fatalf("execution=%v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 			}
 			after, err := os.Lstat(observed)
@@ -170,7 +170,7 @@ func TestExportReportsWriteFailure(t *testing.T) {
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeSettingsFile(fixture.work, "existing configuration\n"); err != nil {
+	if err := writeSettingsFile(fixture.work, "version: daiksud/gh-settings@v0\nrepository: {}\n"); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)

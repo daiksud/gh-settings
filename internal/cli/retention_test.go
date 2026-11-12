@@ -16,7 +16,7 @@ func TestRetentionExportOptInAndComposition(t *testing.T) {
 	}{
 		{[]string{"export"}, true, cli.ExportOptions{}},
 		{[]string{"export", "--retention"}, true, cli.ExportOptions{Retention: true}},
-		{[]string{"export", "--workflow-permissions", "--retention", "--actions", "--rulesets", "--security", "secret-scanning", "--security", "private-vulnerability-reporting"}, true, cli.ExportOptions{Rulesets: true, Actions: true, WorkflowPermissions: true, SecretScanning: true, PrivateReporting: true, Retention: true}},
+		{[]string{"export", "--workflow-permissions", "--retention", "--actions", "--rulesets"}, true, cli.ExportOptions{Rulesets: true, Actions: true, WorkflowPermissions: true, Retention: true}},
 		{[]string{"export", "--retention", "--retention"}, false, cli.ExportOptions{}},
 	} {
 		called := false

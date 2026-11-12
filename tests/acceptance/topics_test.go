@@ -78,7 +78,7 @@ func TestTopicsPlanApplyAcceptance(t *testing.T) {
 				t.Fatal(err)
 			}
 			if test.errorText != "" {
-				if result.runErr == nil || !strings.Contains(result.stderr.String(), test.errorText) || result.stdout.Len() != 0 {
+				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), test.errorText) || result.stdout.Len() != 0 {
 					t.Fatalf("result=%+v", result)
 				}
 			} else {
@@ -86,7 +86,7 @@ func TestTopicsPlanApplyAcceptance(t *testing.T) {
 				if test.command == "apply" && test.input != "" {
 					want = "Applied repository settings.\n"
 				}
-				if result.runErr != nil || result.stdout.String() != want || result.stderr.Len() != 0 {
+				if result.runErr != nil || result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String()) {
 					t.Fatalf("result=%+v want=%q", result, want)
 				}
 			}
@@ -175,7 +175,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			before := "previous configuration\n"
+			before := "version: daiksud/gh-settings@v0\nrepository: {}\n"
 			if err := writeSettingsFile(fixture.work, before); err != nil {
 				t.Fatal(err)
 			}
@@ -184,7 +184,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 				t.Fatal(err)
 			}
 			if fail {
-				if result.runErr == nil || !strings.Contains(result.stderr.String(), "403") {
+				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
 					t.Fatalf("result=%+v", result)
 				}
 				if err := checkSettingsUnchanged(fixture.work, before); err != nil {
@@ -192,7 +192,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 				}
 				return
 			}
-			if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+			if result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 				t.Fatalf("result=%+v", result)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
@@ -219,7 +219,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 			}
 			report := filepath.Join(fixture.root, "topics.json")
 			result, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "plan", report}, false)
-			if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+			if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 				t.Fatalf("plan=%+v error=%v", result, err)
 			}
 			data, err = os.ReadFile(report)
@@ -236,7 +236,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current/topics"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/topics"}) {
 				t.Fatalf("requests=%v", paths)
 			}
 		})

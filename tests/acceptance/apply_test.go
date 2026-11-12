@@ -168,12 +168,12 @@ func TestApplyAcceptance(t *testing.T) {
 				if test.noAPI {
 					want = "No managed repository settings.\n"
 				}
-				if result.runErr != nil || result.stdout.String() != want || result.stderr.Len() != 0 {
+				if result.runErr != nil || result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String()) {
 					t.Fatalf("execution=%v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 				}
 			} else {
 				exit, ok := result.runErr.(*exec.ExitError)
-				if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), test.wantError) {
+				if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), test.wantError) {
 					t.Fatalf("execution=%v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 				}
 			}
@@ -242,7 +242,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		t.Fatal(err)
 	}
 	exported, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
-	if err != nil || exported.runErr != nil || exported.stdout.Len() != 0 || exported.stderr.Len() != 0 {
+	if err != nil || exported.runErr != nil || exported.stdout.Len() != 0 || hasNonInfoDiagnostic(exported.stderr.String()) {
 		t.Fatalf("export=%v result=%+v", err, exported)
 	}
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
@@ -256,7 +256,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	for _, command := range []string{"validate", "plan"} {
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
-		if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+		if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 			t.Fatalf("%s=%v result=%+v", command, err, result)
 		}
 		want := ""
@@ -272,12 +272,12 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	remote["has_issues"] = false // Even if already equal after plan, apply must send the declaration.
 	mu.Unlock()
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || result.stderr.Len() != 0 {
+	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("apply=%v result=%+v", err, result)
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

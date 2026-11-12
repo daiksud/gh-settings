@@ -107,10 +107,10 @@ func TestCopilotMCPProcess(t *testing.T) {
 	run := func(args []string, want string, fail bool) (string, string) {
 		t.Helper()
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || result.stderr.Len() != 0) || fail && result.stdout.Len() != 0 {
+		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) || fail && result.stdout.Len() != 0 {
 			t.Fatalf("args=%v exit=%v stdout=%q stderr=%q err=%v", args, result.runErr, result.stdout.String(), result.stderr.String(), err)
 		}
-		return result.stdout.String(), result.stderr.String()
+		return result.stdout.String(), withoutExportInfo(result.stderr.String())
 	}
 	expect := func(want ...string) {
 		t.Helper()

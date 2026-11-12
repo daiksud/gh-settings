@@ -2,35 +2,22 @@ package cli_test
 
 import (
 	"bytes"
-	"reflect"
-	"testing"
-
 	"github.com/daiksud/gh-settings/internal/cli"
+	"strings"
+	"testing"
 )
 
-func TestSecurityExportSelectionIsExplicitAndComposable(t *testing.T) {
-	for _, test := range []struct {
-		args  []string
-		valid bool
-		want  cli.ExportOptions
-	}{
-		{[]string{"export"}, true, cli.ExportOptions{}},
-		{[]string{"export", "--security", "secret-scanning"}, true, cli.ExportOptions{SecretScanning: true}},
-		{[]string{"export", "--security", "secret-scanning", "--actions", "--rulesets", "--workflow-permissions"}, true, cli.ExportOptions{SecretScanning: true, Actions: true, Rulesets: true, WorkflowPermissions: true}},
-		{[]string{"export", "--rulesets", "--security", "secret-scanning", "--actions"}, true, cli.ExportOptions{SecretScanning: true, Actions: true, Rulesets: true}},
-		{[]string{"export", "--security"}, false, cli.ExportOptions{}},
-		{[]string{"export", "--security", "all"}, false, cli.ExportOptions{}},
-		{[]string{"export", "--security", "dependabot"}, true, cli.ExportOptions{Dependabot: true}},
-		{[]string{"export", "--security", "dependabot", "--security", "secret-scanning"}, true, cli.ExportOptions{Dependabot: true, SecretScanning: true}},
-		{[]string{"export", "--security", "dependabot", "--security", "dependabot"}, false, cli.ExportOptions{}},
-		{[]string{"export", "--security", "secret-scanning", "--security", "secret-scanning"}, false, cli.ExportOptions{}},
-	} {
+func TestSecuritySelectionRemovedBeforeExport(t *testing.T) {
+	for _, family := range []string{"", "dependabot", "secret-scanning", "codeql-configuration", "codeql-default-setup", "ai-scan-pull-requests", "private-vulnerability-reporting", "immutable-releases", "all"} {
+		args := []string{"export", "--security"}
+		if family != "" {
+			args = append(args, family)
+		}
 		called := false
-		var got cli.ExportOptions
-		var out, errOut bytes.Buffer
-		status := cli.Run(test.args, &out, &errOut, "dev", cli.Operations{Export: func(o cli.ExportOptions) error { called = true; got = o; return nil }})
-		if (status == 0) != test.valid || called != test.valid || test.valid && !reflect.DeepEqual(got, test.want) {
-			t.Fatal(test.args, status, called, got, test.want, errOut.String())
+		var out, errout bytes.Buffer
+		status := cli.Run(args, &out, &errout, "dev", cli.Operations{Export: func(cli.ExportOptions) error { called = true; return nil }})
+		if status != 1 || called || !strings.Contains(errout.String(), "observes supported Security families automatically") {
+			t.Fatal(args, status, called, errout.String())
 		}
 	}
 }

@@ -74,7 +74,7 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 				args = append(args, "--no-writeback")
 			}
 			first, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, args, false)
-			if err != nil || first.runErr != nil || first.stderr.Len() != 0 || !strings.Contains(first.stdout.String(), `Created repository.settings.rulesets "new": id 17`) {
+			if err != nil || first.runErr != nil || hasNonInfoDiagnostic(first.stderr.String()) || !strings.Contains(first.stdout.String(), `Created repository.settings.rulesets "new": id 17`) {
 				t.Fatal(first, err)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
@@ -95,10 +95,10 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 				t.Fatal(err)
 			}
 			if mode == "writeback" {
-				if second.runErr != nil || second.stderr.Len() != 0 {
+				if second.runErr != nil || hasNonInfoDiagnostic(second.stderr.String()) {
 					t.Fatal(second)
 				}
-			} else if second.runErr == nil || !strings.Contains(second.stderr.String(), "specify id: 17") {
+			} else if second.runErr == nil || !strings.Contains(withoutExportInfo(second.stderr.String()), "specify id: 17") {
 				t.Fatal("name collision adopted", second)
 			}
 			mu.Lock()
@@ -165,7 +165,7 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply"}, false)
-			if err != nil || result.runErr == nil || !strings.Contains(result.stderr.String(), "id 27") {
+			if err != nil || result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "id 27") {
 				t.Fatal(result, err)
 			}
 			data, err := os.ReadFile(path)
@@ -174,15 +174,15 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 			}
 			switch mode {
 			case "local conflict":
-				if string(data) != input+"# concurrent edit\n" || !strings.Contains(result.stderr.String(), "local ID writeback failed") {
+				if string(data) != input+"# concurrent edit\n" || !strings.Contains(withoutExportInfo(result.stderr.String()), "local ID writeback failed") {
 					t.Fatal(string(data), result)
 				}
 			case "later remote failure":
-				if !strings.Contains(string(data), "id: 27") || !strings.Contains(result.stderr.String(), "403") {
+				if !strings.Contains(string(data), "id: 27") || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
 					t.Fatal(string(data), result)
 				}
 			case "unverified response":
-				if string(data) != input || !strings.Contains(result.stderr.String(), "writes may already have applied") {
+				if string(data) != input || !strings.Contains(withoutExportInfo(result.stderr.String()), "writes may already have applied") {
 					t.Fatal("unverified response recorded as success", string(data), result)
 				}
 			}

@@ -6,6 +6,10 @@ description: Separate repository security intent from permission, entitlement, a
 
 ## Status
 
+The original per-family export selection and fail-fast export policy is superseded
+by the later automatic readable export decision below. Strict observations for
+plan/apply and product-switch exclusions remain.
+
 Accepted design for [#343](https://github.com/daiksud/gh-settings/issues/343). Current source implements Secret scanning (#345), private vulnerability reporting (#347), Dependabot (#344), and the separately documented CodeQL and AI Scan controls. Product-wide Code Security and Advanced Security enablement (#346) is excluded under the later UI-scope decision below; it is not pending implementation.
 
 ## Context
@@ -82,3 +86,23 @@ Required permissions are a precondition; the response still supplies no owner
 enforcement metadata. Its owner-enforcement gate and endpoint-specific
 update verification remain distinct from Dependabot pause metadata. Neither
 contract changes other security endpoints' missing/denied-response handling.
+
+## Later automatic readable export decision
+
+On 2026-11-12 the user replaced opt-in export and privilege compatibility with
+automatic observation of supported Security settings: export readable values,
+omit unreadable values, emit info and continue independent acquisition. The old
+`--security FAMILY` interface is removed under the v0.x compatibility policy.
+
+Unknown is not false. First export omits unavailable families; re-export retains
+valid existing intent for them. Bound diagnostics identify the family and reason
+without API bodies/messages/URLs or credentials. Contradictory CodeQL retained
+and observed declarations keep the prior coherent pair with info. Fundamental
+target/core-read/file/diagnostic IO failures remain errors. Existing malformed
+files or concurrent local edits are preserved by snapshot guards.
+
+This supersedes the selection/partial-result clauses above, not strict plan/apply
+reads, endpoint-specific 404 semantics, existing acquired-value normalization,
+product adoption scope or mutation permissions. Other resource opt-ins retain
+their existing scope. The [current behavior specification](../features/readable-security-export.feature.md)
+owns acceptance. No live setting, scan, permission or release is changed.

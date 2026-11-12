@@ -73,7 +73,7 @@ func TestCodeQLDefaultSetupExportPlanApply(t *testing.T) {
 		}
 		t.Error("unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/code-scanning/default-setup")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestCodeQLDefaultSetupExportPlanApply(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -94,10 +94,10 @@ func TestCodeQLDefaultSetupExportPlanApply(t *testing.T) {
 	mu.Lock()
 	n := reads
 	mu.Unlock()
-	if n != 0 {
-		t.Fatal("ordinary export acquired CodeQL")
+	if n == 0 {
+		t.Fatal("ordinary export did not acquire CodeQL")
 	}
-	run("export", "--security", "codeql-default-setup")
+	run("export")
 	run("validate")
 	data, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if !strings.Contains(string(data), "default_setup: false") {

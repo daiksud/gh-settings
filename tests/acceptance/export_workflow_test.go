@@ -30,7 +30,7 @@ func TestExportExistingFile(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			original := "old configuration with trailing data that must be replaced\n"
+			original := "# prior declaration\nversion: daiksud/gh-settings@v0\nrepository: {}\n"
 			if err := writeSettingsFile(fixture.work, original); err != nil {
 				t.Fatal(err)
 			}
@@ -41,7 +41,7 @@ func TestExportExistingFile(t *testing.T) {
 			}
 			want := original
 			if test.wantError == "" {
-				if result.runErr != nil || result.stderr.Len() != 0 {
+				if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 					t.Fatalf("execution=%v stderr=%q", result.runErr, result.stderr.String())
 				}
 				want = `version: daiksud/gh-settings@v0
@@ -76,7 +76,7 @@ repository:
 `
 			} else {
 				exit, ok := result.runErr.(*exec.ExitError)
-				if !ok || exit.ExitCode() != 1 || !strings.Contains(result.stderr.String(), test.wantError) {
+				if !ok || exit.ExitCode() != 1 || !strings.Contains(withoutExportInfo(result.stderr.String()), test.wantError) {
 					t.Fatalf("execution=%v stderr=%q", result.runErr, result.stderr.String())
 				}
 			}
@@ -126,7 +126,7 @@ func TestExportLinkedWorktree(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := executeCLI(acceptanceBinary(t), subdir, fixture.root, env, []string{"export"}, false)
-	if err != nil || result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+	if err != nil || result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("execution=%v result=%+v", err, result)
 	}
 	data, err := os.ReadFile(filepath.Join(worktree, ".github", "settings.yml"))

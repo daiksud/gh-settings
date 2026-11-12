@@ -12,7 +12,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 
 - `repository.settings.general.releases.immutable_release` is an optional boolean. Omission is
   unmanaged, false is explicit, and null/type/key/duplicate errors fail locally.
-- Opted-in `export --security immutable-releases` acquires only this additional
+- Ordinary export automatically attempts this independent
   family. Ordinary export retains its existing scope and permissions; failed
   selected reads preserve the destination file.
 - GET `/repos/{owner}/{repo}/immutable-releases`: 200 requires native boolean
@@ -51,7 +51,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 - [Model](../../internal/settings/immutable_releases_test.go): acquired versus
   unknown metadata, omission, comparisons and owner enforcement.
 - [Security/General Releases UI codec](../../internal/workspace/ui_security_test.go) and
-  [CLI options](../../internal/cli/immutable_releases_test.go): false round trip,
+  [CLI options](../../internal/cli/security_test.go): false round trip,
   invalid types/duplicates, independent selections and duplicate-option failure.
 - [Page/section schema](../../internal/workspace/ui_page_sections_test.go): the concise
   release key roundtrips, and the superseded release key is rejected without an alias.

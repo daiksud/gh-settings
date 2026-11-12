@@ -118,7 +118,7 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -284,11 +284,11 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 			}
 			input := repositoryInput("about: {topics: []}\nsettings:\n  general:\n" + indentInput(tt.input, 4))
 			if tt.command == "export" {
-				input = "previous configuration must survive incomplete Issue policy\n"
+				input = "# preserved prior Issue policy\nversion: daiksud/gh-settings@v0\nrepository: {}\n"
 			}
 			writeSettingsFile(fixture.work, input)
 			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{tt.command}, false)
-			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || !strings.Contains(r.stderr.String(), tt.want) {
+			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(r.stderr.String()), tt.want) {
 				t.Fatal(err, r.stderr.String(), r.stdout.String())
 			}
 			if err := checkSettingsUnchanged(fixture.work, input); err != nil {

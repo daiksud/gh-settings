@@ -98,12 +98,12 @@ func TestPlanAcceptance(t *testing.T) {
 				t.Fatalf("reads=%d want=%d", reads, wantReads)
 			}
 			if test.wantError == "" {
-				if result.runErr != nil || result.stdout.String() != test.want || result.stderr.Len() != 0 {
+				if result.runErr != nil || result.stdout.String() != test.want || hasNonInfoDiagnostic(result.stderr.String()) {
 					t.Fatalf("execution=%v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 				}
 			} else {
 				exit, ok := result.runErr.(*exec.ExitError)
-				if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), test.wantError) {
+				if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), test.wantError) {
 					t.Fatalf("execution=%v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 				}
 			}
@@ -129,7 +129,7 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exported.runErr != nil || exported.stdout.Len() != 0 || exported.stderr.Len() != 0 {
+	if exported.runErr != nil || exported.stdout.Len() != 0 || hasNonInfoDiagnostic(exported.stderr.String()) {
 		t.Fatalf("export: %v stderr=%q", exported.runErr, exported.stderr.String())
 	}
 	// Disable Issues and remove its conditional permission; preserve every other field.
@@ -154,7 +154,7 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if validated.runErr != nil || validated.stdout.Len() != 0 || validated.stderr.Len() != 0 || fixture.reads.Load() != 7 {
+	if validated.runErr != nil || validated.stdout.Len() != 0 || hasNonInfoDiagnostic(validated.stderr.String()) || fixture.reads.Load() != 14 {
 		t.Fatalf("validate: %v stdout=%q stderr=%q reads=%d", validated.runErr, validated.stdout.String(), validated.stderr.String(), fixture.reads.Load())
 	}
 	planned, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
@@ -162,7 +162,7 @@ func TestExportEditValidatePlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Empty labels need no read; the removed Issue policy is also unmanaged.
-	if planned.runErr != nil || planned.stdout.String() != "repository.settings.general.features.issues: true → false\n" || planned.stderr.Len() != 0 || fixture.reads.Load() != 12 {
+	if planned.runErr != nil || planned.stdout.String() != "repository.settings.general.features.issues: true → false\n" || hasNonInfoDiagnostic(planned.stderr.String()) || fixture.reads.Load() != 19 {
 		t.Fatalf("plan: %v stdout=%q stderr=%q reads=%d", planned.runErr, planned.stdout.String(), planned.stderr.String(), fixture.reads.Load())
 	}
 	if err := fixture.checkRequests(false); err != nil {

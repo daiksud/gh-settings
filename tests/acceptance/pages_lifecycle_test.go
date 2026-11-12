@@ -120,7 +120,7 @@ func TestPagesLifecycleExportPlanApplyAndPartialFailure(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -222,7 +222,7 @@ func TestPagesLifecycleExportPlanApplyAndPartialFailure(t *testing.T) {
 	mu.Unlock()
 	write("{build_and_deployment: {source: github_actions}, enforce_https: true}")
 	r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "Pages site created") || !strings.Contains(r.stderr.String(), "creation remains applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "Pages site created") || !strings.Contains(withoutExportInfo(r.stderr.String()), "creation remains applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

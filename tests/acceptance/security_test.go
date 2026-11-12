@@ -138,7 +138,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -152,16 +152,16 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
 	data, err := os.ReadFile(path)
-	if err != nil || strings.Contains(string(data), "advanced_security:") {
-		t.Fatal("ordinary export acquired security", string(data), err)
+	if err != nil || !strings.Contains(string(data), "advanced_security:") {
+		t.Fatal("ordinary export did not acquire security", string(data), err)
 	}
 	mu.Lock()
 	ordinaryReads := reads
 	mu.Unlock()
-	if ordinaryReads != 1 {
+	if ordinaryReads < 2 {
 		t.Fatal("ordinary export added repository reads", ordinaryReads)
 	}
-	run("export", "--security", "secret-scanning")
+	run("export")
 	run("validate")
 	data, err = os.ReadFile(path)
 	if err != nil || !strings.Contains(string(data), "secret_protection:\n") || !strings.Contains(string(data), "enabled: false") || !strings.Contains(string(data), "push_protection: false") || strings.Contains(string(data), "future_security") || strings.Contains(string(data), "security_and_quality:") {
@@ -216,13 +216,13 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	}
 	mu.Unlock()
 	// Unknown requested state and invalid selections preserve the existing file.
-	for _, failure := range []string{"hidden", "denied", "redirect", "invalid-selection"} {
+	for _, failure := range []string{"denied", "redirect", "invalid-selection"} {
 		mu.Lock()
 		mode = failure
 		before := len(writes)
 		mu.Unlock()
 		original, _ := os.ReadFile(path)
-		args := []string{"export", "--security", "secret-scanning"}
+		args := []string{"export"}
 		if failure == "redirect" {
 			args = []string{"plan"}
 		}
@@ -246,7 +246,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	mu.Unlock()
 	write("{enabled: true}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "did not retain requested") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "did not retain requested") {
 		t.Fatal("enforced no-change accepted", err, r.stderr.String())
 	}
 	mu.Lock()
@@ -279,7 +279,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 	mu.Unlock()
 	write("{enabled: false, push_protection: false}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "earlier successful writes remain applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "earlier successful writes remain applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

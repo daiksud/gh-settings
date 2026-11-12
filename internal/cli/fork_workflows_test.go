@@ -16,7 +16,7 @@ func TestForkExportOptInAndComposition(t *testing.T) {
 	}{
 		{[]string{"export"}, true, cli.ExportOptions{}},
 		{[]string{"export", "--fork-approval"}, true, cli.ExportOptions{ForkApproval: true}},
-		{[]string{"export", "--workflow-permissions", "--fork-approval", "--actions", "--retention", "--rulesets", "--security", "secret-scanning", "--security", "private-vulnerability-reporting"}, true, cli.ExportOptions{Rulesets: true, Actions: true, WorkflowPermissions: true, SecretScanning: true, PrivateReporting: true, ForkApproval: true, Retention: true}},
+		{[]string{"export", "--workflow-permissions", "--fork-approval", "--actions", "--retention", "--rulesets"}, true, cli.ExportOptions{Rulesets: true, Actions: true, WorkflowPermissions: true, ForkApproval: true, Retention: true}},
 		{[]string{"export", "--private-fork-workflows"}, false, cli.ExportOptions{}},
 		{[]string{"export", "--private-fork-workflows", "--private-fork-workflows"}, false, cli.ExportOptions{}},
 		{[]string{"export", "--fork-approval", "--fork-approval"}, false, cli.ExportOptions{}},

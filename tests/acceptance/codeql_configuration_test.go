@@ -75,7 +75,7 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 		}
 		t.Error("unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/code-scanning/default-setup")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -96,13 +96,13 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 	mu.Lock()
 	n := reads
 	mu.Unlock()
-	if n != 0 {
-		t.Fatal("ordinary export acquired config")
+	if n == 0 {
+		t.Fatal("ordinary export did not acquire config")
 	}
-	run("export", "--security", "codeql-configuration")
+	run("export")
 	run("validate")
 	data, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if !strings.Contains(string(data), "query_suite: default") || strings.Contains(string(data), "default_setup:") || strings.Contains(string(data), "threat_model:") {
+	if !strings.Contains(string(data), "query_suite: default") || !strings.Contains(string(data), "default_setup: true") || strings.Contains(string(data), "threat_model:") {
 		t.Fatal(string(data))
 	}
 	// Excluded Preview declarations fail before any remote acquisition or write.
@@ -114,7 +114,7 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 		beforeReads, beforeWrites := reads, writes
 		mu.Unlock()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-		if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "unknown") {
+		if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "unknown") {
 			t.Fatal(value, err, r.stderr.String())
 		}
 		mu.Lock()
@@ -152,7 +152,7 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 	raw["state"] = "not-configured"
 	mu.Unlock()
 	r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "already configured") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "already configured") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

@@ -115,7 +115,7 @@ func testRepositoryVariablesProcess(t *testing.T, family, flag string) {
 	run := func(args []string, want string, fail bool) {
 		t.Helper()
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || result.stderr.Len() != 0) {
+		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) {
 			t.Fatalf("args=%v result=%+v err=%v", args, result, err)
 		}
 	}

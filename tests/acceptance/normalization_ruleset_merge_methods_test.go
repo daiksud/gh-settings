@@ -154,7 +154,7 @@ func TestRulesetMergeMethodsNormalizationAcrossExecutableCommands(t *testing.T) 
 			}
 			status = failure.ExitCode()
 		}
-		return r.stdout.String(), r.stderr.String(), status
+		return r.stdout.String(), withoutExportInfo(r.stderr.String()), status
 	}
 	intent := func(choice string) string {
 		t.Helper()

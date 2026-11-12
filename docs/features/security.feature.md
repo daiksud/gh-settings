@@ -50,7 +50,7 @@ For plan/entitlement boundaries see [GitHub security features](https://docs.gith
 ### Dependabot state-reading decision
 
 The [scoped decision in ADR 0026](../adr/0026-explicit-security-observations.md#dependabot-state-reads) interprets GET 404 as disabled for both Dependabot endpoints under the required-permissions precondition. No authorization discriminator, successful unrelated endpoint, token inspection or GraphQL replacement is required. Retain 404 provenance and unavailable pause metadata; this is an endpoint-specific interpretation, not certification of actual grants or live behavior. Explicit 401/403 and all other unsuccessful statuses remain errors.
-The [Dependabot adapter](../../internal/github/dependabot.go) uses the existing security REST version/timeout and redirect rejection. Each family observation completely acquires alerts then updates with one GET per endpoint and returns no partial family on failure. Only declared family plan/apply or explicit export requests these reads. No credential-discovery requests are made.
+The [Dependabot adapter](../../internal/github/dependabot.go) uses the existing security REST version/timeout and redirect rejection. Each family observation completely acquires alerts then updates with one GET per endpoint and returns no partial family on failure. Declared plan/apply and ordinary export request these reads. No credential-discovery requests are made.
 
 #### Response evidence and pause metadata
 
@@ -83,7 +83,7 @@ Enable alerts before updates; disable updates before alerts. A completed child d
 - [Endpoint fixtures](../../internal/github/dependabot_test.go) cover exact selected GET targets, 204 alerts, 200 updates, disabled-looking and permission-looking 404 bodies with the same deliberate interpretation, malformed/incomplete observations, 401/403/other statuses, rejected redirects, body/transport failure and no acquired state on error. They also exercise verification against actual decoded endpoint observations.
 - [Toggle fixtures](../../internal/github/dependabot_update_test.go) check exact body-free methods, fresh prerequisites, paused no-write equality, positive readback, DELETE 204 plus matching 404 readback, ignored writes, companion drift, rejected redirects and pre-/post-write certainty.
 - [Application fixtures](../../internal/app/dependabot_test.go) check dependency order, matching/omitted intent, local contradiction, read failure and completed progress on later failure. [UI codec](../../internal/workspace/ui_dependabot_test.go) and [closed Summary](../../internal/actions/dependabot_test.go) fixtures retain optional booleans and native field bounds.
-- [Built-CLI cycle](../../tests/acceptance/dependabot_test.go) checks ordinary/explicit export, false round-trip to zero plan, native report and credential-free Summary, ordered enable/disable, paused no-write behavior, omitted-parent preservation, completed-child/later-parent failure and destination preservation on incomplete/denied reads.
+- [Built-CLI cycle](../../tests/acceptance/dependabot_test.go) checks automatic export, false round-trip to zero plan, native report and credential-free Summary, ordered enable/disable, paused no-write behavior, omitted-parent preservation, completed-child/later-parent failure and destination preservation on incomplete/denied reads.
 
 All fixtures use local APIs and dummy credentials. They establish modeled behavior, not live permission grants, update effects, enforcement or scan activity.
 
@@ -95,11 +95,20 @@ Neither `security_and_analysis.code_security` nor `security_and_analysis.advance
 
 CodeQL default setup/configuration and AI Scan for pull requests are already implemented as described below. Other individual UI controls whose complete public API paths remain unconfirmed stay in the [separate inventory](../settings.md#security-ui-settings-not-managed-by-gh-settings).
 
-## Explicit export selection
+## Automatic readable export
 
-Repeatable `--security FAMILY` accepts the implemented `secret-scanning`, `dependabot`, `private-vulnerability-reporting`, `immutable-releases`, `codeql-default-setup`, `codeql-configuration` and `ai-scan-pull-requests` selections. Product options and `all` are not accepted. Distinct families compose with other export options; unknown/missing/duplicate values fail before reads or file changes.
+Ordinary export attempts all seven supported Security families. Each complete
+observation is converted independently; denied, unavailable, inapplicable,
+incomplete or unsupported observations emit bounded info and do not stop later
+Security reads. New files omit unavailable families; valid existing files retain
+their prior intent. Errors never become false. `--security FAMILY` is removed.
+Product-wide Code Security / Advanced Security controls remain excluded.
 
-Ordinary export adds no security requests. Secret protection/Push protection reads precede Dependabot, private reporting, then immutable policy. Complete selected acquisition and UI conversion before destination replacement. Inapplicable, denied or incomplete observations fail instead of being omitted with success. Complete out-of-UI status strings retain provenance and normalize to the named false fallback; inconsistent projected declarations fail without saving. Export observed false, exclude owner/entitlement metadata and never replay internal API names as public intent. An exact supported unchanged export has zero differences without proving writable access, active scanning or an unlocked policy. Normalization is active for these two status strings; other families follow their documented policies.
+The [automatic export specification](readable-security-export.feature.md) owns
+retention, CodeQL consistency, safe diagnostics and local-file guards. Existing
+endpoint-specific 404 and acquired-status normalization decisions remain; a failed
+or inconsistent normalized family is omitted/retained with info. Plan and apply
+continue to fail on unavailable declared observations.
 
 ## State and failure table
 
@@ -110,14 +119,14 @@ Ordinary export adds no security requests. Secret protection/Push protection rea
 | Updates `enabled: true, paused: true` | Preserve enabled=true and pause metadata; emit a diagnostic in plan/export/apply. Do not report running/healthy, synthesize false, or disable/re-enable to resume. |
 | Any other complete `enabled`/`paused` boolean pair | Compare enabled independently and retain pause metadata; warn whenever paused. Do not invent a correlation between the two booleans that the API schema does not establish. |
 | Updates 200 with missing/null/wrong-type enabled or pause metadata | Reject incomplete state; do not discard pause to manufacture a usable observation. The scoped 404 interpretation separately retains unavailable pause. |
-| Missing/null/wrong-type requested response field | Fail that read; no successful empty/false comparison or export. |
+| Missing/null/wrong-type requested response field | Fail that observation, never false/empty. Plan/apply fail; automatic export emits info and omits/retains the family. |
 | Dependabot GET 404 | Interpret enabled=false by explicit product decision; retain provenance and unavailable pause metadata; verify disabled enabled intent under required permissions; a completed mutation additionally requires DELETE 204 and matching fresh family readback. |
 | 401/403, unqualified 404 outside the scoped Dependabot/immutable policies, redirect, transport failure, invalid JSON on successful body-bearing reads | Fail read as unknown/denied as evidenced; never infer disabled or follow a changed target. |
 | Confirmed unsupported visibility/entitlement | Report inapplicable/unavailable as evidenced; never false. Do not guess licensing from arbitrary 403/404 text. |
 | Authoritative upper-policy conflict known before write | Fail before mutation of that security family; no detach or policy bypass. |
 | Fresh prerequisite read/preflight fails | Record a confirmed pre-write read failure, preserving prior completed operations. |
 | Write returns 2xx but readback differs, is incomplete, or fails | Fail verification; mutation effects are uncertain. Do not count success, retry, or roll back automatically. |
-| Earlier resource/family succeeded, later family fails | Retain and report confirmed progress and any uncertain mutation; overall failure. |
+| Apply: earlier resource/family succeeded, later family fails | Retain and report confirmed progress and any uncertain mutation; overall failure. |
 
 Upper [security configuration enforcement](https://docs.github.com/en/code-security/reference/security-at-scale/configuration-enforcement) may make a REST change appear successful while leaving values unchanged. Complete fresh readback is mandatory. The initial feature does not require organization-wide configuration reads or claim to diagnose all enforcement before writing. If available evidence identifies a conflict, surface it; otherwise an unmet readback is a verification failure with no invented cause. Repository declarations never own inherited configuration membership. Changing an unenforced repository value may affect its configuration status; no attachment/detachment request is sent to repair that status.
 
@@ -156,14 +165,14 @@ The matrix remains the acceptance plan for all families; the implemented family 
 | #345 | Public and entitled/nonentitled private/internal fixtures; hidden/null/unknown status; parent/child combinations and fresh drift; no omitted fields in nested PATCH; enforced 2xx/no-change must fail verification; no bypass/pattern/configuration writes. |
 | #346 | Not planned: no corresponding product-wide switch in the target UI. No product-enable implementation or new fixture plan is adopted. |
 | #347 | Public true/false/equal/omitted, private/internal inapplicability, Metadata-only read shape, missing/null/wrong enabled value, 422/permission errors, PUT/DELETE+readback, no advisory/report/notification operations. |
-| Export/process | Ordinary requests unchanged; explicit family composition and invalid options; complete exact supported export→unchanged plan zero; normalized export retains raw-versus-fallback decisions; requested unavailable state leaves destination untouched; false retained; pause diagnostic; no stdout changes. |
+| Export/process | Automatic Security reads; retired-option rejection; independent family failures with info; complete exact supported export→unchanged plan zero; normalized export retains raw-versus-fallback decisions; unavailable Security families preserve their prior declarations while other observations can be saved; false retained; pause diagnostic; no stdout changes. |
 | CLI/Action | Native boolean differences, strict report reconstruction and bounds, read/write failure and partial-progress output, escaping of untrusted diagnostics; published pinned CLI must reject unsupported additions rather than pretend source support is released. |
 
 The [private vulnerability reporting guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository) establishes public-repository scope. The source/runtime privilege boundary and fixture limitations belong in the public references and testing guide at implementation time. API schema inspection and local fixtures do not prove all token types, billing availability, upper enforcement, or real scan outcomes.
 
 ## Implemented Secret scanning test mappings
 
-The [public configuration contract](../settings.md#secret-scanning-and-push-protection) owns current-source usage. The Secret scanning subset uses its two booleans and `--security secret-scanning`, independently of private vulnerability reporting below. The implemented families below remain separate from the excluded product switches.
+The [public configuration contract](../settings.md#secret-scanning-and-push-protection) owns current-source usage. The Secret scanning subset uses its two booleans with automatic export, independently of private vulnerability reporting below. The implemented families below remain separate from the excluded product switches.
 
 - Declaration/observation/transition/forged-change boundaries: [TestSecretScanningObservationAndTransitions](../../internal/settings/security_test.go) and [TestSecurityComparisonsRejectForgedValues](../../internal/settings/security_test.go).
 - Strict YAML, explicit false and omission round-trip: [Security UI codec](../../internal/workspace/ui_security_test.go) and [page/section schema](../../internal/workspace/ui_page_sections_test.go), including nested controls and rejection of superseded shapes.
@@ -176,14 +185,14 @@ Fixtures use dummy credentials and local modeled responses. A read-only observat
 
 ## Implemented private vulnerability reporting test mappings
 
-The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` and `--security private-vulnerability-reporting`; distinct implemented family selections compose. Product-wide Code Security and Advanced Security enablement remains excluded.
+The [public configuration contract](../settings.md#private-vulnerability-reporting) owns usage. Current source accepts `repository.settings.advanced_security.private_vulnerability_reporting` with automatic export. Product-wide Code Security and Advanced Security enablement remains excluded.
 
 - Acquired observations, omitted/false/true comparison and independent field domains: [TestPrivateReportingObservationAndIndependentDeclaration](../../internal/settings/private_reporting_test.go).
 - Strict boolean YAML, omission/round-trip, invalid types, duplicate/unknown keys and mixed independent declarations: [Security UI codec](../../internal/workspace/ui_security_test.go).
 - Public/private/internal applicability, missing/null/wrong-case/type responses and API errors: [TestPrivateReportingReadApplicabilityAndCompleteBoolean](../../internal/github/private_reporting_test.go).
 - Fresh preflight, body-free PUT/DELETE, matching state, upper-policy no-change and readback certainty: [TestPrivateReportingToggleAndCertainty](../../internal/github/private_reporting_test.go). [TestSecurityClientsRejectCrossFamilyChangesBeforeRequests](../../internal/github/private_reporting_test.go) guards both concrete clients.
 - Independent reads, matching apply, confirmed progress and pre-/post-write failure: [TestPrivateReportingIndependentPlanAndMatchingApply](../../internal/app/private_reporting_test.go) and [TestPrivateReportingFailureRetainsOnlyConfirmedWrites](../../internal/app/private_reporting_test.go).
-- Distinct family composition and native report validation: [TestPrivateReportingExportSelectionAndFamilyComposition](../../internal/cli/private_reporting_test.go) and [TestPrivateReportingNativeSummaryAndIndependentSecurityFields](../../internal/actions/private_reporting_test.go).
+- Distinct family composition and native report validation: [TestPrivateReportingExportSelectionAndFamilyComposition](../../internal/cli/security_test.go) and [TestPrivateReportingNativeSummaryAndIndependentSecurityFields](../../internal/actions/private_reporting_test.go).
 - Built-CLI export→zero-plan→edit→apply, native credential-free Summary, false/idempotence, nonpublic applicability, file preservation, GET/PUT/DELETE redirects and partial writes after Secret scanning: [TestPrivateReportingExportPlanApplyAndSummary](../../tests/acceptance/private_reporting_test.go).
 
 Fixtures use dummy credentials and local modeled responses. A read-only GET on this public repository returned enabled=true; no live PUT/DELETE, report/advisory/notification operation, permission expansion, upper-policy change or release was performed. These checks do not establish live update compatibility or other credential grants.
@@ -237,7 +246,7 @@ Test mapping: [closed observations](../../internal/settings/security_status_obse
 ## CodeQL default setup enablement
 
 - Optional `repository.settings.advanced_security.code_security.codeql_analysis.default_setup` manages only personally owned public repository default-setup state; omission stays unmanaged and false disables.
-- Reads require complete applicability and exact configured/not-configured state. Plan is read-only. Export is explicitly selected with `--security codeql-default-setup` and does not export unrelated security settings.
+- Reads require complete applicability and exact configured/not-configured state. Plan is read-only. Export automatically attempts this family and continues other Security reads when it is unavailable.
 - Apply performs a fresh read, sends only state when needed and confirms enablement with another read. PATCH 202 can initiate asynchronous validation/analysis; pending/mismatching state remains uncertain and scan completion is never claimed. Prerequisites, advanced YAML and omitted configuration options are not enabled/changed.
 - Changes can consume Actions resources; disabling affects dependent scanning results/Autofix/checks. No scan execution command, deletion of analyses or live mutation is tested.
 
@@ -246,7 +255,7 @@ Owning checks: `internal/settings/codeql_default_setup_test.go`, `internal/works
 ## AI Scan for pull requests
 
 - Optional `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` manages only the personal public repository pull-request AI scan toggle. Omission stays unmanaged; false disables. The two separate Preview scan controls are excluded.
-- Opt-in export uses `--security ai-scan-pull-requests`. Complete visibility/owner/enablement reads precede projection; missing/null/unknown/denied state fails. Plan is read-only.
+- Ordinary export automatically attempts AI Scan. Complete visibility/owner/enablement reads precede projection; missing/null/unknown/denied state is unavailable and emits info for export. Plan/apply remain strict.
 - Apply fresh-reads and sends only `pr_scan`, skipping a matching state. It confirms enabled/disabled state with fresh readback; failed writes or mismatches retain unknown effects. CodeQL, product switches and other AI scans remain undeclared and untouched by the payload.
 - Enabling permits automated AI processing and may have billing/AI-credit effects. Successful configuration readback never proves completed scans or actual consumption. No explicit scan/fix/assignment operation is sent.
 
@@ -256,7 +265,7 @@ Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/work
 
 - Optional `languages`, `query_suite` and `runner` (owned type/label pair) live under `repository.settings.advanced_security.code_security.codeql_analysis`. Omission preserves each control. Language sets are nonempty/unique and compare without order. All choices and runner-label requirements are strict.
 - Configuration requires complete personally owned public, already-configured default setup observations. Explicit disable plus configuration fails local validation. Declaring true does not auto-enable the prerequisite when configuring; configuration runs first and fails safely if not acquired. No advanced workflow files or runner capacity are created.
-- `--security codeql-configuration` explicitly exports all three controls after complete acquisition; disabled or incomplete state prevents saving. Existing enablement export remains scoped to its independent boolean.
+- Ordinary export attempts all three controls as a complete family; disabled or incomplete state emits info and retains prior declarations if present. Enablement remains an independent observation, subject to coherent CodeQL export.
 - Apply fresh-reads, skips matching configuration, sends only declared members in one PATCH, and compares all three controls and the unowned raw threat model on readback, including omitted companions. Standard runner owns clearing the old label with null. Pending/unknown effects fail without retry/rollback; asynchronous validation/analysis and Actions consumption can occur, and scan completion is never claimed.
 - CLI and Action Summary report closed typed configuration values at UI paths, with bounded counts, duplicate/unknown/invalid report rejection and escaped values.
 

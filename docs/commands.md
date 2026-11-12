@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval] [--security FAMILY]...
+gh settings export [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval]
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -139,19 +139,36 @@ Plan is read-only and identifies the selected family. Ordinary apply upserts onl
 
 `export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Other export selections compose with it.
 
-Current source supports `export --security codeql-configuration` for [existing CodeQL configuration](settings.md#codeql-default-configuration), `export --security ai-scan-pull-requests` for [AI Scan enablement](settings.md#ai-scan-for-pull-requests), `export --security codeql-default-setup` for [CodeQL enablement](settings.md#codeql-default-setup), `export --security dependabot` for [alerts and security updates](settings.md#dependabot-alerts-and-security-updates), `--security secret-scanning` for [Secret scanning](settings.md#secret-scanning-and-push-protection), `--security private-vulnerability-reporting` for [public-repository reporting](settings.md#private-vulnerability-reporting), and `--security immutable-releases` for release policy. Repeat distinct families to compose them with other selections; duplicate/missing/unknown families, `all` and excluded product-wide enablement selections fail before reads or destination changes. Selected security reads must complete before saving. Ordinary export does not acquire security policy. Dependabot requires Administration read, interprets GET 404 as disabled under required permissions, and never exports paused metadata. Its apply path requires a 204 acknowledgment and matching fresh family readback; the configuration reference owns the endpoint-specific verification and ordering contract.
+Ordinary `export` automatically attempts all seven supported Security families:
+Secret Protection, Dependabot, CodeQL configuration/default setup, AI Scan,
+private vulnerability reporting and immutable releases. Complete readable values
+are exported, including false. An unavailable family emits `info: export` on
+stderr and does not stop independent Security reads. First export omits it;
+re-export retains its prior declaration if present. Retained values are unverified
+user intent. Errors and missing data never become false or empty collections.
+Info includes the family and bounded HTTP/network/observation reason, never raw
+response messages, bodies, URLs or credentials. See [automatic Security export](features/readable-security-export.feature.md).
+
+`--security FAMILY` is removed, with automatic-observation guidance before remote
+work. Other resource opt-ins retain their existing scope. Existing invalid or
+unreadable settings files, origin/core export failures and file/diagnostic IO
+failures remain fatal. Valid prior files are snapshotted before reads; changed
+files are not overwritten. A contradictory CodeQL enabled/configuration pair
+retains the prior coherent pair with info. Plan/apply remain strict and do not
+skip declared Security reads. Existing endpoint-specific 404 and normalization
+decisions remain unchanged; no new credentials, grants, enabling or scans occur.
 
 `export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
 
 `export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy) for required credentials and transition limits.
 
-`export --rulesets` additionally reads complete repository-owned branch and tag Rulesets. Ordinary export retains its existing requests/permissions and does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Complete out-of-UI enforcement, Required approvals, Allowed merge methods, scanning Alerts, scanning Security alerts, bypass modes emit contextual normalization warnings in exported name order: enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), then bypass actors ordered by type and numeric ID; other successful exact observations stay silent. See the [Rulesets contract](settings.md#rulesets) before adoption.
+`export --rulesets` additionally reads complete repository-owned branch and tag Rulesets. Ordinary export does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Complete out-of-UI enforcement, Required approvals, Allowed merge methods, scanning Alerts, scanning Security alerts, bypass modes emit contextual normalization warnings in exported name order: enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), then bypass actors ordered by type and numeric ID; other successful exact observations stay silent. See the [Rulesets contract](settings.md#rulesets) before adoption.
 
 Export uses the [repository and authentication rules](#repository-and-authentication) above. It reads repository settings, then topics, then every labels page, and serializes the complete supported configuration before opening the destination. Label reads use pages of 100 until a short page; a failed later page fails the operation before any file replacement. Unsupported fields and read-only metadata are excluded. Export preserves false and empty strings; the [settings reference](settings.md#exported-values) explains response normalization and invalid-response handling.
 
-Export creates `.github` when missing and always overwrites an existing regular `.github/settings.yml`, without a confirmation or overwrite flag. Symlinks at `.github` or `settings.yml`, including dangling links, and other non-regular destinations are rejected. A read or serialization failure leaves the destination untouched. A write failure can leave it truncated or partially written; use Git to restore tracked configuration.
+Export creates `.github` when missing. Existing regular `.github/settings.yml` must be valid and is snapshotted before observation. Unavailable Security families retain their prior declarations; serialization uses the observed/retained values. Symlinks, including dangling links, and nonregular destinations are rejected. Guarded atomic replacement refuses concurrent file edits; a destination appearing during initial export is not overwritten. Initial-file IO failure can leave a partial new file. This is not a concurrent-directory lock.
 
-Success writes no stdout and exits 0. Explicit observation-normalization warnings can appear on stderr; see the [workflow](settings.md#default-workflow-permissions), [commit-message](settings.md#commit-message-observation-normalization), [creation-policy](settings.md#creation-policy-observation-normalization), [public-fork](settings.md#fork-pr-workflow-policies) [Security](settings.md#secret-scanning-and-push-protection) and [Pages](settings.md#pages-configuration) field semantics. Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
+Success writes no stdout and exits 0. Unavailable Security families emit info on stderr; a core/other selected-resource failure is still fatal. Explicit observation-normalization warnings can appear on stderr; see the [workflow](settings.md#default-workflow-permissions), [commit-message](settings.md#commit-message-observation-normalization), [creation-policy](settings.md#creation-policy-observation-normalization), [public-fork](settings.md#fork-pr-workflow-policies) [Security](settings.md#secret-scanning-and-push-protection) and [Pages](settings.md#pages-configuration) field semantics. Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
 
 ```sh
 gh settings export
@@ -166,12 +183,14 @@ Success is silent and exits 0. Failures exit 1 and report a diagnostic on stderr
 
 ## Immutable release policy commands
 
-`export --security immutable-releases` independently includes the repository
+Ordinary `export` automatically attempts the repository
 [immutable release policy](settings.md#immutable-release-policy), requiring
-Administration read. Omitted selection adds no policy request. GET 404 is
+Administration read. Unavailable export acquisition emits info and retains prior
+intent if present. GET 404 is
 interpreted as disabled under the required-permissions precondition, without
 supplying owner-enforcement metadata or certifying actual credential grants.
-Other failures remain errors and preserve the export destination. Owner
+Other read failures remain errors for plan/apply and unavailable observations for
+export. Owner
 enforcement is never exported as intent.
 
 Plan compares only declared values without writes and rejects an owner-enforced

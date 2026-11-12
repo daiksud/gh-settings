@@ -213,7 +213,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 					}
 					status = failed.ExitCode()
 				}
-				return r.stdout.String(), r.stderr.String(), status
+				return r.stdout.String(), withoutExportInfo(r.stderr.String()), status
 			}
 			intent := func(choice string, withPatterns bool, about string) string {
 				t.Helper()

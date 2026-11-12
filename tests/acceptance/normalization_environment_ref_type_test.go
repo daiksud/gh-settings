@@ -71,7 +71,7 @@ func TestEnvironmentRefTypeNormalizationExport(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			const existing = "existing destination bytes\n"
+			const existing = "# existing destination\nversion: daiksud/gh-settings@v0\nrepository: {}\n"
 			if err := writeSettingsFile(fixture.work, existing); err != nil {
 				t.Fatal(err)
 			}
@@ -79,7 +79,7 @@ func TestEnvironmentRefTypeNormalizationExport(t *testing.T) {
 			warning := `Warning: repository.settings.environments.deployment_branch_or_tag_rules.ref_type: observed "future" is outside UI choices; using "branch" (projection only). Environment "production", pattern 7 name_pattern "main".` + "\n"
 			if mode == "missing type" || mode == "null type" {
 				var failed *exec.ExitError
-				if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || strings.Contains(result.stderr.String(), "Warning:") || !strings.Contains(result.stderr.String(), "missing/null type") {
+				if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || strings.Contains(withoutExportInfo(result.stderr.String()), "Warning:") || !strings.Contains(withoutExportInfo(result.stderr.String()), "missing/null type") {
 					t.Fatal("incomplete acquisition became normalized success", err, result.runErr, result.stdout.String(), result.stderr.String())
 				}
 				data, readErr := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
@@ -93,7 +93,7 @@ func TestEnvironmentRefTypeNormalizationExport(t *testing.T) {
 			}
 			if mode == "collision" {
 				var failed *exec.ExitError
-				if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.HasPrefix(result.stderr.String(), warning) || strings.Count(result.stderr.String(), "Warning:") != 1 || !strings.Contains(result.stderr.String(), "duplicate") {
+				if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.HasPrefix(withoutExportInfo(result.stderr.String()), warning) || strings.Count(withoutExportInfo(result.stderr.String()), "Warning:") != 1 || !strings.Contains(withoutExportInfo(result.stderr.String()), "duplicate") {
 					t.Fatal("collision must warn then fail", err, result.runErr, result.stdout.String(), result.stderr.String())
 				}
 				data, readErr := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
@@ -108,7 +108,7 @@ func TestEnvironmentRefTypeNormalizationExport(t *testing.T) {
 			if mode == "latent" {
 				warning = `Warning: repository.settings.environments.deployment_branches_and_tags: observed {"protected_branches":true,"custom_branch_policies":true} is outside UI choices; using "no_restriction" (projection only). Environment "production".` + "\n"
 			}
-			if err != nil || result.runErr != nil || result.stdout.Len() != 0 || result.stderr.String() != warning {
+			if err != nil || result.runErr != nil || result.stdout.Len() != 0 || withoutExportInfo(result.stderr.String()) != warning {
 				t.Fatal("export outcome and provenance", err, result.runErr, result.stdout.String(), result.stderr.String())
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))

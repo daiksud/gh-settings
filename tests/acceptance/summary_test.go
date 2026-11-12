@@ -38,7 +38,7 @@ func TestActionChangedSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+	if result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("summary: %v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	data, err := os.ReadFile(summaryPath)

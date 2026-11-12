@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
@@ -20,12 +21,16 @@ func loadCheckoutDeclaration(checkout workspace.Checkout) (settings.Declaration,
 	return declaration, nil
 }
 
-func prepareCheckoutSave(checkout workspace.Checkout) (func(settings.Declaration) error, error) {
-	save, err := checkout.PrepareSave()
+func prepareCheckoutSave(checkout workspace.Checkout) (settings.Declaration, func(settings.Declaration) error, error) {
+	previous, save, err := checkout.PrepareSave()
 	if err != nil {
-		return nil, err
+		return settings.Declaration{}, nil, err
 	}
-	return func(declaration settings.Declaration) error {
+	existing, err := app.Validate(func() (settings.Declaration, error) { return github.DeclarationFromUI(previous) })
+	if err != nil {
+		return settings.Declaration{}, nil, fmt.Errorf("existing %s cannot be preserved safely", workspace.SettingsPath)
+	}
+	return existing, func(declaration settings.Declaration) error {
 		ui, err := github.UIFromExportDeclaration(declaration)
 		if err != nil {
 			return err

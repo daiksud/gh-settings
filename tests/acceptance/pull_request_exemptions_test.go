@@ -181,7 +181,7 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 	write("[alice]")
 	failed := run([]string{"apply"}, true)
 	expect("GET", "USER alice", "DELETE", "GET", "PUT")
-	if !strings.Contains(failed.stderr.String(), "earlier successful writes remain applied") {
+	if !strings.Contains(withoutExportInfo(failed.stderr.String()), "earlier successful writes remain applied") {
 		t.Fatal(failed.stderr.String())
 	}
 	mu.Lock()

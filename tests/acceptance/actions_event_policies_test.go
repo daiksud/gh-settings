@@ -167,10 +167,10 @@ func (f *actionsEventPoliciesFixture) write(t *testing.T, input string) {
 func (f *actionsEventPoliciesFixture) run(t *testing.T, fail bool, args ...string) (string, string) {
 	t.Helper()
 	r, err := executeCLI(acceptanceBinary(t), f.fixture.work, f.fixture.root, f.env, args, false)
-	if err != nil || (r.runErr != nil) != fail || !fail && r.stderr.Len() != 0 || fail && r.stdout.Len() != 0 {
+	if err != nil || (r.runErr != nil) != fail || !fail && hasNonInfoDiagnostic(r.stderr.String()) || fail && r.stdout.Len() != 0 {
 		t.Fatalf("args=%v exit=%v stdout=%q stderr=%q error=%v", args, r.runErr, r.stdout.String(), r.stderr.String(), err)
 	}
-	return r.stdout.String(), r.stderr.String()
+	return r.stdout.String(), withoutExportInfo(r.stderr.String())
 }
 func (f *actionsEventPoliciesFixture) data(t *testing.T) string {
 	t.Helper()

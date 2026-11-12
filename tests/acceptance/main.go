@@ -42,7 +42,7 @@ func check(binary string, test scenario) error {
 		return err
 	}
 	if test.expected != nil {
-		if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+		if result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 			return fmt.Errorf("execution: %v, stderr=%q", result.runErr, result.stderr.String())
 		}
 		var actual map[string]any

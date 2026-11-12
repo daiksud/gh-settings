@@ -30,7 +30,7 @@ func TestPrivateActionsControlsFailBeforeRemoteOrFileWork(t *testing.T) {
 		}
 		for _, command := range []string{"validate", "plan", "apply"} {
 			out, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
-			if err != nil || out.runErr == nil || !strings.Contains(out.stderr.String(), "unknown repository.settings.actions.general key") {
+			if err != nil || out.runErr == nil || !strings.Contains(withoutExportInfo(out.stderr.String()), "unknown repository.settings.actions.general key") {
 				t.Fatal(command, err, out.stderr.String())
 			}
 		}
@@ -41,7 +41,7 @@ func TestPrivateActionsControlsFailBeforeRemoteOrFileWork(t *testing.T) {
 	}
 	for _, flag := range []string{"--actions-access", "--private-fork-workflows"} {
 		out, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", flag}, false)
-		if err != nil || out.runErr == nil || !strings.Contains(out.stderr.String(), "unsupported command") {
+		if err != nil || out.runErr == nil || !strings.Contains(withoutExportInfo(out.stderr.String()), "unsupported command") {
 			t.Fatal(flag, err, out.stderr.String())
 		}
 	}

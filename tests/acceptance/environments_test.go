@@ -119,7 +119,7 @@ repository:
 				t.Fatal(err)
 			}
 			if mode == "unsupported" {
-				if planned.runErr == nil || !strings.Contains(planned.stderr.String(), "custom environment protection") {
+				if planned.runErr == nil || !strings.Contains(withoutExportInfo(planned.stderr.String()), "custom environment protection") {
 					t.Fatal(planned)
 				}
 			} else {
@@ -139,7 +139,7 @@ repository:
 				if applied.runErr == nil {
 					t.Fatal("failure became success", applied)
 				}
-				if mode == "readback" && !strings.Contains(applied.stderr.String(), "write may have applied") {
+				if mode == "readback" && !strings.Contains(withoutExportInfo(applied.stderr.String()), "write may have applied") {
 					t.Fatal(applied)
 				}
 			} else {

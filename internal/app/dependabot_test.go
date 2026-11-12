@@ -37,16 +37,23 @@ func TestDependabotExportComposesAndRequiresCompleteReads(t *testing.T) {
 				return settings.NewPrivateReportingObservation(true), nil
 			}
 			saved := false
-			err := Export(ExportCheckout{IncludeDependabot: true, IncludeSecretScanning: true, IncludePrivateReporting: true, Repository: func() (repository.Repository, error) { return repository.Repository{}, nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err := Export(ExportCheckout{Repository: func() (repository.Repository, error) { return repository.Repository{}, nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					saved = true
-					if d.Security.DependabotAlerts == nil || *d.Security.DependabotAlerts || d.Security.DependabotSecurityUpdates == nil || *d.Security.DependabotSecurityUpdates || d.Security.SecretScanning == nil || *d.Security.SecretScanning || d.Security.PrivateVulnerabilityReporting == nil || !*d.Security.PrivateVulnerabilityReporting {
-						t.Fatal("security family overwritten or false omitted", d.Security)
+					failedFamily := failure == "unacquired" || failure == "inconsistent"
+					if failedFamily != (d.Security.DependabotAlerts == nil) || failedFamily != (d.Security.DependabotSecurityUpdates == nil) {
+						t.Fatal("incomplete family exported", d.Security)
+					}
+					if !failedFamily && (*d.Security.DependabotAlerts || *d.Security.DependabotSecurityUpdates) {
+						t.Fatal("false omitted", d.Security)
+					}
+					if d.Security.SecretScanning == nil || *d.Security.SecretScanning || (failure == "later") != (d.Security.PrivateVulnerabilityReporting == nil) {
+						t.Fatal("independent family lost", d.Security)
 					}
 					return nil
 				}, nil
 			}}, reader)
-			if (err == nil) != (failure == "") || saved != (failure == "") {
+			if err != nil || !saved {
 				t.Fatal(saved, err)
 			}
 		})

@@ -157,7 +157,7 @@ func TestRulesetScanningSecurityAlertsNormalizationAcrossExecutableCommands(t *t
 			}
 			status = e.ExitCode()
 		}
-		return r.stdout.String(), r.stderr.String(), status
+		return r.stdout.String(), withoutExportInfo(r.stderr.String()), status
 	}
 	intent := func(mode string) string {
 		t.Helper()

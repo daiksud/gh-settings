@@ -92,7 +92,7 @@ func TestSponsorshipsExportPlanApplyAndFundingIsolation(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+		if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 			t.Fatal(args, err, result.stderr.String())
 		}
 		return result.stdout.String()
@@ -265,11 +265,14 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 				t.Fatal(err)
 			}
 			config := repositoryInput("about: {topics: [must-not-be-written]}\nsettings:\n  general:\n" + indentInput(test.fields, 4))
+			if test.command == "export" {
+				config = repositoryInput("about: {topics: [must-not-be-written]}\n")
+			}
 			if err := writeSettingsFile(fixture.work, config); err != nil {
 				t.Fatal(err)
 			}
 			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{test.command}, false)
-			if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), test.want) {
+			if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), test.want) {
 				t.Fatalf("error=%v run=%v stdout=%q stderr=%q", err, result.runErr, result.stdout.String(), result.stderr.String())
 			}
 			if err := checkSettingsUnchanged(fixture.work, config); err != nil {
