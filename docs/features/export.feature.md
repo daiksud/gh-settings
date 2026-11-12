@@ -6,7 +6,20 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 
 ## Feature: Export repository settings as YAML
 
-A repository maintainer can capture supported visible About/General controls, topics and labels as configuration without changing GitHub settings. `export` saves `.github/settings.yml` at the current checkout root, creates a missing `.github` directory, and succeeds without stdout. Explicit selection diagnostics can appear on stderr. It always overwrites an existing regular file after completing API reading and YAML serialization. A failed write can leave a truncated or partial file; restoration of tracked configuration belongs to Git. Symlinks at `.github` or `settings.yml` and non-regular destinations are rejected.
+A repository maintainer can capture supported visible About/General controls,
+topics, labels and automatically readable Security settings without changing
+GitHub settings. `export` saves `.github/settings.yml` at the checkout root and
+creates a missing `.github` directory. Success has no stdout; unavailable Security
+families emit bounded info and independent families continue. First export omits
+unavailable families; re-export retains their prior valid declarations. See the
+[automatic Security export contract](readable-security-export.feature.md).
+
+Existing files are decoded and validated before observation. Invalid/unreadable
+files and nonregular/symlink destinations are rejected. Successful encoding uses
+guarded atomic replacement for a stable existing snapshot; concurrent file edits
+or a newly appearing destination fail instead of being overwritten. Initial-file
+IO failure can leave a partial new file. This is not a lock against concurrent
+directory/link replacement.
 
 The [Discussions contract](discussions.feature.md) owns its strict read rules and version boundary.
 
@@ -20,14 +33,14 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - And it has no `.github` directory
 - When the maintainer runs `gh settings export` from a subdirectory
 - Then `.github/settings.yml` at that checkout's root contains the exported settings
-- And standard output and standard error are empty
+- And standard output is empty and standard error contains only applicable info/warnings
 - And configuration is not written beneath the subdirectory
 
 #### Scenario: Refresh an existing regular configuration
 
 - Given `.github/settings.yml` is an existing regular file
 - When the maintainer successfully runs `gh settings export`
-- Then that file contains the complete exported configuration
+- Then that file contains acquired values and retained unavailable Security intent
 
 #### Scenario: Report a failed write
 
@@ -35,7 +48,7 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - When a file write error prevents export from saving the complete configuration
 - Then the command fails with a diagnostic on standard error
 - And standard output is empty
-- And the maintainer may need Git to restore a truncated or partial configuration
+- And the original existing configuration remains unchanged
 
 #### Scenario: Refuse symlink destinations
 
@@ -55,7 +68,7 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 - And `.github/settings.yml` uses `version: daiksud/gh-settings@v0` with About, Labels and General at their UI locations
 - And visible controls retain completely observed typed values while hidden conditional menus are omitted after raw validation
 - And topics and complete labels are present, while response metadata and unsupported settings are absent
-- And standard error is empty
+- And standard error contains only applicable info/normalization warnings
 - And standard output is empty
 - And no repository settings are changed
 
@@ -172,7 +185,7 @@ These origin-support changes are supported and do not change settings YAML synta
 - Given standard output cannot be written
 - When the maintainer runs `gh settings export`
 - Then the command succeeds and saves `.github/settings.yml`
-- And standard error is empty
+- And standard error contains only applicable info/normalization warnings
 
 #### Scenario: A command is not implemented
 
@@ -293,3 +306,12 @@ The [export tests](../../internal/app/normalization_ruleset_scanning_alerts_expo
 Complete unsupported Security alerts strings export High or higher with exact raw evidence and Ruleset/tool context. Alerts records and canonical companion values remain independent. Each threshold's warnings use exact tool-name order; Security alerts follow Alerts. Invalid identities, missing/null/non-string members, duplicates and incomplete reads preserve the destination without invented defaults.
 
 [Export use-case tests](../../internal/app/normalization_ruleset_scanning_security_alerts_export_test.go) verify the independent sink, owned values, canonical/unrequested silence and failure boundaries. [Executable tests](../../tests/acceptance/normalization_ruleset_scanning_security_alerts_test.go) verify literal UI export, normalized write-required plans/reports, detailed/status-only Summary, independent whole-policy payloads, rejected raw drift, canonical repetition, actual removal and simultaneous Alerts/Security alerts evidence. They use local APIs and dummy credentials and make no live settings changes.
+
+### Rule: Automatic Security export preserves unread prior intent
+
+The executable [automatic export cases](../../tests/acceptance/readable_security_export_test.go)
+cover independent continuation, omission versus preservation, known false values,
+last-family success, bounded diagnostics and invalid-existing-file rejection.
+[Snapshot tests](../../internal/workspace/export_snapshot_test.go) cover concurrent
+edits and a file appearing after first-export preparation. Plan/apply retain their
+strict observation failures; other resource opt-in contracts remain unchanged.

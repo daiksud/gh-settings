@@ -132,7 +132,7 @@ repository:
 	run := func(args ...string) string {
 		t.Helper()
 		result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, args, false)
-		if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+		if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 			t.Fatal(args, err, result.runErr, result.stderr.String())
 		}
 		if err := checkSettingsUnchanged(fixture.work, input); err != nil {
@@ -193,7 +193,7 @@ repository:
 		t.Fatal("read-only commands wrote", beforeApply)
 	}
 	result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || result.stderr.String() != warning+"\n"+warning+"\n" {
+	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || withoutExportInfo(result.stderr.String()) != warning+"\n"+warning+"\n" {
 		t.Fatal("apply outcome or fresh diagnostics", err, result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
@@ -225,7 +225,7 @@ repository:
 	result, err = executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply"}, false)
 	var failed *exec.ExitError
 	finalWarning := `Warning: repository.settings.environments.deployment_branch_or_tag_rules.ref_type: observed "future" is outside UI choices; using "branch" (projection only). Environment "production", pattern 9 name_pattern "main".`
-	if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.HasPrefix(result.stderr.String(), warning+"\n"+warning+"\n"+finalWarning+"\n") || strings.Count(result.stderr.String(), "Warning:") != 3 || !strings.Contains(result.stderr.String(), "verify environment readback (write may have applied)") {
+	if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.HasPrefix(withoutExportInfo(result.stderr.String()), warning+"\n"+warning+"\n"+finalWarning+"\n") || strings.Count(withoutExportInfo(result.stderr.String()), "Warning:") != 3 || !strings.Contains(withoutExportInfo(result.stderr.String()), "verify environment readback (write may have applied)") {
 		t.Fatal("unsupported final state confirmed success", err, result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

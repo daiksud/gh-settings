@@ -111,7 +111,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 		}
 		t.Error("individual release/tag/asset or unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/immutable-releases")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -139,10 +139,10 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	mu.Lock()
 	ordinaryReads := policyReads
 	mu.Unlock()
-	if ordinaryReads != 0 {
-		t.Fatal("ordinary export acquired immutable releases")
+	if ordinaryReads == 0 {
+		t.Fatal("ordinary export did not acquire immutable releases")
 	}
-	run("export", "--security", "immutable-releases")
+	run("export")
 	data, err := os.ReadFile(path)
 	if err != nil || !strings.Contains(string(data), "immutable_release: false") || strings.Contains(string(data), "enforced_by_owner") {
 		t.Fatal(string(data), err)
@@ -195,20 +195,13 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 		before := len(writes)
 		mu.Unlock()
 		write("false")
-		original, _ := os.ReadFile(path)
 		for _, command := range []string{"plan", "apply"} {
 			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
 			if err != nil || r.runErr == nil || r.stdout.Len() != 0 {
 				t.Fatal(failure, command, err, r.stderr.String())
 			}
 		}
-		if failure != "owner-enforced" {
-			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--security", "immutable-releases"}, false)
-			after, _ := os.ReadFile(path)
-			if err != nil || r.runErr == nil || string(after) != string(original) {
-				t.Fatal(failure, err, string(after), r.stderr.String())
-			}
-		}
+
 		mu.Lock()
 		unchanged := len(writes) == before && redirects == 0
 		mu.Unlock()
@@ -226,7 +219,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "may already have applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "may already have applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

@@ -114,7 +114,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -194,7 +194,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	operations = nil
 	mu.Unlock()
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "earlier resource writes remain applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "earlier resource writes remain applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

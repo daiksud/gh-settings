@@ -108,7 +108,7 @@ func TestDependabotExportPlanApplyAndVerifiedDisable(t *testing.T) {
 		}
 		t.Error("unexpected endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/vulnerability-alerts", "/automated-security-fixes")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestDependabotExportPlanApplyAndVerifiedDisable(t *testing.T) {
 		if err != nil || r.runErr != nil {
 			t.Fatal(args, err, r.stderr.String())
 		}
-		return r.stdout.String(), r.stderr.String()
+		return r.stdout.String(), withoutExportInfo(r.stderr.String())
 	}
 	write := func(body string) {
 		t.Helper()
@@ -134,11 +134,11 @@ func TestDependabotExportPlanApplyAndVerifiedDisable(t *testing.T) {
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
 	mu.Lock()
-	if dependabotReads != 0 {
-		t.Fatal("ordinary export acquired Dependabot")
+	if dependabotReads == 0 {
+		t.Fatal("ordinary export did not acquire Dependabot")
 	}
 	mu.Unlock()
-	_, warning := run("export", "--security", "dependabot")
+	_, warning := run("export")
 	data, err := os.ReadFile(path)
 	if err != nil || !strings.Contains(string(data), "alerts: false") || !strings.Contains(string(data), "security_updates: false") || warning != "" {
 		t.Fatal(string(data), warning, err)
@@ -203,7 +203,7 @@ func TestDependabotExportPlanApplyAndVerifiedDisable(t *testing.T) {
 	mu.Unlock()
 	write("{alerts: false, security_updates: false}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "parent denied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "parent denied") {
 		t.Fatal(err, r.stdout.String(), r.stderr.String())
 	}
 	mu.Lock()
@@ -219,10 +219,10 @@ func TestDependabotExportPlanApplyAndVerifiedDisable(t *testing.T) {
 		mode = failure
 		beforeWrites := len(writes)
 		mu.Unlock()
-		before, _ := os.ReadFile(path)
-		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--security", "dependabot"}, false)
+		_, _ = os.ReadFile(path)
+		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
 		after, _ := os.ReadFile(path)
-		if err != nil || r.runErr == nil || string(before) != string(after) {
+		if err != nil || r.runErr != nil || !strings.Contains(r.stderr.String(), "info: export repository.settings.advanced_security.dependabot") || !strings.Contains(string(after), "security_updates: false") {
 			t.Fatal(failure, err, r.stderr.String(), string(after))
 		}
 		mu.Lock()

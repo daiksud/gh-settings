@@ -108,7 +108,7 @@ func TestRulesetPruneExecutableLifecycle(t *testing.T) {
 				if err != nil || (result.runErr == nil) != success {
 					t.Fatalf("args=%v err=%v run=%v out=%s stderr=%s", args, err, result.runErr, result.stdout.String(), result.stderr.String())
 				}
-				return result.stdout.String() + result.stderr.String()
+				return result.stdout.String() + withoutExportInfo(result.stderr.String())
 			}
 			run(true, "export", "--rulesets")
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))

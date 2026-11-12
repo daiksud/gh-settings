@@ -93,13 +93,13 @@ func TestCheckoutUICompositionNoOpDocuments(t *testing.T) {
 }
 
 func TestCheckoutUIExportSaveDefersAndRejectsPartialOutput(t *testing.T) {
-	checkout, path := checkoutConfigFixture(t, "# original configuration\n")
-	save, err := prepareCheckoutSave(checkout)
+	checkout, path := checkoutConfigFixture(t, "# original configuration\nversion: daiksud/gh-settings@v0\nrepository: {}\n")
+	_, save, err := prepareCheckoutSave(checkout)
 	if err != nil {
 		t.Fatal(err)
 	}
 	before, err := os.ReadFile(path)
-	if err != nil || string(before) != "# original configuration\n" {
+	if err != nil || string(before) != "# original configuration\nversion: daiksud/gh-settings@v0\nrepository: {}\n" {
 		t.Fatalf("preparation changed destination: %s, %v", before, err)
 	}
 	if err := save(settings.Declaration{}); err == nil {
@@ -135,5 +135,18 @@ func TestCheckoutUIInvalidDomainReturnsNoPartialIntent(t *testing.T) {
 	}
 	if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, before) {
 		t.Fatalf("invalid intent changed source: %s, %v", after, err)
+	}
+}
+
+func TestExportPreparationRejectsInconsistentExistingSecurity(t *testing.T) {
+	input := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    advanced_security:\n      code_security:\n        codeql_analysis: {default_setup: false, languages: [go]}\n"
+	checkout, path := checkoutConfigFixture(t, input)
+	_, save, err := prepareCheckoutSave(checkout)
+	if err == nil || save != nil {
+		t.Fatal("inconsistent prior intent accepted", err)
+	}
+	after, readErr := os.ReadFile(path)
+	if readErr != nil || string(after) != input {
+		t.Fatal(string(after), readErr)
 	}
 }

@@ -12,6 +12,9 @@ import (
 // ExportCheckout defers target and destination resolution until export runs.
 // PrepareSave resolves the destination before reads and returns its bound saver.
 type ExportCheckout struct {
+	Existing settings.Declaration
+	Info     func(string, error) error
+
 	IncludePullRequestExemptions                      bool
 	EnvironmentVariables                              []settings.EnvironmentVariableSelection
 	IncludeActionsPolicies                            bool
@@ -21,11 +24,9 @@ type ExportCheckout struct {
 	IncludePullRequestLimits                          bool
 	Variables                                         []string
 	AgentsVariables                                   []string
-	IncludeCodeQLConfiguration                        bool
 	IncludeActionsAccess                              bool
 	IncludeCacheStorage                               bool
 	IncludeCacheRetention                             bool
-	IncludeDependabot                                 bool
 	IncludeArchive                                    bool
 	IncludePages                                      bool
 	IncludeForkApproval                               bool
@@ -35,11 +36,6 @@ type ExportCheckout struct {
 	IncludeWorkflowPermissions                        bool
 	IncludeRulesets                                   bool
 	IncludeEnvironments                               bool
-	IncludeSecretScanning                             bool
-	IncludeCodeQLDefaultSetup                         bool
-	IncludeAIScanPullRequests                         bool
-	IncludePrivateReporting                           bool
-	IncludeImmutableReleases                          bool
 	IncludeRetention                                  bool
 	NormalizationWarning                              func(settings.ObservationNormalization)
 	CommitMessageNormalizationWarning                 func(settings.CommitMessageNormalization)
@@ -108,7 +104,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 			checkout.CommitMessageNormalizationWarning(normalization)
 		}
 	}
-	declaration := settings.Declaration{Repository: repositoryDeclaration}
+	declaration := settings.Declaration{Repository: repositoryDeclaration, Security: checkout.Existing.Security}
 	names, err := read.Topics(repo)
 	if err != nil {
 		return err
@@ -392,90 +388,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		declaration.CopilotReviewEffort = &enabled
 	}
-	if checkout.IncludeSecretScanning {
-		observed, err := read.SecretScanning(repo)
-		if err != nil {
-			return err
-		}
-		if _, _, err := observed.Values(); err != nil {
-			return err
-		}
-		if checkout.SecurityStatusNormalizationWarning != nil {
-			for _, record := range observed.Normalizations() {
-				checkout.SecurityStatusNormalizationWarning(record)
-			}
-		}
-		declaration.Security, err = observed.Declaration()
-		if err != nil {
-			return err
-		}
-	}
-	if checkout.IncludeDependabot {
-		o, err := read.Dependabot(repo)
-		if err != nil {
-			return err
-		}
-		d, err := o.Declaration()
-		if err != nil {
-			return err
-		}
-		declaration.Security.DependabotAlerts = d.DependabotAlerts
-		declaration.Security.DependabotSecurityUpdates = d.DependabotSecurityUpdates
-	}
-	if checkout.IncludeCodeQLConfiguration {
-		o, err := read.CodeQLConfiguration(repo)
-		if err != nil {
-			return err
-		}
-		d, err := o.Declaration()
-		if err != nil {
-			return err
-		}
-		declaration.Security.CodeQLConfiguration = d
-	}
-	if checkout.IncludeCodeQLDefaultSetup {
-		observed, err := read.CodeQLDefaultSetup(repo)
-		if err != nil {
-			return err
-		}
-		enabled, err := observed.Value()
-		if err != nil {
-			return err
-		}
-		declaration.Security.CodeQLDefaultSetup = &enabled
-	}
-	if checkout.IncludeAIScanPullRequests {
-		observed, err := read.AIScanPullRequests(repo)
-		if err != nil {
-			return err
-		}
-		enabled, err := observed.Value()
-		if err != nil {
-			return err
-		}
-		declaration.Security.AIScanPullRequests = &enabled
-	}
-	if checkout.IncludePrivateReporting {
-		observed, err := read.PrivateReporting(repo)
-		if err != nil {
-			return err
-		}
-		enabled, err := observed.Value()
-		if err != nil {
-			return err
-		}
-		declaration.Security.PrivateVulnerabilityReporting = &enabled
-	}
-	if checkout.IncludeImmutableReleases {
-		observed, err := read.ImmutableReleases(repo)
-		if err != nil {
-			return err
-		}
-		enabled, _, _, err := observed.Values()
-		if err != nil {
-			return err
-		}
-		declaration.Security.ImmutableReleases = &enabled
+	declaration.Security, err = exportSecurity(checkout, read, repo)
+	if err != nil {
+		return err
 	}
 	if checkout.IncludeArchive {
 		state, err := read.Archive(repo)

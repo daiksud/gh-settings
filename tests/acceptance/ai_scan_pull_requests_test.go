@@ -73,7 +73,7 @@ func TestAIScanPullRequestsExportPlanApply(t *testing.T) {
 		}
 		t.Error("unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/code-scanning/ai-scan")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestAIScanPullRequestsExportPlanApply(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -94,10 +94,10 @@ func TestAIScanPullRequestsExportPlanApply(t *testing.T) {
 	mu.Lock()
 	n := reads
 	mu.Unlock()
-	if n != 0 {
-		t.Fatal("ordinary export acquired AI Scan")
+	if n == 0 {
+		t.Fatal("ordinary export did not acquire AI Scan")
 	}
-	run("export", "--security", "ai-scan-pull-requests")
+	run("export")
 	run("validate")
 	data, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if !strings.Contains(string(data), "ai_scan_for_pull_requests: false") {

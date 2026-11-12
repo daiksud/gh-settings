@@ -117,7 +117,7 @@ func TestActionsGeneralControlsExportPlanApply(t *testing.T) {
 			run := func(args ...string) string {
 				t.Helper()
 				r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-				if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+				if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 					t.Fatal(args, err, r.stderr.String())
 				}
 				return r.stdout.String()

@@ -112,7 +112,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+		if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 			t.Fatalf("%v %v %s", args, err, result.stderr.String())
 		}
 		return result.stdout.String()
@@ -288,11 +288,11 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 			}
 			original := repositoryInput("about: {topics: []}\nsettings:\n  general:\n" + indentInput(tt.input, 4))
 			if tt.command == "export" {
-				original = "previous file must survive incomplete PR policy\n"
+				original = "# previous declaration\nversion: daiksud/gh-settings@v0\nrepository: {}\n"
 			}
 			writeSettingsFile(fixture.work, original)
 			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{tt.command}, false)
-			if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), tt.want) {
+			if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), tt.want) {
 				t.Fatal(err, result.stderr.String(), result.stdout.String())
 			}
 			if err := checkSettingsUnchanged(fixture.work, original); err != nil {
@@ -336,7 +336,7 @@ func TestPRAccessPlanRejectsStaleOrigin(t *testing.T) {
 	input := generalInput("features: {pull_requests: false}\n")
 	writeSettingsFile(fixture.work, input)
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
-	if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "stale checkout origin") || calls.Load() != 1 {
+	if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), "stale checkout origin") || calls.Load() != 1 {
 		t.Fatal("followed stale origin", err, result.stdout.String(), result.stderr.String(), calls.Load())
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

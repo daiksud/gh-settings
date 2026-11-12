@@ -45,7 +45,7 @@ func TestArchivedRepositoryEmptyLabelsDoNotBlockApply(t *testing.T) {
 	}
 	for _, command := range []string{"plan", "apply"} {
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{command}, false)
-		if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+		if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 			t.Fatalf("%s: %v %v %s", command, err, result.runErr, result.stderr.String())
 		}
 	}
@@ -153,7 +153,7 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatalf("%v: %v %v %s", args, err, r.runErr, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -223,7 +223,7 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal(got)
 	}
 	failedApply, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || failedApply.runErr == nil || !strings.Contains(failedApply.stderr.String(), "without explicit archived: false") {
+	if err != nil || failedApply.runErr == nil || !strings.Contains(withoutExportInfo(failedApply.stderr.String()), "without explicit archived: false") {
 		t.Fatal("archived mixed apply did not fail closed", err, failedApply.runErr, failedApply.stderr.String())
 	}
 	mu.Lock()

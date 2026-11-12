@@ -107,7 +107,7 @@ func TestLabelsPruneExecutableLifecycle(t *testing.T) {
 		if err != nil || (r.runErr == nil) != success {
 			t.Fatalf("args=%v err=%v run=%v out=%s stderr=%s", args, err, r.runErr, r.stdout.String(), r.stderr.String())
 		}
-		return r.stdout.String() + r.stderr.String()
+		return r.stdout.String() + withoutExportInfo(r.stderr.String())
 	}
 	for _, value := range []string{"all", "labels,all", "labels,", "environments"} {
 		run(false, "apply", "--prune", value)

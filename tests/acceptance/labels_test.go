@@ -95,10 +95,10 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 				t.Fatal(err)
 			}
 			if tc.errorText != "" {
-				if result.runErr == nil || !strings.Contains(result.stderr.String(), tc.errorText) || result.stdout.Len() != 0 {
+				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), tc.errorText) || result.stdout.Len() != 0 {
 					t.Fatalf("%+v", result)
 				}
-			} else if result.runErr != nil || result.stderr.Len() != 0 || result.stdout.String() != tc.want {
+			} else if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) || result.stdout.String() != tc.want {
 				t.Fatalf("%+v want=%q", result, tc.want)
 			}
 			mu.Lock()
@@ -170,7 +170,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			before := "previous configuration\n"
+			before := "version: daiksud/gh-settings@v0\nrepository: {}\n"
 			if err := writeSettingsFile(fixture.work, before); err != nil {
 				t.Fatal(err)
 			}
@@ -179,14 +179,14 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 				t.Fatal(err)
 			}
 			if fail {
-				if result.runErr == nil || !strings.Contains(result.stderr.String(), "403") {
+				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
 					t.Fatalf("result=%+v", result)
 				}
 				if err := checkSettingsUnchanged(fixture.work, before); err != nil {
 					t.Fatal(err)
 				}
 			} else {
-				if result.runErr != nil || result.stderr.Len() != 0 || result.stdout.Len() != 0 {
+				if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) || result.stdout.Len() != 0 {
 					t.Fatalf("result=%+v", result)
 				}
 				data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
@@ -213,7 +213,10 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			want := []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2"}
+			want := []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current"}
+			if fail {
+				want = want[:len(want)-5]
+			}
 			if !reflect.DeepEqual(paths, want) {
 				t.Fatalf("paths=%v", paths)
 			}
@@ -245,7 +248,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 	}
 	report := filepath.Join(fixture.root, "plan.json")
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "plan", report}, false)
-	if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+	if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
 	data, err := os.ReadFile(report)
@@ -265,7 +268,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 	summary := filepath.Join(fixture.root, "summary.md")
 	summaryEnv := append(fixtureEnv(fixture.cfg), "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=push", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_TARGET=owner/current", "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
 	result, err = executeCLI(binary, fixture.root, fixture.root, summaryEnv, []string{"action", "summary", report, summary}, false)
-	if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+	if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("summary=%+v err=%v", result, err)
 	}
 	data, err = os.ReadFile(summary)

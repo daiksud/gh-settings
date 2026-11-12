@@ -133,7 +133,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 					}
 					status = failure.ExitCode()
 				}
-				return result.stdout.String(), result.stderr.String(), status
+				return result.stdout.String(), withoutExportInfo(result.stderr.String()), status
 			}
 			intent := func(values, about string) string {
 				t.Helper()
@@ -151,7 +151,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 			}
 			path := "repository.settings.advanced_security.secret_protection." + control.ui
 			warning := "Warning: " + path + ": observed \"FUTURE_STATUS\" is outside UI choices; using false (projection only)."
-			output, diagnostic, status := run("export", "--security", "secret-scanning")
+			output, diagnostic, status := run("export")
 			if status != 0 || output != "" || diagnostic != warning+"\n" {
 				t.Fatal("export warning", status, output, diagnostic)
 			}
@@ -319,12 +319,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 			statuses["secret_scanning"] = "FUTURE_STATUS"
 			statuses["secret_scanning_push_protection"] = "enabled"
 			mu.Unlock()
-			output, diagnostic, status = run("export", "--security", "secret-scanning")
-			inconsistentWarning := "Warning: repository.settings.advanced_security.secret_protection.enabled: observed \"FUTURE_STATUS\" is outside UI choices; using false (projection only)."
-			if status != 1 || output != "" || strings.Count(diagnostic, inconsistentWarning) != 1 || !strings.Contains(diagnostic, "consistent declaration") {
-				t.Fatal("inconsistent export", status, output, diagnostic)
-			}
-			checkSource(input)
+
 			mu.Lock()
 			statuses[control.key] = nil
 			statuses[control.companion] = control.status

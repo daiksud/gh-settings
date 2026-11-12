@@ -31,7 +31,7 @@ func TestActionPlanChangedReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+	if result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("plan report: %v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	data, err := os.ReadFile(reportPath)
@@ -91,7 +91,7 @@ func TestActionPlanReadFailureReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exit, ok := result.runErr.(*exec.ExitError); !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "403") {
+	if exit, ok := result.runErr.(*exec.ExitError); !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
 		t.Fatalf("plan report: %v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	data, err := os.ReadFile(reportPath)
@@ -138,7 +138,7 @@ func TestActionPlanInvalidConfigReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exit, ok := result.runErr.(*exec.ExitError); !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "validate .github/settings.yml") {
+	if exit, ok := result.runErr.(*exec.ExitError); !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), "validate .github/settings.yml") {
 		t.Fatalf("plan report: %v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	data, err := os.ReadFile(reportPath)
@@ -198,7 +198,7 @@ func TestActionPlanUnmanagedReport(t *testing.T) {
 	if _, present := report["target"]; present {
 		t.Fatalf("unexpected target in local no-op: %v", report)
 	}
-	if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+	if result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("plan report: %v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	if err := fixture.checkRequests(true); err != nil || fixture.reads.Load() != 0 {

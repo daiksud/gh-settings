@@ -133,7 +133,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 		}
 		t.Error("advisory/report/notification/unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/private-vulnerability-reporting")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -159,16 +159,16 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
 	data, err := os.ReadFile(path)
-	if err != nil || strings.Contains(string(data), "advanced_security:") {
+	if err != nil || !strings.Contains(string(data), "advanced_security:") {
 		t.Fatal(string(data), err)
 	}
 	mu.Lock()
-	if statusReads != 0 {
+	if statusReads == 0 {
 		t.Fatal("ordinary export read reporting policy")
 	}
 	mu.Unlock()
 	// Hidden Secret scanning data does not block the independent Metadata reader.
-	run("export", "--security", "private-vulnerability-reporting")
+	run("export")
 	run("validate")
 	data, err = os.ReadFile(path)
 	if err != nil || !strings.Contains(string(data), "private_vulnerability_reporting: false") || strings.Contains(string(data), "secret_protection:") {
@@ -226,7 +226,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 		beforeWrites, beforeReads := len(writes), statusReads
 		mu.Unlock()
 		original, _ := os.ReadFile(path)
-		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--security", "private-vulnerability-reporting"}, false)
+		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
 		after, _ := os.ReadFile(path)
 		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(after) != string(original) {
 			t.Fatal(failure, err, r.stderr.String(), string(after))
@@ -234,7 +234,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 		// Explicit false on a nonpublic target remains inapplicable, not a no-op.
 		if failure == "private" || failure == "internal" {
 			r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-			if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "inapplicable") {
+			if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "inapplicable") {
 				t.Fatal(failure, err, r.stderr.String())
 			}
 		}
@@ -251,7 +251,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	mu.Unlock()
 	write("{private_vulnerability_reporting: true}")
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "did not retain requested") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "did not retain requested") {
 		t.Fatal("enforced no-change accepted", err, r.stderr.String())
 	}
 	mu.Lock()
@@ -282,7 +282,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	mode = ""
 	showSecret = true
 	mu.Unlock()
-	for _, args := range [][]string{{"export", "--security", "private-vulnerability-reporting", "--security", "secret-scanning"}, {"export", "--security", "secret-scanning", "--security", "private-vulnerability-reporting"}} {
+	for _, args := range [][]string{{"export"}, {"export"}} {
 		run(args...)
 		data, _ = os.ReadFile(path)
 		for _, field := range []string{"secret_protection:\n", "enabled: false", "push_protection: false", "private_vulnerability_reporting: false"} {
@@ -300,7 +300,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 	before = len(writes)
 	mu.Unlock()
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "earlier successful writes remain applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "earlier successful writes remain applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

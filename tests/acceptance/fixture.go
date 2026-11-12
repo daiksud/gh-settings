@@ -57,7 +57,7 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 	}, true)
 }
 
-func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, error) {
+func startHTTPFixture(handler http.HandlerFunc, readOnly bool, availableSecurityPaths ...string) (*apiFixture, error) {
 	// A short /tmp path stays within Unix socket path limits on both macOS and Linux.
 	root, err := os.MkdirTemp("/tmp", "ghs-accept-")
 	if err != nil {
@@ -82,6 +82,19 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool) (*apiFixture, err
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
+		// Existing resource fixtures explicitly model new automatic Security probes as
+		// denied unless that fixture owns the endpoint. Never allow unrelated writes.
+		if isAutomaticSecurityRead(r) {
+			available := false
+			for _, path := range availableSecurityPaths {
+				available = available || r.URL.Path == "/repos/owner/current"+path
+			}
+			if !available {
+				w.WriteHeader(http.StatusForbidden)
+				fmt.Fprint(w, `{"message":"Security fixture unavailable"}`)
+				return
+			}
+		}
 		if readOnly && !isMergeMethodsFixtureRead(r) && !isPRAccessFixtureRead(r) && !isIssueCreationPolicyFixtureRead(r) && !isSponsorshipsFixtureRead(r) && (r.Method != http.MethodGet || (r.URL.Path != "/repos/owner/current" && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels")) {
 			fixture.invalid.Store(true)
 			http.Error(w, "unexpected fixture request", 400)
@@ -190,3 +203,27 @@ func serveSponsorshipsFixtureRead(w http.ResponseWriter, r *http.Request) bool {
 	fmt.Fprint(w, sponsorshipsFixtureResponse)
 	return true
 }
+
+func isAutomaticSecurityRead(r *http.Request) bool {
+	if r.Method != http.MethodGet {
+		return false
+	}
+	switch r.URL.Path {
+	case "/repos/owner/current/vulnerability-alerts", "/repos/owner/current/automated-security-fixes", "/repos/owner/current/code-scanning/default-setup", "/repos/owner/current/code-scanning/ai-scan", "/repos/owner/current/private-vulnerability-reporting", "/repos/owner/current/immutable-releases":
+		return true
+	}
+	return false
+}
+
+// Successful exports can carry expected info while keeping warnings/errors
+// visible to existing command helpers. Dedicated tests inspect raw stderr too.
+func withoutExportInfo(stderr string) string {
+	var retained []string
+	for _, line := range strings.SplitAfter(stderr, "\n") {
+		if !strings.HasPrefix(line, "info: export ") {
+			retained = append(retained, line)
+		}
+	}
+	return strings.Join(retained, "")
+}
+func hasNonInfoDiagnostic(stderr string) bool { return withoutExportInfo(stderr) != "" }

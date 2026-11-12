@@ -122,10 +122,10 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 				t.Fatal(err)
 			}
 			if test.errorText != "" {
-				if result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), test.errorText) {
+				if result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), test.errorText) {
 					t.Fatalf("result=%+v", result)
 				}
-			} else if result.runErr != nil || result.stderr.Len() != 0 || result.stdout.String() != test.want {
+			} else if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) || result.stdout.String() != test.want {
 				t.Fatalf("result=%+v want=%q", result, test.want)
 			}
 			mu.Lock()
@@ -180,7 +180,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
-			before := "previous configuration\n"
+			before := "version: daiksud/gh-settings@v0\nrepository: {}\n"
 			if err := writeSettingsFile(fixture.work, before); err != nil {
 				t.Fatal(err)
 			}
@@ -189,7 +189,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				t.Fatal(err)
 			}
 			if fail {
-				if result.runErr == nil || !strings.Contains(result.stderr.String(), "fixture read denied") || result.stdout.Len() != 0 {
+				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "fixture read denied") || result.stdout.Len() != 0 {
 					t.Fatalf("result=%+v", result)
 				}
 				if err := checkSettingsUnchanged(fixture.work, before); err != nil {
@@ -202,7 +202,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				}
 				return
 			}
-			if result.runErr != nil || result.stdout.Len() != 0 || result.stderr.Len() != 0 {
+			if result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
 				t.Fatalf("result=%+v", result)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
@@ -249,7 +249,7 @@ settings:
 			}
 			report := filepath.Join(fixture.root, "plan.json")
 			result, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "plan", report}, false)
-			if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+			if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 				t.Fatalf("plan=%+v err=%v", result, err)
 			}
 			data, err = os.ReadFile(report)
@@ -290,7 +290,7 @@ settings:
 			summary := filepath.Join(fixture.root, "summary.md")
 			summaryEnv := append(fixtureEnv(fixture.cfg), "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=pull_request", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_TARGET=owner/current", "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
 			result, err = executeCLI(binary, fixture.root, fixture.root, summaryEnv, []string{"action", "summary", report, summary}, false)
-			if err != nil || result.runErr != nil || result.stderr.Len() != 0 {
+			if err != nil || result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 				t.Fatalf("summary=%+v err=%v", result, err)
 			}
 			data, err = os.ReadFile(summary)
@@ -324,7 +324,7 @@ settings:
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "POST /graphql"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
 				t.Fatalf("paths=%v", paths)
 			}
 		})

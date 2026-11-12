@@ -50,7 +50,7 @@ func TestCommitMessageNormalizationExportDiagnostic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	diagnostic := result.stderr.String()
+	diagnostic := withoutExportInfo(result.stderr.String())
 	wantDiagnostic := "Warning: repository.settings.general.pull_requests.squash_merge.default_commit_message: observed title \"COMMIT_OR_PR_TITLE\" and message \"BLANK\" are outside UI choices; using \"default_message\" (projection only).\n" +
 		"Warning: repository.settings.general.pull_requests.merge_commit.default_commit_message: observed title \"MERGE_MESSAGE\" and message \"BLANK\" are outside UI choices; using \"default_message\" (projection only).\n"
 	if result.runErr != nil || result.stdout.Len() != 0 || diagnostic != wantDiagnostic {
@@ -142,7 +142,7 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 					}
 					status = failure.ExitCode()
 				}
-				return result.stdout.String(), result.stderr.String(), status
+				return result.stdout.String(), withoutExportInfo(result.stderr.String()), status
 			}
 			checkRequests := func(want ...string) {
 				t.Helper()

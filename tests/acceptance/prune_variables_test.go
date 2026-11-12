@@ -145,7 +145,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 		if err != nil || (r.runErr == nil) != success {
 			t.Fatalf("args=%v err=%v run=%v out=%s stderr=%s", args, err, r.runErr, r.stdout.String(), r.stderr.String())
 		}
-		return r.stdout.String() + r.stderr.String()
+		return r.stdout.String() + withoutExportInfo(r.stderr.String())
 	}
 	for _, scope := range []string{"all", "environments", "actions-variables,,agents-variables"} {
 		run(false, "apply", "--prune", scope)

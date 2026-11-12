@@ -147,7 +147,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -221,7 +221,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	before := len(writes)
 	mu.Unlock()
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "exceeds repository maximum_allowed_days 7") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "exceeds repository maximum_allowed_days 7") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()
@@ -290,7 +290,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	events = nil
 	mu.Unlock()
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "earlier successful writes remain applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "earlier successful writes remain applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

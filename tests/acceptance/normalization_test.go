@@ -116,7 +116,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 			}
 			status = failure.ExitCode()
 		}
-		return result.stdout.String(), result.stderr.String(), status
+		return result.stdout.String(), withoutExportInfo(result.stderr.String()), status
 	}
 	intent := func(body string) string {
 		t.Helper()

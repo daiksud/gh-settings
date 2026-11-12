@@ -135,7 +135,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 	run := func(args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
-		if err != nil || r.runErr != nil || r.stderr.Len() != 0 {
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
 			t.Fatal(args, err, r.stderr.String())
 		}
 		return r.stdout.String()
@@ -229,7 +229,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 			t.Fatal(failure, err, r.stderr.String())
 		}
 		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "plan", report, "status-only"}, false)
-		if err != nil || r.runErr == nil || strings.Contains(r.stderr.String(), "CANARY") {
+		if err != nil || r.runErr == nil || strings.Contains(withoutExportInfo(r.stderr.String()), "CANARY") {
 			t.Fatal("private error disclosure", err, r.stderr.String())
 		}
 		mu.Lock()
@@ -266,7 +266,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(r.stderr.String(), "earlier successful writes remain applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "earlier successful writes remain applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

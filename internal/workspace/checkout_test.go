@@ -111,12 +111,12 @@ func TestCheckoutPrepareSaveBindsResolvedRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(github, "settings.yml")
-	before := "existing configuration\n"
+	before := "version: daiksud/gh-settings@v0\nrepository: {}\n"
 	if err := os.WriteFile(path, []byte(before), 0600); err != nil {
 		t.Fatal(err)
 	}
 	t.Chdir(t.TempDir())
-	save, err := NewCheckout(nested).PrepareSave()
+	_, save, err := NewCheckout(nested).PrepareSave()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestCheckoutPrepareSaveBindsResolvedRoot(t *testing.T) {
 }
 
 func TestCheckoutPrepareSaveOutsideGit(t *testing.T) {
-	save, err := NewCheckout(t.TempDir()).PrepareSave()
+	_, save, err := NewCheckout(t.TempDir()).PrepareSave()
 	if save != nil || err == nil || !strings.Contains(err.Error(), "locate .github/settings.yml:") {
 		t.Fatalf("save present=%v error=%v", save != nil, err)
 	}

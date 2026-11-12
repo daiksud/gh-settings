@@ -273,7 +273,7 @@ repository:
 	// Removing a PR container cannot retain its unowned Preview member.
 	writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {restrict_deletions: true}}]}\n"))
 	result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if e != nil || result.runErr == nil || !strings.Contains(result.stderr.String(), "cannot remove PR rule") {
+	if e != nil || result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "cannot remove PR rule") {
 		t.Fatal(e, result.stderr.String())
 	}
 	mu.Lock()
@@ -329,7 +329,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 			defer mu.Unlock()
 			want := []string{"GET", "GET"}
 			if tt.name == "new reviewer incomplete" {
-				if !strings.Contains(result.stderr.String(), "require_review_from_specific_teams") {
+				if !strings.Contains(withoutExportInfo(result.stderr.String()), "require_review_from_specific_teams") {
 					t.Fatal(result.stderr.String())
 				}
 				want = nil
@@ -406,7 +406,7 @@ repository:
 				writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {restrict_deletions: true}}]}\n"))
 			}
 			result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-			if e != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "writes may already have applied") {
+			if e != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), "writes may already have applied") {
 				t.Fatal(e, result)
 			}
 			mu.Lock()

@@ -51,7 +51,7 @@ func TestActionMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.runErr != nil || result.stderr.Len() != 0 {
+	if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 		t.Fatalf("metadata: %v stderr=%q", result.runErr, result.stderr.String())
 	}
 	values := make(map[string]string)
@@ -97,7 +97,7 @@ func TestActionMetadataRejectsIndirectOrigin(t *testing.T) {
 				t.Fatal(err)
 			}
 			exit, ok := result.runErr.(*exec.ExitError)
-			if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "origin") {
+			if !ok || exit.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), "origin") {
 				t.Fatalf("metadata: %v stdout=%q stderr=%q", result.runErr, result.stdout.String(), result.stderr.String())
 			}
 			if err := fixture.checkRequests(true); err != nil {

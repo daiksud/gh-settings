@@ -66,7 +66,7 @@ func TestLabelsCreatedIDWritebackAndRepeatApply(t *testing.T) {
 				args = append(args, "--no-writeback")
 			}
 			first, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, args, false)
-			if err != nil || first.runErr != nil || first.stderr.Len() != 0 || !strings.Contains(first.stdout.String(), `Created repository.labels "new": id 17`) {
+			if err != nil || first.runErr != nil || hasNonInfoDiagnostic(first.stderr.String()) || !strings.Contains(first.stdout.String(), `Created repository.labels "new": id 17`) {
 				t.Fatalf("first=%+v err=%v", first, err)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
@@ -87,10 +87,10 @@ func TestLabelsCreatedIDWritebackAndRepeatApply(t *testing.T) {
 				t.Fatal(err)
 			}
 			if mode == "writeback" {
-				if second.runErr != nil || second.stderr.Len() != 0 || second.stdout.String() != "Applied repository settings.\n" {
+				if second.runErr != nil || hasNonInfoDiagnostic(second.stderr.String()) || second.stdout.String() != "Applied repository settings.\n" {
 					t.Fatalf("second=%+v", second)
 				}
-			} else if second.runErr == nil || !strings.Contains(second.stderr.String(), "specify id: 17") {
+			} else if second.runErr == nil || !strings.Contains(withoutExportInfo(second.stderr.String()), "specify id: 17") {
 				t.Fatalf("collision was adopted: %+v", second)
 			}
 			mu.Lock()
@@ -153,7 +153,7 @@ func TestLabelsPartialFailureRetainsRecoverableCreatedIDs(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply"}, false)
-			if err != nil || result.runErr == nil || !strings.Contains(result.stderr.String(), "id 17") {
+			if err != nil || result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "id 17") {
 				t.Fatalf("result=%+v err=%v", result, err)
 			}
 			data, err := os.ReadFile(path)
@@ -161,10 +161,10 @@ func TestLabelsPartialFailureRetainsRecoverableCreatedIDs(t *testing.T) {
 				t.Fatal(err)
 			}
 			if mode == "writeback conflict" {
-				if string(data) != input+"# concurrent edit\n" || !strings.Contains(result.stderr.String(), "writeback failed") {
+				if string(data) != input+"# concurrent edit\n" || !strings.Contains(withoutExportInfo(result.stderr.String()), "writeback failed") {
 					t.Fatal(string(data), result.stderr.String())
 				}
-			} else if !strings.Contains(string(data), "id: 17") || !strings.Contains(result.stderr.String(), "403") {
+			} else if !strings.Contains(string(data), "id: 17") || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
 				t.Fatal(string(data), result.stderr.String())
 			}
 			mu.Lock()

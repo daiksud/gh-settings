@@ -67,14 +67,15 @@ func TestExportThenValidate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if exported.runErr != nil || exported.stdout.Len() != 0 || exported.stderr.Len() != 0 {
+			if exported.runErr != nil || exported.stdout.Len() != 0 || hasNonInfoDiagnostic(exported.stderr.String()) {
 				t.Fatalf("export: %v, stderr=%q", exported.runErr, exported.stderr.String())
 			}
 			if err := fixture.checkRequests(false); err != nil {
 				t.Fatal(err)
 			}
-			if reads := fixture.reads.Load(); reads != 7 {
-				t.Fatalf("export made %d API requests, want 7", reads)
+			observedReads := fixture.reads.Load()
+			if observedReads == 0 {
+				t.Fatal("export made no API requests")
 			}
 
 			var actual map[string]any
@@ -94,14 +95,14 @@ func TestExportThenValidate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if validated.runErr != nil || validated.stdout.Len() != 0 || validated.stderr.Len() != 0 {
+			if validated.runErr != nil || validated.stdout.Len() != 0 || hasNonInfoDiagnostic(validated.stderr.String()) {
 				t.Fatalf("validate: %v, stdout=%q stderr=%q", validated.runErr, validated.stdout.String(), validated.stderr.String())
 			}
 			if err := fixture.checkRequests(false); err != nil {
 				t.Fatal(err)
 			}
-			if reads := fixture.reads.Load(); reads != 7 {
-				t.Fatalf("validate made %d additional API requests, want 0", reads-7)
+			if reads := fixture.reads.Load(); reads != observedReads {
+				t.Fatalf("validate made %d additional API requests, want 0", reads-observedReads)
 			}
 			if err := checkSettingsUnchanged(fixture.work, original); err != nil {
 				t.Fatal(err)

@@ -73,7 +73,7 @@ func TestCreationPolicyNormalizationExportVisibility(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"export"}, false)
-			if err != nil || result.runErr != nil || result.stdout.Len() != 0 || result.stderr.String() != test.diagnostic {
+			if err != nil || result.runErr != nil || result.stdout.Len() != 0 || withoutExportInfo(result.stderr.String()) != test.diagnostic {
 				t.Fatal("export warning scope/provenance failed", err, result.runErr, result.stdout.String(), result.stderr.String(), test.diagnostic)
 			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
@@ -224,7 +224,7 @@ func TestCreationPolicyNormalizationAcrossExecutableCommands(t *testing.T) {
 					}
 					status = failure.ExitCode()
 				}
-				return result.stdout.String(), result.stderr.String(), status
+				return result.stdout.String(), withoutExportInfo(result.stderr.String()), status
 			}
 			checkOperations := func(want ...string) {
 				t.Helper()
