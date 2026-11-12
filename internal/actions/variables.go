@@ -9,9 +9,10 @@ import (
 
 // VariablePlanChange is same-version plaintext presentation data, never apply input.
 type VariablePlanChange struct {
-	Name   string  `json:"name"`
-	Before *string `json:"before,omitempty"`
-	After  *string `json:"after"`
+	Operation string  `json:"operation,omitempty"`
+	Name      string  `json:"name"`
+	Before    *string `json:"before,omitempty"`
+	After     *string `json:"after"`
 }
 
 func (c *VariablePlanChange) UnmarshalJSON(data []byte) error {
@@ -29,10 +30,7 @@ func validateVariableReport(entries []VariablePlanChange) ([]settings.VariableCh
 	var result []settings.VariableChange
 	seen := map[string]bool{}
 	for _, entry := range entries {
-		if entry.After == nil {
-			return nil, fmt.Errorf("missing repository variable after value")
-		}
-		change, err := settings.NewVariableChange(entry.Name, entry.Before, *entry.After)
+		change, err := variableReportChange(entry.Operation, entry.Name, entry.Before, entry.After)
 		if err != nil {
 			return nil, err
 		}
@@ -43,4 +41,17 @@ func validateVariableReport(entries []VariablePlanChange) ([]settings.VariableCh
 		result = append(result, change)
 	}
 	return result, nil
+}
+
+func variableReportChange(operation, name string, before, after *string) (settings.VariableChange, error) {
+	if operation == "delete" {
+		if before == nil || after != nil {
+			return settings.VariableChange{}, fmt.Errorf("invalid variable deletion report")
+		}
+		return settings.NewVariableDelete(settings.RepositoryVariable{Name: name, Value: *before})
+	}
+	if operation != "" || after == nil {
+		return settings.VariableChange{}, fmt.Errorf("missing or invalid repository variable after value")
+	}
+	return settings.NewVariableChange(name, before, *after)
 }

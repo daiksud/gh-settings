@@ -96,7 +96,7 @@ Test mapping: [mapping and observation](../../internal/settings/environment_ref_
 ## Selected Environment variables
 
 - Each entry may select `variables`, an array of required nonempty `name`/string `value` pairs. Variable names canonicalize to uppercase and reject duplicates within the folded Environment identity. The same name in different Environments and repository families remains independent.
-- Omitted and empty variable lists select no values. Unlisted values remain unchanged; there is no deletion or rename declaration. Values are explicitly non-sensitive plaintext, not Secrets.
+- Omitted variable lists always stay unmanaged. Without variable prune, [] selects no values and unlisted values remain unchanged. Explicit `--prune environment-variables` adds unlisted deletions for each listed Environment with a present variable list; [] selects all its acquired variables. There is no YAML delete or rename member. Values are explicitly non-sensitive plaintext, not Secrets.
 - An entry with `name` and `variables` only selects no Environment policy. It sends no policy PUT or pattern CRUD, even for an empty list. Missing Environments fail instead of being created. A name-only entry retains ordinary policy-upsert behavior; explicitly combined policy/variable intent applies the policy first.
 - Plan reads selected individual names. If the same plan explicitly creates a missing Environment policy, it shows the selected variables as creates without reading nonexistent variable endpoints. Apply checks the Environment identity, reads fresh variable state, conditionally POSTs or PATCHes and verifies an independent GET. It skips matching values. Failed Environment reads never become missing variables, and variable 404 is absence only after the Environment check succeeds.
 - Environment names are escaped as one URL segment. No unselected Environment, repository variable family or Secret is read or changed.
@@ -118,3 +118,12 @@ On 2026-11-11, a disposable Environment in the Free, personally owned public `da
 | Explicit export pairs and typed CLI presentation | `internal/cli/environment_variables_test.go` |
 | Closed scoped reports, escaped detailed Summary and status-only privacy | `internal/actions/environment_variables_test.go` |
 | Actual executable selection, exact requests, preservation and failure behavior | `tests/acceptance/environment_variables_test.go` |
+
+Environment-variable prune additionally binds complete inventories and deletion
+checks to the parent ID, rejecting detected replacement before the family write
+and before/after DELETE. Only explicitly declared Environment policy creation can
+precede variables for an absent parent. Unexpected candidates after that creation
+are rejected instead of deleting them. This adopts no Environment-object deletion
+or secret ownership. See [variable pruning](../settings.md#variable-pruning) and
+`internal/github/variable_prune_test.go`, `internal/app/variable_prune_test.go`,
+`tests/acceptance/prune_variables_test.go` for bounded fixture evidence.

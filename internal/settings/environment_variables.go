@@ -48,7 +48,13 @@ func NewEnvironmentVariableChange(environment string, change VariableChange) (En
 		return EnvironmentVariableChange{}, err
 	}
 	before, after := change.Values()
-	validated, err := NewVariableChange(change.Name(), before, after)
+	var validated VariableChange
+	var err error
+	if change.Operation() == "delete" && before != nil {
+		validated, err = NewVariableDelete(RepositoryVariable{Name: change.Name(), Value: *before})
+	} else {
+		validated, err = NewVariableChange(change.Name(), before, after)
+	}
 	if err != nil {
 		return EnvironmentVariableChange{}, err
 	}

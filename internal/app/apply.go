@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -200,22 +201,56 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
+	if prune.Has("environment-variables") && len(desired.EnvironmentVariables) > 0 {
+		for _, selected := range sortedEnvironmentVariables(desired.EnvironmentVariables) {
+			environment := selected.Environment
+			wrote, err := applyPrunedVariables(&result, repo, selected.Variables, environment, prepared.environmentVariables[settings.EnvironmentIdentity(environment)], EnvironmentVariablesRead, EnvironmentVariableUpsert, EnvironmentVariableDelete,
+				func(repo repository.Repository) (settings.VariableInventory, error) {
+					return write.ReadEnvironmentVariables(repo, environment)
+				},
+				func(repo repository.Repository, value settings.RepositoryVariable) (bool, error) {
+					return write.EnvironmentVariable(repo, environment, value)
+				},
+				func(repo repository.Repository, id int64, change settings.VariableChange) error {
+					return write.DeleteEnvironmentVariable(repo, environment, id, change)
+				})
+			if err != nil {
+				return result, err
+			}
+			hasWrites = hasWrites || wrote
+		}
+	} else if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
 		wrote, err := applyEnvironmentVariables(&result, repo, desired.EnvironmentVariables, write.EnvironmentVariable)
 		if err != nil {
 			return result, err
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Variables != nil && desired.Variables.Len() > 0 {
-		wrote, err := applyVariables(&result, repo, *desired.Variables, VariableUpsert, write.Variable)
+	if desired.Variables != nil && (desired.Variables.Len() > 0 || prune.Has("actions-variables")) {
+		var wrote bool
+		var err error
+		if prune.Has("actions-variables") {
+			wrote, err = applyPrunedVariables(&result, repo, *desired.Variables, "", environmentVariablePrune{changes: prepared.variables}, VariablesRead, VariableUpsert, VariableDelete, write.ReadVariables, write.Variable, func(repo repository.Repository, _ int64, change settings.VariableChange) error {
+				return write.DeleteVariable(repo, change)
+			})
+		} else {
+			wrote, err = applyVariables(&result, repo, *desired.Variables, VariableUpsert, write.Variable)
+		}
 		if err != nil {
 			return result, err
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0 {
-		wrote, err := applyVariables(&result, repo, *desired.AgentsVariables, AgentVariableUpsert, write.AgentVariable)
+	if desired.AgentsVariables != nil && (desired.AgentsVariables.Len() > 0 || prune.Has("agents-variables")) {
+		var wrote bool
+		var err error
+		if prune.Has("agents-variables") {
+			wrote, err = applyPrunedVariables(&result, repo, *desired.AgentsVariables, "", environmentVariablePrune{changes: prepared.agentsVariables}, AgentVariablesRead, AgentVariableUpsert, AgentVariableDelete, write.ReadAgentVariables, write.AgentVariable, func(repo repository.Repository, _ int64, change settings.VariableChange) error {
+				return write.DeleteAgentVariable(repo, change)
+			})
+		} else {
+			wrote, err = applyVariables(&result, repo, *desired.AgentsVariables, AgentVariableUpsert, write.AgentVariable)
+		}
 		if err != nil {
 			return result, fmt.Errorf("apply Agents variables: %w", err)
 		}

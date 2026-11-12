@@ -95,9 +95,10 @@ func (o VariableObservation) Value() (*RepositoryVariable, error) {
 
 // VariableChange is a create (nil before) or value-only update of one name.
 type VariableChange struct {
-	name   string
-	before *string
-	after  string
+	name    string
+	before  *string
+	after   string
+	deleted bool
 }
 
 func NewVariableChange(name string, before *string, after string) (VariableChange, error) {
@@ -127,6 +128,9 @@ func (c VariableChange) Values() (*string, string) {
 	return &before, c.after
 }
 func (c VariableChange) Operation() string {
+	if c.deleted {
+		return "delete"
+	}
 	if c.before == nil {
 		return "create"
 	}
@@ -164,4 +168,15 @@ func SortedVariables(d VariableDeclarations) []RepositoryVariable {
 	values := d.Values()
 	slices.SortFunc(values, func(a, b RepositoryVariable) int { return strings.Compare(a.Name, b.Name) })
 	return values
+}
+
+// NewVariableDelete retains the acquired value for exact pre-delete drift checks.
+// An empty observed value is still a complete existing object, not absence.
+func NewVariableDelete(before RepositoryVariable) (VariableChange, error) {
+	name, err := VariableName(before.Name)
+	if err != nil {
+		return VariableChange{}, err
+	}
+	value := before.Value
+	return VariableChange{name: name, before: &value, deleted: true}, nil
 }

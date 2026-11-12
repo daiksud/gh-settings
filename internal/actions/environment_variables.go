@@ -3,12 +3,12 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
 // EnvironmentVariablePlanChange retains the selected scope in plaintext presentation data.
 type EnvironmentVariablePlanChange struct {
+	Operation   string  `json:"operation,omitempty"`
 	Environment string  `json:"environment"`
 	Name        string  `json:"name"`
 	Before      *string `json:"before,omitempty"`
@@ -31,10 +31,7 @@ func validateEnvironmentVariableReport(entries []EnvironmentVariablePlanChange) 
 	var result []settings.EnvironmentVariableChange
 	var selections []settings.EnvironmentVariableSelection
 	for _, entry := range entries {
-		if entry.After == nil {
-			return nil, fmt.Errorf("missing Environment variable after value")
-		}
-		change, err := settings.NewVariableChange(entry.Name, entry.Before, *entry.After)
+		change, err := variableReportChange(entry.Operation, entry.Name, entry.Before, entry.After)
 		if err != nil {
 			return nil, err
 		}

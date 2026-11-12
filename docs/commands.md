@@ -126,7 +126,7 @@ Variable-only declarations do not upsert an Environment or touch its policy, pat
 
 Current source accepts separate [Actions](settings.md#actions-repository-variables) and [Agents](settings.md#agents-repository-variables) repository variable declarations. `export --variable NAME` selects one known non-sensitive Actions name; `export --agent-variable NAME` selects one Agents name. Repeat either flag for other names. Names validate before target/API work, including case-insensitive duplicate rejection within each family. The same canonical name can be selected in both families independently. Ordinary export and `--actions` do not read variables. All selected individual GETs must succeed and find the requested names before saving; a failure preserves the existing output file. There is no bulk/all selection.
 
-Plan is read-only and identifies the selected family. Apply upserts only declared names, preserving unlisted variables and skipping equal values. Actions variables are processed before Agents variables, with stable name order within each family. Earlier successful writes remain applied after a later failure. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use these features for secrets. Actions variables require the repository **Variables** read/write permission; Agents variables require the separate **Agent variables** read/write permission. Neither grants access to the other family.
+Plan is read-only and identifies the selected family. Ordinary apply upserts only declared names, preserving unlisted variables and skipping equal values. Explicit [variable prune scopes](settings.md#variable-pruning) add unlisted deletions for present lists. Actions variables are processed before Agents variables, with stable name order within each family. Earlier successful writes remain applied after a later failure. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use these features for secrets. Actions variables require the repository **Variables** read/write permission; Agents variables require the separate **Agent variables** read/write permission. Neither grants access to the other family.
 
 ## Export behavior
 
@@ -216,8 +216,9 @@ Use `gh settings plan --prune labels,rulesets` and
 other declared work. `--no-writeback` can be combined with apply. One
 comma-separated flag is allowed; repeats, duplicates, unknown names and empty
 elements fail before target resolution. `all` must stand alone and is currently
-rejected because later scopes, including undecided Environment deletion, are not
-implemented. See the [complete scope/presence and recovery contract](settings.md#collection-pruning).
+rejected because Actions Policies and undecided Environment deletion are not
+implemented. Variable pruning uses `actions-variables`, `agents-variables` and
+`environment-variables` independently. See the [complete scope/presence and recovery contract](settings.md#collection-pruning).
 
 ## Apply behavior
 
@@ -237,8 +238,8 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; unlisted deletion requires `--prune rulesets`. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
 | `repository.settings.environments[].variables` | After selected Environment policies, fresh selected-name GET and conditional POST/PATCH with exact GET verification. Variable-only intent sends no policy PUT. |
-| `repository.settings.actions.variables` | Stable name-order fresh individual GET, conditional POST or value-only PATCH, then exact GET verification. No unlisted deletion. |
-| `repository.settings.agents.variables` | After Actions variables, the same selected-name upsert and verification using only Agents endpoints. No unlisted deletion. |
+| `repository.settings.actions.variables` | Stable name-order fresh individual GET, conditional POST or value-only PATCH, then exact GET verification. Unlisted deletion requires its explicit variable prune scope. |
+| `repository.settings.agents.variables` | After Actions variables, the same selected-name upsert and verification using only Agents endpoints. Unlisted deletion requires its explicit variable prune scope. |
 | `repository.settings.actions.general` | Execution policy, workflow permissions, retention, cache retention, cache storage, then public-fork approval. Each uses its adopted preflight/readback contract. |
 | `repository.settings.copilot.code_review.use_custom_instructions` | Fresh GET, conditional single-boolean PATCH and independent GET verification; no review activation or instruction-file changes. |
 | `repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests` | Fresh complete GET, conditional MCP-only PATCH and independent GET verification of the toggle and unchanged sibling settings. |

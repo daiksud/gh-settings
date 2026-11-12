@@ -22,6 +22,10 @@ type RepositoryWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	Variables            func(repository.Repository) (settings.VariableInventory, error)
+	AgentVariables       func(repository.Repository) (settings.VariableInventory, error)
+	EnvironmentVariables func(repository.Repository, string) (settings.VariableInventory, error)
+
 	PullRequestExemptions func(repository.Repository) (settings.PullRequestExemptionsObservation, error)
 	EnvironmentVariable   func(repository.Repository, string, string) (settings.VariableObservation, error)
 	ActionsPolicies       func(repository.Repository) (settings.ActionsPolicyObservation, error)
@@ -57,6 +61,13 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadVariables             func(repository.Repository) (settings.VariableInventory, error)
+	ReadAgentVariables        func(repository.Repository) (settings.VariableInventory, error)
+	ReadEnvironmentVariables  func(repository.Repository, string) (settings.VariableInventory, error)
+	DeleteVariable            func(repository.Repository, settings.VariableChange) error
+	DeleteAgentVariable       func(repository.Repository, settings.VariableChange) error
+	DeleteEnvironmentVariable func(repository.Repository, string, int64, settings.VariableChange) error
+
 	PullRequestExemptions   func(repository.Repository, settings.PullRequestExemptionsDeclaration) (bool, error)
 	EnvironmentVariable     func(repository.Repository, string, settings.RepositoryVariable) (bool, error)
 	ReadActionsPolicies     func(repository.Repository) (settings.ActionsPolicyObservation, error)

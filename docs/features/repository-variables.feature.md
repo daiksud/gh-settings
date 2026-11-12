@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Manage selected repository variables
-description: Upsert explicitly named non-sensitive repository variables while preserving unlisted variables.
+description: Upsert named non-sensitive variables and explicitly prune present collections.
 ---
 
 ## Feature: Manage Actions and Agents repository variables
@@ -9,14 +9,14 @@ description: Upsert explicitly named non-sensitive repository variables while pr
 ### Rule: Select named non-sensitive values
 
 - `repository.settings.actions.variables` and `repository.settings.agents.variables` independently select optional arrays of required `name` and nonempty string `value` pairs. The same canonical name can have a different value in each family.
-- Omission and `[]` select nothing and make no variable requests. Unlisted variables remain unchanged.
+- Without prune, omission and [] select nothing and unlisted variables remain unchanged. Explicit variable prune owns retention for present lists; omission always stays unmanaged.
 - Names contain ASCII letters, digits and underscores, start with a letter or underscore, and cannot start with `GITHUB_` (case insensitive). Identity is case insensitive; canonical names are uppercase.
 - Missing/null/empty values fail locally. The Actions live probe rejected an empty value with HTTP 422; no whitespace-trimming restriction is inferred. Values are plaintext and must contain only non-sensitive information. No secret detection or masking is promised.
 - This feature covers repository Actions and Agents variables. [Environment variables](environments.feature.md#selected-environment-variables) have separate scoped ownership; secrets and organization variables are excluded. There is no delete or rename declaration.
 
 ### Rule: Read selected names and verify writes
 
-- Plan reads only declared names. Only HTTP 404 means absent; denied, malformed or incomplete reads fail.
+- Without prune, plan reads only declared names; explicit prune also acquires the complete selected inventory. Only HTTP 404 means absent; denied, malformed or incomplete reads fail.
 - Apply reads fresh selected names, creates absent variables, updates changed values and skips equal values. It verifies each successful write with an individual GET before continuing.
 - Failures stop later writes; earlier changes remain applied. A failed mutation or verification can have an unknown remote effect. There is no rollback, retry or concurrency lock.
 - Complete acquired GET string values remain observations, including an empty string if returned. Export rejects an observed empty value before saving because it cannot produce a supported nonempty declaration.
@@ -51,3 +51,23 @@ The separate [Agents Variables REST API](https://docs.github.com/en/rest/agents/
 | Actual binary, local validation, family-specific Action report, exact API version, no redirects, create/update/skip, unlisted preservation and failed-export file preservation | [Process acceptance](../../tests/acceptance/variables_test.go) |
 
 Automated tests use local fixtures and dummy credentials, without live repository changes. Live adoption evidence does not establish GitHub App credential permissions or workflow or agent consumption of a variable.
+
+### Explicit variable pruning
+
+Current source supports `actions-variables` and `agents-variables` as independent
+[prune scopes](prune.feature.md). Present [] selects the complete acquired
+collection for deletion; nonempty lists retain canonical declared names.
+Pruning does not limit other declared work. Complete 30-item pagination, exact
+stable total counts and all-candidate validation precede any remote write.
+Fresh family reads must retain the prepared candidates. Upserts precede fixed
+deletions; every DELETE checks acquired name/value and requires 204 plus complete
+inventory absence. Drift, denied/incomplete reads and uncertain writes stop later
+work while retaining earlier progress. Detailed reports show `delete` to `absent`;
+status-only still validates without exposing names/values. No live operation is
+part of these tests.
+
+Additional checks: `internal/settings/variable_prune_test.go`,
+`internal/github/variable_prune_test.go`, `internal/app/variable_prune_test.go`,
+`internal/actions/variable_prune_test.go`, and the built-CLI lifecycle
+`tests/acceptance/prune_variables_test.go` cover full acquisition, family/scope
+isolation, preflight, identity/value races, partial failure, restart and reports.

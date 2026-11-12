@@ -57,14 +57,15 @@ Normal apply creates/updates the declared independent objects and preserves
 unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
-unknown names fail locally. Current source supports `labels` and `rulesets`;
-`actions-policies`, `actions-variables`, `agents-variables`,
-`environment-variables` and `environments` are not implemented yet. `all` must be
+unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
+`agents-variables` and `environment-variables`. `actions-policies` and
+`environments` are not implemented yet. `all` must be
 standalone and currently fails explicitly rather than omitting those scopes.
 Environment-object deletion still needs a separate adoption decision.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
-scope; a nonempty list prunes objects whose IDs are not declared. ID-less entries
+scope; a nonempty list prunes objects whose identities are not declared (IDs for
+labels/Rulesets, canonical names for variables). ID-less entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -400,13 +401,47 @@ repository:
           value: nightly
 ```
 
-Both `name` and nonempty string `value` are required. Names contain only ASCII letters, digits and underscores, cannot start with a digit or `GITHUB_` (case insensitive), and are unique ignoring case. Internal identity and export names are uppercase. Missing/null/empty values are invalid; quote values that YAML would interpret as numbers or booleans. Omission and `[]` select nothing and make no variable requests; unlisted variables remain unchanged. There is no delete or rename declaration.
+Both `name` and nonempty string `value` are required. Names contain only ASCII letters, digits and underscores, cannot start with a digit or `GITHUB_` (case insensitive), and are unique ignoring case. Internal identity and export names are uppercase. Missing/null/empty values are invalid; quote values that YAML would interpret as numbers or booleans. Without prune, omission and `[]` select nothing and unlisted variables remain unchanged. `--prune actions-variables` makes a present list authoritative for retention; [] deletes all acquired variables, while omission always remains unmanaged. There is no YAML delete or rename member.
 
 Plan reads each selected name individually and shows creates or value updates. Apply reads fresh state, creates absent names with POST, updates changed values with value-only PATCH, skips equal values, and requires exact individual GET readback after a mutation. Only GET 404 means absent under the caller-permissions precondition. Other failed/incomplete reads fail. Mutations and verification failures can have remote effects; earlier writes remain applied, without rollback, retry or concurrency protection.
 
 Ordinary export does not read variables. Repeat `export --variable NAME` to acquire only known non-sensitive names by individual GET. A selected missing name fails before saving. Variables are **plaintext**: YAML, exported files, detailed plans and Summary can contain their values. Never put secrets or credentials in variables; the tool does not classify or mask values. Secrets and organization variables are outside these repository-variable features. [Environment variables](#environment-variables) have separate scoped selection. [Agents variables](#agents-repository-variables) have a separate declaration and export selection; Actions selections never access Agents endpoints.
 
 GitHub's [Variables REST API](https://docs.github.com/en/rest/actions/variables) requires repository Variables read for reads and write for mutations with fine-grained/App tokens. An empty-value create was rejected with HTTP 422 (`Variable value cannot be empty.`); validation rejects empty desired values before requests. No whitespace-trimming rule is inferred. GitHub enforces its [variable limits](https://docs.github.com/en/actions/reference/workflows-and-actions/variables#limits-for-configuration-variables); server rejections are errors. No permission is granted automatically. Free/personal/public UI eligibility and API persistence were observed separately; this is not a runtime entitlement gate. See the [behavior specification](features/repository-variables.feature.md).
+
+### Variable pruning
+
+`--prune actions-variables`, `--prune agents-variables` and
+`--prune environment-variables` select independent collections. Their
+comma-separated combination uses the common [prune contract](#collection-pruning).
+Pruning requires complete name/value inventories, including every page (API
+maximum 30 entries per page) and a stable, exact `total_count`. Duplicate names,
+missing/null values, count drift and incomplete/denied pages fail before writes.
+Prune acquires all current values in a selected collection, not just declared
+names; values remain non-sensitive plaintext and can appear in detailed output.
+Named export continues to read only its explicit selections.
+
+All candidates are prepared before any remote write. Each family fresh-reads its
+inventory, rejects changed candidates, upserts declared values before deleting
+its fixed candidates, rechecks the exact acquired name/value before each DELETE,
+and requires HTTP 204 plus fresh complete inventory absence. A concurrent change
+can still race these checks; there is no lock, retry or rollback. Earlier writes
+remain applied after later failure and uncertain DELETE/readback effects are
+reported honestly. Plan and detailed Summary display deletion to `absent`, not
+an empty value. Status-only output still hides names/values.
+
+Environment-variable pruning touches only listed Environments with an explicit
+`variables` array. `variables: []` prunes that Environment; an omitted array does
+not. Existing-parent inventory and deletion are bound to its numeric identity,
+so detected same-name parent replacement fails. A missing parent is an error
+unless the same declaration explicitly creates its Environment policy first;
+then no earlier variables are inferred and unexpected deletion candidates are
+rejected. Variable-only intent never creates or deletes an Environment, changes
+its policy/patterns or accesses secrets. Environment-object deletion is separate
+and undecided; `--prune environments` and `--prune all` remain rejected.
+
+API evidence: [Actions variable lists/deletion](https://docs.github.com/rest/actions/variables)
+and [Agents variable lists/deletion](https://docs.github.com/rest/agents/variables).
 
 ## Agents repository variables
 
@@ -422,7 +457,7 @@ repository:
           value: public-documentation
 ```
 
-The [name/value, omission and upsert rules above](#actions-repository-variables) also apply to Agents variables: names are canonical uppercase, values are required nonempty strings, omission and `[]` select nothing, and unlisted variables remain unchanged. No deletion or rename is supported. Plan reads only selected names; apply reads fresh state, conditionally creates or updates, then verifies the exact value. Failed reads do not become empty state, and failed mutations or verification can have unknown effects without rollback.
+The [name/value, omission and upsert rules above](#actions-repository-variables) also apply to Agents variables: names are canonical uppercase and values are required nonempty strings. Without prune, omission and `[]` select nothing and unlisted variables remain unchanged. `--prune agents-variables` adds unlisted deletions only for a present list; [] selects all, omission stays unmanaged. There is no YAML deletion/rename member. Without prune, plan reads only selected names; apply reads fresh state, conditionally creates or updates, then verifies the exact value. Failed reads do not become empty state, and failed mutations or verification can have unknown effects without rollback.
 
 Repeat `export --agent-variable NAME` to read only known non-sensitive Agents names. Ordinary export, `--actions` and `--variable` do not read Agents variables. Both export flags can select the same canonical name independently, and the two YAML groups can hold different values for that name. A missing, incomplete or failed selected read prevents saving the export. Values are **plaintext** in configuration, exported files, detailed plans, reports and Summary; never use this feature for secrets or credentials.
 
@@ -888,7 +923,7 @@ An acquired repository-owned Push Ruleset or file-restriction rule fails complet
 
 Complete supported observations, including bypass visibility, are required. Unknown writable fields/rules, missing values, invalid types, unreadable details and failed pages stop mutation/export. Inherited organization/enterprise Rulesets remain outside mutation ownership. Repository-owned Push Rulesets are unsupported and stop complete acquisition before any Rulesets mutation or export. Other protection can still affect effective behavior.
 
-Plan shows only listed creates/ID updates and default-derived reductions; it never invents deletion of unlisted objects. A nonempty collection counts once as managed. Apply reads fresh state after earlier families, prepares selected operations before the first Rulesets write and writes in stable name order. Fresh comparable matches make no write.
+Without prune, plan shows only listed creates/ID updates and default-derived reductions. Explicit prune additionally shows its acquired deletion candidates. A nonempty collection counts once as managed. Apply reads fresh state after earlier families, prepares selected operations before the first Rulesets write and writes in stable name order. Fresh comparable matches make no write.
 
 POST/PUT responses must confirm identity, ownership and requested comparable policy. PR/check/analysis changes require independent GET verification, including rule removal. Mismatch/failed readback returns nonzero and stops later operations: writes may already have applied. No retry or rollback occurs. Confirmed created IDs follow [guarded writeback](#apply-id-writeback).
 
@@ -943,11 +978,11 @@ repository:
           - {name: DISPLAY_NAME, value: 'Production'}
 ```
 
-The [variable name/value rules](#actions-repository-variables) apply: canonical uppercase names, unique ignoring ASCII case within each Environment, required nonempty string values, no delete or rename, and no changes to unlisted variables. The same name in different Environments or repository variable families remains independent. Omitted `variables` and `variables: []` make no variable requests.
+The [variable name/value rules](#actions-repository-variables) apply: canonical uppercase names, unique ignoring ASCII case within each Environment, required nonempty string values and no YAML delete/rename member. The same name in different Environments or repository variable families remains independent. Without prune, omitted `variables` and `variables: []` make no variable requests and unlisted variables are preserved. Explicit `--prune environment-variables` follows the [variable pruning contract](#variable-pruning); omission stays unmanaged, while [] selects all variables in that listed Environment.
 
 An entry containing `name` and `variables` alone selects **only variables**, including when the variable list is empty. It never sends an Environment policy PUT, changes protection or secrets, or creates a missing Environment implicitly. A nonempty variable selection requires that Environment to exist. To manage policy and variables together, include the desired policy controls in the same entry; policy upserts run first, then selected variable upserts. Existing name-only entries still select the ordinary empty-body policy upsert. Declared policy fields retain the API-controlled omission behavior above; adding variables does not make those omissions preservation guarantees.
 
-Plan reads selected names only. When the same plan explicitly creates a missing Environment policy, its selected variables are shown as creates without requesting nonexistent variable endpoints. Apply checks the selected Environment identity, reads each variable fresh, creates an absent variable, updates a changed value, skips equality and verifies independent readback. Writes run in stable Environment/name order. Failed reads do not become empty state; later failures stop execution without rolling back earlier writes, and a failed write or verification can have uncertain effects.
+Without prune, plan reads selected names only. Prune additionally acquires complete selected inventories. When the same plan explicitly creates a missing Environment policy, its selected variables are shown as creates without requesting nonexistent variable endpoints. Apply checks the selected Environment identity, reads each variable fresh, creates an absent variable, updates a changed value, skips equality and verifies independent readback. Writes run in stable Environment/name order. Failed reads do not become empty state; later failures stop execution without rolling back earlier writes, and a failed write or verification can have uncertain effects.
 
 Repeat `export --environment-variable ENVIRONMENT NAME` for each known non-sensitive value. Ordinary export and `--environments` never discover or read variables. Missing Environments, absent selected variables, incomplete responses and read failures prevent saving. This flag composes with policy export without inventing policy intent for variable-only selections. Values are **plaintext** in YAML, exports, detailed plans, reports and Summary. Never use variables for secrets or credentials.
 

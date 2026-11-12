@@ -22,6 +22,9 @@ func main() {
 	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout) }
 	reader := app.Reader{ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	reader.Environments = readEnvironments
+	reader.Variables = readVariables
+	reader.AgentVariables = readAgentVariables
+	reader.EnvironmentVariables = readEnvironmentVariables
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
 			var prune settings.PruneScopes
@@ -29,7 +32,7 @@ func main() {
 				var err error
 				prune, err = settings.ParsePruneScopes(raw)
 				if err != nil {
-					return app.PlanResult{}, err
+					return app.PlanResult{}, &app.PlanError{Stage: "invalid-config", Err: err}
 				}
 			}
 			return app.Plan(loadDeclaration, checkout.Repository, reader, prune)
@@ -51,7 +54,7 @@ func main() {
 			if options.NoWriteback || os.Getenv("GITHUB_ACTIONS") == "true" {
 				record = nil
 			}
-			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
+			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadVariables: readVariables, ReadAgentVariables: readAgentVariables, ReadEnvironmentVariables: readEnvironmentVariables, DeleteVariable: deleteVariable, DeleteAgentVariable: deleteAgentVariable, DeleteEnvironmentVariable: deleteEnvironmentVariable, ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
 				return readPagesForApply(repo, desired.Pages)
 			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotMCP: updateCopilotMCP, PullRequestLimits: updatePullRequestLimits, PullRequestExemptions: updatePullRequestExemptions, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, EnvironmentVariable: upsertEnvironmentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, ReadActionsPolicies: readActionsPolicies, ActionsEventPolicy: writeActionsEventPolicy, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
