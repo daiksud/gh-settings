@@ -9,7 +9,7 @@ func TestPruneSelectionValidation(t *testing.T) {
 	if err != nil || !p.Has("labels") || !p.Has("rulesets") || p.Has("environments") {
 		t.Fatal(p, err)
 	}
-	for _, value := range []string{"", "labels,", ",labels", "labels,,rulesets", "all,labels", "labels,all", "all", "labels,labels", "Labels", " labels", "unknown", "actions-policies", "environments"} {
+	for _, value := range []string{"", "labels,", ",labels", "labels,,rulesets", "all,labels", "labels,all", "all", "labels,labels", "Labels", " labels", "unknown", "environments"} {
 		if _, err := ParsePruneScopes(value); err == nil {
 			t.Errorf("accepted %q", value)
 		}

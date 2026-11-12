@@ -51,11 +51,14 @@ func ActionsEventPolicyLine(change settings.ActionsEventPolicyChange) string {
 	}
 	after := change.After()
 	identity := ""
-	if after.ID > 0 {
-		identity = fmt.Sprintf(" id=%d", after.ID)
+	if change.ID() > 0 {
+		identity = fmt.Sprintf(" id=%d", change.ID())
 	}
 	prefix := fmt.Sprintf("repository.settings.actions.policies: %s %q%s: ", change.Operation(), change.Name(), identity)
 	if before := change.Before(); before != nil {
+		if change.Operation() == "delete" {
+			return prefix + value(*before) + " → absent"
+		}
 		return prefix + value(*before) + " → " + value(after)
 	}
 	return prefix + value(after)
@@ -64,7 +67,16 @@ func ActionsEventPolicyLine(change settings.ActionsEventPolicyChange) string {
 func ValidateActionsEventPolicyChanges(changes []settings.ActionsEventPolicyChange) error {
 	names, ids := map[string]bool{}, map[int64]bool{}
 	for _, change := range changes {
-		if _, err := settings.NewActionsEventPolicyStateChange(change.Before(), change.After()); err != nil {
+		var err error
+		if change.Operation() == "delete" {
+			if change.Before() == nil {
+				return fmt.Errorf("missing Actions policy deletion before state")
+			}
+			_, err = settings.NewActionsEventPolicyDelete(*change.Before())
+		} else {
+			_, err = settings.NewActionsEventPolicyStateChange(change.Before(), change.After())
+		}
+		if err != nil {
 			return err
 		}
 		if names[change.Name()] || (change.ID() > 0 && ids[change.ID()]) {

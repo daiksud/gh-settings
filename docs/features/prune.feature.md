@@ -14,8 +14,9 @@ an unsupported scope.
 
 The intended scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables` and
-`environments`. Current source implements labels/Rulesets and all three variable scopes. Actions
-Policies follow separately. Unimplemented scopes fail before target resolution or remote access.
+`environments`. Current source implements labels/Rulesets, Actions Policies and
+all three variable scopes. Environment-object deletion remains undecided and is
+explicitly rejected before target resolution or remote access.
 `all` remains unavailable while any intended scope is unimplemented or undecided.
 This specification is not a claim that every stage has shipped.
 
@@ -100,3 +101,7 @@ upsert/delete ordering, scoped parents, explicit parent creation and partial
 progress. `internal/actions/variable_prune_test.go` and
 `tests/acceptance/prune_variables_test.go` cover typed absent values, both Summary
 modes, actual CLI partial failure/restart and omitted-scope preservation.
+
+Actions Policy pruning additionally refuses unsupported candidate policy state,
+uses repository-only inventory and exact detail rechecks, and requires confirmed
+absence after DELETE 204. Removing a restriction can permit future workflows.

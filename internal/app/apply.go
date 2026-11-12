@@ -180,8 +180,8 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			result.Operations[index].Status = OperationCompleted
 		}
 	}
-	if desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0 {
-		wrote, err := applyActionsPolicies(&result, repo, desired.ActionsPolicies, write)
+	if desired.ActionsPolicies != nil && (desired.ActionsPolicies.Len() > 0 || prune.Has("actions-policies")) {
+		wrote, err := applyActionsPolicies(&result, repo, desired.ActionsPolicies, write, prune.Has("actions-policies"), prepared.actionsPolicies)
 		if err != nil {
 			return result, err
 		}

@@ -304,6 +304,9 @@ func equalActionsPolicyActors(a, b *[]settings.ActionsPolicyActor) bool {
 	return slices.Equal(left, right)
 }
 func (client *Client) WriteActionsEventPolicy(repo repository.Repository, change settings.ActionsEventPolicyChange) (int64, error) {
+	if change.Operation() == "delete" {
+		return client.deleteActionsEventPolicy(repo, change)
+	}
 	desired := change.After()
 	if err := settings.ValidateActionsEventPolicyState(desired); err != nil {
 		return 0, &actionsPoliciesPreWriteFailure{err}

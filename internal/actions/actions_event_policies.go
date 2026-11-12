@@ -55,7 +55,7 @@ func (entries *ActionsEventPolicyPlanChanges) UnmarshalJSON(data []byte) error {
 type ActionsEventPolicyPlanChange struct {
 	Operation string                    `json:"operation"`
 	Before    *ActionsEventPolicyReport `json:"before,omitempty"`
-	After     *ActionsEventPolicyReport `json:"after"`
+	After     *ActionsEventPolicyReport `json:"after,omitempty"`
 }
 
 func (entry *ActionsEventPolicyPlanChange) UnmarshalJSON(data []byte) error {
@@ -203,6 +203,21 @@ func (value ActionsEventPolicyReport) policy() (settings.ActionsEventPolicy, err
 func validateActionsEventPolicyReport(entries []ActionsEventPolicyPlanChange) ([]settings.ActionsEventPolicyChange, error) {
 	var changes []settings.ActionsEventPolicyChange
 	for _, entry := range entries {
+		if entry.Operation == "delete" {
+			if entry.Before == nil || entry.After != nil {
+				return nil, fmt.Errorf("Actions policy deletion requires before and absent after")
+			}
+			before, err := entry.Before.policy()
+			if err != nil {
+				return nil, err
+			}
+			change, err := settings.NewActionsEventPolicyDelete(before)
+			if err != nil {
+				return nil, err
+			}
+			changes = append(changes, change)
+			continue
+		}
 		if entry.After == nil {
 			return nil, fmt.Errorf("missing Actions policy after value")
 		}
