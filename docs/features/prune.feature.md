@@ -14,8 +14,8 @@ an unsupported scope.
 
 The intended scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables` and
-`environments`. Delivery starts with labels/Rulesets, then variables and Actions
-Policies. Unimplemented scopes fail before target resolution or remote access.
+`environments`. Current source implements labels/Rulesets and all three variable scopes. Actions
+Policies follow separately. Unimplemented scopes fail before target resolution or remote access.
 `all` remains unavailable while any intended scope is unimplemented or undecided.
 This specification is not a claim that every stage has shipped.
 
@@ -89,3 +89,14 @@ and [Rulesets REST API](https://docs.github.com/rest/repos/rules#delete-a-reposi
 
 All use isolated repositories/local HTTP fixtures with dummy credentials. They
 do not establish actual credential grants, live protection or deletion effects.
+
+## Variable-stage test mapping
+
+`internal/settings/variable_prune_test.go` covers presence and canonical name
+identity. `internal/github/variable_prune_test.go` covers 30-entry pagination,
+exact totals, values, status/readback and Environment identity races.
+`internal/app/variable_prune_test.go` covers all-candidate preflight, fixed
+upsert/delete ordering, scoped parents, explicit parent creation and partial
+progress. `internal/actions/variable_prune_test.go` and
+`tests/acceptance/prune_variables_test.go` cover typed absent values, both Summary
+modes, actual CLI partial failure/restart and omitted-scope preservation.

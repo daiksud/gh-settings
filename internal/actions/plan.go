@@ -122,15 +122,30 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	}
 	for _, change := range result.Comparison.Variables {
 		before, after := change.Values()
-		report.Variables = append(report.Variables, VariablePlanChange{Name: change.Name(), Before: before, After: &after})
+		record := VariablePlanChange{Name: change.Name(), Before: before, After: &after}
+		if change.Operation() == "delete" {
+			record.Operation = "delete"
+			record.After = nil
+		}
+		report.Variables = append(report.Variables, record)
 	}
 	for _, change := range result.Comparison.EnvironmentVariables {
 		before, after := change.Change.Values()
-		report.EnvironmentVariables = append(report.EnvironmentVariables, EnvironmentVariablePlanChange{Environment: change.Environment, Name: change.Change.Name(), Before: before, After: &after})
+		record := EnvironmentVariablePlanChange{Environment: change.Environment, Name: change.Change.Name(), Before: before, After: &after}
+		if change.Change.Operation() == "delete" {
+			record.Operation = "delete"
+			record.After = nil
+		}
+		report.EnvironmentVariables = append(report.EnvironmentVariables, record)
 	}
 	for _, change := range result.Comparison.AgentsVariables {
 		before, after := change.Values()
-		report.AgentsVariables = append(report.AgentsVariables, VariablePlanChange{Name: change.Name(), Before: before, After: &after})
+		record := VariablePlanChange{Name: change.Name(), Before: before, After: &after}
+		if change.Operation() == "delete" {
+			record.Operation = "delete"
+			record.After = nil
+		}
+		report.AgentsVariables = append(report.AgentsVariables, record)
 	}
 	for _, change := range result.Comparison.CopilotInstructions {
 		before, after := change.Values()

@@ -107,16 +107,36 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += labels.Managed
 		comparison.Labels = labels.Labels
 	}
-	if desired.Variables != nil && desired.Variables.Len() > 0 {
-		changes, err := planVariables(repo, *desired.Variables, read.Variable)
+	if desired.Variables != nil && (desired.Variables.Len() > 0 || prune.Has("actions-variables")) {
+		var changes []settings.VariableChange
+		var err error
+		if prune.Has("actions-variables") {
+			inventory, readErr := read.Variables(repo)
+			if readErr != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: readErr}
+			}
+			changes, err = planVariablePrune(repo, *desired.Variables, read.Variable, inventory)
+		} else {
+			changes, err = planVariables(repo, *desired.Variables, read.Variable)
+		}
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.actions.variables", Target: repo, Err: err}
 		}
 		comparison.Managed++
 		comparison.Variables = changes
 	}
-	if desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0 {
-		changes, err := planVariables(repo, *desired.AgentsVariables, read.AgentVariable)
+	if desired.AgentsVariables != nil && (desired.AgentsVariables.Len() > 0 || prune.Has("agents-variables")) {
+		var changes []settings.VariableChange
+		var err error
+		if prune.Has("agents-variables") {
+			inventory, readErr := read.AgentVariables(repo)
+			if readErr != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.agents.variables", Target: repo, Err: readErr}
+			}
+			changes, err = planVariablePrune(repo, *desired.AgentsVariables, read.AgentVariable, inventory)
+		} else {
+			changes, err = planVariables(repo, *desired.AgentsVariables, read.AgentVariable)
+		}
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.agents.variables", Target: repo, Err: err}
 		}
@@ -224,7 +244,7 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 			}
 		}
 	}
-	if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
+	if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) || prune.Has("environment-variables") && len(desired.EnvironmentVariables) > 0 {
 		comparison.Managed++
 	}
 	for _, selected := range desired.EnvironmentVariables {
@@ -236,6 +256,21 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		})
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments.variables", Target: repo, Err: err}
+		}
+
+		if prune.Has("environment-variables") && !createdEnvironments[settings.EnvironmentIdentity(selected.Environment)] {
+			inventory, readErr := read.EnvironmentVariables(repo, selected.Environment)
+			if readErr != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments.variables", Target: repo, Err: readErr}
+			}
+			if _, readErr = inventory.EnvironmentID(selected.Environment); readErr != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments.variables", Target: repo, Err: readErr}
+			}
+			deletes, readErr := settings.PrunedVariableChanges(inventory, &selected.Variables)
+			if readErr != nil {
+				return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments.variables", Target: repo, Err: readErr}
+			}
+			changes = append(changes, deletes...)
 		}
 
 		for _, change := range changes {

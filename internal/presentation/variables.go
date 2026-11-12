@@ -16,6 +16,9 @@ func AgentVariableLine(change settings.VariableChange) string {
 func variableLine(path string, change settings.VariableChange) string {
 	before, after := change.Values()
 	prefix := fmt.Sprintf("%s: %s %q", path, change.Operation(), change.Name())
+	if change.Operation() == "delete" && before != nil {
+		return fmt.Sprintf("%s value: %q → absent", prefix, *before)
+	}
 	if before == nil {
 		return fmt.Sprintf("%s value=%q", prefix, after)
 	}
