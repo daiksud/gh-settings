@@ -120,3 +120,54 @@ func labelSequence(t *testing.T, changes ...settings.LabelChange) settings.Label
 	}
 	return result
 }
+
+func TestPrunedLabelGeneratedReportSupportsBothSummaryModes(t *testing.T) {
+	for _, mode := range []string{"detailed", "status-only"} {
+		t.Run(mode, func(t *testing.T) {
+			setSummaryEnvironment(t)
+			desired, _ := settings.NewLabelDeclarations(nil)
+			observed, _ := settings.NewLabelObservation([]settings.LabelState{{ID: 7, Name: "<dependencies>", Color: "abcdef", Description: "automatic"}})
+			prune, _ := settings.ParsePruneScopes("labels")
+			dir := t.TempDir()
+			path := filepath.Join(dir, "plan.json")
+			summary := filepath.Join(dir, "summary.md")
+			planArgs := []string{"plan", path}
+			summaryArgs := []string{"summary", path, summary}
+			if mode == "status-only" {
+				planArgs = append(planArgs, mode)
+				summaryArgs = append(summaryArgs, mode)
+			}
+			var out, errout bytes.Buffer
+			status := actions.Run(planArgs, &out, &errout, "dev", func() (app.PlanResult, error) {
+				return app.Plan(func() (settings.Declaration, error) { return settings.Declaration{Labels: &desired}, nil }, func() (repository.Repository, error) {
+					return repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, nil
+				}, app.Reader{Labels: func(repository.Repository) (settings.LabelObservation, error) { return observed, nil }}, prune)
+			})
+			if status != 0 {
+				t.Fatal(status, errout.String())
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var report actions.PlanReport
+			if err := json.Unmarshal(data, &report); err != nil || len(report.Labels) != 1 || report.Labels[0].Operation != "delete" || report.Labels[0].ID == nil || *report.Labels[0].ID != 7 || report.Labels[0].After != nil {
+				t.Fatal(string(data), err)
+			}
+			out.Reset()
+			errout.Reset()
+			status = actions.Run(summaryArgs, &out, &errout, "dev", nil)
+			rendered, err := os.ReadFile(summary)
+			if status != 0 || err != nil {
+				t.Fatalf("mode=%s status=%d err=%v stderr=%s", mode, status, err, errout.String())
+			}
+			if mode == "status-only" {
+				if strings.Contains(string(rendered), "dependencies") || !strings.Contains(string(rendered), "changed") {
+					t.Fatal(string(rendered))
+				}
+			} else if !strings.Contains(html.UnescapeString(string(rendered)), `delete "<dependencies>"`) || !strings.Contains(string(rendered), "issue/PR associations") || strings.Contains(string(rendered), "<dependencies>") {
+				t.Fatal(string(rendered))
+			}
+		})
+	}
+}

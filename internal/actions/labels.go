@@ -105,6 +105,11 @@ func validateLabelReport(changes []LabelPlanChange) (settings.LabelChanges, erro
 				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 			}
 			value, err = settings.NewLabelUpdate(before, after)
+		case "delete":
+			if change.Before == nil || change.After != nil || change.Name != before.Name {
+				return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
+			}
+			value, err = settings.NewLabelDelete(before)
 		default:
 			return settings.LabelChanges{}, fmt.Errorf("invalid %q label operation", change.Operation)
 		}

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -89,7 +91,7 @@ func TestLabelsPruneExecutableLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer fixture.close()
-	env := exportFixtureEnv(fixture.cfg)
+	env := append(exportFixtureEnv(fixture.cfg), "SETTINGS_PRUNE=labels", "SETTINGS_TARGET=owner/current", "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=push", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
@@ -123,6 +125,30 @@ func TestLabelsPruneExecutableLifecycle(t *testing.T) {
 		t.Fatal("plan wrote")
 	}
 	mu.Unlock()
+	for _, mode := range []string{"detailed", "status-only"} {
+		report := filepath.Join(fixture.root, "label-"+mode+".json")
+		summary := filepath.Join(fixture.root, "label-"+mode+".md")
+		planArgs := []string{"action", "plan", report}
+		summaryArgs := []string{"action", "summary", report, summary}
+		if mode == "status-only" {
+			planArgs = append(planArgs, mode)
+			summaryArgs = append(summaryArgs, mode)
+		}
+		run(true, planArgs...)
+		run(true, summaryArgs...)
+		data, err := os.ReadFile(summary)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mode == "status-only" {
+			if strings.Contains(string(data), "dependencies") || !strings.Contains(string(data), "changed") {
+				t.Fatal(string(data))
+			}
+		} else if !strings.Contains(string(data), "delete") || !strings.Contains(string(data), "issue/PR associations") {
+			t.Fatal(string(data))
+		}
+	}
+
 	run(true, "apply", "--prune", "labels,rulesets")
 	mu.Lock()
 	if strings.Join(writes, ",") != "update:old,create:new,delete:dependencies" || len(states) != 2 || states[9] == nil || states[7]["name"] != "kept" {
