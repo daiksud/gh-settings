@@ -34,6 +34,8 @@ func LabelLine(change settings.LabelChange) string {
 			attributes = append(attributes, fmt.Sprintf("description: %q → %q", before.Description, *after.Description))
 		}
 		prefix += " " + strings.Join(attributes, ", ")
-	}, func(settings.LabelState) { prefix += " (removes issue/PR associations)" })
+	}, func(settings.LabelState) {
+		prefix += " (removes issue/PR associations; includes undeclared automatically created Dependabot labels)"
+	})
 	return prefix
 }

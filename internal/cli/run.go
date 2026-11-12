@@ -26,13 +26,17 @@ type ExportOptions struct {
 	Dependabot, Rulesets, Environments, Actions, WorkflowPermissions, SecretScanning, CodeQLConfiguration, CodeQLDefaultSetup, AIScanPullRequests, PrivateReporting, ImmutableReleases, CacheRetention, CacheStorage, Retention, ForkApproval, Archive, Pages bool
 }
 
-type ApplyOptions struct{ NoWriteback bool }
+type PlanOptions struct{ Prune settings.PruneScopes }
+type ApplyOptions struct {
+	NoWriteback bool
+	Prune       settings.PruneScopes
+}
 
 // Operations binds shared application operations to their real dependencies.
 type Operations struct {
 	Export   func(ExportOptions) error
 	Validate func() (settings.Declaration, error)
-	Plan     func() (app.PlanResult, error)
+	Plan     func(PlanOptions) (app.PlanResult, error)
 	Apply    func(ApplyOptions) (app.ApplyResult, error)
 }
 
@@ -211,8 +215,31 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		return operations.Export(options)
 	}
 	var applyOptions ApplyOptions
-	if len(args) == 2 && args[0] == "apply" && args[1] == "--no-writeback" {
-		applyOptions.NoWriteback = true
+	var planOptions PlanOptions
+	if len(args) > 0 && (args[0] == "plan" || args[0] == "apply") {
+		seenPrune := false
+		for i := 1; i < len(args); i++ {
+			switch args[i] {
+			case "--no-writeback":
+				if args[0] != "apply" || applyOptions.NoWriteback {
+					return errUnsupportedCommand
+				}
+				applyOptions.NoWriteback = true
+			case "--prune":
+				if seenPrune || i+1 >= len(args) {
+					return fmt.Errorf("use --prune once with comma-separated scopes")
+				}
+				seenPrune = true
+				i++
+				prune, err := settings.ParsePruneScopes(args[i])
+				if err != nil {
+					return err
+				}
+				planOptions.Prune, applyOptions.Prune = prune, prune
+			default:
+				return errUnsupportedCommand
+			}
+		}
 		args = args[:1]
 	}
 	if len(args) != 1 {
@@ -227,7 +254,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--copilot-custom-instructions] [--copilot-mcp] [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-review-effort] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--cache-retention] [--cache-storage] [--retention] [--fork-approval] [--security <dependabot|secret-scanning|codeql-configuration|codeql-default-setup|ai-scan-pull-requests|private-vulnerability-reporting|immutable-releases>]...\n       gh settings validate\n       gh settings plan\n       gh settings apply [--no-writeback]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --copilot-custom-instructions to export the stored Use custom instructions boolean; this does not enable or request Copilot review.\nUse --pull-request-limits to export all three persistent Pull request limits controls; administrator access is required. Temporary restrictions remain unmanaged.\nUse --pull-request-limit-exemptions to independently export the complete Exemption list; explicit lists replace membership and [] clears it. Administration write is required. Automatic exemption rules remain unmanaged.\nUse --copilot-mcp to export the stored MCP tools boolean; this does not configure servers, grant access or enable reviews.\nUse --copilot-review-effort to export the observable Default, Lite or Balanced review effort; Default does not prove an unavailable stored override is absent.\nUse --variable NAME to export only explicitly named non-sensitive repository Actions variables; repeat for each name. Values are plaintext; repository Variables read is required.\nUse --agent-variable NAME to export only explicitly named non-sensitive repository Agents variables; repeat for each name. Values are plaintext; repository Agent variables read is required.\nUse --environment-variable ENVIRONMENT NAME to export only explicitly named non-sensitive Environment variables; repeat for each pair. Values are plaintext; Environments read is required. This does not select Environment protection settings.\nUse --pages to include Pages configuration or the Branch none deletion declaration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions-policies to include complete repository Actions event/actor policies; Administration write is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security immutable-releases for the repository immutable release policy; Administration read is required and GET 404 means disabled.\nUse --security dependabot to include Dependabot alerts and security updates; required permissions are a precondition and GET 404 means disabled.\nUse --security codeql-configuration for existing CodeQL default configuration; complete Administration read is required.\nUse --security codeql-default-setup for CodeQL default setup enablement; Administration read is required.\nUse --security ai-scan-pull-requests for the AI Scan pull request toggle; Code scanning alerts read is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --cache-retention to include cache retention days; Metadata and Administration read are required.\nUse --cache-storage to include the cache size eviction limit; Actions read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings.\nApply declared repository settings directly. New label, Ruleset and Actions policy IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
+		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--copilot-custom-instructions] [--copilot-mcp] [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-review-effort] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--cache-retention] [--cache-storage] [--retention] [--fork-approval] [--security <dependabot|secret-scanning|codeql-configuration|codeql-default-setup|ai-scan-pull-requests|private-vulnerability-reporting|immutable-releases>]...\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport the current repository's basic settings, topics and labels as YAML to .github/settings.yml at the checkout root.\nReplace an existing regular settings file; success is silent.\nUse --copilot-custom-instructions to export the stored Use custom instructions boolean; this does not enable or request Copilot review.\nUse --pull-request-limits to export all three persistent Pull request limits controls; administrator access is required. Temporary restrictions remain unmanaged.\nUse --pull-request-limit-exemptions to independently export the complete Exemption list; explicit lists replace membership and [] clears it. Administration write is required. Automatic exemption rules remain unmanaged.\nUse --copilot-mcp to export the stored MCP tools boolean; this does not configure servers, grant access or enable reviews.\nUse --copilot-review-effort to export the observable Default, Lite or Balanced review effort; Default does not prove an unavailable stored override is absent.\nUse --variable NAME to export only explicitly named non-sensitive repository Actions variables; repeat for each name. Values are plaintext; repository Variables read is required.\nUse --agent-variable NAME to export only explicitly named non-sensitive repository Agents variables; repeat for each name. Values are plaintext; repository Agent variables read is required.\nUse --environment-variable ENVIRONMENT NAME to export only explicitly named non-sensitive Environment variables; repeat for each pair. Values are plaintext; Environments read is required. This does not select Environment protection settings.\nUse --pages to include Pages configuration or the Branch none deletion declaration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions-policies to include complete repository Actions event/actor policies; Administration write is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --security secret-scanning to include both repository Secret scanning controls; complete security visibility is required.\nUse --security immutable-releases for the repository immutable release policy; Administration read is required and GET 404 means disabled.\nUse --security dependabot to include Dependabot alerts and security updates; required permissions are a precondition and GET 404 means disabled.\nUse --security codeql-configuration for existing CodeQL default configuration; complete Administration read is required.\nUse --security codeql-default-setup for CodeQL default setup enablement; Administration read is required.\nUse --security ai-scan-pull-requests for the AI Scan pull request toggle; Code scanning alerts read is required.\nUse --security private-vulnerability-reporting for the public-repository reporting toggle; Metadata read is required.\nUse --cache-retention to include cache retention days; Metadata and Administration read are required.\nUse --cache-storage to include the cache size eviction limit; Actions read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings. --prune labels,rulesets adds unlisted deletions only for explicitly present collections; [] deletes all in that scope. Other scopes and all are not yet available. Label deletion removes Issue/PR assignments and can include automatically created Dependabot labels.\nApply declared repository settings directly. New label, Ruleset and Actions policy IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 
@@ -239,7 +266,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		_, err := operations.Validate()
 		return err
 	case "plan":
-		result, err := operations.Plan()
+		result, err := operations.Plan(planOptions)
 		if err != nil {
 			return err
 		}

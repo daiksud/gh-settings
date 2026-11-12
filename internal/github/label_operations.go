@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -100,12 +101,57 @@ func verifyLabelResponse(response map[string]json.RawMessage, id int64, expected
 	return nil
 }
 
-// DeleteLabel deletes the exact name retained by a typed delete operation.
+// DeleteLabel checks the exact acquired object before deletion and confirms
+// absence using the complete, paginated inventory. No retry restores assignments.
 func (client *Client) DeleteLabel(repo repository.Repository, change settings.LabelChange) error {
 	if err := requireLabelOperation(change, "delete"); err != nil {
 		return err
 	}
-	return client.rest.Delete(labelPath(repo, change.Name()), nil)
+	var result error
+	change.Visit(nil, nil, func(before settings.LabelState) {
+		var fresh map[string]json.RawMessage
+		if err := client.rest.Get(labelPath(repo, before.Name), &fresh); err != nil {
+			result = &labelPreWriteFailure{cause: err}
+			return
+		}
+		var actualName string
+		if json.Unmarshal(fresh["name"], &actualName) != nil || actualName != before.Name {
+			result = &labelPreWriteFailure{cause: fmt.Errorf("label name changed before deletion; refusing write")}
+			return
+		}
+		expected := settings.LabelDeclaration{ID: &before.ID, Name: before.Name, Color: &before.Color, Description: &before.Description}
+		if err := verifyLabelResponse(fresh, before.ID, expected); err != nil {
+			result = &labelPreWriteFailure{cause: fmt.Errorf("label identity or state changed before deletion; refusing write: %w", err)}
+			return
+		}
+		response, err := client.rest.Request(http.MethodDelete, labelPath(repo, before.Name), nil)
+		if err != nil {
+			result = fmt.Errorf("delete label (write may have applied): %w", err)
+			return
+		}
+		response.Body.Close()
+		if response.StatusCode != http.StatusNoContent {
+			result = fmt.Errorf("unexpected label delete status %d (write may have applied)", response.StatusCode)
+			return
+		}
+		observed, err := client.ReadLabels(repo)
+		if err != nil {
+			result = fmt.Errorf("verify label deletion (write may have applied): %w", err)
+			return
+		}
+		values, err := observed.Values()
+		if err != nil {
+			result = err
+			return
+		}
+		for _, value := range values {
+			if value.ID == before.ID || settings.LabelIdentity(value.Name) == settings.LabelIdentity(before.Name) {
+				result = fmt.Errorf("label deletion readback retained the identity or name (write may have applied)")
+				return
+			}
+		}
+	})
+	return result
 }
 
 func requireLabelOperation(change settings.LabelChange, operation string) error {

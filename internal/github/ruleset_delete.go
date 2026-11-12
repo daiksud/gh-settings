@@ -9,7 +9,19 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func (client *Client) deleteRuleset(repo repository.Repository, change settings.RulesetChange) (int64, error) {
+type rulesetDeletePreWriteFailure struct{ cause error }
+
+func (e *rulesetDeletePreWriteFailure) Error() string        { return e.cause.Error() }
+func (e *rulesetDeletePreWriteFailure) Unwrap() error        { return e.cause }
+func (*rulesetDeletePreWriteFailure) ReadFailedBeforeWrite() {}
+
+func (client *Client) deleteRuleset(repo repository.Repository, change settings.RulesetChange) (resultID int64, err error) {
+	sent := false
+	defer func() {
+		if err != nil && !sent {
+			err = &rulesetDeletePreWriteFailure{cause: err}
+		}
+	}()
 	before := change.Before()
 	if change.ID() <= 0 || before == nil || before.ID == nil || *before.ID != change.ID() || before.Delete != nil || change.After() != nil {
 		return 0, fmt.Errorf("invalid Ruleset deletion")
@@ -40,6 +52,7 @@ func (client *Client) deleteRuleset(repo repository.Repository, change settings.
 	if !change.MatchesDeletionPolicy(policy) {
 		return 0, fmt.Errorf("selected Ruleset policy changed before deletion")
 	}
+	sent = true
 	response, err := client.rest.Request(http.MethodDelete, path, nil)
 	if err != nil {
 		return 0, fmt.Errorf("delete Ruleset (write may have applied): %w", err)

@@ -1,84 +1,61 @@
 package settings
 
 import (
+	"strings"
 	"testing"
 )
 
-func TestRulesetDeletionSelectorsAndReconciliation(t *testing.T) {
-	yes, no := true, false
+func TestRemovedRulesetTombstonesGivePruneMigration(t *testing.T) {
 	id := int64(7)
-	tomb := RulesetDeclaration{ID: &id, Name: "basic", Delete: &yes}
-	for _, d := range []RulesetDeclaration{
-		{Name: "basic", Delete: &yes}, {ID: copyRuleValue(new(int64)), Name: "basic", Delete: &yes}, {ID: &id, Delete: &yes}, {ID: &id, Name: "basic", Delete: &no},
-		{ID: &id, Name: "basic", Delete: &yes, Target: copyRuleValue(new(string))},
-		{ID: &id, Name: "basic", Delete: &yes, Enforcement: copyRuleValue(new(string))},
-		{ID: &id, Name: "basic", Delete: &yes, Conditions: &RulesetConditions{}},
-		{ID: &id, Name: "basic", Delete: &yes, BypassActors: &[]BypassActor{}},
-		{ID: &id, Name: "basic", Delete: &yes, Rules: &[]RulesetRule{}},
-	} {
-		if _, err := NewRulesetDeclarations([]RulesetDeclaration{d}); err == nil {
-			t.Errorf("invalid tombstone accepted: %+v", d)
+	for _, value := range []bool{true, false} {
+		_, err := NewRulesetDeclarations([]RulesetDeclaration{{ID: &id, Name: "basic", Delete: &value}})
+		if err == nil || !strings.Contains(err.Error(), "every Ruleset to retain") || !strings.Contains(err.Error(), "--prune rulesets") {
+			t.Fatal(err)
 		}
 	}
-	desired, err := NewRulesetDeclarations([]RulesetDeclaration{tomb})
-	if err != nil {
-		t.Fatal(err)
-	}
+}
+
+func TestRulesetPruneRejectsUnmanagedAndUnownedPolicy(t *testing.T) {
+	id := int64(7)
 	policy := basicPolicy("basic")
 	policy.ID = &id
-	observed, err := NewRulesetObservationWithUnmanagedIDs([]RulesetState{{ID: id, Policy: policy}}, 1, []int64{9, 10})
-	if err != nil {
-		t.Fatal(err)
-	}
-	changes, err := ReconcileRulesets(observed, &desired)
-	if err != nil || len(changes) != 1 || changes[0].Operation() != "delete" || changes[0].ID() != id || changes[0].After() != nil || changes[0].Name() != "basic" {
-		t.Fatalf("changes=%v err=%v", changes, err)
-	}
-	if !changes[0].MatchesDeletionPolicy(policy) {
-		t.Fatal("complete identical policy did not match")
+	desired, _ := NewRulesetDeclarations(nil)
+	current, _ := NewRulesetObservation([]RulesetState{{ID: id, Policy: policy}}, 0)
+	changes, err := ReconcileRulesetsWithPrune(current, &desired, true)
+	if err != nil || len(changes) != 1 || changes[0].ID() != id || changes[0].Operation() != "delete" || !changes[0].MatchesDeletionPolicy(policy) {
+		t.Fatal(changes, err)
 	}
 	policy.Name = "changed"
 	if changes[0].MatchesDeletionPolicy(policy) {
-		t.Fatal("drifted policy matched")
+		t.Fatal("drift accepted")
 	}
-	for _, selected := range []int64{9, 10} {
-		d, _ := NewRulesetDeclarations([]RulesetDeclaration{{ID: &selected, Name: "basic", Delete: &yes}})
-		if _, err := ReconcileRulesets(observed, &d); err == nil {
-			t.Fatal("excluded ID treated as absent")
+	for _, args := range []struct {
+		push int
+		ids  []int64
+	}{{1, nil}, {0, []int64{9}}} {
+		unowned, _ := NewRulesetObservationWithUnmanagedIDs(nil, args.push, args.ids)
+		if _, err := ReconcileRulesetsWithPrune(unowned, &desired, true); err == nil {
+			t.Fatal("unowned inventory accepted")
 		}
 	}
-	absent, _ := NewRulesetObservation(nil, 0)
-	if changes, err := ReconcileRulesets(absent, &desired); err != nil || len(changes) != 0 {
-		t.Fatal("repeat deletion is not no-op", changes, err)
+	policy = basicPolicy("basic")
+	policy.ID = &id
+	value := false
+	rules := []RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{RequireExtraApprovalForUnattributedChanges: &value}}}
+	policy.Rules = &rules
+	current, _ = NewRulesetObservation([]RulesetState{{ID: id, Policy: policy}}, 0)
+	if _, err := ReconcileRulesetsWithPrune(current, &desired, true); err == nil {
+		t.Fatal("PR preservation weakened")
 	}
-
-	otherID := int64(8)
-	replacement := basicPolicy("basic")
-	replacement.ID = &otherID
-	replacementObserved, err := NewRulesetObservation([]RulesetState{{ID: otherID, Policy: replacement}}, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if changes, err := ReconcileRulesets(replacementObserved, &desired); err != nil || len(changes) != 0 {
-		t.Fatal("same-name replacement selected as fallback", changes, err)
-	}
-	normalized := basicPolicy("basic")
-	normalized.ID = &id
+	policy = basicPolicy("basic")
+	policy.ID = &id
 	disabled := "disabled"
-	normalized.Enforcement = &disabled
-	normalizedObservation, err := NewRulesetObservation([]RulesetState{{ID: id, Policy: normalized, EnforcementNormalization: ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE_ENFORCEMENT", Fallback: "disabled"}}}, 0)
+	policy.Enforcement = &disabled
+	current, err = NewRulesetObservation([]RulesetState{{ID: id, Policy: policy, EnforcementNormalization: ObservationNormalization{Path: RulesetEnforcementPath, RawValue: "FUTURE", Fallback: "disabled"}}}, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ReconcileRulesets(normalizedObservation, &desired); err == nil {
-		t.Fatal("normalized unknown protection authorized deletion")
-	}
-	wrong, _ := NewRulesetDeclarations([]RulesetDeclaration{{ID: &id, Name: "wrong", Delete: &yes}})
-	if _, err := ReconcileRulesets(observed, &wrong); err == nil {
-		t.Fatal("name mismatch accepted")
-	}
-	*tomb.Delete = false
-	if !*desired.Values()[0].Delete {
-		t.Fatal("tombstone aliases caller")
+	if _, err := ReconcileRulesetsWithPrune(current, &desired, true); err == nil {
+		t.Fatal("normalized protection authorized deletion")
 	}
 }

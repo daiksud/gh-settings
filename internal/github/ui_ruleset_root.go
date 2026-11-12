@@ -2,7 +2,6 @@ package github
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -12,14 +11,7 @@ import (
 // RulesetDeclaration translates UI intent before existing whole-object defaults.
 func RulesetDeclaration(ui uimodel.Ruleset) (settings.RulesetDeclaration, error) {
 	if ui.Delete != nil {
-		if ui.EnforcementStatus != nil || ui.TargetBranches != nil || ui.TargetTags != nil || ui.BypassList != nil || !reflect.DeepEqual(ui.Rules, uimodel.RulesetRules{}) {
-			return settings.RulesetDeclaration{}, fmt.Errorf("Ruleset deletion forbids policy fields")
-		}
-		result := settings.RulesetDeclaration{ID: copyUIRulesetValue(ui.ID), Name: ui.RulesetName, Delete: copyUIRulesetValue(ui.Delete)}
-		if err := settings.ValidateRuleset(result, false); err != nil {
-			return settings.RulesetDeclaration{}, err
-		}
-		return result, nil
+		return settings.RulesetDeclaration{}, fmt.Errorf("Rulesets delete is removed: declare every Ruleset to retain, omit unwanted objects, then inspect plan --prune rulesets before apply --prune rulesets; this prunes all unlisted objects, not just one ID")
 	}
 	targets := 0
 	if ui.TargetBranches != nil {
