@@ -19,6 +19,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 }
 
 type prunePreparation struct {
+	actionsPolicies      []settings.ActionsEventPolicyChange
 	labels               []settings.LabelChange
 	rulesets             []settings.RulesetChange
 	variables            []settings.VariableChange
@@ -30,6 +31,17 @@ type prunePreparation struct {
 // Subsequent family reads must not widen or change these deletion candidates.
 func preparePrune(repo repository.Repository, desired settings.Declaration, prune settings.PruneScopes, write Writer) (prunePreparation, error) {
 	var result prunePreparation
+	if prune.Has("actions-policies") && desired.ActionsPolicies != nil {
+		current, err := write.ReadActionsPolicies(repo)
+		if err != nil {
+			return result, err
+		}
+		changes, err := settings.ReconcileActionsPoliciesWithPrune(current, desired.ActionsPolicies, true)
+		if err != nil {
+			return result, err
+		}
+		result.actionsPolicies = actionsPolicyDeletions(changes)
+	}
 	if prune.Has("labels") && desired.Labels != nil {
 		current, err := write.ReadLabels(repo)
 		if err != nil {
@@ -124,4 +136,14 @@ func sameLabelDeletions(initial, fresh []settings.LabelChange) bool {
 }
 func sameRulesetDeletions(initial, fresh []settings.RulesetChange) bool {
 	return reflect.DeepEqual(rulesetDeletions(initial), rulesetDeletions(fresh))
+}
+
+func actionsPolicyDeletions(changes []settings.ActionsEventPolicyChange) []settings.ActionsEventPolicyChange {
+	var result []settings.ActionsEventPolicyChange
+	for _, c := range changes {
+		if c.Operation() == "delete" {
+			result = append(result, c)
+		}
+	}
+	return result
 }

@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Manage repository Actions restriction policies
-description: Manage listed event/actor policies and workflow targets by ID without adopting names or deleting unlisted policies.
+description: Manage listed event/actor policies and workflow targets by ID without adopting names; explicit prune adds unlisted deletion.
 ---
 
 ## Contract
@@ -20,8 +20,10 @@ caller and published-package boundaries.
   unique supported strings), optional `restrict_actors.allowed_actors` (unique
   User or verified repository-role identities, including checked-empty), plus
   optional `target_workflows` with both `include` and `exclude` string arrays.
-- Omission and `[]` manage nothing and make no policy requests. Removing an entry
-  stops ownership; unlisted policies are never updated or deleted.
+- Without prune, omission and `[]` manage nothing and make no policy requests.
+  Removing an entry stops ownership. `--prune actions-policies` preserves omission,
+  but `[]` selects all policies for deletion and a nonempty list retains declared
+  IDs. ID-less entries remain create-only. Unlisted policies are never updated.
 - Nulls, wrong types, unknown/API-shaped keys, duplicate IDs/exact names, invalid
   enforcement and unsupported/duplicate events fail before remote work.
 - No ID means create-only; exact remote-name collisions identify the existing ID
@@ -47,7 +49,9 @@ caller and published-package boundaries.
   both complete typed arrays; unknown/malformed targeting must not become all.
 - Unsupported actor identities, Preview/unknown rules, fields, event or enforcement choices
   retain complete identity but cannot be selected for update or exported.
-  Unlisted unsupported objects stay untouched; incomplete observations fail.
+  Without prune, unlisted unsupported objects stay untouched. With prune, any
+  unsupported deletion candidate aborts before all writes; incomplete observations
+  always fail.
 - OIDC, unadopted actor kinds, Preview lockfile controls and workflow/configuration-
   file authoring remain excluded. There is no delete input.
 
@@ -55,7 +59,8 @@ caller and published-package boundaries.
 
 - Plan reads complete paginated repository-only identities and individual
   details, validates collection consistency, and reports typed creates/updates
-  without writes. Missing, denied, malformed or unstable reads fail.
+  and explicit prune deletions without writes. Missing, denied, malformed or
+  unstable reads fail.
 - Apply freshly reads and preflights the whole policy collection before any
   policy write. Exact matches are skipped. Each selected update also requires a
   fresh detail matching its baseline immediately before writing; drift or newly
@@ -135,3 +140,19 @@ does not repin callers or change a live policy.
 | Built CLI validate/plan/report/Summary, create/update/repeat apply, partial recovery, export isolation and file safety | [Process acceptance](../../tests/acceptance/actions_event_policies_test.go) |
 
 Automated checks use local fixtures and dummy credentials, with no live writes.
+
+## Rule: Explicit prune removes only prepared supported policies
+
+- Validate all candidates before unrelated writes too. Fresh reconciliation must
+  retain exactly the preflight deletion identities and states.
+- Perform creates/updates before fixed deletions. New IDs cannot enter the
+  deletion set. Recheck ownership, ID and complete policy before DELETE, require
+  HTTP 204, and independently read every remaining page/detail to prove absence.
+- A deleted restriction can permit future workflow execution. Unsupported or
+  inherited protection must never be discarded. A partial failure stops later
+  writes and reports earlier completed changes and uncertain effects honestly.
+
+Domain, API, app and actual CLI fixtures cover empty-list presence, missing and
+unsupported inventories, unchanged retained IDs, fixed creation/deletion order,
+state drift, deletion acknowledgment and failed readback, repeat apply, partial
+failure and both Action Summary modes. No live policy deletion is required.

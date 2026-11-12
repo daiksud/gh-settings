@@ -58,14 +58,14 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables` and `environment-variables`. `actions-policies` and
-`environments` are not implemented yet. `all` must be
-standalone and currently fails explicitly rather than omitting those scopes.
+`agents-variables`, `environment-variables` and `actions-policies`.
+`environments` is not implemented yet. `all` must be standalone and currently
+fails explicitly rather than omitting that scope.
 Environment-object deletion still needs a separate adoption decision.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets, canonical names for variables). ID-less entries
+labels/Rulesets/Actions Policies, canonical names for variables). ID-less entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -474,9 +474,11 @@ The old `--actions-access` and `--private-fork-workflows` export options are rej
 `repository.settings.actions.policies` manages repository-owned policies in
 **Settings → Actions → Policies**, with **Target workflows** inclusion/exclusion
 patterns and the **Restrict events** and **Restrict actors** rules. These are separate objects from the
-[Actions execution policy](#actions-execution-policy). Omission or `policies: []`
-selects nothing, makes no policy API request and deletes nothing. Unlisted
-policies remain untouched; removing an entry stops managing it.
+[Actions execution policy](#actions-execution-policy). Without prune, omission or
+`policies: []` selects nothing, makes no policy API request and deletes nothing.
+Unlisted policies remain untouched; removing an entry stops managing it.
+Explicit `--prune actions-policies` adds deletions for a present list as described
+below.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -576,13 +578,24 @@ empty includes or `[~ALL]`, represent All workflows. A present `workflow_path`
 requires both typed arrays. Unknown conditions, unsupported actor identities,
 Preview rules, unknown rules/fields and unsupported event/enforcement values are not
 lossily converted. A complete unsupported object's ID/name is retained so
-unlisted objects stay unmanaged; selecting it for update or including it in a
-full collection export fails. Incomplete or inconsistent reads always fail.
+unlisted objects stay unmanaged without prune; selecting it for update, as a
+prune candidate, or including it in a full collection export fails. Incomplete or inconsistent reads always fail.
 Unadopted actor types, Preview lockfile controls, OIDC, workflow authoring and other
 configuration-file authoring remain excluded.
 
+`--prune actions-policies` adds deletion of unlisted repository-owned IDs only
+when `policies` is present; `[]` selects every current policy as a candidate.
+An omitted list remains unmanaged. Deleting a policy removes its workflow
+restriction, so future workflow execution may be permitted. All candidates must
+be completely supported; unknown/Preview rules, unadopted actor types or targeting,
+wrong ownership, incomplete reads and missing permissions fail before any write.
+Apply fixes the candidate set, performs creates/updates first, rechecks exact
+identity/state before each DELETE, requires HTTP 204 and confirms ID absence in
+a complete fresh inventory. Earlier successful changes survive a later failure.
+There is no policy `delete` YAML field.
+
 Plan acquires the complete repository collection and details before showing
-creates/ID-bound updates. Apply freshly acquires and preflights the whole
+creates/ID-bound updates and explicitly requested prune deletions. Apply freshly acquires and preflights the whole
 collection before its first policy write, skips matches and rechecks each
 selected update's detail immediately before mutation. Drift or newly unsupported
 state fails rather than overwriting it. Create uses POST and update uses PUT at

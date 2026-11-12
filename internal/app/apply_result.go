@@ -70,6 +70,7 @@ const (
 	ActionsPoliciesRead
 	ActionsEventPolicyCreate
 	ActionsEventPolicyUpdate
+	ActionsEventPolicyDelete
 	EnvironmentVariableUpsert
 	PullRequestExemptionsUpdate
 	VariablesRead

@@ -314,10 +314,11 @@ func (o ActionsPolicyObservation) Values() ([]ActionsEventPolicyState, error) {
 	return values, nil
 }
 
-// ActionsEventPolicyChange is a validated create or whole-object update.
+// ActionsEventPolicyChange is a validated create, whole-object update, or deletion.
 type ActionsEventPolicyChange struct {
-	before *ActionsEventPolicy
-	after  ActionsEventPolicy
+	before  *ActionsEventPolicy
+	after   ActionsEventPolicy
+	deleted bool
 }
 
 // resolveActionsEventPolicy preserves omitted rules and consumes removal intent.
@@ -399,9 +400,22 @@ func (c ActionsEventPolicyChange) Before() *ActionsEventPolicy {
 	return &value
 }
 func (c ActionsEventPolicyChange) After() ActionsEventPolicy { return cloneActionsEventPolicy(c.after) }
-func (c ActionsEventPolicyChange) ID() int64                 { return c.after.ID }
-func (c ActionsEventPolicyChange) Name() string              { return c.after.Name }
+func (c ActionsEventPolicyChange) ID() int64 {
+	if c.deleted {
+		return c.before.ID
+	}
+	return c.after.ID
+}
+func (c ActionsEventPolicyChange) Name() string {
+	if c.deleted {
+		return c.before.Name
+	}
+	return c.after.Name
+}
 func (c ActionsEventPolicyChange) Operation() string {
+	if c.deleted {
+		return "delete"
+	}
 	if c.before == nil {
 		return "create"
 	}

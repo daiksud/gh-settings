@@ -3,12 +3,13 @@ package app
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desired *settings.ActionsPolicyDeclarations, write Writer) (bool, error) {
+func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desired *settings.ActionsPolicyDeclarations, write Writer, prune bool, prepared []settings.ActionsEventPolicyChange) (bool, error) {
 	index := len(result.Operations)
 	result.Operations = append(result.Operations, ApplyOperation{Kind: ActionsPoliciesRead})
 	observed, err := write.ReadActionsPolicies(repo)
@@ -16,10 +17,14 @@ func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desir
 		result.failOperation(index, OperationFailedRead)
 		return false, fmt.Errorf("read Actions policies for apply (earlier writes remain applied): %w", err)
 	}
-	changes, err := settings.ReconcileActionsPolicies(observed, desired)
+	changes, err := settings.ReconcileActionsPoliciesWithPrune(observed, desired, prune)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
 		return false, fmt.Errorf("prepare Actions policies (earlier writes remain applied): %w", err)
+	}
+	if prune && !reflect.DeepEqual(prepared, actionsPolicyDeletions(changes)) {
+		result.failOperation(index, OperationFailedRead)
+		return false, fmt.Errorf("Actions policy prune candidates changed after preflight")
 	}
 	result.Operations[index].Status = OperationCompleted
 	states, err := observed.Values()
@@ -39,6 +44,8 @@ func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desir
 			kind = ActionsEventPolicyCreate
 		case "update":
 			kind = ActionsEventPolicyUpdate
+		case "delete":
+			kind = ActionsEventPolicyDelete
 		}
 		result.Operations = append(result.Operations, ApplyOperation{Kind: kind, ActionsPolicyName: change.Name()})
 	}
@@ -55,8 +62,8 @@ func applyActionsPolicies(result *ApplyResult, repo repository.Repository, desir
 				err = fmt.Errorf("creation returned already-known Actions policy id %d; refusing ID adoption (writes may already have applied)", id)
 			}
 		}
-		if err == nil && change.Operation() == "update" && id != change.ID() {
-			err = fmt.Errorf("update returned mismatched Actions policy id %d; expected %d (writes may already have applied)", id, change.ID())
+		if err == nil && change.Operation() != "create" && id != change.ID() {
+			err = fmt.Errorf("%s returned mismatched Actions policy id %d; expected %d (writes may already have applied)", change.Operation(), id, change.ID())
 		}
 		if err != nil {
 			status := OperationFailedUnknown

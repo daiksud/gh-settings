@@ -168,7 +168,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		report.CopilotReviewEffort = append(report.CopilotReviewEffort, PlanChange{Field: change.Field(), Before: before, After: after})
 	}
 	for _, change := range result.Comparison.ActionsPolicies {
-		entry := ActionsEventPolicyPlanChange{Operation: change.Operation(), After: actionsEventPolicyReport(change.After())}
+		entry := ActionsEventPolicyPlanChange{Operation: change.Operation()}
+		if change.Operation() != "delete" {
+			entry.After = actionsEventPolicyReport(change.After())
+		}
 		if before := change.Before(); before != nil {
 			entry.Before = actionsEventPolicyReport(*before)
 		}
