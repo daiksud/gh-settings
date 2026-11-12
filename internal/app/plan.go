@@ -32,12 +32,16 @@ func (e *PlanError) Error() string {
 func (e *PlanError) Unwrap() error { return e.Err }
 
 // Plan validates locally, then reads and compares only when fields are declared.
-func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResult, error) {
+func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options ...settings.PruneScopes) (PlanResult, error) {
+	prune, optionErr := operationPrune(options)
+	if optionErr != nil {
+		return PlanResult{}, optionErr
+	}
 	desired, err := Validate(load)
 	if err != nil {
 		return PlanResult{}, &PlanError{Stage: "invalid-config", Err: err}
 	}
-	if desired.Empty() {
+	if desired.Empty() && !prune.Manages(desired) {
 		return PlanResult{}, nil
 	}
 	repo, err := resolve()
@@ -91,12 +95,12 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += topics.Managed
 		comparison.Changes = append(comparison.Changes, topics.Changes...)
 	}
-	if desired.Labels != nil && desired.Labels.Len() > 0 {
+	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
 		current, err := read.Labels(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.labels", Target: repo, Err: err}
 		}
-		labels, err := settings.CompareLabels(current, desired.Labels)
+		labels, err := settings.CompareLabelsWithPrune(current, desired.Labels, prune.Has("labels"))
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.labels", Target: repo, Err: err}
 		}
@@ -191,12 +195,12 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader) (PlanResu
 		comparison.Managed += policies.Managed
 		comparison.ActionsPolicies = policies.ActionsPolicies
 	}
-	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
+	if desired.Rulesets != nil && (desired.Rulesets.Len() > 0 || prune.Has("rulesets")) {
 		observed, err := read.Rulesets(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.rulesets", Target: repo, Err: err}
 		}
-		changes, err := settings.ReconcileRulesets(observed, desired.Rulesets)
+		changes, err := settings.ReconcileRulesetsWithPrune(observed, desired.Rulesets, prune.Has("rulesets"))
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.rulesets", Target: repo, Err: err}
 		}

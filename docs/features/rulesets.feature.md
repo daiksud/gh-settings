@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Declarative repository Rulesets
-description: Select whole Ruleset objects by numeric ID without deleting unlisted objects.
+description: Select whole Ruleset objects by numeric ID with explicit command-selected pruning.
 ---
 
 ## Status and goal
@@ -10,10 +10,10 @@ Rulesets use ID-selected whole-object ownership. The [configuration reference](.
 
 ## Ownership and identity
 
-- Given omitted Rulesets or an empty list, validate/plan/apply select no object and acquire no Rulesets state or target solely for that resource.
+- Without prune, given omitted Rulesets or an empty list, validate/plan/apply select no object and acquire no Rulesets state or target solely for that resource.
 - Given a positive declared REST ID, update only that supported repository-owned branch/tag object. Missing or wrong repository/type IDs fail; never create as fallback.
 - Given no ID, create only a new name. A collision fails with the existing ID and guidance to add it; never adopt by name.
-- Given a valid ID and noncolliding new name, rename the same object. Unlisted names/IDs remain untouched and are never implicitly deleted.
+- Given a valid ID and noncolliding new name, rename the same object. Unlisted names/IDs remain untouched unless `--prune rulesets` selects the present list.
 - Reject duplicate declaration IDs or exact names. Preserve existing exact-name comparison; no heuristic case-folding or trimming is introduced.
 
 ## Schema and presence
@@ -40,7 +40,7 @@ Opted-in export includes numeric IDs plus observed comparable policy. Ordinary e
 
 Plan is read-only and reports only selected objects, with their IDs and supported comparable before/after values. Unlisted objects are not diff entries. Empty selection counts zero, nonempty selection counts once. Strict same-version Action reports reject incomplete objects, missing/mismatching IDs, duplicate identities and malformed deletion operations; Summary escapes values without credentials.
 
-Apply reads fresh state after earlier resources and prepares every selected Ruleset operation before the first Rulesets write. POST/PUT never send YAML IDs as payload fields. Every response must confirm positive ID, target repository ownership and requested comparable policy; updates retain the selected ID. Normalized enforcement/Required approvals updates and writes adding, updating or removing creation, update, pull-request, deployment, code-scanning and Copilot-review rules, require independent post-write GET identity/policy verification. Changed comparable values or failed readback stop later work with uncertain-write semantics. Only explicit positive-ID/name `delete: true` entries permit DELETE; no hidden retry, rollback or saved-plan execution exists.
+Apply reads fresh state after earlier resources and prepares every selected Ruleset operation before the first Rulesets write. POST/PUT never send YAML IDs as payload fields. Every response must confirm positive ID, target repository ownership and requested comparable policy; updates retain the selected ID. Normalized enforcement/Required approvals updates and writes adding, updating or removing creation, update, pull-request, deployment, code-scanning and Copilot-review rules, require independent post-write GET identity/policy verification. Changed comparable values or failed readback stop later work with uncertain-write semantics. Only explicit `--prune rulesets` with a present list permits unlisted DELETE; no hidden retry, rollback or saved-plan execution exists.
 
 Confirmed created IDs are appended immediately to the original YAML through the shared guarded recorder. Repeat apply then selects that ID, avoiding duplicate creation. Explicit no-writeback and GitHub Actions leave configuration unchanged and display IDs for manual adoption. A successful remote create followed by local persistence failure is a partial failure with recovery ID; earlier confirmed label/Ruleset IDs remain available. Unverified response IDs are reported but never persisted as confirmed creation. Output failure retains ID diagnostics on stderr. No Git commit/push is made.
 
@@ -158,14 +158,27 @@ Test mapping: [mapping/state/closed changes/reconciliation](../../internal/setti
 - `TestCopilotRulesetUIAndExport`, `TestCopilotRulesetAcquisitionFailsClosed` and `TestCopilotRulesetStrictIndependentReadback` cover mapping, export roundtrip, validation, ownership and failure cases. `TestRulesetCopilotExportValidatePlanApplyReadback` exercises the built CLI through export, validate, plan, apply, independent readback and repeat no writes with exact independently authored payloads.
 - Local fixtures use dummy tokens. They do not establish actual Copilot review execution, licensing, AI credits or live protection.
 
-## Explicit deletion
+## Explicit pruning
 
-- `{id: 7, ruleset_name: basic, delete: true}` selects one tombstone. False, null, absent/nonpositive ID, absent name and selected policy controls fail before remote work. Empty/omitted membership never deletes. The name must match when the ID exists; name collisions never redirect deletion.
-- Complete acquisition retains excluded inherited IDs to distinguish unmanaged identity from genuine absence. Unsupported, malformed, unknown or normalized protection prevents deletion. Every selected operation is prepared before the first Ruleset write.
-- A delete change has one complete selected before policy and no after policy. CLI plan, private report and detailed Summary show `delete` to `absent`; export writes only present policies.
-- Before DELETE, exact detail GET must retain repository ownership, selected positive ID and unchanged complete policy. Only HTTP 204 followed by fresh complete inventory absence succeeds. An ambiguous 404, retained ID, denied/partial/null inventory or failed pagination reports uncertainty; no automatic retry follows.
-- Repeating plan/apply after confirmed inventory absence produces no write. Unlisted objects survive. A failed deletion after earlier repository changes remains a partial failure with the deletion's remote effect unknown.
-- `TestRulesetExplicitDeletionExecutableLifecycle` verifies branch/tag export, invalid token-free validation, read-only plan/report/Summary, strict deletion/readback, destination intent preservation and repeat no-diff using a local API. `TestRulesetDeleteRequiresStrictPreflightAndConfirmedInventoryAbsence` owns identity/drift, response status and partial acquisition cases. `TestRulesetDeletionSelectorsAndReconciliation` owns tombstone validation and excluded-ID/no-fallback semantics; `TestRulesetExplicitDeletionAppOperationAndPartialFailure` owns sequencing/status. None changes live protection.
+The [prune contract](prune.feature.md) owns membership, all-candidate preflight and
+operation ordering. `--prune rulesets` adds unlisted deletions only for an
+explicitly present list; `[]` selects every acquired object. Ordinary apply
+remains create/update only. Tombstone `delete` declarations are rejected with
+instructions to declare every retained Ruleset before pruning; this changes the
+scope of deletion compared with the former single-ID selector.
+
+Each delete change contains the complete acquired policy and no after value.
+Plan/report/Summary show deletion to absent. Unsupported, inherited/Push,
+normalized and unowned PR/Preview data still prevent deletion. Exact pre-DELETE
+identity/policy checks and HTTP 204 followed by complete inventory absence are
+mandatory. Drift, incomplete pagination or mismatching readback fails without
+retry/rollback; earlier writes remain reported.
+
+`TestRulesetPruneExecutableLifecycle` covers branch/tag retention-list pruning,
+plan/report/Summary, old-key rejection and repeated no-op. Domain pruning tests,
+`TestRulesetDeleteRequiresStrictPreflightAndConfirmedInventoryAbsence` and
+`TestRulesetExplicitDeletionAppOperationAndPartialFailure` cover rejected policy,
+identity drift, strict readback and partial progress. All use isolated fixtures.
 
 ## Unsupported Push policy
 

@@ -2,6 +2,10 @@ name: GitHub repository settings
 author: Daiki Sudo
 description: Validate, plan or directly apply checkout-root settings with its verified release CLI on GitHub-hosted Ubuntu 24.04 x64.
 inputs:
+  prune:
+    description: Optional comma-separated deletion scopes for plan/apply. Currently labels,rulesets only; omitted collections stay unmanaged and explicit [] prunes all.
+    required: false
+    default: ''
   plan-reporting:
     description: Plan reporting, detailed or status-only; status-only hides settings values and raw diagnostics. Only supported for plan.
     required: false
@@ -39,6 +43,7 @@ runs:
     - name: Check command and explicit token requirement
       shell: bash
       env:
+        SETTINGS_PRUNE: ${{ inputs.prune }}
         SETTINGS_COMMAND: ${{ inputs.command }}
         HAS_TOKEN: ${{ inputs.token != '' }}
         PLAN_REPORTING: ${{ inputs.plan-reporting }}
@@ -47,6 +52,10 @@ runs:
           validate|plan|apply) ;;
           *) echo 'command must be validate, plan or apply' >&2; exit 1 ;;
         esac
+        if [[ "$SETTINGS_COMMAND" == validate && -n "$SETTINGS_PRUNE" ]]; then
+          echo 'prune requires plan or apply' >&2
+          exit 1
+        fi
         case "$PLAN_REPORTING" in
           detailed) ;;
           status-only) [[ "$SETTINGS_COMMAND" == plan ]] || { echo 'status-only reporting requires plan' >&2; exit 1; } ;;
@@ -93,6 +102,7 @@ runs:
       shell: bash
       env:
         SETTINGS_CLI: ${{ steps.setup.outputs.binary-path }}
+        SETTINGS_PRUNE: ${{ inputs.prune }}
         SETTINGS_COMMAND: ${{ inputs.command }}
         PLAN_REPORTING: ${{ inputs.plan-reporting }}
         GH_TOKEN: ${{ inputs.token }}
@@ -100,6 +110,9 @@ runs:
         unset GITHUB_TOKEN
         status=0
         umask 077
+        if [[ -n "$SETTINGS_PRUNE" ]]; then
+          "$SETTINGS_CLI" action prune-support >/dev/null || { echo 'installed CLI does not support prune' >&2; exit 1; }
+        fi
         if [[ "$SETTINGS_COMMAND" == plan ]]; then
           if [[ "$PLAN_REPORTING" == status-only ]]; then
             unset GH_DEBUG
@@ -111,7 +124,9 @@ runs:
             "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" || status=$?
           fi
         else
-          "$SETTINGS_CLI" apply || status=$?
+          apply_args=(apply)
+          [[ -z "$SETTINGS_PRUNE" ]] || apply_args+=(--prune "$SETTINGS_PRUNE")
+          "$SETTINGS_CLI" "${apply_args[@]}" || status=$?
         fi
         [[ "$SETTINGS_COMMAND" == plan ]] || exit "$status"
         if ! printf 'exit-status=%s\n' "$status" >> "$GITHUB_OUTPUT"; then

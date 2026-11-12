@@ -52,9 +52,9 @@ The [topics contract](settings.md#topics) defines names, omission and explicit c
 
 ## Labels command behavior
 
-The [labels contract](settings.md#labels) uses ID-based listed-object ownership: only listed objects are managed, and omitted/empty collections or unlisted objects cause no label writes. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
+The [labels contract](settings.md#labels) uses ID-based listed-object ownership: ordinary apply manages only listed objects; [explicit collection pruning](settings.md#collection-pruning) adds deletions for present lists. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
 
-Plan shows creates and ID-bound updates, including default-derived values. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
+Plan shows creates and ID-bound updates, including default-derived values; `--prune labels` also shows unlisted deletions and their Issue/PR assignment loss. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
 
 ## Actions event policy commands
 
@@ -209,6 +209,16 @@ Successful comparison exits 0 whether differences exist or not. File, validation
 
 The [public Action](github-actions.md#inputs-outputs-and-failures) separately requires target/commit metadata and explicit plan/apply tokens, including for empty declarations.
 
+## Prune option
+
+Use `gh settings plan --prune labels,rulesets` and
+`gh settings apply --prune labels,rulesets`. This adds deletions without limiting
+other declared work. `--no-writeback` can be combined with apply. One
+comma-separated flag is allowed; repeats, duplicates, unknown names and empty
+elements fail before target resolution. `all` must stand alone and is currently
+rejected because later scopes, including undecided Environment deletion, are not
+implemented. See the [complete scope/presence and recovery contract](settings.md#collection-pruning).
+
 ## Apply behavior
 
 Workflow permissions are applied after execution policy as a separate operation. Partial declarations send only their own keys; fresh complete readback verifies desired and preserved values. Failure retains earlier execution/resource writes and does not broaden existing credentials. See the [workflow-permission contract](settings.md#default-workflow-permissions).
@@ -224,7 +234,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | `repository.about` and `repository.settings.general` scalars | Declared REST members use repository PATCH.[^github-update-repository] Declared merge/squash message menus additionally require selective complete GraphQL preflight and fresh raw readback; failed verification can retain other members in that PATCH. PR access, Issue permissions and Sponsorships share identity-checked, declared-only GraphQL updates; declared creation policies also use selective preflight and fresh same-ID raw readback. Earlier REST success remains partial progress if the later access substep fails; GraphQL-only intent skips PATCH. |
 | `repository.about.topics` | Topics PUT with the complete sorted set; `[]` clears it. |
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
-| `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; no unlisted deletion. |
+| `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; unlisted deletion requires `--prune rulesets`. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
 | `repository.settings.environments[].variables` | After selected Environment policies, fresh selected-name GET and conditional POST/PATCH with exact GET verification. Variable-only intent sends no policy PUT. |
 | `repository.settings.actions.variables` | Stable name-order fresh individual GET, conditional POST or value-only PATCH, then exact GET verification. No unlisted deletion. |

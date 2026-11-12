@@ -24,7 +24,15 @@ func main() {
 	reader.Environments = readEnvironments
 	if len(os.Args) > 1 && os.Args[1] == "action" {
 		os.Exit(actions.Run(os.Args[2:], os.Stdout, os.Stderr, version, func() (app.PlanResult, error) {
-			return app.Plan(loadDeclaration, checkout.Repository, reader)
+			var prune settings.PruneScopes
+			if raw := os.Getenv("SETTINGS_PRUNE"); raw != "" {
+				var err error
+				prune, err = settings.ParsePruneScopes(raw)
+				if err != nil {
+					return app.PlanResult{}, err
+				}
+			}
+			return app.Plan(loadDeclaration, checkout.Repository, reader, prune)
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
@@ -32,8 +40,8 @@ func main() {
 			return app.Export(app.ExportCheckout{IncludeActionsPolicies: options.ActionsPolicies, IncludeCopilotReviewEffort: options.CopilotReviewEffort, IncludeCopilotMCP: options.CopilotMCP, IncludePullRequestLimits: options.PullRequestLimits, IncludePullRequestExemptions: options.PullRequestExemptions, IncludeCopilotInstructions: options.CopilotInstructions, Variables: options.Variables, AgentsVariables: options.AgentsVariables, EnvironmentVariables: options.EnvironmentVariables, IncludeCodeQLConfiguration: options.CodeQLConfiguration, IncludeDependabot: options.Dependabot, IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: checkout.Repository, PrepareSave: func() (func(settings.Declaration) error, error) { return prepareCheckoutSave(checkout) }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeSecretScanning: options.SecretScanning, IncludeCodeQLDefaultSetup: options.CodeQLDefaultSetup, IncludeAIScanPullRequests: options.AIScanPullRequests, IncludePrivateReporting: options.PrivateReporting, IncludeImmutableReleases: options.ImmutableReleases, IncludeRetention: options.Retention, IncludeCacheStorage: options.CacheStorage, IncludeCacheRetention: options.CacheRetention, IncludeForkApproval: options.ForkApproval}, reader)
 		},
 		Validate: func() (settings.Declaration, error) { return app.Validate(loadDeclaration) },
-		Plan: func() (app.PlanResult, error) {
-			return app.Plan(loadDeclaration, checkout.Repository, reader)
+		Plan: func(options cli.PlanOptions) (app.PlanResult, error) {
+			return app.Plan(loadDeclaration, checkout.Repository, reader, options.Prune)
 		},
 		Apply: func(options cli.ApplyOptions) (app.ApplyResult, error) {
 			desired, record, err := prepareCheckoutApply(checkout)
@@ -47,7 +55,7 @@ func main() {
 				return readPagesForApply(repo, desired.Pages)
 			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotMCP: updateCopilotMCP, PullRequestLimits: updatePullRequestLimits, PullRequestExemptions: updatePullRequestExemptions, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, EnvironmentVariable: upsertEnvironmentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, ReadActionsPolicies: readActionsPolicies, ActionsEventPolicy: writeActionsEventPolicy, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
-			}, SecretScanning: writeSecretScanning, ReadCodeQLDefaultSetup: readCodeQLDefaultSetup, CodeQLDefaultSetup: writeCodeQLDefaultSetup, ReadAIScanPullRequests: readAIScanPullRequests, AIScanPullRequests: writeAIScanPullRequests, ReadPrivateReporting: readPrivateReporting, ReadImmutableReleases: readImmutableReleases, ImmutableReleases: writeImmutableReleases, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadCacheRetention: readCacheRetention, CacheRetention: writeCacheRetention, ReadCacheStorage: readCacheStorage, CacheStorage: writeCacheStorage, ReadActionsAccess: readActionsAccess, ActionsAccess: writeActionsAccess, ReadForkApproval: readForkApprovalForApply, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork})
+			}, SecretScanning: writeSecretScanning, ReadCodeQLDefaultSetup: readCodeQLDefaultSetup, CodeQLDefaultSetup: writeCodeQLDefaultSetup, ReadAIScanPullRequests: readAIScanPullRequests, AIScanPullRequests: writeAIScanPullRequests, ReadPrivateReporting: readPrivateReporting, ReadImmutableReleases: readImmutableReleases, ImmutableReleases: writeImmutableReleases, PrivateReporting: writePrivateReporting, ReadRetention: readRetention, Retention: writeRetention, ReadCacheRetention: readCacheRetention, CacheRetention: writeCacheRetention, ReadCacheStorage: readCacheStorage, CacheStorage: writeCacheStorage, ReadActionsAccess: readActionsAccess, ActionsAccess: writeActionsAccess, ReadForkApproval: readForkApprovalForApply, ForkApproval: writeForkApproval, ReadPrivateFork: readPrivateFork, PrivateFork: writePrivateFork}, options.Prune)
 		},
 	}))
 }

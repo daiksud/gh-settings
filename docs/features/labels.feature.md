@@ -1,28 +1,28 @@
 ---
 type: Feature
 title: Manage selected label objects by ID
-description: Create ID-less labels and reconcile whole supported ID-selected objects without deleting unlisted labels.
+description: Create ID-less labels and reconcile whole supported ID-selected objects with separately selected collection pruning.
 ---
 
 ## Feature: Manage repository labels
 
 Current source uses `repository.labels` with ID-selected ownership. The [settings reference](../settings.md#labels) owns the current UI schema and published-package boundary; there is no legacy migration.
 
-### Rule: Select objects, never delete unlisted labels
+### Rule: Select objects and prune only when explicitly requested
 
-- Omitted and empty collections select nothing and make no label calls.
+- Omitted collections always select nothing. Without prune, empty collections also make no label calls; with explicit prune, [] selects all candidates.
 - A positive ID selects only an existing label in the target repository. Missing/wrong IDs fail before label mutation.
 - No ID means create-only. A colliding name is an error showing the existing ID, not auto-adoption.
 - Duplicate IDs and names under Unicode simple case folding fail. Case-only spelling is retained; a different noncolliding name with the same ID renames without deletion.
 - Name and quoted UI color (`#` plus six hex digits) are required; description omission is the fixed empty-string default on both create and update. Null is invalid.
-- Complete selected object values are managed. Unlisted objects, assignments, archive state and server metadata are not removed or replayed.
+- Complete selected object values are managed. Unlisted objects remain unless `--prune labels` selects the explicitly present list. See the [prune contract](prune.feature.md) for omission/empty semantics, preflight and assignment loss. Archive state and server metadata are not replayed.
 
 ### Rule: Observe complete identity and report honest failures
 
 - Follow every labels page and require positive unique IDs and complete supported values. Nullable response descriptions normalize to empty strings.
 - Export saves IDs and complete supported fields only after all selected reads/encoding succeed; failure preserves the output file.
 - Plan shows creates, ID-bound updates and default-derived changes. It never writes configuration.
-- Apply reads fresh labels after ordinary resources, preflights all label changes, and performs only creates/updates in stable identity order.
+- Apply reads fresh labels after ordinary resources, preflights all label changes, and performs creates/updates in stable identity order, then fixed prune deletions when requested.
 - Resolve update paths from the observed ID/current name, check ID again before PATCH, and verify response identity and supported settings. This is not a lock against concurrent remote replacement.
 - Response mismatch, denial, redirect, unknown effect or later failure stops subsequent writes. Earlier writes remain applied, with no rollback/retry.
 

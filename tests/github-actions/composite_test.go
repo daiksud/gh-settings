@@ -344,7 +344,7 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 	if action.Name == "" || action.Description == "" || action.Runs.Using != "composite" {
 		t.Fatal("missing composite metadata")
 	}
-	if len(action.Inputs) != 3 || action.Inputs["plan-reporting"].Default == nil || *action.Inputs["plan-reporting"].Default != "detailed" || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
+	if len(action.Inputs) != 4 || action.Inputs["prune"].Required || action.Inputs["prune"].Default == nil || *action.Inputs["prune"].Default != "" || action.Inputs["plan-reporting"].Default == nil || *action.Inputs["plan-reporting"].Default != "detailed" || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
 		t.Fatal("input contract changed")
 	}
 	if len(action.Outputs) != 5 {
@@ -378,6 +378,7 @@ case "$1" in
   --version) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; echo "gh-settings $MOCK_CLI_VERSION"; exit ;;
   action)
     case "${2:-}" in
+      prune-support) [[ ${MOCK_OLD_PRUNE_CLI:-0} != 1 ]] || exit 1; echo labels,rulesets; exit ;;
       private-reporting)
         [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98
         [[ ${MOCK_OLD_CLI:-0} != 1 ]] || exit 1
@@ -391,6 +392,7 @@ case "$1" in
         printf 'config-sha=%s\ntarget=owner/config\ncli-version=%s\ncli-sha256=%s\n' "$MOCK_CONFIG_SHA" "$MOCK_CLI_VERSION" "$MOCK_CLI_SHA256"
         exit "${MOCK_METADATA_STATUS:-0}" ;;
       plan)
+        [[ -z ${MOCK_EXPECT_PRUNE:-} || ${SETTINGS_PRUNE:-} == "$MOCK_EXPECT_PRUNE" ]] || exit 97
         [[ ($# == 3 || $# == 4) && (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == read-fixture || ${GH_TOKEN:-} == app-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
         if [[ ${MOCK_DEBUG_NOISE:-0} == 1 ]]; then
           echo 'CANARY-unexpected-stdout'
@@ -417,6 +419,7 @@ case "$1" in
     esac ;;
   validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
   apply)
+    if [[ -n ${MOCK_EXPECT_PRUNE:-} ]]; then [[ $# == 3 && $2 == --prune && $3 == "$MOCK_EXPECT_PRUNE" && ${SETTINGS_PRUNE:-} == "$MOCK_EXPECT_PRUNE" ]] || exit 97; fi
     [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == app-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
     status=${MOCK_VALIDATE_STATUS:-0}
     if [[ $status == 0 ]]; then
@@ -527,10 +530,10 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	}
 	base["MOCK_CONFIG_SHA"], base["MOCK_CLI_SHA256"] = sha, digest
 	outputDirectory := t.TempDir()
-	values := map[string]string{"inputs.command": command, "inputs.plan-reporting": "detailed", "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
+	values := map[string]string{"inputs.prune": "", "inputs.command": command, "inputs.plan-reporting": "detailed", "inputs.token": token, "inputs.token != ''": fmt.Sprint(token != ""), "github.action_path": packagePath,
 		"github.actor": "original-actor", "github.triggering_actor": "rerun-actor", "github.event_name": "push", "github.run_id": "123", "github.run_attempt": "2", "github.workflow_ref": "workflow-owner/workflow/.github/workflows/plan.yml@refs/heads/main", "github.workflow_sha": strings.Repeat("b", 40), "github.action_repository": "action-owner/action", "github.action_ref": committedCLIVersion(t)}
 	for key, value := range extra {
-		if _, known := values[key]; known && (strings.HasPrefix(key, "github.") || key == "inputs.plan-reporting") {
+		if _, known := values[key]; known && (strings.HasPrefix(key, "github.") || key == "inputs.plan-reporting" || key == "inputs.prune") {
 			values[key] = value
 		} else {
 			base[key] = value

@@ -155,14 +155,18 @@ func TestUnsupportedRulesetReadsBlockExportUpdateAndDeletion(t *testing.T) {
 			}
 			for _, deleting := range []bool{false, true} {
 				selection := "enforcement_status: active\n        target_branches: {include_default_branch: true}\n        rules: {restrict_deletions: true}"
-				if deleting {
-					selection = "delete: true"
-				}
+
 				content := "version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    rulesets:\n      - id: 7\n        ruleset_name: basic\n        " + selection + "\n"
+				if deleting {
+					content = "version: daiksud/gh-settings@v0\nrepository: {settings: {rulesets: []}}\n"
+				}
 				if err := writeSettingsFile(fixture.work, content); err != nil {
 					t.Fatal(err)
 				}
 				for _, args := range [][]string{{"export", "--rulesets"}, {"plan"}, {"apply"}} {
+					if deleting && args[0] != "export" {
+						args = append(args, "--prune", "rulesets")
+					}
 					result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 					if err != nil || result.runErr == nil {
 						t.Fatalf("%v accepted unsupported policy: %v %s", args, err, result.stderr.String())

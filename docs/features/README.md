@@ -16,6 +16,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Copilot review effort](copilot-review-effort.feature.md) | Manage the observable repository review effort choice without enabling reviews. |
 | [Copilot custom instructions](copilot-custom-instructions.feature.md) | Manage the stored repository Use custom instructions toggle. |
 | [Repository variables](repository-variables.feature.md) | Manage selected non-sensitive Actions repository variables. |
+| [Collection pruning](prune.feature.md) | Explicit command-selected deletions, presence, safety and staged scope. |
 | [Labels](labels.feature.md) | Manage selected label objects by ID. |
 | [Rulesets](rulesets.feature.md) | Manage selected repository rulesets. |
 | [Environments](environments.feature.md) | Manage supported named environment policies and explicitly selected non-sensitive variables. |

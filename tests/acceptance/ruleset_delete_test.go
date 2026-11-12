@@ -5,6 +5,7 @@ package acceptance
 import (
 	"encoding/json"
 	"fmt"
+	"go.yaml.in/yaml/v4"
 	"html"
 	"net/http"
 	"os"
@@ -14,7 +15,7 @@ import (
 	"testing"
 )
 
-func TestRulesetExplicitDeletionExecutableLifecycle(t *testing.T) {
+func TestRulesetPruneExecutableLifecycle(t *testing.T) {
 	for _, target := range []string{"branch", "tag"} {
 		t.Run(target, func(t *testing.T) {
 			var mu sync.Mutex
@@ -97,7 +98,7 @@ func TestRulesetExplicitDeletionExecutableLifecycle(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer fixture.close()
-			env := append(exportFixtureEnv(fixture.cfg), "SETTINGS_TARGET=owner/current", "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=push", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
+			env := append(exportFixtureEnv(fixture.cfg), "SETTINGS_PRUNE=rulesets", "SETTINGS_TARGET=owner/current", "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=push", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
 			if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 				t.Fatal(err)
 			}
@@ -131,12 +132,30 @@ func TestRulesetExplicitDeletionExecutableLifecycle(t *testing.T) {
 				}
 				mu.Unlock()
 			}
-			intent := repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: basic, delete: true}]}\n")
+			var exported map[string]any
+			if err := yaml.Unmarshal(data, &exported); err != nil {
+				t.Fatal(err)
+			}
+			settingsMap := exported["repository"].(map[string]any)["settings"].(map[string]any)
+			keep := []any{}
+			for _, entry := range settingsMap["rulesets"].([]any) {
+				object := entry.(map[string]any)
+				if object["ruleset_name"] == "unmanaged" {
+					keep = append(keep, object)
+				}
+			}
+			settingsMap["rulesets"] = keep
+			exported["repository"] = map[string]any{"settings": map[string]any{"rulesets": keep}}
+			retained, err := yaml.Marshal(exported)
+			if err != nil {
+				t.Fatal(err)
+			}
+			intent := string(retained)
 			if err := writeSettingsFile(fixture.work, intent); err != nil {
 				t.Fatal(err)
 			}
 			run(true, "validate")
-			if out := run(true, "plan"); !strings.Contains(out, `delete "basic"`) || !strings.Contains(out, "→ absent") {
+			if out := run(true, "plan", "--prune", "rulesets"); !strings.Contains(out, `delete "basic"`) || !strings.Contains(out, "→ absent") {
 				t.Fatal(out)
 			}
 			report, summary := filepath.Join(fixture.root, "plan.json"), filepath.Join(fixture.root, "summary.md")
@@ -167,26 +186,26 @@ func TestRulesetExplicitDeletionExecutableLifecycle(t *testing.T) {
 			}
 			ignore = true
 			mu.Unlock()
-			if out := run(false, "apply"); !strings.Contains(out, "write may have applied") {
+			if out := run(false, "apply", "--prune", "rulesets"); !strings.Contains(out, "write may have applied") {
 				t.Fatal("uncertain deletion not reported", out)
 			}
 			mu.Lock()
 			ignore = false
 			before := reads
 			mu.Unlock()
-			run(true, "apply")
+			run(true, "apply", "--prune", "rulesets")
 			mu.Lock()
-			if reads-before != 2 || writes != 2 || present {
+			if reads-before != 3 || writes != 2 || present {
 				t.Error("preflight and fresh inventory required", reads-before, writes, present)
 			}
 			mu.Unlock()
 			if err := checkSettingsUnchanged(fixture.work, intent); err != nil {
 				t.Fatal(err)
 			}
-			if out := run(true, "plan"); !strings.Contains(out, "No differences") {
+			if out := run(true, "plan", "--prune", "rulesets"); !strings.Contains(out, "No differences") {
 				t.Fatal(out)
 			}
-			run(true, "apply")
+			run(true, "apply", "--prune", "rulesets")
 			mu.Lock()
 			if writes != 2 {
 				t.Error("repeat deleted", writes)

@@ -546,30 +546,7 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 	}
 	out := []RulesetChange{}
 	for _, declared := range desired.Values() {
-		if declared.Delete != nil {
-			if current.HasUnmanagedID(*declared.ID) {
-				return nil, fmt.Errorf("Ruleset id %d is outside supported repository branch/tag ownership", *declared.ID)
-			}
-			before, present := byID[*declared.ID]
-			if !present {
-				continue
-			}
-			if before.Policy.Name != declared.Name {
-				return nil, fmt.Errorf("Ruleset id %d name differs from deletion selector %q", *declared.ID, declared.Name)
-			}
-			normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, ScanningSecurityAlerts: before.ScanningSecurityAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
-			if !normalizations.IsZero() {
-				return nil, fmt.Errorf("cannot delete Ruleset %d with unsupported normalized policy", before.ID)
-			}
-			prior := cloneRuleset(before.Policy)
-			prior.ID = copyRuleValue(&before.ID)
-			change, err := NewRulesetChange("delete", before.ID, &prior, nil)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, change)
-			continue
-		}
+
 		after := cloneRuleset(declared)
 		if declared.ID == nil {
 			if existing, present := byName[declared.Name]; present {
@@ -617,14 +594,8 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 // HasUnmanagedID distinguishes excluded resources from genuinely absent IDs.
 func (o RulesetObservation) HasUnmanagedID(id int64) bool { return slices.Contains(o.unmanagedIDs, id) }
 
-func validateRulesetDeletion(d RulesetDeclaration) error {
-	if d.Delete == nil || !*d.Delete || d.ID == nil || *d.ID <= 0 || !validRulesetText(d.Name) {
-		return fmt.Errorf("Ruleset deletion requires delete: true, positive id and ruleset_name")
-	}
-	if d.Target != nil || d.Enforcement != nil || d.Conditions != nil || d.BypassActors != nil || d.Rules != nil {
-		return fmt.Errorf("Ruleset deletion forbids policy fields")
-	}
-	return nil
+func validateRulesetDeletion(RulesetDeclaration) error {
+	return fmt.Errorf("Rulesets delete is removed: declare every Ruleset to retain, omit unwanted objects, then inspect plan --prune rulesets before apply --prune rulesets; prune affects all unlisted objects")
 }
 
 // MatchesDeletionPolicy guards the selected complete policy against drift before

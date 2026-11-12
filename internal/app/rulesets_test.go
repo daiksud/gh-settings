@@ -154,7 +154,7 @@ func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
 func TestRulesetExplicitDeletionAppOperationAndPartialFailure(t *testing.T) {
 	for _, fail := range []bool{false, true} {
 		state := appRulesetState(t)
-		desired := settings.Declaration{Rulesets: appRulesets(t, `[{id: 7, name: basic, delete: true}]`)}
+		desired := settings.Declaration{Rulesets: appRulesets(t, `[]`)}
 		calls := []string{}
 		yes := true
 		desired.Repository.HasIssues = &yes
@@ -179,8 +179,8 @@ func TestRulesetExplicitDeletionAppOperationAndPartialFailure(t *testing.T) {
 				}
 				return 7, nil
 			},
-		})
-		if !reflect.DeepEqual(calls, []string{"earlier-write", "rulesets-read", "delete"}) || (err != nil) != fail {
+		}, mustPrune(t, "rulesets"))
+		if !reflect.DeepEqual(calls, []string{"rulesets-read", "earlier-write", "rulesets-read", "delete"}) || (err != nil) != fail {
 			t.Fatal(calls, err)
 		}
 		last := result.Operations[len(result.Operations)-1]

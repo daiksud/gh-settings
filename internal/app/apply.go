@@ -7,7 +7,11 @@ import (
 )
 
 // Apply keeps direct repository/topics writes; labels read their current collection before CRUD.
-func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result ApplyResult, err error) {
+func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options ...settings.PruneScopes) (result ApplyResult, err error) {
+	prune, optionErr := operationPrune(options)
+	if optionErr != nil {
+		return ApplyResult{Outcome: ApplyFailed}, optionErr
+	}
 	unarchived := false
 	defer func() {
 		if err != nil && unarchived {
@@ -18,7 +22,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 	if err != nil {
 		return ApplyResult{Outcome: ApplyFailed}, err
 	}
-	if desired.Empty() {
+	if desired.Empty() && !prune.Manages(desired) {
 		return ApplyResult{}, nil
 	}
 	repo, err := resolve()
@@ -26,6 +30,10 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		return ApplyResult{Outcome: ApplyFailed}, err
 	}
 	result = ApplyResult{Outcome: ApplyFailed, Target: repo}
+	prepared, err := preparePrune(repo, desired, prune, write)
+	if err != nil {
+		return result, fmt.Errorf("prune preflight failed before any writes: %w", err)
+	}
 	archiveManaged := desired.Repository.Archived != nil
 	other := desired.Repository
 	other.Archived = nil
@@ -42,7 +50,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 			return result, fmt.Errorf("read archive state before apply: %w", err)
 		}
 		result.Operations[0].Status = OperationCompleted
-		if archiveState.Archived && *desired.Repository.Archived && archiveConflictsWithOtherManaged(desired) {
+		if archiveState.Archived && *desired.Repository.Archived && (archiveConflictsWithOtherManaged(desired) || prune.Manages(desired)) {
 			result.failOperation(0, OperationFailedRead)
 			return result, fmt.Errorf("archived repository cannot update other managed resources without explicit archived: false")
 		}
@@ -64,7 +72,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 	if topicsManaged {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: TopicsUpdate})
 	}
-	if desired.Labels != nil && desired.Labels.Len() > 0 {
+	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
 		result.Operations = append(result.Operations, ApplyOperation{Kind: LabelsRead})
 	}
 	index := firstOrdinary
@@ -95,18 +103,31 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		index++
 	}
 	hasWrites := repositoryManaged || topicsManaged || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
-	if desired.Labels != nil && desired.Labels.Len() > 0 {
+	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
 		current, err := write.ReadLabels(repo)
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
 			return result, fmt.Errorf("read labels for apply (earlier resource writes remain applied): %w", err)
 		}
-		comparison, err := settings.CompareLabels(current, desired.Labels)
+		comparison, err := settings.CompareLabelsWithPrune(current, desired.Labels, prune.Has("labels"))
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
 			return result, fmt.Errorf("compare labels for apply (earlier resource writes remain applied): %w", err)
 		}
+		if prune.Has("labels") && !sameLabelDeletions(prepared.labels, comparison.Labels.Values()) {
+			result.failOperation(index, OperationFailedRead)
+			return result, fmt.Errorf("label prune candidates changed after preflight; refusing collection writes")
+		}
 		result.Operations[index].Status = OperationCompleted
+		acquiredLabels, readErr := current.Values()
+		if readErr != nil {
+			result.failOperation(index, OperationFailedRead)
+			return result, readErr
+		}
+		knownLabelIDs := map[int64]bool{}
+		for _, label := range acquiredLabels {
+			knownLabelIDs[label.ID] = true
+		}
 		changes := comparison.Labels.Values()
 		hasWrites = hasWrites || len(changes) > 0
 		firstLabel := len(result.Operations)
@@ -125,6 +146,12 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 				}
 				if err == nil && id <= 0 {
 					err = fmt.Errorf("creation returned no positive ID; remote creation may have succeeded")
+				}
+				if err == nil && knownLabelIDs[id] {
+					err = fmt.Errorf("creation returned already-known label id %d; refusing ID adoption (writes may already have applied)", id)
+				}
+				if err == nil {
+					knownLabelIDs[id] = true
 				}
 				if err == nil {
 					result.Operations[index].Status = OperationCompleted
@@ -159,8 +186,8 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer) (result
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Rulesets != nil && desired.Rulesets.Len() > 0 {
-		wrote, err := applyRulesets(&result, repo, desired.Rulesets, write)
+	if desired.Rulesets != nil && (desired.Rulesets.Len() > 0 || prune.Has("rulesets")) {
+		wrote, err := applyRulesets(&result, repo, desired.Rulesets, write, prune.Has("rulesets"), prepared.rulesets)
 		if err != nil {
 			return result, err
 		}

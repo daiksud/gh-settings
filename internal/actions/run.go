@@ -27,6 +27,10 @@ func Run(args []string, stdout, stderr io.Writer, version string, plan func() (a
 }
 
 func execute(args []string, stdout io.Writer, version string, plan func() (app.PlanResult, error)) error {
+	if len(args) == 1 && args[0] == "prune-support" {
+		_, err := fmt.Fprintln(stdout, "labels,rulesets")
+		return err
+	}
 	if len(args) == 1 && args[0] == "private-reporting" {
 		_, err := fmt.Fprintln(stdout, "status-only-v1")
 		return err

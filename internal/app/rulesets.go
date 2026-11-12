@@ -1,13 +1,15 @@
 package app
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func applyRulesets(result *ApplyResult, repo repository.Repository, desired *settings.RulesetDeclarations, write Writer) (bool, error) {
+func applyRulesets(result *ApplyResult, repo repository.Repository, desired *settings.RulesetDeclarations, write Writer, prune bool, initial []settings.RulesetChange) (bool, error) {
 	index := len(result.Operations)
 	result.Operations = append(result.Operations, ApplyOperation{Kind: RulesetsRead})
 	observed, err := write.ReadRulesets(repo)
@@ -15,10 +17,14 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 		result.failOperation(index, OperationFailedRead)
 		return false, fmt.Errorf("read Rulesets for apply (earlier writes remain applied): %w", err)
 	}
-	changes, err := settings.ReconcileRulesets(observed, desired)
+	changes, err := settings.ReconcileRulesetsWithPrune(observed, desired, prune)
 	if err != nil {
 		result.failOperation(index, OperationFailedRead)
 		return false, fmt.Errorf("prepare Rulesets (earlier writes remain applied): %w", err)
+	}
+	if prune && !sameRulesetDeletions(initial, changes) {
+		result.failOperation(index, OperationFailedRead)
+		return false, fmt.Errorf("Ruleset prune candidates changed after preflight; refusing collection writes")
 	}
 	result.Operations[index].Status = OperationCompleted
 	states, err := observed.Values()
@@ -30,6 +36,15 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 	for _, state := range states {
 		knownIDs[state.ID] = true
 	}
+	slices.SortStableFunc(changes, func(a, b settings.RulesetChange) int {
+		if a.Operation() == "delete" && b.Operation() != "delete" {
+			return 1
+		}
+		if a.Operation() != "delete" && b.Operation() == "delete" {
+			return -1
+		}
+		return 0
+	})
 	first := len(result.Operations)
 	for _, change := range changes {
 		var kind ApplyOperationKind
@@ -57,7 +72,12 @@ func applyRulesets(result *ApplyResult, repo repository.Repository, desired *set
 			}
 		}
 		if err != nil {
-			result.failOperation(first+i, OperationFailedUnknown)
+			status := OperationFailedUnknown
+			var readFailure PreWriteReadFailure
+			if errors.As(err, &readFailure) {
+				status = OperationFailedRead
+			}
+			result.failOperation(first+i, status)
 			return false, fmt.Errorf("%s Ruleset %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
 		}
 		result.Operations[first+i].Status = OperationCompleted

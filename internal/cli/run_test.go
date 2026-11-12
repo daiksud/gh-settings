@@ -88,7 +88,7 @@ func TestRunSelectsOperation(t *testing.T) {
 					exportCalls++
 					return test.operationError
 				},
-				Plan: func() (app.PlanResult, error) {
+				Plan: func(PlanOptions) (app.PlanResult, error) {
 					planCalls++
 					return app.PlanResult{Comparison: settings.Comparison{Managed: 1}}, test.operationError
 				},
@@ -203,7 +203,7 @@ func TestHelp(t *testing.T) {
 func TestPlanOutputFailure(t *testing.T) {
 	var stderr bytes.Buffer
 	code := Run([]string{"plan"}, brokenWriter{}, &stderr, "fixture-version", Operations{
-		Plan: func() (app.PlanResult, error) { return app.PlanResult{}, nil },
+		Plan: func(PlanOptions) (app.PlanResult, error) { return app.PlanResult{}, nil },
 	})
 	if code != 1 || stderr.String() != "gh settings: write output: output unavailable\n" {
 		t.Fatalf("status=%d stderr=%q", code, stderr.String())

@@ -51,6 +51,33 @@ This Free-only policy replaces the earlier personal-public Security investigatio
 
 **Existing-feature audit is incomplete.** The field contracts below describe implemented behavior and technical applicability, including previously implemented capabilities with broader API/entitlement conditions; they do not certify that every capability meets this narrowed policy. Documenting this scope adds no runtime plan/ownership/visibility gate, removes no existing feature and changes no live setting. Any reconciliation of existing behavior needs separately scoped work.
 
+## Collection pruning
+
+Normal apply creates/updates the declared independent objects and preserves
+unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
+`apply --prune labels,rulesets` executes them alongside all other declared work.
+Use one comma-separated option, not repeated flags. Empty elements, duplicate or
+unknown names fail locally. Current source supports `labels` and `rulesets`;
+`actions-policies`, `actions-variables`, `agents-variables`,
+`environment-variables` and `environments` are not implemented yet. `all` must be
+standalone and currently fails explicitly rather than omitting those scopes.
+Environment-object deletion still needs a separate adoption decision.
+
+Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
+scope; a nonempty list prunes objects whose IDs are not declared. ID-less entries
+remain create-only and never adopt a name collision. Acquire complete inventories
+and validate every prune candidate before any remote write, including unrelated
+settings writes. Unsupported candidates fail the whole preflight. Create/update
+before deletion; keep the prepared deletion set fixed, check drift before DELETE
+and verify absence afterward. Completed earlier writes survive a later failure;
+readback failure can leave uncertain effects. There is no lock or rollback.
+
+Deleting labels removes their Issue/PR assignments; recreating them does not
+restore assignments. Automatically created Dependabot labels are deletion
+candidates too if undeclared. Plan displays this consequence. Topics, PR exemption
+lists and deployment branch/tag pattern replacement are unchanged. The
+[behavior specification](features/prune.feature.md) records stages and tests.
+
 ## Supported fields
 
 `repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
@@ -675,7 +702,7 @@ General's `pull_requests.merge_commit.default_commit_message` accepts `default_m
 
 ## Labels
 
-`repository.labels` selects whole label objects by positive REST `id`; no ID means create-only. Omission or `[]` selects nothing, makes no label request and deletes nothing. Unlisted objects and assignments remain untouched; removing an entry stops managing it.
+`repository.labels` selects whole label objects by positive REST `id`; no ID means create-only. Without prune, omission or `[]` selects nothing and unlisted objects remain untouched. Explicit `--prune labels` changes present-list ownership: [] selects all current labels and nonempty lists retain declared IDs. Omission always stays unmanaged. Deletion loses Issue/PR assignments; see [collection pruning](#collection-pruning).
 
 | Attribute | Contract |
 | --- | --- |
@@ -708,7 +735,7 @@ An export followed by validate/plan roundtrips exact supported acquired values, 
 
 ## Rulesets
 
-`repository.settings.rulesets` selects whole repository-owned branch or tag Rulesets by optional positive numeric ID. No ID means create-only; a collision requires explicit ID adoption. Unknown/wrong-target/type IDs fail without create fallback. Unlisted objects are not deleted. Omission/`[]` selects nothing. Names compare exactly without trimming/case folding; duplicate names/IDs and colliding renames fail.
+`repository.settings.rulesets` selects whole repository-owned branch or tag Rulesets by optional positive numeric ID. No ID means create-only; a collision requires explicit ID adoption. Unknown/wrong-target/type IDs fail without create fallback. Without prune, unlisted objects are not deleted and omission/`[]` selects nothing. With `--prune rulesets`, present lists own retention as described below. Names compare exactly without trimming/case folding; duplicate names/IDs and colliding renames fail.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -722,20 +749,20 @@ repository:
         rules: {restrict_deletions: true}
 ```
 
-To delete one repository-owned branch/tag Ruleset, declare only its exact positive ID, current name and explicit deletion selection:
+Deletion uses the command option `--prune rulesets`, not YAML tombstones. Without
+prune, only listed objects are created/updated. With prune, an omitted Rulesets
+list stays unmanaged, `[]` selects all acquired Rulesets for deletion, and a
+nonempty list retains its declared IDs while pruning unlisted objects. Declare
+all Rulesets to retain before pruning. The [prune contract](#collection-pruning)
+owns preflight, ordering and partial-failure behavior.
 
-```yaml
-repository:
-  settings:
-    rulesets:
-      - id: 123
-        ruleset_name: obsolete-policy
-        delete: true
-```
-
-A deletion entry cannot select enforcement, targets, bypass actors or rule controls. `delete: false`, missing/nonpositive IDs and missing names are invalid. Omission, an empty Rulesets list and unlisted IDs never delete anything. An ID absent from the repository-owned inventory is already satisfied after complete inventory acquisition; a different resource with the same name is never selected as a fallback. IDs returned for excluded inherited Rulesets fail rather than being treated as absent; inherited IDs omitted by the repository-only inventory select no mutation and do not establish absence of higher-level policy. Export includes observed present policies only and never invents or preserves deletion entries.
-
-Plan displays the complete selected policy changing to `absent`. Apply reacquires the collection and rechecks the exact selected detail's repository ownership, ID, name and complete unchanged supported policy immediately before DELETE. Unknown or incomplete protection and normalized unsupported values block deletion. A successful delete requires HTTP 204 and a fresh complete inventory confirming the ID is absent; 404, failed/partial reads and a retained ID are errors, never successful absence. Failures after the request report that the write may have applied; there is no retry or rollback, and earlier writes remain applied. Repeated plan/apply after confirmed absence produce no change. These checks do not lock the policy between the final GET and DELETE; concurrent changes remain possible because the documented DELETE API provides no conditional-policy parameter.
+The `delete` member is removed: old `delete: true`/`false` declarations fail with
+migration guidance. Remove the unwanted entry only after listing every other
+Ruleset to keep; inspect `plan --prune rulesets`, then use `apply --prune rulesets`.
+This is broader than the old single-object selector. Complete unsupported,
+inherited/Push, normalized or unowned PR/Preview policy remains a deletion blocker.
+Exact identity/policy preflight and HTTP 204 plus complete absence readback are
+required; no retry, substitution or rollback is introduced.
 
 Deletion uses [GitHub's repository Ruleset DELETE endpoint](https://docs.github.com/en/rest/repos/rules#delete-a-repository-ruleset) with Administration write permission. Complete bypass visibility is required before any deletion. Explicit deletion removes the whole selected Ruleset. Any acquired unsupported protection prevents deletion; an omitted API field does not establish that its underlying protection is disabled. Organization/Enterprise-level policy, legacy branch protection, grants, releases and bypass configuration are outside this operation. Implementation verification uses local fixtures and does not delete live protection.
 

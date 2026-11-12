@@ -17,6 +17,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
+| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source supports `labels,rulesets`; see [pruning](#explicit-collection-pruning). |
 
 Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Plan is nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action neither mints a token, identifies its credential type nor verifies its actual grants; there is no ambient-token or personal-credential fallback.
 
@@ -301,3 +302,18 @@ Detailed plans/Summaries retain the three distinct UI controls and native values
 status-only reports hide them. Omitted controls, temporary restrictions and
 exemptions remain unmanaged. A failed post-PATCH confirmation reports possible
 applied effects without retrying the write or rolling back earlier operations.
+
+## Explicit collection pruning
+
+Current source accepts optional `prune: labels,rulesets` for `command: plan` or
+`apply`, using the same [CLI prune contract](settings.md#collection-pruning). It
+adds deletions to other declared work and defaults to no pruning. `validate`
+rejects a nonempty prune input. Omitted collections stay unmanaged; explicit []
+can delete all objects in the selected scope. Label deletion loses Issue/PR
+assignments, including undeclared Dependabot labels. Detailed plan Summary shows
+these consequences; status-only retains its existing value-hiding boundary.
+
+The Action checks installed CLI prune support before remote work and fails with
+an older published package instead of silently ignoring the input. Source changes
+do not add this capability to an existing published Action/CLI. Other scopes and
+`all` currently fail explicitly; Environment-object deletion remains undecided.
