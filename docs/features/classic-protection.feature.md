@@ -49,6 +49,9 @@ removes whole unlisted rules. Fork-sync and other actor controls remain separate
   active references binds a complete identity-only inventory, permits nullable
   numeric IDs and verifies selected node IDs after independent rule readback.
   Missing references stop before mutation; post-write replacement is uncertain.
+  Acquisition diagnostics omit upstream error text and response-controlled member
+  names before and after writes, while retaining bounded stage/reason categories
+  and honest uncertainty. No additional mutation or retry follows failure.
 - Unselected raw deployment flag, nullness, order and inactive names are preserved.
   Selecting disabled mode owns the flag without promising inactive storage. Other
   raw companions remain protected; Classic prune retains all raw deployment data.
