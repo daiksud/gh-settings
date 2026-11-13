@@ -7,6 +7,14 @@ import (
 )
 
 func ClassicProtectionLine(c settings.ClassicChange) string {
+	names := []string{"require_conversation_resolution_before_merging", "require_signed_commits", "require_linear_history", "allow_deletions", "lock_branch"}
+	if c.After == nil {
+		parts := []string{fmt.Sprintf("branch_name_pattern: %q", c.Before.BranchNamePattern)}
+		for i, value := range settings.ClassicFlags(*c.Before) {
+			parts = append(parts, fmt.Sprintf("%s: %t", names[i], *value))
+		}
+		return fmt.Sprintf("%s: delete (id %d) before {%s} → absent (removes the whole rule, including other configured protections; an overlapping rule may take effect)", settings.ClassicProtectionPath, *c.Before.ID, strings.Join(parts, ", "))
+	}
 	operation := "create"
 	identity := ""
 	if c.Before != nil {
@@ -17,12 +25,11 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 	if c.Before != nil && c.Before.BranchNamePattern != c.After.BranchNamePattern {
 		parts[0] = fmt.Sprintf("branch_name_pattern: %q → %q", c.Before.BranchNamePattern, c.After.BranchNamePattern)
 	}
-	names := []string{"require_conversation_resolution_before_merging", "require_signed_commits", "require_linear_history", "allow_deletions", "lock_branch"}
 	var before []*bool
 	if c.Before != nil {
 		before = settings.ClassicFlags(*c.Before)
 	}
-	for i, v := range settings.ClassicFlags(c.After) {
+	for i, v := range settings.ClassicFlags(*c.After) {
 		if v == nil {
 			continue
 		}

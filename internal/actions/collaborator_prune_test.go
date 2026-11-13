@@ -36,9 +36,13 @@ func TestCollaboratorPruneReportAndPrivacy(t *testing.T) {
 	id, yes, no := int64(77), true, false
 	before := settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no}
 	combined.Managed = 2
-	combined.BranchProtectionRules = []settings.ClassicChange{{Before: &before, After: settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireSignedCommits: &yes}}}
+	combined.BranchProtectionRules = []settings.ClassicChange{{Before: &before, After: &settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireSignedCommits: &yes}}}
+	removed := settings.CloneClassicRule(before)
+	removedID := int64(78)
+	removed.ID, removed.BranchNamePattern = &removedID, "old/*"
+	combined.BranchProtectionRules = append(combined.BranchProtectionRules, settings.ClassicChange{Before: &removed})
 	both, err := actions.RenderSummary(combined, summaryMetadata())
-	if err != nil || !strings.Contains(both, "require_signed_commits") || !strings.Contains(both, "remove collaborator grant") {
+	if err != nil || !strings.Contains(both, "require_signed_commits") || !strings.Contains(both, "remove collaborator grant") || !strings.Contains(both, "removes the whole rule") || !strings.Contains(both, "lock_branch: false") {
 		t.Fatal(both, err)
 	}
 	combined.Managed = 1

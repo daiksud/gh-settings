@@ -236,8 +236,11 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.BranchProtectionRules != nil && len(*desired.BranchProtectionRules) > 0 {
-		wrote, err := applyClassicProtection(&result, repo, *desired.BranchProtectionRules, write)
+	if desired.BranchProtectionRules != nil && (len(*desired.BranchProtectionRules) > 0 || prune.Has("branch-protection-rules")) {
+		if unarchived {
+			prepared.classicProtection = prepared.classicProtection.AfterUnarchive()
+		}
+		wrote, err := applyClassicProtection(&result, repo, *desired.BranchProtectionRules, write, prune.Has("branch-protection-rules"), prepared.classicProtection)
 		if err != nil {
 			return result, err
 		}

@@ -7,7 +7,7 @@ import (
 
 func TestCompositePruneInputAndOldCLIRejection(t *testing.T) {
 	for _, command := range []string{"plan", "apply"} {
-		for _, scope := range []string{"labels,rulesets", "environments,environment-variables", "all"} {
+		for _, scope := range []string{"labels,rulesets", "environments,environment-variables", "branch-protection-rules", "all"} {
 			result := runComposite(t, command, "fixture-token", map[string]string{"inputs.prune": scope, "MOCK_EXPECT_PRUNE": scope})
 			if result.status != 0 {
 				t.Fatal(command, scope, result.status, result.log)
