@@ -29,19 +29,38 @@ func (client *Client) ReadTopics(repo repository.Repository) ([]string, error) {
 	return settings.SortedTopics(names), nil
 }
 
-func (client *Client) ApplyTopics(repo repository.Repository, desired settings.TopicsDeclaration) error {
+type topicsPreWriteFailure struct{ error }
+
+func (*topicsPreWriteFailure) ReadFailedBeforeWrite() {}
+func (failure *topicsPreWriteFailure) Unwrap() error  { return failure.error }
+
+func (client *Client) ApplyTopics(repo repository.Repository, desired settings.TopicsDeclaration) (bool, error) {
 	if desired.Names == nil {
-		return nil
+		return false, nil
+	}
+	before, err := client.ReadTopics(repo)
+	if err != nil {
+		return false, &topicsPreWriteFailure{err}
+	}
+	if len(settings.CompareTopics(before, desired).Changes) == 0 {
+		return false, nil
 	}
 	payload := struct {
 		Names []string `json:"names"`
 	}{Names: settings.SortedTopics(*desired.Names)}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("encode repository topics: %w", err)
+		return false, fmt.Errorf("encode repository topics: %w", err)
 	}
 	if err := client.rest.Put("repos/"+repo.Owner+"/"+repo.Name+"/topics", bytes.NewReader(body), nil); err != nil {
-		return fmt.Errorf("apply repository topics (any earlier repository settings update remains applied): %w", err)
+		return false, fmt.Errorf("apply repository topics (writes may already have applied): %w", err)
 	}
-	return nil
+	after, err := client.ReadTopics(repo)
+	if err != nil {
+		return false, fmt.Errorf("verify repository topics (writes may already have applied): %w", err)
+	}
+	if len(settings.CompareTopics(after, desired).Changes) != 0 {
+		return false, fmt.Errorf("repository topics readback does not match declared membership (writes may already have applied)")
+	}
+	return true, nil
 }

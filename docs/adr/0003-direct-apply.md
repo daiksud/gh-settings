@@ -6,7 +6,7 @@ description: Record the agreed decision to apply declared values directly.
 
 ## Status
 
-Accepted — direct repository-field apply is implemented and available since v0.4.0. The no-read decision below also applies to topics; current source labels use [fresh-state reconciliation](../commands.md#apply-behavior). Apply remains independent of a saved plan for all resources.
+Accepted — apply remains independent of a saved plan for all resources. The no-read decision below is superseded for REST-backed repository controls and Topics, which now use fresh reconciliation and independent readback; labels also use [fresh-state reconciliation](../commands.md#apply-behavior).
 
 ## Context
 
