@@ -165,7 +165,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Private vulnerability reporting | Metadata read and supported public applicability | Administration write and applicable repository authority |
 | Immutable release policy | Administration read; target GET 404 means disabled under the required-permissions precondition, with owner enforcement unknown | Administration write; fresh owner-enforcement preflight and readback |
 | Pages lifecycle/configuration | Pages read | Pages write plus Administration write and applicable repository authority |
-| Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility | Administration write plus complete supported observation/readback |
+| Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility; parent pruning also needs Environments read for variable/secret metadata | Administration write plus complete supported observation/readback and prune absence confirmation |
 | PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
 
 GitHub documents installation-token support for the relevant [repository/topic](https://docs.github.com/en/rest/repos/repos), [label](https://docs.github.com/en/rest/issues/labels), [Ruleset](https://docs.github.com/en/rest/repos/rules#get-a-repository-ruleset), [Actions permissions](https://docs.github.com/en/rest/actions/permissions), [cache limits](https://docs.github.com/en/rest/actions/cache), [Pages](https://docs.github.com/en/rest/pages/pages) and [Environment](https://docs.github.com/en/rest/deployments/environments) REST APIs. The Ruleset GET explicitly limits `bypass_actors` to actors with write access: nonmutating plan is **not** proof that a read-only installation token is sufficient. Missing visibility must fail, never become an empty bypass list.
@@ -339,8 +339,8 @@ applied effects without retrying the write or rolling back earlier operations.
 
 Current source accepts optional comma-separated `prune` for `command: plan` or
 `apply`, using the same [CLI prune contract](settings.md#collection-pruning). It
-adds deletions to other declared work and defaults to no pruning. `validate`
-rejects a nonempty prune input. Omitted collections stay unmanaged; explicit []
+adds deletions to other declared work and defaults to no pruning. `export` and `validate`
+reject a nonempty prune input. Omitted collections stay unmanaged; explicit []
 can delete all objects in the selected scope. Label deletion loses Issue/PR
 assignments, including undeclared Dependabot labels. Detailed plan Summary shows
 these consequences; status-only retains its existing value-hiding boundary.
@@ -348,5 +348,15 @@ these consequences; status-only retains its existing value-hiding boundary.
 The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
 do not add this capability to an existing published Action/CLI. Actions Policies
-use `actions-policies`. Environment objects and `all` currently fail explicitly;
-Environment-object deletion is adopted but not yet implemented.
+use `actions-policies`; parent deletion uses `environments`. Standalone `all`
+selects all seven supported scopes and cannot be mixed with another token.
+Environment pruning retains every listed name, including variable-only entries,
+and runs only after retained policy/variable work. Parent deletion removes
+contained configuration/secrets and fails jobs waiting on protection rules; recreation does not
+restore them. Complete deletion snapshots need Actions read and Environments read
+for child variables/secret metadata; DELETE needs Administration write. Metadata
+and child values stay out of plan/report output, and snapshot transport ignores
+inherited `GH_DEBUG`. Status-only also hides parent names and policy. See the
+[Environment pruning contract](settings.md#environment-pruning) for custom-rule
+blocking, inactive-pattern visibility limits, fresh checks and nontransactional
+failure effects.

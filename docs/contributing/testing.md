@@ -235,8 +235,16 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeWorkflowPermissions)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
+
+The supplied-product Environment prune check also runs the real composite's
+plan (detailed and status-only) and repeated `all` apply against a local API. It
+verifies omitted sibling scopes, complete parent deletion, unchanged YAML,
+private child evidence and cleanup without live deletion. Owning tests cover
+child drift/custom protection and partial progress; the
+[prune specification](../features/prune.feature.md#environment-stage-test-mapping)
+records their boundaries.
 
 ### Export diagnostic delivery
 

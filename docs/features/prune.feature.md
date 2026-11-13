@@ -12,13 +12,10 @@ Use one comma-separated option. Unknown names, empty elements, duplicates and
 repeated flags fail locally. `all` must stand alone and must never silently omit
 an unsupported scope.
 
-The intended scopes are `labels`, `rulesets`, `actions-policies`,
+The supported scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables` and
-`environments`. Current source implements labels/Rulesets, Actions Policies and
-all three variable scopes. Environment-object deletion is adopted but unimplemented and is
-explicitly rejected before target resolution or remote access.
-`all` remains unavailable while any intended scope is unimplemented.
-This specification is not a claim that every stage has shipped.
+`environments`. Standalone `all` selects all seven; future collection additions
+must join its explicit expansion and tests.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit
 empty list selects all current objects for deletion; a nonempty list retains its
@@ -59,14 +56,39 @@ their policy, secrets or omitted variables.
   deletion identities, honest counts and partial-failure status. No real target
   deletion or settings apply is part of the automated tests.
 
-## Environment deletion implementation boundary
+## Environment deletion
 
-Environment-object deletion is adopted under the [personal-public scope](../settings.md#feature-adoption-scope), but is not implemented. GitHub documents deletion of its
-secrets and protection rules and automatic failure of jobs waiting on those
-rules. Secret values cannot be read back for restoration. Effects on variable
-ownership, workflow references and any recreation require explicit implementation
-and reporting; do not infer reversibility. Until implemented, requests for
-`environments` or `all` fail clearly rather than promising full support.
+Present `repository.settings.environments` owns retention when the explicit
+`environments` scope or standalone `all` is selected. Retain the union of policy
+and variable-only names, including `variables: []`, using Unicode folding. Empty
+[] selects all acquired parents; omission never does. Retained policy upserts and
+all selected Environment variables succeed before the fixed deletes run.
+
+Global acquisition binds repository/archive identity, positive parent ID,
+complete supported policy, active raw patterns, complete variables and secret
+name/created/updated metadata. Explicit custom-protection endpoint acquisition
+must be complete and known-empty at acquisition and each last recheck. Unsupported,
+normalized, denied or incomplete candidates block all writes. Retained unsupported
+parents need no deletion snapshot. Recheck the candidate set before Environment
+work, then each parent's observable state/identity before DELETE. Only this
+command's confirmed unarchive may adjust the acquired archive state. DELETE 204
+requires fresh complete inventory absence of both old ID and folded name;
+recreation or failed confirmation has uncertain effects and stops later deletes.
+
+Parent deletion removes contained configuration. GitHub documents secret and
+protection removal and failure of waiting jobs. Workflow references can recreate
+an unprotected name; no automatic restoration, backup, retry or rollback is
+promised. Secret values are never read. Secret metadata does not prove every
+rotation and never enters reports, Summary or snapshot debug logs. Inactive
+patterns are inaccessible under the custom-mode prerequisite; parent deletion
+permits this documented limit without fabricating an empty acquired latent list.
+The final name-addressed check/delete race remains. See the
+[permission and ownership contract](../settings.md#environment-pruning).
+
+Plan counts one Environment collection even for explicit [] with prune, shows
+complete supported before-policy and absent after-policy, and rejects normalization
+metadata on delete reports. Detailed output includes deletion consequences;
+status-only hides names/policy. YAML and numeric-ID writeback remain unchanged.
 
 Primary sources: [deleting an Environment](https://docs.github.com/actions/deployment/targeting-different-environments/using-environments-for-deployment#deleting-an-environment),
 [Environment REST API](https://docs.github.com/rest/deployments/environments#delete-an-environment),
@@ -106,3 +128,19 @@ modes, actual CLI partial failure/restart and omitted-scope preservation.
 Actions Policy pruning additionally refuses unsupported candidate policy state,
 uses repository-only inventory and exact detail rechecks, and requires confirmed
 absence after DELETE 204. Removing a restriction can permit future workflows.
+
+## Environment-stage test mapping
+
+- Model retention, parser expansion and complete before-only reports:
+  `internal/settings/environment_prune_test.go`, `internal/actions/environments_test.go`.
+- Child metadata pagination, custom-protection gates, late drift, escaped names,
+  target/archive checks and deletion absence/recreation:
+  `internal/github/environment_prune_test.go`.
+- Global preflight, fixed candidates, retained policy/variable ordering, confirmed
+  unarchive and partial progress: `internal/app/environment_prune_test.go`.
+- Supplied CLI present/empty/omitted lists, variable-only retention, combined variable
+  prune, repeat no-op, late protection and unchanged YAML:
+  `tests/acceptance/environment_prune_test.go`.
+- Actual supplied-product Action detailed/status-only plan and `all` apply:
+  `tests/github-actions/environment_prune_acceptance_test.go`. The candidate gate
+  runs this against the producer executable; no live parent deletion is performed.

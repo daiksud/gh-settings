@@ -87,7 +87,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		_, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport all supported readable settings to .github/settings.yml. Independent unavailable settings emit info and retain valid prior declarations; initial export omits them. Variables are plaintext. Secrets are never read. Refuse invalid or concurrently changed files.\nPlan is read-only; apply changes declared settings. --prune adds unlisted deletions for present collections. Supported scopes: labels, rulesets, actions-policies, actions-variables, agents-variables, environment-variables. all and environments remain unavailable.")
+		_, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport all supported readable settings to .github/settings.yml. Independent unavailable settings emit info and retain valid prior declarations; initial export omits them. Variables are plaintext. Secret values are never read. Refuse invalid or concurrently changed files.\nPlan is read-only; apply changes declared settings. --prune adds unlisted deletions for present collections. Supported scopes: labels, rulesets, actions-policies, actions-variables, agents-variables, environment-variables, environments. Standalone all selects every supported scope.")
 		if err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
@@ -192,7 +192,7 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = "repository.settings.actions.policies"
 		case app.RulesetsRead, app.RulesetCreate, app.RulesetUpdate, app.RulesetDelete:
 			path = "repository.settings.rulesets"
-		case app.EnvironmentsRead, app.EnvironmentUpsert:
+		case app.EnvironmentsRead, app.EnvironmentUpsert, app.EnvironmentDelete:
 			path = "repository.settings.environments"
 		case app.ActionsPolicyUpdate, app.WorkflowPermissionsUpdate, app.CacheRetentionRead, app.CacheRetentionUpdate, app.CacheStorageRead, app.CacheStorageUpdate, app.ActionsAccessRead, app.ActionsAccessUpdate, app.RetentionRead, app.RetentionUpdate, app.ForkApprovalRead, app.ForkApprovalUpdate, app.PrivateForkRead, app.PrivateForkUpdate:
 			path = "repository.settings.actions.general"

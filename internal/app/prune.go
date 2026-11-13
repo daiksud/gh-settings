@@ -19,6 +19,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 }
 
 type prunePreparation struct {
+	environments         settings.EnvironmentPruneObservation
 	actionsPolicies      []settings.ActionsEventPolicyChange
 	labels               []settings.LabelChange
 	rulesets             []settings.RulesetChange
@@ -110,6 +111,17 @@ func preparePrune(repo repository.Repository, desired settings.Declaration, prun
 		}
 	}
 
+	if prune.Has("environments") && desired.Environments != nil {
+		var err error
+		result.environments, err = write.ReadEnvironmentPrune(repo, settings.EnvironmentRetainedNames(desired))
+		if err != nil {
+			return result, err
+		}
+		unarchive := desired.Repository.Archived != nil && !*desired.Repository.Archived
+		if err = result.environments.ValidateApply(unarchive); err != nil {
+			return result, err
+		}
+	}
 	return result, nil
 }
 
