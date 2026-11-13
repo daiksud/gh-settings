@@ -48,7 +48,7 @@ func processClassicClone(v map[string]any) map[string]any {
 	return result
 }
 func TestClassicProtectionExecutableLifecycle(t *testing.T) {
-	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "deployments-error-before", "deployments-error-after", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard"} {
+	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "deployments-error-before", "deployments-error-after", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard", "force-select", "force-everyone", "force-disable"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rules := []map[string]any{processClassicRule(7, "Release/**")}
@@ -56,6 +56,10 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				rules[0]["restrictsReviewDismissals"] = true
 			}
 			writes := []map[string]any{}
+			forceActors := []any{}
+			if mode == "force-everyone" || mode == "force-disable" {
+				forceActors = []any{map[string]any{"actor": map[string]any{"__typename": "User", "id": "U_1"}}}
+			}
 			denied := false
 			partialErrorSent, followupAfterError := false, 0
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +80,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					w.WriteHeader(400)
 					return
 				}
-				if !strings.Contains(request.Query, "ClassicProtection") && !strings.Contains(request.Query, "ClassicDeploymentEnvironments") {
+				if !strings.Contains(request.Query, "ClassicProtection") && !strings.Contains(request.Query, "ClassicDeploymentEnvironments") && !strings.Contains(request.Query, "ClassicForcePushIdentities") {
 					w.WriteHeader(403)
 					fmt.Fprint(w, `{}`)
 					return
@@ -95,6 +99,16 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					}
 				}
 				switch {
+				case strings.Contains(request.Query, "ClassicForcePushIdentities"):
+					nodes := []any{}
+					for _, id := range request.Variables["ids"].([]any) {
+						kind := "User"
+						if strings.HasPrefix(id.(string), "A_") {
+							kind = "App"
+						}
+						nodes = append(nodes, map[string]any{"id": id, "__typename": kind})
+					}
+					body["nodes"] = nodes
 				case strings.Contains(request.Query, "ClassicDeploymentEnvironments"):
 					if !strings.HasPrefix(mode, "deployments") {
 						t.Error("unexpected reference acquisition")
@@ -137,6 +151,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						t.Error("missing allowance group")
 					}
 					body["node"] = map[string]any{"__typename": "BranchProtectionRule", "id": selected["id"], "databaseId": selected["databaseId"], "repository": selected["repository"], group: processClassicPage([]any{})}
+					if group == "bypassForcePushAllowances" {
+						body["node"].(map[string]any)[group] = processClassicPage(forceActors)
+					}
 				case strings.Contains(request.Query, "ClassicProtectionRule"):
 					if selected != nil {
 						selected["__typename"] = "BranchProtectionRule"
@@ -164,12 +181,21 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						return
 					}
 					for key, value := range input {
-						if key != "repositoryId" && key != "branchProtectionRuleId" {
+						if key == "bypassForcePushActorIds" {
+							forceActors = []any{}
+							for _, id := range value.([]any) {
+								kind := "User"
+								if strings.HasPrefix(id.(string), "A_") {
+									kind = "App"
+								}
+								forceActors = append(forceActors, map[string]any{"actor": map[string]any{"__typename": kind, "id": id}})
+							}
+						} else if key != "repositoryId" && key != "branchProtectionRuleId" {
 							rule[key] = value
 						}
 					}
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"} {
 						ack[key] = rule[key]
 					}
 					body[mutation] = map[string]any{"branchProtectionRule": ack}
@@ -228,6 +254,16 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				return
 			}
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_signed_commits: true}]}}\n"
+			if strings.HasPrefix(mode, "force-") {
+				group := "{enabled: true, who_can_force_push: specified_actors, actors: [{type: user, id: U_1}, {type: app, id: A_2}]}"
+				if mode == "force-everyone" {
+					group = "{enabled: true, who_can_force_push: everyone}"
+				}
+				if mode == "force-disable" {
+					group = "{enabled: false}"
+				}
+				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', allow_force_pushes: " + group + "}]}}\n"
+			}
 			if strings.HasPrefix(mode, "reviews-") {
 				group := "{enabled: false}"
 				if mode == "reviews-zero" {
@@ -324,6 +360,20 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				}
 				return
 			}
+			if strings.HasPrefix(mode, "force-") {
+				want := map[string]any{"branchProtectionRuleId": "B_7", "allowsForcePushes": false}
+				switch mode {
+				case "force-everyone":
+					want["allowsForcePushes"] = true
+				case "force-disable":
+					want["bypassForcePushActorIds"] = []any{}
+				case "force-select":
+					want["bypassForcePushActorIds"] = []any{"U_1", "A_2"}
+				}
+				if !reflect.DeepEqual(captured, []map[string]any{want}) {
+					t.Fatal(captured, want)
+				}
+			}
 			if strings.HasPrefix(mode, "reviews-") {
 				want := map[string]any{"branchProtectionRuleId": "B_7"}
 				switch mode {
@@ -380,6 +430,23 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				t.Error("repeat mutation", writes)
 			}
 			mu.Unlock()
+			if strings.HasPrefix(mode, "force-") {
+				run(false, "export")
+				run(false, "validate")
+				roundtrip, _ := os.ReadFile(path)
+				if !strings.Contains(string(roundtrip), "allow_force_pushes:") {
+					t.Fatal(string(roundtrip))
+				}
+				if mode == "force-select" && (!strings.Contains(string(roundtrip), "id: A_2") || !strings.Contains(string(roundtrip), "type: app")) {
+					t.Fatal(string(roundtrip))
+				}
+				if mode == "force-everyone" && (strings.Contains(string(roundtrip), "U_1") || !strings.Contains(string(roundtrip), "who_can_force_push: everyone")) {
+					t.Fatal("latent actor escaped export", string(roundtrip))
+				}
+				if mode == "force-disable" && strings.Contains(string(roundtrip), "U_1") {
+					t.Fatal(string(roundtrip))
+				}
+			}
 		})
 	}
 }

@@ -28,7 +28,7 @@ func classicFixturePage(nodes []any, total int, next bool, cursor any) map[strin
 }
 func classicFixtureAck(rule map[string]any) map[string]any {
 	result := map[string]any{}
-	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
+	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "allowsForcePushes", "repository"} {
 		result[key] = rule[key]
 	}
 	return result
@@ -51,10 +51,11 @@ type classicAPIFixture struct {
 	mutate        func(map[string]any)
 	graphqlErrors []any
 	rejectWrites  bool
+	forceActors   map[string][]settings.ClassicActor
 }
 
 func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixture {
-	f := &classicAPIFixture{t: t, rules: rules}
+	f := &classicAPIFixture{t: t, rules: rules, forceActors: map[string][]settings.ClassicActor{}}
 	f.client = &ClassicProtectionClient{graphql: prAccessTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 		var request struct {
 			Query     string
@@ -114,7 +115,18 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 				t.Fatal("unknown rule mutation", input)
 			}
 			for k, v := range input {
-				if k != "repositoryId" && k != "branchProtectionRuleId" {
+				if k == "bypassForcePushActorIds" {
+					actors := []settings.ClassicActor{}
+					for _, id := range v.([]any) {
+						text := id.(string)
+						kind := "User"
+						if strings.HasPrefix(text, "A_") {
+							kind = "App"
+						}
+						actors = append(actors, settings.ClassicActor{Kind: kind, ID: text})
+					}
+					f.forceActors[rule["id"].(string)] = actors
+				} else if k != "repositoryId" && k != "branchProtectionRuleId" {
 					rule[k] = v
 				}
 			}
@@ -135,6 +147,17 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 				f.mutate(rule)
 			}
 			body[name] = map[string]any{"branchProtectionRule": classicFixtureAck(rule)}
+		case strings.Contains(request.Query, "ClassicForcePushIdentities"):
+			phase = "force-identities"
+			nodes := []any{}
+			for _, id := range request.Variables["ids"].([]any) {
+				kind := "User"
+				if strings.HasPrefix(id.(string), "A_") {
+					kind = "App"
+				}
+				nodes = append(nodes, map[string]any{"id": id, "__typename": kind})
+			}
+			body["nodes"] = nodes
 		case strings.Contains(request.Query, "ClassicDeploymentEnvironments"):
 			phase = "environments"
 			target := classicFixtureTarget()
@@ -167,7 +190,13 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 			if group == "" || !strings.Contains(request.Query, "... on App{id}") {
 				t.Fatal(request.Query)
 			}
-			body["node"] = map[string]any{"__typename": "BranchProtectionRule", "id": selected["id"], "databaseId": selected["databaseId"], "repository": selected["repository"], group: classicFixturePage([]any{}, 0, false, nil)}
+			nodes := []any{}
+			if group == "bypassForcePushAllowances" {
+				for _, a := range f.forceActors[selected["id"].(string)] {
+					nodes = append(nodes, map[string]any{"actor": map[string]any{"__typename": a.Kind, "id": a.ID}})
+				}
+			}
+			body["node"] = map[string]any{"__typename": "BranchProtectionRule", "id": selected["id"], "databaseId": selected["databaseId"], "repository": selected["repository"], group: classicFixturePage(nodes, len(nodes), false, nil)}
 		case strings.Contains(request.Query, "ClassicProtectionRule"):
 			phase = "node"
 			if selected != nil {
