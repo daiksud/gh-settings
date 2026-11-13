@@ -103,7 +103,7 @@ func TestNormalizedEnvironmentDeploymentChangeRejectsUnownedAndForgedEvidence(t 
 			t.Fatal("forged/unowned mode change accepted", change, err)
 		}
 	}
-	// A real omitted-mode API-controlled update remains ordinary and carries no raw mode evidence.
+	// A partial omitted-mode change representation remains ordinary and carries no raw mode evidence.
 	before := environmentPolicy(t, "production")
 	after := EnvironmentDeclaration{Name: "production", WaitTimer: paramInt(5)}
 	change, err := NewEnvironmentChange("update", &before, &after)

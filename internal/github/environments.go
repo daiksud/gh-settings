@@ -388,7 +388,28 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if len(changes) == 0 {
 		return false, nil
 	}
-	expected := changes[0].After()
+	intent := *changes[0].After()
+	expected := intent
+	states, err := current.Values()
+	if err != nil {
+		return pre(err)
+	}
+	policyWrite := len(states) == 0
+	var before *settings.EnvironmentState
+	if len(states) == 1 {
+		before = &states[0]
+		matches, err := settings.EnvironmentBuiltinsMatchRequest(*before, intent)
+		if err != nil {
+			return pre(err)
+		}
+		policyWrite = !matches
+		expected, err = settings.PrepareEnvironmentUpdate(*before, intent)
+		if err != nil {
+			return pre(err)
+		}
+	}
+	// Companions belong only to this send-time snapshot. Original intent still
+	// controls warnings and whether deployment patterns may be mutated.
 	body, err := json.Marshal(expected)
 	if err != nil {
 		return pre(err)
@@ -410,45 +431,86 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	if fresh != initial {
 		return pre(fmt.Errorf("repository identity or archive state changed before environment update"))
 	}
-	states, err := current.Values()
-	if err != nil {
-		return pre(err)
-	}
 	for _, state := range states {
-		c.warnDeploymentNormalization(state, *expected)
-		c.warnRefTypeNormalizations(state, *expected)
+		c.warnDeploymentNormalization(state, intent)
+		c.warnRefTypeNormalizations(state, intent)
 	}
-	var raw map[string]json.RawMessage
-	if err := c.rest.Put(environmentPath(repo, expected.Name), bytes.NewReader(body), &raw); err != nil {
-		return false, fmt.Errorf("update environment %q (write may have applied): %w", expected.Name, err)
-	}
-	if err := verifyEnvironmentUpdateResponse(raw, *expected); err != nil {
-		return false, fmt.Errorf("verify environment update response (write may have applied): %w", err)
-	}
-	if expected.DeploymentBranchPatterns != nil {
-		// Mode entry and pattern changes are separate API calls. No transaction,
-		// intermediate enforcement guarantee, or automatic rollback is claimed.
-		state, err := c.readOne(repo, expected.Name)
-		if err != nil {
-			return false, fmt.Errorf("read patterns after environment PUT (write may have applied): %w", err)
+	if policyWrite {
+		var raw map[string]json.RawMessage
+		if err := c.rest.Put(environmentPath(repo, intent.Name), bytes.NewReader(body), &raw); err != nil {
+			return false, fmt.Errorf("update environment %q (write may have applied): %w", intent.Name, err)
 		}
-		c.warnDeploymentNormalization(state, *expected)
-		c.warnRefTypeNormalizations(state, *expected)
-		if state.Policy.DeploymentBranchPolicy == nil || !state.Policy.DeploymentBranchPolicy.CustomBranchPolicies {
-			return false, fmt.Errorf("environment is not in custom mode after PUT (write may have applied)")
-		}
-		if err := c.applyPatterns(repo, expected.Name, state.Patterns, expected.DeploymentBranchPatterns); err != nil {
-			return false, fmt.Errorf("update deployment patterns (earlier writes remain applied): %w", err)
+		if err := verifyEnvironmentUpdateResponse(raw, expected); err != nil {
+			return false, fmt.Errorf("verify environment update response (write may have applied): %w", err)
 		}
 	}
-	actual, err := c.readOne(repo, expected.Name)
+	confirmedPolicy := false
+	failed := func(err error) (bool, error) {
+		if confirmedPolicy {
+			err = &environmentWriteEffectsFailure{err}
+		}
+		return false, err
+	}
+	if intent.DeploymentBranchPatterns != nil {
+		// Policy and patterns are independent operations. Pattern-only changes
+		// retain the fresh canonical selected policy without a redundant PUT.
+		var state settings.EnvironmentState
+		if policyWrite {
+			state, err = c.readOne(repo, intent.Name)
+			if err != nil {
+				return failed(fmt.Errorf("read patterns after environment PUT (write may have applied): %w", err))
+			}
+			c.warnDeploymentNormalization(state, intent)
+			c.warnRefTypeNormalizations(state, intent)
+			if err := verifyEnvironmentRequestedState(state, environmentBuiltins(expected)); err != nil {
+				return failed(fmt.Errorf("verify environment policy before pattern updates (write may have applied): %w", err))
+			}
+			confirmedPolicy = true
+		} else {
+			state = *before
+		}
+		rawMode, err := state.RawDeploymentBranchPolicy()
+		if err != nil || rawMode == nil || *rawMode != (settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}) {
+			err := fmt.Errorf("environment is not in acquired canonical custom mode before pattern updates")
+			if !policyWrite {
+				return pre(err)
+			}
+			return failed(err)
+		}
+		if attempted, err := c.applyPatterns(repo, intent.Name, state.Patterns, intent.DeploymentBranchPatterns); err != nil {
+			if !policyWrite && !attempted {
+				return pre(fmt.Errorf("prepare deployment pattern updates: %w", err))
+			}
+			return failed(fmt.Errorf("update deployment patterns (write may have applied): %w", err))
+		}
+	}
+	actual, err := c.readOne(repo, intent.Name)
 	if err != nil {
-		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
+		return failed(fmt.Errorf("verify environment readback (write may have applied): %w", err))
 	}
-	c.warnDeploymentNormalization(actual, *expected)
-	c.warnRefTypeNormalizations(actual, *expected)
-	if err := verifyEnvironmentRequestedState(actual, *expected); err != nil {
-		return false, fmt.Errorf("verify environment readback (write may have applied): %w", err)
+	c.warnDeploymentNormalization(actual, intent)
+	c.warnRefTypeNormalizations(actual, intent)
+	if err := verifyEnvironmentRequestedState(actual, environmentBuiltins(expected)); err != nil {
+		return failed(fmt.Errorf("verify environment readback (write may have applied): %w", err))
+	}
+	if policyWrite {
+		confirmedPolicy = true
+	}
+	if err := verifyEnvironmentRequestedState(actual, intent); err != nil {
+		return failed(fmt.Errorf("verify environment declared intent (write may have applied): %w", err))
+	}
+	if before != nil {
+		if err := verifyPreservedEnvironmentPatterns(*before, actual, intent); err != nil {
+			return failed(fmt.Errorf("verify environment companions (write may have applied): %w", err))
+		}
 	}
 	return true, nil
 }
+
+type environmentWriteEffectsFailure struct{ cause error }
+
+func (e *environmentWriteEffectsFailure) Error() string {
+	return "earlier verified environment policy update remains applied: " + e.cause.Error()
+}
+func (e *environmentWriteEffectsFailure) Unwrap() error             { return e.cause }
+func (*environmentWriteEffectsFailure) EnvironmentWritesCompleted() {}

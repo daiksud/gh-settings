@@ -17,7 +17,11 @@ func EnvironmentLine(change settings.EnvironmentChange) string {
 	after := environmentPolicy(change.After())
 	line := fmt.Sprintf("repository.settings.environments: %s %q: effective before policy %s → request %s", change.Operation(), change.Name(), before, after)
 	if requested := change.After(); requested != nil && settings.EnvironmentHasAPIOmissions(*requested) {
-		line += " (omitted fields are API-controlled; resulting values are unknown until apply)"
+		if change.Operation() == "create" {
+			line += " (omitted fields are API-controlled on creation)"
+		} else {
+			line += " (omitted built-in controls are preserved from fresh state)"
+		}
 	}
 	if record := change.DeploymentModeNormalization(); record != (settings.EnvironmentDeploymentNormalization{}) {
 		choice, _ := settings.EnvironmentDeploymentChoiceForPolicy(change.After().DeploymentBranchPolicy)
@@ -77,7 +81,7 @@ func environmentPolicy(policy *settings.EnvironmentDeclaration) string {
 }
 
 // environmentVisibleBefore retains only fields present in the request. Omitted
-// values are API-controlled and must not be disclosed as managed differences.
+// values are unowned and must not be disclosed as managed differences.
 func environmentVisibleBefore(before, request *settings.EnvironmentDeclaration) *settings.EnvironmentDeclaration {
 	if before == nil || request == nil {
 		return before

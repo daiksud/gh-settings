@@ -46,8 +46,8 @@ func TestEnvironmentDeploymentReconciliationScopesEvidenceToExplicitMode(t *test
 					t.Fatal(err)
 				}
 				changes, err = ReconcileEnvironments(observed, &omitted)
-				if err != nil || len(changes) != 1 || changes[0].DeploymentModeNormalization() != (EnvironmentDeploymentNormalization{}) || changes[0].After().DeploymentBranchPolicyDeclared || changes[0].After().DeploymentBranchPolicy != nil || !EnvironmentHasAPIOmissions(*changes[0].After()) {
-					t.Fatal("omitted mode gained evidence or payload", changes, err)
+				if err == nil || len(changes) != 0 {
+					t.Fatal("unreplayable omitted raw mode accepted for a needed policy update", changes, err)
 				}
 			}
 		}
@@ -69,8 +69,8 @@ func TestEnvironmentDeploymentReconciliationScopesEvidenceToExplicitMode(t *test
 		t.Fatal(err)
 	}
 	changes, err := ReconcileEnvironments(observed, &nameOnly)
-	if err != nil || len(changes) != 1 || !EnvironmentHasAPIOmissions(*changes[0].After()) || changes[0].DeploymentModeNormalization() != (EnvironmentDeploymentNormalization{}) {
-		t.Fatal("name-only request became read-only assertion", changes, err)
+	if err != nil || len(changes) != 0 {
+		t.Fatal("name-only selection mutated existing policy", changes, err)
 	}
 }
 

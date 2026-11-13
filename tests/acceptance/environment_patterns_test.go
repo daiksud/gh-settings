@@ -50,13 +50,7 @@ func TestEnvironmentPatternBinaryTypedReconciliationAndRepeat(t *testing.T) {
 		}
 		writes = append(writes, r.Method+" "+r.URL.Path)
 		switch {
-		case r.Method == "PUT" && r.URL.Path == base:
-			var payload map[string]any
-			json.NewDecoder(r.Body).Decode(&payload)
-			if len(payload) != 5 || payload["wait_timer"] != float64(0) || payload["can_admins_bypass"] != false || payload["deployment_branch_patterns"] != nil {
-				t.Error("incorrect environment PUT", payload)
-			}
-			fmt.Fprint(w, `{"id":1,"name":"production","protection_rules":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true},"can_admins_bypass":false}`)
+
 		case r.Method == "POST" && r.URL.Path == base+"/deployment-branch-policies":
 			var payload map[string]any
 			json.NewDecoder(r.Body).Decode(&payload)
@@ -117,7 +111,7 @@ repository:
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(writes) != 3 || len(patterns) != 2 || patterns["8"]["type"] != "tag" || patterns["9"]["type"] != "branch" {
+	if len(writes) != 2 || len(patterns) != 2 || patterns["8"]["type"] != "tag" || patterns["9"]["type"] != "branch" {
 		t.Fatal(writes, patterns)
 	}
 }

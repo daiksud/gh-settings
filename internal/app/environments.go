@@ -24,12 +24,12 @@ func applyEnvironments(result *ApplyResult, repo repository.Repository, desired 
 	observed, err := write.ReadEnvironments(repo, environmentNames(desired))
 	if err != nil {
 		result.failOperation(i, OperationFailedRead)
-		return false, fmt.Errorf("read environments for apply (earlier writes remain applied): %w", err)
+		return false, fmt.Errorf("read environments for apply%s: %w", environmentProgress(*result), err)
 	}
 	changes, err := settings.ReconcileEnvironments(observed, desired)
 	if err != nil {
 		result.failOperation(i, OperationFailedRead)
-		return false, err
+		return false, fmt.Errorf("reconcile environments for apply%s: %w", environmentProgress(*result), err)
 	}
 	result.Operations[i].Status = OperationCompleted
 	first := len(result.Operations)
@@ -43,11 +43,16 @@ func applyEnvironments(result *ApplyResult, repo repository.Repository, desired 
 		if err != nil {
 			status := OperationFailedUnknown
 			var pre PreWriteReadFailure
-			if errors.As(err, &pre) {
+			var effects EnvironmentWriteEffectsFailure
+			confirmed := errors.As(err, &effects)
+			if !confirmed && errors.As(err, &pre) {
 				status = OperationFailedRead
 			}
 			result.failOperation(i, status)
-			return wrote, fmt.Errorf("upsert environment %q (earlier successful writes remain applied): %w", change.Name(), err)
+			if confirmed {
+				result.Outcome = ApplyPartialFailure
+			}
+			return wrote || confirmed, fmt.Errorf("upsert environment %q%s: %w", change.Name(), environmentProgress(*result), err)
 		}
 		result.Operations[i].Status = OperationCompleted
 		if !changed {
@@ -56,4 +61,11 @@ func applyEnvironments(result *ApplyResult, repo repository.Repository, desired 
 		wrote = wrote || changed
 	}
 	return wrote, nil
+}
+
+func environmentProgress(result ApplyResult) string {
+	if result.Outcome == ApplyPartialFailure {
+		return " (earlier successful writes remain applied)"
+	}
+	return ""
 }

@@ -32,43 +32,43 @@ func TestEnvironmentRefTypeUpdatePreservesDeclaredPatternIntent(t *testing.T) {
 			initial:          map[int64]settings.EnvironmentPattern{7: {Type: "future", Name: "main"}},
 			desiredPatterns:  []settings.EnvironmentPattern{{Type: "branch", Name: "main"}},
 			wantPOST:         map[string]any{"type": "branch", "name": "main"},
-			wantHistory:      []string{"PUT", "POST branch/main", "GET future/main/7", "DELETE 7"},
+			wantHistory:      []string{"POST branch/main", "GET future/main/7", "DELETE 7"},
 			wantRemaining:    map[int64]settings.EnvironmentPattern{8: {Type: "branch", Name: "main"}},
-			wantWarningCount: 2,
+			wantWarningCount: 1,
 		},
 		{
 			name:             "fresh unsupported identity cannot confirm fallback equality",
 			initial:          map[int64]settings.EnvironmentPattern{7: {Type: "future", Name: "main"}},
 			desiredPatterns:  []settings.EnvironmentPattern{{Type: "branch", Name: "main"}},
 			wantPOST:         map[string]any{"type": "branch", "name": "main"},
-			wantHistory:      []string{"PUT", "POST branch/main", "GET future/main/7", "DELETE 7"},
+			wantHistory:      []string{"POST branch/main", "GET future/main/7", "DELETE 7"},
 			wantRemaining:    map[int64]settings.EnvironmentPattern{8: {Type: "future", Name: "main"}},
-			wantWarningCount: 3, uncanonicalReadback: true,
+			wantWarningCount: 2, uncanonicalReadback: true,
 		},
 		{
 			name:             "canonical companion retains its own ID",
 			initial:          map[int64]settings.EnvironmentPattern{7: {Type: "future", Name: "main"}, 8: {Type: "branch", Name: "main"}},
 			desiredPatterns:  []settings.EnvironmentPattern{{Type: "branch", Name: "main"}},
-			wantHistory:      []string{"PUT", "GET future/main/7", "DELETE 7"},
+			wantHistory:      []string{"GET future/main/7", "DELETE 7"},
 			wantRemaining:    map[int64]settings.EnvironmentPattern{8: {Type: "branch", Name: "main"}},
-			wantWarningCount: 2,
+			wantWarningCount: 1,
 		},
 		{
 			name:             "tag replacement does not adopt the raw ID",
 			initial:          map[int64]settings.EnvironmentPattern{7: {Type: "future", Name: "main"}},
 			desiredPatterns:  []settings.EnvironmentPattern{{Type: "tag", Name: "main"}},
 			wantPOST:         map[string]any{"type": "tag", "name": "main"},
-			wantHistory:      []string{"PUT", "POST tag/main", "GET future/main/7", "DELETE 7"},
+			wantHistory:      []string{"POST tag/main", "GET future/main/7", "DELETE 7"},
 			wantRemaining:    map[int64]settings.EnvironmentPattern{8: {Type: "tag", Name: "main"}},
-			wantWarningCount: 2,
+			wantWarningCount: 1,
 		},
 		{
 			name:             "explicit empty clears the raw pattern",
 			initial:          map[int64]settings.EnvironmentPattern{7: {Type: "future", Name: "main"}},
 			desiredPatterns:  []settings.EnvironmentPattern{},
-			wantHistory:      []string{"PUT", "GET future/main/7", "DELETE 7"},
+			wantHistory:      []string{"GET future/main/7", "DELETE 7"},
 			wantRemaining:    map[int64]settings.EnvironmentPattern{},
-			wantWarningCount: 2,
+			wantWarningCount: 1,
 		},
 		{
 			name:         "omitted list remains private during builtin update",
@@ -82,7 +82,7 @@ func TestEnvironmentRefTypeUpdatePreservesDeclaredPatternIntent(t *testing.T) {
 			patterns := maps.Clone(tc.initial)
 			var history []string
 			var warnings []settings.EnvironmentPatternState
-			putDone, finalRead := false, false
+			finalRead := false
 			currentTimer := 0
 			client := &EnvironmentsClient{rest: actionsClient(t, func(req *http.Request) (*http.Response, error) {
 				respond := func(body any) (*http.Response, error) {
@@ -112,7 +112,6 @@ func TestEnvironmentRefTypeUpdatePreservesDeclaredPatternIntent(t *testing.T) {
 							t.Fatal("literal PUT or prewrite warning", payload, warnings)
 						}
 						history = append(history, "PUT")
-						putDone = true
 						currentTimer = tc.timer
 					} else if req.Method != "GET" {
 						t.Fatal(req.Method)
@@ -139,7 +138,7 @@ func TestEnvironmentRefTypeUpdatePreservesDeclaredPatternIntent(t *testing.T) {
 							p := patterns[id]
 							entries = append(entries, map[string]any{"id": id, "type": p.Type, "name": p.Name})
 						}
-						if putDone && reflect.DeepEqual(patterns, tc.wantRemaining) {
+						if len(history) > 0 && reflect.DeepEqual(patterns, tc.wantRemaining) {
 							finalRead = true
 						}
 						return respond(map[string]any{"total_count": len(entries), "branch_policies": entries})
@@ -151,7 +150,7 @@ func TestEnvironmentRefTypeUpdatePreservesDeclaredPatternIntent(t *testing.T) {
 					if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
 						t.Fatal(err)
 					}
-					if tc.wantPOST == nil || !reflect.DeepEqual(payload, tc.wantPOST) || len(warnings) != 2 {
+					if tc.wantPOST == nil || !reflect.DeepEqual(payload, tc.wantPOST) || len(warnings) != 1 {
 						t.Fatal("literal POST or fresh warning", payload, warnings)
 					}
 					patterns[8] = settings.EnvironmentPattern{Type: payload["type"].(string), Name: payload["name"].(string)}
@@ -197,14 +196,14 @@ func TestEnvironmentRefTypeUpdatePreservesDeclaredPatternIntent(t *testing.T) {
 				wantWarnings = append(wantWarnings, wantWarning)
 			}
 			if tc.uncanonicalReadback {
-				wantWarnings[2].ID = 8
+				wantWarnings[1].ID = 8
 			}
 			if !reflect.DeepEqual(warnings, wantWarnings) {
 				t.Fatal("fresh scoped raw warnings missing or changed", warnings)
 			}
 			if tc.uncanonicalReadback {
 				var pre interface{ ReadFailedBeforeWrite() }
-				if !strings.Contains(err.Error(), "verify environment readback (write may have applied)") || errors.As(err, &pre) {
+				if !strings.Contains(err.Error(), "verify environment declared intent (write may have applied)") || errors.As(err, &pre) {
 					t.Fatal("final failure hid prior writes", err)
 				}
 				return

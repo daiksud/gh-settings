@@ -152,7 +152,7 @@ func EnvironmentsObservation(observation settings.EnvironmentObservation) ([]Pre
 }
 
 // EnvironmentReportUI projects an already validated complete observation or
-// partial request without filling omitted, API-controlled values.
+// partial request without turning preserved companions into owned values.
 func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment, error) {
 	ui := uimodel.Environment{Name: p.Name}
 	if p.WaitTimer != nil || p.PreventSelfReview != nil || p.CanAdminsBypass != nil || p.Reviewers != nil {
