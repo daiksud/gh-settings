@@ -197,7 +197,11 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 					status = OperationFailedRead
 				}
 				result.failOperation(index, status)
-				return result, fmt.Errorf("%s label %q (earlier successful writes remain applied): %w", change.Operation(), change.Name(), err)
+				progress := ""
+				if result.Outcome == ApplyPartialFailure {
+					progress = " (earlier successful writes remain applied)"
+				}
+				return result, fmt.Errorf("%s label %q%s: %w", change.Operation(), change.Name(), progress, err)
 			}
 			result.Operations[index].Status = OperationCompleted
 		}

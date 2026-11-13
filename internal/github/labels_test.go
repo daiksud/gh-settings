@@ -98,13 +98,20 @@ func TestUpdateLabelEscapedNames(t *testing.T) {
 			client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				calls++
 				var payload map[string]any
-				if req.Method == "GET" {
+				if req.Method == "GET" && calls == 1 {
 					return labelsResponse(req, 200, `{"id":1}`), nil
 				}
-				if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
-					t.Fatal(err)
+				if req.Method == "PATCH" {
+					if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+						t.Fatal(err)
+					}
+					if !reflect.DeepEqual(payload, map[string]any{"new_name": name, "color": "abcdef", "description": ""}) {
+						t.Fatal(payload)
+					}
+				} else if req.Method != "GET" || calls != 3 {
+					t.Fatal("unexpected request", req.Method, calls)
 				}
-				if req.Method != "PATCH" || req.URL.Path != "/repos/owner/current/labels/"+name || !reflect.DeepEqual(payload, map[string]any{"new_name": name, "color": "abcdef", "description": ""}) {
+				if req.URL.Path != "/repos/owner/current/labels/"+name {
 					t.Fatalf("request=%s %s payload=%v", req.Method, req.URL, payload)
 				}
 				if strings.ContainsAny(name, "/?#%") && req.URL.EscapedPath() == req.URL.Path {
@@ -116,7 +123,7 @@ func TestUpdateLabelEscapedNames(t *testing.T) {
 				response, _ := json.Marshal(map[string]any{"id": 1, "name": name, "color": "abcdef", "description": ""})
 				return labelsResponse(req, 200, string(response)), nil
 			}))
-			if err := client.UpdateLabel(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 2 {
+			if err := client.UpdateLabel(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 3 {
 				t.Fatalf("calls=%d err=%v", calls, err)
 			}
 		})

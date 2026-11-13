@@ -23,12 +23,14 @@ Current source uses `repository.labels` with ID-selected ownership. The [setting
 - Export adopts IDs and complete supported fields only after all label pages succeed; unavailable acquisition emits info and retains prior Labels while independent reads continue.
 - Plan shows creates, ID-bound updates and default-derived changes. It never writes configuration.
 - Apply reads fresh labels after ordinary resources, preflights all label changes, and performs creates/updates in stable identity order, then fixed prune deletions when requested.
-- Resolve update paths from the observed ID/current name, check ID again before PATCH, and verify response identity and supported settings. This is not a lock against concurrent remote replacement.
-- Response mismatch, denial, redirect, unknown effect or later failure stops subsequent writes. Earlier writes remain applied, with no rollback/retry.
+- Matching selected objects emit no mutation. Resolve update paths from the observed ID/current name, check ID again before PATCH, and verify response identity and supported settings.
+- After a valid create/update response, independently GET the resulting name and verify the same ID and complete supported settings. Renames read the new name. Missing/incomplete responses, changed identity or mismatching settings fail. These checks are not a lock against concurrent remote replacement.
+- Response or readback mismatch, denial, redirect, unknown effect or later failure stops subsequent writes, including prune deletions. Postwrite read failure has uncertain effects and is not a prewrite failure. Earlier confirmed writes remain applied, with no rollback/retry.
 
 ### Rule: Persist confirmed create IDs without committing configuration
 
-- Each verified creation reports its ID and is recorded before the next write.
+- Each creation verified by acknowledgment and independent readback reports its ID and is recorded before the next write.
+- A positive ID from a create response is retained in recovery diagnostics even if validation/readback fails. That failed creation is not written into YAML; earlier confirmed saved IDs remain intact.
 - Normal CLI apply adds only new IDs to the source snapshot; preserve existing IDs, unrelated values, file mode and comments as practicable.
 - Refuse changed snapshots, unsafe files/directories, and aliased/merged collection entries instead of overwriting unrelated work. Formatting may normalize.
 - Writeback failure after creation is a partial failure with the recoverable remote ID. Earlier saved IDs survive later failures.
@@ -54,5 +56,6 @@ Credentials and caller permissions remain the owner's responsibility. This sourc
 | Fresh read, conditional resources, sequencing and partial failures | [Application tests](../../internal/app/labels_test.go), [operation sequence tests](../../internal/app/label_sequence_test.go) |
 | Typed report, attribute presence, escaped Summary, malformed-report preservation | [Actions tests](../../internal/actions/labels_test.go) |
 | Built CLI export/plan/apply, failed-page preservation, redirects, report and credential-free Summary | [Process acceptance](../../tests/acceptance/labels_test.go) |
+| Independent create/update readback, recovery without ID writeback, rename before prune and matching repetition | [Readback process tests](../../tests/acceptance/label_readback_test.go), [ID writeback tests](../../tests/acceptance/label_ids_test.go) |
 
 Tests use isolated files/Git and a local API with dummy credentials. They do not mutate live labels or establish real credential permissions.

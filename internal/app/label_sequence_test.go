@@ -5,6 +5,7 @@ import (
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -57,6 +58,127 @@ func TestApplyLabelSequenceAndWritebackFailureStop(t *testing.T) {
 			}
 			if !reflect.DeepEqual(calls, want) {
 				t.Fatal(calls, want)
+			}
+		})
+	}
+}
+
+func TestLabelCreateReadbackFailureRetainsIDWithoutWriteback(t *testing.T) {
+	for _, failName := range []string{"a", "b"} {
+		t.Run(failName, func(t *testing.T) {
+			color := "abcdef"
+			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "a", Color: &color}, settings.LabelDeclaration{Name: "b", Color: &color}, settings.LabelDeclaration{Name: "c", Color: &color})
+			cause := errors.New("read back label: state did not converge")
+			var calls []string
+			result, err := Apply(func() (settings.Declaration, error) {
+				return settings.Declaration{Labels: &labels}, nil
+			}, checkoutRepository, Writer{
+				ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+					return settings.NewLabelObservation(nil)
+				},
+				CreateLabel: func(_ repository.Repository, change settings.LabelChange) (int64, error) {
+					calls = append(calls, "create:"+change.Name())
+					id := int64(17)
+					if change.Name() == "b" {
+						id++
+					}
+					if change.Name() == failName {
+						return id, cause
+					}
+					return id, nil
+				},
+				CreatedID: func(_, name string, _ int64) error {
+					calls = append(calls, "save:"+name)
+					return nil
+				},
+			})
+			wantCalls := []string{"create:a"}
+			wantOutcome, failedIndex := ApplyFailed, 1
+			wantIDs := []CreatedObject{{Collection: "labels", Name: "a", ID: 17}}
+			if failName == "b" {
+				wantCalls = []string{"create:a", "save:a", "create:b"}
+				wantOutcome, failedIndex = ApplyPartialFailure, 2
+				wantIDs = append(wantIDs, CreatedObject{Collection: "labels", Name: "b", ID: 18})
+			}
+			if !errors.Is(err, cause) || !reflect.DeepEqual(calls, wantCalls) || !reflect.DeepEqual(result.CreatedIDs, wantIDs) || result.Outcome != wantOutcome || result.Operations[failedIndex].Status != OperationFailedUnknown {
+				t.Fatalf("result=%+v calls=%v err=%v", result, calls, err)
+			}
+			if strings.Contains(err.Error(), "earlier successful writes remain applied") != (failName == "b") {
+				t.Fatal("incorrect confirmed progress", err)
+			}
+			for _, operation := range result.Operations[failedIndex+1:] {
+				if operation.Status != OperationNotExecuted {
+					t.Fatal("later write attempted", result)
+				}
+			}
+		})
+	}
+}
+
+func TestLabelUpdateReadbackFailureStopsCreateAndPrune(t *testing.T) {
+	color, id := "abcdef", int64(7)
+	labels := appLabelDeclarations(t, settings.LabelDeclaration{ID: &id, Name: "renamed", Color: &color}, settings.LabelDeclaration{Name: "z", Color: &color})
+	cause := errors.New("read back label: wrong identity")
+	result, err := Apply(func() (settings.Declaration, error) {
+		return settings.Declaration{Labels: &labels}, nil
+	}, checkoutRepository, Writer{
+		ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+			return settings.NewLabelObservation([]settings.LabelState{{ID: 7, Name: "old", Color: color}, {ID: 9, Name: "remove", Color: color}})
+		},
+		UpdateLabel: func(repository.Repository, settings.LabelChange) error { return cause },
+		CreateLabel: func(repository.Repository, settings.LabelChange) (int64, error) {
+			t.Fatal("create after failed verification")
+			return 0, nil
+		},
+		DeleteLabel: func(repository.Repository, settings.LabelChange) error {
+			t.Fatal("delete after failed verification")
+			return nil
+		},
+	}, mustPrune(t, "labels"))
+	if !errors.Is(err, cause) || result.Outcome != ApplyFailed || len(result.Operations) != 4 || result.Operations[1].Status != OperationFailedUnknown || result.Operations[2].Status != OperationNotExecuted || result.Operations[3].Status != OperationNotExecuted {
+		t.Fatal(result, err)
+	}
+}
+
+func TestLabelReadbackFailureAfterTopicsRetainsActualProgress(t *testing.T) {
+	for _, topicsWrote := range []bool{false, true} {
+		t.Run(map[bool]string{false: "matching topics", true: "changed topics"}[topicsWrote], func(t *testing.T) {
+			color, names := "abcdef", []string{"desired"}
+			labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "a", Color: &color}, settings.LabelDeclaration{Name: "b", Color: &color})
+			cause := errors.New("read back label: state did not converge")
+			var calls []string
+			result, err := Apply(func() (settings.Declaration, error) {
+				return settings.Declaration{Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels}, nil
+			}, checkoutRepository, Writer{
+				Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) {
+					calls = append(calls, "topics")
+					return topicsWrote, nil
+				},
+				ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+					calls = append(calls, "labels")
+					return settings.NewLabelObservation([]settings.LabelState{{ID: 9, Name: "unlisted", Color: color}})
+				},
+				CreateLabel: func(_ repository.Repository, change settings.LabelChange) (int64, error) {
+					calls = append(calls, "create:"+change.Name())
+					return 17, cause
+				},
+				CreatedID: func(string, string, int64) error { t.Fatal("unverified ID written"); return nil },
+				DeleteLabel: func(repository.Repository, settings.LabelChange) error {
+					t.Fatal("prune after failed readback")
+					return nil
+				},
+			}, mustPrune(t, "labels"))
+			wantOutcome, topicStatus := ApplyFailed, OperationUnchanged
+			if topicsWrote {
+				wantOutcome, topicStatus = ApplyPartialFailure, OperationCompleted
+			}
+			wantOperations := []ApplyOperation{{Kind: TopicsUpdate, Status: topicStatus}, {Kind: LabelsRead, Status: OperationCompleted}, {Kind: LabelCreate, LabelName: "a", Status: OperationFailedUnknown}, {Kind: LabelCreate, LabelName: "b", Status: OperationNotExecuted}, {Kind: LabelDelete, LabelName: "unlisted", Status: OperationNotExecuted}}
+			wantIDs := []CreatedObject{{Collection: "labels", Name: "a", ID: 17}}
+			if !errors.Is(err, cause) || result.Outcome != wantOutcome || !reflect.DeepEqual(result.Operations, wantOperations) || !reflect.DeepEqual(result.CreatedIDs, wantIDs) || !reflect.DeepEqual(calls, []string{"labels", "topics", "labels", "create:a"}) {
+				t.Fatalf("result=%+v calls=%v err=%v", result, calls, err)
+			}
+			if strings.Contains(err.Error(), "earlier successful writes remain applied") != topicsWrote {
+				t.Fatal("incorrect confirmed progress", err)
 			}
 		})
 	}

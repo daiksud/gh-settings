@@ -87,6 +87,14 @@ Process cases cover export → edit → validate → plan → apply, native fals
 
 [CodeQL threat-model acceptance](../../tests/acceptance/codeql_threat_model_test.go) covers both UI/API choices, threat-only payloads, plan/report and private Summary, repeated no-op, unavailable-detail retention, disabled export cleanup and failure stopping before later setup work. [Configuration adapter tests](../../internal/github/codeql_configuration_test.go) own strict raw decoding and independent readback, including unknown values, omitted companion drift and transport failures. The [configuration process case](../../tests/acceptance/codeql_configuration_test.go) also verifies omitted threat-model preservation while other controls change. These fixtures confirm stored-configuration behavior, not completed analysis or live entitlement.
 
+[Label readback acceptance](../../tests/acceptance/label_readback_test.go) checks
+successful acknowledgments followed by stale or denied reads, recovery IDs without
+premature YAML recording, earlier confirmed IDs, rename paths, stopping before
+prune deletions and matching repetition. [ID writeback acceptance](../../tests/acceptance/label_ids_test.go)
+also covers opt-out, Actions suppression, concurrent edits and later failures.
+These fixtures use independent remote state and dummy credentials; they do not
+establish live GitHub behavior.
+
 ### Merge response acceptance
 
 [Merge transport tests](../../internal/github/merge_methods_test.go), [PR option tests](../../internal/github/pr_options_test.go), and [squash](../../internal/github/squash_commit_test.go)/[normal merge enum tests](../../internal/github/merge_commit_test.go) own response completeness: each required field must be present with the correct type and a supported enum value. Any GraphQL errors discard even complete data. [Observation tests](../../internal/github/observation_test.go) also reject missing fields that were not declared; expected responses use literal fixtures independent of production field definitions.
