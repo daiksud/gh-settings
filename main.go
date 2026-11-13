@@ -191,10 +191,10 @@ func readActionsPolicy(repo repository.Repository, selected bool) (settings.Acti
 	}
 	return client.ReadActionsPolicy(repo, selected)
 }
-func writeActionsPolicy(repo repository.Repository, desired settings.ActionsPolicyDeclaration) error {
+func writeActionsPolicy(repo repository.Repository, desired settings.ActionsPolicyDeclaration) (bool, error) {
 	client, err := github.NewActionsPolicyClient(repo.Host)
 	if err != nil {
-		return err
+		return false, err
 	}
 	client.NormalizationWarning = warnNormalization
 	return client.ApplyActionsPolicy(repo, desired)

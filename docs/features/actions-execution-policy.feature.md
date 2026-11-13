@@ -41,12 +41,14 @@ Test mapping: [TestActionsPolicyObservationAndTransition and TestActionsReportRe
 ## Rule: Preflight and preserve companions before ordered writes
 
 - Apply reads current state and preflights the whole Actions resource before writing. Incomplete transitions fail without Actions writes.
-- A selected allow policy explicitly declares enabled=true plus its policy; Disable declares only false. An omitted policy leaves execution unmanaged. Base PUT echoes freshly read internal `enabled` when needed because the endpoint requires it. Other base fields are declared only. Selected PUT merges omitted companions from a complete active read.
-- Transition policy is written before the selected endpoint that requires it. When the selected policy enables a disabled target, the exact stages are disabled+selected base policy, selected companions, then enabled-only update. Omitted enabling is never inferred.
-- Exact raw requested or preserved policy, enabled/SHA booleans and managed selected companions are read back. Direct repeated apply still writes; it is not saved-plan execution or an optimistic concurrency check.
+- A selected allow policy explicitly declares enabled=true plus its policy; Disable declares only false. An omitted policy leaves execution unmanaged. Base PUT echoes freshly read internal `enabled` when needed because the endpoint requires it. Matching optional base fields are omitted. Selected PUT merges omitted companions from a complete active read and is skipped when all selected intent matches.
+- Transition policy is written before the selected endpoint that requires it. When the selected policy enables a disabled target, needed stages remain disabled+selected base policy, selected companions, then enabled-only update. Skip an already selected base stage and already matching selected companions; enable only after all required selection work succeeds. Omitted enabling is never inferred.
+- Exact raw requested or preserved policy, enabled/SHA booleans and managed selected companions are read back. Complete raw matches perform no PUT. Repeated matching apply reads current state without rewriting it; it is not saved-plan execution or an optimistic concurrency check.
 - Writes require 204. HTTP/organization errors, redirects and failed/mismatching readback fail honestly. Earlier policy/resource writes remain applied or uncertain; no rollback or automatic grants occur.
 
 Test mapping: [TestActionsApplyPreservesCompanionsAndOrdersWrites and TestActionsApplyPreflightAndFailures](../../internal/github/actions_policy_test.go), [TestActionsPolicyExportTransitionAndReconciliation and TestActionsReadFailuresDiscardPlansAndKeepEarlierWrites](../../tests/acceptance/actions_policy_test.go).
+
+Test mapping for reconciliation: [raw matching and stage selection](../../internal/github/actions_execution_reconcile_test.go), [honest progress](../../internal/app/actions_execution_reconcile_test.go), [actual supplied-product Action](../../tests/github-actions/actions_execution_acceptance_test.go).
 
 ## Evidence boundary
 
@@ -58,7 +60,7 @@ All mutation tests use local transports or Unix-socket HTTP fixtures with dummy 
 - A declared policy remains actionable even when its desired choice equals the fallback. One closed radio decision owns one native field for Disable or two for enabling; selected transitions add three unavailable companions, totaling five.
 - Given disabled execution and unknown policy, export/plan show known Disable without raw disclosure or a normalized-before label. A matching Disable plan has zero differences. Enabling explicitly selects a canonical policy; hidden unknown policy cannot be activated by enabled-only intent.
 - Disable and SHA-only updates preserve exact raw policy. Omitted policy and selected settings remain unmanaged and undisclosed. Selected transitions preserve configure-before-enable order and exact ordered patterns.
-- An ignored fallback write, changed unowned raw token or drifted boolean fails fresh verification. Earlier REST effects remain reported; malformed acquisition makes no Actions write and preserves export/source files. Canonical repeated apply retains existing always-write behavior.
+- An ignored fallback write, changed unowned raw token or drifted boolean fails fresh verification. Earlier REST effects remain reported; malformed acquisition makes no Actions write and preserves export/source files. Canonical repeated apply performs no PUT. An already disabled target with unknown latent policy also skips a matching Disable request.
 - Detailed Summary escapes the same UI decision; private reports reject forged/overlapping entries, while status-only suppresses raw/desired policy values. Other families follow their documented normalization policies.
 
 Test mapping: [complete typed HTTP acquisition](../../internal/github/normalization_actions_execution_read_test.go), [exact HTTP mutations and readback](../../internal/github/normalization_actions_execution_apply_test.go), [closed radio](../../internal/settings/actions_execution_change_test.go), [private report validation](../../internal/actions/normalization_actions_execution_test.go), [export visibility](../../internal/app/normalization_actions_execution_export_test.go), [executable commands](../../tests/acceptance/normalization_actions_execution_test.go).

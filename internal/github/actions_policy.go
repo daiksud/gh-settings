@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -112,61 +113,76 @@ func (c *ActionsPolicyClient) putActionsPolicy(path string, payload any) error {
 	return nil
 }
 
-// ApplyActionsPolicy preflights the whole resource, then writes policy before the
-// selected endpoint that requires it. Failures never imply rollback or no writes.
-func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d settings.ActionsPolicyDeclaration) error {
+type actionsPolicyReadFailure struct{ cause error }
+
+func (failure *actionsPolicyReadFailure) Error() string  { return failure.cause.Error() }
+func (failure *actionsPolicyReadFailure) Unwrap() error  { return failure.cause }
+func (*actionsPolicyReadFailure) ReadFailedBeforeWrite() {}
+
+// ApplyActionsPolicy skips matching stages and reports only a verified write.
+// Failed attempted writes/readback can have effects even when the bool is false.
+func (c *ActionsPolicyClient) ApplyActionsPolicy(repo repository.Repository, d settings.ActionsPolicyDeclaration) (bool, error) {
 	if err := d.Validate(); err != nil {
-		return err
+		return false, err
 	}
 	if d.ExecutionEmpty() {
-		return nil
+		return false, nil
 	}
 	current, err := c.ReadActionsPolicy(repo, !d.SelectedActions.Empty())
 	if err != nil {
-		return err
+		return false, &actionsPolicyReadFailure{cause: err}
 	}
 	expected, err := prepareActionsExecutionVerification(current, d)
 	if err != nil {
-		return err
+		return false, &actionsPolicyReadFailure{cause: err}
 	}
 	c.warnExecutionNormalization(current, d)
+	raw, err := current.RawAllowedActions()
+	if err != nil {
+		return false, &actionsPolicyReadFailure{cause: err}
+	}
+	baseChanged := current.Enabled != expected.enabled || raw != expected.allowed || current.SHAPinningRequired != expected.sha
+	selectionChanged := expected.selected != nil && (current.Selected == nil || !reflect.DeepEqual(*current.Selected, *expected.selected))
+	if !baseChanged && !selectionChanged {
+		return false, nil
+	}
 	enableAfterSelection := d.Enabled != nil && *d.Enabled && !current.Enabled && !d.SelectedActions.Empty()
-	if d.Enabled != nil || d.AllowedActions != nil || d.SHAPinningRequired != nil {
-		enabled := current.Enabled
-		if d.Enabled != nil && !enableAfterSelection {
-			enabled = *d.Enabled
-		}
+	enabled := expected.enabled
+	if enableAfterSelection {
+		enabled = current.Enabled
+	}
+	if enabled != current.Enabled || raw != expected.allowed || current.SHAPinningRequired != expected.sha {
 		payload := map[string]any{"enabled": enabled}
-		if d.AllowedActions != nil {
-			payload["allowed_actions"] = *d.AllowedActions
+		if raw != expected.allowed {
+			payload["allowed_actions"] = expected.allowed
 		}
-		if d.SHAPinningRequired != nil {
-			payload["sha_pinning_required"] = *d.SHAPinningRequired
+		if current.SHAPinningRequired != expected.sha {
+			payload["sha_pinning_required"] = expected.sha
 		}
 		if err := c.putActionsPolicy(actionsPolicyPath(repo), payload); err != nil {
-			return fmt.Errorf("write Actions policy (this and earlier writes may already have applied): %w", err)
+			return false, fmt.Errorf("write Actions policy (this and earlier writes may already have applied): %w", err)
 		}
 	}
-	if !d.SelectedActions.Empty() {
+	if selectionChanged {
 		selected := expected.selected
 		payload := map[string]any{"github_owned_allowed": selected.GitHubOwnedAllowed, "verified_allowed": selected.VerifiedAllowed, "patterns_allowed": selected.PatternsAllowed}
 		if err := c.putActionsPolicy(actionsPolicyPath(repo)+"/selected-actions", payload); err != nil {
-			return fmt.Errorf("write selected Actions policy (this and earlier policy/resource writes may already have applied): %w", err)
+			return false, fmt.Errorf("write selected Actions policy (this and earlier policy/resource writes may already have applied): %w", err)
 		}
 	}
 	if enableAfterSelection {
 		if err := c.putActionsPolicy(actionsPolicyPath(repo), map[string]any{"enabled": true}); err != nil {
-			return fmt.Errorf("enable Actions after selection (this and earlier policy writes may already have applied): %w", err)
+			return false, fmt.Errorf("enable Actions after selection (this and earlier policy writes may already have applied): %w", err)
 		}
 	}
 	actual, err := c.ReadActionsPolicy(repo, !d.SelectedActions.Empty())
 	if err != nil {
-		return fmt.Errorf("verify Actions policy (writes may already have applied): %w", err)
+		return false, fmt.Errorf("verify Actions policy (writes may already have applied): %w", err)
 	}
 	c.warnExecutionNormalization(actual, d)
 	retained, err := sameActionsExecutionVerification(expected, actual)
 	if err != nil || !retained {
-		return fmt.Errorf("GitHub did not retain requested Actions policy (writes may already have applied)")
+		return false, fmt.Errorf("GitHub did not retain requested Actions policy (writes may already have applied)")
 	}
-	return nil
+	return true, nil
 }
