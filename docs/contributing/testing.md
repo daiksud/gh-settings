@@ -186,6 +186,8 @@ The public-Action acceptance leg delegates its scenarios to the existing [candid
 
 [Fixture preparation](../../tests/github-actions/prepare-candidate-download.sh) verifies the transferred candidate's checksum, executable-reported version, and Action checkout source. A bounded [curl stand-in](../../tests/github-actions/candidate-curl.sh) serves only the unchanged installer's two fixed versioned asset/checksum URLs from those verified bytes, without network forwarding. Actual `uses: ./.action` expansion exercises installation, checksum/version validation, metadata, and settings operations. No product rebuild, public caller version/download override, committed version rewrite, or old-release fallback is used.
 
+Export scenarios additionally begin without a settings file and verify guarded file production, success-only config-path, unchanged HEAD/index, mutation-free acquisition and absence of plaintext-variable canaries from logs, Summary and outputs. They do not publish the generated file. The supplied-product checks execute the actual composite shell steps locally with the transferred binary; the subsequent `uses: ./.action` cases separately exercise hosted expansion.
+
 The fixture supplies current-source bytes instead of downloading a published artifact, so candidate results do not establish published-artifact identity. The [published package and consumer pins reference](../github-actions.md#published-package-and-consumer-pins) owns supported-version and adoption guidance. Label-specific current-source behavior is covered by the owner/process tests above; the hosted API cases below remain representative repository-field cases.
 
 Credential-free validate must report all four outputs matching the independent consumer commit/origin and candidate version/checksum. Hosted logs record the distinct Action and consumer roots/SHAs. Missing or tampered artifacts, mismatched identities, and fixture/assertion failures fail the aggregate gate.
@@ -205,18 +207,31 @@ The [candidate checks](../../tests/github-actions/candidate-plan.sh) exercise th
 | Apply local write403 | GET, one attempted PATCH | Failure and four empty outputs | None added |
 | Apply invalid boolean | Zero requests | Failure and four empty outputs | None added |
 | Apply empty `settings: {}` | Zero requests | Success and four matching outputs | None added |
+| First export and repeat | Closed REST reads and four read-only GraphQL queries | Local file, five matching outputs and unchanged HEAD/index | None added |
+| Export invalid file or symlink | Zero requests | Failure, preserved destination and empty outputs | None added |
 
 Apply requests are independently checked as the complete received native JSON object `{"description":"","has_issues":false}`, with every other field omitted. The server records the decoded request instead of manufacturing expected payloads. A failed write attempt does not establish the remote outcome.
 
-Every case preserves consumer configuration bytes and commit. The fixture must stay live even for zero-request cases, and an `always()` step stops/removes it. Expected failures use step-level `continue-on-error` only alongside mandatory assertions of the observed failure and empty outputs. Empty apply still meets the public composite's explicit-token and metadata requirements.
+Plan/apply cases preserve consumer configuration bytes and commit. Export creates or refreshes only the local configuration and preserves HEAD/index. Its fixture permits only known observations, including GraphQL queries sent through POST, and deliberately makes several families unavailable. The fixture must stay live even for zero-request cases, and an `always()` step stops/removes it. Expected failures use step-level `continue-on-error` only alongside mandatory assertions of the observed failure and empty outputs. Empty apply still meets the public composite's explicit-token and metadata requirements.
 
 For plan, a finite before/after snapshot identifies exactly one new nonempty Settings review. Assertions inspect the bytes written by the embedded Go step, excluding old files and scrubbed upload copies; they do not substitute another renderer or override the Summary destination. All apply cases require zero new reviews. Hosted file rendering establishes neither GitHub Summary publication nor a live settings update.
 
 ### Composed callers and examples
 
-Local [composite](../../tests/github-actions/composite_test.go) and [caller](../../tests/github-actions/consumer_test.go) fixtures use current candidate package bytes, explicit typed reports, mock downloads/CLI behavior, and owned test-executable adapters. The actual Go Summary adapter is reused without rebuilding the product. Checks cover token-free setup/metadata/Summary, explicit execution tokens, original plan-status precedence, and four outputs only after required work. The [PR data-preparation fixture](../../tests/github-actions/pr_candidate_example_test.go) executes the sample's actual inline script with real filtered local Git objects and dummy API transport: malicious executable/YAML content is not executed, symlinks/identity/size/read failures fail, and credentials are neither logged nor persisted. It does not establish live installation permissions, private-fork visibility, effective protection or token revocation.
+Local [composite](../../tests/github-actions/composite_test.go) and [caller](../../tests/github-actions/consumer_test.go) fixtures use current candidate package bytes, explicit typed reports, mock downloads/CLI behavior, and owned test-executable adapters. The actual Go Summary adapter is reused without rebuilding the product. Checks cover token-free setup/metadata/Summary, explicit execution tokens, original plan-status precedence, and identity/command-specific outputs only after required work. Export boundary cases cover explicit tokens, prune/private-mode rejection, no Summary, inherited-debug removal, failure propagation and success-only config-path. The [PR data-preparation fixture](../../tests/github-actions/pr_candidate_example_test.go) executes the sample's actual inline script with real filtered local Git objects and dummy API transport: malicious executable/YAML content is not executed, symlinks/identity/size/read failures fail, and credentials are neither logged nor persisted. It does not establish live installation permissions, private-fork visibility, effective protection or token revocation.
 
 Examples and active main callers use the same single-job apply pattern: three `uses` steps for checkout, token creation, and apply. [Operational tests](../../tests/github-actions/operational_test.go) separately verify this repository's Environment and credential bindings. Approval and token lifecycle stubs are simulations; these tests do not load pinned release-tag bytes or establish remote protection/revocation behavior.
+
+The [supplied-product export checks](../../tests/github-actions/composite_export_acceptance_test.go)
+also cover `.github` symlinks, concurrent edits, destination write failure and
+output failure after a completed save. They capture real composite logs with
+`GH_DEBUG=api` and check the local variable canary never reaches logs, Summary or
+outputs. Run them against an already-built executable with a stable release
+version (the candidate gate uses its verified producer binary):
+
+```sh
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture)$' -count=1 -binary /absolute/path/to/gh-settings
+```
 
 ## Release and publication evidence
 
