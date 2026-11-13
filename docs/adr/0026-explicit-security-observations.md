@@ -96,8 +96,10 @@ omit unreadable values, emit info and continue independent acquisition. The old
 
 Unknown is not false. First export omits unavailable families; re-export retains
 valid existing intent for them. Bound diagnostics identify the family and reason
-without API bodies/messages/URLs or credentials. Contradictory CodeQL retained
-and observed declarations keep the prior coherent pair with info. Fundamental
+without API bodies/messages/URLs or credentials. CodeQL state and details
+use a single response. Confirmed disabled state exports false and removes prior
+details with info; unknown state retains the prior pair. Configured state exports
+true even if unavailable details must retain prior intent. Fundamental
 target/core-read/file/diagnostic IO failures remain errors. Existing malformed
 files or concurrent local edits are preserved by snapshot guards.
 

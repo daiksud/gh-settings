@@ -50,6 +50,10 @@ func (c *CodeQLDefaultSetupClient) Read(repo repository.Repository) (settings.Co
 	if err := c.rest.Get(codeQLDefaultSetupPath(repo), &root); err != nil {
 		return settings.CodeQLDefaultSetupObservation{}, fmt.Errorf("read CodeQL default setup: %w", err)
 	}
+	return decodeCodeQLDefaultSetup(root)
+}
+
+func decodeCodeQLDefaultSetup(root map[string]json.RawMessage) (settings.CodeQLDefaultSetupObservation, error) {
 	var state *string
 	if json.Unmarshal(root["state"], &state) != nil || state == nil || (*state != "configured" && *state != "not-configured") {
 		return settings.CodeQLDefaultSetupObservation{}, fmt.Errorf("GitHub returned missing/null or unsupported CodeQL default setup state")

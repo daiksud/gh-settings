@@ -18,8 +18,12 @@ func writeExportInfo(output io.Writer, path string, cause error) error {
 	reason := "observation unavailable, incomplete or unsupported"
 	var httpError *api.HTTPError
 	var networkError net.Error
-	if errors.Is(cause, app.ErrExportCodeQLConflict) {
-		reason = "CodeQL observations conflict; prior coherent pair retained if present"
+	if errors.Is(cause, app.ErrExportCodeQLDisabled) {
+		_, err := fmt.Fprintf(output, "info: export %s: CodeQL default setup is confirmed disabled; existing configuration removed from export\n", path)
+		if err != nil {
+			return fmt.Errorf("write export info: %w", err)
+		}
+		return nil
 	} else if errors.As(cause, &httpError) {
 		reason = fmt.Sprintf("HTTP %d", httpError.StatusCode)
 	} else if errors.As(cause, &networkError) {

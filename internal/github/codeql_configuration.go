@@ -24,6 +24,10 @@ func (c *CodeQLDefaultSetupClient) ReadConfiguration(repo repository.Repository)
 	if json.Unmarshal(raw["state"], &state) != nil || state == nil || *state != "configured" {
 		return settings.CodeQLConfigurationObservation{}, fmt.Errorf("CodeQL configuration requires an already configured default setup; no prerequisite is auto-enabled")
 	}
+	return decodeCodeQLConfiguration(raw)
+}
+
+func decodeCodeQLConfiguration(raw map[string]json.RawMessage) (settings.CodeQLConfigurationObservation, error) {
 	var langs *[]string
 	var suite, runner, threat *string
 	var label *string

@@ -20,7 +20,7 @@ var version = "dev"
 func main() {
 	checkout := workspace.NewCheckout(".")
 	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout) }
-	reader := app.Reader{ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
+	reader := app.Reader{CodeQLForExport: readCodeQLForExport, ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	reader.Environments = readEnvironments
 	reader.Variables = readVariables
 	reader.AgentVariables = readAgentVariables
@@ -623,3 +623,11 @@ func updatePullRequestExemptions(repo repository.Repository, desired settings.Pu
 type pullRequestExemptionsClientReadFailure struct{ error }
 
 func (*pullRequestExemptionsClientReadFailure) ReadFailedBeforeWrite() {}
+
+func readCodeQLForExport(repo repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error) {
+	client, err := github.NewCodeQLDefaultSetupClient(repo.Host)
+	if err != nil {
+		return settings.CodeQLDefaultSetupObservation{}, settings.CodeQLConfigurationObservation{}, err
+	}
+	return client.ReadForExport(repo)
+}

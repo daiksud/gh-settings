@@ -27,9 +27,11 @@ contract change; plan and apply retain strict declared-state observation.
   as false; failure is never an observed false, empty collection or default.
 - Existing valid declarations retain unavailable Security families. Retained
   values are prior user intent, not verified remote state. Acquired families
-  replace their complete owned values. A conflicting CodeQL enabled/configuration
-  pair retains the coherent existing pair and emits info rather than dropping
-  unread intent or writing an invalid combination.
+  replace their complete owned values. CodeQL state and details use
+  a single response. Confirmed `not-configured` exports false and removes prior
+  details with info. Unknown state preserves the prior pair. Configured state
+  exports true and acquired details; unavailable details retain prior intent
+  with info. No prerequisite is enabled by export.
 - Existing endpoint-specific 404 and explicit normalization policies remain in
   force; this feature does not reinterpret every 404 or change apply behavior.
 
@@ -48,5 +50,12 @@ failures never create a plausible partial declaration from an incomplete family.
 Use local HTTP/Git fixtures and the actual CLI to verify automatic no-option
 observation, both successful booleans, denied/missing/malformed families followed
 by successful independent reads, first-file omission versus re-export retention,
-CodeQL consistency, secret-free info, retired-option rejection and fundamental
+CodeQL confirmed disabled/configured/unknown states with and without prior details,
+single-response consistency, secret-free info, retired-option rejection and fundamental
 file/target failures. Preserve plan/apply strict-read and side-effect cases.
+
+The [CodeQL export reader tests](../../internal/github/codeql_export_test.go) own
+single-GET state/detail decoding and HTTP/network/malformed failure semantics.
+The [application matrix](../../internal/app/export_security_test.go) checks prior
+intent and later-family continuation. The [built-CLI fixture](../../tests/acceptance/readable_security_export_test.go)
+checks valid first/re-export output, detail removal and bounded diagnostics.

@@ -153,8 +153,10 @@ response messages, bodies, URLs or credentials. See [automatic Security export](
 work. Other resource opt-ins retain their existing scope. Existing invalid or
 unreadable settings files, origin/core export failures and file/diagnostic IO
 failures remain fatal. Valid prior files are snapshotted before reads; changed
-files are not overwritten. A contradictory CodeQL enabled/configuration pair
-retains the prior coherent pair with info. Plan/apply remain strict and do not
+files are not overwritten. CodeQL state and details come from one response.
+Confirmed disabled setup exports false and removes prior details with info;
+unknown state retains prior intent. Configured setup exports true even if
+unavailable details must be retained. Plan/apply remain strict and do not
 skip declared Security reads. Existing endpoint-specific 404 and normalization
 decisions remain unchanged; no new credentials, grants, enabling or scans occur.
 
