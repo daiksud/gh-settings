@@ -38,9 +38,10 @@ Current source supports `repository.settings.general.features.sponsorships`. It 
 #### Scenario: Reject incomplete or partial reads
 
 - Given a required repository value is unavailable, malformed or returned with GraphQL errors
-- When plan or export attempts to observe it
-- Then the operation fails without exposing an earlier partial comparison
-- And export preserves the existing file
+- When plan attempts to observe it
+- Then plan fails without exposing an earlier partial comparison
+- And export discards the incomplete Sponsorships group, emits info and continues other groups
+- And export omits the unavailable group on first export or retains its prior valid declaration
 - And no funding-file lookup or write is used as a fallback
 
 ### Rule: Update only declared repository fields

@@ -20,7 +20,7 @@ This is optional boolean `repository.settings.general.features.discussions` in t
 ### Rule: Observe a complete boolean
 
 - Repository REST GET must contain a non-null boolean `has_discussions`; missing or malformed values fail instead of becoming false.
-- Export includes the observed value only after all required reads succeed, preserving the existing file on failure.
+- Export includes the observed value after complete base-group acquisition and projection. An unavailable base group follows the [readable-settings contract](readable-settings-export.feature.md); other groups still export.
 - Plan remains read-only; declarations containing only this field do not trigger merge-related GraphQL reads.
 
 ### Rule: Verify declared writes without enabling implicitly

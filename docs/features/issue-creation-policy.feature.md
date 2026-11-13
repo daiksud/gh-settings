@@ -8,7 +8,7 @@ description: Declarative Issue creation eligibility without changing issue avail
 
 Current source supports `repository.settings.general.features.issue_permissions.creation_allowed_by` with exact UI choices `all_users` and `collaborators_only`. Omission leaves it unmanaged. Desired YAML null, empty strings, wrong types, case variants and unknown policies are invalid. Declaring a policy with the Issues checkbox omitted never enables/disables Issues. An explicitly false Issues checkbox with a declared policy is rejected locally.
 
-A separate narrow authenticated GraphQL query reads this policy only when requested; PR-only and existing repository declarations retain their reads. Export validates the complete observed policy after all reads succeed, but omits the UI permission when Issues is explicitly observed disabled. Complete typed strings outside the UI choices, including empty/whitespace strings, project to `all_users`/`ALL` with exact raw provenance. Missing/null members, wrong types and failed or partial GraphQL acquisition remain errors, including when Issues is disabled. Visible normalized exports warn; hidden policies do not warn or become intent. Failed export preserves the old file. Reads and ID lookup disable rename following to reject stale origins.
+A separate narrow authenticated GraphQL query reads this policy only when requested; PR-only and existing repository declarations retain their reads. Export validates the complete Issue-policy group independently, but omits the UI permission when Issues is explicitly observed disabled. An unavailable base group does not imply that Issues is disabled. Complete typed strings outside the UI choices, including empty/whitespace strings, project to `all_users`/`ALL` with exact raw provenance. Missing/null members, wrong types and failed or partial GraphQL acquisition remain errors, including when Issues is disabled. Visible normalized exports warn; hidden policies do not warn or become intent. An unavailable policy group follows the [readable-settings contract](readable-settings-export.feature.md): emit info, retain compatible prior intent or omit it on first export, and continue other groups. Plan remains strict. Reads and ID lookup disable rename following to reject stale origins.
 
 Apply uses a selective repository-ID/policy preflight, selected-only `updateRepository` mutation, target/response verification and fresh same-ID raw policy readback shared with PR access. A successful mutation response cannot verify an unchanged unknown raw value. Omitted policies are neither acquired by this write path nor replayed. Send the Issue policy only when declared, without synthesizing `hasIssuesEnabled` or PR settings. When both PR and Issue policies are declared, use one complete selected preflight, one mutation and one fresh selected readback. Identity-only checkbox writes retain their existing identity-query/mutation boundary. Declared REST-backed controls run first, before GraphQL and later resources; an unrelated Projects checkbox can accompany policy-only intent without inventing Issues availability. A failed access preflight makes no access mutation, but earlier REST writes in the same repository operation remain possible and are classified as partial progress. Preserve the underlying error evidence. Stop on first error and report earlier successful writes; there is no rollback, retry or saved-plan execution.
 
@@ -16,7 +16,7 @@ Verification uses isolated HTTP/files/Git fixtures with dummy credentials. A rea
 
 ## Acceptance
 
-Test both policies, independent omission, disabled-Issue observations, invalid local types/enums, strict missing/null/type/partial-error reads and raw-aware unknown-string normalization, selective API access, exact combined and policy-only mutation payloads, target and response failures, redirects and mixed REST/GraphQL partial failure. Exercise export/validate/plan/apply, native Action report/Summary and failure file preservation with the built CLI.
+Test both policies, independent omission, disabled-Issue observations, invalid local types/enums, strict missing/null/type/partial-error reads and raw-aware unknown-string normalization, selective API access, exact combined and policy-only mutation payloads, target and response failures, redirects and mixed REST/GraphQL partial failure. Exercise export/validate/plan/apply, native Action report/Summary and compatible export retention and strict plan/apply failure file preservation with the built CLI.
 
 ## Existing test mapping
 
@@ -71,5 +71,6 @@ The existing PR-access tests continue to check their unchanged selective reads, 
 - When export projects a visible creation-permission control
 - Then it warns with the original token and named fallback and saves only the UI choice
 - But an explicitly disabled feature hides its policy without warning or replay
-- And failed repository acquisition produces no normalization warning or save
-- And later acquisition failure can retain an earlier valid warning but never saves partial YAML
+- And unavailable policy acquisition produces no normalization warning for retained or omitted intent
+- And later acquisition failure can retain an earlier valid warning while complete independent groups still export
+- And no incomplete group observation is saved

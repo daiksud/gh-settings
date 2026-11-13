@@ -33,7 +33,7 @@ func writeExportInfo(output io.Writer, path string, cause error) error {
 			reason = "network request failed"
 		}
 	}
-	_, err := fmt.Fprintf(output, "info: export %s: %s; omitted on first export, existing declaration retained if present\n", path, reason)
+	_, err := fmt.Fprintf(output, "info: export %s: %s; omitted on first export, existing declaration retained where compatible with acquired settings\n", path, reason)
 	if err != nil {
 		return fmt.Errorf("write export info: %w", err)
 	}

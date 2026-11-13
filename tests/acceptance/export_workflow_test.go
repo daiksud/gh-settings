@@ -4,7 +4,6 @@ package acceptance
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,13 +11,14 @@ import (
 
 func TestExportExistingFile(t *testing.T) {
 	for _, test := range []struct {
-		name, body, wantError string
-		status                int
+		name, body  string
+		status      int
+		unavailable bool
 	}{
 		{name: "replace", body: planResponse, status: 200},
-		{name: "api-failure", body: `{"message":"Fixture access denied"}`, status: 403, wantError: "403"},
-		{name: "malformed-response", body: `{`, status: 200, wantError: "read repository settings"},
-		{name: "incomplete-response", body: `{}`, status: 200, wantError: "missing description"},
+		{name: "api-failure", body: `{"message":"Fixture access denied"}`, status: 403, unavailable: true},
+		{name: "malformed-response", body: `{`, status: 200, unavailable: true},
+		{name: "incomplete-response", body: `{}`, status: 200, unavailable: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture, err := startAPIFixture(test.body, test.status)
@@ -40,7 +40,7 @@ func TestExportExistingFile(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := original
-			if test.wantError == "" {
+			if !test.unavailable {
 				if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) {
 					t.Fatalf("execution=%v stderr=%q", result.runErr, result.stderr.String())
 				}
@@ -75,10 +75,29 @@ repository:
                 require_contributors_to_sign_off_on_web_based_commits: false
 `
 			} else {
-				exit, ok := result.runErr.(*exec.ExitError)
-				if !ok || exit.ExitCode() != 1 || !strings.Contains(withoutExportInfo(result.stderr.String()), test.wantError) {
+				if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) || !strings.Contains(result.stderr.String(), "info: export repository:") || strings.Contains(result.stderr.String(), "Fixture access denied") {
 					t.Fatalf("execution=%v stderr=%q", result.runErr, result.stderr.String())
 				}
+				want = `version: daiksud/gh-settings@v0
+repository:
+    about:
+        topics: []
+    labels: []
+    settings:
+        general:
+            features:
+                sponsorships: false
+                pull_requests: false
+                issue_permissions:
+                    creation_allowed_by: all_users
+            pull_requests:
+                allow_merge_commits: false
+                allow_squash_merging: false
+                allow_rebase_merging: false
+                always_suggest_updating_pull_request_branches: false
+                allow_auto_merge: false
+                automatically_delete_head_branches: false
+`
 			}
 			if err := checkSettingsUnchanged(fixture.work, want); err != nil {
 				t.Fatal(err)

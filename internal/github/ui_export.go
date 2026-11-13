@@ -10,15 +10,15 @@ import (
 // UIFromExportDeclaration projects acquired values and valid retained intent.
 // It does not establish acquisition or fill missing observation metadata.
 func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, error) {
-	if source.Repository.Description == nil || source.Repository.Homepage == nil {
-		return uimodel.Repository{}, fmt.Errorf("export requires acquired About description and website")
-	}
 	var topics *[]string
 	if source.Topics.Names != nil {
 		v := settings.SortedTopics(*source.Topics.Names)
 		topics = &v
 	}
-	result := uimodel.Repository{About: &uimodel.About{Description: copyUIValue(source.Repository.Description), Website: copyUIValue(source.Repository.Homepage), Topics: topics}}
+	var result uimodel.Repository
+	if source.Repository.Description != nil || source.Repository.Homepage != nil || topics != nil {
+		result.About = &uimodel.About{Description: copyUIValue(source.Repository.Description), Website: copyUIValue(source.Repository.Homepage), Topics: topics}
+	}
 	general, err := GeneralObservation(source.Repository)
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export General: %w", err)

@@ -24,16 +24,27 @@ Each independent family is converted completely before adoption. Readable false,
 empty strings and empty collections retain their supported meanings. A failed,
 partial, malformed or unsupported observation emits bounded `info: export` and
 independent reads continue. Initial export omits unavailable families. Re-export
-retains valid prior declarations for them as unverified intent. Failed pages do
-not supply partial collections or empty defaults. Projection failure also retains
+retains valid prior declarations for them as unverified intent where compatible
+with positively acquired settings. Failed pages do not supply partial collections or empty defaults. Projection failure also retains
 the family; another successfully read Actions field must not erase unread Actions
 siblings. Acquired families are validated independently from retained intent.
 Valid partial declarations remain partial when their family is unavailable; they
 must neither reject unrelated acquired values nor invent omitted controls.
 Existing normalization and API-specific 404 decisions are unchanged.
 
-Core repository identity/settings acquisition remains required. Invalid prior
-YAML, target/file safety, diagnostic IO and write failures remain fatal. File
+About/basic General, merge controls, PR access, Issue permissions and Sponsorships
+are independently acquired groups. Each response must be complete before its
+owned fields replace prior intent. All five can be unavailable without stopping
+later families; partial or absent About/General is valid. Confirmed disabled
+Issues or Pull requests suppress incompatible creation-permission details even
+when the detail read failed. Unknown gates do not imply enablement or disablement.
+Retained intent never supplies fresh normalization provenance.
+
+Checkout/origin target resolution remains required; no additional remote identity
+request is introduced. Successful local output does not certify repository
+existence when remote observations are unavailable. Invalid prior YAML, target/file
+safety, family-info output and write failures remain fatal. Existing void
+normalization-warning callbacks do not report every stderr write failure. File
 snapshot and guarded replacement rules remain as specified by [export](export.feature.md).
 Plan/apply continue to validate and strictly observe declared intent.
 
@@ -77,6 +88,10 @@ independent reader's explicit failure/unacquired observation, prior preservation
 projection failure, diagnostic IO and continued acquisition. It also covers full
 and empty variable inventories, unsupported values and independent Environment
 variables. Existing adapter tests own pagination and typed-response validation;
-plan/apply tests retain strict failure and mutation ownership. The [built-CLI late-page regression](../../tests/acceptance/readable_settings_export_test.go)
+plan/apply tests retain strict failure and mutation ownership. The
+[built-CLI About/General regressions](../../tests/acceptance/repository_export_isolation_test.go)
+cover denied groups, partial retained declarations, disabled-Issues suppression,
+continued sibling acquisition, bounded diagnostics, local validation and strict
+plan failures. The [built-CLI late-page regression](../../tests/acceptance/readable_settings_export_test.go)
 exercises ordinary export, literal YAML, partial Actions intent, info privacy and file safety separately
 from live read-only verification. No fixture establishes live settings mutation.

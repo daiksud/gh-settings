@@ -43,40 +43,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 	if err != nil {
 		return err
 	}
-	observed, err := read.ObserveRepository(repo, settings.AllRepositoryFields())
-	if err != nil {
-		return err
-	}
-	repositoryDeclaration, err := observed.Declaration()
-	if err != nil {
-		return err
-	}
-	if checkout.NormalizationWarning != nil {
-		for _, normalization := range observed.CreationPolicyNormalizations() {
-			if normalization.Path == settings.IssuePermissionsControl.Path() && !*repositoryDeclaration.HasIssues {
-				continue
-			}
-			if normalization.Path == settings.PullRequestPermissionsControl.Path() && !*repositoryDeclaration.HasPullRequests {
-				continue
-			}
-			checkout.NormalizationWarning(normalization)
-		}
-	}
-	if checkout.CommitMessageNormalizationWarning != nil {
-		for _, normalization := range observed.CommitMessageNormalizations() {
-			if normalization.Path == settings.SquashCommitMenu.Path() && !*repositoryDeclaration.AllowSquashMerge {
-				continue
-			}
-			if normalization.Path == settings.MergeCommitMenu.Path() && !*repositoryDeclaration.AllowMergeCommit {
-				continue
-			}
-			checkout.CommitMessageNormalizationWarning(normalization)
-		}
-	}
 	declaration := checkout.Existing
-	declaration.Repository = repositoryDeclaration
-	declaration.Repository.Archived = checkout.Existing.Repository.Archived
-	var infoError error
+	declaration.Repository, err = exportRepository(checkout, read, repo)
+	infoError := err
 	observe := func(path string, available bool, acquire func(*settings.Declaration) error) {
 		candidate := declaration
 		err := fmt.Errorf("reader unavailable")

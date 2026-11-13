@@ -50,10 +50,8 @@ func TestUIFromExportDeclarationLabelPresence(t *testing.T) {
 	}
 }
 
-func TestUIFromExportDeclarationRejectsIncompleteAndInvalidSources(t *testing.T) {
+func TestUIFromExportDeclarationRejectsInvalidSources(t *testing.T) {
 	for _, mutate := range []func(*settings.Declaration){
-		func(d *settings.Declaration) { d.Repository.Description = nil },
-		func(d *settings.Declaration) { d.Repository.Homepage = nil },
 		func(d *settings.Declaration) {
 			d.Repository.MergeCommitTitle, d.Repository.MergeCommitMessage = rulesetPtr("UNKNOWN"), rulesetPtr("BLANK")
 		},
@@ -64,6 +62,26 @@ func TestUIFromExportDeclarationRejectsIncompleteAndInvalidSources(t *testing.T)
 		if err == nil || !reflect.DeepEqual(got, uimodel.Repository{}) {
 			t.Fatalf("invalid export returned partial UI: %#v, %v", got, err)
 		}
+	}
+}
+
+func TestUIFromExportDeclarationPreservesOptionalAboutFields(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		source settings.Declaration
+		want   *uimodel.About
+	}{
+		{"absent", settings.Declaration{}, nil},
+		{"description only", settings.Declaration{Repository: settings.RepositoryDeclaration{Description: rulesetPtr("")}}, &uimodel.About{Description: rulesetPtr("")}},
+		{"website only", settings.Declaration{Repository: settings.RepositoryDeclaration{Homepage: rulesetPtr("https://example.test")}}, &uimodel.About{Website: rulesetPtr("https://example.test")}},
+		{"empty topics only", settings.Declaration{Topics: settings.TopicsDeclaration{Names: rulesetPtr([]string{})}}, &uimodel.About{Topics: rulesetPtr([]string{})}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := UIFromExportDeclaration(test.source)
+			if err != nil || !reflect.DeepEqual(got.About, test.want) || got.Settings != nil {
+				t.Fatalf("About presence changed: %+v, %v", got, err)
+			}
+		})
 	}
 }
 

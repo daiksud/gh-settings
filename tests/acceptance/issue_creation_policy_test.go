@@ -218,6 +218,16 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 				defer mu.Unlock()
 				methods = append(methods, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
+				if tt.command == "export" && r.Method == http.MethodGet {
+					switch r.URL.Path {
+					case "/repos/owner/current/topics":
+						fmt.Fprint(w, `{"names":[]}`)
+						return
+					case "/repos/owner/current/labels":
+						fmt.Fprint(w, `[]`)
+						return
+					}
+				}
 				if isIssueCreationPolicyFixtureRead(r) {
 					switch tt.name {
 					case "malformed export":
@@ -273,7 +283,7 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 				}
 				t.Error("unexpected later resource or followed redirect", r.Method, r.URL)
 				w.WriteHeader(400)
-			}, false, "/labels", "/topics")
+			}, tt.command == "export", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -288,6 +298,21 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 			}
 			writeSettingsFile(fixture.work, input)
 			r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{tt.command}, false)
+			if tt.command == "export" {
+				if err != nil || r.runErr != nil || r.stdout.Len() != 0 || !strings.Contains(r.stderr.String(), "info: export repository.settings.general.features.issue_permissions:") || hasNonInfoDiagnostic(r.stderr.String()) {
+					t.Fatal(err, r.stderr.String())
+				}
+				document := readExportDocument(t, fixture.work)
+				repo := exportMap(document, "repository")
+				features := exportMap(repo, "settings", "general", "features")
+				if _, present := features["issue_permissions"]; present || !reflect.DeepEqual(repo["labels"], []any{}) || !reflect.DeepEqual(exportMap(repo, "about")["topics"], []any{}) {
+					t.Fatal("partial observation was adopted or later family lost", document)
+				}
+				if err := fixture.checkRequests(false); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
 			if err != nil || r.runErr == nil || r.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(r.stderr.String()), tt.want) {
 				t.Fatal(err, r.stderr.String(), r.stdout.String())
 			}
