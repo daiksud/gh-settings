@@ -179,3 +179,13 @@ The family counts once; matching pending entries do not make the outcome changed
 Initial invitation or local identity binding does. Detailed Summary uses the same
 status text as CLI. Status-only publishes no recipient names or IDs; private
 report cleanup and output publication retain their existing boundaries.
+
+The separate `collaborator_deletions` array contains only `operation`
+(`cancel-invitation` or `remove-collaborator`), `username`, user `id`, and a positive
+`invitation_id` only for cancellation. It shares the single collaborator managed
+count and makes the plan actionable. Validation rejects unknown operations,
+invalid IDs, duplicate people/invitations and overlap with retained selections.
+No operator identity, inviter evidence, private email, raw inventory or creation
+metadata enters this projection. Detailed Summary uses the CLI's two deletion
+labels; status-only hides all people and IDs. Apply retains attempted/acknowledged/
+verified deletion evidence through later errors, without a mutable deletion journal.

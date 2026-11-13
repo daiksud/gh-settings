@@ -44,6 +44,10 @@ func applyCollaborators(result *ApplyResult, repo repository.Repository, desired
 		return false, err
 	}
 	result.Operations[readIndex].Status = OperationCompleted
+	return applySelectedCollaborators(result, repo, selected, write, nil)
+}
+
+func applySelectedCollaborators(result *ApplyResult, repo repository.Repository, selected []settings.CollaboratorSelection, write Writer, after func(settings.CollaboratorWriteResult) error) (bool, error) {
 	wrote := false
 	for _, person := range selected {
 		index := len(result.Operations)
@@ -90,6 +94,15 @@ func applyCollaborators(result *ApplyResult, repo repository.Repository, desired
 				result.Collaborators[entryIndex].BindingRecorded = true
 				result.Operations[bindingIndex].Status = OperationCompleted
 			}
+		}
+		if after != nil {
+			i := len(result.Operations)
+			result.Operations = append(result.Operations, ApplyOperation{Kind: CollaboratorsRead})
+			if err := after(observed); err != nil {
+				result.failOperation(i, OperationFailedRead)
+				return wrote, err
+			}
+			result.Operations[i].Status = OperationCompleted
 		}
 	}
 	return wrote, nil

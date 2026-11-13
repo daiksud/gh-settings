@@ -81,13 +81,13 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables`, `environment-variables`, `actions-policies` and `environments`.
-Standalone `all` selects all seven supported scopes; combining it with another
+`agents-variables`, `environment-variables`, `actions-policies`, `environments` and `collaborators`.
+Standalone `all` selects all eight supported scopes; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets/Actions Policies, canonical names for variables, folded names for Environments). ID-less entries
+labels/Rulesets/Actions Policies, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -882,8 +882,10 @@ user IDs, excluding the owner by owner ID. Personal collaborators have GitHub's
 fixed write permission; no role or permission field is accepted. Email-only
 invitations have an unconfirmed complete API roundtrip and remain unsupported.
 
-Omission is unmanaged. `[]` and unlisted people cause no access mutation. Removal
-and invitation cancellation are not implemented, including under `--prune all`.
+Omission is unmanaged. Without prune, `[]` and unlisted people cause no access
+mutation. Explicit [`--prune collaborators`](#collaborator-pruning), including
+standalone `all`, adds bounded invitation cancellation and active-grant removal
+for a present collection.
 An ID-bound person must still be active or pending; disappearance fails without
 reinviting. A username-only entry is initial-add intent. Existing active access
 or a matching pending invitation makes no PUT; apply records the verified user ID
@@ -909,8 +911,8 @@ or revocation. Deliberately removing an ID restores initial-add intent and can
 notify that person again. There is no hidden journal: if an ambiguous request was
 sent, no verified binding was saved and the invitation later disappears, another
 username-only invocation cannot prove the earlier request happened. Resolve access
-before retrying. No automatic retry, polling, acceptance, cancellation or rollback
-occurs.
+before retrying. No automatic retry, polling, acceptance or rollback occurs.
+Cancellation and removal require explicit prune intent.
 
 Both inventories must be fully paginated and typed. Missing/null invitees,
 unsupported actors/roles, malformed state, explicit `expired: true`, duplicate
@@ -926,7 +928,7 @@ correction. Reused usernames never silently select a different ID. Apply resolve
 all declared people before the first collaborator operation, then rechecks the
 repository/owner IDs, personal-public status, complete inventories and current
 username identity before each request. A prepared pending invitation that vanished
-is not resent. An explicit own unarchive occurs before these reads; archived
+is not resent. Without prune, an explicit own unarchive occurs before these reads; archived
 repositories cannot receive a new invitation. These reads are not atomic, and the
 username-addressed PUT has no atomic expected-user-ID condition, leaving a narrow
 concurrent rename/reassignment race. Later failures stop subsequent operations
@@ -940,6 +942,60 @@ and Administration read for invitations; mutation requires Administration write.
 Installation-token support is documented, but local fixtures do not establish a
 real App's grants or a recipient's notification/acceptance. See the
 [behavior specification](features/repository-access.feature.md).
+
+### Collaborator pruning
+
+`plan --prune collaborators` and `apply --prune collaborators` use the existing
+`repository.settings.collaborators` list. Omission stays unmanaged even under
+`all`; `[]` selects every supported non-owner active grant and pending invitation.
+A nonempty list retains the union of ID-bound people and resolved username-only
+people, including initial-add intent. The owner is always protected. No deletion
+marker, role expansion, email invitation, recipient acceptance or installation
+removal is introduced.
+
+Before **any** remote write, including unarchive and unrelated settings, apply
+acquires complete supported active/pending inventories and freezes selected user
+IDs, active removal candidates and invitation-ID cancellation candidates. Failed,
+partial, duplicate, unsupported or ambiguous evidence blocks the whole preflight.
+The same credential must positively identify the personal repository owner, or
+prove installation target access through a complete authenticated
+[installation repository inventory](https://docs.github.com/en/rest/apps/installations?apiVersion=2026-03-10#list-repositories-accessible-to-the-app-installation)
+and complete admin-only invitation visibility. A failed `/user` alone is not
+installation evidence. Ambiguous positive identities and a non-owner user fail.
+No App/installation ID is invented, no second credential is requested, and token
+prefixes or `GITHUB_ACTOR` do not determine the management path. Administration
+write remains a mutation prerequisite; successful reads do not prove that grant.
+
+Inviter identities are private dependency evidence, never YAML or report values.
+An active removal is refused if a retained invitation has unknown inviter identity
+or was sent by that candidate. Only initially selected invitations are cancelled;
+a late invitation cannot be cancelled to unblock removal. Ordinary selected
+reconciliation and verified local bindings run first, followed by fixed invitation
+cancellations, then fixed active removals, before Environment work. A selected
+pending person's acceptance may advance to active; a cancellation candidate's
+acceptance, disappearance or replacement fails instead of becoming a grant removal.
+Frozen selected IDs prevent later username reassignment from changing retention.
+
+Every DELETE freshly checks the exact repository/owner, management path and complete
+remaining inventories, accounting only for confirmed operations. Only a verified
+own unarchive may change expected archive state. After cancellations, active
+removal requires no remaining invitation dependency and a last immutable-ID and
+username-to-ID check. A bodyless repository invitation-ID or collaborator-username
+DELETE must return empty 204, followed by independent complete readback. It must
+confirm absence and unchanged remaining access; 204 alone is not verified success.
+CLI/detailed Summary distinguish cancellation from removal. Apply diagnostics
+separate attempted, acknowledged and verified effects, retain earlier bindings and
+verified deletions, and stop later work without retry, rollback or failed-readback
+adoption. Local binding alone is not a remote partial write.
+
+GitHub documents additional collaborator-removal effects on issue assignments,
+stars, package access, invitations and forks. These may settle asynchronously;
+verified list absence does not certify their completion. Removing a grant does
+not make public content inaccessible. Inventories are not atomic, the DELETE is
+username-addressed without an expected-ID condition, and invitation creation can
+race the final dependency check. Removing and re-adding an identical active grant
+between reads is indistinguishable because there is no membership incarnation ID.
+Review these effects before apply; there is no transaction or hidden journal.
 
 ## Labels
 
@@ -1290,7 +1346,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Collaborator removal/invitation cancellation, classic branch protection and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Classic branch protection and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 

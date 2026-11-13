@@ -30,6 +30,7 @@ type EnvironmentWriteEffectsFailure interface {
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
 	AIScanRepositories   func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
+	CollaboratorPrune    func(repository.Repository, settings.CollaboratorDeclarations) (settings.CollaboratorPruneObservation, error)
 	EnvironmentPrune     func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	Collaborators        func(repository.Repository) (settings.CollaboratorObservation, error)
 	ResolveCollaborator  func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
@@ -76,6 +77,9 @@ type Reader struct {
 type Writer struct {
 	ReadAIScanRepositories    func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	AIScanRepositories        func(repository.Repository, settings.SecurityChange) (bool, error)
+	ReadCollaboratorPrune     func(repository.Repository, settings.CollaboratorDeclarations) (settings.CollaboratorPruneObservation, error)
+	RefreshCollaboratorPrune  func(repository.Repository, settings.CollaboratorPruneObservation, *settings.CollaboratorWriteResult) (settings.CollaboratorPruneObservation, error)
+	DeleteCollaborator        func(repository.Repository, settings.CollaboratorPruneObservation, settings.CollaboratorDeletion) (settings.CollaboratorPruneObservation, settings.CollaboratorDeleteResult, error)
 	ReadEnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	DeleteEnvironment         func(repository.Repository, settings.EnvironmentPruneCandidate) error
 	ReadCollaborators         func(repository.Repository) (settings.CollaboratorObservation, error)

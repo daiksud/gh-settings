@@ -19,6 +19,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 }
 
 type prunePreparation struct {
+	collaborators        settings.CollaboratorPruneObservation
 	environments         settings.EnvironmentPruneObservation
 	actionsPolicies      []settings.ActionsEventPolicyChange
 	labels               []settings.LabelChange
@@ -32,6 +33,19 @@ type prunePreparation struct {
 // Subsequent family reads must not widen or change these deletion candidates.
 func preparePrune(repo repository.Repository, desired settings.Declaration, prune settings.PruneScopes, write Writer) (prunePreparation, error) {
 	var result prunePreparation
+	if prune.Has("collaborators") && desired.Collaborators != nil {
+		if write.ReadCollaboratorPrune == nil {
+			return result, fmt.Errorf("collaborator prune reader unavailable")
+		}
+		var err error
+		result.collaborators, err = write.ReadCollaboratorPrune(repo, *desired.Collaborators)
+		if err != nil {
+			return result, err
+		}
+		if err = result.collaborators.ValidateApply(desired.Repository.Archived != nil && !*desired.Repository.Archived); err != nil {
+			return result, err
+		}
+	}
 	if prune.Has("actions-policies") && desired.ActionsPolicies != nil {
 		current, err := write.ReadActionsPolicies(repo)
 		if err != nil {

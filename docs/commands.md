@@ -261,7 +261,7 @@ The [public Action](github-actions.md#inputs-outputs-and-failures) separately re
 Use `gh settings plan --prune labels,rulesets` and
 `gh settings apply --prune labels,rulesets`. This adds deletions without limiting
 other declared work. `--no-writeback` may be combined with apply. Current scopes are `labels`, `rulesets`, `actions-policies`,
-`actions-variables`, `agents-variables`, `environment-variables` and `environments`.
+`actions-variables`, `agents-variables`, `environment-variables`, `environments` and `collaborators`.
 Standalone `all` selects every supported scope. Mixed `all`, unknown/duplicate
 names, empty elements and repeated flags fail locally. Export and validate reject
 prune. Omitted collections stay unmanaged; explicit [] selects all acquired
@@ -361,3 +361,12 @@ IDs remain in diagnostics after later failure, including stdout failure. A
 reported invitation ID is never the YAML user ID. A saved user ID whose access
 has disappeared fails without reinviting. Resolve ambiguous requests before
 retrying; removing the ID restores initial-add intent and can notify again.
+
+With `--prune collaborators` (or standalone `all`), a present list retains resolved
+user identities and adds distinct invitation cancellations and collaborator-grant
+removals. Omission stays unmanaged. Complete global preflight precedes unrelated
+writes; selected reconciliation and bindings precede cancellations, then removals,
+then Environment work. Failed or changed access/operator/inviter evidence stops
+execution. Diagnostics distinguish attempted, acknowledged and verified deletion;
+see [collaborator pruning](settings.md#collaborator-pruning) for permissions,
+management-path protection, side effects and unavoidable races.
