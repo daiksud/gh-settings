@@ -136,6 +136,13 @@ binaries and the public Action through
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
 
+Main CI concurrency is grouped by source SHA. A later merge therefore keeps
+earlier commits' build and acceptance runs active; only duplicate runs for the
+same SHA share a cancelling group. Implementation can continue while those runs
+execute. Track each merged commit through its own aggregate result, and repair
+failed CI before continuing implementation. Runner availability can still delay
+individual jobs; a queued or cancelled job is not successful verification.
+
 Both main and release build jobs install the pinned `mise.toml` toolchain
 with `mise-action` cache enabled. They use one setup step on Linux and macOS,
 and the same build Action. PR Screening retains `setup-go` for Go compilation
