@@ -57,10 +57,11 @@ contract remains unconfirmed, rather than being labeled unavailable. The
 [coverage ledger](contributing/settings-coverage.md) records these distinctions
 and the limits of fixture and live evidence.
 
-Personal-repository collaborators and invitations, remaining classic protection controls
-and custom configurable rules, including existing
-Environment protection apps, are adopted future work when supported by the
-target UI and applicable APIs. Organization-owned repositories and organization
+Personal-repository collaborators and invitations are supported through the
+[identity and invitation contract](#personal-collaborators). Remaining classic
+protection controls and custom configurable rules, including existing Environment
+protection apps, remain adopted future work when supported by the target UI and
+applicable APIs. Organization-owned repositories and organization
 settings, repository rename/visibility/transfer/deletion, authoring GitHub feature
 configuration files and secret values are excluded. This file-authoring boundary
 does not exclude gh-settings' own declaration file. Existing App selection does
@@ -815,6 +816,86 @@ General's `pull_requests.merge_commit.default_commit_message` accepts `default_m
 
 `repository.about.topics` manages the complete topic set. It is a direct array, not a mapping. Omission leaves it unmanaged; `[]` explicitly clears all topics; `{}` and null are invalid. Names are unique lowercase letters/numbers/hyphens, 1–50 characters each, at most 20 entries. Names are public metadata even on private repositories. Export, comparison and PUT use sorted set order without rewriting existing input YAML. Apply reads complete, validated current membership and skips PUT when the set matches, regardless of order. Changed membership uses one full-set PUT followed by an independent GET; the PUT response alone is not confirmation. A failed prerequisite read makes no Topics write. A rejected update or failed/mismatching readback stops later resources with uncertain effects and no automatic retry or rollback. Metadata read and Administration write must already exist. See [Topics and ordering](commands.md#apply-behavior).
 
+## Personal collaborators
+
+`repository.settings.collaborators` manages people on Settings > Collaborators
+for personally owned public repositories. Each entry has a required `username`
+and optional positive immutable GitHub **user** `id`:
+
+```yaml
+repository:
+  settings:
+    collaborators:
+      - username: existing-person
+        id: 123456
+      - username: new-person
+```
+
+An ID identifies the person, not an invitation, membership or proof of accepted
+access. Export includes supported active people and pending invitees with their
+user IDs, excluding the owner by owner ID. Personal collaborators have GitHub's
+fixed write permission; no role or permission field is accepted. Email-only
+invitations have an unconfirmed complete API roundtrip and remain unsupported.
+
+Omission is unmanaged. `[]` and unlisted people cause no access mutation. Removal
+and invitation cancellation are not implemented, including under `--prune all`.
+An ID-bound person must still be active or pending; disappearance fails without
+reinviting. A username-only entry is initial-add intent. Existing active access
+or a matching pending invitation makes no PUT; apply records the verified user ID
+locally. Otherwise it sends one bodyless invitation PUT and independently reads
+back the complete active and pending inventories. A 201 must match the exact
+invitation or the same user's now-active access; a 204 must verify active access.
+A successful invitation is not acceptance. CLI plan and detailed Action Summary
+show pending acceptance even when no new invitation is planned.
+
+A username-only binding is a local change, distinct from a remote notification.
+After confirmation, normal CLI apply records the user ID using the source
+snapshot and safe-file checks shared with created-resource IDs. It never records
+an unverified ID. Earlier confirmed bindings remain if a later operation fails;
+local binding alone is not reported as a completed remote write. `--no-writeback`
+or `GITHUB_ACTIONS=true` suppresses file changes and reports the verified ID for a
+reviewed declaration update. Persist that ID before relying on repeated scheduled
+runs. No Git commit or push is made. Output or file-write failure can occur after
+remote effects; diagnostics preserve verified user IDs and reported invitation IDs
+for deliberate recovery, without claiming acceptance or inviting again.
+
+Saved user IDs prevent ordinary reinvitation after expiry, decline, cancellation
+or revocation. Deliberately removing an ID restores initial-add intent and can
+notify that person again. There is no hidden journal: if an ambiguous request was
+sent, no verified binding was saved and the invitation later disappears, another
+username-only invocation cannot prove the earlier request happened. Resolve access
+before retrying. No automatic retry, polling, acceptance, cancellation or rollback
+occurs.
+
+Both inventories must be fully paginated and typed. Missing/null invitees,
+unsupported actors/roles, malformed state, explicit `expired: true`, duplicate
+identities and active/pending overlap make the family unavailable. Missing expiry
+metadata does not promise an expiry date. Export omits an initially unavailable
+family or retains its complete valid prior declaration; it never combines fresh
+active rows with retained pending rows. Declared plan/apply observations fail
+strictly. Denial or 404 is not an empty access list.
+
+Case-only usernames match; export uses acquired spelling. ID-bound entries resolve
+the user by ID and reject genuine renames with the current username for deliberate
+correction. Reused usernames never silently select a different ID. Apply resolves
+all declared people before the first collaborator operation, then rechecks the
+repository/owner IDs, personal-public status, complete inventories and current
+username identity before each request. A prepared pending invitation that vanished
+is not resent. An explicit own unarchive occurs before these reads; archived
+repositories cannot receive a new invitation. These reads are not atomic, and the
+username-addressed PUT has no atomic expected-user-ID condition, leaving a narrow
+concurrent rename/reassignment race. Later failures stop subsequent operations
+without undoing earlier changes.
+
+The [Collaborators REST API](https://docs.github.com/en/rest/collaborators/collaborators?apiVersion=2026-03-10),
+[Invitations REST API](https://docs.github.com/en/rest/collaborators/invitations?apiVersion=2026-03-10)
+and [user identity API](https://docs.github.com/en/rest/users/users?apiVersion=2026-03-10)
+define these operations. Complete observation requires collaborator-list access
+and Administration read for invitations; mutation requires Administration write.
+Installation-token support is documented, but local fixtures do not establish a
+real App's grants or a recipient's notification/acceptance. See the
+[behavior specification](features/repository-access.feature.md).
+
 ## Labels
 
 `repository.labels` selects whole label objects by positive REST `id`; no ID means create-only. Without prune, omission or `[]` selects nothing and unlisted objects remain untouched. Explicit `--prune labels` changes present-list ownership: [] selects all current labels and nonempty lists retain declared IDs. Omission always stays unmanaged. Deletion loses Issue/PR assignments; see [collection pruning](#collection-pruning).
@@ -1197,7 +1278,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Collaborators/invitations, remaining classic branch-protection controls and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Collaborator removal/invitation cancellation, remaining classic branch-protection controls and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 

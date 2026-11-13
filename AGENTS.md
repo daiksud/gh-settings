@@ -14,8 +14,8 @@ not proof that no API exists.
 
 Follow the [feature adoption policy](docs/settings.md#feature-adoption-scope)
 and [coverage ledger](docs/contributing/settings-coverage.md). Personal-repository
-collaborators and invitations, remaining classic branch-protection controls and
-configurable custom rules, including existing Environment protection apps,
+collaborator removal/invitation cancellation, remaining classic branch-protection
+controls and configurable custom rules, including existing Environment protection apps,
 are adopted future work where the target UI and APIs permit them. Organization
 settings, repository rename/visibility/transfer/deletion, feature configuration
 file authoring and secret values remain excluded.

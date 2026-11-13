@@ -6,7 +6,7 @@ description: Define collaborator and team ownership, invitation states and revoc
 
 ## Status
 
-Historical organization-focused design for #355. The current [personal-public policy](../settings.md#feature-adoption-scope) adopts personal-repository collaborators and invitations for future implementation; the earlier not-planned decision for #356 no longer defines that boundary. Organization and team management, including #357, remain excluded. This ADR's organization role model and collection-removal convention are not the adopted personal-repository contract; use the [current access implementation boundary](../features/repository-access.feature.md). Neither current source nor published packages accept access declarations. No live grants, invitations, revocations or credential changes are authorized by this design.
+Historical organization-focused design for #355. The current [personal-public policy](../settings.md#feature-adoption-scope) adopts personal-repository collaborators and invitations; the earlier not-planned decision for #356 no longer defines that boundary. Organization and team management, including #357, remain excluded. This ADR's organization role model and collection-removal convention are not the adopted personal-repository contract; use the [current access implementation boundary](../features/repository-access.feature.md). Current source implements the separate [personal collaborator contract](../settings.md#personal-collaborators); determine packaged support from the selected immutable release. No live grants, invitations, revocations or credential changes are authorized by this design.
 
 ## Context
 

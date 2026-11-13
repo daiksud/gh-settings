@@ -80,6 +80,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 	}
 	var data []byte
 	var createdIDs []app.CreatedObject
+	var collaborators []app.CollaboratorResult
 	switch args[0] {
 	case "--version", "-v":
 		if _, err := fmt.Fprintln(stdout, "gh-settings "+version); err != nil {
@@ -116,13 +117,17 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 			for _, notice := range result.Notices {
 				err = fmt.Errorf("%w; note: %s", err, notice)
 			}
-			return createdIDDiagnostic(applyDiagnostic(err, result), result.CreatedIDs)
+			return collaboratorDiagnostic(createdIDDiagnostic(applyDiagnostic(err, result), result.CreatedIDs), result.Collaborators)
 		}
 		createdIDs = result.CreatedIDs
+		collaborators = result.Collaborators
 		if result.Completed() {
 			data = []byte("Applied repository settings.\n")
 		} else {
 			data = []byte("No managed repository settings.\n")
+		}
+		for _, person := range result.Collaborators {
+			data = append(data, []byte(collaboratorResultLine(person)+"\n")...)
 		}
 		for _, object := range result.CreatedIDs {
 			data = append(data, []byte(fmt.Sprintf("Created %s %q: id %d\n", createdCollectionPath(object.Collection), object.Name, object.ID))...)
@@ -134,7 +139,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		return errUnsupportedCommand
 	}
 	if _, err := stdout.Write(data); err != nil {
-		return createdIDDiagnostic(fmt.Errorf("write output: %w", err), createdIDs)
+		return collaboratorDiagnostic(createdIDDiagnostic(fmt.Errorf("write output: %w", err), createdIDs), collaborators)
 	}
 	return nil
 }
@@ -166,7 +171,7 @@ func createdCollectionPath(collection string) string {
 func applyDiagnostic(err error, result app.ApplyResult) error {
 	for i := len(result.Operations) - 1; i >= 0; i-- {
 		op := result.Operations[i]
-		if op.Status != app.OperationFailedRead && op.Status != app.OperationFailedUnknown {
+		if op.Status != app.OperationFailedRead && op.Status != app.OperationFailedUnknown && op.Status != app.OperationFailedLocal {
 			continue
 		}
 		path := ""
@@ -189,6 +194,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = "repository.settings.actions.variables"
 		case app.RepositoryUpdate:
 			path = "repository"
+		case app.CollaboratorsRead, app.CollaboratorReconcile, app.CollaboratorIdentityBinding:
+			path = "repository.settings.collaborators"
 		case app.TopicsUpdate:
 			path = "repository.about.topics"
 		case app.LabelsRead, app.LabelCreate, app.LabelUpdate, app.LabelDelete:

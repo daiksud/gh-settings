@@ -175,3 +175,15 @@ null/unknown/noncanonical members, mismatched IDs, duplicate selection and no-op
 updates; it contains no raw companion or actor snapshots. Declaration order is
 preserved because creation age affects priority. Both renderers show only
 requested values, and status-only Summary suppresses identities and policy.
+
+## Collaborator presentation
+
+The same-version `collaborators` report array contains `username`, user `id`,
+`state` (`absent`, `pending`, `active`), `bind_identity` and private
+`invitation_id` evidence for pending rows. These are observations and proposed
+local bindings, never additional mutable YAML or apply input. Validation rejects
+unknown states, invalid or duplicate identities and contradictory pending IDs.
+The family counts once; matching pending entries do not make the outcome changed.
+Initial invitation or local identity binding does. Detailed Summary uses the same
+status text as CLI. Status-only publishes no recipient names or IDs; private
+report cleanup and output publication retain their existing boundaries.

@@ -1,8 +1,10 @@
 package settings
 
-// Comparison counts all declared fields and records only changed values.
+// Comparison counts declared fields and retains changes plus collaborator
+// acceptance observations that remain relevant when no invitation is needed.
 type Comparison struct {
 	BranchProtectionRules   []ClassicChange
+	Collaborators           []CollaboratorSelection
 	CopilotInstructions     []CopilotInstructionsChange
 	CopilotMCP              []CopilotMCPChange
 	PullRequestLimits       []PullRequestLimitsChange
@@ -30,6 +32,11 @@ type Comparison struct {
 // HasChanges includes actionable normalized fallback matches, not only unequal
 // effective values. Observation validation remains the producing operation's job.
 func (comparison Comparison) HasChanges() bool {
+	for _, selected := range comparison.Collaborators {
+		if selected.Changes() {
+			return true
+		}
+	}
 	return len(comparison.BranchProtectionRules) > 0 || len(comparison.PullRequestExemptions) > 0 || len(comparison.EnvironmentVariables) > 0 || len(comparison.CopilotReviewEffort) > 0 || len(comparison.PullRequestLimits) > 0 || len(comparison.CopilotMCP) > 0 || len(comparison.CopilotInstructions) > 0 || len(comparison.Variables) > 0 || len(comparison.AgentsVariables) > 0 || len(comparison.CodeQLConfiguration) > 0 || len(comparison.Changes) > 0 || len(comparison.CommitMessages) > 0 || comparison.Labels.Len() > 0 || len(comparison.Rulesets) > 0 || len(comparison.Environments) > 0 || len(comparison.Actions) > 0 || len(comparison.ActionsPolicies) > 0 || len(comparison.ActionsExecution) > 0 || len(comparison.Security) > 0 || len(comparison.Pages) > 0
 }
 

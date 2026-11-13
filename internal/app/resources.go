@@ -31,6 +31,8 @@ type EnvironmentWriteEffectsFailure interface {
 type Reader struct {
 	BranchProtectionRules func(repository.Repository) (settings.ClassicObservation, error)
 	EnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
+	Collaborators         func(repository.Repository) (settings.CollaboratorObservation, error)
+	ResolveCollaborator   func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
 	EnvironmentNames      func(repository.Repository) ([]string, error)
 	CodeQLForExport       func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error)
 	Variables             func(repository.Repository) (settings.VariableInventory, error)
@@ -76,6 +78,10 @@ type Writer struct {
 	DeleteEnvironment         func(repository.Repository, settings.EnvironmentPruneCandidate) error
 	ReadBranchProtectionRules func(repository.Repository) (settings.ClassicObservation, error)
 	BranchProtectionRule      func(repository.Repository, settings.ClassicSelection) (settings.ClassicWriteResult, error)
+	ReadCollaborators         func(repository.Repository) (settings.CollaboratorObservation, error)
+	ResolveCollaborator       func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
+	Collaborator              func(repository.Repository, settings.CollaboratorSelection) (settings.CollaboratorWriteResult, error)
+	BindCollaboratorID        func(string, int64) error
 	ReadVariables             func(repository.Repository) (settings.VariableInventory, error)
 	ReadAgentVariables        func(repository.Repository) (settings.VariableInventory, error)
 	ReadEnvironmentVariables  func(repository.Repository, string) (settings.VariableInventory, error)

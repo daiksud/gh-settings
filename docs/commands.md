@@ -360,3 +360,21 @@ Confirmed new numeric IDs use guarded writeback unless `--no-writeback` or
 GitHub Actions suppresses it. Capture recovery identities after uncertain effects
 before retrying. Omitted/empty lists and unrelated prune scopes never delete
 classic rules. CLI and Action share these ownership and failure semantics.
+
+## Personal collaborator commands
+
+`export`, `validate`, `plan` and `apply` support
+[`repository.settings.collaborators`](settings.md#personal-collaborators). Plan
+shows each selected person as active, pending or needing an initial invitation;
+pending remains visible with no differences. A username-only matching person
+needs a verified local identity binding and no invitation PUT. Apply reports
+acceptance state separately from sent invitations and recorded user IDs.
+
+Normal CLI apply records confirmed user IDs in the original declaration.
+`--no-writeback` and GitHub Actions mode leave the file untouched and report IDs
+for deliberate recording. Binding failure is local; it implies remote partial
+progress only when this execution also established a remote write. Recoverable
+IDs remain in diagnostics after later failure, including stdout failure. A
+reported invitation ID is never the YAML user ID. A saved user ID whose access
+has disappeared fails without reinviting. Resolve ambiguous requests before
+retrying; removing the ID restores initial-add intent and can notify again.
