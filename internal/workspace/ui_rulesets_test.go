@@ -119,6 +119,10 @@ func TestUIConfigRulesetPullRequestRejectsInvalidTypesAndAPIKeys(t *testing.T) {
 	for _, controls := range []string{
 		"required_approvals: '0'", "required_approvals: 18446744073709551616", "required_approvals: null",
 		"required_approving_review_count: 1", "allowed_merge_methods: squash", "allowed_merge_methods: [true]",
+		"require_an_additional_approval_for_unattributed_copilot_pull_requests: null",
+		"require_an_additional_approval_for_unattributed_copilot_pull_requests: 'true'",
+		"require_an_additional_approval_for_unattributed_copilot_pull_requests: 1",
+		"require_extra_approval_for_unattributed_changes: true",
 		"require_review_from_code_owners: 'true'", "require_conversation_resolution_before_merging: null",
 	} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {rulesets: [{rules: {require_a_pull_request_before_merging: {" + controls + "}}}]}}\n"

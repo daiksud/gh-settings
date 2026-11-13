@@ -23,12 +23,6 @@ func TestNormalizedRulesetRequiredApprovalsChangesOwnTypedDecisionAndRemoval(t *
 			}
 			records := RulesetNormalizations{Enforcement: state.EnforcementNormalization, QualitySeverity: state.QualitySeverityNormalization, RequiredApprovals: state.RequiredApprovalsNormalization}
 			change, err := NewRulesetChangeWithNormalizations("update", 7, &before, &after, records)
-			if count == -1 {
-				if err == nil {
-					t.Fatal("removed unowned container")
-				}
-				continue
-			}
 			if err != nil || !reflect.DeepEqual(change.Normalizations(), records) || !reflect.DeepEqual(change.Display().Normalizations(), records) {
 				t.Fatal(change, err)
 			}

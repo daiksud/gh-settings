@@ -81,7 +81,6 @@ func TestRulesetCodeAnalysisExportRetainsCompleteProtection(t *testing.T) {
 	json.Unmarshal(encoded, &actual)
 	delete(expected, "source_type")
 	delete(expected, "source")
-	delete(analysisParams(t, expected, "pull_request"), "require_extra_approval_for_unattributed_changes")
 	for _, value := range []map[string]any{expected, actual} {
 		slices.SortFunc(value["rules"].([]any), func(a, b any) int {
 			return strings.Compare(a.(map[string]any)["type"].(string), b.(map[string]any)["type"].(string))

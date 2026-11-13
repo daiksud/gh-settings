@@ -168,8 +168,9 @@ instructions to declare every retained Ruleset before pruning; this changes the
 scope of deletion compared with the former single-ID selector.
 
 Each delete change contains the complete acquired policy and no after value.
-Plan/report/Summary show deletion to absent. Unsupported, inherited/Push,
-normalized and unowned PR/Preview data still prevent deletion. Exact pre-DELETE
+Plan/report/Summary show deletion to absent. Unsupported, inherited/Push and
+normalized policy still prevent deletion. Complete supported PR rules with
+either additional-approval value are eligible. Exact pre-DELETE
 identity/policy checks and HTTP 204 followed by complete inventory absence are
 mandatory. Drift, incomplete pagination or mismatching readback fails without
 retry/rollback; earlier writes remain reported.
@@ -184,10 +185,41 @@ identity drift, strict readback and partial progress. All use isolated fixtures.
 
 Push targets and file restriction controls remain unsupported; their target UI eligibility is recorded separately in the [coverage inventory](../contributing/settings-coverage.md). Removed YAML controls fail local validation, including false and empty values. Acquired Push policy or a file-restriction rule fails complete acquisition before export, update or explicit deletion; no partial policy or protection-dropping rewrite is produced. The [unsupported-control executable cases](../../tests/acceptance/ruleset_unsupported_controls_test.go) cover rejection without API calls, destination preservation and no writes for acquired unsupported state. Existing branch/tag lifecycle and scanning controls remain supported.
 
-## Excluded branch controls and preservation
+## Additional approval for unattributed Copilot pull requests
 
-The [unimplemented-control contract](../settings.md#unimplemented-branch-controls-and-unowned-preview-values) rejects coverage, team-required reviews and Preview unattributed Copilot additional approval in current public intent. Preview status itself is not a policy exclusion. Local declarations fail before API access. Acquired coverage, nonempty team reviewers and unknown/malformed protection fail the complete collection without writes or partial export. Code Quality is managed through the severity contract above; every update rechecks its acquired raw presence/value before PUT. Its managed group may be changed or removed, with strict acknowledgment and independent readback. Preflight cannot eliminate concurrent races between GET and PUT.
+The [PR control contract](../settings.md#pr-review-and-required-check-parameters)
+accepts the additional-approval checkbox as a boolean. Omission inside a selected
+PR group declares true; explicit false is owned. The setting is stored even when
+Required approvals is 0, where GitHub documents no effect. A missing, null or
+incorrectly typed observation fails acquisition and never receives the declaration
+default. Export retains actual true and false values.
 
-Existing typed Preview approval values remain internal preservation metadata. Supported PR updates retain true/false exactly. New PR rules omit the field, acquire the server choice from acknowledgment and verify independent readback. Missing/malformed metadata and fresh preflight drift fail before PUT; post-write collateral changes fail with uncertain effects. Removing the PR rule or its Ruleset fails before mutation because the nested unowned setting cannot survive. Tests exercise both preservation and refusal without changing live settings.
+Matching whole objects make no write. Both true-to-false and false-to-true updates
+send the requested value, after independently comparing the fresh value and
+PR-rule presence with the original acquisition. Drift fails before PUT, while
+acknowledgment or independent readback mismatch fails with uncertain effects and
+stops later operations. Creation sends an explicit normalized boolean and retains
+a reported ID in recovery diagnostics if verification fails. Omitting the PR
+group removes the rule; ordinary explicit prune may delete its containing Ruleset.
+Existing complete-policy, unsupported-rule and deletion-drift guards remain.
 
-[Preservation tests](../../internal/settings/ruleset_unmanaged_test.go), [API safety tests](../../internal/github/ruleset_scope_test.go) and [executable unsupported controls](../../tests/acceptance/ruleset_unsupported_controls_test.go) cover this boundary.
+[Ownership tests](../../internal/settings/ruleset_additional_approval_test.go),
+[API drift/readback tests](../../internal/github/ruleset_scope_test.go),
+[prune API tests](../../internal/github/ruleset_delete_test.go) and the
+[export/edit/apply process test](../../tests/acceptance/ruleset_parameters_test.go)
+cover explicit values, the true declaration default, removal, repeat no-op,
+CLI/Action presentation and partial failures using local fixtures. No live
+settings, Copilot PR execution or enforcement was exercised.
+
+## Unimplemented branch controls
+
+The [unimplemented-control contract](../settings.md#unimplemented-branch-controls)
+rejects coverage and team-required review declarations before API access. Preview
+status itself is not a policy exclusion. Acquired coverage, nonempty team reviewers
+and unknown/malformed protection fail the complete collection without writes or
+partial export. Code Quality remains managed through its severity contract and
+retains its independent raw pre-update drift gate.
+
+[API safety tests](../../internal/github/ruleset_scope_test.go) and
+[executable unsupported controls](../../tests/acceptance/ruleset_unsupported_controls_test.go)
+cover these rejection boundaries.

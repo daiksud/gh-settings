@@ -126,7 +126,7 @@ func validateRule(r RulesetRule, complete bool) error {
 		if p.hasChecks() || p.hasAnalysis() {
 			return fmt.Errorf("parameters do not belong to pull_request")
 		}
-		if complete && (p == nil || p.AllowedMergeMethods == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil || p.RequiredReviewers == nil) {
+		if complete && (p == nil || p.AllowedMergeMethods == nil || p.DismissStaleReviewsOnPush == nil || p.RequireCodeOwnerReview == nil || p.RequireExtraApprovalForUnattributedChanges == nil || p.RequireLastPushApproval == nil || p.RequiredApprovingReviewCount == nil || p.RequiredReviewThreadResolution == nil || p.RequiredReviewers == nil) {
 			return fmt.Errorf("pull_request requires complete review parameters")
 		}
 		if p == nil {

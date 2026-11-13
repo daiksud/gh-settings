@@ -91,7 +91,7 @@ func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 		ui.TargetBranches.IncludeDefaultBranch = rulesetPtr(true)
 		ui.BypassList = rulesetPtr([]uimodel.BypassEntry{{Role: rulesetPtr(uimodel.BypassRole("maintain")), BypassMode: rulesetPtr(uimodel.BypassMode("always"))}})
 		ui.Rules = uimodel.RulesetRules{RestrictDeletions: rulesetPtr(true), BlockForcePushes: rulesetPtr(true), RequireLinearHistory: rulesetPtr(true), RequireSignedCommits: rulesetPtr(true),
-			RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{RequiredApprovals: rulesetPtr(1), AllowedMergeMethods: rulesetPtr([]uimodel.MergeMethod{"squash"}), RequireReviewFromCodeOwners: rulesetPtr(true), RequireConversationResolutionBeforeMerging: rulesetPtr(true)},
+			RequireAPullRequestBeforeMerging: &uimodel.PullRequestRule{RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: rulesetPtr(false), RequiredApprovals: rulesetPtr(1), AllowedMergeMethods: rulesetPtr([]uimodel.MergeMethod{"squash"}), RequireReviewFromCodeOwners: rulesetPtr(true), RequireConversationResolutionBeforeMerging: rulesetPtr(true)},
 			RequireStatusChecksToPass:        &uimodel.StatusChecksRule{RequiredStatusChecks: rulesetPtr([]uimodel.StatusCheck{{Check: "ci", Source: uimodel.CheckSource{App: rulesetPtr(int64(17))}}}), RequireBranchesToBeUpToDateBeforeMerging: rulesetPtr(true)},
 			RequireCodeScanningResults:       &uimodel.CodeScanningRule{CodeScanningTools: rulesetPtr([]uimodel.CodeScanningTool{{ToolName: "CodeQL", Alerts: "errors", SecurityAlerts: "high_or_higher"}})},
 		}
@@ -124,7 +124,6 @@ func TestUIRulesetExactCreateAndSelectedUpdate(t *testing.T) {
 		if err := json.Unmarshal([]byte(uiRulesetExpectedPayload), &response); err != nil {
 			t.Fatal(err)
 		}
-		delete(analysisParams(t, want, "pull_request"), "require_extra_approval_for_unattributed_changes")
 		response["id"] = id
 		response["source_type"] = "Repository"
 		response["source"] = "owner/current"

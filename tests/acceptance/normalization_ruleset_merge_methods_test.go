@@ -158,12 +158,12 @@ func TestRulesetMergeMethodsNormalizationAcrossExecutableCommands(t *testing.T) 
 	}
 	intent := func(choice string) string {
 		t.Helper()
-		rule := "{required_approvals: 0, allowed_merge_methods: [merge, squash, rebase]}"
+		rule := "{require_an_additional_approval_for_unattributed_copilot_pull_requests: false, required_approvals: 0, allowed_merge_methods: [merge, squash, rebase]}"
 		mu.Lock()
 		desired = []any{"merge", "rebase", "squash"}
 		switch choice {
 		case "subset":
-			rule = "{required_approvals: 0, allowed_merge_methods: [squash]}"
+			rule = "{require_an_additional_approval_for_unattributed_copilot_pull_requests: false, required_approvals: 0, allowed_merge_methods: [squash]}"
 			desired = []any{"squash"}
 		case "removed":
 			rule = ""
@@ -320,7 +320,7 @@ func TestRulesetMergeMethodsNormalizationAcrossExecutableCommands(t *testing.T) 
 	mu.Unlock()
 	input = intent("removed")
 	output, diagnostic, status = run("apply")
-	if status != 1 || output != "" || !strings.Contains(diagnostic, "cannot remove PR rule") {
+	if status != 1 || output != "" || !strings.Contains(diagnostic, "writes may already have applied") {
 		t.Fatal("retained canonical rule confirmed removal", status, output, diagnostic)
 	}
 	checkSource(input)

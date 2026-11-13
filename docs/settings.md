@@ -846,7 +846,8 @@ The `delete` member is removed: old `delete: true`/`false` declarations fail wit
 migration guidance. Remove the unwanted entry only after listing every other
 Ruleset to keep; inspect `plan --prune rulesets`, then use `apply --prune rulesets`.
 This is broader than the old single-object selector. Complete unsupported,
-inherited/Push, normalized or unowned PR/Preview policy remains a deletion blocker.
+inherited/Push or normalized policy remains a deletion blocker. A complete supported
+PR rule is eligible, including either additional-approval value.
 Exact identity/policy preflight and HTTP 204 plus complete absence readback are
 required; no retry, substitution or rollback is introduced.
 
@@ -890,7 +891,7 @@ Private `required_approvals_normalization` metadata requires a string path and i
 
 A complete present pull-request rule requires a nonempty, unique list of strings. If any acquired `allowed_merge_methods` member is outside `merge`, `squash` and `rebase`, project the entire list to the named default: Merge, Squash, Rebase. Retain the exact original list and its order, including empty or whitespace strings, as owned ID-bound provenance. Missing/null lists, null or non-string members, empty lists, duplicates, incomplete policies and failed pagination remain acquisition errors. An absent PR rule stays absent.
 
-Export warns and saves only effective choices. Plan and detailed Summary show the original list, the normalized default and the selected desired choices in named UI order; fallback-equal selection still requires one whole-object update. Existing declared-object defaults apply when the methods field is omitted within a selected PR rule. Removing the PR rule is refused to preserve its unowned Preview member. Unlisted IDs and omitted Ruleset collections remain undisclosed and unwritten.
+Export warns and saves only effective choices. Plan and detailed Summary show the original list, the normalized default and the selected desired choices in named UI order; fallback-equal selection still requires one whole-object update. Existing declared-object defaults apply when the methods field is omitted within a selected PR rule. Removing the PR rule removes its owned controls, including additional approval, and requires verified absence. Unlisted IDs and omitted Ruleset collections remain undisclosed and unwritten.
 
 Apply verifies the original mutation acknowledgment and an independent fresh GET against the desired whole policy. A retained unsupported list cannot confirm the full default, and a retained canonical PR rule cannot confirm removal. Fresh warnings are diagnostic evidence only. Incomplete acquisition preserves export destinations and makes no Ruleset write; later failures retain earlier or uncertain effects.
 
@@ -933,8 +934,29 @@ Private same-version reports retain actor-bound `bypass_mode_normalizations`, va
 | Field | Default / accepted value |
 | --- | --- |
 | `required_approvals` | 0; UI integers 0–10 |
+| `require_an_additional_approval_for_unattributed_copilot_pull_requests` | true; explicit false disables the additional approval |
 | `allowed_merge_methods` | all three: `merge`, `squash`, `rebase`; nonempty unique selected choices |
 | `dismiss_stale_pull_request_approvals_when_new_commits_are_pushed`, `require_review_from_code_owners`, `require_approval_of_the_most_recent_reviewable_push`, `require_conversation_resolution_before_merging` | false |
+
+The additional-approval checkbox maps to the REST PR-rule parameter
+`require_extra_approval_for_unattributed_changes`. It adds one approval for
+unattributed Copilot pull requests when `required_approvals` is nonzero; it has no
+effect when the count is 0. GitHub documents this Preview control as enabled by
+default for new and existing Rulesets. [Official Ruleset behavior](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#additional-approval-for-unattributed-copilot-pull-requests).
+
+Selecting the PR group owns this boolean: omission within the group declares
+true, while explicit false remains false. Export writes the actual acquired
+boolean. Missing, null or incorrectly typed observations fail complete acquisition;
+declaration defaults never fill unread values. Omitting the PR group removes the
+whole rule, including additional approval. Existing explicit Ruleset prune can
+remove its whole containing object after the normal complete-candidate checks.
+
+Every update compares the fresh additional-approval value and PR-rule presence
+against the original acquisition before PUT; drift stops the write. An intended
+true/false change is compared against desired state only in the mutation response
+and independent GET verification. Fresh checks do not lock concurrent edits;
+post-write mismatches remain uncertain and no rollback occurs. Creation and
+deletion retain complete-policy and identity checks.
 
 Independent supported collections canonicalize by identity.
 
@@ -956,13 +978,11 @@ Independent supported collections canonicalize by identity.
 
 The scope correction on 2026-11-09 follows the user's observed availability of **Require code quality results** in a personal repository. The [official Rulesets reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-code-quality-results) documents the rule and Free public Rulesets, and the [public REST API](https://docs.github.com/en/rest/repos/rules#update-a-repository-ruleset) documents its severity field. Product entitlement descriptions are not evidence that this individual control is unavailable. The rule requires configured Code Quality analysis; managing it does not enable the product, start analysis, create workflows or change billing. Coverage remains unimplemented; its Preview status is not a policy exclusion. See [Code Quality normalization](#ruleset-quality-severity-observation-normalization).
 
-### Unimplemented branch controls and unowned Preview values
+### Unimplemented branch controls
 
-The rejection introduced on 2026-11-09 remains current behavior: public YAML does not accept `restrict_code_coverage`, `require_a_pull_request_before_merging.require_review_from_specific_teams` or `require_a_pull_request_before_merging.require_an_additional_approval_for_unattributed_copilot_pull_requests`, including empty collections and explicit false. The personal-public Ruleset editor observed on 2026-11-13 visibly offered the **Require review from specific teams** checkbox, despite official documentation describing the control as unavailable for user-owned repositories. The checkbox was not expanded, so complete usable team selection and the personal-repository API contract remain unconfirmed; this discrepancy does not establish a policy exclusion or implemented support. Organization team ownership and access management remain outside the target. Coverage and unattributed Copilot additional approval are unimplemented target candidates; Preview status is not an exclusion. The [official rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [coverage documentation](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage) provide the control context. This policy change neither makes those keys valid nor disables live settings.
+Public YAML does not accept `restrict_code_coverage` or `require_a_pull_request_before_merging.require_review_from_specific_teams`, including empty collections and explicit false. The personal-public Ruleset editor observed on 2026-11-13 visibly offered the **Require review from specific teams** checkbox, despite official documentation describing the control as unavailable for user-owned repositories. The checkbox was not expanded, so complete usable team selection and the personal-repository API contract remain unconfirmed; this discrepancy does not establish a policy exclusion or implemented support. Organization team ownership and access management remain outside the target. Coverage remains an unimplemented target candidate; Preview status is not an exclusion. The [official rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [coverage documentation](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage) provide the control context. This policy change neither makes those keys valid nor disables live settings.
 
-Acquired `code_coverage`, nonempty PR `required_reviewers` and unknown or malformed rules still fail complete acquisition without dropping protection. Ordinary code-scanning merge protection, Code Quality thresholds, PR approval counts, public fork approval and automatic Copilot code review remain separate controls. All existing Ruleset updates independently recheck ownership, identity and unowned values before PUT; Code Quality presence and raw severity changes since acquisition also stop the update. Preflight is not an atomic lock: concurrent changes between GET and PUT can still race, and post-write failures report that writes may have applied without rollback.
-
-The typed acquired PR additional-approval boolean is unowned preservation metadata. It is omitted from public YAML and is retained exactly on supported updates, including true and false. A missing, null or incorrectly typed value fails acquisition. A fresh detail GET checks it before PR-related updates; acknowledgment and independent readback must retain it. A new PR rule omits the member, lets GitHub choose its default and checks the typed acknowledgment value against independent readback. No false default is invented. Removing an existing PR rule or its whole Ruleset is refused before mutation because its unowned nested value cannot be preserved. This also applies when `rules` is omitted on a selected PR-containing object. Fresh reads do not lock concurrent edits; whole-object updates retain the documented concurrency limits.
+Acquired `code_coverage`, nonempty PR `required_reviewers` and unknown or malformed rules still fail complete acquisition without dropping protection. Ordinary code-scanning merge protection, Code Quality thresholds, PR approval counts, public fork approval and automatic Copilot code review remain separate controls. All existing Ruleset updates independently recheck ownership, identity and complete policy before PUT; changes to additional approval, PR-rule presence, Code Quality presence or raw severity since acquisition stop the update. Preflight is not an atomic lock: concurrent changes between GET and PUT can still race, and post-write failures report that writes may have applied without rollback.
 
 ### Unsupported Push Rulesets
 

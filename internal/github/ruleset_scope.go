@@ -31,8 +31,8 @@ func rejectUnsupportedRulesetScope(raw map[string]json.RawMessage) error {
 		if err := requiredRuleJSON(rule, "parameters", &parameters); err != nil {
 			return err
 		}
-		var preview bool
-		if err := requiredRuleJSON(parameters, "require_extra_approval_for_unattributed_changes", &preview); err != nil {
+		var additionalApproval bool
+		if err := requiredRuleJSON(parameters, "require_extra_approval_for_unattributed_changes", &additionalApproval); err != nil {
 			return err
 		}
 		var teams []json.RawMessage
@@ -46,10 +46,10 @@ func rejectUnsupportedRulesetScope(raw map[string]json.RawMessage) error {
 	return nil
 }
 
-func (client *Client) preflightRulesetUnmanaged(repo repository.Repository, change settings.RulesetChange) error {
+func (client *Client) preflightRulesetUpdate(repo repository.Repository, change settings.RulesetChange) error {
 	var raw map[string]json.RawMessage
 	if err := client.rest.Get(rulesetsPath(repo)+"/"+strconv.FormatInt(change.ID(), 10)+"?includes_parents=false", &raw); err != nil {
-		return fmt.Errorf("read unowned Ruleset companions before update: %w", err)
+		return fmt.Errorf("read Ruleset policy before update: %w", err)
 	}
 	owned, err := rulesetOwner(raw, repo)
 	if err != nil || !owned {
@@ -68,10 +68,10 @@ func (client *Client) preflightRulesetUnmanaged(repo repository.Repository, chan
 	if !reflect.DeepEqual(rulesetQualitySnapshot(&current, records.QualitySeverity), rulesetQualitySnapshot(change.Before(), change.Normalizations().QualitySeverity)) {
 		return fmt.Errorf("Code Quality rule changed before update; no update sent")
 	}
-	actual, present := settings.RulesetPreviewApproval(&current)
-	expected, wasPresent := settings.RulesetPreviewApproval(change.Before())
+	actual, present := settings.RulesetAdditionalApproval(&current)
+	expected, wasPresent := settings.RulesetAdditionalApproval(change.Before())
 	if present != wasPresent || !reflect.DeepEqual(actual, expected) {
-		return fmt.Errorf("unowned PR additional-approval value changed before update; no update sent")
+		return fmt.Errorf("PR additional-approval value changed before update; no update sent")
 	}
 	return nil
 }

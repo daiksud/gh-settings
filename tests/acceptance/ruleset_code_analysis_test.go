@@ -130,8 +130,9 @@ func TestRulesetCodeAnalysisExportPlanApplyRetainsAllProtections(t *testing.T) {
 			"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": true,
 			"require_a_pull_request_before_merging": map[string]any{
 				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
-				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed": true,
-				"require_review_from_code_owners":                                  true,
+				"require_an_additional_approval_for_unattributed_copilot_pull_requests": true,
+				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,
+				"require_review_from_code_owners":                                       true,
 
 				"require_approval_of_the_most_recent_reviewable_push": false,
 				"require_conversation_resolution_before_merging":      true,

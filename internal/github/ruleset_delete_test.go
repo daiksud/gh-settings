@@ -141,3 +141,55 @@ func TestRulesetDeleteRequiresStrictPreflightAndConfirmedInventoryAbsence(t *tes
 		})
 	}
 }
+
+func TestRulesetAdditionalApprovalPruneKeepsFreshPolicyGate(t *testing.T) {
+	for _, value := range []bool{false, true} {
+		for _, drift := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%t/drift=%t", value, drift), func(t *testing.T) {
+				body := scopeBody(t, value)
+				data, _ := json.Marshal(body)
+				before, err := decodeRulesetPolicyFromTest(data)
+				if err != nil {
+					t.Fatal(err)
+				}
+				before.ID = rulesetPtr(int64(7))
+				change, err := settings.NewRulesetChange("delete", 7, &before, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				calls := []string{}
+				client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+					calls = append(calls, req.Method)
+					switch len(calls) {
+					case 1:
+						if req.Method != "GET" || req.URL.Path != "/repos/owner/current/rulesets/7" || req.URL.Query().Get("includes_parents") != "false" {
+							t.Fatal(req.Method, req.URL)
+						}
+						if drift {
+							scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = !value
+						}
+						data, _ := json.Marshal(body)
+						return labelsResponse(req, 200, string(data)), nil
+					case 2:
+						if req.Method != "DELETE" || req.URL.Path != "/repos/owner/current/rulesets/7" {
+							t.Fatal(req.Method, req.URL)
+						}
+						return labelsResponse(req, 204, ""), nil
+					case 3:
+						if req.Method != "GET" || req.URL.Path != "/repos/owner/current/rulesets" || req.URL.Query().Get("includes_parents") != "false" {
+							t.Fatal(req.Method, req.URL)
+						}
+						return labelsResponse(req, 200, `[]`), nil
+					default:
+						t.Fatal("unexpected request", req.Method, req.URL)
+						return nil, nil
+					}
+				}))
+				_, err = client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
+				if (err != nil) != drift || len(calls) != map[bool]int{false: 3, true: 1}[drift] {
+					t.Fatal(calls, err)
+				}
+			})
+		}
+	}
+}

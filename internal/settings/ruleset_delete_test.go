@@ -15,7 +15,7 @@ func TestRemovedRulesetTombstonesGivePruneMigration(t *testing.T) {
 	}
 }
 
-func TestRulesetPruneRejectsUnmanagedAndUnownedPolicy(t *testing.T) {
+func TestRulesetPruneRejectsUnmanagedAndNormalizedPolicy(t *testing.T) {
 	id := int64(7)
 	policy := basicPolicy("basic")
 	policy.ID = &id
@@ -37,15 +37,6 @@ func TestRulesetPruneRejectsUnmanagedAndUnownedPolicy(t *testing.T) {
 		if _, err := ReconcileRulesetsWithPrune(unowned, &desired, true); err == nil {
 			t.Fatal("unowned inventory accepted")
 		}
-	}
-	policy = basicPolicy("basic")
-	policy.ID = &id
-	value := false
-	rules := []RulesetRule{{Type: "pull_request", Parameters: &RuleParameters{RequireExtraApprovalForUnattributedChanges: &value}}}
-	policy.Rules = &rules
-	current, _ = NewRulesetObservation([]RulesetState{{ID: id, Policy: policy}}, 0)
-	if _, err := ReconcileRulesetsWithPrune(current, &desired, true); err == nil {
-		t.Fatal("PR preservation weakened")
 	}
 	policy = basicPolicy("basic")
 	policy.ID = &id

@@ -54,7 +54,7 @@ func TestRulesetScopeAcquisitionRejectsUnownedProtection(t *testing.T) {
 	}
 }
 
-func TestRulesetScopeWriterPreservesAndChecksUnownedPreview(t *testing.T) {
+func TestRulesetAdditionalApprovalWriterChangesIntentAndChecksDrift(t *testing.T) {
 	for _, value := range []bool{false, true} {
 		for _, mode := range []string{"ok", "preflight drift", "preflight quality", "preflight teams", "preflight denied", "ack drift", "readback drift"} {
 			t.Run(fmt.Sprintf("%t/%s", value, mode), func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestRulesetScopeWriterPreservesAndChecksUnownedPreview(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				afterBody := scopeBody(t, value)
+				afterBody := scopeBody(t, !value)
 				afterBody["name"] = "edited"
 				data, _ = json.Marshal(afterBody)
 				after, err := decodeRulesetPolicyFromTest(data)
@@ -100,15 +100,15 @@ func TestRulesetScopeWriterPreservesAndChecksUnownedPreview(t *testing.T) {
 						if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
 							t.Fatal(err)
 						}
-						if got := scopedPR(t, payload)["require_extra_approval_for_unattributed_changes"]; got != value {
-							t.Fatal("changed unowned flag", got)
+						if got := scopedPR(t, payload)["require_extra_approval_for_unattributed_changes"]; got != !value {
+							t.Fatal("lost declared flag", got)
 						}
 						if mode == "ack drift" {
-							scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = !value
+							scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = value
 						}
 					} else if calls == 3 && req.Method == "GET" {
 						if mode == "readback drift" {
-							scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = !value
+							scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = value
 						}
 					} else {
 						t.Fatal(req.Method, calls)
@@ -135,47 +135,81 @@ func TestRulesetScopeWriterPreservesAndChecksUnownedPreview(t *testing.T) {
 	}
 }
 
-func TestNewPRRuleLeavesPreviewDefaultToServerAndConfirmsReadback(t *testing.T) {
-	for _, value := range []bool{false, true} {
-		for _, drift := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%t/%t", value, drift), func(t *testing.T) {
+func TestNewPRRuleDeclaresAdditionalApprovalAndConfirmsReadback(t *testing.T) {
+	for _, declaration := range []struct {
+		name  string
+		value *bool
+	}{
+		{"omitted", nil}, {"false", rulesetPtr(false)}, {"true", rulesetPtr(true)},
+	} {
+		for _, mode := range []string{"ok", "ack mismatch", "readback mismatch", "readback missing", "readback denied"} {
+			t.Run(declaration.name+"/"+mode, func(t *testing.T) {
+				value := declaration.value == nil || *declaration.value
 				body := scopeBody(t, value)
 				data, _ := json.Marshal(body)
 				policy, err := decodeRulesetPolicyFromTest(data)
 				if err != nil {
 					t.Fatal(err)
 				}
-				policy.ID = nil
-				for _, r := range *policy.Rules {
-					if r.Type == "pull_request" {
-						r.Parameters.RequireExtraApprovalForUnattributedChanges = nil
+				for _, rule := range *policy.Rules {
+					if rule.Type == "pull_request" {
+						rule.Parameters.RequireExtraApprovalForUnattributedChanges = declaration.value
 					}
 				}
-				change, err := settings.NewRulesetChange("create", 0, nil, &policy)
+				declarations, err := settings.NewRulesetDeclarations([]settings.RulesetDeclaration{policy})
+				if err != nil {
+					t.Fatal(err)
+				}
+				desired := declarations.Values()[0]
+				change, err := settings.NewRulesetChange("create", 0, nil, &desired)
 				if err != nil {
 					t.Fatal(err)
 				}
 				calls := 0
 				client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 					calls++
-					if req.Method == "POST" {
-						var payload map[string]any
-						json.NewDecoder(req.Body).Decode(&payload)
-						if _, present := scopedPR(t, payload)["require_extra_approval_for_unattributed_changes"]; present {
-							t.Fatal("guessed default")
+					if calls == 1 {
+						if req.Method != "POST" || req.URL.Path != "/repos/owner/current/rulesets" {
+							t.Fatal(req.Method, req.URL)
 						}
-					} else if req.Method != "GET" {
-						t.Fatal(req.Method)
-					}
-					if calls == 2 && drift {
-						scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = !value
+						var payload map[string]any
+						if err := json.NewDecoder(req.Body).Decode(&payload); err != nil {
+							t.Fatal(err)
+						}
+						if got := scopedPR(t, payload)["require_extra_approval_for_unattributed_changes"]; got != value {
+							t.Fatal("lost normalized declaration", got)
+						}
+						if mode == "ack mismatch" {
+							scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = !value
+						}
+					} else if calls == 2 {
+						if req.Method != "GET" || req.URL.Path != "/repos/owner/current/rulesets/7" || req.URL.Query().Get("includes_parents") != "false" {
+							t.Fatal(req.Method, req.URL)
+						}
+						switch mode {
+						case "readback mismatch":
+							scopedPR(t, body)["require_extra_approval_for_unattributed_changes"] = !value
+						case "readback missing":
+							delete(scopedPR(t, body), "require_extra_approval_for_unattributed_changes")
+						case "readback denied":
+							return labelsResponse(req, 403, `{"message":"denied"}`), nil
+						}
+					} else {
+						t.Fatal("unexpected retry", calls)
 					}
 					data, _ := json.Marshal(body)
 					return labelsResponse(req, 200, string(data)), nil
 				}))
-				_, err = client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
-				if (err != nil) != drift || calls != 2 {
-					t.Fatal(calls, err)
+				id, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
+				wantCalls := 2
+				if mode == "ack mismatch" {
+					wantCalls = 1
+				}
+				if (err != nil) != (mode != "ok") || calls != wantCalls || id != 7 {
+					t.Fatal("outcome or recovery ID", calls, id, err)
+				}
+				if err != nil && !strings.Contains(err.Error(), "writes may already have applied") {
+					t.Fatal("lost uncertainty", err)
 				}
 			})
 		}

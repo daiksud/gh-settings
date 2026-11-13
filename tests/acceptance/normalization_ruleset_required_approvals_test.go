@@ -172,7 +172,7 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 				mu.Unlock()
 				rules := "{}"
 				if choice != "removed" {
-					rules = "{require_a_pull_request_before_merging: {required_approvals: " + choice + "}}"
+					rules = "{require_a_pull_request_before_merging: {require_an_additional_approval_for_unattributed_copilot_pull_requests: false, required_approvals: " + choice + "}}"
 				}
 				input := repositoryInput(about + "settings: {rulesets: [{id: 7, ruleset_name: basic, enforcement_status: " + enforcement + ", target_branches: {include_default_branch: true}, rules: " + rules + "}]}\n")
 				if err := writeSettingsFile(fixture.work, input); err != nil {
@@ -311,7 +311,7 @@ func TestRulesetRequiredApprovalsNormalizationAcrossExecutableCommands(t *testin
 			mu.Unlock()
 			input = intent("removed", "")
 			output, diagnostic, status = run("apply")
-			if status != 1 || output != "" || !strings.Contains(diagnostic, "cannot remove PR rule") {
+			if status != 1 || output != "" || !strings.Contains(diagnostic, "writes may already have applied") {
 				t.Fatal("retained canonical rule", status, output, diagnostic)
 			}
 			checkSource(input)
