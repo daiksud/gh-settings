@@ -26,7 +26,7 @@ func TestAutomaticSecurityExportWarningsRequireCompleteObservations(t *testing.T
 				return o, nil
 			}
 			saved, warnings := false, 0
-			err = Export(ExportCheckout{Repository: checkoutRepository, SecurityStatusNormalizationWarning: func(settings.SecurityStatusNormalization) { warnings++ }, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err = Export(ExportCheckout{Repository: checkoutRepository, SecurityStatusNormalizationWarning: func(settings.SecurityStatusNormalization) error { warnings++; return nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					saved = true
 					if (failure == "") != (d.Security.SecretScanning != nil) {

@@ -74,19 +74,22 @@ func TestMergeMethodsExportKeepsCompleteOwnedEvidenceAndScope(t *testing.T) {
 				}, nil
 			}}
 			if mode != "nil sinks" {
-				checkout.RulesetMergeMethodsNormalizationWarning = func(id int64, name string, n settings.RulesetMergeMethodsNormalization) {
+				checkout.RulesetMergeMethodsNormalizationWarning = func(id int64, name string, n settings.RulesetMergeMethodsNormalization) error {
 					events = append(events, fmt.Sprintf("%d:%s:methods", id, name))
 					if !slices.Equal(n.RawValue, []string{name + "_METHOD", "squash"}) || !slices.Equal(n.Fallback, []string{"merge", "squash", "rebase"}) {
 						t.Fatal(n)
 					}
 					n.RawValue[0], n.Fallback[0] = "CORRUPT", "CORRUPT"
+					return nil
 				}
 				if mode != "only methods sink" {
-					checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) {
+					checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) error {
 						events = append(events, fmt.Sprintf("%d:%s:%s", id, name, n.Path))
+						return nil
 					}
-					checkout.RulesetRequiredApprovalsNormalizationWarning = func(id int64, name string, n settings.RulesetRequiredApprovalsNormalization) {
+					checkout.RulesetRequiredApprovalsNormalizationWarning = func(id int64, name string, n settings.RulesetRequiredApprovalsNormalization) error {
 						events = append(events, fmt.Sprintf("%d:%s:approvals", id, name))
+						return nil
 					}
 				}
 			}

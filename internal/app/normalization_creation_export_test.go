@@ -49,7 +49,7 @@ func TestExportCreationWarningsUseVisibleOriginalSidecars(t *testing.T) {
 			}
 			var warnings []settings.ObservationNormalization
 			saved := false
-			err := Export(ExportCheckout{Repository: checkoutRepository, NormalizationWarning: func(n settings.ObservationNormalization) { warnings = append(warnings, n) }, CommitMessageNormalizationWarning: func(settings.CommitMessageNormalization) { t.Fatal("creation warning misrouted") }, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err := Export(ExportCheckout{Repository: checkoutRepository, NormalizationWarning: func(n settings.ObservationNormalization) error { warnings = append(warnings, n); return nil }, CommitMessageNormalizationWarning: func(settings.CommitMessageNormalization) error { t.Fatal("creation warning misrouted"); return nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(declaration settings.Declaration) error {
 					ui, err := github.UIFromExportDeclaration(declaration)
 					if err != nil {

@@ -101,6 +101,8 @@ Consumers can export, validate, inspect, or directly apply their checked-out rep
   other code in the caller's trusted job can read it. Publication is caller-owned.
 - CLI/output failures fail the Action and withhold successful results. A failed
   first-file write or later output write may leave local changes; no rollback.
+- Failed info or required normalization-warning delivery stops the shared CLI
+  before saving and withholds successful Action outputs.
 - Verify actual candidate composite first export and re-export, token boundaries,
   variable-value canaries, exact outputs and representative local failures.
 

@@ -176,8 +176,8 @@ func TestExportRepositoryWarningsUseOnlySuccessfulGroups(t *testing.T) {
 						}
 						return github.CheckExportAcquisition(d)
 					},
-					NormalizationWarning:              func(record settings.ObservationNormalization) { creation = append(creation, record) },
-					CommitMessageNormalizationWarning: func(record settings.CommitMessageNormalization) { commits = append(commits, record) },
+					NormalizationWarning:              func(record settings.ObservationNormalization) error { creation = append(creation, record); return nil },
+					CommitMessageNormalizationWarning: func(record settings.CommitMessageNormalization) error { commits = append(commits, record); return nil },
 					PrepareSave: func() (func(settings.Declaration) error, error) {
 						return func(d settings.Declaration) error { saved = d; return nil }, nil
 					},

@@ -89,8 +89,9 @@ func TestRulesetQualityExportPreservesOrderedIndependentRecordsAndRuleAbsence(t 
 					}, nil
 				}}
 				if test.sink {
-					checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) {
+					checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) error {
 						got = append(got, warning{id, name, n})
+						return nil
 					}
 				}
 				err = Export(checkout, reader)

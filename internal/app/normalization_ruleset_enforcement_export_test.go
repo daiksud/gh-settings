@@ -83,8 +83,9 @@ func TestRulesetEnforcementExportWarningsUseCompleteSelectedIDs(t *testing.T) {
 				}, nil
 			}}
 			if test.sink {
-				checkout.RulesetNormalizationWarning = func(id int64, name string, record settings.ObservationNormalization) {
+				checkout.RulesetNormalizationWarning = func(id int64, name string, record settings.ObservationNormalization) error {
 					got = append(got, warning{id, name, record})
+					return nil
 				}
 			}
 			err = Export(checkout, reader)
