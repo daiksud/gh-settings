@@ -90,6 +90,9 @@ func environmentVisibleBefore(before, request *settings.EnvironmentDeclaration) 
 		return before
 	}
 	visible := *before
+	if request.CustomRules == nil {
+		visible.CustomRules = nil
+	}
 	if request.WaitTimer == nil {
 		visible.WaitTimer = nil
 	}

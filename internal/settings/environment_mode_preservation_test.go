@@ -17,7 +17,7 @@ func TestEnvironmentModeChangePreservesOmittedPatterns(t *testing.T) {
 				patterns = append(patterns, EnvironmentPatternState{ID: 7, Pattern: values[0]})
 			}
 			before.DeploymentBranchPatterns = &values
-			state := EnvironmentState{ID: 1, Policy: before, Patterns: patterns}
+			state := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: before, Patterns: patterns}
 			observed, err := NewEnvironmentObservation([]EnvironmentState{state})
 			if err != nil {
 				t.Fatal(err)

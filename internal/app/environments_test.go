@@ -111,7 +111,8 @@ func TestEnvironmentExportAcquiresAllPolicies(t *testing.T) {
 		reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
 		timer, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
 		patterns := []settings.EnvironmentPattern{{Type: "branch", Name: "same"}, {Type: "tag", Name: "same"}}
-		d, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, CanAdminsBypass: &prevent, Reviewers: &reviewers, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: &patterns}})
+		emptyApps := []int64{}
+		d, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{CustomRules: &emptyApps, Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, CanAdminsBypass: &prevent, Reviewers: &reviewers, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: &patterns}})
 		reader.Environments = func(_ repository.Repository, names []string) (settings.EnvironmentObservation, error) {
 			reads++
 			if names != nil {
@@ -120,7 +121,7 @@ func TestEnvironmentExportAcquiresAllPolicies(t *testing.T) {
 			if mode == "failure" {
 				return settings.EnvironmentObservation{}, errors.New("unsupported policy")
 			}
-			return settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 71, Policy: d.Values()[0]}})
+			return settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 71, Policy: d.Values()[0]}})
 		}
 		err := Export(ExportCheckout{Repository: func() (repository.Repository, error) { return repository.Repository{}, nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
 			return func(saved settings.Declaration) error {

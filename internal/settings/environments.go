@@ -15,6 +15,7 @@ import (
 // Environment names are identity. Numeric environment IDs are observation
 // metadata only, never declaration fields or created-ID writeback input.
 type EnvironmentDeclaration struct {
+	CustomRules                    *[]int64                 `json:"custom_rules,omitempty" yaml:"custom_rules,omitempty"`
 	Name                           string                   `json:"name" yaml:"name"`
 	WaitTimer                      *int                     `json:"wait_timer,omitempty" yaml:"wait_timer,omitempty"`
 	PreventSelfReview              *bool                    `json:"prevent_self_review,omitempty" yaml:"prevent_self_review,omitempty"`
@@ -29,6 +30,9 @@ type EnvironmentDeclaration struct {
 // defaults. Reports, PUT bodies and YAML all use the same presence semantics.
 func (p EnvironmentDeclaration) fields() map[string]any {
 	fields := map[string]any{"name": p.Name}
+	if p.CustomRules != nil {
+		fields["custom_rules"] = *p.CustomRules
+	}
 	if p.WaitTimer != nil {
 		fields["wait_timer"] = *p.WaitTimer
 	}
@@ -80,6 +84,7 @@ type EnvironmentBranchPolicy struct {
 
 type EnvironmentDeclarations struct{ entries []EnvironmentDeclaration }
 type EnvironmentState struct {
+	CustomRules                 []EnvironmentCustomRule
 	ID                          int64
 	Policy                      EnvironmentDeclaration
 	Patterns                    []EnvironmentPatternState
@@ -112,6 +117,11 @@ func (policy EnvironmentDeclaration) ValidateObservationPolicy() error {
 }
 
 func validateEnvironment(policy EnvironmentDeclaration, complete bool) error {
+	if policy.CustomRules != nil {
+		if _, err := normalizeEnvironmentCustomRules(*policy.CustomRules); err != nil {
+			return err
+		}
+	}
 	if policy.Name == "" || strings.TrimSpace(policy.Name) != policy.Name || !utf8.ValidString(policy.Name) || utf8.RuneCountInString(policy.Name) > 255 {
 		return fmt.Errorf("environment name must contain 1–255 characters without surrounding whitespace")
 	}
@@ -162,6 +172,10 @@ func validateEnvironment(policy EnvironmentDeclaration, complete bool) error {
 }
 
 func cloneEnvironment(policy EnvironmentDeclaration) EnvironmentDeclaration {
+	policy.CustomRules = copyRuleList(policy.CustomRules)
+	if policy.CustomRules != nil {
+		slices.Sort(*policy.CustomRules)
+	}
 	policy.WaitTimer = copyRuleValue(policy.WaitTimer)
 	policy.PreventSelfReview = copyRuleValue(policy.PreventSelfReview)
 	policy.CanAdminsBypass = copyRuleValue(policy.CanAdminsBypass)
@@ -222,6 +236,14 @@ func NewEnvironmentObservation(entries []EnvironmentState) (EnvironmentObservati
 	result := EnvironmentObservation{entries: make([]EnvironmentState, 0, len(entries))}
 	seenNames, seenIDs := map[string]bool{}, map[int64]bool{}
 	for _, entry := range entries {
+		ids, err := EnvironmentCustomRuleIDs(entry.CustomRules)
+		if err != nil {
+			return EnvironmentObservation{}, err
+		}
+		if entry.Policy.CustomRules != nil && !slices.Equal(*entry.Policy.CustomRules, ids) {
+			return EnvironmentObservation{}, fmt.Errorf("environment custom rule projection differs from acquired bindings")
+		}
+		entry.Policy.CustomRules = &ids
 		if err := entry.validateDeploymentNormalization(); err != nil {
 			return EnvironmentObservation{}, err
 		}
@@ -230,7 +252,7 @@ func NewEnvironmentObservation(entries []EnvironmentState) (EnvironmentObservati
 			return EnvironmentObservation{}, fmt.Errorf("ambiguous environment observation")
 		}
 		seenNames[key], seenIDs[entry.ID] = true, true
-		result.entries = append(result.entries, EnvironmentState{ID: entry.ID, Policy: cloneEnvironment(entry.Policy), Patterns: slices.Clone(entry.Patterns), DeploymentModeNormalization: entry.DeploymentModeNormalization})
+		result.entries = append(result.entries, EnvironmentState{CustomRules: slices.Clone(entry.CustomRules), ID: entry.ID, Policy: cloneEnvironment(entry.Policy), Patterns: slices.Clone(entry.Patterns), DeploymentModeNormalization: entry.DeploymentModeNormalization})
 	}
 	return result, nil
 }
@@ -241,7 +263,7 @@ func (o EnvironmentObservation) Values() ([]EnvironmentState, error) {
 	}
 	out := make([]EnvironmentState, 0, len(o.entries))
 	for _, v := range o.entries {
-		out = append(out, EnvironmentState{ID: v.ID, Policy: cloneEnvironment(v.Policy), Patterns: slices.Clone(v.Patterns), DeploymentModeNormalization: v.DeploymentModeNormalization})
+		out = append(out, EnvironmentState{CustomRules: slices.Clone(v.CustomRules), ID: v.ID, Policy: cloneEnvironment(v.Policy), Patterns: slices.Clone(v.Patterns), DeploymentModeNormalization: v.DeploymentModeNormalization})
 	}
 	return out, nil
 }
@@ -273,6 +295,9 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 			continue
 		}
 		policy.Name = before.Name
+		if _, _, err := EnvironmentCustomRuleChanges(state.CustomRules, policy.CustomRules); err != nil {
+			return nil, err
+		}
 		record := EnvironmentDeploymentNormalization{}
 		if policy.DeploymentBranchPolicyDeclared || policy.DeploymentBranchPolicy != nil {
 			record = state.DeploymentModeNormalization
@@ -420,6 +445,7 @@ func EnvironmentHasAPIOmissions(p EnvironmentDeclaration) bool {
 func EnvironmentMatchesRequest(actual, requested EnvironmentDeclaration) bool {
 	a, r := cloneEnvironment(actual), cloneEnvironment(requested)
 	return EnvironmentIdentity(a.Name) == EnvironmentIdentity(r.Name) &&
+		(r.CustomRules == nil || reflect.DeepEqual(a.CustomRules, r.CustomRules)) &&
 		(r.WaitTimer == nil || reflect.DeepEqual(a.WaitTimer, r.WaitTimer)) &&
 		(r.PreventSelfReview == nil || reflect.DeepEqual(a.PreventSelfReview, r.PreventSelfReview)) &&
 		(r.CanAdminsBypass == nil || reflect.DeepEqual(a.CanAdminsBypass, r.CanAdminsBypass)) &&

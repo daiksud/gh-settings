@@ -4,7 +4,7 @@ import "testing"
 
 func TestEnvironmentMatchingPartialAndNameOnlySkipUpdates(t *testing.T) {
 	before := environmentPolicy(t, "production")
-	observation, err := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: before}})
+	observation, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: before}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestEnvironmentUpdateCompanionsRemainSeparateFromIntent(t *testing.T) {
 	before.CanAdminsBypass = paramBool(true)
 	before.Reviewers = &[]EnvironmentReviewer{{Type: "User", ID: 7}}
 	requested := EnvironmentDeclaration{Name: "PRODUCTION", WaitTimer: paramInt(0)}
-	state := EnvironmentState{ID: 1, Policy: before}
+	state := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: before}
 	observation, _ := NewEnvironmentObservation([]EnvironmentState{state})
 	desired, _ := NewEnvironmentDeclarations([]EnvironmentDeclaration{requested})
 	changes, err := ReconcileEnvironments(observation, &desired)
@@ -58,7 +58,7 @@ func TestEnvironmentPartialDependencyConflictStopsReconciliation(t *testing.T) {
 			before.Reviewers = &[]EnvironmentReviewer{{Type: "User", ID: 7}}
 			requested = EnvironmentDeclaration{Name: "production", Reviewers: &[]EnvironmentReviewer{}}
 		}
-		observed, _ := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: before}})
+		observed, _ := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: before}})
 		desired, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{requested})
 		if err != nil {
 			t.Fatal("partial dependency cannot be resolved until acquisition", err)

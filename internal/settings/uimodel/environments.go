@@ -27,6 +27,7 @@ type Environment struct {
 	DeploymentProtectionRules  *EnvironmentDeploymentProtectionRules
 }
 type EnvironmentDeploymentProtectionRules struct {
+	CustomRules *[]int64
 	// Zero represents the unchecked Wait timer group; positive values are minutes.
 	WaitTimer                                            *int
 	RequiredReviewers                                    *[]EnvironmentReviewer

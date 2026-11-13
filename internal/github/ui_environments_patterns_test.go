@@ -57,7 +57,7 @@ func TestUIEnvironmentTypedPatternsAndOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	complete := settings.EnvironmentDeclaration{Name: "Production", WaitTimer: environmentUIPtr(0), Reviewers: environmentUIPtr([]settings.EnvironmentReviewer{}), PreventSelfReview: environmentUIPtr(false), CanAdminsBypass: environmentUIPtr(false), DeploymentBranchPolicyDeclared: true}
-	observed, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 7, Policy: complete}})
+	observed, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 7, Policy: complete}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +65,7 @@ func TestUIEnvironmentTypedPatternsAndOwnership(t *testing.T) {
 		t.Fatal("mode prerequisite invented")
 	}
 	complete.DeploymentBranchPolicy = &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}
-	observed, err = settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 7, Policy: complete}})
+	observed, err = settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 7, Policy: complete}})
 	if err != nil {
 		t.Fatal(err)
 	}

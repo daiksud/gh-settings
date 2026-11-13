@@ -33,7 +33,7 @@ func TestUIEnvironmentAcquiredCollectionAndMetadata(t *testing.T) {
 	custom.PreventSelfReview = environmentUIPtr(true)
 	custom.DeploymentBranchPatterns = environmentUIPtr([]settings.EnvironmentPattern{{Type: "tag", Name: "Release/*"}, {Type: "branch", Name: "main"}})
 	rawPatterns := []settings.EnvironmentPatternState{{ID: 31, Pattern: settings.EnvironmentPattern{Type: "tag", Name: "Release/*"}}, {ID: 32, Pattern: settings.EnvironmentPattern{Type: "branch", Name: "main"}}}
-	acquired, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 3, Policy: plain}, {ID: 2, Policy: protected}, {ID: 1, Policy: custom, Patterns: rawPatterns}})
+	acquired, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 3, Policy: plain}, {CustomRules: []settings.EnvironmentCustomRule{}, ID: 2, Policy: protected}, {CustomRules: []settings.EnvironmentCustomRule{}, ID: 1, Policy: custom, Patterns: rawPatterns}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestUIEnvironmentAcquiredCollectionAndMetadata(t *testing.T) {
 	emptyCustom := uiEnvironmentObservedPolicy("empty")
 	emptyCustom.DeploymentBranchPolicy = &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}
 	emptyCustom.DeploymentBranchPatterns = environmentUIPtr([]settings.EnvironmentPattern{})
-	acquired, err = settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 4, Policy: emptyCustom}})
+	acquired, err = settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 4, Policy: emptyCustom}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestUIEnvironmentAcquisitionFailuresNoPartialCollection(t *testing.T) {
 	valid := uiEnvironmentObservedPolicy("valid")
 	partial := uiEnvironmentObservedPolicy("partial")
 	partial.DeploymentBranchPolicy = &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}
-	raw, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 1, Policy: valid}, {ID: 2, Policy: partial}})
+	raw, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 1, Policy: valid}, {CustomRules: []settings.EnvironmentCustomRule{}, ID: 2, Policy: partial}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestUIEnvironmentAcquisitionFailuresNoPartialCollection(t *testing.T) {
 	mismatch := uiEnvironmentObservedPolicy("mismatch")
 	mismatch.DeploymentBranchPolicy = &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}
 	mismatch.DeploymentBranchPatterns = environmentUIPtr([]settings.EnvironmentPattern{{Type: "branch", Name: "main"}})
-	raw, err = settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 1, Policy: valid}, {ID: 2, Policy: mismatch}})
+	raw, err = settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 1, Policy: valid}, {CustomRules: []settings.EnvironmentCustomRule{}, ID: 2, Policy: mismatch}})
 	if err != nil {
 		t.Fatal(err)
 	}

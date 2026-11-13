@@ -7,7 +7,7 @@ import (
 
 func normalizedPatternEnvironment(t *testing.T, collision bool) EnvironmentState {
 	t.Helper()
-	state := EnvironmentState{ID: 7, Policy: environmentPolicy(t, "production"), Patterns: []EnvironmentPatternState{normalizedPattern(31, "future", "main")}}
+	state := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 7, Policy: environmentPolicy(t, "production"), Patterns: []EnvironmentPatternState{normalizedPattern(31, "future", "main")}}
 	state.Policy.DeploymentBranchPolicy = &EnvironmentBranchPolicy{CustomBranchPolicies: true}
 	if collision {
 		state.Patterns = append(state.Patterns, EnvironmentPatternState{ID: 32, Pattern: EnvironmentPattern{Type: "branch", Name: "main"}})
@@ -61,7 +61,7 @@ func TestEnvironmentRefTypeStateRejectsForgedCollectionsAndProjection(t *testing
 	} {
 		state := normalizedPatternEnvironment(t, false)
 		mutate(&state)
-		got, err := NewEnvironmentObservation([]EnvironmentState{{ID: 9, Policy: environmentPolicy(t, "valid")}, state})
+		got, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 9, Policy: environmentPolicy(t, "valid")}, state})
 		if err == nil || !reflect.DeepEqual(got, EnvironmentObservation{}) {
 			t.Fatal("invalid state accepted", state, got, err)
 		}

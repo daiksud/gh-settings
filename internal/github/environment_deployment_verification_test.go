@@ -20,6 +20,7 @@ func observedEnvironmentModeState(t *testing.T, raw bool) settings.EnvironmentSt
 	if raw {
 		state.Patterns = []settings.EnvironmentPatternState{}
 	}
+	state.CustomRules = []settings.EnvironmentCustomRule{}
 	observed, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{state})
 	if err != nil {
 		t.Fatal(err)

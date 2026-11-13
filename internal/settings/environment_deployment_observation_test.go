@@ -9,7 +9,7 @@ import (
 
 func normalizedEnvironmentModeState(t *testing.T, id int64, name string, raw bool) EnvironmentState {
 	t.Helper()
-	state := EnvironmentState{ID: id, Policy: environmentPolicy(t, name), DeploymentModeNormalization: EnvironmentDeploymentNormalization{Path: EnvironmentDeploymentModePath, RawPolicy: EnvironmentBranchPolicy{ProtectedBranches: raw, CustomBranchPolicies: raw}, Fallback: uimodel.NoRestriction}}
+	state := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: id, Policy: environmentPolicy(t, name), DeploymentModeNormalization: EnvironmentDeploymentNormalization{Path: EnvironmentDeploymentModePath, RawPolicy: EnvironmentBranchPolicy{ProtectedBranches: raw, CustomBranchPolicies: raw}, Fallback: uimodel.NoRestriction}}
 	if raw {
 		state.Patterns = []EnvironmentPatternState{{ID: 31, Pattern: EnvironmentPattern{Type: "branch", Name: "release/*"}}, {ID: 32, Pattern: EnvironmentPattern{Type: "tag", Name: "v*"}}}
 	}
@@ -63,7 +63,7 @@ func TestEnvironmentDeploymentObservationOwnsRawPairAndLatentPatterns(t *testing
 			t.Fatal("other identity corrupted", got, err)
 		}
 	}
-	canonical := EnvironmentState{ID: 7, Policy: environmentPolicy(t, "production")}
+	canonical := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 7, Policy: environmentPolicy(t, "production")}
 	if got, err := canonical.RawDeploymentBranchPolicy(); err != nil || got != nil {
 		t.Fatal("known null invented pair", got, err)
 	}
@@ -106,7 +106,7 @@ func TestEnvironmentDeploymentObservationRejectsForgedOrIncompleteEvidence(t *te
 		if got, err := state.RawDeploymentBranchPolicy(); err == nil || got != nil {
 			t.Fatal("forged raw policy escaped", got, err)
 		}
-		observed, err := NewEnvironmentObservation([]EnvironmentState{{ID: 9, Policy: environmentPolicy(t, "valid")}, state})
+		observed, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 9, Policy: environmentPolicy(t, "valid")}, state})
 		if err == nil || !reflect.DeepEqual(observed, EnvironmentObservation{}) {
 			t.Fatal("partial collection escaped", observed, err)
 		}

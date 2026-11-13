@@ -123,11 +123,11 @@ func TestEnvironmentPartialUpdatePreservesLatestCompanions(t *testing.T) {
 				want.reviewers = state.reviewers
 			}
 			changed, err := client.Update(repo, requested)
-			if err != nil || !changed || writes != 1 || reads != 3 || !reflect.DeepEqual(state, want) {
+			if err != nil || !changed || writes != 1 || reads != 4 || !reflect.DeepEqual(state, want) {
 				t.Fatal(changed, writes, reads, state, want, err)
 			}
 			changed, err = client.Update(repo, requested)
-			if err != nil || changed || writes != 1 || reads != 4 {
+			if err != nil || changed || writes != 1 || reads != 5 {
 				t.Fatal("repeat mutated", changed, writes, reads, err)
 			}
 			if requested.Name != "PRODUCTION" || requested.DeploymentBranchPatterns != nil {

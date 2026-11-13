@@ -190,7 +190,7 @@ func TestUIEnvironmentTypedPatternCRUDAndPartialFailure(t *testing.T) {
 		}
 		changed, err := client.Update(repository.Repository{Owner: "owner", Name: "current"}, d)
 		if failTag {
-			if err == nil || changed || !modeWritten || !createdBranch || removed || !strings.Contains(err.Error(), "earlier verified environment policy update remains applied") || !reflect.DeepEqual(operations, []string{"mode", "branch", "tag"}) {
+			if err == nil || changed || !modeWritten || !createdBranch || removed || !strings.Contains(err.Error(), "earlier verified environment writes remain applied") || !reflect.DeepEqual(operations, []string{"mode", "branch", "tag"}) {
 				t.Fatal(changed, operations, err)
 			}
 			continue

@@ -194,7 +194,7 @@ func TestEnvironmentPruneSecretMetadataPagination(t *testing.T) {
 			if err == nil {
 				timer, flag, reviewers := 0, false, []settings.EnvironmentReviewer{}
 				inventory, _ := settings.NewVariableInventory(nil)
-				_, err = settings.NewEnvironmentPruneCandidate(repo, settings.ArchiveState{ID: 1, FullName: "owner/current"}, settings.EnvironmentState{ID: 2, Policy: settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &flag, CanAdminsBypass: &flag, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}}, inventory, values, true)
+				_, err = settings.NewEnvironmentPruneCandidate(repo, settings.ArchiveState{ID: 1, FullName: "owner/current"}, settings.EnvironmentState{CustomRules: []settings.EnvironmentCustomRule{}, ID: 2, Policy: settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &flag, CanAdminsBypass: &flag, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}}, inventory, values, true)
 			}
 			if (err == nil) != (mode == "complete") {
 				t.Fatal(requests, len(values), err)

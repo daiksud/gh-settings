@@ -1126,7 +1126,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 
 ## Environments
 
-`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Without prune, omission/`[]` selects nothing and unlisted Environments are preserved. Explicit [Environment pruning](#environment-pruning) adds bounded parent deletion; omission remains unmanaged. Deletion/rename markers, secret values and custom protection apps remain unsupported. Existing-app selection is adopted future work; secret values remain excluded. Selected non-sensitive variables have the separate ownership described below.
+`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Without prune, omission/`[]` selects nothing and unlisted Environments are preserved. Explicit [Environment pruning](#environment-pruning) adds bounded parent deletion; omission remains unmanaged. Deletion/rename markers and secret values remain unsupported. Already installed custom protection Apps use the separate checkbox ownership below; installation and grants remain excluded. Selected non-sensitive variables have the separate ownership described below.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -1153,11 +1153,70 @@ For an existing policy-selected Environment, only declared built-in controls are
 
 `deployment_branch_or_tag_rules` is an authoritative list of `{ref_type: branch|tag, name_pattern: pattern}`. Type+pattern is case-sensitive identity; branch and tag may share a pattern. Omission makes no pattern CRUD; `[]` removes all observed patterns. Omitted mode plus a list requires existing selected mode; creating with patterns needs explicit selected mode. Explicit incompatible modes fail. Patterns are a separate API collection, not PUT members. When selected mode stays selected and the list is omitted, complete raw pattern IDs, types and names are retained and verified without pattern CRUD or unowned warnings, including unsupported ref types and projection collisions. Changing from a raw custom mode to No restriction or Protected branches only is rejected while any raw pattern exists and the list is omitted. To remove those patterns deliberately, first apply `deployment_branch_or_tag_rules: []` while Selected, then change mode. A complete known-empty collection permits the transition. GitHub can discard the patterns when custom mode is disabled; the client does not probe inactive state by temporarily changing mode or treat an inaccessible pattern endpoint as empty.
 
-Reads require complete inventory, built-in/custom-protection details and typed paginated patterns when applicable; missing type is not assumed branch. Unknown/custom protection fails instead of being erased. Apply preflights and reconciles in stable name order. A pattern-only change skips policy PUT, verifies existing custom mode, creates missing patterns and deletes obsolete patterns by verified IDs. Retained pairs keep IDs. Complete fresh readback verifies original requested values/list and the preserved built-in snapshot; after a policy PUT it also verifies every sent companion. Duplicate-create 303, unavailable reads and mismatches fail; earlier/uncertain effects remain without retry, rollback or an intermediate-enforcement guarantee.
+Reads require complete inventory, built-in/custom-protection details and typed paginated patterns when applicable; missing type is not assumed branch. Unknown or malformed protection fails instead of being erased. Apply preflights and reconciles in stable name order. A pattern-only change skips policy PUT, verifies existing custom mode, creates missing patterns and deletes obsolete patterns by verified IDs. Retained pairs keep IDs. Complete fresh readback verifies original requested values/list and the preserved built-in snapshot; after a policy PUT it also verifies every sent companion. Duplicate-create 303, unavailable reads and mismatches fail; earlier/uncertain effects remain without retry, rollback or an intermediate-enforcement guarantee.
 
 Administrator bypass is a real writable setting. Export requires/retains its complete boolean, even false. A prior temporary public-Environment experiment confirmed explicit false/true and retained preceding values on omission with other members fixed; this is not a platform-wide omission or entitlement guarantee. No default true is inserted.
 
-Ordinary `export` observes supported Environment policy and active selected patterns, without Environment/pattern IDs. Variables are inventoried independently after complete name acquisition; policy failure does not prevent listing accessible variables. Existing Actions read, Administration write, custom-protection visibility and account eligibility still apply. See [Environment behavior](features/environments.feature.md).
+Ordinary `export` observes supported Environment policy, active selected patterns and enabled custom App IDs, without Environment/pattern/binding IDs. Variables are inventoried independently after complete name acquisition; policy failure does not prevent listing accessible variables. Existing Actions read, Administration write, custom-protection visibility and account eligibility still apply. See [Environment behavior](features/environments.feature.md).
+
+### Custom protection Apps
+
+`deployment_protection_rules.custom_rules` is an optional set of up to six unique
+positive GitHub App IDs. It selects the already installed Apps checked under
+**Deployment protection rules** in the Environment UI:
+
+```yaml
+repository:
+  settings:
+    environments:
+      - name: production
+        deployment_protection_rules:
+          custom_rules: [12345, 67890]
+```
+
+Omission preserves every freshly acquired binding. A present list owns the full
+checkbox set; `[]` explicitly disables every supported binding in that Environment
+without a prune flag. Matching and reordered sets make no binding write. App IDs
+identify integrations; rule IDs identify individual enabled bindings and never
+enter YAML or ID writeback. This does not install or uninstall Apps, grant access,
+approve deployments or configure webhooks. Enabling a rule affects later deployment
+gates according to that App. [GitHub documents the UI and prerequisites](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/configure-custom-protection-rules).
+
+Export reads enabled bindings independently of App availability and emits `[]`
+only after a complete known-empty observation. Missing/null fields, unsupported
+shapes, ambiguous identities or failed reads retain the whole previous Environment
+policy family, or omit it on first export. A retained enabled App does not need to
+appear in the available list. Export never enables an App or follows integration URLs.
+
+For an existing parent, apply validates all additions against complete available-App
+pagination before the first Environment write. Parent creation can precede that
+availability read; later failure reports the confirmed parent progress. App-only
+changes send no parent PUT. Built-in and pattern changes preserve exact omitted
+binding identities, and each App write preserves complete built-ins and patterns.
+A changed repository, parent, App or binding identity stops later operations.
+
+Apply adds before removing. A temporary custom-App union above six fails before
+any Environment write: first apply an explicit reduced set, then apply the desired
+replacement set, accounting for the protection change between those runs. The
+published six-rule limit does not establish how built-ins count; no combined
+capacity formula is invented. A server capacity refusal never triggers deletion
+as recovery. This sequence is nontransactional and has no intermediate-enforcement
+or atomic drift guarantee.
+
+Enable sends only `integration_id`, requires 201 with matching identities, then
+independently verifies the exact binding and complete enabled inventory. Disable
+uses the fixed rule ID, requires an empty 204 and complete fresh absence with all
+retained bindings unchanged. A recreated binding for the same App is drift, never
+a fallback deletion target. Failed verification returns nonzero, retains any
+positive acknowledged rule ID in recovery diagnostics and stops later operations;
+no binding is written to YAML and no retry or rollback occurs. Read actual state
+before retrying uncertain effects. See the [REST contracts](https://docs.github.com/en/rest/deployments/protection-rules).
+
+Enabled reads need Actions read where authentication is required. Additions also
+need Administration read for availability; changes need Administration write.
+Fixture checks do not establish actual token grants or live nonempty App behavior.
+Parent pruning still requires an explicitly known-empty custom protection list;
+ordinary App support does not expand parent-deletion ownership.
 
 ### Environment variables
 
@@ -1197,7 +1256,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Collaborator removal/invitation cancellation, classic branch protection and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Collaborator removal/invitation cancellation and classic branch protection are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 

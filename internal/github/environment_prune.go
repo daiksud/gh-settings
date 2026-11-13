@@ -60,6 +60,9 @@ func (c *EnvironmentsClient) readEnvironmentPruneCandidate(repo repository.Repos
 	if err != nil {
 		return settings.EnvironmentPruneCandidate{}, err
 	}
+	if state.CustomRules == nil || len(state.CustomRules) != 0 {
+		return settings.EnvironmentPruneCandidate{}, fmt.Errorf("Environment deletion requires known-empty custom protection rules")
+	}
 	if state.ID != entry.ID {
 		return settings.EnvironmentPruneCandidate{}, fmt.Errorf("Environment identity changed during prune acquisition")
 	}
@@ -71,7 +74,7 @@ func (c *EnvironmentsClient) readEnvironmentPruneCandidate(repo repository.Repos
 	if err != nil {
 		return settings.EnvironmentPruneCandidate{}, err
 	}
-	candidate, err := settings.NewEnvironmentPruneCandidate(repo, target, state, variables, secrets, true)
+	candidate, err := settings.NewEnvironmentPruneCandidate(repo, target, state, variables, secrets, state.CustomRules != nil && len(state.CustomRules) == 0)
 	if err != nil {
 		return settings.EnvironmentPruneCandidate{}, err
 	}
@@ -81,7 +84,7 @@ func (c *EnvironmentsClient) readEnvironmentPruneCandidate(repo repository.Repos
 	if err != nil {
 		return settings.EnvironmentPruneCandidate{}, err
 	}
-	confirmed, err := settings.NewEnvironmentPruneCandidate(repo, target, again, variables, secrets, true)
+	confirmed, err := settings.NewEnvironmentPruneCandidate(repo, target, again, variables, secrets, again.CustomRules != nil && len(again.CustomRules) == 0)
 	if err != nil || !candidate.Equal(confirmed) {
 		return settings.EnvironmentPruneCandidate{}, fmt.Errorf("Environment identity or policy changed during child acquisition")
 	}
