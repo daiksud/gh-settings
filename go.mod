@@ -5,6 +5,7 @@ go 1.26.7
 require (
 	github.com/cli/go-gh/v2 v2.17.0
 	go.yaml.in/yaml/v4 v4.0.0
+	golang.org/x/crypto v0.59.0
 )
 
 require (
@@ -18,8 +19,8 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/thlib/go-timezone-local v0.0.9 // indirect
-	golang.org/x/sys v0.49.0 // indirect
-	golang.org/x/term v0.47.0 // indirect
-	golang.org/x/text v0.43.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/term v0.48.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

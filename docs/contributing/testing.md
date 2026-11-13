@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeClassicStatusChecks)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -485,6 +485,17 @@ after failed App confirmation. `TestBuiltCompositeClassicStatusChecks` checks th
 actual public Action with an explicit token, detailed/status-only plans, matching
 and repeated no-ops, changed apply, unchanged YAML and failure output suppression.
 These local fixtures do not establish live App grants, storage or enforcement.
+
+## Deploy key lifecycle
+
+The [Deploy keys specification](../features/deploy-keys.feature.md) maps parser,
+complete transport, application sequencing, snapshot binding and report tests.
+The literal codec and built-CLI lifecycle regressions fail on the unchanged base
+with an unknown YAML key and missing export respectively. The supplied-product
+`CompositeDeployKeys` scenario uses the actual installer/CLI/Action against a local
+API with explicit token and `GH_DEBUG=api`: detailed/status-only plan, create without
+writeback, collision, bound no-op, ordinary empty preservation and unconfirmed
+prune failure. No real key is installed, generated, deleted or used for SSH.
 
 ## Autolink verification
 
