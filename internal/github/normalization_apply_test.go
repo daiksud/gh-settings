@@ -59,7 +59,7 @@ func TestWorkflowNormalizedApplyVerifiesRawReadback(t *testing.T) {
 				return actionsResponse(req, 200, fmt.Sprintf(`{"default_workflow_permissions":%q,"can_approve_pull_request_reviews":%t}`, raw, approval)), nil
 			})
 			client.NormalizationWarning = func(normalization settings.ObservationNormalization) { warnings = append(warnings, normalization) }
-			err := client.ApplyWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
+			_, err := client.ApplyWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
 			if (err != nil) != test.wantError || !reflect.DeepEqual(operations, []string{"GET", "PUT", "GET"}) || len(warnings) != test.warnings {
 				t.Fatalf("raw verification/diagnostics failed: operations=%v warnings=%+v error=%v", operations, warnings, err)
 			}

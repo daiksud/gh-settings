@@ -40,9 +40,17 @@ func TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification(t *testing.T
 		{"deny", settings.ActionsPolicyDeclaration{CanApprovePullRequestReviews: actionsPointer(false)}, map[string]any{"can_approve_pull_request_reviews": false}},
 		{"allow", settings.ActionsPolicyDeclaration{CanApprovePullRequestReviews: actionsPointer(true)}, map[string]any{"can_approve_pull_request_reviews": true}},
 		{"both", settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("write"), CanApprovePullRequestReviews: actionsPointer(true)}, map[string]any{"default_workflow_permissions": "write", "can_approve_pull_request_reviews": true}},
+		{"matching permission", settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("read"), CanApprovePullRequestReviews: actionsPointer(true)}, map[string]any{"can_approve_pull_request_reviews": true}},
+		{"matching approval", settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("write"), CanApprovePullRequestReviews: actionsPointer(false)}, map[string]any{"default_workflow_permissions": "write"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			state := map[string]any{"default_workflow_permissions": "read", "can_approve_pull_request_reviews": false}
+			if test.name == "read" {
+				state["default_workflow_permissions"] = "write"
+			}
+			if test.name == "deny" {
+				state["can_approve_pull_request_reviews"] = true
+			}
 			var writes []map[string]any
 			client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
 				if req.URL.Path != "/repos/owner/current/actions/permissions/workflow" {
@@ -64,16 +72,16 @@ func TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification(t *testing.T
 				return actionsResponse(req, 200, string(body)), nil
 			})
 			for i := 0; i < 2; i++ {
-				if err := client.ApplyWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}, test.d); err != nil {
-					t.Fatal(err)
+				if wrote, err := client.ApplyWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}, test.d); err != nil || wrote != (i == 0) {
+					t.Fatal(wrote, err)
 				}
 			}
-			if len(writes) != 2 || !reflect.DeepEqual(writes[0], test.want) || !reflect.DeepEqual(writes[1], test.want) {
+			if len(writes) != 1 || !reflect.DeepEqual(writes[0], test.want) {
 				t.Fatal(writes)
 			}
 		})
 	}
-	for _, failure := range []string{"reset companion", "missing readback", "mismatching value"} {
+	for _, failure := range []string{"reset companion", "reset matching declaration", "missing readback", "mismatching value"} {
 		t.Run(failure, func(t *testing.T) {
 			written := false
 			client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
@@ -84,7 +92,7 @@ func TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification(t *testing.T
 				body := `{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`
 				if written {
 					switch failure {
-					case "reset companion":
+					case "reset companion", "reset matching declaration":
 						body = `{"default_workflow_permissions":"write","can_approve_pull_request_reviews":true}`
 					case "missing readback":
 						body = `{}`
@@ -92,7 +100,11 @@ func TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification(t *testing.T
 				}
 				return actionsResponse(req, 200, body), nil
 			})
-			err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("write")})
+			desired := settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("write")}
+			if failure == "reset matching declaration" {
+				desired.CanApprovePullRequestReviews = actionsPointer(false)
+			}
+			_, err := client.ApplyWorkflowPermissions(repository.Repository{}, desired)
 			if err == nil || !strings.Contains(err.Error(), "may already have applied") {
 				t.Fatal(err)
 			}
@@ -117,7 +129,7 @@ func TestWorkflowPermissionsErrorsAndOmission(t *testing.T) {
 				}
 				return actionsResponse(req, 200, `{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`), nil
 			})
-			err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{CanApprovePullRequestReviews: actionsPointer(true)})
+			_, err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{CanApprovePullRequestReviews: actionsPointer(true)})
 			var readFailure interface{ ReadFailedBeforeWrite() }
 			if errors.As(err, &readFailure) != (method == "GET") {
 				t.Fatal("incorrect pre-write/write stage", method, status, err)
@@ -135,10 +147,10 @@ func TestWorkflowPermissionsErrorsAndOmission(t *testing.T) {
 		t.Fatal("omitted/invalid policy invoked API")
 		return nil, nil
 	})
-	if err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{}); err != nil {
+	if _, err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("unknown")}); err == nil {
+	if _, err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("unknown")}); err == nil {
 		t.Fatal("invalid policy accepted")
 	}
 	if _, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("read")}); err != nil {

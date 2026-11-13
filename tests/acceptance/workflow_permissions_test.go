@@ -168,7 +168,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	writeSettingsFile(fixture.work, actionsPolicyInput(`{workflow_permissions: {allow_github_actions_to_create_and_approve_pull_requests: false}}`))
 	run("apply")
 	mu.Lock()
-	if executionReads != beforeExecution || len(writes) != 4 || !reflect.DeepEqual(writes[2], map[string]any{"default_workflow_permissions": "read"}) || !reflect.DeepEqual(writes[3], map[string]any{"can_approve_pull_request_reviews": false}) || policy["default_workflow_permissions"] != "read" || policy["can_approve_pull_request_reviews"] != false {
+	if executionReads != beforeExecution || len(writes) != 3 || !reflect.DeepEqual(writes[1], map[string]any{"default_workflow_permissions": "read"}) || !reflect.DeepEqual(writes[2], map[string]any{"can_approve_pull_request_reviews": false}) || policy["default_workflow_permissions"] != "read" || policy["can_approve_pull_request_reviews"] != false {
 		t.Fatal(executionReads, writes, policy)
 	}
 	mu.Unlock()

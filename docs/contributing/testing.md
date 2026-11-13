@@ -182,6 +182,11 @@ build outputs, and these caches must not contain secrets.
 
 ### Hosted candidate composite
 
+[Supplied-product workflow permission checks](../../tests/github-actions/composite_workflow_permissions_acceptance_test.go)
+exercise the actual public Action with matching and changed declarations, repeated
+apply, minimal PUT payloads and failed independent readback. They verify success
+outputs only after completion; API responses remain isolated fixtures.
+
 [Supplied-product Actions execution checks](../../tests/github-actions/actions_execution_acceptance_test.go)
 run the actual composite through matching and changed selected-policy apply,
 delayed activation, repeated no-ops and uncertain selected-write/readback failures.
@@ -235,8 +240,16 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeActionsExecution)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
+
+The supplied-product Environment prune check also runs the real composite's
+plan (detailed and status-only) and repeated `all` apply against a local API. It
+verifies omitted sibling scopes, complete parent deletion, unchanged YAML,
+private child evidence and cleanup without live deletion. Owning tests cover
+child drift/custom protection and partial progress; the
+[prune specification](../features/prune.feature.md#environment-stage-test-mapping)
+records their boundaries.
 
 ### Export diagnostic delivery
 

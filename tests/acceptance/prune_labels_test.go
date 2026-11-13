@@ -109,7 +109,7 @@ func TestLabelsPruneExecutableLifecycle(t *testing.T) {
 		}
 		return r.stdout.String() + withoutExportInfo(r.stderr.String())
 	}
-	for _, value := range []string{"all", "labels,all", "labels,", "environments"} {
+	for _, value := range []string{"all,labels", "labels,all", "labels,", "environments,environments"} {
 		run(false, "apply", "--prune", value)
 	}
 	mu.Lock()

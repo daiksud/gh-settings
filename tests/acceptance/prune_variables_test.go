@@ -147,7 +147,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 		}
 		return r.stdout.String() + withoutExportInfo(r.stderr.String())
 	}
-	for _, scope := range []string{"all", "environments", "actions-variables,,agents-variables"} {
+	for _, scope := range []string{"all,environments", "environments,environments", "actions-variables,,agents-variables"} {
 		run(false, "apply", "--prune", scope)
 	}
 	mu.Lock()

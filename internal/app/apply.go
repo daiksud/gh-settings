@@ -220,6 +220,14 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if prune.Has("environments") && desired.Environments != nil {
+		if unarchived {
+			prepared.environments = prepared.environments.AfterUnarchive()
+		}
+		if err := checkEnvironmentPrune(&result, repo, desired, prepared.environments, write); err != nil {
+			return result, err
+		}
+	}
 	if desired.Environments != nil && desired.Environments.Len() > 0 {
 		wrote, err := applyEnvironments(&result, repo, desired.Environments, write)
 		if err != nil {
@@ -247,6 +255,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 	} else if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
 		wrote, err := applyEnvironmentVariables(&result, repo, desired.EnvironmentVariables, write.EnvironmentVariable)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if prune.Has("environments") && desired.Environments != nil {
+		wrote, err := applyEnvironmentPrune(&result, repo, prepared.environments, write)
 		if err != nil {
 			return result, err
 		}
@@ -308,17 +323,25 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 	if !desired.Actions.WorkflowPermissionsEmpty() {
 		index := len(result.Operations)
 		result.Operations = append(result.Operations, ApplyOperation{Kind: WorkflowPermissionsUpdate})
-		if err := write.WorkflowPermissions(repo, desired.Actions); err != nil {
+		wrote, err := write.WorkflowPermissions(repo, desired.Actions)
+		if err != nil {
 			status := OperationFailedUnknown
 			var readFailure PreWriteReadFailure
 			if errors.As(err, &readFailure) {
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			return result, fmt.Errorf("apply workflow permissions (earlier resource writes remain applied): %w", err)
+			progress := ""
+			if hasWrites {
+				progress = " (earlier resource writes remain applied)"
+			}
+			return result, fmt.Errorf("apply workflow permissions%s: %w", progress, err)
 		}
-		result.Operations[index].Status = OperationCompleted
-		hasWrites = true
+		result.Operations[index].Status = OperationUnchanged
+		if wrote {
+			result.Operations[index].Status = OperationCompleted
+		}
+		hasWrites = hasWrites || wrote
 	}
 	if !desired.Actions.RetentionEmpty() {
 		wrote, err := applyRetention(&result, repo, desired.Actions, write)

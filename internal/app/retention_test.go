@@ -39,7 +39,7 @@ func TestRetentionFailureDoesNotInventEarlierWrites(t *testing.T) {
 			if earlier {
 				d.Actions.DefaultWorkflowPermissions = &value
 			}
-			result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, ReadRetention: func(repository.Repository) (settings.RetentionObservation, error) {
+			result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) { return true, nil }, ReadRetention: func(repository.Repository) (settings.RetentionObservation, error) {
 				if failure == "read" {
 					return settings.RetentionObservation{}, errors.New("missing cap")
 				}

@@ -80,15 +80,13 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables`, `environment-variables` and `actions-policies`.
-`environments` is not implemented yet. `all` must be standalone and currently
-fails explicitly rather than omitting that scope.
-Environment-object deletion is adopted future work; current source still rejects
-that scope until its deletion and preservation contract is implemented.
+`agents-variables`, `environment-variables`, `actions-policies` and `environments`.
+Standalone `all` selects all seven supported scopes; combining it with another
+scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets/Actions Policies, canonical names for variables). ID-less entries
+labels/Rulesets/Actions Policies, canonical names for variables, folded names for Environments). ID-less entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -101,6 +99,49 @@ restore assignments. Automatically created Dependabot labels are deletion
 candidates too if undeclared. Plan displays this consequence. Topics, PR exemption
 lists and deployment branch/tag pattern replacement are unchanged. The
 [behavior specification](features/prune.feature.md) records stages and tests.
+
+### Environment pruning
+
+`--prune environments` owns unlisted parent lifecycles only when
+`repository.settings.environments` is present. Omission remains unmanaged even
+with `all`; `[]` selects every acquired Environment. A nonempty list retains all
+listed names, including variable-only entries and `variables: []`. Policy upserts
+and all selected Environment variable work finish before parent deletions. New
+parents never join the fixed deletion set. No ID is written to YAML and no
+`delete` member is accepted.
+
+Before any writes, acquire every candidate's positive parent ID, complete
+supported policy, active raw pattern identities, variable inventory and secret
+name/creation/update metadata. The dedicated custom-deployment-protection endpoint
+must independently confirm a complete empty list. Nonempty, denied, malformed or
+normalized unsupported state blocks the whole operation. Retained names do not
+need deletion snapshots. Recheck the fixed candidate set before Environment work
+and each candidate immediately before DELETE. Account only for this command's
+confirmed unarchive; other target/archive or observable child drift stops deletion.
+After DELETE 204, a complete fresh inventory must omit both the original ID and
+folded name. Same-name recreation fails confirmation. Reads are not an atomic
+conditional-delete lock; a race remains between the final check and deletion.
+
+Parent deletion removes contained configuration, including variables and patterns.
+[GitHub documents](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments#deleting-an-environment)
+secret/protection removal and failure of jobs waiting on protection rules. A later
+workflow reference can recreate a name without restoring the deleted resource's
+protection. Secret values are never read, exported or backed up; YAML cannot
+restore them. Secret metadata is only private drift evidence, not complete
+rotation detection, and is excluded from plans/reports. Prune snapshot transport
+ignores inherited `GH_DEBUG` so child evidence is not copied to debug logs.
+
+[Environment list/detail](https://docs.github.com/en/rest/deployments/environments)
+and [custom-protection reads](https://docs.github.com/en/rest/deployments/protection-rules#get-all-deployment-protection-rules-for-an-environment)
+require Actions read. Child variable and [secret metadata reads](https://docs.github.com/en/rest/actions/secrets#list-environment-secrets)
+require Environments read; deletion requires Administration write. These are
+preconditions, not automatic permission grants. Inactive patterns are inaccessible
+under the documented custom-mode prerequisite: explicit parent deletion is allowed
+with that observation limit, without claiming an acquired empty latent list.
+Detailed plans show complete supported before-policy and absence, with deletion
+consequences; status-only output hides names and policy. Failed prewrite reads
+make no deletion; failed DELETE/absence verification can have uncertain effects.
+Earlier verified writes survive later failure. No retry or rollback occurs.
 
 ## Supported fields
 
@@ -291,7 +332,7 @@ repository:
           allow_github_actions_to_create_and_approve_pull_requests: false
 ```
 
-Each is independent and optional. Ordinary `export` includes both after complete acquisition, independently of execution policy. Omission is unmanaged, false remains explicit, and unknown choices/null/wrong types fail locally. Apply uses declared-only workflow-policy members, complete fresh reads/readback and the existing direct-apply semantics. Organization refusal can leave an earlier execution-policy update applied. This declaration does not create tokens or waive a PR's approval requirements. See [workflow permissions](features/workflow-permissions.feature.md).
+Each is independent and optional. Ordinary `export` includes both after complete acquisition, independently of execution policy. Omission is unmanaged, false remains explicit, and unknown choices/null/wrong types fail locally. Apply compares a complete fresh observation, skips matching intent and sends only changed declared workflow-policy members. Independent readback verifies the original declaration, including initially matching values, and preserves omitted raw companions. A matching repeat apply sends no update. Direct apply remains nontransactional: organization refusal can leave an earlier execution-policy update applied, and a failed PUT/readback can have uncertain effects. This declaration does not create tokens or waive a PR's approval requirements. See [workflow permissions](features/workflow-permissions.feature.md).
 
 A complete successful workflow-policy GET with a correctly typed permission string outside the UI choices uses `read_repository_contents_and_packages_permissions` and emits a warning naming the YAML field, raw token and fallback. Missing/null members, wrong types and failed reads remain acquisition errors. Export saves the UI fallback without changing GitHub. Plan retains an actionable write-required comparison even if the desired choice equals that fallback; it does not claim independently observed zero drift. Apply sends only declared members and confirms the requested permission against a fresh raw readback. An unchanged out-of-UI token fails verification with possible write effects retained. An omitted permission remains unmanaged and is verified as an unchanged raw companion during approval-only writes, without replaying or printing the fallback.
 
@@ -462,9 +503,9 @@ so detected same-name parent replacement fails. A missing parent is an error
 unless the same declaration explicitly creates its Environment policy first;
 then no earlier variables are inferred and unexpected deletion candidates are
 rejected. Variable-only intent never creates or deletes an Environment, changes
-its policy/patterns or accesses secrets. Environment-object deletion is separate
-and adopted for future implementation; `--prune environments` and
-`--prune all` remain rejected in current source.
+its policy/patterns or accesses secrets. [Environment-object deletion](#environment-pruning)
+uses the separate `environments` scope; standalone `all` selects both scopes,
+while retaining every listed parent, including variable-only entries.
 
 API evidence: [Actions variable lists/deletion](https://docs.github.com/rest/actions/variables)
 and [Agents variable lists/deletion](https://docs.github.com/rest/agents/variables).
@@ -1004,7 +1045,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 
 ## Environments
 
-`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Omission/`[]` selects nothing; unlisted Environments are never deleted. Deletion/rename markers, secret values and custom protection apps are unsupported in current source. Environment pruning and existing-app selection are adopted future work; secret values remain excluded. Selected non-sensitive variables have the separate ownership described below.
+`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Without prune, omission/`[]` selects nothing and unlisted Environments are preserved. Explicit [Environment pruning](#environment-pruning) adds bounded parent deletion; omission remains unmanaged. Deletion/rename markers, secret values and custom protection apps remain unsupported. Existing-app selection is adopted future work; secret values remain excluded. Selected non-sensitive variables have the separate ownership described below.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -1075,7 +1116,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Collaborators/invitations, classic branch protection, Environment pruning and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Collaborators/invitations, classic branch protection and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 

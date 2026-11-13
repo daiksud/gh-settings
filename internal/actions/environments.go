@@ -12,7 +12,7 @@ import (
 type EnvironmentPlanChange struct {
 	Operation                   string                                       `json:"operation"`
 	Before                      *settings.EnvironmentDeclaration             `json:"before,omitempty"`
-	After                       *settings.EnvironmentDeclaration             `json:"after"`
+	After                       *settings.EnvironmentDeclaration             `json:"after,omitempty"`
 	DeploymentModeNormalization *settings.EnvironmentDeploymentNormalization `json:"deployment_mode_normalization,omitempty"`
 	PatternObservations         *[]EnvironmentPatternObservation             `json:"pattern_observations,omitempty"`
 }

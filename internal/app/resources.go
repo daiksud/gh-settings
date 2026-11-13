@@ -29,6 +29,7 @@ type EnvironmentWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	EnvironmentPrune     func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	EnvironmentNames     func(repository.Repository) ([]string, error)
 	CodeQLForExport      func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error)
 	Variables            func(repository.Repository) (settings.VariableInventory, error)
@@ -70,6 +71,8 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadEnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
+	DeleteEnvironment         func(repository.Repository, settings.EnvironmentPruneCandidate) error
 	ReadVariables             func(repository.Repository) (settings.VariableInventory, error)
 	ReadAgentVariables        func(repository.Repository) (settings.VariableInventory, error)
 	ReadEnvironmentVariables  func(repository.Repository, string) (settings.VariableInventory, error)
@@ -117,7 +120,7 @@ type Writer struct {
 	PrivateReporting        func(repository.Repository, settings.SecurityChange) (bool, error)
 	ReadSecretScanning      func(repository.Repository) (settings.SecretScanningObservation, error)
 	SecretScanning          func(repository.Repository, settings.SecurityChange) (bool, error)
-	WorkflowPermissions     func(repository.Repository, settings.ActionsPolicyDeclaration) error
+	WorkflowPermissions     func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error)
 	Actions                 func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error)
 	Repository              func(repository.Repository, settings.RepositoryDeclaration) (bool, error)
 	Topics                  func(repository.Repository, settings.TopicsDeclaration) (bool, error)
