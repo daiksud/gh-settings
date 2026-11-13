@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	CollaboratorDeletions   []CollaboratorDeletionEntry       `json:"collaborator_deletions,omitempty"`
 	BranchProtectionRules   []settings.ClassicChange          `json:"branch_protection_rules,omitempty"`
 	Collaborators           []CollaboratorPlanEntry           `json:"collaborators,omitempty"`
 	PullRequestExemptions   []PullRequestExemptionsPlanChange `json:"pull_request_exemptions,omitempty"`
@@ -126,6 +127,9 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.CommitMessages {
 		_, after := change.Values()
 		report.CommitMessages = append(report.CommitMessages, CommitMessagePlanChange{Menu: change.Menu(), After: after, Normalization: change.Normalization()})
+	}
+	for _, d := range result.Comparison.CollaboratorDeletions {
+		report.CollaboratorDeletions = append(report.CollaboratorDeletions, CollaboratorDeletionEntry{Operation: d.Operation(), Username: d.Person.Username, ID: d.Person.ID, InvitationID: d.InvitationID})
 	}
 	for _, person := range result.Comparison.Collaborators {
 		bind := person.Bind

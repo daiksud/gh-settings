@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -394,6 +394,15 @@ validation before requests, file persistence, export retention and recovery.
 exercise the actual installer and Action plan/apply steps against a local service.
 These are fixture observations, not live invitations, access grants, App
 permission verification or recipient acceptance.
+
+The supplied-product collaborator-prune composite uses an installation-shaped
+fixture with one explicit token for `/user`, complete installation target access,
+admin invitation inventory and both DELETE endpoints. It exercises detailed and
+status-only plans, comma scopes and `all`, no-writeback, repeated apply, bounded
+readback failure and success-only outputs. It does not establish live installation
+grants, recipient notification or GitHub's asynchronous removal side effects.
+Local CLI lifecycle fixtures explicitly set `GITHUB_ACTIONS=false`; run the full
+CLI suite with host `GITHUB_ACTIONS=true` to verify that isolation.
 
 ## Environment protection App verification
 

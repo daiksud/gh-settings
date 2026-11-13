@@ -27,3 +27,21 @@ func TestCollaboratorOutputFailurePreservesBindingAndPending(t *testing.T) {
 		t.Fatal("binding described as user creation")
 	}
 }
+
+func TestCollaboratorDeletionOutputFailurePreservesProgress(t *testing.T) {
+	for _, verified := range []bool{false, true} {
+		result := settings.CollaboratorDeleteResult{Deletion: settings.CollaboratorDeletion{Person: settings.CollaboratorIdentity{ID: 3, Username: "person"}, InvitationID: 7}, Attempted: true, Acknowledged: true, Verified: verified}
+		var stderr bytes.Buffer
+		ops := Operations{Apply: func(ApplyOptions) (app.ApplyResult, error) {
+			return app.ApplyResult{Outcome: app.ApplyCompleted, CollaboratorDeletions: []settings.CollaboratorDeleteResult{result}}, nil
+		}}
+		status := Run([]string{"apply"}, brokenWriter{}, &stderr, "dev", ops)
+		want := "deletion acknowledged; resulting access unverified"
+		if verified {
+			want = "invitation cancelled"
+		}
+		if status == 0 || !strings.Contains(stderr.String(), want) || !strings.Contains(stderr.String(), "invitation id 7") {
+			t.Fatal(stderr.String())
+		}
+	}
+}
