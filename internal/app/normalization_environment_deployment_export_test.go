@@ -78,7 +78,10 @@ func TestEnvironmentDeploymentExportWarnsAfterCompleteAcquisitionInNameOrder(t *
 			}, nil
 		}}
 		if mode != "nil sink" {
-			checkout.EnvironmentDeploymentNormalizationWarning = func(name string, r settings.EnvironmentDeploymentNormalization) { got = append(got, warning{name, r}) }
+			checkout.EnvironmentDeploymentNormalizationWarning = func(name string, r settings.EnvironmentDeploymentNormalization) error {
+				got = append(got, warning{name, r})
+				return nil
+			}
 		}
 		err = Export(checkout, reader)
 		var want []warning

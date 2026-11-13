@@ -176,8 +176,12 @@ Partial or absent About/General is valid output, even when only later families
 are readable. Successful file production does not prove remote repository
 existence or access when all remote observations are unavailable.
 
-Invalid or unreadable existing files, family-info output failures and destination
-write failures remain fatal. Existing files are validated and snapshotted before
+Invalid or unreadable existing files, family-info or normalization-warning output
+failures and destination write failures remain fatal. Failed diagnostic delivery
+stops export before saving: an initial destination stays absent and an existing
+file keeps its exact bytes. Read-only acquisition may continue after the output
+failure; earlier diagnostics may already have been printed. Existing files are
+validated and snapshotted before
 API reads; guarded atomic replacement rejects changed/removed/symlink destinations and a file that
 appears during initial export. Initial file IO failure can leave a partial new
 file; this is not a concurrent-directory lock.

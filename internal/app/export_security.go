@@ -15,12 +15,12 @@ var ErrExportCodeQLDisabled = errors.New("CodeQL default setup is confirmed disa
 // state is independently usable when details from the same response are unknown.
 func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Repository) (settings.SecurityDeclaration, error) {
 	result := checkout.Existing.Security
-	var infoError error
+	var diagnosticError error
 	observe := func(path string, observe func(*settings.SecurityDeclaration) error) {
 		candidate := result
 		if err := observe(&candidate); err != nil {
 			if checkout.Info != nil {
-				infoError = errors.Join(infoError, checkout.Info(path, err))
+				diagnosticError = errors.Join(diagnosticError, checkout.Info(path, err))
 			}
 			return
 		}
@@ -40,7 +40,7 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 		}
 		if checkout.SecurityStatusNormalizationWarning != nil {
 			for _, record := range observed.Normalizations() {
-				checkout.SecurityStatusNormalizationWarning(record)
+				diagnosticError = errors.Join(diagnosticError, checkout.SecurityStatusNormalizationWarning(record))
 			}
 		}
 		d, err := observed.Declaration()
@@ -85,7 +85,7 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 		if !enabled {
 			candidate.CodeQLConfiguration = settings.CodeQLConfigurationDeclaration{}
 			if !result.CodeQLConfiguration.Empty() && checkout.Info != nil {
-				infoError = errors.Join(infoError, checkout.Info("repository.settings.advanced_security.code_security.codeql_analysis", ErrExportCodeQLDisabled))
+				diagnosticError = errors.Join(diagnosticError, checkout.Info("repository.settings.advanced_security.code_security.codeql_analysis", ErrExportCodeQLDisabled))
 			}
 			return nil
 		}
@@ -97,7 +97,7 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 			}
 		}
 		if readErr != nil && checkout.Info != nil {
-			infoError = errors.Join(infoError, checkout.Info("repository.settings.advanced_security.code_security.codeql_analysis", readErr))
+			diagnosticError = errors.Join(diagnosticError, checkout.Info("repository.settings.advanced_security.code_security.codeql_analysis", readErr))
 		}
 		return nil
 	})
@@ -152,5 +152,5 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 
 		return nil
 	})
-	return result, infoError
+	return result, diagnosticError
 }

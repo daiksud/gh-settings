@@ -108,18 +108,20 @@ func TestRulesetBypassExportWarnsOnlyFromCompleteRequestedAcquisition(t *testing
 				}, nil
 			}}
 			if tc.sinks&1 != 0 {
-				checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) {
+				checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) error {
 					got = append(got, warning{id: id, name: name, kind: "scalar", record: n})
+					return nil
 				}
 			}
 			if tc.sinks&2 != 0 {
-				checkout.RulesetBypassModeNormalizationWarning = func(id int64, name string, n settings.RulesetBypassModeNormalization) {
+				checkout.RulesetBypassModeNormalizationWarning = func(id int64, name string, n settings.RulesetBypassModeNormalization) error {
 					e := warning{id: id, name: name, kind: n.ActorType, record: n.Normalization}
 					if n.ActorID != nil {
 						e.actorID = *n.ActorID
 						*n.ActorID = 99
 					}
 					got = append(got, e)
+					return nil
 				}
 			}
 			err = Export(checkout, reader)

@@ -233,6 +233,29 @@ version (the candidate gate uses its verified producer binary):
 mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
+### Export diagnostic delivery
+
+[Application tests](../../internal/app/export_warning_failure_test.go) verify
+that warning failures in Repository, direct families and Security prevent saving,
+retain their error identity and cannot become ordinary unavailable-family info.
+[Root adapters](../../export_warnings_test.go) cover every typed warning writer;
+Team-reviewer normalization remains behind the existing personal-repository
+policy rejection, with no new eligibility implied by its callback.
+
+The [built-CLI regression](../../tests/acceptance/export_warning_output_test.go)
+passes a real read-only regular file as stderr. A complete read-only API fixture
+has no incidental info diagnostics: canonical acquisition succeeds even with that
+unwritable fd, while a required normalization warning makes export fail before
+initial creation or existing-file replacement. Writable controls verify the exact
+warning and effective YAML. This avoids false positives from denied-family info,
+closed-pipe signals or parent-side output copying. It establishes local failure
+propagation, not runner log delivery or live GitHub behavior.
+
+Action export directly invokes this same CLI. Its existing [composition failure
+cases](../../tests/github-actions/composite_export_test.go) establish nonzero-status
+propagation and absent success outputs. The real-fd test above establishes the
+CLI warning failure; it is not a hosted runner log-delivery test.
+
 ## Release and publication evidence
 
 The [shared Python tests](../../.github/scripts/test_release_version.py) exercise version precedence, publication-order selection, complete frozen Git ranges and retry identity. The shared [unit-test Action](../../.github/actions/unit-test/action.yml) runs them in both PR Screening and main CI, alongside the release CI Python tests and offline recovery fixtures. There is no dedicated Python-test workflow. Run them locally when changing the resolver or its tests:

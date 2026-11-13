@@ -41,6 +41,7 @@ func main() {
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
 		Export: func() error {
+			warnings := exportWarnings{output: os.Stderr}
 			target, err := checkout.Repository()
 			if err != nil {
 				return err
@@ -49,7 +50,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			return app.Export(app.ExportCheckout{Check: github.CheckExportAcquisition, Existing: existing, Info: exportInfo, Repository: func() (repository.Repository, error) { return target, nil }, PrepareSave: func() (func(settings.Declaration) error, error) { return save, nil }, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization}, reader)
+			return app.Export(app.ExportCheckout{Check: github.CheckExportAcquisition, Existing: existing, Info: exportInfo, Repository: func() (repository.Repository, error) { return target, nil }, PrepareSave: func() (func(settings.Declaration) error, error) { return save, nil }, NormalizationWarning: warnings.warnNormalization, CommitMessageNormalizationWarning: warnings.warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnings.warnSecurityStatusNormalization, RulesetNormalizationWarning: warnings.warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnings.warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnings.warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnings.warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnings.warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnings.warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnings.warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnings.warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnings.warnEnvironmentRefTypeNormalization}, reader)
 		},
 		Validate: func() (settings.Declaration, error) { return app.Validate(loadDeclaration) },
 		Plan: func(options cli.PlanOptions) (app.PlanResult, error) {

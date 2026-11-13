@@ -18,18 +18,18 @@ type ExportCheckout struct {
 	Check    func(settings.Declaration) error
 
 	Repository                                        TargetResolver
-	NormalizationWarning                              func(settings.ObservationNormalization)
-	CommitMessageNormalizationWarning                 func(settings.CommitMessageNormalization)
-	SecurityStatusNormalizationWarning                func(settings.SecurityStatusNormalization)
-	RulesetNormalizationWarning                       func(int64, string, settings.ObservationNormalization)
-	RulesetRequiredApprovalsNormalizationWarning      func(int64, string, settings.RulesetRequiredApprovalsNormalization)
-	RulesetMergeMethodsNormalizationWarning           func(int64, string, settings.RulesetMergeMethodsNormalization)
-	RulesetTeamApprovalsNormalizationWarning          func(int64, string, settings.RulesetTeamApprovalsNormalization)
-	RulesetScanningAlertsNormalizationWarning         func(int64, string, settings.RulesetScanningAlertsNormalization)
-	RulesetScanningSecurityAlertsNormalizationWarning func(int64, string, settings.RulesetScanningSecurityAlertsNormalization)
-	RulesetBypassModeNormalizationWarning             func(int64, string, settings.RulesetBypassModeNormalization)
-	EnvironmentDeploymentNormalizationWarning         func(string, settings.EnvironmentDeploymentNormalization)
-	EnvironmentRefTypeNormalizationWarning            func(string, settings.EnvironmentPatternState)
+	NormalizationWarning                              func(settings.ObservationNormalization) error
+	CommitMessageNormalizationWarning                 func(settings.CommitMessageNormalization) error
+	SecurityStatusNormalizationWarning                func(settings.SecurityStatusNormalization) error
+	RulesetNormalizationWarning                       func(int64, string, settings.ObservationNormalization) error
+	RulesetRequiredApprovalsNormalizationWarning      func(int64, string, settings.RulesetRequiredApprovalsNormalization) error
+	RulesetMergeMethodsNormalizationWarning           func(int64, string, settings.RulesetMergeMethodsNormalization) error
+	RulesetTeamApprovalsNormalizationWarning          func(int64, string, settings.RulesetTeamApprovalsNormalization) error
+	RulesetScanningAlertsNormalizationWarning         func(int64, string, settings.RulesetScanningAlertsNormalization) error
+	RulesetScanningSecurityAlertsNormalizationWarning func(int64, string, settings.RulesetScanningSecurityAlertsNormalization) error
+	RulesetBypassModeNormalizationWarning             func(int64, string, settings.RulesetBypassModeNormalization) error
+	EnvironmentDeploymentNormalizationWarning         func(string, settings.EnvironmentDeploymentNormalization) error
+	EnvironmentRefTypeNormalizationWarning            func(string, settings.EnvironmentPatternState) error
 	PrepareSave                                       func() (func(settings.Declaration) error, error)
 }
 
@@ -45,7 +45,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 	}
 	declaration := checkout.Existing
 	declaration.Repository, err = exportRepository(checkout, read, repo)
-	infoError := err
+	// Delivery failures must bypass observe's unavailable-family retention path.
+	// A projection is never saved after its required diagnostic could not be sent.
+	diagnosticError := err
 	observe := func(path string, available bool, acquire func(*settings.Declaration) error) {
 		candidate := declaration
 		err := fmt.Errorf("reader unavailable")
@@ -62,7 +64,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		if err != nil {
 			if checkout.Info != nil {
-				infoError = errors.Join(infoError, checkout.Info(path, err))
+				diagnosticError = errors.Join(diagnosticError, checkout.Info(path, err))
 			}
 			return
 		}
@@ -128,35 +130,35 @@ func Export(checkout ExportCheckout, read Reader) error {
 			slices.SortFunc(values, func(a, b settings.RulesetState) int { return strings.Compare(a.Policy.Name, b.Policy.Name) })
 			for _, value := range values {
 				if record := value.EnforcementNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {
-					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
+					diagnosticError = errors.Join(diagnosticError, checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record))
 				}
 				if record := value.RequiredApprovalsNormalization; record != (settings.RulesetRequiredApprovalsNormalization{}) && checkout.RulesetRequiredApprovalsNormalizationWarning != nil {
-					checkout.RulesetRequiredApprovalsNormalizationWarning(value.ID, value.Policy.Name, record)
+					diagnosticError = errors.Join(diagnosticError, checkout.RulesetRequiredApprovalsNormalizationWarning(value.ID, value.Policy.Name, record))
 				}
 				if record := value.MergeMethodsNormalization; !record.IsZero() && checkout.RulesetMergeMethodsNormalizationWarning != nil {
-					checkout.RulesetMergeMethodsNormalizationWarning(value.ID, value.Policy.Name, record)
+					diagnosticError = errors.Join(diagnosticError, checkout.RulesetMergeMethodsNormalizationWarning(value.ID, value.Policy.Name, record))
 				}
 				if checkout.RulesetTeamApprovalsNormalizationWarning != nil {
 					for _, record := range settings.OrderedRulesetTeamApprovalsNormalizations(value.TeamApprovalsNormalizations) {
-						checkout.RulesetTeamApprovalsNormalizationWarning(value.ID, value.Policy.Name, record)
+						diagnosticError = errors.Join(diagnosticError, checkout.RulesetTeamApprovalsNormalizationWarning(value.ID, value.Policy.Name, record))
 					}
 				}
 				if checkout.RulesetScanningAlertsNormalizationWarning != nil {
 					for _, record := range settings.OrderedRulesetScanningAlertsNormalizations(value.ScanningAlertsNormalizations) {
-						checkout.RulesetScanningAlertsNormalizationWarning(value.ID, value.Policy.Name, record)
+						diagnosticError = errors.Join(diagnosticError, checkout.RulesetScanningAlertsNormalizationWarning(value.ID, value.Policy.Name, record))
 					}
 				}
 				if checkout.RulesetScanningSecurityAlertsNormalizationWarning != nil {
 					for _, record := range settings.OrderedRulesetScanningSecurityAlertsNormalizations(value.ScanningSecurityAlertsNormalizations) {
-						checkout.RulesetScanningSecurityAlertsNormalizationWarning(value.ID, value.Policy.Name, record)
+						diagnosticError = errors.Join(diagnosticError, checkout.RulesetScanningSecurityAlertsNormalizationWarning(value.ID, value.Policy.Name, record))
 					}
 				}
 				if record := value.QualitySeverityNormalization; record != (settings.ObservationNormalization{}) && checkout.RulesetNormalizationWarning != nil {
-					checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record)
+					diagnosticError = errors.Join(diagnosticError, checkout.RulesetNormalizationWarning(value.ID, value.Policy.Name, record))
 				}
 				if checkout.RulesetBypassModeNormalizationWarning != nil {
 					for _, record := range settings.OrderedRulesetBypassModeNormalizations(value.BypassModeNormalizations) {
-						checkout.RulesetBypassModeNormalizationWarning(value.ID, value.Policy.Name, record)
+						diagnosticError = errors.Join(diagnosticError, checkout.RulesetBypassModeNormalizationWarning(value.ID, value.Policy.Name, record))
 					}
 				}
 			}
@@ -178,7 +180,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		for _, value := range values {
 			if checkout.EnvironmentDeploymentNormalizationWarning != nil {
 				if record := value.DeploymentModeNormalization; record != (settings.EnvironmentDeploymentNormalization{}) {
-					checkout.EnvironmentDeploymentNormalizationWarning(value.Policy.Name, record)
+					diagnosticError = errors.Join(diagnosticError, checkout.EnvironmentDeploymentNormalizationWarning(value.Policy.Name, record))
 				}
 			}
 			if mode := value.Policy.DeploymentBranchPolicy; mode != nil && mode.CustomBranchPolicies && checkout.EnvironmentRefTypeNormalizationWarning != nil {
@@ -186,7 +188,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 				slices.SortFunc(patterns, func(a, b settings.EnvironmentPatternState) int { return cmp.Compare(a.ID, b.ID) })
 				for _, pattern := range patterns {
 					if record := pattern.RefTypeNormalization; record != (settings.ObservationNormalization{}) {
-						checkout.EnvironmentRefTypeNormalizationWarning(value.Policy.Name, pattern)
+						diagnosticError = errors.Join(diagnosticError, checkout.EnvironmentRefTypeNormalizationWarning(value.Policy.Name, pattern))
 					}
 				}
 			}
@@ -217,7 +219,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		candidate.Actions.Enabled, candidate.Actions.AllowedActions, candidate.Actions.SHAPinningRequired, candidate.Actions.SelectedActions = d.Enabled, d.AllowedActions, d.SHAPinningRequired, d.SelectedActions
 		if observed.Enabled && observed.AllowedActionsNormalization != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
-			checkout.NormalizationWarning(observed.AllowedActionsNormalization)
+			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(observed.AllowedActionsNormalization))
 		}
 		return nil
 	})
@@ -231,7 +233,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		if state.Normalization.Path != "" && checkout.NormalizationWarning != nil {
-			checkout.NormalizationWarning(state.Normalization)
+			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(state.Normalization))
 		}
 		return nil
 	})
@@ -283,7 +285,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 		}
 		candidate.Actions.ForkApprovalPolicy = &v
 		if normalization := o.Normalization(); normalization.Path != "" && checkout.NormalizationWarning != nil {
-			checkout.NormalizationWarning(normalization)
+			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(normalization))
 		}
 		return nil
 	})
@@ -354,7 +356,7 @@ func Export(checkout ExportCheckout, read Reader) error {
 	})
 	declaration.Security, err = exportSecurity(checkout, read, repo)
 	if err != nil {
-		return err
+		return errors.Join(diagnosticError, err)
 	}
 	observe("repository.settings.general.danger_zone.archive_this_repository", read.Archive != nil, func(candidate *settings.Declaration) error {
 		state, err := read.Archive(repo)
@@ -378,10 +380,10 @@ func Export(checkout ExportCheckout, read Reader) error {
 			return err
 		}
 		if record := o.ModeNormalization(); record != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
-			checkout.NormalizationWarning(record)
+			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(record))
 		}
 		if record := o.FolderNormalization(); record != (settings.ObservationNormalization{}) && checkout.NormalizationWarning != nil {
-			checkout.NormalizationWarning(record)
+			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(record))
 		}
 		return nil
 	})
@@ -411,9 +413,9 @@ func Export(checkout ExportCheckout, read Reader) error {
 		return nil
 	})
 	declaration.EnvironmentVariables, err = exportAllEnvironmentVariables(checkout, read, repo)
-	infoError = errors.Join(infoError, err)
-	if infoError != nil {
-		return infoError
+	diagnosticError = errors.Join(diagnosticError, err)
+	if diagnosticError != nil {
+		return diagnosticError
 	}
 	return save(declaration)
 }

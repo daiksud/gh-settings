@@ -26,6 +26,24 @@ The [Discussions contract](discussions.feature.md) owns its strict read rules an
 
 This feature assumes an owner-controlled checkout whose directory and link entries remain stable during export. Concurrent replacement of those entries is outside its scope.
 
+### Rule: Deliver applicable normalization warnings before saving
+
+- Every applicable warning must be written successfully before the prepared saver runs.
+- A failed warning write is fatal output failure, never an unavailable observation
+  that can be retained with info. Other read-only acquisition may continue.
+- The command exits nonzero with no stdout, leaves an initial destination absent
+  and preserves exact prior file bytes. Already written diagnostics are not rolled back;
+  broken stderr can also prevent the final error diagnostic from being delivered.
+- Complete observation, conditional visibility, ordering, raw evidence and
+  normalization choices remain unchanged. Canonical, hidden and retained values
+  produce no new warning. Successful bounded info still permits partial export.
+
+Test mapping: [application save prevention](../../internal/app/export_warning_failure_test.go),
+[fallible output adapters](../../export_warnings_test.go) and
+[real stderr failure](../../tests/acceptance/export_warning_output_test.go). The
+process controls distinguish required warning failure from existing info failures
+and allow a silent canonical export with the same unwritable stderr.
+
 ### Rule: Save configuration in the checkout selected by origin
 
 #### Scenario: Export from a subdirectory without a settings directory

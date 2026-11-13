@@ -70,7 +70,7 @@ func TestActionsExecutionExportWarningsRequireVisibleCompleteObservation(t *test
 			}}
 			var warnings []settings.ObservationNormalization
 			if test.sink {
-				checkout.NormalizationWarning = func(n settings.ObservationNormalization) { warnings = append(warnings, n) }
+				checkout.NormalizationWarning = func(n settings.ObservationNormalization) error { warnings = append(warnings, n); return nil }
 			}
 			err := Export(checkout, reader)
 			var want []settings.ObservationNormalization

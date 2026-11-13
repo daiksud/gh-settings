@@ -66,7 +66,7 @@ func TestPagesModeExportWarningsRequireSelectedCompleteObservation(t *testing.T)
 				}, nil
 			}}
 			if test.sink {
-				checkout.NormalizationWarning = func(n settings.ObservationNormalization) { warnings = append(warnings, n) }
+				checkout.NormalizationWarning = func(n settings.ObservationNormalization) error { warnings = append(warnings, n); return nil }
 			}
 			err = Export(checkout, reader)
 			wantReads := 0
