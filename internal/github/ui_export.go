@@ -154,7 +154,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 			result.Settings.SecurityAndQuality = &uimodel.SecurityAndQuality{AdvancedSecurity: &uimodel.AdvancedSecurity{DependabotAlerts: copyUISecurityValue(source.Security.DependabotAlerts), DependabotSecurityUpdates: copyUISecurityValue(source.Security.DependabotSecurityUpdates), SecretProtection: copyUISecurityValue(source.Security.SecretScanning), PushProtection: copyUISecurityValue(source.Security.PushProtection), PrivateVulnerabilityReporting: copyUISecurityValue(source.Security.PrivateVulnerabilityReporting)}}
 		}
 		if source.Security.CodeQLDefaultSetup != nil || !source.Security.CodeQLConfiguration.Empty() {
-			result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity = &uimodel.CodeSecurity{CodeQLAnalysis: &uimodel.CodeQLAnalysis{DefaultSetup: copyUISecurityValue(source.Security.CodeQLDefaultSetup), Languages: source.Security.CodeQLConfiguration.Languages, QuerySuite: source.Security.CodeQLConfiguration.QuerySuite}}
+			result.Settings.SecurityAndQuality.AdvancedSecurity.CodeSecurity = &uimodel.CodeSecurity{CodeQLAnalysis: &uimodel.CodeQLAnalysis{DefaultSetup: copyUISecurityValue(source.Security.CodeQLDefaultSetup), Languages: source.Security.CodeQLConfiguration.Languages, QuerySuite: source.Security.CodeQLConfiguration.QuerySuite, ThreatModel: source.Security.CodeQLConfiguration.ThreatModel}}
 			if runner := source.Security.CodeQLConfiguration.Runner; runner != nil {
 				ui := &uimodel.CodeQLRunner{Type: runner.Type}
 				if runner.Type == "labeled_runner" {
