@@ -2,9 +2,11 @@
 
 The [configuration contract](../settings.md#classic-branch-protection) owns public
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
-This first slice manages conversation resolution, signed commits, linear history
-and deletions, separately from Rulesets. It adds no classic prune, admin ownership,
-PR/check/deployment editing, lock/fork-sync or force-push actor editing.
+Ordinary reconciliation manages conversation resolution, signed commits, linear
+history and the Allow deletions checkbox, separately from Rulesets. Explicit
+[classic prune](prune.feature.md#classic-branch-protection-deletion) additionally
+removes whole unlisted rules. Admin ownership, PR/check/deployment editing,
+lock/fork-sync and force-push actor editing remain separate work.
 
 ## Behavioral boundaries
 

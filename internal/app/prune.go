@@ -19,6 +19,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 }
 
 type prunePreparation struct {
+	classicProtection    settings.ClassicPruneObservation
 	environments         settings.EnvironmentPruneObservation
 	actionsPolicies      []settings.ActionsEventPolicyChange
 	labels               []settings.LabelChange
@@ -32,6 +33,23 @@ type prunePreparation struct {
 // Subsequent family reads must not widen or change these deletion candidates.
 func preparePrune(repo repository.Repository, desired settings.Declaration, prune settings.PruneScopes, write Writer) (prunePreparation, error) {
 	var result prunePreparation
+	if prune.Has("branch-protection-rules") && desired.BranchProtectionRules != nil {
+		if write.ReadBranchProtectionRules == nil || write.DeleteBranchProtectionRule == nil {
+			return result, fmt.Errorf("classic prune reader or writer unavailable")
+		}
+		current, err := write.ReadBranchProtectionRules(repo)
+		if err != nil {
+			return result, err
+		}
+		result.classicProtection, err = settings.PrepareClassicPrune(current, *desired.BranchProtectionRules)
+		if err != nil {
+			return result, err
+		}
+		unarchive := desired.Repository.Archived != nil && !*desired.Repository.Archived
+		if err := result.classicProtection.ValidateApply(unarchive); err != nil {
+			return result, err
+		}
+	}
 	if prune.Has("actions-policies") && desired.ActionsPolicies != nil {
 		current, err := write.ReadActionsPolicies(repo)
 		if err != nil {

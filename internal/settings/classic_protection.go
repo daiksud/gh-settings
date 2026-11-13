@@ -55,7 +55,7 @@ type ClassicSelection struct {
 // ClassicChange contains supported presentation values only, never raw companions.
 type ClassicChange struct {
 	Before *ClassicRule `json:"before,omitempty"`
-	After  ClassicRule  `json:"after"`
+	After  *ClassicRule `json:"after,omitempty"`
 }
 type ClassicWriteResult struct {
 	ID     int64
@@ -207,7 +207,8 @@ func CompareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 		if s.Before != nil && ClassicMatches(s.Before.Rule, s.Desired) {
 			continue
 		}
-		c := ClassicChange{After: CloneClassicRule(s.Desired)}
+		after := CloneClassicRule(s.Desired)
+		c := ClassicChange{After: &after}
 		if s.Before != nil {
 			v := CloneClassicRule(s.Before.Rule)
 			c.Before = &v
@@ -237,8 +238,14 @@ func ExportClassicRules(o ClassicObservation) ([]ClassicRule, error) {
 }
 func ValidateClassicChanges(changes []ClassicChange) error {
 	desired := make([]ClassicRule, 0, len(changes))
+	seen := map[int64]bool{}
 	for _, c := range changes {
-		desired = append(desired, c.After)
+		if c.Before == nil && c.After == nil {
+			return fmt.Errorf("missing classic change")
+		}
+		if c.After != nil {
+			desired = append(desired, *c.After)
+		}
 		if c.Before == nil {
 			if c.After.ID != nil {
 				return fmt.Errorf("classic creation cannot have id")
@@ -248,16 +255,34 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 		if err := ValidateClassicRules([]ClassicRule{*c.Before}); err != nil {
 			return err
 		}
-		if c.Before.ID == nil || c.After.ID == nil || *c.Before.ID != *c.After.ID {
-			return fmt.Errorf("classic update identity differs")
+		if c.Before.ID == nil || seen[*c.Before.ID] {
+			return fmt.Errorf("missing or duplicate classic change identity")
 		}
+		seen[*c.Before.ID] = true
 		for _, b := range ClassicFlags(*c.Before) {
 			if b == nil {
 				return fmt.Errorf("incomplete classic before policy")
 			}
 		}
-		if ClassicMatches(*c.Before, c.After) {
+		if c.After == nil {
+			continue
+		}
+		if c.After.ID == nil || *c.Before.ID != *c.After.ID {
+			return fmt.Errorf("classic update identity differs")
+		}
+		if ClassicMatches(*c.Before, *c.After) {
 			return fmt.Errorf("no-op classic report")
+		}
+	}
+	for _, c := range changes {
+		if c.After == nil {
+			continue
+		}
+		for _, other := range changes {
+			if other.Before != nil && c.After.BranchNamePattern == other.Before.BranchNamePattern &&
+				(c.Before == nil || c.Before.BranchNamePattern != c.After.BranchNamePattern) {
+				return fmt.Errorf("classic change pattern collides with an acquired rule")
+			}
 		}
 	}
 	return ValidateClassicRules(desired)

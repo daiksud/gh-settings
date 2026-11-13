@@ -7,10 +7,13 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func applyClassicProtection(result *ApplyResult, repo repository.Repository, desired []settings.ClassicRule, write Writer) (bool, error) {
+func applyClassicProtection(result *ApplyResult, repo repository.Repository, desired []settings.ClassicRule, write Writer, prune bool, prepared settings.ClassicPruneObservation) (bool, error) {
 	index := len(result.Operations)
 	result.Operations = append(result.Operations, ApplyOperation{Kind: ClassicProtectionRead})
 	observed, err := write.ReadBranchProtectionRules(repo)
+	if err == nil && prune {
+		err = prepared.Recheck(observed)
+	}
 	var selected []settings.ClassicSelection
 	if err == nil {
 		selected, err = settings.PrepareClassicRules(observed, desired)
@@ -70,6 +73,37 @@ func applyClassicProtection(result *ApplyResult, repo repository.Repository, des
 				}
 			}
 		}
+	}
+	if prune {
+		deleted, err := applyClassicPrune(result, repo, prepared, write)
+		return wrote || deleted, err
+	}
+	return wrote, nil
+}
+
+func applyClassicPrune(result *ApplyResult, repo repository.Repository, prepared settings.ClassicPruneObservation, write Writer) (bool, error) {
+	candidates, err := prepared.Candidates()
+	if err != nil {
+		return false, err
+	}
+	first := len(result.Operations)
+	for _, candidate := range candidates {
+		result.Operations = append(result.Operations, ApplyOperation{Kind: ClassicProtectionDelete, ClassicPattern: candidate.Pattern()})
+	}
+	wrote := false
+	for i, candidate := range candidates {
+		if err := write.DeleteBranchProtectionRule(repo, candidate); err != nil {
+			status := OperationFailedUnknown
+			var pre PreWriteReadFailure
+			uncertainty := " (unconfirmed effects may remain)"
+			if errors.As(err, &pre) {
+				status, uncertainty = OperationFailedRead, ""
+			}
+			result.failOperation(first+i, status)
+			return wrote, fmt.Errorf("delete classic protection %q id %d node %q%s%s: %w", candidate.Pattern(), candidate.ID(), candidate.NodeID(), environmentProgress(*result), uncertainty, err)
+		}
+		result.Operations[first+i].Status = OperationCompleted
+		wrote = true
 	}
 	return wrote, nil
 }

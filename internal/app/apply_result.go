@@ -88,6 +88,7 @@ const (
 	ClassicProtectionRead
 	ClassicProtectionCreate
 	ClassicProtectionUpdate
+	ClassicProtectionDelete
 )
 
 type ApplyOperationStatus uint8
