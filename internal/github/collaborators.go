@@ -15,7 +15,7 @@ import (
 
 // All collaborator requests reject redirects, including export and identity reads.
 func NewCollaboratorsClient(host string) (*Client, error) {
-	rest, err := api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+	rest, err := api.NewRESTClient(api.ClientOptions{Host: host, LogIgnoreEnv: true, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
 	if err != nil {
 		return nil, &collaboratorPreWriteFailure{fmt.Errorf("configure collaborator client: %w", err)}
 	}

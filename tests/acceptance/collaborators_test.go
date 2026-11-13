@@ -215,3 +215,19 @@ func TestCollaboratorsValidateBeforeRemoteProcess(t *testing.T) {
 		})
 	}
 }
+
+func TestCollaboratorsExportSuppressesPrivateTransportLogs(t *testing.T) {
+	state := &collaboratorProcessState{state: "pending", mode: "unavailable"}
+	f, env := collaboratorProcessFixture(t, state)
+	env = append(env, "GH_DEBUG=api")
+	r, err := executeCLI(acceptanceBinary(t), f.work, f.root, env, []string{"export"}, false)
+	if err != nil || r.runErr != nil {
+		t.Fatal("export failed", err, r.runErr)
+	}
+	if strings.Contains(r.stderr.String()+r.stdout.String(), "private-recipient-email@example.test") {
+		t.Fatal("private invitation response leaked through inherited GH_DEBUG=api")
+	}
+	if !strings.Contains(r.stderr.String(), "info: export repository.settings.collaborators:") {
+		t.Fatal("missing bounded unavailable diagnostic")
+	}
+}
