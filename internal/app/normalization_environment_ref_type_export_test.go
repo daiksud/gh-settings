@@ -73,8 +73,9 @@ func TestEnvironmentRefTypeExportWarningsAndEffectivePolicy(t *testing.T) {
 			}, nil
 		}}
 		if sink {
-			checkout.EnvironmentRefTypeNormalizationWarning = func(name string, pattern settings.EnvironmentPatternState) {
+			checkout.EnvironmentRefTypeNormalizationWarning = func(name string, pattern settings.EnvironmentPatternState) error {
 				got = append(got, warning{name, pattern})
+				return nil
 			}
 		}
 		err = Export(checkout, reader)

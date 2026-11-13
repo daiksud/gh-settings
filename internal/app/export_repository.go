@@ -12,7 +12,7 @@ import (
 // valid previous intent for unavailable groups. Retained values are not observed.
 func exportRepository(checkout ExportCheckout, read Reader, repo repository.Repository) (settings.RepositoryDeclaration, error) {
 	declaration := checkout.Existing.Repository
-	var infoError error
+	var diagnosticError error
 	var creationNormalizations []settings.ObservationNormalization
 	var commitNormalizations []settings.CommitMessageNormalization
 	for _, group := range settings.RepositoryExportGroups() {
@@ -34,7 +34,7 @@ func exportRepository(checkout ExportCheckout, read Reader, repo repository.Repo
 		}
 		if err != nil {
 			if checkout.Info != nil {
-				infoError = errors.Join(infoError, checkout.Info(repositoryExportPath(group), err))
+				diagnosticError = errors.Join(diagnosticError, checkout.Info(repositoryExportPath(group), err))
 			}
 			continue
 		}
@@ -71,7 +71,7 @@ func exportRepository(checkout ExportCheckout, read Reader, repo repository.Repo
 			if normalization.Path == settings.IssuePermissionsControl.Path() && exportDisabled(declaration.HasIssues) || normalization.Path == settings.PullRequestPermissionsControl.Path() && exportDisabled(declaration.HasPullRequests) {
 				continue
 			}
-			checkout.NormalizationWarning(normalization)
+			diagnosticError = errors.Join(diagnosticError, checkout.NormalizationWarning(normalization))
 		}
 	}
 	if checkout.CommitMessageNormalizationWarning != nil {
@@ -79,10 +79,10 @@ func exportRepository(checkout ExportCheckout, read Reader, repo repository.Repo
 			if normalization.Path == settings.SquashCommitMenu.Path() && exportDisabled(declaration.AllowSquashMerge) || normalization.Path == settings.MergeCommitMenu.Path() && exportDisabled(declaration.AllowMergeCommit) {
 				continue
 			}
-			checkout.CommitMessageNormalizationWarning(normalization)
+			diagnosticError = errors.Join(diagnosticError, checkout.CommitMessageNormalizationWarning(normalization))
 		}
 	}
-	return declaration, infoError
+	return declaration, diagnosticError
 }
 
 func exportDisabled(value *bool) bool { return value != nil && !*value }

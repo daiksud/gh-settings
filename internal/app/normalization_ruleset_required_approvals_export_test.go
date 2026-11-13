@@ -86,13 +86,15 @@ func TestRulesetRequiredApprovalsExportOrdersTypedWarningsAndPreservesAbsence(t 
 					}, nil
 				}}
 				if sinks&1 != 0 {
-					checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) {
+					checkout.RulesetNormalizationWarning = func(id int64, name string, n settings.ObservationNormalization) error {
 						got = append(got, warning{id: id, name: name, text: n})
+						return nil
 					}
 				}
 				if sinks&2 != 0 {
-					checkout.RulesetRequiredApprovalsNormalizationWarning = func(id int64, name string, n settings.RulesetRequiredApprovalsNormalization) {
+					checkout.RulesetRequiredApprovalsNormalizationWarning = func(id int64, name string, n settings.RulesetRequiredApprovalsNormalization) error {
 						got = append(got, warning{id: id, name: name, integer: n})
+						return nil
 					}
 				}
 				err = Export(checkout, reader)

@@ -58,6 +58,10 @@ inherited `GH_DEBUG` during acquisition and discards command stdout; normal expo
 diagnostics remain on stderr. The path output leaves publication to the caller.
 Other code in the same trusted job can still read the local file and credential.
 
+Failed info or required normalization-warning delivery follows the shared CLI
+failure contract: no configuration is saved and the Action has no successful
+outputs. Readable observations do not override that diagnostic failure.
+
 Export does not accept `prune` or `plan-reporting: status-only`, and creates no
 plan report or Summary. A failed first-file write can leave a local file, and
 result-output failure can occur after a completed export. Failed calls have no

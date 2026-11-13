@@ -43,8 +43,10 @@ Retained intent never supplies fresh normalization provenance.
 Checkout/origin target resolution remains required; no additional remote identity
 request is introduced. Successful local output does not certify repository
 existence when remote observations are unavailable. Invalid prior YAML, target/file
-safety, family-info output and write failures remain fatal. Existing void
-normalization-warning callbacks do not report every stderr write failure. File
+safety, family-info output, normalization-warning output and write failures remain
+fatal. Diagnostic delivery errors are kept separate from unavailable observations
+and prevent saving even when later family reads or info writes succeed. An initial
+destination stays absent; an existing declaration remains byte-identical. File
 snapshot and guarded replacement rules remain as specified by [export](export.feature.md).
 Plan/apply continue to validate and strictly observe declared intent.
 
