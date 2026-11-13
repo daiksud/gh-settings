@@ -441,6 +441,16 @@ checks actual installer/runtime/report/output behavior and is required by the
 candidate gate. These fixtures issue no real tokens or cloud requests and do not
 prove live permissions or server acceptance of an empty custom key list.
 
+The immutable-only literal codec baseline fails on unchanged source. The
+`oidc_immutable_test.go` owner tests distinguish absent from false, selected units
+from fresh companions, leaf retention from acquired data and diagnostic failures
+from save success. Adapter fixtures cover exact custom-key replay, known no-ops,
+400/422 without retry, prefix changes and requested/companion readback drift.
+The supplied CLI and additional scenarios within `TestBuiltCompositeOIDCSubject`
+exercise immutable export, plan, apply/repeat, unknown evidence, privacy, unchanged
+YAML and success-only output. These do not establish reversible legacy opt-in,
+effective token format or live cloud authentication.
+
 ## Classic whole-rule prune verification
 
 Classic whole-rule pruning has model/adapter/application safety checks in the
