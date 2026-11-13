@@ -63,6 +63,8 @@ It saved no form, toggled no setting and made no API mutation. An unsaved classi
 branch-protection form and an existing Ruleset editor were inspected. Visibility
 of a checkbox does not prove its dependent form is usable or its value writable.
 The Collaborators page required sudo-mode authentication, which was not performed.
+The follow-ups below identify later unsaved form inspections separately from this
+initial pass; none applied settings or authorized a new integration.
 
 | Inspected surface | Observation boundary |
 | --- | --- |
@@ -85,6 +87,42 @@ Agents, Codespaces and Dependabot. Actions/Agents exposed Variables separately;
 Codespaces/Dependabot showed secrets only. Autolinks was not observed in this sidebar;
 its row retains official-document evidence only. This pass is broader than the
 older mappings but is not an exhaustive survey of every conditional form.
+
+### Bounded follow-ups on 2026-11-14
+
+The personal-public new branch Ruleset form offered Active and Disabled. Its
+expanded PR settings included approvals, stale dismissal, specific-team review,
+Code Owners, last-push approval, conversation resolution, unattributed Copilot
+approval and allowed merge methods. Review-dismissal restrictions were absent
+from that expanded form, despite their generic [UI/API documentation][rules-ui].
+Specific-team search returned no visible teams. The bypass chooser did expose
+the owner User and Always, Exempt and For pull requests only modes, already
+supported by the current [Rulesets model](../settings.md#rulesets).
+Merge queue, secret-scanning merge protection, metadata restrictions and license
+compliance were not present on this form. These bounded observations do not
+establish universal absence or make acquired unsupported protections safe to drop.
+
+Copilot Code review again showed effort, maximum effort, instructions, MCP,
+approvals/path patterns and external-license blocking. No severity-filter control
+was visible; a read-only API value for that field does not establish a target UI
+control. The access banner did not disable the displayed configuration controls.
+
+The Codespaces prebuild form exposed branch, Every push / Configuration change /
+Scheduled triggers, region selection, template history, failure notifications and
+Disable prebuild optimization. Scheduled mode expanded days, time and time zone.
+The branch-dependent configuration-file selector was not expanded. The form was
+never submitted; no prebuild or billable workflow was created. The
+[official guide][prebuild-ui] documents personal-repository prebuild configuration.
+
+A finite search of the [fixed official OpenAPI revision][openapi-followup]
+confirmed Cloud configuration GET without a corresponding setter in that path,
+and the PR creation-cap fields without automatic exemption-rule configuration.
+It did not identify a complete prebuild configuration or repository auto-triage
+settings contract. Execution endpoints and codespace prebuild provenance are not
+settings management. These are investigated-unconfirmed contracts, not proof that
+no other official API exists. The full description was independently verified as
+Git blob `de7c10cdcc078b9b2d83b5656a7039764a3d0c38`; this is distinct from its
+repository revision.
 
 ## About, Labels and General
 
@@ -127,7 +165,7 @@ separately under [explicit boundaries](#explicit-product-and-target-boundaries).
 | Pending collaborator invitations and cancellation | Eligible | [Documented personal invitations][personal-invitations] | Read/cancel: [Invitations REST][invitations-api]; creation uses Collaborators REST and may return a pending invitation | Implemented: complete export, initial invitation and independent readback; pending remains distinct from accepted access. Explicit cancellation with independent readback implemented; email-only roundtrip remains a gap |
 | Email-only collaborator invitation | Eligible | Documented in the personal invitation guide | Partial: the confirmed collaborator setter addresses a username; complete email-only observation/redeclaration is unconfirmed | Not implemented; do not silently discard unresolved identities |
 | Persistent PR creation cap, draft counting and Exemption list | Eligible | [Recorded personal-public controls](../features/pull-request-limits.feature.md), 2026-11-11 | Read/write: [repository interaction-limit creation-cap and bypass-list endpoints][interactions-api] | Implemented: [cap](../settings.md#persistent-pull-request-limits), [Exemption list](../settings.md#pull-request-limit-exemption-list) |
-| Temporary interaction restrictions | Eligible | Observed, 2026-11-13: existing users, prior contributors and collaborators | Read/set/remove: [repository interaction restrictions REST][interactions-api] | Not implemented; expiry is separate from persistent PR limits |
+| Temporary interaction restrictions | Eligible | Three audiences observed; Enable duration menu inspected unsaved 2026-11-14: 24 hours, 3 days, 1 week, 1 month, 6 months | Read/set/remove: [repository interaction restrictions REST][interactions-api]; reads expose absolute expiry, writes accept five relative durations | Not implemented; finite-lease intent and repeat behavior need an explicit contract; no arbitrary absolute-expiry setter established |
 | PR limit automatic exemption rules | Eligible | Referenced by the [current cap contract](../settings.md#persistent-pull-request-limits); full target UI inventory unconfirmed | Unconfirmed complete rule read/update contract | Not implemented |
 | Code review limits: limit approving/request-changes reviews to users explicitly granted read or higher access | Eligible | Observed checkbox, 2026-11-13; [documented public control][review-limits-ui] | Unconfirmed complete settings read/update contract | Not implemented |
 | Classic branch protection: pattern rules and controls | Eligible | Observed unsaved form, 2026-11-13; [documented public availability][protected-branches] | Read/create/update/delete: [BranchProtectionRule GraphQL][branches-graphql]; [protected-branch REST][branch-protection-api] addresses concrete branches | Partial: [classic protection](../settings.md#classic-branch-protection) implements exact patterns, conversation resolution, signed commits, linear history, branch locking, administrator enforcement, deletions and complete active PR-review, required status-check and deployment groups; remaining controls are unowned companions; explicit [classic pruning](../settings.md#classic-branch-protection-pruning) removes whole unlisted rules after complete private snapshot/absence checks. Lock branch and administrator enforcement were observed in the unsaved form on 2026-11-14; provider source corroborates administrator polarity and PR-required/count-zero mapping; review checkboxes/counts were observed unsaved on 2026-11-14. Fork-sync remains unowned. The status-check source menu was observed unsaved on 2026-11-14; explicit any/App-node mapping follows the official input contract, with active alias coherence as a product observation boundary. Required deployments and empty selection were observed unsaved on 2026-11-14, with read-only Environment inventory corroboration. No live protection update was tested |
@@ -139,6 +177,22 @@ For classic protection, configurable wildcard patterns require a rule-level
 model; querying protection for existing branch names alone is not a complete
 inventory. Rulesets and classic protection remain separate resources, with no
 implicit migration, replacement or removal.
+
+Temporary interaction restrictions have a documented write API, but its relative
+duration cannot generally recreate an arbitrary exported absolute deadline.
+Reads do not expose the original duration or a stable lease ID. Reapplying an
+unchanged duration after expiry would start another restriction; that behavior
+must be explicit, not hidden behind a matching-policy claim. Exact observed-lease
+adoption/removal would be partial support, and a durable activation/receipt
+contract would need to work through both CLI and Action. No such YAML or hidden
+state is introduced by this inventory. Persistent PR caps remain separate.
+
+The [Classic management guide][classic-management-ui] limits review-dismissal
+restrictions to organization repositories; the [protected-branches guide][protected-branches]
+also documents the organization scope of push/creation restrictions and bypass
+lists. Owner scope is distinct from a blanket plan exclusion. These statements
+do not override separately observed personal User/App force-push controls or
+establish that Ruleset review-dismissal controls share the same applicability.
 
 ## Rulesets
 
@@ -152,18 +206,18 @@ of protections remain separate obligations from endpoint existence.
 | Branch/tag identity, enforcement, targets, bypass actors and supported rules | Eligible | Recorded in the Rulesets mapping, 2026-10-28 | Read/write/lifecycle: repository Rulesets REST | Implemented within [Rulesets](../settings.md#rulesets), including creation/update/deletion restrictions, review/check rules, deployments, scanning/quality thresholds and automatic Copilot review |
 | Additional approval for unattributed Copilot PRs | Eligible, including Preview | Observed checked checkbox, 2026-11-13; [documented behavior][rules-ui] | Read/write: PR rule `require_extra_approval_for_unattributed_changes` in repository Rulesets REST | Implemented: explicit true/false, selected PR-group default true, complete export, fresh drift checks, conditional whole-object update and independent readback; [ownership contract](../settings.md#pr-review-and-required-check-parameters) |
 | Restrict code coverage | Eligible, including Preview | Checkbox observed 2026-11-13; threshold form observed 2026-11-14: optional blank inputs, 0–100, arbitrary step; [UI guide][coverage-ui] | Read/write: `code_coverage`, `minimum_coverage`, `max_coverage_drop`; optional response members have no documented default; [API announcement][coverage-announcement] also lists Team/Enterprise prerequisites | Implemented: [branch thresholds](../settings.md#code-coverage-thresholds), declaration-only zero defaults, complete acquired values, fresh drift checks and independent confirmation; live acceptance/enforcement unverified |
-| Require review from specific teams | Eligibility unresolved | Top-level checkbox observed, 2026-11-13, but [official guide][rules-ui] says unavailable on user-owned repositories; usable team selection unconfirmed | Partial: team-review parameters exist; target applicability unresolved | Not implemented; do not equate a visible checkbox with selectable organization teams |
+| Require review from specific teams | Eligibility unresolved | Checkbox and expanded fields observed; owner-name search returned no visible teams on 2026-11-14; [official guide][rules-ui] says unavailable on user-owned repositories | Partial: team-review parameters exist; usable personal-target selection unconfirmed | Not implemented; do not equate a visible checkbox with selectable organization teams |
 | Require secret scanning alerts to be resolved | Eligible if target UI is configurable | [Documented rule][rules-ui]; target UI availability unconfirmed | Unconfirmed complete settings read/write mapping in this audit | Not implemented |
-| Merge queue | Eligible if target UI is configurable | Target UI availability/choices unconfirmed | Partial: rules schema exists; complete applicable control mapping unconfirmed | Not implemented; current source rejects acquired policy |
-| Evaluate enforcement | Eligible if target UI is configurable | Absent from the recorded personal-repository menu; current eligibility unconfirmed | Partial: API enforcement concept exists; target UI correspondence unconfirmed | Not implemented; current source rejects it rather than treating it as Disabled |
+| Merge queue | Non-target under documented owner scope | [Official guide][merge-queue-ui] specifies organization-owned repositories; absent from the personal form on 2026-11-14 | Partial: rules schema exists; API presence does not override the documented owner boundary | Not implemented; current source rejects acquired policy |
+| Evaluate enforcement | Eligible if target UI is configurable | New personal Ruleset menu offered Active and Disabled on 2026-11-14; broader target applicability unconfirmed | Partial: API enforcement concept exists; target UI correspondence unconfirmed | Not implemented; current source rejects it rather than treating it as Disabled |
 | Commit/branch/tag metadata restrictions | Eligible if target UI is configurable | Target UI availability/choices unconfirmed | Partial: repository rule schemas exist; complete applicable control mapping unconfirmed | Not implemented |
 | License compliance | Eligible if target UI is configurable | Target UI availability/choices unconfirmed | Unconfirmed complete applicable read/write contract | Not implemented |
-| Review-dismissal restrictions | Eligible if target UI is configurable | Target UI applicability and actor choices unconfirmed | Partial: PR rule schema exists; absence does not prove disabled protection | Not implemented; acquired restrictions remain a protection boundary |
+| Review-dismissal restrictions | Eligible if target UI is configurable | Generic [UI documentation][rules-ui] exists; absent from the expanded personal PR form on 2026-11-14, so applicable actor selection remains unconfirmed | Partial: PR rule schema exists and the guide names REST/GraphQL; target mapping remains unconfirmed | Not implemented; acquired restrictions remain a protection boundary |
 
 The personal-public coverage checkbox is fresh UI evidence despite the
 [coverage announcement][coverage-announcement]'s plan wording. Neither the
-checkbox nor the API definition proves that the unexpanded threshold form or a
-live mutation succeeds. Preserve those evidence limits rather than excluding
+unsaved threshold form nor the API definition proves that a live mutation or
+effective enforcement succeeds. Preserve those evidence limits rather than excluding
 the control for cost. The team-review discrepancy likewise remains explicit. The
 [current Rulesets contract](../settings.md#plan-apply-and-export) owns rejection
 of unsupported protections; this inventory does not relax it.
@@ -182,7 +236,7 @@ of unsupported protections; this inventory does not relax it.
 | Agents repository variables | Eligible | Recorded variables UI | Read/create/update/delete: [Agents Variables REST][agents-variables-api] | Implemented: [Agents variables](../settings.md#agents-repository-variables) |
 | Copilot custom-instructions usage, MCP usage and default/Lite/Balanced effort | Eligible | [Recorded effort and companion controls](../features/copilot-review-effort.feature.md) | Read/write: [repository Copilot settings GET/PATCH][copilot-api] | Implemented: [instructions](../settings.md#copilot-code-review-custom-instructions), [MCP](../settings.md#copilot-code-review-mcp-tools), [effort](../settings.md#copilot-code-review-effort-level) |
 | Copilot review effort Max | Eligible, including Preview | [Documented Max choice][copilot-max]; availability is repository-specific | Read/write: repository settings accepts efforts in acquired `available_review_efforts`; [API announcement][copilot-api-announcement] confirms UI/API choices | Implemented: [effort declaration](../settings.md#copilot-code-review-effort-level), automatic export, conditional apply and independent readback; fresh availability is required |
-| Copilot review severity filtering | Eligible if target UI is configurable | Current target UI choice/availability unconfirmed | Read/write: repository Copilot settings `severity_filter`; availability conditions apply | Not implemented; existing adapters preserve the acquired companion |
+| Copilot review severity filtering | Eligible if target UI is configurable | No corresponding control visible in the complete Code review page inspection on 2026-11-14; broader target applicability unconfirmed | Read/write: repository Copilot settings `severity_filter`; a successful read is not UI evidence | Not implemented; existing adapters preserve the acquired companion |
 | Copilot approval controls and optional path restrictions | Eligible | Observed toggle and up-to-15 path patterns, 2026-11-13 | Documented limitation: [configuration guide][copilot-config] says approvals are not available through the API | Not implemented |
 | Copilot maximum review effort policy | Eligible | Observed selector, 2026-11-13 | Documented limitation: configuration guide says maximum effort is not available through the API | Not implemented |
 | Block reviews requested with an external Copilot license | Eligible | Observed checkbox, 2026-11-13 | Documented limitation: configuration guide excludes billing settings from API support; no separate applicable contract confirmed | Not implemented |
@@ -261,12 +315,12 @@ must not be erased merely because part of the resource cannot be managed.
 
 | Control or group | Policy | UI evidence | API evidence | Source coverage |
 | --- | --- | --- | --- | --- |
-| Repository webhooks: non-secret configuration, events and activation | Eligible if target UI is configurable | Add webhook observed, 2026-11-13; full form unconfirmed; [documented controls][webhooks-api] | Read/create/update/delete: repository hooks REST; secret values remain excluded | Not implemented; secret preservation and delivery side effects need a complete contract |
+| Repository webhooks: non-secret configuration, events and activation | Eligible for documented repository controls | Add webhook observed; form required sudo confirmation, not performed; [repository guide][webhooks-ui] documents URL, content type, optional Secret, events and Active | Read/create/update/delete plus dedicated config GET/PATCH: [repository hooks REST][webhooks-api]; dedicated [partial updates][webhooks-config-announcement] permit omitted-secret config edits, while parent PATCH warns that omitted secrets are removed | Not implemented; config-only management is confirmed feasible; parent Active/events preservation remains unresolved, SSL target UI remains unconfirmed, and creation sends a ping |
 | Deploy keys: title, public key and read/write grant | Eligible | Add deploy key observed, 2026-11-13; [documented UI controls](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys) | Read/create/delete: [deploy-key REST][deploy-keys-api]; no update endpoint | Implemented: [canonical public-key identity, guarded creation and explicit pruning](../settings.md#deploy-keys); immutable replacements are separate applies; private keys excluded |
 | Autolink references | Eligible | [Documented repository UI](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources); no fresh authenticated form observed | Read/create/delete: [Autolinks REST][autolinks-api]; no documented in-place update | Implemented: [immutable ID binding, verified creation and explicit prune](../settings.md#autolink-references); replacement requires separate deletion and creation; no live write or rendered-link claim |
 | Existing GitHub App repository integration configuration | Eligible only for configurable repository controls | Installed-App inventory observed, 2026-11-13; no additional repository setting established | Partial: installation inventory is not proof of complete configurable repository state or App-credential mutation support | Not implemented; App installation/authorization excluded |
 | Email notifications | Eligible if target UI is configurable | Target control inventory unconfirmed | Unconfirmed repository settings read/update contract | Not implemented |
-| Codespaces prebuild configuration | Eligible if target UI is configurable | Prebuild configurations and Set up prebuild observed, 2026-11-13; setup form not inspected | Unconfirmed complete applicable settings contract; workspace execution and file editing are distinct | Not implemented |
+| Codespaces prebuild configuration | Eligible | Setup, schedule and advanced fields inspected unsaved 2026-11-14; [documented personal-repository controls][prebuild-ui]; branch-dependent config selector not expanded | Investigated-unconfirmed complete settings contract in the fixed API recheck; workspace execution, prebuild provenance and file editing are distinct | Not implemented; no prebuild was created or workflow executed |
 | Additional sidebar, conditional and feature-dependent controls | Eligible if target UI is configurable | Unconfirmed until explicitly inventoried | Unconfirmed until matched to applicable official settings APIs | No completeness claim; record each newly observed control separately |
 
 ## Explicit product and target boundaries
@@ -343,3 +397,9 @@ being confused with the missing implementations above.
 [webhooks-api]: https://docs.github.com/en/rest/repos/webhooks
 [deploy-keys-api]: https://docs.github.com/en/rest/deploy-keys/deploy-keys
 [autolinks-api]: https://docs.github.com/en/rest/repos/autolinks
+[openapi-followup]: https://github.com/github/rest-api-description/blob/e3453a017bbfe9a6c78d53873b7a3d1bdd56899f/descriptions/api.github.com/api.github.com.json
+[classic-management-ui]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule
+[merge-queue-ui]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue
+[prebuild-ui]: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/configuring-prebuilds
+[webhooks-ui]: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks
+[webhooks-config-announcement]: https://github.blog/changelog/2020-10-26-webhooks-configuration-enhancements/
