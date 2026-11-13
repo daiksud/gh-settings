@@ -45,7 +45,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 					return
 				}
 				value, ok := payload["review_effort"].(string)
-				if !ok || value != "inherit" && value != "lite" && value != "balanced" {
+				if !ok || value != "inherit" && value != "lite" && value != "balanced" && value != "max" {
 					t.Error("wrong effort", payload)
 					w.WriteHeader(400)
 					return
@@ -62,7 +62,11 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 				w.WriteHeader(400)
 				return
 			}
-			json.NewEncoder(w).Encode(map[string]any{"review_effort": map[string]any{"configured": configured, "effective": "balanced"}, "available_review_efforts": available, "severity_filter": "no_filter", "custom_instructions_enabled": false, "mcp_enabled": true})
+			effective := "balanced"
+			if configured != nil {
+				effective = configured.(string)
+			}
+			json.NewEncoder(w).Encode(map[string]any{"review_effort": map[string]any{"configured": configured, "effective": effective}, "available_review_efforts": available, "severity_filter": "no_filter", "custom_instructions_enabled": false, "mcp_enabled": true})
 			return
 		}
 		if servePRAccessFixtureRead(w, r) || serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
@@ -124,8 +128,8 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("balanced")
-	run([]string{"plan"}, "repository.settings.copilot.code_review.review_effort_level: default → balanced\n", false)
+	write("max")
+	run([]string{"plan"}, "repository.settings.copilot.code_review.review_effort_level: default → max\n", false)
 	expect("GET " + endpoint)
 	report := filepath.Join(fixture.root, "effort-plan.json")
 	run([]string{"action", "plan", report, "status-only"}, "", false)
@@ -154,7 +158,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 	expect("GET "+endpoint, "PATCH "+endpoint, "GET "+endpoint)
 	run([]string{"apply"}, "Applied repository settings.\n", false)
 	expect("GET " + endpoint)
-	write("lite")
+	write("max")
 	mu.Lock()
 	available = []string{"balanced"}
 	mu.Unlock()
@@ -183,14 +187,18 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 	mu.Unlock()
 	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
-	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
-		t.Fatal(err)
+	output, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
+	if err != nil || !strings.Contains(string(output), "review_effort_level: max") {
+		t.Fatal(string(output), err)
 	}
-	// Instructions remain independently selectable even when effort is unsupported.
+	// Unknown effort remains unavailable; re-export retains the valid Max intent.
+	mu.Lock()
+	configured = "future"
+	mu.Unlock()
 	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	output, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(output), "review_effort_level") {
+	if err != nil || !strings.Contains(string(output), "review_effort_level: max") {
 		t.Fatal(string(output), err)
 	}
 	mu.Lock()
@@ -205,7 +213,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 	if err != nil || json.Unmarshal(raw, &wire) != nil || wire["resource"] != "repository.settings.copilot.code_review.review_effort_level" || wire["outcome"] != "read-failure" {
 		t.Fatal(string(raw), err)
 	}
-	for _, invalid := range []string{"null", "max", "inherit", "false"} {
+	for _, invalid := range []string{"null", "future", "inherit", "false"} {
 		write(invalid)
 		run([]string{"apply"}, "", true)
 		mu.Lock()

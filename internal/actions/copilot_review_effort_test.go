@@ -15,12 +15,12 @@ import (
 )
 
 func TestCopilotReviewEffortPlanReport(t *testing.T) {
-	change, err := settings.NewCopilotReviewEffortChange("default", "balanced")
+	change, err := settings.NewCopilotReviewEffortChange("default", "max")
 	if err != nil {
 		t.Fatal(err)
 	}
 	comparison := settings.Comparison{Managed: 1, CopilotReviewEffort: []settings.CopilotReviewEffortChange{change}}
-	line := "repository.settings.copilot.code_review.review_effort_level: default → balanced"
+	line := "repository.settings.copilot.code_review.review_effort_level: default → max"
 	if output := string(cli.RenderComparison(comparison)); output != line+"\n" {
 		t.Fatal(output)
 	}
@@ -38,7 +38,7 @@ func TestCopilotReviewEffortPlanReport(t *testing.T) {
 	if err := json.Unmarshal(data, &report); err != nil {
 		t.Fatal(err)
 	}
-	if len(report.CopilotReviewEffort) != 1 || report.CopilotReviewEffort[0].Before != "default" || report.CopilotReviewEffort[0].After != "balanced" {
+	if len(report.CopilotReviewEffort) != 1 || report.CopilotReviewEffort[0].Before != "default" || report.CopilotReviewEffort[0].After != "max" {
 		t.Fatal(string(data))
 	}
 	metadata := RunMetadata{Actor: "owner", TriggeringActor: "owner", Event: "push", RunID: "1", RunAttempt: "1", WorkflowRef: "owner/current/.github/workflows/settings.yml@refs/heads/main", WorkflowSHA: strings.Repeat("a", 40), ConfigSHA: strings.Repeat("b", 40), Target: "owner/current", CLIVersion: "dev", CLISHA256: strings.Repeat("c", 64)}
@@ -53,17 +53,17 @@ func TestCopilotReviewEffortPlanReport(t *testing.T) {
 		t.Fatal(err)
 	}
 	saved, err := os.ReadFile(private)
-	if err != nil || strings.Contains(string(saved)+output.String(), "review_effort_level") || strings.Contains(string(saved), "default → balanced") {
+	if err != nil || strings.Contains(string(saved)+output.String(), "review_effort_level") || strings.Contains(string(saved), "default → max") {
 		t.Fatal(string(saved), output.String(), err)
 	}
 	for _, bad := range [][]PlanChange{
-		{{Field: "review_effort", Before: "default", After: "balanced"}},
-		{{Field: settings.CopilotReviewEffortPath, Before: true, After: "balanced"}},
+		{{Field: "review_effort", Before: "default", After: "max"}},
+		{{Field: settings.CopilotReviewEffortPath, Before: true, After: "max"}},
 		{{Field: settings.CopilotReviewEffortPath, Before: "default"}},
-		{{Field: settings.CopilotReviewEffortPath, Before: "balanced", After: "balanced"}},
-		{{Field: settings.CopilotReviewEffortPath, Before: "default", After: "max"}},
-		{{Field: settings.CopilotReviewEffortPath, Before: "max", After: "balanced"}},
-		{{Field: settings.CopilotReviewEffortPath, Before: "default", After: "balanced"}, {Field: settings.CopilotReviewEffortPath, Before: "default", After: "lite"}},
+		{{Field: settings.CopilotReviewEffortPath, Before: "max", After: "max"}},
+		{{Field: settings.CopilotReviewEffortPath, Before: "default", After: "future"}},
+		{{Field: settings.CopilotReviewEffortPath, Before: "future", After: "max"}},
+		{{Field: settings.CopilotReviewEffortPath, Before: "default", After: "max"}, {Field: settings.CopilotReviewEffortPath, Before: "default", After: "lite"}},
 	} {
 		report.CopilotReviewEffort = bad
 		if _, err := RenderSummary(report, metadata); err == nil {

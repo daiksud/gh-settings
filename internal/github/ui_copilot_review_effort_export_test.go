@@ -7,7 +7,7 @@ import (
 )
 
 func TestCopilotReviewEffortExportProjection(t *testing.T) {
-	for _, value := range []string{"default", "lite", "balanced"} {
+	for _, value := range []string{"default", "lite", "balanced", "max"} {
 		for _, instructions := range []*bool{nil, new(bool)} {
 			empty := ""
 			topics := []string{}
@@ -29,7 +29,7 @@ func TestCopilotReviewEffortExportProjection(t *testing.T) {
 				t.Fatalf("%s %v", data, err)
 			}
 			source.CopilotReviewEffort = new(string)
-			*source.CopilotReviewEffort = "max"
+			*source.CopilotReviewEffort = "future"
 			if _, err := UIFromExportDeclaration(source); err == nil {
 				t.Fatal("exported unsupported effort")
 			}
