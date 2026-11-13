@@ -2,9 +2,9 @@
 
 The [configuration contract](../settings.md#classic-branch-protection) owns public
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
-This first slice manages conversation resolution, signed commits, linear history
-and deletions, separately from Rulesets. It adds no classic prune, admin ownership,
-PR/check/deployment editing, lock/fork-sync or force-push actor editing.
+Current source manages conversation resolution, signed commits, linear history,
+branch locking and deletions, separately from Rulesets. It adds no classic prune, admin ownership,
+PR/check/deployment editing, fork-sync or force-push actor editing.
 
 ## Behavioral boundaries
 
@@ -29,15 +29,20 @@ PR/check/deployment editing, lock/fork-sync or force-push actor editing.
   compatible intent with info; local validation/output/save failures remain fatal.
   Private report/summary behavior and guarded ID writeback use existing boundaries.
 
+- Lock branch supports explicit lock and unlock, including false-valued export.
+  Omitted lock state and the unowned fork-sync flag are independently preserved.
+  Unexpected fork-sync changes fail after the write with uncertain effects.
+  Stored lock and deletion flags do not imply deletion is permitted while locked.
+
 ## Verification mapping
 
 - Literal YAML booleans, omission, null/type/alias rejection and exact patterns:
-  `internal/workspace/ui_classic_protection_test.go`.
+  `internal/workspace/ui_classic_protection_test.go` and `ui_classic_lock_test.go`.
 - Identity/collision selection, creation order, partial equality, nullable raw
   companions and supported export: `internal/settings/classic_protection_test.go`.
 - Literal GraphQL inputs, complete 101-rule/101-actor pagination, unowned companion
   drift, fresh no-ops, create recovery and failure boundaries:
-  `internal/github/classic_protection_test.go`.
+  `internal/github/classic_protection_test.go` and `classic_lock_test.go`.
 - Family preflight, declaration order, unarchive, actual progress and export
   retention: `internal/app/classic_protection_test.go`.
 - Closed report, escaped Summary and status-only privacy:
@@ -45,6 +50,8 @@ PR/check/deployment editing, lock/fork-sync or force-push actor editing.
 - Supplied executable export/plan/apply/repeat, guarded numeric-ID recording,
   wildcard rules, private Action output and unavailable export:
   `tests/acceptance/classic_protection_test.go`.
+- Actual supplied Action lock/unlock/no-op, private plan and fork-sync drift:
+  `tests/github-actions/classic_lock_acceptance_test.go`.
 
 The literal YAML acceptance case fails against the pre-change executable because
 `branch_protection_rules` is unknown. Automated verification uses local fixtures

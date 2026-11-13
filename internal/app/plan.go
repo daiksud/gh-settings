@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
@@ -95,8 +96,23 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += topics.Managed
 		comparison.Changes = append(comparison.Changes, topics.Changes...)
 	}
-	if desired.Collaborators != nil && desired.Collaborators.Len() > 0 {
-		selected, err := prepareCollaborators(repo, *desired.Collaborators, read.Collaborators, read.ResolveCollaborator)
+	if desired.Collaborators != nil && (desired.Collaborators.Len() > 0 || prune.Has("collaborators")) {
+		var selected []settings.CollaboratorSelection
+		var err error
+		if prune.Has("collaborators") {
+			var prepared settings.CollaboratorPruneObservation
+			if read.CollaboratorPrune == nil {
+				err = fmt.Errorf("collaborator prune reader unavailable")
+			} else {
+				prepared, err = read.CollaboratorPrune(repo, *desired.Collaborators)
+			}
+			if err == nil {
+				selected = prepared.Selections()
+				comparison.CollaboratorDeletions = prepared.Deletions()
+			}
+		} else {
+			selected, err = prepareCollaborators(repo, *desired.Collaborators, read.Collaborators, read.ResolveCollaborator)
+		}
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.collaborators", Target: repo, Err: err}
 		}

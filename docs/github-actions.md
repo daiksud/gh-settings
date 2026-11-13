@@ -17,9 +17,9 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `export`, `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for export/plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
-| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables` and `actions-policies`; see [pruning](#explicit-collection-pruning). |
+| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments` and `collaborators`; see [pruning](#explicit-collection-pruning). |
 
-Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action neither mints a token, identifies its credential type nor verifies its actual grants; there is no ambient-token or personal-credential fallback.
+Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action does not mint a token or certify its actual grants; collaborator prune additionally requires positive management-path evidence using that same credential; there is no ambient-token or personal-credential fallback.
 
 There are no inputs for arbitrary arguments, configuration path, target, CLI version or download URL. Nonempty `prune` is rejected for export and validate before installation. The Action's checkout metadata and explicit export/plan/apply token requirements also apply to configurations with no managed fields.
 
@@ -149,7 +149,12 @@ Current-source export/plan/apply supports the
 [personal collaborator contract](settings.md#personal-collaborators). Confirm
 support in the selected immutable package; this change does not update its pin.
 Detailed plan Summary distinguishes initial invitations, pending acceptance and
-active access, including matching pending people. Status-only publication omits
+active access, including matching pending people. Explicit `prune: collaborators`
+(or standalone `all`) additionally shows invitation cancellations and grant removals
+for a present list. The same explicit installation token must prove target access
+and complete admin-only invitation visibility; no second credential or installation
+ID is used. See [prune guards and side effects](settings.md#collaborator-pruning).
+Status-only publication omits
 recipient identities. Action apply never writes user IDs into the checkout;
 record the reported verified user IDs through a reviewed declaration update
 before relying on scheduled no-reinvitation behavior. An invitation is not proof
@@ -174,7 +179,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | --- | --- | --- |
 | Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
-| Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation, fresh identity guard and independent active/pending readback |
+| Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation or explicit prune DELETE, fresh identity/management-path guards and independent complete readback |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
@@ -372,8 +377,9 @@ these consequences; status-only retains its existing value-hiding boundary.
 The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
 do not add this capability to an existing published Action/CLI. Actions Policies
-use `actions-policies`; parent deletion uses `environments`. Standalone `all`
-selects all seven supported scopes and cannot be mixed with another token.
+use `actions-policies`; parent deletion uses `environments`; personal access deletion
+uses `collaborators`. Standalone `all`
+selects all eight supported scopes and cannot be mixed with another token.
 Environment pruning retains every listed name, including variable-only entries,
 and runs only after retained policy/variable work. Parent deletion removes
 contained configuration/secrets and fails jobs waiting on protection rules; recreation does not

@@ -2,8 +2,8 @@
 
 The [configuration contract](../settings.md#personal-collaborators) owns the
 public schema and lifecycle. This feature covers personally owned public
-repositories; organization roles, teams, acceptance, cancellation and removal
-are not implemented by this slice. Email-only roundtrip remains an explicit
+repositories, including explicit prune removal and invitation cancellation.
+Organization roles, teams and recipient acceptance remain unsupported. Email-only roundtrip remains an explicit
 technical gap. [ADR0031](../adr/0031-repository-access-ownership.md) is historical
 organization-focused context, not a second schema.
 
@@ -57,7 +57,7 @@ Feature: Reconcile personal collaborators without repeating matching invitations
 
   Scenario: Omitted and empty collections cause no access mutation
     Given collaborators is omitted or explicitly empty
-    When plan or apply runs
+    When plan or apply runs without prune
     Then no collaborator read or write is required
     And unlisted people remain untouched
 
@@ -95,6 +95,52 @@ against the official [OpenAPI snapshot](https://github.com/github/rest-api-descr
 Fixture evidence does not establish real App grants, notification delivery or
 recipient acceptance. No live invitation or access mutation is authorized by
 these tests. Complete collections are not atomic snapshots; username-addressed
-PUT has no atomic expected-user-ID guard. Without a saved verified binding, a
+PUT and DELETE have no atomic expected-user-ID guard. Without a saved verified binding, a
 later run cannot durably deduplicate an ambiguous request whose invitation has
 since disappeared; resolve state before retrying.
+
+## Explicit personal access pruning
+
+```gherkin
+Feature: Remove only fixed explicitly unretained personal access
+  Scenario: Freeze all candidates before any repository write
+    Given a present collaborator list and explicit collaborators prune
+    When complete access, selected identities or operator evidence is unavailable
+    Or an active candidate authored a retained invitation
+    Or a retained invitation has unknown inviter identity
+    Then no unrelated settings write or unarchive occurs
+
+  Scenario: Retain the union and delete in dependency order
+    Given ID-bound and resolved username-only retained people
+    And fixed unlisted pending invitations and active grants
+    When selected reconciliation and verified bindings succeed
+    Then only fixed invitation IDs are cancelled first
+    And only fixed active user IDs are removed afterward
+    And every DELETE requires empty 204 and independent complete readback
+    And no new or accepted invitation is converted into another removal
+
+  Scenario: Keep operation progress honest
+    Given an attempted DELETE and an empty 204 acknowledgment
+    When independent readback fails or remaining state changed
+    Then resulting access is unverified and later work stops
+    And earlier verified deletions and local bindings remain reported
+    And local bindings alone do not claim remote partial progress
+
+  Scenario: Preserve Action privacy and no-writeback
+    Given an explicit installation token and complete target-access evidence
+    When the supplied composite plans or applies collaborators prune
+    Then detailed output distinguishes cancellation and removal
+    And status-only hides user and invitation identities
+    And private inviter metadata is never logged or reported
+    And YAML is unchanged and public outputs require success
+```
+
+Prune owners: [model](../../internal/settings/collaborator_prune_test.go),
+[adapter](../../internal/github/collaborator_prune_test.go),
+[app](../../internal/app/collaborator_prune_test.go),
+[report](../../internal/actions/collaborator_prune_test.go),
+[supplied CLI](../../tests/acceptance/collaborator_prune_test.go), and
+[actual supplied-product Action](../../tests/github-actions/composite_collaborator_prune_acceptance_test.go).
+These fixture checks do not establish live installation grants or asynchronous
+GitHub removal side effects. The [configuration contract](../settings.md#collaborator-pruning)
+owns management-path and residual-race limits.

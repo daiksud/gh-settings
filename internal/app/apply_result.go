@@ -1,6 +1,9 @@
 package app
 
-import "github.com/cli/go-gh/v2/pkg/repository"
+import (
+	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/settings"
+)
 
 type ApplyOutcome uint8
 
@@ -86,6 +89,8 @@ const (
 	CollaboratorsRead
 	CollaboratorReconcile
 	CollaboratorIdentityBinding
+	CollaboratorCancelInvitation
+	CollaboratorRemove
 	ClassicProtectionRead
 	ClassicProtectionCreate
 	ClassicProtectionUpdate
@@ -120,12 +125,13 @@ type ApplyOperation struct {
 // ApplyResult retains known execution progress without claiming readback or rollback.
 // Individual label operations become known only after a complete fresh read.
 type ApplyResult struct {
-	Collaborators []CollaboratorResult
-	Outcome       ApplyOutcome
-	Target        repository.Repository
-	Operations    []ApplyOperation
-	CreatedIDs    []CreatedObject
-	Notices       []string
+	CollaboratorDeletions []settings.CollaboratorDeleteResult
+	Collaborators         []CollaboratorResult
+	Outcome               ApplyOutcome
+	Target                repository.Repository
+	Operations            []ApplyOperation
+	CreatedIDs            []CreatedObject
+	Notices               []string
 }
 
 type CreatedObject struct {

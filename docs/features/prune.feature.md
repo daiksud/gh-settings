@@ -13,8 +13,8 @@ repeated flags fail locally. `all` must stand alone and must never silently omit
 an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
-`actions-variables`, `agents-variables`, `environment-variables` and
-`environments`. Standalone `all` selects all seven; future supported prune scopes
+`actions-variables`, `agents-variables`, `environment-variables`, `environments` and `collaborators`.
+Standalone `all` selects all eight; future supported prune scopes
 must join its explicit expansion and tests. Classic branch-protection pruning
 remains separate future work; these scopes do not delete classic rules.
 
@@ -145,3 +145,8 @@ absence after DELETE 204. Removing a restriction can permit future workflows.
 - Actual supplied-product Action detailed/status-only plan and `all` apply:
   `tests/github-actions/environment_prune_acceptance_test.go`. The candidate gate
   runs this against the producer executable; no live parent deletion is performed.
+
+Personal access uses the same `collaborators` selector and standalone `all`, with
+present-list ownership, global fixed-candidate preparation and independent
+readback. The [access specification](repository-access.feature.md#explicit-personal-access-pruning)
+owns its retained-user union, invitation dependency, operator and progress cases.
