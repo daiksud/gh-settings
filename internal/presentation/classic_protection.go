@@ -16,7 +16,7 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		}
 		parts = append(parts, classicStatusChecksLine(c.Before.RequireStatusChecksToPassBeforeMerging))
 		parts = append(parts, classicReviewsLine(c.Before.RequireAPullRequestBeforeMerging))
-		parts = append(parts, classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging))
+		parts = append(parts, classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging), classicForcePushLine(c.Before.AllowForcePushes))
 		return fmt.Sprintf("%s: delete (id %d) before {%s} → absent (removes the whole rule, including other configured protections; an overlapping rule may take effect)", settings.ClassicProtectionPath, *c.Before.ID, strings.Join(parts, ", "))
 	}
 	operation := "create"
@@ -57,6 +57,13 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		}
 		parts = append(parts, value)
 	}
+	if settings.ClassicForcePushSelected(c.After.AllowForcePushes) {
+		value := classicForcePushLine(c.After.AllowForcePushes)
+		if c.Before != nil {
+			value = classicForcePushLine(c.Before.AllowForcePushes) + " → " + value
+		}
+		parts = append(parts, value)
+	}
 	line := fmt.Sprintf("%s: %s%s %s", settings.ClassicProtectionPath, operation, identity, strings.Join(parts, ", "))
 	if settings.ClassicStatusChecksManaged(c.After.RequireStatusChecksToPassBeforeMerging) {
 		line += ", " + classicStatusChecksLine(c.After.RequireStatusChecksToPassBeforeMerging)
@@ -79,4 +86,9 @@ func classicReviewsLine(group *settings.ClassicPullRequestReviews) string {
 func classicDeploymentLine(group *settings.ClassicDeployments) string {
 	data, _ := json.Marshal(group)
 	return "require_deployments_to_succeed_before_merging: " + string(data)
+}
+
+func classicForcePushLine(group *settings.ClassicForcePush) string {
+	data, _ := json.Marshal(group)
+	return "allow_force_pushes: " + string(data)
 }

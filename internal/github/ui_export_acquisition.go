@@ -41,6 +41,9 @@ func CheckExportAcquisition(source settings.Declaration) error {
 	}
 	if source.BranchProtectionRules != nil {
 		for _, r := range *source.BranchProtectionRules {
+			if !settings.ClassicForcePushSelected(r.AllowForcePushes) {
+				return fmt.Errorf("classic export lacks acquired force-push control")
+			}
 			if !settings.ClassicReviewsManaged(r.RequireAPullRequestBeforeMerging) {
 				return fmt.Errorf("classic export lacks acquired PR policy")
 			}

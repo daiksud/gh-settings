@@ -1582,8 +1582,8 @@ See the [behavior specification](features/autolinks.feature.md).
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and six independent checkboxes plus complete PR-review, required status-check
-and deployment groups. It is separate
+and six independent checkboxes plus complete PR-review, required status-check,
+deployment and force-push groups. It is separate
 from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1748,6 +1748,55 @@ Collateral changes or failed readback stop later work with uncertain effects;
 earlier verified writes remain applied. No retry, rollback or atomic lock is
 promised. Stored-value readback does not establish effective branch enforcement.
 
+`allow_force_pushes` owns a complete active group. Omission or `{}` leaves it
+unmanaged. `enabled: false` forbids children. `enabled: true` requires
+`who_can_force_push: everyone` or `specified_actors`. Everyone forbids `actors`;
+specified actors require a nonempty authoritative set:
+
+```yaml
+allow_force_pushes:
+  enabled: true
+  who_can_force_push: specified_actors
+  actors:
+    - type: user
+      id: "<opaque User node ID>"
+    - type: app
+      id: "<opaque App node ID>"
+```
+
+Each actor requires exactly `type: user|app` and an opaque nonblank string ID.
+Nulls, unknown members/types, case variants, controls and duplicate IDs fail.
+Logins, numeric IDs and installation IDs are not substitutes. Actor ordering is
+insignificant; export sorts identities. No App installation or access grant is
+performed. User and ChatGPT Codex Connector App selection were observed on the
+unsaved personal-public form on 2026-11-14. No rule was saved or force push tested.
+The [pinned provider mapping](https://github.com/integrations/terraform-provider-github/blob/1b9c5c13eb840a72c99d088f3bf3b5e00b950c04/github/util_v4_branch_protection.go)
+corroborates the native mapping alongside the official GraphQL schema.
+
+Everyone maps to `allowsForcePushes: true`. Specified actors map to false plus the
+complete `bypassForcePushActorIds` set. False with no actors means disabled;
+false alone does not disable existing allowances. Explicit disabling sends false
+and an empty actor list together. Selecting a specified list replaces the complete
+membership, including previously acquired Team allowances. Everyone changes only
+the boolean and preserves all latent actor identities; omission preserves both
+native controls. Unexpected latent changes fail verification, rather than implying
+that GitHub always retains inactive storage.
+
+Before any needed rule mutation with specified actors selected, the client checks
+every desired node ID and User/App type, even if the actor set matches and another
+flag caused the write. Only a wholly matching rule skips these extra lookups.
+The scalar mutation acknowledgment does not prove actor membership; independent
+complete paginated readback verifies actors and omitted raw state. Other protections
+and repository access permissions still determine effective force-push access.
+
+Team is a known acquired identity, but its personal-target selection remains
+unconfirmed and it is not accepted in desired YAML. Other Classic updates and
+whole-rule prune can preserve or inspect that known state. Detailed plans may show
+an active Team in the acquired before-policy, never as a desired input. An active
+specified set containing Team makes automatic Classic export unavailable, retaining
+compatible prior intent instead of dropping it. Everyone can export normally while
+latent Team identities remain private. Unknown actor kinds or incomplete reads fail.
+
 Only independently confirmed creations receive guarded numeric-ID writeback,
 using the original unique pattern. The existing file/symlink/concurrent-edit
 checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation or
@@ -1755,12 +1804,12 @@ local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
 Automatic export projects every readable rule's ID, pattern, six checkboxes and
-active PR-review, status-check and deployment groups. It does not export or adopt the other controls.
+active PR-review, status-check, deployment and force-push groups. It does not export or adopt the other controls.
 Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
 GraphQL cannot reveal future unselected schema fields. Actor restrictions,
-fork-sync and force-push selection remain separate work;
+fork-sync and additional actor controls remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
@@ -1835,7 +1884,7 @@ list retains declared numeric IDs and newly created rules. All retained rules mu
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
 Ordinary create/update retains partial-control ownership and complete active
-PR-review, status-check and deployment ownership.
+PR-review, status-check, deployment and force-push ownership.
 
 Deletion removes the entire rule, including unowned protections. An overlapping
 rule may then take effect; recreation cannot restore creation-age priority. The plan shows
@@ -1844,8 +1893,8 @@ companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-six flags, active PR-review/status-check/deployment projections and all known raw companions,
-including inactive PR-review, status-check and deployment values. Missing, denied, partial,
+six flags, active PR-review/status-check/deployment/force-push projections and all known raw companions,
+including inactive PR-review, status-check, deployment and force-push values. Missing, denied, partial,
 unsupported or inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.
