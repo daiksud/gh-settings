@@ -89,7 +89,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		_, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport all supported readable settings to .github/settings.yml. Independent unavailable settings emit info and retain valid prior declarations; initial export omits them. Variables are plaintext. Secret values are never read. Refuse invalid or concurrently changed files.\nPlan is read-only; apply changes declared settings. --prune adds unlisted deletions for present collections. Supported scopes: labels, rulesets, actions-policies, actions-variables, agents-variables, environment-variables, environments, collaborators. Standalone all selects every supported scope.")
+		_, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport all supported readable settings to .github/settings.yml. Independent unavailable settings emit info and retain valid prior declarations; initial export omits them. Variables are plaintext. Secret values are never read. Refuse invalid or concurrently changed files.\nPlan is read-only; apply changes declared settings. --prune adds unlisted deletions for present collections. Supported scopes: labels, rulesets, actions-policies, actions-variables, agents-variables, environment-variables, environments, collaborators, deploy-keys. Standalone all selects every supported scope.")
 		if err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
@@ -164,6 +164,8 @@ func createdCollectionPath(collection string) string {
 		return "repository.settings.actions.policies"
 	case "rulesets":
 		return "repository.settings.rulesets"
+	case "deploy_keys":
+		return settings.DeployKeysPath
 	case "branch_protection_rules":
 		return settings.ClassicProtectionPath
 	default:
@@ -181,6 +183,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		}
 		path := ""
 		switch op.Kind {
+		case app.DeployKeysRead, app.DeployKeyCreate, app.DeployKeyDelete:
+			path = settings.DeployKeysPath
 		case app.CopilotReviewEffortUpdate:
 			path = settings.CopilotReviewEffortPath
 		case app.CopilotInstructionsUpdate:

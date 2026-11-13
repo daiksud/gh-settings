@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 	"go.yaml.in/yaml/v4"
 )
@@ -32,7 +33,7 @@ func (checkout Checkout) PrepareApply() (uimodel.Repository, func(string, string
 func createdIDRecorder(root string, snapshot []byte) func(string, string, int64) error {
 	expected := bytes.Clone(snapshot)
 	return func(collection, name string, id int64) error {
-		if id <= 0 || (collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators" && collection != "branch_protection_rules") {
+		if id <= 0 || (collection != "deploy_keys" && collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators" && collection != "branch_protection_rules") {
 			return fmt.Errorf("invalid object identity")
 		}
 		var document yaml.Node
@@ -56,6 +57,10 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		repository := mappingValue(document.Content[0], "repository")
 		entries := mappingValue(repository, "labels")
 		nameKey, path := "name", "repository.labels"
+		if collection == "deploy_keys" {
+			entries = mappingValue(mappingValue(repository, "settings"), "deploy_keys")
+			nameKey, path = "key", settings.DeployKeysPath
+		}
 		if collection == "collaborators" {
 			entries = mappingValue(mappingValue(repository, "settings"), "collaborators")
 			nameKey, path = "username", "repository.settings.collaborators"
@@ -86,7 +91,12 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 				}
 			}
 			n := mappingValue(entry, nameKey)
-			if n != nil && n.Kind == yaml.ScalarNode && n.Value == name {
+			matches := n != nil && n.Kind == yaml.ScalarNode && n.Value == name
+			if collection == "deploy_keys" && n != nil && n.Kind == yaml.ScalarNode {
+				key, err := settings.ParseDeployPublicKey(n.Value)
+				matches = err == nil && key.Fingerprint() == name
+			}
+			if matches {
 				if selected != nil {
 					return fmt.Errorf("ambiguous selected object %q", name)
 				}

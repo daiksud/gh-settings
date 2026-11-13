@@ -13,6 +13,7 @@ type Collaborator struct {
 }
 
 type RepositorySettings struct {
+	DeployKeys            *[]DeployKey
 	BranchProtectionRules *[]BranchProtectionRule
 	Collaborators         *[]Collaborator
 	InteractionLimits     *InteractionLimits

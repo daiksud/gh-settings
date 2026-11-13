@@ -31,6 +31,25 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	}
 	result.Labels = labels
 	if repository.Settings != nil {
+		if repository.Settings.DeployKeys != nil {
+			values := make([]settings.DeployKeyDeclaration, 0, len(*repository.Settings.DeployKeys))
+			for _, v := range *repository.Settings.DeployKeys {
+				if v.Title == nil || v.Key == nil || v.AllowWriteAccess == nil {
+					return settings.Declaration{}, fmt.Errorf("%s: title, public key and allow_write_access are required", settings.DeployKeysPath)
+				}
+				key, err := settings.ParseDeployPublicKey(*v.Key)
+				if err != nil {
+					return settings.Declaration{}, fmt.Errorf("%s: %w", settings.DeployKeysPath, err)
+				}
+				values = append(values, settings.DeployKeyDeclaration{ID: v.ID, Title: *v.Title, Key: key, AllowWriteAccess: *v.AllowWriteAccess})
+			}
+			value, err := settings.NewDeployKeyDeclarations(values)
+			if err != nil {
+				return settings.Declaration{}, fmt.Errorf("%s: %w", settings.DeployKeysPath, err)
+			}
+			result.DeployKeys = &value
+		}
+
 		if repository.Settings.BranchProtectionRules != nil {
 			if err := settings.ValidateClassicRules(*repository.Settings.BranchProtectionRules); err != nil {
 				return settings.Declaration{}, err

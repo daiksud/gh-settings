@@ -19,6 +19,11 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 	if err := d.Repository.ValidateCommitDependencies(); err != nil {
 		return settings.Declaration{}, err
 	}
+	if d.DeployKeys != nil {
+		if _, err := settings.NewDeployKeyDeclarations(d.DeployKeys.Values()); err != nil {
+			return settings.Declaration{}, err
+		}
+	}
 	if err := d.Security.Validate(); err != nil {
 		return settings.Declaration{}, err
 	}

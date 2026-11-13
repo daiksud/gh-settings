@@ -111,6 +111,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	for _, c := range comparison.Pages {
 		fmt.Fprintln(&output, presentation.PagesLine(c))
 	}
+	for _, change := range comparison.DeployKeys {
+		fmt.Fprintln(&output, presentation.DeployKeyLine(change))
+	}
 	for _, deletion := range comparison.CollaboratorDeletions {
 		fmt.Fprintln(&output, presentation.CollaboratorDeletionLine(deletion))
 	}

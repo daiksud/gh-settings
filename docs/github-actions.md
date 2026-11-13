@@ -17,7 +17,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `export`, `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for export/plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
-| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments` and `collaborators`; see [pruning](#explicit-collection-pruning). |
+| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and `deploy-keys`; see [pruning](#explicit-collection-pruning). |
 
 Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action does not mint a token or certify its actual grants; collaborator prune additionally requires positive management-path evidence using that same credential; there is no ambient-token or personal-credential fallback.
 
@@ -171,6 +171,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
 | Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation or explicit prune DELETE, fresh identity/management-path guards and independent complete readback |
+| Deploy keys (current source) | Administration read, complete personal-public target and key inventory | Administration write; immutable creation or explicit guarded deletion with independent readback |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
@@ -368,8 +369,8 @@ The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
 do not add this capability to an existing published Action/CLI. Actions Policies
 use `actions-policies`; parent deletion uses `environments`; personal access deletion
-uses `collaborators`. Standalone `all`
-selects all eight supported scopes and cannot be mixed with another token.
+uses `collaborators`; deploy key deletion uses `deploy-keys`. Standalone `all`
+selects every supported scope and cannot be mixed with another token.
 Environment pruning retains every listed name, including variable-only entries,
 and runs only after retained policy/variable work. Parent deletion removes
 contained configuration/secrets and fails jobs waiting on protection rules; recreation does not
@@ -405,3 +406,14 @@ independently of PR scanning in export, plan and apply. Verify the selected
 immutable package supports it. Apply changes configuration and verifies the PR
 companion; it does not request a scan. Detailed reports show the boolean, while
 status-only publication hides it. Actual scan usage and billing remain separate.
+
+## Deploy keys in current source
+
+The Action shares the [Deploy keys contract](settings.md#deploy-keys), including
+canonical public-key identity, exact matching no-ops and explicit `deploy-keys`
+pruning. Detailed plans show title, fingerprint and read/write grant; status-only
+hides those values. Transport ignores `GH_DEBUG` for private snapshot data.
+Creation reports a verified ID for follow-up binding and leaves the caller's YAML
+unchanged. Repeating an IDless declaration collides instead of adopting it. Failed
+confirmation withholds success outputs, preserves recovery evidence and stops
+later deletion. These source capabilities do not alter a published package pin.

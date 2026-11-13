@@ -107,6 +107,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 	t.Helper()
 	responses := map[string]string{
 		"":                              strings.TrimSuffix(planResponse, "}") + `,"id":123,"full_name":"owner/current","archived":false,"visibility":"public","private":false,"owner":{"id":2,"login":"owner","type":"User"},"security_and_analysis":{"secret_scanning":{"status":"disabled"},"secret_scanning_push_protection":{"status":"disabled"}}}`,
+		"/keys":                         `[]`,
 		"/collaborators":                `[]`,
 		"/invitations":                  `[]`,
 		"/topics":                       `{"names":[]}`,

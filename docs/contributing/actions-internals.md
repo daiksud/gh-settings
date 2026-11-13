@@ -197,3 +197,11 @@ No operator identity, inviter evidence, private email, raw inventory or creation
 metadata enters this projection. Detailed Summary uses the CLI's two deletion
 labels; status-only hides all people and IDs. Apply retains attempted/acknowledged/
 verified deletion evidence through later errors, without a mutable deletion journal.
+
+Current source adds `deploy_keys` create/delete report entries. A create has only
+`after` with required title, SHA256 fingerprint and native `allow_write_access`; a
+delete has only `before` with those fields and a positive ID. There is no update
+operation or raw-key/private-snapshot representation. Strict reconstruction rejects
+missing/native-type violations, unknown fields, duplicate IDs/fingerprints and
+invalid operation shapes; integer IDs retain exact precision. Mixed creation and
+deletion count the family once. See [Deploy keys](../settings.md#deploy-keys).

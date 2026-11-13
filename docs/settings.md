@@ -81,13 +81,13 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables`, `environment-variables`, `actions-policies`, `environments` and `collaborators`.
-Standalone `all` selects all eight supported scopes; combining it with another
+`agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and `deploy-keys`.
+Standalone `all` selects every supported scope; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets/Actions Policies, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy entries
+labels/Rulesets/Actions Policies/deploy keys, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -860,6 +860,90 @@ General's `pull_requests.merge_commit.default_commit_message` accepts `default_m
 ## Topics
 
 `repository.about.topics` manages the complete topic set. It is a direct array, not a mapping. Omission leaves it unmanaged; `[]` explicitly clears all topics; `{}` and null are invalid. Names are unique lowercase letters/numbers/hyphens, 1–50 characters each, at most 20 entries. Names are public metadata even on private repositories. Export, comparison and PUT use sorted set order without rewriting existing input YAML. Apply reads complete, validated current membership and skips PUT when the set matches, regardless of order. Changed membership uses one full-set PUT followed by an independent GET; the PUT response alone is not confirmation. A failed prerequisite read makes no Topics write. A rejected update or failed/mismatching readback stops later resources with uncertain effects and no automatic retry or rollback. Metadata read and Administration write must already exist. See [Topics and ordering](commands.md#apply-behavior).
+
+## Deploy keys
+
+Current source manages the **Title**, public **Key** and **Allow write access**
+controls for a personally owned public repository. [GitHub documents these UI
+controls](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/managing-deploy-keys)
+and [list, get, create and delete REST operations](https://docs.github.com/en/rest/deploy-keys/deploy-keys).
+Administration read is needed for observation and write for creation/deletion.
+The client never generates keys, reads private keys, uses an SSH agent or tests SSH
+access. API acceptance and a stored configuration do not prove actual key usability.
+
+```yaml
+repository:
+  settings:
+    deploy_keys:
+      - id: 456
+        title: build-server
+        key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB
+        allow_write_access: false
+```
+
+The example public material is a fixture, not a usable deployment credential.
+Every entry requires native string `title` and `key` and boolean
+`allow_write_access`. Empty titles are accepted; titles may repeat. Reject title
+control characters, nulls, duplicate positive IDs and duplicate parsed key material.
+`key` must contain one valid authorized-public-key line, optionally ending in one
+LF/CRLF and a trailing comment. Options, private formats, internal newlines,
+multiple keys and mismatched algorithm tokens fail locally without echoing input.
+A maintained SSH parser determines syntax; it does not promise GitHub algorithm
+support. Parsing is bounded to 64 KiB. Export and creation use canonical public
+material without comments, and `allow_write_access` is the inverse of REST
+`read_only`, including explicit false.
+
+Omission is unmanaged. `deploy_keys: []` preserves existing keys during ordinary
+apply. Export requires complete target identity and paginated, typed inventory;
+unavailable reads emit bounded info and retain valid prior declarations, or omit
+this family on first export. Missing fields never become empty inventories or
+false permissions. Export includes IDs. The optional server `enabled` field is
+private evidence: missing means unknown, null is invalid, and neither state is
+converted into declared access.
+
+An ID-bound exact match is a no-op. A missing ID or changed title, material or
+access flag fails: there is no update endpoint, implicit replacement or fallback
+creation. IDless entries create only when their canonical key does not exist;
+existing material requires explicit ID binding. Titles and comments cannot cause
+adoption. Before creating, apply checks the complete target/inventory again. A
+201 acknowledgment, independent GET by the new ID and complete inventory readback
+must confirm the configuration and preservation of previous keys. Only then may
+local CLI writeback add the ID to the unique canonical-key entry, preserving its
+original key scalar/comment. Existing IDs, ambiguous/aliased entries and concurrent
+file changes block writeback. Action and `--no-writeback` leave YAML unchanged;
+record the reported fingerprint and ID against the matching key before repeating.
+
+A positive new ID from a successful creation response may be reported separately
+for recovery when confirmation fails. It is not written into YAML, does not prove
+successful creation verification and never comes from an error response or reused
+ID. Later work stops; earlier verified writes remain. Reports show title,
+SHA256 fingerprint and grant, with numeric ID when selected; raw key material and
+private snapshots stay out of plan reports. Status-only also hides this identity.
+Raw transport logging is suppressed even with `GH_DEBUG=api`.
+
+### Deploy key pruning
+
+`--prune deploy-keys` and standalone `all` add deletion only for a present list.
+Selected IDs are retained. Complete target and all key snapshots are frozen before
+any write, including unrelated changes and unarchive. Before each DELETE, complete
+inventory and candidate GET must still match. Expected state includes only this
+run's verified creations/deletions and known own-unarchive transition; new external
+keys never become inferred candidates. ID, parsed material, title, grant, creation
+time, canonical API URL and exact unknown/false/true `enabled` state are guarded.
+Dynamic `verified`, usage time and creator attribution are typed but do not trigger
+identity drift. The server URL is validated against the fixed GitHub.com target
+route and is never followed. Unknown fields or incomplete pages block acquisition.
+
+Deletion requires a 204 empty acknowledgment and fresh complete inventory proving
+absence and preserved remaining keys. GET404 alone proves nothing. A failed
+readback can leave a deleted key and uncertain remote effects; no rollback or retry
+is attempted. Deletion revokes that repository credential. Replace immutable
+configuration by explicitly pruning the old ID, then creating the replacement in
+a later apply. A distinct new key can be created before pruning an old key, with
+temporary overlapping access. This is not automatic rotation. Removing a creator
+or uninstalling an App is not deploy-key cleanup.
+
+See the [behavior and verification specification](features/deploy-keys.feature.md).
 
 ## Personal collaborators
 

@@ -6,6 +6,7 @@ import "github.com/daiksud/gh-settings/internal/settings/uimodel"
 // remain independent of YAML grouping; they are never decoded as a second format.
 // Every scalar pointer preserves omission independently from explicit false/zero.
 type uiSettingsDocument struct {
+	DeployKeys            *[]uimodel.DeployKey
 	BranchProtectionRules *[]uimodel.BranchProtectionRule
 	Collaborators         *[]uimodel.Collaborator
 	InteractionLimits     *uimodel.InteractionLimits
@@ -76,7 +77,7 @@ type uiSecretProtectionDocument struct {
 }
 
 func (document uiSettingsDocument) model() uimodel.RepositorySettings {
-	result := uimodel.RepositorySettings{Collaborators: document.Collaborators, InteractionLimits: document.InteractionLimits, Agents: document.Agents, Copilot: document.Copilot,
+	result := uimodel.RepositorySettings{DeployKeys: document.DeployKeys, Collaborators: document.Collaborators, InteractionLimits: document.InteractionLimits, Agents: document.Agents, Copilot: document.Copilot,
 		BranchProtectionRules: document.BranchProtectionRules, Rulesets: document.Rulesets, Pages: document.Pages, Environments: document.Environments,
 	}
 	if general := document.General; general != nil {
@@ -132,7 +133,7 @@ func (document uiActionsGeneralDocument) model() uimodel.ActionsGeneral {
 }
 
 func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDocument {
-	result := uiSettingsDocument{Collaborators: model.Collaborators, BranchProtectionRules: model.BranchProtectionRules, InteractionLimits: model.InteractionLimits, Agents: model.Agents, Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
+	result := uiSettingsDocument{DeployKeys: model.DeployKeys, Collaborators: model.Collaborators, BranchProtectionRules: model.BranchProtectionRules, InteractionLimits: model.InteractionLimits, Agents: model.Agents, Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
 	if general := model.General; general != nil {
 		result.General = &uiGeneralDocument{
 			TemplateRepository: general.TemplateRepository, DefaultBranch: general.DefaultBranch,

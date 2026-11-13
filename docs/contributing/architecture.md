@@ -269,3 +269,12 @@ actual-write outcomes, failure stopping and guarded ID recording. Export uses th
 existing independent-family retention boundary. The
 [feature specification](../features/classic-protection.feature.md) maps tests and
 records the inspected-schema and nontransactional limits.
+
+Deploy keys use a parsed public-key value and closed observations in
+`internal/settings/deploy_keys.go`. The GitHub adapter owns bounded, nonlogging
+transport, exact target/URL binding, complete pagination and independent creation
+and deletion verification. The app owns global prune preparation, fixed candidate
+ordering and recovery versus verified progress. Workspace binds only a confirmed
+new ID by canonical-key fingerprint, preserving original scalar/comments; titles
+are display data, not selectors. Presentation/report boundaries contain only title,
+fingerprint, grant and selected ID. See the [public contract](../settings.md#deploy-keys).

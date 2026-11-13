@@ -167,6 +167,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.AgentsVariables = changes
 	}
+	if desired.DeployKeys != nil && (desired.DeployKeys.Len() > 0 || prune.Has("deploy-keys")) {
+		observed, err := read.DeployKeys(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.DeployKeysPath, Target: repo, Err: err}
+		}
+		_, changes, err := settings.PrepareDeployKeys(observed, desired.DeployKeys, prune.Has("deploy-keys"))
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.DeployKeysPath, Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.DeployKeys = changes
+	}
 	if desired.CopilotInstructions != nil {
 		observed, err := read.CopilotInstructions(repo)
 		if err != nil {

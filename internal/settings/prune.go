@@ -8,7 +8,7 @@ import (
 
 // PruneScopes is an explicit deletion selection, independent of declaration scope.
 // Its zero value never deletes unlisted objects.
-type PruneScopes struct{ labels, rulesets, actionsVariables, agentsVariables, environmentVariables, actionsPolicies, environments, collaborators bool }
+type PruneScopes struct{ labels, rulesets, actionsVariables, agentsVariables, environmentVariables, actionsPolicies, environments, collaborators, deployKeys bool }
 
 func ParsePruneScopes(value string) (PruneScopes, error) {
 	var result PruneScopes
@@ -23,9 +23,11 @@ func ParsePruneScopes(value string) (PruneScopes, error) {
 			if len(parts) != 1 {
 				return PruneScopes{}, fmt.Errorf("--prune all must be used alone")
 			}
-			return PruneScopes{labels: true, rulesets: true, actionsVariables: true, agentsVariables: true, environmentVariables: true, actionsPolicies: true, environments: true, collaborators: true}, nil
+			return PruneScopes{labels: true, rulesets: true, actionsVariables: true, agentsVariables: true, environmentVariables: true, actionsPolicies: true, environments: true, collaborators: true, deployKeys: true}, nil
 		}
 		switch part {
+		case "deploy-keys":
+			result.deployKeys = true
 		case "labels":
 			result.labels = true
 		case "rulesets":
@@ -50,11 +52,11 @@ func ParsePruneScopes(value string) (PruneScopes, error) {
 }
 
 func (p PruneScopes) Has(scope string) bool {
-	return scope == "collaborators" && p.collaborators || scope == "environments" && p.environments || scope == "actions-policies" && p.actionsPolicies || scope == "labels" && p.labels || scope == "rulesets" && p.rulesets || scope == "actions-variables" && p.actionsVariables || scope == "agents-variables" && p.agentsVariables || scope == "environment-variables" && p.environmentVariables
+	return scope == "deploy-keys" && p.deployKeys || scope == "collaborators" && p.collaborators || scope == "environments" && p.environments || scope == "actions-policies" && p.actionsPolicies || scope == "labels" && p.labels || scope == "rulesets" && p.rulesets || scope == "actions-variables" && p.actionsVariables || scope == "agents-variables" && p.agentsVariables || scope == "environment-variables" && p.environmentVariables
 }
 
 func (p PruneScopes) Manages(d Declaration) bool {
-	return p.collaborators && d.Collaborators != nil || p.environments && d.Environments != nil || p.actionsPolicies && d.ActionsPolicies != nil || p.labels && d.Labels != nil || p.rulesets && d.Rulesets != nil || p.actionsVariables && d.Variables != nil || p.agentsVariables && d.AgentsVariables != nil || p.environmentVariables && len(d.EnvironmentVariables) > 0
+	return p.deployKeys && d.DeployKeys != nil || p.collaborators && d.Collaborators != nil || p.environments && d.Environments != nil || p.actionsPolicies && d.ActionsPolicies != nil || p.labels && d.Labels != nil || p.rulesets && d.Rulesets != nil || p.actionsVariables && d.Variables != nil || p.agentsVariables && d.AgentsVariables != nil || p.environmentVariables && len(d.EnvironmentVariables) > 0
 }
 
 // CompareLabelsWithPrune retains normal ID/create-only semantics, then appends

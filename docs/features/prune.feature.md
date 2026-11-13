@@ -13,8 +13,8 @@ repeated flags fail locally. `all` must stand alone and must never silently omit
 an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
-`actions-variables`, `agents-variables`, `environment-variables`, `environments` and `collaborators`.
-Standalone `all` selects all eight; future supported prune scopes
+`actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators` and `deploy-keys`.
+Standalone `all` selects every supported scope; future supported prune scopes
 must join its explicit expansion and tests. Classic branch-protection pruning
 remains separate future work; these scopes do not delete classic rules.
 
@@ -150,3 +150,12 @@ Personal access uses the same `collaborators` selector and standalone `all`, wit
 present-list ownership, global fixed-candidate preparation and independent
 readback. The [access specification](repository-access.feature.md#explicit-personal-access-pruning)
 owns its retained-user union, invitation dependency, operator and progress cases.
+
+### Rule: Keep deploy key deletion candidates fixed
+
+[Deploy key pruning](../settings.md#deploy-key-pruning) retains selected IDs and
+acquires complete private snapshots before any mutation. Each DELETE checks the
+exact target, full inventory and candidate detail; its 204 is followed by complete
+absence verification. Only this execution's verified creations/deletions and own
+unarchive alter expected state. External membership or enabled-state drift stops
+further work. Same material cannot be replaced implicitly in one apply.

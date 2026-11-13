@@ -3,7 +3,7 @@ author: Daiki Sudo
 description: Export, validate, plan or directly apply checkout-root settings with its verified release CLI on GitHub-hosted Ubuntu 24.04 x64.
 inputs:
   prune:
-    description: Optional comma-separated deletion scopes for plan/apply. Currently labels,rulesets,actions-variables,agents-variables,environment-variables,actions-policies,environments,collaborators, or standalone all; omitted collections stay unmanaged and explicit [] prunes all.
+    description: Optional comma-separated deletion scopes for plan/apply. Currently labels,rulesets,actions-variables,agents-variables,environment-variables,actions-policies,environments,collaborators,deploy-keys, or standalone all; omitted collections stay unmanaged and explicit [] prunes all.
     required: false
     default: ''
   plan-reporting:
