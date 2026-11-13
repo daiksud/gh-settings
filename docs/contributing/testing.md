@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeAIScanRepositories)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -394,3 +394,11 @@ validation before requests, file persistence, export retention and recovery.
 exercise the actual installer and Action plan/apply steps against a local service.
 These are fixture observations, not live invitations, access grants, App
 permission verification or recipient acceptance.
+
+## Repository AI Scan verification
+
+The [security specification](../features/security.feature.md#ai-scan-for-repositories)
+maps strict domain/API cases and the built CLI and actual supplied-product Action
+scenarios. They cover automatic export retention, independent PR status, native
+booleans, narrow PATCH, no-op repeat, target/companion readback failure, unchanged
+checkout and private/success-only publication. No live scan or write is performed.

@@ -466,6 +466,19 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Security = append(comparison.Security, changes...)
 	}
 
+	if desired.Security.AIScanRepositories != nil {
+		observed, err := read.AIScanRepositories(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_repositories", Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareAIScanRepositories(observed, desired.Security)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_repositories", Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.Security = append(comparison.Security, changes...)
+	}
+
 	if desired.Security.PrivateVulnerabilityReporting != nil {
 		observed, err := read.PrivateReporting(repo)
 		if err != nil {

@@ -1,0 +1,150 @@
+//go:build acceptance
+
+package acceptance
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+)
+
+func TestAIScanRepositoriesExportPlanApply(t *testing.T) {
+	binary := acceptanceBinary(t)
+	var mu sync.Mutex
+	enabled := false
+	repositoryKnown := true
+	prState := "disabled"
+	reads, writes := 0, 0
+	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		if servePRAccessFixtureRead(w, r) || serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
+			return
+		}
+		if isMergeMethodsFixtureRead(r) {
+			fmt.Fprint(w, mergeMethodsFixtureResponse)
+			return
+		}
+		switch r.URL.Path {
+		case "/repos/owner/current":
+			if r.Method != "GET" {
+				t.Error("repository mutated")
+				w.WriteHeader(400)
+				return
+			}
+			var base map[string]any
+			json.Unmarshal([]byte(planResponse), &base)
+			base["visibility"] = "public"
+			base["owner"] = map[string]any{"type": "User", "id": 2}
+			base["id"], base["full_name"] = 1, "owner/current"
+			json.NewEncoder(w).Encode(base)
+			return
+		case "/repos/owner/current/topics":
+			fmt.Fprint(w, `{"names":[]}`)
+			return
+		case "/repos/owner/current/labels":
+			fmt.Fprint(w, `[]`)
+			return
+		case "/repos/owner/current/code-scanning/ai-scan":
+			if r.Method == "GET" {
+				reads++
+				if !repositoryKnown {
+					fmt.Fprintf(w, `{"pr_scan":%q}`, prState)
+					return
+				}
+				state := "disabled"
+				if enabled {
+					state = "enabled"
+				}
+				fmt.Fprintf(w, `{"repository_scan":%q,"pr_scan":%q}`, state, prState)
+				return
+			}
+			var payload map[string]any
+			json.NewDecoder(r.Body).Decode(&payload)
+			if r.Method != "PATCH" || len(payload) != 1 || (payload["repository_scan"] != "enabled" && payload["repository_scan"] != "disabled") {
+				t.Error("unexpected payload", payload)
+				w.WriteHeader(400)
+				return
+			}
+			writes++
+			enabled = payload["repository_scan"] == "enabled"
+			w.WriteHeader(200)
+			fmt.Fprintf(w, `{"repository_scan":%q,"pr_scan":"disabled"}`, payload["repository_scan"])
+			return
+		}
+		t.Error("unrelated endpoint", r.Method, r.URL)
+		w.WriteHeader(400)
+	}, false, "/code-scanning/ai-scan", "/labels", "/topics")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fixture.close()
+	env := exportFixtureEnv(fixture.cfg)
+	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) string {
+		t.Helper()
+		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
+		if err != nil || r.runErr != nil || hasNonInfoDiagnostic(r.stderr.String()) {
+			t.Fatal(args, err, r.stderr.String())
+		}
+		return r.stdout.String()
+	}
+	run("export")
+	mu.Lock()
+	n := reads
+	mu.Unlock()
+	if n == 0 {
+		t.Fatal("ordinary export did not acquire AI Scan")
+	}
+	run("export")
+	run("validate")
+	data, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
+	if !strings.Contains(string(data), "ai_scan_for_repositories: false") {
+		t.Fatal(string(data))
+	}
+	for _, desired := range []bool{true, false} {
+		input := repositoryInput(fmt.Sprintf("settings: {advanced_security: {code_security: {ai_scan: {ai_scan_for_repositories: %t}}}}\n", desired))
+		if err := writeSettingsFile(fixture.work, input); err != nil {
+			t.Fatal(err)
+		}
+		plan := run("plan")
+		if !strings.Contains(plan, "repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_repositories:") {
+			t.Fatal(plan)
+		}
+		report := filepath.Join(fixture.root, "ai-scan-plan.json")
+		run("action", "plan", report)
+		data, _ := os.ReadFile(report)
+		var typed map[string]any
+		json.Unmarshal(data, &typed)
+		if typed["managed"] != float64(1) || len(typed["security"].([]any)) != 1 {
+			t.Fatal(string(data))
+		}
+		run("apply")
+		run("apply")
+		if got := run("plan"); got != "No differences for managed repository settings.\n" {
+			t.Fatal(got)
+		}
+	}
+
+	mu.Lock()
+	repositoryKnown, prState = false, "enabled"
+	mu.Unlock()
+	run("export")
+	retained, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
+	if !strings.Contains(string(retained), "ai_scan_for_repositories: false") || !strings.Contains(string(retained), "ai_scan_for_pull_requests: true") {
+		t.Fatal("unknown repository scan lost prior intent or stopped PR export", string(retained))
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if writes != 2 || enabled {
+		t.Fatal(writes, enabled)
+	}
+}

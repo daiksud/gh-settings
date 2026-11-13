@@ -11,6 +11,7 @@ func SecurityDeclaration(ui uimodel.SecuritySettings) (settings.SecurityDeclarat
 	if ui.AdvancedSecurity != nil {
 		if cs := ui.AdvancedSecurity.CodeSecurity; cs != nil && cs.AIScan != nil {
 			result.AIScanPullRequests = copyUISecurityValue(cs.AIScan.AIScanForPullRequests)
+			result.AIScanRepositories = copyUISecurityValue(cs.AIScan.AIScanForRepositories)
 		}
 		if cs := ui.AdvancedSecurity.CodeSecurity; cs != nil && cs.CodeQLAnalysis != nil {
 			result.CodeQLDefaultSetup = copyUISecurityValue(cs.CodeQLAnalysis.DefaultSetup)

@@ -383,3 +383,11 @@ PR/check and deployment snapshots never enter the report. This source addition
 does not change an immutable published Action or CLI, and it adds no live mutation
 to the repository workflows. Classic creation IDs are reported for recovery;
 Actions does not rewrite the configuration file.
+
+## Repository AI Scan
+
+Current source supports the [AI Scan for repositories toggle](settings.md#ai-scan-for-repositories)
+independently of PR scanning in export, plan and apply. Verify the selected
+immutable package supports it. Apply changes configuration and verifies the PR
+companion; it does not request a scan. Detailed reports show the boolean, while
+status-only publication hides it. Actual scan usage and billing remain separate.

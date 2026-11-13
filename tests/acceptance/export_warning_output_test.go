@@ -125,7 +125,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 		"/interaction-limits/pulls/creation-cap":            `{"enabled":false,"max_open_pull_requests":10,"include_drafts":false}`,
 		"/automated-security-fixes":                         `{"enabled":false,"paused":false}`,
 		"/code-scanning/default-setup":                      `{"state":"not-configured"}`,
-		"/code-scanning/ai-scan":                            `{"pr_scan":"disabled"}`,
+		"/code-scanning/ai-scan":                            `{"pr_scan":"disabled","repository_scan":"disabled"}`,
 		"/private-vulnerability-reporting":                  `{"enabled":false}`,
 		"/immutable-releases":                               `{"enabled":false,"enforced_by_owner":false}`,
 		"/actions/variables":                                `{"total_count":0,"variables":[]}`,
