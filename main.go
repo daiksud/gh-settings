@@ -100,10 +100,10 @@ func readTopics(repo repository.Repository) ([]string, error) {
 	return client.ReadTopics(repo)
 }
 
-func writeTopics(repo repository.Repository, desired settings.TopicsDeclaration) error {
+func writeTopics(repo repository.Repository, desired settings.TopicsDeclaration) (bool, error) {
 	client, err := github.NewWriteClient(repo.Host)
 	if err != nil {
-		return err
+		return false, err
 	}
 	return client.ApplyTopics(repo, desired)
 }

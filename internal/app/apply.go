@@ -7,8 +7,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// Apply reconciles repository settings and retains direct topics writes;
-// labels read their current collection before CRUD.
+// Apply sequences managed resources using their fresh reconciliation results.
 func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options ...settings.PruneScopes) (result ApplyResult, err error) {
 	prune, optionErr := operationPrune(options)
 	if optionErr != nil {
@@ -101,15 +100,28 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		index++
 	}
+	topicsWrote := false
 	if topicsManaged {
-		if err := write.Topics(repo, desired.Topics); err != nil {
-			result.failOperation(index, OperationFailedUnknown)
+		topicsWrote, err = write.Topics(repo, desired.Topics)
+		if err != nil {
+			status := OperationFailedUnknown
+			var readFailure PreWriteReadFailure
+			if errors.As(err, &readFailure) {
+				status = OperationFailedRead
+			}
+			result.failOperation(index, status)
+			if result.Outcome == ApplyPartialFailure && !unarchived {
+				return result, fmt.Errorf("earlier repository settings update remains applied: %w", err)
+			}
 			return result, err
 		}
-		result.Operations[index].Status = OperationCompleted
+		result.Operations[index].Status = OperationUnchanged
+		if topicsWrote {
+			result.Operations[index].Status = OperationCompleted
+		}
 		index++
 	}
-	hasWrites := repositoryWrote || topicsManaged || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
+	hasWrites := repositoryWrote || topicsWrote || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
 	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
 		progress := ""
 		if hasWrites {
