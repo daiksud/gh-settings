@@ -13,8 +13,8 @@ repeated flags fail locally. `all` must stand alone and must never silently omit
 an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
-`actions-variables`, `agents-variables`, `environment-variables`, `environments` and `collaborators`.
-Standalone `all` selects all eight; future supported prune scopes
+`actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators` and `autolinks`.
+Standalone `all` selects all supported scopes; future supported prune scopes
 must join its explicit expansion and tests. Classic branch-protection pruning
 remains separate future work; these scopes do not delete classic rules.
 
@@ -150,3 +150,7 @@ Personal access uses the same `collaborators` selector and standalone `all`, wit
 present-list ownership, global fixed-candidate preparation and independent
 readback. The [access specification](repository-access.feature.md#explicit-personal-access-pruning)
 owns its retained-user union, invitation dependency, operator and progress cases.
+
+## Autolink pruning
+
+The `autolinks` scope and standalone `all` use the [Autolinks contract](../settings.md#autolink-references). Omitted collections remain unmanaged; present empty lists prune every acquired reference. Global preflight freezes all candidates and validates complete declared intent before any write. Expected inventory includes only verified own creations and excludes verified own deletions; only successful own unarchive changes the archive expectation. Complete inventory and individual candidate checks reject drift before DELETE, and empty 204 plus complete inventory absence verify each removal. Creation and required ID recording precede deletion. An immutable replacement needs explicit deletion followed by later creation; a current candidate cannot be silently adopted by prefix.

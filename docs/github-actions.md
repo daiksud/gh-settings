@@ -17,7 +17,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `export`, `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for export/plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
-| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments` and `collaborators`; see [pruning](#explicit-collection-pruning). |
+| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and `autolinks`; see [pruning](#explicit-collection-pruning). |
 
 Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action does not mint a token or certify its actual grants; collaborator prune additionally requires positive management-path evidence using that same credential; there is no ambient-token or personal-credential fallback.
 
@@ -369,7 +369,7 @@ an older published package instead of silently ignoring the input. Source change
 do not add this capability to an existing published Action/CLI. Actions Policies
 use `actions-policies`; parent deletion uses `environments`; personal access deletion
 uses `collaborators`. Standalone `all`
-selects all eight supported scopes and cannot be mixed with another token.
+selects all supported scopes and cannot be mixed with another token.
 Environment pruning retains every listed name, including variable-only entries,
 and runs only after retained policy/variable work. Parent deletion removes
 contained configuration/secrets and fails jobs waiting on protection rules; recreation does not
@@ -405,3 +405,9 @@ independently of PR scanning in export, plan and apply. Verify the selected
 immutable package supports it. Apply changes configuration and verifies the PR
 companion; it does not request a scan. Detailed reports show the boolean, while
 status-only publication hides it. Actual scan usage and billing remain separate.
+
+## Autolink permissions and identity recording
+
+Current source supports [Autolink references](settings.md#autolink-references) through the same export/plan/apply contract. App installation tokens require repository Administration read for acquisition and write for creation/deletion. Nothing grants or broadens permissions automatically. `prune: autolinks`, comma combinations and standalone `all` use fixed candidates for a present collection. Ordinary apply preserves unlisted references.
+
+Autolinks are immutable ID-bound objects: changes require explicit pruning and later creation. The Action does not write creation IDs, commit or push. Record confirmed IDs through the [creation-ID procedure](contributing/repository-automation.md#repository-settings-changes) before repeating creation; unbound collisions fail. Detailed plans and Summary may show non-secret prefix/URL/format, while status-only hides them. Export saves local YAML without logging its contents; API debug bodies are suppressed. Package support still depends on the selected immutable release.

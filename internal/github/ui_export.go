@@ -47,6 +47,16 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Labels = &labels
 	}
+	if source.Autolinks != nil {
+		if err := settings.ValidateAutolinks(*source.Autolinks); err != nil {
+			return uimodel.Repository{}, err
+		}
+		values := settings.CloneAutolinks(*source.Autolinks)
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.Autolinks = &values
+	}
 	if source.BranchProtectionRules != nil {
 		if err := settings.ValidateClassicRules(*source.BranchProtectionRules); err != nil {
 			return uimodel.Repository{}, err

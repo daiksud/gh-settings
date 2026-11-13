@@ -81,8 +81,8 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables`, `environment-variables`, `actions-policies`, `environments` and `collaborators`.
-Standalone `all` selects all eight supported scopes; combining it with another
+`agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and `autolinks`.
+Standalone `all` selects all supported scopes; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
@@ -1272,6 +1272,87 @@ Without prune, plan shows only listed creates/ID updates and default-derived red
 POST/PUT responses must confirm identity, ownership and requested comparable policy. Every create/update, including basic and empty-rule policies, then requires an independent detail GET with `includes_parents=false` to confirm the same ID, repository ownership and complete requested policy. Missing, denied, redirected or mismatching readback returns nonzero and stops later operations, including prune deletions: writes may already have applied. No retry or rollback occurs. A reported positive creation ID remains in recovery diagnostics when verification fails, but is not automatically written to YAML. Only verified creations follow [guarded writeback](#apply-id-writeback).
 
 Unsupported protection is never omitted to produce a usable policy. Acquired Evaluate enforcement, merge queue, metadata restrictions, license compliance, or a present review-dismissal restriction stop Ruleset export, comparison and mutation. Review-dismissal absence in an API response does not prove the stored restriction is disabled. These controls are not accepted configuration. See the [Rulesets specification](features/rulesets.feature.md) and [UI mapping](contributing/ui-ruleset-mapping.md).
+
+## Autolink references
+
+`repository.settings.autolinks` manages the documented **Autolink references**
+controls: Reference prefix, Target URL and reference identifier format.
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    autolinks:
+      - id: 123
+        reference_prefix: TICKET-
+        target_url: https://tickets.example.com/<num>?view=full
+        reference_format: numeric
+```
+
+Every entry requires all three controls. `reference_format` is `numeric` or
+`alphanumeric`; omission is invalid. Prefix and URL spelling are retained exactly.
+Prefixes must be nonblank, contain no control characters and must not overlap
+another prefix. No case folding is inferred. URLs must be absolute HTTP(S), have
+no userinfo and contain literal `<num>`. These are product input constraints;
+they do not describe every URL GitHub might accept. The placeholder is substituted
+only for local URL parsing; gh-settings never fetches the destination. Use
+non-secret URLs. Nulls, aliases for field names, unknown fields, `delete: true`,
+nonpositive/duplicate IDs and missing controls are rejected before API work.
+
+An optional positive `id` binds an existing immutable reference. A matching bound
+entry is unchanged and sends no mutation. A missing ID or differing configuration
+fails; the API has no documented in-place update. An IDless entry is create-only
+and cannot adopt a live overlapping prefix, including an object selected for prune.
+Replace a reference explicitly: remove its declaration and prune it, then declare
+the replacement without an ID in a later apply. This leaves a temporary
+configuration gap; there is no automatic replacement, retry or rollback.
+
+Omission is unmanaged. `autolinks: []` preserves existing references without prune.
+`--prune autolinks`, its comma-separated combinations, and standalone `--prune all`
+make a present list authoritative for retention. All deletion candidates and the
+complete private inventory are frozen before any remote write, including unrelated
+settings and unarchive. Candidates never expand. Before each deletion, complete
+collection and individual-object reads must match the expected identity,
+configuration and optional timestamp presence. Expected state changes only for
+this invocation's verified creations/deletions and its verified unarchive.
+Unknown additions or changed, missing or replaced retained/candidate objects stop
+the operation. Timestamp equality alone is never identity evidence.
+
+Creation sends all three native fields and requires exact HTTP 201, a positive
+previously unseen identity, a complete matching acknowledgment, independent GET by
+ID and a complete inventory check. Only verified creations receive guarded local
+ID recording. All declared creations and required recording finish before deleting
+the fixed candidates. Deletion requires an empty HTTP 204 and a successful complete
+inventory proving absence and retained-state preservation. A failed/denied GET or
+isolated 404 does not prove absence. Races after these checks remain possible.
+
+Only a positive unseen ID from the intended successful creation response is kept
+as recovery information; it is not proof of a completed creation. Readback or
+recording failure stops later work. Earlier verified changes remain applied and
+uncertain effects remain uncertain. CLI `--no-writeback` and GitHub Actions leave
+the file unchanged. Record confirmed IDs through the existing
+[creation-ID procedure](contributing/repository-automation.md#repository-settings-changes)
+before repeating an IDless declaration; repeated IDless creation will collide.
+
+Automatic export independently reads the complete collection and exact
+personal-public repository/owner identity. Confirmed empty state exports `[]`.
+Unavailable, partial, malformed or unsupported state is omitted initially or
+retains valid previous intent with bounded information. No required acquired
+value is defaulted. Optional `updated_at` is private evidence, not YAML or report
+configuration. Detailed CLI plans and Action Summary can contain prefix, URL and
+format; status-only plans hide them. HTTP debug payloads and upstream error bodies
+are suppressed. A mixed create/delete plan counts this family once.
+
+The [UI guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources)
+documents the controls and Pro availability; plan names do not exclude the
+personal-public target. The current account's missing sidebar entry does not
+establish global unavailability. The
+[Autolinks REST API](https://docs.github.com/en/rest/repos/autolinks)
+supports App installation tokens with Administration read for acquisition and
+write for creation/deletion. This implementation uses list-all, individual GET,
+POST and DELETE; it grants no permission and performs no external-service work.
+No fresh authenticated form, live write or rendered-link behavior was verified.
+See the [behavior specification](features/autolinks.feature.md).
 
 ## Classic branch protection
 

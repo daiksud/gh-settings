@@ -31,6 +31,13 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	}
 	result.Labels = labels
 	if repository.Settings != nil {
+		if repository.Settings.Autolinks != nil {
+			if err := settings.ValidateAutolinks(*repository.Settings.Autolinks); err != nil {
+				return settings.Declaration{}, err
+			}
+			values := settings.CloneAutolinks(*repository.Settings.Autolinks)
+			result.Autolinks = &values
+		}
 		if repository.Settings.BranchProtectionRules != nil {
 			if err := settings.ValidateClassicRules(*repository.Settings.BranchProtectionRules); err != nil {
 				return settings.Declaration{}, err

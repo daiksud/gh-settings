@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeAutolinks)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -434,3 +434,7 @@ no-op, detailed/private plans, exact changed-only GraphQL input, independent
 fork-sync drift failure and success-only outputs. Model and adapter fixtures also
 check omission, complete acquisition and preservation of fork-sync true/false.
 These fixtures do not establish live branch enforcement or API side effects.
+
+## Autolink verification
+
+The [behavior specification](../features/autolinks.feature.md) maps model, adapter, app, codec and report ownership. The literal codec baseline fails before support. Supplied CLI checks exercise export/validate/plan/create/ID-recording/prune/repeat, immutable failures, retained unavailable export, own unarchive and host Action-environment isolation. `TestBuiltCompositeAutolinks` uses the actual supplied binary and public composite for export, private/detailed plans, matching/no-op, create/prune, empty/all, unchanged YAML and failed-readback output suppression. All use local transports; no live reference or external destination is changed or fetched.
