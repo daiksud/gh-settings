@@ -95,7 +95,7 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 			t.Errorf("unselected endpoint %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/interaction-limits/pulls/bypass-list", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 	expect("GET", "USER alice", "DELETE", "GET", "PUT", "GET")
 	run([]string{"apply"}, false)
 	expect("GET")
-	run([]string{"export", "--pull-request-limit-exemptions"}, false)
+	run([]string{"export"}, false)
 	expect("GET")
 	exported, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil || !strings.Contains(string(exported), "exemption_list:") || !strings.Contains(string(exported), "alice") || strings.Contains(string(exported), "maximum_open_pull_requests_per_user") {
@@ -161,7 +161,7 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 	mu.Lock()
 	denied = true
 	mu.Unlock()
-	run([]string{"export", "--pull-request-limit-exemptions"}, true)
+	run([]string{"export"}, false)
 	expect("GET")
 	if err := checkSettingsUnchanged(fixture.work, string(exported)); err != nil {
 		t.Fatal(err)
@@ -173,7 +173,7 @@ func TestPullRequestExemptionsProcess(t *testing.T) {
 	run([]string{"apply"}, false)
 	expect("GET", "DELETE", "GET")
 	run([]string{"export"}, false)
-	expect()
+	expect("GET")
 	mu.Lock()
 	members = map[string]int64{"bob": 2}
 	failAdd = true

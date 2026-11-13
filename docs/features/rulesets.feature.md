@@ -34,7 +34,7 @@ Reads require complete repository ownership/ID, required supported policy, bypas
 
 Merge queue, metadata-pattern, license-compliance and secret-scanning rules are unsupported. A returned unsupported rule or parameter, including a review-dismissal restriction, fails the complete collection before export, comparison, update or explicit deletion. Validation rejects the corresponding unsupported YAML controls before remote work. The supported PR rule and its remaining review settings are retained.
 
-Opted-in export includes numeric IDs plus observed comparable policy. Ordinary export adds no Rulesets request. Export → validate → plan against unchanged exact supported comparable state yields zero differences. A normalized enforcement or Required approvals fallback remains actionable, with ID/name-scoped export warnings in name order. Other whole-object defaults and unselected-object ownership remain unchanged. Failed export preserves the destination. Inherited resources remain outside mutation ownership; repository-owned Push policy fails as unsupported. Server-generated metadata is explicitly classified and never replayed as writable policy.
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
 ## Plan, apply and idempotence
 

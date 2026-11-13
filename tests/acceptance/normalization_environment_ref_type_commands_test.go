@@ -102,7 +102,7 @@ func TestEnvironmentRefTypeNormalizationCommands(t *testing.T) {
 			return
 		}
 		fmt.Fprint(w, body)
-	}, false)
+	}, false, "/environments", "/environments/production")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -16,11 +16,11 @@ import (
 
 func TestActionsGeneralControlsExportPlanApply(t *testing.T) {
 	for _, tc := range []struct {
-		name, flag, endpoint, key, declaration, exported, visibility, ownerType string
-		before, after                                                           any
+		name, endpoint, key, declaration, exported, visibility, ownerType string
+		before, after                                                     any
 	}{
-		{"cache retention", "--cache-retention", "cache/retention-limit", "max_cache_retention_days", "{cache: {cache_retention: 14}}", "cache_retention: 7", "public", "User", float64(7), float64(14)},
-		{"cache storage", "--cache-storage", "cache/storage-limit", "max_cache_size_gb", "{cache: {cache_size_eviction_limit: 20}}", "cache_size_eviction_limit: 10", "public", "User", float64(10), float64(20)},
+		{"cache retention", "cache/retention-limit", "max_cache_retention_days", "{cache: {cache_retention: 14}}", "cache_retention: 7", "public", "User", float64(7), float64(14)},
+		{"cache storage", "cache/storage-limit", "max_cache_size_gb", "{cache: {cache_size_eviction_limit: 20}}", "cache_size_eviction_limit: 10", "public", "User", float64(10), float64(20)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			binary := acceptanceBinary(t)
@@ -105,7 +105,7 @@ func TestActionsGeneralControlsExportPlanApply(t *testing.T) {
 					t.Error("unselected endpoint", r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/actions/"+tc.endpoint, "/actions/", "/actions/permissions", "/actions/permissions/artifact-and-log-retention", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -129,14 +129,6 @@ func TestActionsGeneralControlsExportPlanApply(t *testing.T) {
 				}
 			}
 			run("export")
-			run("export", "--actions")
-			run("export", "--retention")
-			mu.Lock()
-			if len(operations) != 0 {
-				t.Error("old export scopes acquired new control", operations)
-			}
-			mu.Unlock()
-			run("export", tc.flag)
 			run("validate")
 			path := filepath.Join(fixture.work, ".github/settings.yml")
 			data, err := os.ReadFile(path)
@@ -197,11 +189,12 @@ func TestActionsGeneralControlsExportPlanApply(t *testing.T) {
 				mode = failure
 				mu.Unlock()
 				before, _ := os.ReadFile(path)
-				r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", tc.flag}, false)
+				r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
 				after, _ := os.ReadFile(path)
-				if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(before) != string(after) {
+				if err != nil || r.runErr != nil || r.stdout.Len() != 0 {
 					t.Fatal(failure, err, r.stderr.String(), string(after))
 				}
+				assertExportRetains(t, fixture, string(before), "repository", "settings", "actions", "general", "cache")
 			}
 			for _, failure := range []string{"write-denied", "unchanged"} {
 				write(tc.declaration)

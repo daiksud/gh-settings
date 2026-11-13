@@ -100,7 +100,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 		}
 		writes = append(writes, input)
 		json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"updateRepository": map[string]any{"repository": result}}})
-	}, false)
+	}, false, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 				}
 				t.Error("unexpected later operation or redirect", r.Method, r.URL)
 				w.WriteHeader(400)
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -324,7 +324,7 @@ func TestPRAccessPlanRejectsStaleOrigin(t *testing.T) {
 			return
 		}
 		fmt.Fprint(w, `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`)
-	}, false)
+	}, false, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

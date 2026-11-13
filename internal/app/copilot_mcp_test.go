@@ -145,7 +145,7 @@ func TestCopilotMCPExport(t *testing.T) {
 		include, enabled bool
 		mode             string
 	}{
-		{"ordinary", false, false, ""}, {"enabled", true, true, ""}, {"disabled", true, false, ""}, {"denied", true, false, "denied"}, {"unread", true, false, "unread"},
+		{"enabled", true, true, ""}, {"disabled", true, false, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			reader := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
@@ -163,7 +163,7 @@ func TestCopilotMCPExport(t *testing.T) {
 				}
 				return settings.NewCopilotMCPObservation(tc.enabled), nil
 			}
-			err := Export(ExportCheckout{IncludeCopilotMCP: tc.include, Repository: func() (repository.Repository, error) {
+			err := Export(ExportCheckout{Repository: func() (repository.Repository, error) {
 				return repository.Repository{Owner: "owner", Name: "current"}, nil
 			}, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {

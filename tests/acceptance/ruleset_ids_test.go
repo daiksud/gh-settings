@@ -57,7 +57,7 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 					t.Error("unexpected adoption/update/delete", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/rulesets", "/rulesets/17")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -150,7 +150,7 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 				}
 				w.WriteHeader(201)
 				json.NewEncoder(w).Encode(payload)
-			}, false)
+			}, false, "/rulesets", "/rulesets/17")
 			if err != nil {
 				t.Fatal(err)
 			}

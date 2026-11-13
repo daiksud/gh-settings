@@ -132,7 +132,7 @@ func TestRulesetQualityNormalizationAcrossExecutableCommands(t *testing.T) {
 					t.Error("unexpected request", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/rulesets", "/rulesets/7", "/rulesets/9", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -189,7 +189,7 @@ func TestRulesetQualityNormalizationAcrossExecutableCommands(t *testing.T) {
 			if both {
 				orderedWarnings = enfWarning + "\n" + orderedWarnings
 			}
-			output, diagnostic, status := run("export", "--rulesets")
+			output, diagnostic, status := run("export")
 			if status != 0 || output != "" || diagnostic != orderedWarnings {
 				t.Fatal("export", status, output, diagnostic)
 			}
@@ -327,8 +327,18 @@ func TestRulesetQualityNormalizationAcrossExecutableCommands(t *testing.T) {
 				t.Fatal("lost REST progress")
 			}
 			input = intent("errors", "")
-			for _, args := range [][]string{{"export", "--rulesets"}, {"apply"}} {
+			for _, args := range [][]string{{"export"}, {"apply"}} {
 				output, diagnostic, status = run(args...)
+				if args[0] == "export" {
+					if status != 0 || output != "" || strings.Contains(diagnostic, "Warning:") {
+						t.Fatal("unavailable export failed", status, diagnostic)
+					}
+					assertExportRetains(t, fixture, input, "repository", "settings", "rulesets")
+					if err := writeSettingsFile(fixture.work, input); err != nil {
+						t.Fatal(err)
+					}
+					continue
+				}
 				if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 					t.Fatal("null severity", args, status, output, diagnostic)
 				}
@@ -343,7 +353,7 @@ func TestRulesetQualityNormalizationAcrossExecutableCommands(t *testing.T) {
 			if malformedWrote {
 				t.Fatal("invalid wrote")
 			}
-			output, diagnostic, status = run("export", "--rulesets")
+			output, diagnostic, status = run("export")
 			data, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 			if err != nil || status != 0 || output != "" || diagnostic != "" || strings.Contains(string(data), "require_code_quality_results") || strings.Contains(string(data), "severity") {
 				t.Fatal("absent invented rule", status, string(data), diagnostic, err)

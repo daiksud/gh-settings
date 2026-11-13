@@ -16,7 +16,7 @@ import (
 func TestRemovedRulesetDeclarationsFailBeforeRemoteWork(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var calls atomic.Int32
-	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) { calls.Add(1); w.WriteHeader(500) }, false)
+	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) { calls.Add(1); w.WriteHeader(500) }, false, "/labels", "/rulesets", "/rulesets/7", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestUnsupportedRulesetReadsBlockExportUpdateAndDeletion(t *testing.T) {
 					t.Error("unexpected request", r.Method, r.URL)
 					w.WriteHeader(404)
 				}
-			}, false)
+			}, false, "/labels", "/rulesets", "/rulesets/7", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,11 +163,21 @@ func TestUnsupportedRulesetReadsBlockExportUpdateAndDeletion(t *testing.T) {
 				if err := writeSettingsFile(fixture.work, content); err != nil {
 					t.Fatal(err)
 				}
-				for _, args := range [][]string{{"export", "--rulesets"}, {"plan"}, {"apply"}} {
+				for _, args := range [][]string{{"export"}, {"plan"}, {"apply"}} {
 					if deleting && args[0] != "export" {
 						args = append(args, "--prune", "rulesets")
 					}
 					result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
+					if args[0] == "export" {
+						if err != nil || result.runErr != nil || !strings.Contains(result.stderr.String(), "info: export repository.settings.rulesets:") {
+							t.Fatal("unsupported export did not retain", err, result.stderr.String())
+						}
+						assertExportRetains(t, fixture, content, "repository", "settings", "rulesets")
+						if err := writeSettingsFile(fixture.work, content); err != nil {
+							t.Fatal(err)
+						}
+						continue
+					}
 					if err != nil || result.runErr == nil {
 						t.Fatalf("%v accepted unsupported policy: %v %s", args, err, result.stderr.String())
 					}

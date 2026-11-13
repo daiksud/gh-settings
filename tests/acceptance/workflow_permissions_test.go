@@ -102,7 +102,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 			t.Error("unexpected request", r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/permissions", "/actions/permissions/workflow", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,27 +120,17 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 		return r.stdout.String()
 	}
 	run("export")
-	run("export", "--actions")
-	mu.Lock()
-	if workflowReads != 0 {
-		t.Fatal("old export scope acquired workflow policy")
-	}
-	beforeExecution := executionReads
-	mu.Unlock()
-	run("export", "--workflow-permissions")
 	run("validate")
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(data), "workflow_permissions:\n") || !strings.Contains(string(data), "default_permissions: read_repository_contents_and_packages_permissions") || !strings.Contains(string(data), "allow_github_actions_to_create_and_approve_pull_requests: false") || strings.Contains(string(data), "require_actions_to_be_pinned_to_a_full_length_commit_sha:") {
+	if err != nil || !strings.Contains(string(data), "workflow_permissions:\n") || !strings.Contains(string(data), "default_permissions: read_repository_contents_and_packages_permissions") || !strings.Contains(string(data), "allow_github_actions_to_create_and_approve_pull_requests: false") {
 		t.Fatal(string(data), err)
 	}
-	mu.Lock()
-	if executionReads != beforeExecution {
-		t.Fatal("workflow export acquired execution policy")
-	}
-	mu.Unlock()
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
+	mu.Lock()
+	beforeExecution := executionReads
+	mu.Unlock()
 	input := actionsPolicyInput(`{workflow_permissions: {default_permissions: read_and_write_permissions, allow_github_actions_to_create_and_approve_pull_requests: true}}`)
 	writeSettingsFile(fixture.work, input)
 	plan := run("plan")
@@ -182,7 +172,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal(executionReads, writes, policy)
 	}
 	mu.Unlock()
-	run("export", "--actions", "--workflow-permissions")
+	run("export")
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
@@ -207,7 +197,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	deny = false
 	incomplete = true
 	mu.Unlock()
-	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--workflow-permissions"}, false)
+	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
 	if err != nil || r.runErr == nil {
 		t.Fatal(err, r.stderr.String())
 	}

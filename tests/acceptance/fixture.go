@@ -10,11 +10,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
+var processFixtures sync.Map
+
 type apiFixture struct {
+	exporting       atomic.Bool
 	root, work, cfg string
 	server          *http.Server
 	reads           atomic.Int32
@@ -57,7 +61,7 @@ func startAPIFixture(body string, status int) (*apiFixture, error) {
 	}, true)
 }
 
-func startHTTPFixture(handler http.HandlerFunc, readOnly bool, availableSecurityPaths ...string) (*apiFixture, error) {
+func startHTTPFixture(handler http.HandlerFunc, readOnly bool, availablePaths ...string) (*apiFixture, error) {
 	// A short /tmp path stays within Unix socket path limits on both macOS and Linux.
 	root, err := os.MkdirTemp("/tmp", "ghs-accept-")
 	if err != nil {
@@ -82,16 +86,32 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool, availableSecurity
 	}
 	fixture.server = &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fixture.reads.Add(1)
-		// Existing resource fixtures explicitly model new automatic Security probes as
+		// Resource fixtures explicitly model unowned automatic setting probes as
 		// denied unless that fixture owns the endpoint. Never allow unrelated writes.
-		if isAutomaticSecurityRead(r) {
+		if fixture.exporting.Load() && isAutomaticSettingRead(r) {
 			available := false
-			for _, path := range availableSecurityPaths {
-				available = available || r.URL.Path == "/repos/owner/current"+path
+			for _, path := range availablePaths {
+				if path == "/actions/" || path == "/agents/" {
+					continue
+				}
+				full := "/repos/owner/current" + path
+				available = available || r.URL.Path == full
+				if strings.HasPrefix(path, "/environments") && !strings.Contains(r.URL.Path, "/variables") {
+					available = available || strings.HasPrefix(r.URL.Path, full+"/")
+				}
+				if path == "/rulesets" || path == "/actions/policies" || path == "/actions/variables" || path == "/agents/variables" {
+					available = available || strings.HasPrefix(r.URL.Path, full+"/")
+				}
+				if strings.HasSuffix(path, "/") && !strings.Contains(r.URL.Path, "/variables") {
+					available = available || strings.HasPrefix(r.URL.Path, full)
+				}
+				if path == "/environments/*/variables" && strings.HasPrefix(r.URL.Path, "/repos/owner/current/environments/") && strings.Contains(r.URL.Path, "/variables") {
+					available = true
+				}
 			}
 			if !available {
 				w.WriteHeader(http.StatusForbidden)
-				fmt.Fprint(w, `{"message":"Security fixture unavailable"}`)
+				fmt.Fprint(w, `{"message":"Setting fixture unavailable"}`)
 				return
 			}
 		}
@@ -106,11 +126,13 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool, availableSecurity
 	if err := os.WriteFile(filepath.Join(fixture.cfg, "config.yml"), []byte("http_unix_socket: "+socket+"\n"), 0600); err != nil {
 		return nil, err
 	}
+	processFixtures.Store(root, fixture)
 	ready = true
 	return fixture, nil
 }
 
 func (fixture *apiFixture) close() {
+	processFixtures.Delete(fixture.root)
 	if fixture.server != nil {
 		_ = fixture.server.Close()
 	}
@@ -204,15 +226,12 @@ func serveSponsorshipsFixtureRead(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func isAutomaticSecurityRead(r *http.Request) bool {
+func isAutomaticSettingRead(r *http.Request) bool {
 	if r.Method != http.MethodGet {
 		return false
 	}
-	switch r.URL.Path {
-	case "/repos/owner/current/vulnerability-alerts", "/repos/owner/current/automated-security-fixes", "/repos/owner/current/code-scanning/default-setup", "/repos/owner/current/code-scanning/ai-scan", "/repos/owner/current/private-vulnerability-reporting", "/repos/owner/current/immutable-releases":
-		return true
-	}
-	return false
+	return strings.HasPrefix(r.URL.Path, "/repos/owner/current/") && r.URL.Path != "/repos/owner/current/topics" && r.URL.Path != "/repos/owner/current/labels"
+
 }
 
 // Successful exports can carry expected info while keeping warnings/errors

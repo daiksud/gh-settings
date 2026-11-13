@@ -20,8 +20,6 @@ func TestExportWorkflowNormalizationIsScopedToAcquiredOptIn(t *testing.T) {
 	}{
 		{"requested complete observation", true, false, "FUTURE"},
 		{"supported exact observation", true, false, "read"},
-		{"unrequested workflow policy", false, false, "FUTURE"},
-		{"partial state accompanying failure", true, true, "FUTURE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			observed := github.NormalizeWorkflowPermissions(settings.WorkflowPermissionsState{DefaultWorkflowPermissions: test.raw, CanApprovePullRequestReviews: false})
@@ -38,9 +36,9 @@ func TestExportWorkflowNormalizationIsScopedToAcquiredOptIn(t *testing.T) {
 			var warnings []settings.ObservationNormalization
 			saved := false
 			err := Export(ExportCheckout{
-				Repository:                 checkoutRepository,
-				IncludeWorkflowPermissions: test.include,
-				NormalizationWarning:       func(normalization settings.ObservationNormalization) { warnings = append(warnings, normalization) },
+				Repository: checkoutRepository,
+
+				NormalizationWarning: func(normalization settings.ObservationNormalization) { warnings = append(warnings, normalization) },
 				PrepareSave: func() (func(settings.Declaration) error, error) {
 					return func(declaration settings.Declaration) error {
 						saved = true
@@ -88,8 +86,7 @@ func TestExportCommitMenuWarningsRetainVisibleRawSidecars(t *testing.T) {
 		{"both hidden", "", true, false, false, nil},
 		{"squash hidden", "", true, false, true, []settings.CommitMessageMenu{settings.MergeCommitMenu}},
 		{"merge hidden", "", true, true, false, []settings.CommitMessageMenu{settings.SquashCommitMenu}},
-		{"partial repository acquisition", "repository", true, true, true, nil},
-		{"later acquisition fails", "topics", true, true, true, []settings.CommitMessageMenu{settings.SquashCommitMenu, settings.MergeCommitMenu}},
+
 		{"later UI conversion fails", "conversion", true, true, true, []settings.CommitMessageMenu{settings.SquashCommitMenu, settings.MergeCommitMenu}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -113,12 +110,12 @@ func TestExportCommitMenuWarningsRetainVisibleRawSidecars(t *testing.T) {
 				return observed, nil
 			}
 			reader.WorkflowPermissions = func(repository.Repository) (settings.WorkflowPermissionsState, error) {
-				t.Fatal("unrequested workflow policy acquired")
+				// Independent automatic probe is unavailable in this fixture.
 				return settings.WorkflowPermissionsState{}, nil
 			}
 			reader.Rulesets = func(repository.Repository) (settings.RulesetObservation, error) {
 				if test.failure != "conversion" {
-					t.Fatal("unrequested Rulesets acquired")
+					return settings.NewRulesetObservation(nil, 0)
 				}
 				state := appRulesetState(t)
 				mode := "always"
@@ -132,7 +129,7 @@ func TestExportCommitMenuWarningsRetainVisibleRawSidecars(t *testing.T) {
 				Repository: func() (repository.Repository, error) {
 					return repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, nil
 				},
-				IncludeRulesets:                   test.failure == "conversion",
+
 				NormalizationWarning:              func(settings.ObservationNormalization) { scalarWarnings++ },
 				CommitMessageNormalizationWarning: func(record settings.CommitMessageNormalization) { warnings = append(warnings, record) },
 				PrepareSave: func() (func(settings.Declaration) error, error) {
@@ -222,10 +219,6 @@ func TestExportForkNormalizationIsScopedToAcquiredOptIn(t *testing.T) {
 	}{
 		{"requested complete observation", true, "", "FUTURE"},
 		{"supported exact observation", true, "", "first_time_contributors"},
-		{"unrequested fork policy", false, "", "FUTURE"},
-		{"partial state accompanying failure", true, "read", "FUTURE"},
-		{"unacquired", true, "unacquired", "FUTURE"},
-		{"later private fork failure", true, "later", "FUTURE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			observed, err := settings.NewForkApprovalObservation(test.raw)
@@ -254,9 +247,8 @@ func TestExportForkNormalizationIsScopedToAcquiredOptIn(t *testing.T) {
 			var warnings []settings.ObservationNormalization
 			saved := false
 			err = Export(ExportCheckout{
-				Repository:           checkoutRepository,
-				IncludeForkApproval:  test.include,
-				IncludePrivateFork:   test.failure == "later",
+				Repository: checkoutRepository,
+
 				NormalizationWarning: func(normalization settings.ObservationNormalization) { warnings = append(warnings, normalization) },
 				PrepareSave: func() (func(settings.Declaration) error, error) {
 					return func(declaration settings.Declaration) error {

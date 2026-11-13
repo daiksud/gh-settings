@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"slices"
 )
 
 func applyVariables(result *ApplyResult, repo repository.Repository, desired settings.VariableDeclarations, kind ApplyOperationKind, write func(repository.Repository, settings.RepositoryVariable) (bool, error)) (bool, error) {
@@ -52,34 +51,4 @@ func planVariables(repo repository.Repository, desired settings.VariableDeclarat
 		}
 	}
 	return changes, nil
-}
-
-func exportVariables(repo repository.Repository, names []string, read func(repository.Repository, string) (settings.VariableObservation, error)) (*settings.VariableDeclarations, error) {
-	if len(names) == 0 {
-		return nil, nil
-	}
-	slices.Sort(names)
-	values := make([]settings.RepositoryVariable, 0, len(names))
-	for _, name := range names {
-		observed, err := read(repo, name)
-		if err != nil {
-			return nil, err
-		}
-		value, err := observed.Value()
-		if err != nil {
-			return nil, err
-		}
-		if value == nil {
-			return nil, fmt.Errorf("selected repository variable %q is absent", name)
-		}
-		if value.Name != name {
-			return nil, fmt.Errorf("repository variable observation identity mismatch")
-		}
-		values = append(values, *value)
-	}
-	variables, err := settings.NewVariableDeclarations(values)
-	if err != nil {
-		return nil, err
-	}
-	return &variables, nil
 }

@@ -106,7 +106,7 @@ func TestApplyAcceptance(t *testing.T) {
 					responseBody = `{"message":"fixture response"}`
 				}
 				fmt.Fprint(w, responseBody)
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -232,7 +232,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 		if err := json.NewEncoder(w).Encode(remote); err != nil {
 			t.Error(err)
 		}
-	}, false)
+	}, false, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

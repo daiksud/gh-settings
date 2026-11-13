@@ -108,3 +108,12 @@ reads, endpoint-specific 404 semantics, existing acquired-value normalization,
 product adoption scope or mutation permissions. Other resource opt-ins retain
 their existing scope. The [current behavior specification](../features/readable-security-export.feature.md)
 owns acceptance. No live setting, scan, permission or release is changed.
+
+## Later default readable-settings decision
+
+On 2026-11-13 the user extended automatic export to every supported readable
+setting family. This supersedes export opt-in/selection clauses above; strict
+plan/apply and existing API-specific absence rules remain. See the
+[automatic export contract](../features/readable-settings-export.feature.md).
+Independent unavailable families emit bounded info, continue other reads and
+retain valid prior intent; no secret API or new unsupported setting is adopted.

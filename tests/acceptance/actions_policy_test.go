@@ -100,7 +100,7 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 			t.Error("unexpected read", r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/permissions", "/actions/permissions/selected-actions", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,13 +118,6 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 		return r.stdout.String()
 	}
 	run("export")
-	mu.Lock()
-	calls := len(operations)
-	mu.Unlock()
-	if calls != 0 {
-		t.Fatal("ordinary export requires additional Administration read")
-	}
-	run("export", "--actions")
 	run("validate")
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil || !strings.Contains(string(data), "actions_permissions:\n") || !strings.Contains(string(data), "policy: disable_actions\n") || !strings.Contains(string(data), "require_actions_to_be_pinned_to_a_full_length_commit_sha: true") || strings.Contains(string(data), "allow_actions_created_by_github:") || strings.Contains(string(data), "allow_actions_by_marketplace_verified_creators:") || strings.Contains(string(data), "allow_or_block_specified_actions_and_reusable_workflows:") {
@@ -170,7 +163,7 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	run("export", "--actions")
+	run("export")
 	run("validate")
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
@@ -222,7 +215,7 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	corruptRead = true
 	mu.Unlock()
 	prior := full
-	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--actions"}, false)
+	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
 	if err != nil || r.runErr == nil {
 		t.Fatal("incomplete export succeeded", err, r.stderr.String())
 	}
@@ -236,7 +229,7 @@ func TestActionsInvalidDeclarationsNeverContactAPI(t *testing.T) {
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		t.Error("invalid declaration invoked API", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/actions/permissions", "/actions/permissions/selected-actions", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +292,7 @@ func TestActionsReadFailuresDiscardPlansAndKeepEarlierWrites(t *testing.T) {
 				redirects++
 				t.Error("unexpected later or redirected request", r.Method, r.URL)
 				w.WriteHeader(400)
-			}, false)
+			}, false, "/actions/permissions", "/actions/permissions/selected-actions", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}

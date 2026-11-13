@@ -111,7 +111,7 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 		}
 		t.Error("individual release/tag/asset or unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false, "/immutable-releases")
+	}, false, "/immutable-releases", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

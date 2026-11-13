@@ -145,7 +145,7 @@ func newActionsEventPoliciesFixture(t *testing.T, mode string) *actionsEventPoli
 			t.Errorf("unexpected request %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/policies", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,11 +337,6 @@ func TestActionsEventPoliciesExportIsolationAndSafetyProcess(t *testing.T) {
 	f.run(t, false, "apply")
 	f.expectPolicyCalls(t, "GET "+actionsEventPoliciesEndpoint, "POST "+actionsEventPoliciesEndpoint, "GET "+actionsEventPoliciesEndpoint+"/17")
 	f.run(t, false, "export")
-	f.expectPolicyCalls(t)
-	if strings.Contains(f.data(t), "policies:") {
-		t.Fatal("default export selected Actions policies")
-	}
-	f.run(t, false, "export", "--actions-policies")
 	f.expectPolicyCalls(t, "GET "+actionsEventPoliciesEndpoint, "GET "+actionsEventPoliciesEndpoint+"/17")
 	data := f.data(t)
 	for _, want := range []string{"id: 17", "policy_name: policy-canary", "enforcement_status: active", "restrict_events:"} {
@@ -361,7 +356,7 @@ func TestActionsEventPoliciesExportIsolationAndSafetyProcess(t *testing.T) {
 			f.objects[17]["conditions"] = map[string]any{"unsupported_condition": map[string]any{}}
 		}
 		f.mu.Unlock()
-		f.run(t, true, "export", "--actions-policies")
+		f.run(t, true, "export")
 		if f.data(t) != data {
 			t.Fatal("failed export overwrote destination")
 		}

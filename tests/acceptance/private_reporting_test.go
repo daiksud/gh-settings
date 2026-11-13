@@ -133,7 +133,7 @@ func TestPrivateReportingExportPlanApplyAndSummary(t *testing.T) {
 		}
 		t.Error("advisory/report/notification/unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false, "/private-vulnerability-reporting")
+	}, false, "/private-vulnerability-reporting", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

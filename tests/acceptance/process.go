@@ -20,6 +20,11 @@ func executeCLI(binary, work, root string, env, args []string, outputFailure boo
 	if args == nil {
 		args = []string{"export"}
 	}
+	if v, ok := processFixtures.Load(root); ok {
+		f := v.(*apiFixture)
+		f.exporting.Store(len(args) > 0 && args[0] == "export")
+		defer f.exporting.Store(false)
+	}
 	cmd := exec.CommandContext(ctx, binary, args...)
 	cmd.Dir = work
 	cmd.Env = env

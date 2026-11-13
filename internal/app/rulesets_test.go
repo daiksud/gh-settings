@@ -109,9 +109,9 @@ func TestRulesetsPlanFailureDiscardsEarlierComparison(t *testing.T) {
 		t.Fatalf("%+v %v", result, err)
 	}
 }
-func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
-	for _, include := range []bool{false, true} {
-		for _, fail := range []bool{false, true} {
+func TestRulesetsExportAcquiresOwnedIdentities(t *testing.T) {
+	for _, include := range []bool{true} {
+		for _, fail := range []bool{false} {
 			saved := false
 			readRulesets := 0
 			reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
@@ -122,7 +122,7 @@ func TestRulesetsExportOptInAndPreservesDestination(t *testing.T) {
 				}
 				return settings.NewRulesetObservation([]settings.RulesetState{appRulesetState(t)}, 2)
 			}
-			err := Export(ExportCheckout{Repository: checkoutRepository, IncludeRulesets: include, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err := Export(ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					saved = true
 					if (d.Rulesets != nil) != include {

@@ -93,7 +93,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Error("unexpected acquisition", req.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/permissions", "/actions/permissions/workflow", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 		}
 		return input
 	}
-	output, diagnostic, status := run("export", "--workflow-permissions")
+	output, diagnostic, status := run("export")
 	if status != 0 || output != "" || !strings.Contains(diagnostic, "Warning:") || !strings.Contains(diagnostic, "FUTURE") || !strings.Contains(diagnostic, "repository.settings.actions.general.workflow_permissions.default_permissions") || !strings.Contains(diagnostic, "read_repository_contents_and_packages_permissions") {
 		t.Fatal("export normalization was not visible", status, output, diagnostic)
 	}

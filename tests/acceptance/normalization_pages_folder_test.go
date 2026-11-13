@@ -93,7 +93,7 @@ func TestPagesFolderNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/pages", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestPagesFolderNormalizationAcrossExecutableCommands(t *testing.T) {
 	path := "repository.settings.pages.build_and_deployment.select_folder"
 	warning := "Warning: " + path + ": observed \"/future\" is outside UI choices; using \"root\" (projection only)."
 	decision := path + ": \"root\" (normalized observation) → \"root\" (write required)"
-	output, diagnostic, status := run("export", "--pages")
+	output, diagnostic, status := run("export")
 	if status != 0 || output != "" || diagnostic != warning+"\n" {
 		t.Fatal("export", status, output, diagnostic)
 	}
@@ -241,7 +241,7 @@ func TestPagesFolderNormalizationAcrossExecutableCommands(t *testing.T) {
 	state["source"].(map[string]any)["path"] = nil
 	beforeInvalid := len(pagesWrites)
 	mu.Unlock()
-	output, diagnostic, status = run("export", "--pages")
+	output, diagnostic, status = run("export")
 	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null export", status, output, diagnostic)
 	}

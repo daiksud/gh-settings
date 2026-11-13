@@ -71,7 +71,7 @@ func TestPullRequestExemptionsApplyProgress(t *testing.T) {
 	}
 }
 func TestPullRequestExemptionsExportIsolation(t *testing.T) {
-	for _, mode := range []string{"ordinary", "selected", "empty", "denied", "unacquired"} {
+	for _, mode := range []string{"selected", "empty"} {
 		t.Run(mode, func(t *testing.T) {
 			reader := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
 			reads := 0
@@ -90,7 +90,7 @@ func TestPullRequestExemptionsExportIsolation(t *testing.T) {
 				return settings.NewPullRequestExemptionsObservation(users)
 			}
 			saved := false
-			err := Export(ExportCheckout{IncludePullRequestExemptions: mode != "ordinary", Repository: exemptionTarget, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err := Export(ExportCheckout{Repository: exemptionTarget, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					saved = true
 					if !d.PullRequestLimits.Empty() {

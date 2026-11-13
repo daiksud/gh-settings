@@ -83,7 +83,7 @@ func TestReadableSecurityExportFirstFileAndRetainedIntent(t *testing.T) {
 			t.Error("unexpected endpoint", r.URL)
 			w.WriteHeader(500)
 		}
-	}, false, "/private-vulnerability-reporting", "/immutable-releases", "/vulnerability-alerts", "/automated-security-fixes", "/code-scanning/default-setup", "/code-scanning/ai-scan")
+	}, false, "/private-vulnerability-reporting", "/immutable-releases", "/vulnerability-alerts", "/automated-security-fixes", "/code-scanning/default-setup", "/code-scanning/ai-scan", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

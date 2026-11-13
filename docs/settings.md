@@ -99,14 +99,14 @@ The following paths are relative to `repository.settings.general`:
 | `pull_requests.always_suggest_updating_pull_request_branches`, `pull_requests.allow_auto_merge`, `pull_requests.automatically_delete_head_branches` | boolean |
 | `pull_requests.merge_commit.default_commit_message`, `pull_requests.squash_merge.default_commit_message` | UI menu choice below |
 | `commits.require_contributors_to_sign_off_on_web_based_commits` | boolean |
-| `danger_zone.archive_this_repository` | boolean; explicit export opt-in |
-| `releases.immutable_release` | boolean; explicit export opt-in |
+| `danger_zone.archive_this_repository` | boolean; automatic export |
+| `releases.immutable_release` | boolean; automatic export |
 
 Omitting a scalar leaves it unmanaged. Explicit false and empty strings remain intent. An explicitly disabled Issues/Pull requests feature cannot accompany its creation-permission choice. Likewise, an explicitly disabled merge method cannot accompany its commit-message menu. Omitting the enabling checkbox never implicitly enables it. Export hides choices behind explicitly disabled controls after validating the acquired raw values.
 
 ## Repository archive lifecycle
 
-Use `repository.settings.general.danger_zone.archive_this_repository`. Omission makes no archive-specific request; false explicitly unarchives and true explicitly archives. Ordinary export omits it; `export --archive` includes the observed boolean only after complete reads.
+Use `repository.settings.general.danger_zone.archive_this_repository`. Omission makes no archive-specific request; false explicitly unarchives and true explicitly archives. Ordinary export includes the observed boolean after complete reads; unavailable state retains prior intent with info.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -266,7 +266,7 @@ repository:
           allow_github_actions_to_create_and_approve_pull_requests: false
 ```
 
-Each is independent and optional. `export --workflow-permissions` includes both after complete acquisition without acquiring execution policy. Omission is unmanaged, false remains explicit, and unknown choices/null/wrong types fail locally. Apply uses declared-only workflow-policy members, complete fresh reads/readback and the existing direct-apply semantics. Organization refusal can leave an earlier execution-policy update applied. This declaration does not create tokens or waive a PR's approval requirements. See [workflow permissions](features/workflow-permissions.feature.md).
+Each is independent and optional. Ordinary `export` includes both after complete acquisition, independently of execution policy. Omission is unmanaged, false remains explicit, and unknown choices/null/wrong types fail locally. Apply uses declared-only workflow-policy members, complete fresh reads/readback and the existing direct-apply semantics. Organization refusal can leave an earlier execution-policy update applied. This declaration does not create tokens or waive a PR's approval requirements. See [workflow permissions](features/workflow-permissions.feature.md).
 
 A complete successful workflow-policy GET with a correctly typed permission string outside the UI choices uses `read_repository_contents_and_packages_permissions` and emits a warning naming the YAML field, raw token and fallback. Missing/null members, wrong types and failed reads remain acquisition errors. Export saves the UI fallback without changing GitHub. Plan retains an actionable write-required comparison even if the desired choice equals that fallback; it does not claim independently observed zero drift. Apply sends only declared members and confirms the requested permission against a fresh raw readback. An unchanged out-of-UI token fails verification with possible write effects retained. An omitted permission remains unmanaged and is verified as an unchanged raw companion during approval-only writes, without replaying or printing the fallback.
 
@@ -282,11 +282,11 @@ A complete successful public-fork policy GET with an out-of-UI string projects t
 
 Apply checks exact raw values before skipping a write and in fresh readback after PUT. A retained unknown value fails verification with possible write effects; a canonical exact match remains a no-op. Each successful managed apply read can warn: the initial application read, updater preflight and a normalized readback. Pure plan readers emit no stderr; detailed plan/Summary carry the decision warning, while status-only Summary suppresses values.
 
-Use `export --fork-approval` for this public-repository control. Visibility, complete observations, narrow payloads, readback, redirect rejection and partial-failure reporting remain required. Upper policy may refuse or ignore changes; no retry, rollback or credential expansion occurs. See [fork workflows](features/fork-workflows.feature.md).
+Ordinary `export` observes this public-repository control. Visibility, complete observations, narrow payloads, readback, redirect rejection and partial-failure reporting remain required. Upper policy may refuse or ignore changes; no retry, rollback or credential expansion occurs. See [fork workflows](features/fork-workflows.feature.md).
 
 ## Check, run, status, artifact and log retention
 
-Use integer `repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention` (1–400 days). It translates to the existing retention endpoint. `export --retention` opts in; ordinary export does not acquire retention permissions. The server's maximum is read-only metadata and is never replayed as intent. Existing repository visibility, range and freshly observed cap checks apply; a plan/readback cannot invent missing cap information or prove licensing. Apply verifies the requested value and preserves failure/uncertainty reporting. See [retention](features/retention.feature.md).
+Use integer `repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention` (1–400 days). It translates to the existing retention endpoint. Ordinary `export` attempts retention automatically. The server's maximum is read-only metadata and is never replayed as intent. Existing repository visibility, range and freshly observed cap checks apply; a plan/readback cannot invent missing cap information or prove licensing. Apply verifies the requested value and preserves failure/uncertainty reporting. See [retention](features/retention.feature.md).
 
 ## Actions cache policy
 
@@ -333,7 +333,7 @@ The toggle changes whether future eligible Copilot reviews use repository instru
 
 Plan requires a complete acquired boolean and never writes. Apply reads fresh state, skips matches, PATCHes only `custom_instructions_enabled`, then requires matching independent GET readback. HTTP 404 is an error, not false; denied, incomplete, null or mistyped reads fail. Mutation/readback failures may have changed stored configuration; earlier successful writes remain and later operations stop. No rollback, automatic retry, concurrency lock or saved-plan application is provided.
 
-`export --copilot-custom-instructions` independently includes the stored boolean, including false. Unless another Copilot control is explicitly selected, ordinary export and `--actions` do not read this endpoint. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports show the UI path and native booleans; status-only output omits them.
+Ordinary `export` independently includes the stored custom-instructions boolean, including false. Unavailable observations retain prior declarations with info. Detailed CLI/Action reports show the UI path and native booleans; status-only output omits them.
 
 The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) documents repository administrators, classic `repo` scope and GitHub App support for GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings`. Exact fine-grained/App-token grants were not independently established by the owner-authenticated probe; callers must authorize this endpoint with their chosen credential. No grant is added automatically. The [behavior specification](features/copilot-custom-instructions.feature.md) records the verified storage/restoration and its limits.
 
@@ -356,7 +356,7 @@ The toggle stores whether future eligible Copilot reviews may use MCP tools. It 
 
 Plan requires a complete typed settings read and never writes. Apply reads fresh settings, skips a matching boolean and PATCHes only `mcp_enabled` when needed. An independent GET must confirm the requested boolean and preservation of all acquired sibling settings, including custom instructions, configured/effective review effort, available effort choices and severity filtering. Missing, null or non-boolean MCP values, incomplete or malformed sibling settings, denied reads and HTTP 404 are errors rather than false. A configured-null review effort remains a valid sibling value and is preserved as observed. A preservation mismatch fails verification without attributing a concurrent change to this write. Preflight is not a concurrency lock. Mutation/readback failures may leave unknown effects; earlier successful writes remain and later operations stop. There is no automatic retry, rollback or saved-plan application.
 
-`export --copilot-mcp` explicitly includes the stored boolean, including false. It composes with `--copilot-custom-instructions`, `--copilot-review-effort` and other options without selecting their settings. Ordinary export and `--actions` do not select any Copilot setting. Failed selected acquisition preserves the existing output file. Detailed CLI/Action reports use the fixed UI path and native booleans; status-only output hides the control and values.
+Ordinary `export` independently includes the stored MCP boolean, including false. Unavailable observations retain prior declarations with info. Detailed CLI/Action reports use the fixed UI path and native booleans; status-only output hides the control and values.
 
 The official [Copilot code review API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json) defines GET/PATCH `/repos/{owner}/{repo}/copilot/code-review/settings` and `mcp_enabled`. Repository administrators and classic `repo` scope are documented, and GitHub App tokens are supported; exact fine-grained/App-token grants were not independently established. The credential must already authorize this endpoint; gh-settings does not expand grants. See GitHub's [code-review configuration guide](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review) and the [behavior specification](features/copilot-mcp.feature.md).
 
@@ -381,7 +381,7 @@ Plan is read-only. A selected read requires complete, correctly typed configured
 
 Apply reads fresh state and availability, skips an observable match, and PATCHes only `review_effort` when a change is needed. `default` sends `inherit`; the other choices send their literal API strings. An independent GET must confirm the requested observable state. Sibling controls, including custom instructions, MCP and severity filtering, are not included in this effort PATCH. Their complete typed values must remain unchanged in readback; a mismatch fails verification without claiming whether the cause was this write or a concurrent change. Mutation or readback failures can leave unknown effects; earlier successful writes remain applied and later work stops. There is no rollback, automatic retry, concurrency lock or saved-plan application.
 
-`export --copilot-review-effort` explicitly includes the observable choice. It composes with `--copilot-custom-instructions` and `--copilot-mcp`, but each flag selects only its own control. Ordinary export and `--actions` do not select effort. Failed acquisition leaves the existing output file unchanged. Detailed CLI/Action reports show the fixed UI path and string choices; status-only output hides them.
+Ordinary `export` includes the observable effort choice. Unavailable observations retain prior declarations with info. Detailed CLI/Action reports show the fixed UI path and string choices; status-only output hides them.
 
 The same endpoint and [credential boundaries](#copilot-code-review-custom-instructions) apply. GitHub documents the [configuration control](https://docs.github.com/en/copilot/how-tos/copilot-on-github/set-up-copilot/configure-code-review), [effort choices and Preview status](https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/code-review) and [GET/PATCH schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json). The [behavior specification](features/copilot-review-effort.feature.md) records test ownership and the limits of the live storage evidence.
 
@@ -405,7 +405,7 @@ Both `name` and nonempty string `value` are required. Names contain only ASCII l
 
 Plan reads each selected name individually and shows creates or value updates. Apply reads fresh state, creates absent names with POST, updates changed values with value-only PATCH, skips equal values, and requires exact individual GET readback after a mutation. Only GET 404 means absent under the caller-permissions precondition. Other failed/incomplete reads fail. Mutations and verification failures can have remote effects; earlier writes remain applied, without rollback, retry or concurrency protection.
 
-Ordinary export does not read variables. Repeat `export --variable NAME` to acquire only known non-sensitive names by individual GET. A selected missing name fails before saving. Variables are **plaintext**: YAML, exported files, detailed plans and Summary can contain their values. Never put secrets or credentials in variables; the tool does not classify or mask values. Secrets and organization variables are outside these repository-variable features. [Environment variables](#environment-variables) have separate scoped selection. [Agents variables](#agents-repository-variables) have a separate declaration and export selection; Actions selections never access Agents endpoints.
+Ordinary `export` lists all supported Actions repository variables through complete paginated inventory reads. Unavailable/incomplete/unsupported inventories retain prior valid declarations with info. Values are **plaintext** in YAML, exports, detailed plans and Summary. Secrets and organization variables remain outside scope. Agents and Environment inventories are separate independent families; output does not classify or mask variable values.
 
 GitHub's [Variables REST API](https://docs.github.com/en/rest/actions/variables) requires repository Variables read for reads and write for mutations with fine-grained/App tokens. An empty-value create was rejected with HTTP 422 (`Variable value cannot be empty.`); validation rejects empty desired values before requests. No whitespace-trimming rule is inferred. GitHub enforces its [variable limits](https://docs.github.com/en/actions/reference/workflows-and-actions/variables#limits-for-configuration-variables); server rejections are errors. No permission is granted automatically. Free/personal/public UI eligibility and API persistence were observed separately; this is not a runtime entitlement gate. See the [behavior specification](features/repository-variables.feature.md).
 
@@ -459,7 +459,7 @@ repository:
 
 The [name/value, omission and upsert rules above](#actions-repository-variables) also apply to Agents variables: names are canonical uppercase and values are required nonempty strings. Without prune, omission and `[]` select nothing and unlisted variables remain unchanged. `--prune agents-variables` adds unlisted deletions only for a present list; [] selects all, omission stays unmanaged. There is no YAML deletion/rename member. Without prune, plan reads only selected names; apply reads fresh state, conditionally creates or updates, then verifies the exact value. Failed reads do not become empty state, and failed mutations or verification can have unknown effects without rollback.
 
-Repeat `export --agent-variable NAME` to read only known non-sensitive Agents names. Ordinary export, `--actions` and `--variable` do not read Agents variables. Both export flags can select the same canonical name independently, and the two YAML groups can hold different values for that name. A missing, incomplete or failed selected read prevents saving the export. Values are **plaintext** in configuration, exported files, detailed plans, reports and Summary; never use this feature for secrets or credentials.
+Ordinary `export` lists all supported Agents variables through its separate paginated inventory API. An unavailable/incomplete/unsupported inventory emits info and retains prior intent; it never supplies an empty fallback. The same canonical name can exist with different values in Actions and Agents. Values remain **plaintext** in configuration, exports and detailed output; secrets are outside scope.
 
 The [Agents Variables REST API](https://docs.github.com/en/rest/agents/variables) uses `/repos/{owner}/{repo}/agents/variables` and requires the repository **Agent variables** permission at read level for acquisition and write level for mutation with fine-grained/App tokens. This is separate from the **Variables** permission for Actions variables. No permission or token request is added automatically. The Free/personal/public UI and API persistence were verified separately; the probe does not prove actual agent consumption or access for an untested credential. See the [behavior specification](features/repository-variables.feature.md) for evidence and its limits.
 
@@ -615,14 +615,13 @@ before retrying. Local apply records confirmed creations using
 [guarded ID writeback](#apply-id-writeback), with `policy_name` as selector;
 `--no-writeback` and `GITHUB_ACTIONS=true` suppress it.
 
-`export --actions-policies` independently selects the full repository collection,
+Ordinary `export` independently observes the full repository collection,
 including IDs and explicit canonical `target_workflows`, sorted by exact policy
 name with sorted events, actor identities and patterns. Export explicitly emits
 `enabled: false` for absent restriction rules, so a snapshot does not accidentally
 preserve an existing rule. All workflows exports as `include: [~ALL]`
-and `exclude: []`, so a saved snapshot owns its complete selection. Ordinary export
-and `--actions` do not select it. All pages and details must be complete and
-representable before saving; a failure preserves the existing destination.
+and `exclude: []`, so a saved snapshot owns its complete selection. All pages and details must be complete and representable before adoption;
+a failure emits info and retains the prior collection while other reads continue.
 Fine-grained and GitHub App tokens require **Administration write even for
 list/GET, export and plan**, as well as writes, according to the official API.
 The client never grants permissions or substitutes empty state for denied reads.
@@ -670,7 +669,7 @@ Companions can accompany the selected non-owner policy or an omitted policy, not
 
 Patterns are at most 1000 nonempty strings. An explicit array replaces the entire sequence, and `[]` clears it. Case, order, duplicates, wildcards and negative entries are preserved; the tool does not emulate matching. Removing a negative entry may permit more actions. GitHub documents pattern applicability limits; configuring a list alone does not prove enforcement on private repositories.
 
-`export --actions` includes the selected policy, SHA control and visible acquired companions in the same section. Disabled/other policy hides selected companions; complete raw acquisition is still required. Normal export does not read this family. Failed or incomplete acquisition preserves the destination. Correctly typed unknown execution policies follow the observation policy below.
+Ordinary `export` includes the execution policy, SHA control and visible acquired companions in the same section. Disabled/other policy hides selected companions; complete raw acquisition is still required. Failed or incomplete acquisition retains this family’s prior declaration with info, without erasing independently acquired Actions siblings. Correctly typed unknown execution policies follow the observation policy below.
 
 Apply reads fresh state and preflights before writing. The base policy endpoint requires enabled state; omitted policy uses the freshly observed value. Policy changes precede selected writes. When enabling a disabled repository with selection, it first selects policy while disabled, installs companions, then enables. Requested values and sent companions are verified with fresh reads. Repeated direct apply can still write declared values.
 
@@ -777,7 +776,7 @@ Scalar omission is unmanaged. Labels/Rulesets/Actions policies own only listed w
 
 ## Exported values
 
-Export completes acquisition and conversion before writing. Unavailable Security families follow the automatic export omission/retention contract; core and other selected-resource failures remain fatal. No incomplete family becomes plausible empty/false YAML. Incomplete data remains an acquisition failure. Correctly typed out-of-UI Security statuses follow their [Security policy](#secret-scanning-and-push-protection), and public-fork approval strings follow their [fork policy](#fork-pr-workflow-policies). Complete workflow permission strings, merge/squash message pairs and creation-policy strings follow their [workflow](#default-workflow-permissions), [menu](#commit-message-observation-normalization) and [creation-policy](#creation-policy-observation-normalization) fallback policies. Complete Pages modes and legacy folders follow their [raw-source policy](#pages-configuration); Actions execution follows its [visible/latent policy](#execution-policy-observation-normalization). Ruleset enforcement follows its [ID-bound policy](#ruleset-enforcement-observation-normalization); Environment deployment modes follow their [raw-pair policy](#environment-deployment-mode-observation-normalization), and pattern ref types follow their [raw-identity policy](#environment-ref-type-observation-normalization). Only the explicitly documented typed fallback policies normalize observations; unsupported identities and incomplete values remain errors. Ordinary export includes About, Labels and supported visible General controls; archive and additional settings require explicit options. Hidden conditional controls are omitted without replaying latent API values as selected intent. IDs, false/zero/empty values and nullable Pages domains retain their declared meanings.
+Export completes acquisition and conversion before writing. All independent families follow the [automatic export omission/retention contract](features/readable-settings-export.feature.md); core repository, target/file and diagnostic IO failures remain fatal; independent unavailable settings retain prior declarations with info. No incomplete family becomes plausible empty/false YAML. Incomplete data remains an acquisition failure. Correctly typed out-of-UI Security statuses follow their [Security policy](#secret-scanning-and-push-protection), and public-fork approval strings follow their [fork policy](#fork-pr-workflow-policies). Complete workflow permission strings, merge/squash message pairs and creation-policy strings follow their [workflow](#default-workflow-permissions), [menu](#commit-message-observation-normalization) and [creation-policy](#creation-policy-observation-normalization) fallback policies. Complete Pages modes and legacy folders follow their [raw-source policy](#pages-configuration); Actions execution follows its [visible/latent policy](#execution-policy-observation-normalization). Ruleset enforcement follows its [ID-bound policy](#ruleset-enforcement-observation-normalization); Environment deployment modes follow their [raw-pair policy](#environment-deployment-mode-observation-normalization), and pattern ref types follow their [raw-identity policy](#environment-ref-type-observation-normalization). Only the explicitly documented typed fallback policies normalize observations; unsupported identities and incomplete values remain errors. Ordinary export attempts every supported family without selectors; excluded controls and secrets remain out of scope. Hidden conditional controls are omitted without replaying latent API values as selected intent. IDs, false/zero/empty values and nullable Pages domains retain their declared meanings.
 
 An export followed by validate/plan roundtrips exact supported acquired values, subject to the API-controlled omission limits below. A normalized fallback does not establish raw equality. Export does not claim live entitlement, effective protection or transactional apply. It overwrites existing declaration content; review before adoption.
 
@@ -975,7 +974,7 @@ Reads require complete inventory, built-in/custom-protection details and typed p
 
 Administrator bypass is a real writable setting. Export requires/retains its complete boolean, even false. A prior temporary public-Environment experiment confirmed explicit false/true and retained preceding values on omission with other members fixed; this is not a platform-wide omission or entitlement guarantee. No default true is inserted.
 
-`export --environments` includes complete supported policy and active selected patterns without Environment/pattern IDs or variables; ordinary export adds no Environment permissions. Existing Actions read, Administration write, custom protection visibility and account eligibility are required. See [Environment behavior](features/environments.feature.md) and [mapping](contributing/ui-environments-mapping.md).
+Ordinary `export` observes supported Environment policy and active selected patterns, without Environment/pattern IDs. Variables are inventoried independently after complete name acquisition; policy failure does not prevent listing accessible variables. Existing Actions read, Administration write, custom-protection visibility and account eligibility still apply. See [Environment behavior](features/environments.feature.md).
 
 ### Environment variables
 
@@ -997,7 +996,7 @@ An entry containing `name` and `variables` alone selects **only variables**, inc
 
 Without prune, plan reads selected names only. Prune additionally acquires complete selected inventories. When the same plan explicitly creates a missing Environment policy, its selected variables are shown as creates without requesting nonexistent variable endpoints. Apply checks the selected Environment identity, reads each variable fresh, creates an absent variable, updates a changed value, skips equality and verifies independent readback. Writes run in stable Environment/name order. Failed reads do not become empty state; later failures stop execution without rolling back earlier writes, and a failed write or verification can have uncertain effects.
 
-Repeat `export --environment-variable ENVIRONMENT NAME` for each known non-sensitive value. Ordinary export and `--environments` never discover or read variables. Missing Environments, absent selected variables, incomplete responses and read failures prevent saving. This flag composes with policy export without inventing policy intent for variable-only selections. Values are **plaintext** in YAML, exports, detailed plans, reports and Summary. Never use variables for secrets or credentials.
+Ordinary `export` inventories variables for every completely listed Environment. Each parent variable list is atomic; failed acquisition retains that parent’s prior declarations with info and other parents continue. Unknown parent inventory retains all prior scopes. Variable-only entries do not invent deployment policy. Values are **plaintext** in YAML, exports and detailed output; secret APIs are not used.
 
 The [Environment Variables REST API](https://docs.github.com/en/rest/actions/variables#get-an-environment-variable) uses name-addressed `/repos/{owner}/{repo}/environments/{environment_name}/variables` endpoints. Fine-grained/App tokens need **Environments** read for variables and write for mutations, plus **Actions** read for the Environment identity check. No access is granted automatically. UI creation/update/deletion and API persistence were verified on a Free, personally owned public test repository on 2026-11-11; both rejected an empty value. This is bounded adoption evidence, not a runtime entitlement check or proof of workflow consumption. See the [behavior specification](features/environments.feature.md#selected-environment-variables).
 
@@ -1054,7 +1053,7 @@ repository:
 
 Only exact lowercase `none` is reserved; other branch names retain their case (`None` is a literal branch). The accepted collision with a real branch named `none` is intentional. Deletion requires the explicit Source above and rejects any `select_folder`, `custom_domain` (including null), or `enforce_https` (including false). It directly deletes either publishing mode; it never sends the sentinel to POST/PUT. Omission, null, empty groups and `custom_domain: null` never delete a site. A present site using the reserved literal branch cannot be exported as a publishable declaration; export fails rather than writing contradictory YAML.
 
-Under the required-permissions precondition, target Pages GET 404 means absent. Deleting an absent site is a no-op. `export --pages` emits the deletion declaration above for absence; applying that export later intentionally deletes any site then present. Present-site export includes mode, active branch/folder, nullable domain and HTTPS after complete acquisition. Visibility/readiness metadata are excluded. Other failures and missing/null/wrongly typed required fields preserve the export destination. Ordinary export makes no Pages request.
+Under the required-permissions precondition, target Pages GET 404 means absent. Deleting an absent site is a no-op. ordinary `export` emits the deletion declaration above for absence; applying that export later intentionally deletes any site then present. Present-site export includes mode, active branch/folder, nullable domain and HTTPS after complete acquisition. Visibility/readiness metadata are excluded. Other failures and missing/null/wrongly typed required fields emit info and retain prior Pages declarations; independent families continue.
 
 Creation sends only source fields with POST, requires 201, then a fresh complete matching GET 200 and repository identity verification. Declared domain/HTTPS controls are reconciled afterward with PUT as needed, preserving observed server defaults for omissions. A later failure retains and reports confirmed creation, with no rollback. Updating requires PUT 204 and complete readback; deletion requires DELETE 204 and GET 404. A concurrent DELETE 404 requires a new GET 404 before success. POST/PUT followed by 404, unexpected statuses, redirects, explicit denials, timeouts and readback mismatch fail; writes are never retried automatically. Creation observes server-selected visibility without requesting a visibility change.
 
@@ -1115,11 +1114,10 @@ Denied, malformed or other mismatching readback fails immediately. Failure after
 PATCH reports uncertain effects; earlier successful operations remain applied.
 Apply is not atomic and does not roll back.
 
-`export --pull-request-limits` explicitly includes all three stored values,
-including disabled/false and latent values. Ordinary export and unrelated flags
-make no cap request. Missing `include_drafts` is an acquisition error, even though
+Ordinary `export` independently includes all three stored values,
+including disabled/false and latent values. Missing `include_drafts` is an acquisition error, even though
 it is optional in the published response schema; it never means false. Failed
-acquisition preserves an existing output file. CLI and detailed Action reports
+acquisition emits info and retains prior cap intent. CLI and detailed Action reports
 use these UI paths and native booleans/integers; status-only output hides values.
 
 The [official creation-cap API](https://docs.github.com/rest/interactions/repos#update-pull-request-creation-cap-for-a-repository)
@@ -1170,9 +1168,9 @@ concurrency protection is promised. This selected-list operation runs before
 separately declared cap controls; it never changes the cap, automatic exemption
 rules, temporary restrictions, collaborator grants or repository permissions.
 
-`export --pull-request-limit-exemptions` independently includes the complete
-list, including `[]`. Ordinary export and `--pull-request-limits` do not read it.
-A failed, incomplete, ambiguous or unsupported inventory prevents saving. CLI
+Ordinary `export` independently includes the complete list, including `[]`.
+A failed, incomplete, ambiguous or unsupported inventory emits info and retains
+prior membership without stopping independent reads. CLI
 and detailed Action reports/Summary expose the selected membership; status-only
 output omits it. The collection counts as one managed value.
 

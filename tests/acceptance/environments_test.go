@@ -79,7 +79,7 @@ func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.
 					state["can_admins_bypass"] = true
 				}
 				json.NewEncoder(w).Encode(state)
-			}, false)
+			}, false, "/environments", "/environments/production", "/environments/production/deployment_protection_rules")
 			if err != nil {
 				t.Fatal(err)
 			}

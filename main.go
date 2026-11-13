@@ -21,6 +21,7 @@ func main() {
 	checkout := workspace.NewCheckout(".")
 	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout) }
 	reader := app.Reader{CodeQLForExport: readCodeQLForExport, ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
+	reader.EnvironmentNames = readEnvironmentNames
 	reader.Environments = readEnvironments
 	reader.Variables = readVariables
 	reader.AgentVariables = readAgentVariables
@@ -39,7 +40,7 @@ func main() {
 		}))
 	}
 	os.Exit(cli.Run(os.Args[1:], os.Stdout, os.Stderr, version, cli.Operations{
-		Export: func(options cli.ExportOptions) error {
+		Export: func() error {
 			target, err := checkout.Repository()
 			if err != nil {
 				return err
@@ -48,7 +49,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			return app.Export(app.ExportCheckout{Existing: existing, Info: exportInfo, IncludeActionsPolicies: options.ActionsPolicies, IncludeCopilotReviewEffort: options.CopilotReviewEffort, IncludeCopilotMCP: options.CopilotMCP, IncludePullRequestLimits: options.PullRequestLimits, IncludePullRequestExemptions: options.PullRequestExemptions, IncludeCopilotInstructions: options.CopilotInstructions, Variables: options.Variables, AgentsVariables: options.AgentsVariables, EnvironmentVariables: options.EnvironmentVariables, IncludeEnvironments: options.Environments, IncludePages: options.Pages, IncludeArchive: options.Archive, Repository: func() (repository.Repository, error) { return target, nil }, PrepareSave: func() (func(settings.Declaration) error, error) { return save, nil }, IncludeRulesets: options.Rulesets, IncludeActions: options.Actions, IncludeWorkflowPermissions: options.WorkflowPermissions, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization, IncludeRetention: options.Retention, IncludeCacheStorage: options.CacheStorage, IncludeCacheRetention: options.CacheRetention, IncludeForkApproval: options.ForkApproval}, reader)
+			return app.Export(app.ExportCheckout{Check: func(d settings.Declaration) error { _, err := github.UIFromExportDeclaration(d); return err }, Existing: existing, Info: exportInfo, Repository: func() (repository.Repository, error) { return target, nil }, PrepareSave: func() (func(settings.Declaration) error, error) { return save, nil }, NormalizationWarning: warnNormalization, CommitMessageNormalizationWarning: warnCommitMessageNormalization, SecurityStatusNormalizationWarning: warnSecurityStatusNormalization, RulesetNormalizationWarning: warnRulesetNormalization, RulesetRequiredApprovalsNormalizationWarning: warnRulesetRequiredApprovalsNormalization, RulesetMergeMethodsNormalizationWarning: warnRulesetMergeMethodsNormalization, RulesetTeamApprovalsNormalizationWarning: warnRulesetTeamApprovalsNormalization, RulesetScanningAlertsNormalizationWarning: warnRulesetScanningAlertsNormalization, RulesetScanningSecurityAlertsNormalizationWarning: warnRulesetScanningSecurityAlertsNormalization, RulesetBypassModeNormalizationWarning: warnRulesetBypassModeNormalization, EnvironmentDeploymentNormalizationWarning: warnEnvironmentDeploymentNormalization, EnvironmentRefTypeNormalizationWarning: warnEnvironmentRefTypeNormalization}, reader)
 		},
 		Validate: func() (settings.Declaration, error) { return app.Validate(loadDeclaration) },
 		Plan: func(options cli.PlanOptions) (app.PlanResult, error) {
@@ -630,4 +631,12 @@ func readCodeQLForExport(repo repository.Repository) (settings.CodeQLDefaultSetu
 		return settings.CodeQLDefaultSetupObservation{}, settings.CodeQLConfigurationObservation{}, err
 	}
 	return client.ReadForExport(repo)
+}
+
+func readEnvironmentNames(repo repository.Repository) ([]string, error) {
+	c, err := github.NewEnvironmentsClient(repo.Host)
+	if err != nil {
+		return nil, err
+	}
+	return c.Names(repo)
 }

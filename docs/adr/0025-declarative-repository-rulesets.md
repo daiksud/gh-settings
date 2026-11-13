@@ -31,3 +31,12 @@ Declared Rulesets membership can remove protection, just as declared labels memb
 Failing on unsupported content limits initial adoption, but makes the boundary honest. The basic lifecycle implementation must not claim to round-trip repositories containing PR/check rules before the extension supports their complete writable shape. Newly observed fields require classification and evidence before support; raw unknown JSON is not blindly replayed into privileged requests.
 
 This decision changes no executable, workflow, permission, credential, live protection, or release. Implementation PRs must add the public contract, native CLI/Action presentation, and the specified tests together, under normal review and CI.
+
+## Later default readable-settings decision
+
+On 2026-11-13 the user extended automatic export to every supported readable
+setting family. This supersedes export opt-in/selection clauses above; strict
+plan/apply and existing API-specific absence rules remain. See the
+[automatic export contract](../features/readable-settings-export.feature.md).
+Independent unavailable families emit bounded info, continue other reads and
+retain valid prior intent; no secret API or new unsupported setting is adopted.

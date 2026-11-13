@@ -29,3 +29,12 @@ Keep creation/deletion/rename deferred. A 404 does not authorize upsert or estab
 The contract supports independent model, codec and report design without claiming API readiness. #352 must establish the bounded protection subset it can read, preserve and verify before accepting any reserved key; unsupported portions remain visible. #353 additionally needs typed pattern observations and transition evidence. These gates do not block other independent issues.
 
 Implementation stays in the existing settings/workspace/API/app/presentation layers, with no ownership database or transaction abstraction. Export is opt-in and must not turn unavailable protection into an apparently safe declaration. Failures retain earlier writes and never trigger automatic rollback, permission expansion or deployment approval.
+
+## Later default readable-settings decision
+
+On 2026-11-13 the user extended automatic export to every supported readable
+setting family. This supersedes export opt-in/selection clauses above; strict
+plan/apply and existing API-specific absence rules remain. See the
+[automatic export contract](../features/readable-settings-export.feature.md).
+Independent unavailable families emit bounded info, continue other reads and
+retain valid prior intent; no secret API or new unsupported setting is adopted.

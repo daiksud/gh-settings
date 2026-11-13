@@ -8,6 +8,7 @@ guide](../github-actions.md) own user-facing behavior.
 | Specification | Responsibility |
 | --- | --- |
 | [Export](export.feature.md) | Read supported state into a configuration file. |
+| [Automatic readable settings](readable-settings-export.feature.md) | Default family acquisition, complete inventories, info and prior-intent retention. |
 | [Validate](validate.feature.md) | Validate declarations locally. |
 | [Plan](plan.feature.md) | Compare declared values without writes. |
 | [Apply](apply.feature.md) | Apply declarations and report partial failure. |

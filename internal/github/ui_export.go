@@ -10,11 +10,15 @@ import (
 // UIFromExportDeclaration projects values already acquired and validated by export.
 // It does not establish acquisition or fill missing observation metadata.
 func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, error) {
-	if source.Repository.Description == nil || source.Repository.Homepage == nil || source.Topics.Names == nil {
-		return uimodel.Repository{}, fmt.Errorf("export requires acquired About description, website and topics")
+	if source.Repository.Description == nil || source.Repository.Homepage == nil {
+		return uimodel.Repository{}, fmt.Errorf("export requires acquired About description and website")
 	}
-	topics := settings.SortedTopics(*source.Topics.Names)
-	result := uimodel.Repository{About: &uimodel.About{Description: copyUIValue(source.Repository.Description), Website: copyUIValue(source.Repository.Homepage), Topics: &topics}}
+	var topics *[]string
+	if source.Topics.Names != nil {
+		v := settings.SortedTopics(*source.Topics.Names)
+		topics = &v
+	}
+	result := uimodel.Repository{About: &uimodel.About{Description: copyUIValue(source.Repository.Description), Website: copyUIValue(source.Repository.Homepage), Topics: topics}}
 	general, err := GeneralObservation(source.Repository)
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export General: %w", err)

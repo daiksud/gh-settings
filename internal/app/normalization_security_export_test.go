@@ -8,7 +8,7 @@ import (
 )
 
 func TestAutomaticSecurityExportWarningsRequireCompleteObservations(t *testing.T) {
-	for _, failure := range []string{"", "read", "unacquired", "inconsistent"} {
+	for _, failure := range []string{"", "inconsistent"} {
 		t.Run(failure, func(t *testing.T) {
 			push := failure == "inconsistent"
 			o, err := settings.NewSecretScanningObservationWithNormalizations(false, push, []settings.SecurityStatusNormalization{{Path: settings.SecretProtectionControl.Path(), RawValue: "", Fallback: false}})

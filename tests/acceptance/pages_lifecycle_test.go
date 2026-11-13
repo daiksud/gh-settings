@@ -108,7 +108,7 @@ func TestPagesLifecycleExportPlanApplyAndPartialFailure(t *testing.T) {
 			t.Error("unexpected endpoint", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/pages", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestPagesLifecycleExportPlanApplyAndPartialFailure(t *testing.T) {
 		}
 	}
 	config := filepath.Join(fixture.work, ".github/settings.yml")
-	run("export", "--pages")
+	run("export")
 	data, _ := os.ReadFile(config)
 	if !strings.Contains(string(data), "branch: none") || strings.Contains(string(data), "custom_domain:") || strings.Contains(string(data), "select_folder:") {
 		t.Fatal(string(data))
@@ -205,7 +205,7 @@ func TestPagesLifecycleExportPlanApplyAndPartialFailure(t *testing.T) {
 			t.Fatal("repeat mutated", events)
 		}
 		mu.Unlock()
-		run("export", "--pages")
+		run("export")
 		if !strings.Contains(run("plan"), "No differences") {
 			t.Fatal("present export drift")
 		}

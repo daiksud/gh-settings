@@ -94,7 +94,7 @@ func TestPagesModeNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/pages", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +135,7 @@ func TestPagesModeNormalizationAcrossExecutableCommands(t *testing.T) {
 	}
 	path := "repository.settings.pages.build_and_deployment.source"
 	warning := "Warning: " + path + ": observed \"FUTURE_MODE\" is outside UI choices; using \"deploy_from_a_branch\" (projection only)."
-	output, diagnostic, status := run("export", "--pages")
+	output, diagnostic, status := run("export")
 	if status != 0 || output != "" || diagnostic != warning+"\n" {
 		t.Fatal("export", status, output, diagnostic)
 	}
@@ -284,7 +284,7 @@ func TestPagesModeNormalizationAcrossExecutableCommands(t *testing.T) {
 	state["build_type"] = nil
 	beforeInvalid := len(pagesWrites)
 	mu.Unlock()
-	output, diagnostic, status = run("export", "--pages")
+	output, diagnostic, status = run("export")
 	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null mode export", status, output, diagnostic)
 	}

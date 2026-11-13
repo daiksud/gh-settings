@@ -24,7 +24,7 @@ UI paths, values, scope, permissions, export and confirmation semantics.
   (`internal/app/pull_request_limits_test.go`).
 - Export selection is independent, duplicate flags fail, and reports validate
   each fixed typed field and the closed managed-count bound
-  (`internal/cli/pull_request_limits_test.go`,
+  (`internal/cli/export_test.go`,
   `internal/actions/pull_request_limits_test.go`).
 
 - Built-executable export, validate, plan, apply, private reports and Summary

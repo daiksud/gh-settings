@@ -6,6 +6,8 @@ description: Manage UI Source and Branch lifecycle with complete observations, e
 
 Status: accepted design in [ADR 0028](../adr/0028-declarative-pages-settings.md), extended for #350. Current source manages creation, configuration and deletion; visibility mutation is excluded. Required permissions are a product precondition across existing/future specifications. No live mutation is release evidence.
 
+Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
+
 ## Official contracts
 
 Reviewed against GitHub.com documentation on October 23, 2026:
@@ -77,7 +79,7 @@ An out-of-UI publishing mode string projects to the named `deploy_from_a_branch`
 
 Apply warns only for declared mode/source intent using each fresh successful acquisition, in stable mode-then-folder order. Verify declared mode/source against exact raw values; unchanged unknown readback is an uncertain write. Preserve omitted raw mode and active raw source while verifying other declared values. Decide active source from the effective prepared mode before restoring omitted raw mode for verification. Switching to workflow leaves source inactive. Preserve existing domain canonicalization, HTTPS, visibility and identity verification.
 
-`export --pages` composes with other explicit selections and rejects duplicate options. Project the UI source choice, active branch/select-folder controls, scalar nullable `custom_domain` and `enforce_https`. Exclude visibility, endpoint/site URLs, build state, certificate state, timestamps and DNS verification metadata. Export target GET 404 as explicit deploy-from-branch/branch-none deletion intent, without folder/domain/HTTPS; fail other errors or incomplete reads without replacing the settings file; ordinary export gains no Pages request. A supported complete existing export must produce zero configured differences when immediately planned against unchanged fixture state.
+Ordinary `export` automatically attempts Pages independently of other families. Project the UI source choice, active branch/select-folder controls, scalar nullable `custom_domain` and `enforce_https`. Exclude visibility, endpoint/site URLs, build state, certificate state, timestamps and DNS verification metadata. Export target GET 404 as explicit deploy-from-branch/branch-none deletion intent, without folder/domain/HTTPS; fail other errors or incomplete reads without replacing the settings file; ordinary export gains no Pages request. A supported complete existing export must produce zero configured differences when immediately planned against unchanged fixture state.
 
 The existing private protocol uses up to five configured internal managed leaves: `pages.build_type`, `pages.source.branch`, `pages.source.path`, `pages.cname`, `pages.https_enforced`. A declared complete source manages both leaves. Native comparisons retain booleans, strings and the cname-only null; stable display order follows that list. Render null distinctly from empty string/omission. Count configured differences only. Changing a build/certificate status alone must not produce a desired setting or a perpetual plan difference.
 
@@ -116,7 +118,7 @@ Local fixtures verify these contracts:
 | Layer | Required cases |
 | --- | --- |
 | Model/codec | Omission/group-empty; explicit false; null only for the public custom-domain scalar; source pair validation; invalid domains/mode/source combinations; unacquired observations; defensive copies |
-| HTTP read/export | Legacy/workflow complete states; present null versus missing cname; incomplete/unknown mode; 401/403/404/redirect; failed export preserves file; opt-in composition; ordinary export unchanged |
+| HTTP read/export | Legacy/workflow complete states; present null versus missing cname; incomplete/unknown mode; 401/403/404/redirect; unavailable export retains prior intent; automatic composition; ordinary export unchanged |
 | Reconciliation/update | Match no write; full source tuple; legacy/workflow transitions; declared-only PUT; real JSON null; fresh state changes; omitted companions/public preserved; 204 plus verified readback; 400/409/422 and uncertain/partial verification failures |
 | Readiness | Changing pending build/DNS/certificate metadata produces no config diff; server refusal stops without fallback, polling, hidden build, rollback or HTTPS disabling |
 | Lifecycle/isolation | Explicit POST/DELETE only; no build/deployment/DNS/workflow/grant requests; 404 acquires absence; unarchive first/final archive last |
@@ -130,8 +132,8 @@ Use the existing CI and representative actual-binary acceptance harness; record 
 - YAML omission/empty mapping, null-only domain clearing, false preservation, complete source and strict unknown/duplicate/type checks: `TestUIConfigPagesControls`, `TestUIConfigPagesDomainPresence` and `TestUIConfigPagesRejectsInvalidSyntax` in [UI workspace tests](../../internal/workspace/ui_pages_test.go).
 - Complete reads, denied responses and acquired 404 absence, declared-only PUT, repository identity, preserved companions/public visibility, no retries, matching state and uncertain writes: [API tests](../../internal/github/pages_test.go).
 - Independent plan, honest earlier-write progress, no unmanaged reads, explicit unarchive/Pages/final-archive order: [application tests](../../internal/app/pages_test.go).
-- Closed native null/boolean/string report handling, missing-versus-null JSON fields and inactive-source structure: [Summary tests](../../internal/actions/pages_test.go); explicit composable export: [CLI tests](../../internal/cli/pages_test.go).
-- The supplied actual CLI binary exercises ordinary/opted-in export, export-to-zero-plan, clearing/false, idempotent apply, both publishing-mode transitions, private status-only Summary without credentials, failed-export preservation, redirects and partial writes: `TestPagesExistingSiteExportPlanApplyAndPrivateSummary` in [acceptance tests](../../tests/acceptance/pages_test.go).
+- Closed native null/boolean/string report handling, missing-versus-null JSON fields and inactive-source structure: [Summary tests](../../internal/actions/pages_test.go); explicit composable export: [CLI tests](../../internal/cli/export_test.go).
+- The supplied actual CLI binary exercises ordinary/automatic export, export-to-zero-plan, clearing/false, idempotent apply, both publishing-mode transitions, private status-only Summary without credentials, failed-export preservation, redirects and partial writes: `TestPagesExistingSiteExportPlanApplyAndPrivateSummary` in [acceptance tests](../../tests/acceptance/pages_test.go).
 
 These checks use local modeled responses and dummy credentials. They do not establish live Pages permissions, token grants, entitlement, API mutation compatibility, DNS or certificate readiness. No live mutation, build/deployment request or release was performed.
 

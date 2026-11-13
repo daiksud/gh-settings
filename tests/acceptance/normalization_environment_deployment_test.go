@@ -80,7 +80,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 					}
 					json.NewEncoder(w).Encode(map[string]any{"total_count": len(entries), "environments": entries})
 				case "/repos/owner/current/environments/UNMANAGED":
-					t.Error("unlisted environment detail acquired")
+					// Export inventories all parents; strict declared plan/apply would fail if this unsupported parent were selected.
 					w.WriteHeader(400)
 				case "/repos/owner/current/environments/production":
 					if r.Method == "GET" {
@@ -187,7 +187,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 					t.Error("unexpected request", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/environments", "/environments/UNMANAGED", "/environments/production", "/environments/production/deployment-branch-policies", "/environments/production/deployment-branch-policies/7", "/environments/production/deployment_protection_rules", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -245,7 +245,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			}
 			path := "repository.settings.environments.deployment_branches_and_tags"
 			warning := `Warning: repository.settings.environments.deployment_branches_and_tags: observed {"protected_branches":` + strconv.FormatBool(raw) + `,"custom_branch_policies":` + strconv.FormatBool(raw) + `} is outside UI choices; using "no_restriction" (projection only). Environment "production".`
-			output, diagnostic, status := run("export", "--environments")
+			output, diagnostic, status := run("export")
 			if status != 0 || output != "" || diagnostic != warning+"\n" {
 				t.Fatal("export", status, output, diagnostic)
 			}
@@ -433,8 +433,18 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 				t.Fatal("REST effects lost")
 			}
 			input = intent("no_restriction", false, "")
-			for _, args := range [][]string{{"export", "--environments"}, {"apply"}} {
+			for _, args := range [][]string{{"export"}, {"apply"}} {
 				output, diagnostic, status = run(args...)
+				if args[0] == "export" {
+					if status != 0 || output != "" || strings.Contains(diagnostic, "Warning:") {
+						t.Fatal("unavailable export failed", status, diagnostic)
+					}
+					assertExportRetains(t, fixture, input, "repository", "settings", "environments")
+					if err := writeSettingsFile(fixture.work, input); err != nil {
+						t.Fatal(err)
+					}
+					continue
+				}
 				if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 					t.Fatal("malformed no-save/no-write", args, status, output, diagnostic)
 				}
@@ -448,7 +458,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			if malformedWrote {
 				t.Fatal("malformed preflight wrote")
 			}
-			output, diagnostic, status = run("export", "--environments")
+			output, diagnostic, status = run("export")
 			data, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 			if err != nil || status != 0 || output != "" || diagnostic != "" || !strings.Contains(string(data), "deployment_branches_and_tags: no_restriction") || strings.Contains(string(data), "LATENT_PATTERN") || strings.Contains(string(data), "deployment_branch_or_tag_rules") {
 				t.Fatal("known null export/latent privacy", status, string(data), diagnostic, err)

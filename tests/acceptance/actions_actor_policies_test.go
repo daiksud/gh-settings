@@ -81,7 +81,7 @@ func TestActionsActorsBuiltProductLifecycle(t *testing.T) {
 		t.Fatal(created)
 	}
 	f.run(t, false, "apply")
-	f.run(t, false, "export", "--actions-policies")
+	f.run(t, false, "export")
 	exported := f.data(t)
 	for _, want := range []string{"restrict_actors:", "repository_admin", "user: 123", "restrict_events:", "enabled: false", "ci.yml"} {
 		if !strings.Contains(exported, want) {
@@ -106,7 +106,7 @@ repository:
 	f.run(t, false, "apply")
 	f.write(t, selected+"          restrict_actors: {allowed_actors: []}\n")
 	f.run(t, false, "apply")
-	f.run(t, false, "export", "--actions-policies")
+	f.run(t, false, "export")
 	if !strings.Contains(f.data(t), "allowed_actors: []") {
 		t.Fatal(f.data(t))
 	}
@@ -125,7 +125,7 @@ repository:
 	f.mu.Lock()
 	f.objects[17]["rules"] = []any{map[string]any{"type": "restrict_actions_actors", "parameters": map[string]any{"allowed_actors": []any{map[string]any{"type": "App", "id": 123}}}}}
 	f.mu.Unlock()
-	f.run(t, true, "export", "--actions-policies")
+	f.run(t, true, "export")
 	if f.data(t) != preserved {
 		t.Fatal("failed export replaced file")
 	}

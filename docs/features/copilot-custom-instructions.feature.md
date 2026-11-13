@@ -16,7 +16,7 @@ description: Declare the repository Use custom instructions toggle without enabl
 
 - Plan reads only when declared and never writes. Apply reads fresh state, skips a matching value, PATCHes only `custom_instructions_enabled`, and requires matching independent GET readback.
 - Denied, missing, malformed and non-boolean reads fail. Mutation/verification failures can have remote effects; earlier successful writes remain applied and later writes stop. There is no rollback, automatic retry or saved-plan apply.
-- Without an explicit Copilot selection, ordinary export makes no Copilot code-review settings request. `--copilot-custom-instructions` selects only the supported boolean and saves only after successful acquisition.
+- Ordinary export attempts this boolean and the other supported controls independently. Unavailable state emits info and retains prior intent.
 - This toggle controls future eligible reviewers' use of repository instruction files. It does not enable Copilot code review, grant access, change licensing, request reviews or launch workflows. Organization instructions apply independently.
 
 ### UI and API evidence
@@ -29,15 +29,6 @@ Repository administrators and classic tokens with `repo` scope are documented. O
 
 ### Test mapping
 
-| Boundary | Evidence |
-| --- | --- |
-| Omission, acquired true/false, missing observation, closed changes and managed counts | [Domain tests](../../internal/settings/copilot_instructions_test.go) |
-| Strict boolean YAML, null/unsupported controls, empty pages and round trip | [Codec tests](../../internal/workspace/ui_copilot_instructions_test.go) |
-| Complete GET, exact PATCH, matching skip, errors and independent verification | [Transport tests](../../internal/github/copilot_instructions_test.go) |
-| Plan/apply progress, archive accounting, selected export and omitted-resource isolation | [Application tests](../../internal/app/copilot_instructions_test.go) |
-| Explicit composable export flag and local duplicate rejection | [CLI tests](../../internal/cli/copilot_instructions_test.go) |
-| Export false and retain existing Actions projection | [Projection tests](../../internal/github/ui_copilot_instructions_export_test.go) |
-| Typed reports, fixed failure path, malformed-report rejection and status-only privacy | [Action tests](../../internal/actions/copilot_instructions_test.go) |
-| Built executable, constructor version/redirect policy, both writes, failures and export preservation | [Process acceptance](../../tests/acceptance/copilot_instructions_test.go) |
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
 Tests use dummy credentials, isolated Git/files and local API fixtures. They do not enable reviews, exercise instruction files or establish real App-token permissions. Live UI/API evidence confirms configuration only.

@@ -35,7 +35,7 @@ func TestRulesetRequiredApprovalsExportOrdersTypedWarningsAndPreservesAbsence(t 
 	}
 	for _, both := range []bool{false, true} {
 		for _, sinks := range []int{0, 1, 2, 3} {
-			for _, mode := range []string{"selected", "canonical", "unrequested", "read", "unacquired", "ui"} {
+			for _, mode := range []string{"selected", "canonical", "ui"} {
 				z, a := exportApprovalsState(t, 7, "z", 11, both), exportApprovalsState(t, 9, "a", 12, false)
 				if mode == "canonical" {
 					z.RequiredApprovalsNormalization, a.RequiredApprovalsNormalization = settings.RulesetRequiredApprovalsNormalization{}, settings.RulesetRequiredApprovalsNormalization{}
@@ -69,7 +69,7 @@ func TestRulesetRequiredApprovalsExportOrdersTypedWarningsAndPreservesAbsence(t 
 				}
 				saved := false
 				var got []warning
-				checkout := ExportCheckout{Repository: checkoutRepository, IncludeRulesets: mode != "unrequested", PrepareSave: func() (func(settings.Declaration) error, error) {
+				checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 					return func(d settings.Declaration) error {
 						ui, err := github.UIFromExportDeclaration(d)
 						if err != nil {

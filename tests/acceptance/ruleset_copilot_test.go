@@ -69,7 +69,7 @@ func TestRulesetCopilotExportValidatePlanApplyReadback(t *testing.T) {
 		got["id"], got["source"], got["source_type"] = 7, "owner/current", "Repository"
 		state = got
 		json.NewEncoder(w).Encode(state)
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/7", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestRulesetCopilotExportValidatePlanApplyReadback(t *testing.T) {
 		}
 		return out.stdout.String()
 	}
-	run("export", "--rulesets")
+	run("export")
 	run("validate")
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	exported, err := os.ReadFile(path)

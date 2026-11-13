@@ -116,7 +116,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 			t.Error("unexpected method", r.Method)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/variables", "/agents/variables", "/environments/prod%2Fblue", "/environments/prod%2Fblue/variables")
 	if err != nil {
 		t.Fatal(err)
 	}

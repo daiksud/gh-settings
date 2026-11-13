@@ -25,7 +25,7 @@ The shared `MergeMethodsState`, fixed query and deferred read retain their names
 
 Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 
-Ordinary export saves observed visible About/General controls, Topics and complete Labels only after every read/conversion succeeds. Archive requires its explicit opt-in; repository forking policy is unsupported. Comparisons keep stable internal order and native booleans, with current UI paths for these unambiguous controls. Private reports retain closed value validation and existing bounds.
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
 ## Hosted read evidence
 

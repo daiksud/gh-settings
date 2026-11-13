@@ -13,7 +13,7 @@ release publisher and individual releases/tags/assets are outside ownership.
 - `repository.settings.general.releases.immutable_release` is an optional boolean. Omission is
   unmanaged, false is explicit, and null/type/key/duplicate errors fail locally.
 - Ordinary export automatically attempts this independent
-  family. Ordinary export retains its existing scope and permissions; failed
+  family. Existing required permissions remain; failed
   selected reads preserve the destination file.
 - GET `/repos/{owner}/{repo}/immutable-releases`: 200 requires native boolean
   `enabled` and `enforced_by_owner`; malformed/null/missing values fail. An

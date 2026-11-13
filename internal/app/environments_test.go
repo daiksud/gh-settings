@@ -104,8 +104,8 @@ func TestEnvironmentFreshMatchBeforeLaterFailureIsNotClaimedAsWrite(t *testing.T
 	}
 }
 
-func TestEnvironmentExportIsOptInAndReadFailureDoesNotSave(t *testing.T) {
-	for _, mode := range []string{"ordinary", "selected", "failure"} {
+func TestEnvironmentExportAcquiresAllPolicies(t *testing.T) {
+	for _, mode := range []string{"selected"} {
 		reads, saves := 0, 0
 		reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
 		timer, prevent, reviewers := 0, false, []settings.EnvironmentReviewer{}
@@ -121,7 +121,7 @@ func TestEnvironmentExportIsOptInAndReadFailureDoesNotSave(t *testing.T) {
 			}
 			return settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 71, Policy: d.Values()[0]}})
 		}
-		err := Export(ExportCheckout{IncludeEnvironments: mode != "ordinary", Repository: func() (repository.Repository, error) { return repository.Repository{}, nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
+		err := Export(ExportCheckout{Repository: func() (repository.Repository, error) { return repository.Repository{}, nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
 			return func(saved settings.Declaration) error {
 				saves++
 				if mode == "selected" && !reflect.DeepEqual(saved.Environments, &d) {

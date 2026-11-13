@@ -133,7 +133,7 @@ func TestRulesetsIDOwnedLifecycleAndWriteback(t *testing.T) {
 		payload["source"] = "owner/current"
 		states[id] = payload
 		json.NewEncoder(w).Encode(payload)
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestRulesetsIDOwnedLifecycleAndWriteback(t *testing.T) {
 		}
 		return result.stdout.String()
 	}
-	run("export", "--rulesets")
+	run("export")
 	data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil {
 		t.Fatal(err)
@@ -301,7 +301,7 @@ func TestRulesetsFailureBoundaries(t *testing.T) {
 				} else {
 					fmt.Fprint(w, tt.detail)
 				}
-			}, false)
+			}, false, "/labels", "/rulesets", "/rulesets/", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -333,7 +333,7 @@ func TestRulesetsFailureBoundaries(t *testing.T) {
 		})
 	}
 }
-func TestRulesetsOptedExportFailurePreservesFile(t *testing.T) {
+func TestRulesetsUnavailableExportRetainsPriorFamily(t *testing.T) {
 	binary := acceptanceBinary(t)
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -359,7 +359,7 @@ func TestRulesetsOptedExportFailurePreservesFile(t *testing.T) {
 		default:
 			fmt.Fprint(w, strings.Replace(acceptanceRuleset, `"bypass_actors":[],`, "", 1))
 		}
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,12 +370,13 @@ func TestRulesetsOptedExportFailurePreservesFile(t *testing.T) {
 	}
 	before := "version: daiksud/gh-settings@v0\n"
 	writeSettingsFile(fixture.work, before)
-	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--rulesets"}, false)
-	if err != nil || result.runErr == nil || result.stdout.Len() != 0 {
+	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
+	if err != nil || result.runErr != nil || result.stdout.Len() != 0 {
 		t.Fatal(err, result)
 	}
 	after, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if string(after) != before {
+	assertExportRetains(t, fixture, before, "repository", "settings", "rulesets")
+	if !strings.Contains(string(after), "about:") {
 		t.Fatal("failed export replaced file")
 	}
 }

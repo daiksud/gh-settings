@@ -3,11 +3,9 @@
 package acceptance
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -62,7 +60,7 @@ func TestEnvironmentRefTypeNormalizationExport(t *testing.T) {
 					body = strings.Replace(body, `"protected_branches":false`, `"protected_branches":true`, 1)
 				}
 				fmt.Fprint(w, body)
-			}, false)
+			}, false, "/environments", "/environments/production", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -75,34 +73,20 @@ func TestEnvironmentRefTypeNormalizationExport(t *testing.T) {
 			if err := writeSettingsFile(fixture.work, existing); err != nil {
 				t.Fatal(err)
 			}
-			result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"export", "--environments"}, false)
+			result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"export"}, false)
 			warning := `Warning: repository.settings.environments.deployment_branch_or_tag_rules.ref_type: observed "future" is outside UI choices; using "branch" (projection only). Environment "production", pattern 7 name_pattern "main".` + "\n"
-			if mode == "missing type" || mode == "null type" {
-				var failed *exec.ExitError
-				if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || strings.Contains(withoutExportInfo(result.stderr.String()), "Warning:") || !strings.Contains(withoutExportInfo(result.stderr.String()), "missing/null type") {
-					t.Fatal("incomplete acquisition became normalized success", err, result.runErr, result.stdout.String(), result.stderr.String())
+			if mode == "missing type" || mode == "null type" || mode == "collision" {
+				if err != nil || result.runErr != nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "info: export repository.settings.environments:") {
+					t.Fatal("unavailable family not reported", err, result.stderr.String())
 				}
-				data, readErr := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-				if readErr != nil || string(data) != existing {
-					t.Fatal("failed acquisition replaced destination", string(data), readErr)
+				if mode == "collision" {
+					if strings.Count(withoutExportInfo(result.stderr.String()), "Warning:") != 1 {
+						t.Fatal(result.stderr.String())
+					}
+				} else if strings.Contains(withoutExportInfo(result.stderr.String()), "Warning:") {
+					t.Fatal("partial acquisition emitted normalization warning")
 				}
-				if err := fixture.checkRequests(false); err != nil {
-					t.Fatal(err)
-				}
-				return
-			}
-			if mode == "collision" {
-				var failed *exec.ExitError
-				if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.HasPrefix(withoutExportInfo(result.stderr.String()), warning) || strings.Count(withoutExportInfo(result.stderr.String()), "Warning:") != 1 || !strings.Contains(withoutExportInfo(result.stderr.String()), "duplicate") {
-					t.Fatal("collision must warn then fail", err, result.runErr, result.stdout.String(), result.stderr.String())
-				}
-				data, readErr := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-				if readErr != nil || string(data) != existing {
-					t.Fatal("collision replaced destination", string(data), readErr)
-				}
-				if err := fixture.checkRequests(false); err != nil {
-					t.Fatal(err)
-				}
+				assertExportRetains(t, fixture, existing, "repository", "settings", "environments")
 				return
 			}
 			if mode == "latent" {

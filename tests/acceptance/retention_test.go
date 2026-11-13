@@ -135,7 +135,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 			t.Error("unrelated endpoint", r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/permissions", "/actions/permissions/artifact-and-log-retention", "/actions/permissions/workflow", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,23 +160,17 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	}
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
-	run("export", "--actions")
-	run("export", "--workflow-permissions")
-	mu.Lock()
-	if retentionReads != 0 {
-		t.Fatal("existing export choices read retention")
-	}
-	beforeExecution, beforeWorkflow := executionReads, workflowReads
-	mu.Unlock()
-	run("export", "--retention")
 	run("validate")
 	data, err := os.ReadFile(path)
-	if err != nil || !strings.Contains(string(data), "check_workflow_run_status_artifact_and_log_retention: 90") || strings.Contains(string(data), "maximum_allowed_days") || strings.Contains(string(data), "workflow_permissions:") {
+	if err != nil || !strings.Contains(string(data), "check_workflow_run_status_artifact_and_log_retention: 90") || strings.Contains(string(data), "maximum_allowed_days") {
 		t.Fatal(string(data), err)
 	}
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
+	mu.Lock()
+	beforeExecution, beforeWorkflow := executionReads, workflowReads
+	mu.Unlock()
 	write("{check_workflow_run_status_artifact_and_log_retention: 14}")
 	plan := run("plan")
 	if !strings.Contains(plan, "repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention: 90 → 14") {
@@ -244,11 +238,12 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 		before = len(writes)
 		mu.Unlock()
 		original, _ := os.ReadFile(path)
-		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--retention"}, false)
+		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
 		after, _ := os.ReadFile(path)
-		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(after) != string(original) {
+		if err != nil || r.runErr != nil || r.stdout.Len() != 0 {
 			t.Fatal(failure, err, r.stderr.String(), string(after))
 		}
+		assertExportRetains(t, fixture, string(original), "repository", "settings", "actions", "general", "check_workflow_run_status_artifact_and_log_retention")
 		mu.Lock()
 		if len(writes) != before || redirected != 0 {
 			t.Fatal("read failure wrote/followed redirect", failure, writes, redirected)
@@ -274,7 +269,7 @@ func TestRetentionExportPlanApplyAndSummary(t *testing.T) {
 	mu.Lock()
 	mode = ""
 	mu.Unlock()
-	run("export", "--retention", "--actions", "--workflow-permissions")
+	run("export")
 	data, _ = os.ReadFile(path)
 	for _, field := range []string{"check_workflow_run_status_artifact_and_log_retention: 7", "actions_permissions:\n", "policy: disable_actions", "workflow_permissions:\n", "default_permissions: read_repository_contents_and_packages_permissions"} {
 		if !strings.Contains(string(data), field) {

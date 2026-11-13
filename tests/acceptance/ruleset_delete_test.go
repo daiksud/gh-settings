@@ -93,7 +93,7 @@ func TestRulesetPruneExecutableLifecycle(t *testing.T) {
 					t.Error("unexpected path", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/rulesets", "/rulesets/7", "/rulesets/8", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -110,7 +110,7 @@ func TestRulesetPruneExecutableLifecycle(t *testing.T) {
 				}
 				return result.stdout.String() + withoutExportInfo(result.stderr.String())
 			}
-			run(true, "export", "--rulesets")
+			run(true, "export")
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
 			if err != nil {
 				t.Fatal(err)
@@ -211,7 +211,7 @@ func TestRulesetPruneExecutableLifecycle(t *testing.T) {
 				t.Error("repeat deleted", writes)
 			}
 			mu.Unlock()
-			run(true, "export", "--rulesets")
+			run(true, "export")
 			data, err = os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
 			if err != nil || strings.Contains(string(data), "ruleset_name: basic") || !strings.Contains(string(data), "ruleset_name: unmanaged") || strings.Contains(string(data), "delete:") {
 				t.Fatal(string(data), err)

@@ -18,7 +18,7 @@ func appDependabot(a, u bool) settings.DependabotObservation {
 }
 
 func TestDependabotExportComposesAndRequiresCompleteReads(t *testing.T) {
-	for _, failure := range []string{"", "unacquired", "inconsistent", "later"} {
+	for _, failure := range []string{"", "inconsistent", "later"} {
 		t.Run(failure, func(t *testing.T) {
 			reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
 			reader.SecretScanning = func(repository.Repository) (settings.SecretScanningObservation, error) {

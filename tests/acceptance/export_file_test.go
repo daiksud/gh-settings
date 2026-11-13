@@ -180,7 +180,9 @@ func TestExportReportsWriteFailure(t *testing.T) {
 	cmd.Dir, cmd.Env = fixture.work, env
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	fixture.exporting.Store(true)
 	runErr := cmd.Run()
+	fixture.exporting.Store(false)
 	exit, ok := runErr.(*exec.ExitError)
 	if ctx.Err() != nil || !ok || exit.ExitCode() != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "write .github/settings.yml") {
 		t.Fatalf("execution=%v timeout=%v stdout=%q stderr=%q", runErr, ctx.Err(), stdout.String(), stderr.String())

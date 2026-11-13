@@ -20,7 +20,7 @@ Current source uses `repository.labels` with ID-selected ownership. The [setting
 ### Rule: Observe complete identity and report honest failures
 
 - Follow every labels page and require positive unique IDs and complete supported values. Nullable response descriptions normalize to empty strings.
-- Export saves IDs and complete supported fields only after all selected reads/encoding succeed; failure preserves the output file.
+- Export adopts IDs and complete supported fields only after all label pages succeed; unavailable acquisition emits info and retains prior Labels while independent reads continue.
 - Plan shows creates, ID-bound updates and default-derived changes. It never writes configuration.
 - Apply reads fresh labels after ordinary resources, preflights all label changes, and performs creates/updates in stable identity order, then fixed prune deletions when requested.
 - Resolve update paths from the observed ID/current name, check ID again before PATCH, and verify response identity and supported settings. This is not a lock against concurrent remote replacement.

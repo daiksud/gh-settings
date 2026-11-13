@@ -103,7 +103,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		desired["current_user_can_bypass"] = "never"
 		policy = desired
 		json.NewEncoder(w).Encode(policy)
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/7", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		}
 		return result.stdout.String()
 	}
-	run("export", "--rulesets")
+	run("export")
 	data, e := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if e != nil {
 		t.Fatal(e)
@@ -311,7 +311,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 				} else {
 					fmt.Fprint(w, tt.detail)
 				}
-			}, false)
+			}, false, "/labels", "/rulesets", "/rulesets/7", "/topics")
 			if e != nil {
 				t.Fatal(e)
 			}
@@ -378,7 +378,7 @@ func TestRulesetPRResponseMismatchStopsLaterWrites(t *testing.T) {
 					t.Error("unexpected later operation", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/rulesets", "/rulesets/7", "/topics")
 			if e != nil {
 				t.Fatal(e)
 			}

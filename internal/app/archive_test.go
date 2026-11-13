@@ -218,52 +218,6 @@ func TestArchivedRepositoryWithEmptyLabelSelectionIsMatching(t *testing.T) {
 	}
 }
 
-func TestArchiveExportExplicitlyOptInAndFailClosed(t *testing.T) {
-	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
-	from := settings.RepositoryState{DefaultBranch: "main"}
-	merge := settings.MergeMethodsState{SquashMergeCommitTitle: "PR_TITLE", SquashMergeCommitMessage: "PR_BODY", MergeCommitTitle: "PR_TITLE", MergeCommitMessage: "PR_BODY"}
-	pr := settings.PRAccessState{PullRequestCreationPolicy: "ALL"}
-	full := settings.NewRepositoryObservation(&from, &merge, &pr).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(settings.SponsorshipsState{})
-	archiveCalls, saveCalls := 0, 0
-	failArchive := false
-	reader := Reader{
-		ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
-			return full, nil
-		},
-		Topics: func(repository.Repository) ([]string, error) { return []string{}, nil },
-		Labels: func(repository.Repository) (settings.LabelObservation, error) {
-			return settings.NewLabelObservation([]settings.LabelState{})
-		},
-		Archive: func(repository.Repository) (settings.ArchiveState, error) {
-			archiveCalls++
-			if failArchive {
-				return settings.ArchiveState{}, errors.New("archive status unavailable")
-			}
-			return settings.ArchiveState{ID: 42, FullName: "owner/current", Archived: false}, nil
-		},
-	}
-	checkout := ExportCheckout{Repository: func() (repository.Repository, error) { return repo, nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
-		return func(d settings.Declaration) error {
-			saveCalls++
-			if d.Repository.Archived != nil && *d.Repository.Archived {
-				t.Fatal("false was not preserved")
-			}
-			return nil
-		}, nil
-	}}
-	if err := Export(checkout, reader); err != nil || archiveCalls != 0 || saveCalls != 1 {
-		t.Fatal(err, archiveCalls, saveCalls)
-	}
-	checkout.IncludeArchive = true
-	if err := Export(checkout, reader); err != nil || archiveCalls != 1 || saveCalls != 2 {
-		t.Fatal(err, archiveCalls, saveCalls)
-	}
-	failArchive = true
-	if err := Export(checkout, reader); err == nil || archiveCalls != 2 || saveCalls != 2 {
-		t.Fatal("failed read mutated export", err, archiveCalls, saveCalls)
-	}
-}
-
 func TestArchivePlanEvaluatesArchivedMixedDeclaration(t *testing.T) {
 	repo := repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
 	archived := true

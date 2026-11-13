@@ -54,7 +54,6 @@ func TestUIFromExportDeclarationRejectsIncompleteAndInvalidSources(t *testing.T)
 	for _, mutate := range []func(*settings.Declaration){
 		func(d *settings.Declaration) { d.Repository.Description = nil },
 		func(d *settings.Declaration) { d.Repository.Homepage = nil },
-		func(d *settings.Declaration) { d.Topics.Names = nil },
 		func(d *settings.Declaration) {
 			d.Repository.MergeCommitTitle, d.Repository.MergeCommitMessage = rulesetPtr("UNKNOWN"), rulesetPtr("BLANK")
 		},

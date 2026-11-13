@@ -78,7 +78,7 @@ func TestLabelsPlanFailureDoesNotExposeEarlierComparison(t *testing.T) {
 		}
 	}
 }
-func TestMissingLabelObservationPreventsExportAndApplyWrites(t *testing.T) {
+func TestMissingLabelObservationIsRetainedOnExportAndStrictOnApply(t *testing.T) {
 	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {labels: [{name: new, color: '#abcdef'}]}\n", true)
 	missing := func(repository.Repository) (settings.LabelObservation, error) {
 		return settings.LabelObservation{}, nil
@@ -90,9 +90,14 @@ func TestMissingLabelObservationPreventsExportAndApplyWrites(t *testing.T) {
 	read := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
 	read.Labels = missing
 	err = Export(ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
-		return func(settings.Declaration) error { t.Fatal("save after missing observation"); return nil }, nil
+		return func(d settings.Declaration) error {
+			if d.Labels != nil {
+				t.Fatal("missing observation became acquired labels")
+			}
+			return nil
+		}, nil
 	}}, read)
-	if err == nil {
-		t.Fatal("export accepted missing read")
+	if err != nil {
+		t.Fatal("export stopped on independent missing read", err)
 	}
 }

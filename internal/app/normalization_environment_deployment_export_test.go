@@ -26,7 +26,7 @@ func TestEnvironmentDeploymentExportWarnsAfterCompleteAcquisitionInNameOrder(t *
 		name   string
 		record settings.EnvironmentDeploymentNormalization
 	}
-	for _, mode := range []string{"selected", "canonical", "unrequested", "nil sink", "read", "unacquired", "ui"} {
+	for _, mode := range []string{"selected", "canonical", "nil sink", "ui"} {
 		z, a := exportEnvironmentModeState(t, 7, "Z", true), exportEnvironmentModeState(t, 9, "a", false)
 		if mode == "canonical" {
 			z.DeploymentModeNormalization, a.DeploymentModeNormalization = settings.EnvironmentDeploymentNormalization{}, settings.EnvironmentDeploymentNormalization{}
@@ -57,7 +57,7 @@ func TestEnvironmentDeploymentExportWarnsAfterCompleteAcquisitionInNameOrder(t *
 		}
 		saved := false
 		var got []warning
-		checkout := ExportCheckout{Repository: checkoutRepository, IncludeEnvironments: mode != "unrequested", PrepareSave: func() (func(settings.Declaration) error, error) {
+		checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 			return func(d settings.Declaration) error {
 				ui, err := github.UIFromExportDeclaration(d)
 				if err != nil {

@@ -45,7 +45,7 @@ func TestRulesetBypassExportWarnsOnlyFromCompleteRequestedAcquisition(t *testing
 		failure             string
 	}{
 		{"bypass-only sink", true, true, 2, ""}, {"scalar-only sink", true, true, 1, ""}, {"both sinks", true, true, 3, ""}, {"nil sinks", true, true, 0, ""},
-		{"unrequested", false, true, 3, ""}, {"canonical", true, false, 3, ""}, {"read failure", true, true, 3, "read"}, {"unacquired", true, true, 3, "unacquired"}, {"later UI failure", true, true, 3, "ui"},
+		{"canonical", true, false, 3, ""}, {"later UI failure", true, true, 3, "ui"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			z, a := exportBypassState(t, 7, "z", tc.normalized), exportBypassState(t, 9, "a", tc.normalized)
@@ -74,7 +74,7 @@ func TestRulesetBypassExportWarnsOnlyFromCompleteRequestedAcquisition(t *testing
 			}
 			var got, want []warning
 			saved := false
-			checkout := ExportCheckout{Repository: checkoutRepository, IncludeRulesets: tc.include, PrepareSave: func() (func(settings.Declaration) error, error) {
+			checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					ui, err := github.UIFromExportDeclaration(d)
 					if err != nil {

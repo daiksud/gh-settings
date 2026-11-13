@@ -148,7 +148,7 @@ func TestActionsWorkflowTargetsExportAndReadbackRecoveryProcess(t *testing.T) {
 		f.payloads = []map[string]any{workflowTargetPayload("active", []any{"ci*.yml"}, []any{"skip*.yml"})}
 		f.write(t, workflowTargetInput(false, "active", "{include: ['ci*.yml'], exclude: ['skip*.yml']}"))
 		f.run(t, false, "apply")
-		f.run(t, false, "export", "--actions-policies")
+		f.run(t, false, "export")
 		data := f.data(t)
 		for _, want := range []string{"target_workflows:", "include:", "exclude:", "ci*.yml", "skip*.yml"} {
 			if !strings.Contains(data, want) {
