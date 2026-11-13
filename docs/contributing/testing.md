@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicReviews)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -499,3 +499,23 @@ The supplied CLI lifecycle checks export, plan, update and repeat no-op.
 disabled, empty and matching configurations, private plans and post-write reference
 replacement. It checks unchanged checkout and success-only outputs. These isolated
 fixtures do not establish live deployment execution or effective branch protection.
+
+## Classic PR-review verification
+
+The literal YAML regression fails on unchanged source. Model and adapter fixtures
+check complete active unions, counts zero/one/six and unavailable values, clone
+isolation, activation from null/populated latent values, explicit all-five inputs,
+changed-only active edits and false-only deactivation. Omitted raw state remains
+exact; selecting disabled mode permits hidden-child reset. Plan and fresh checks
+reject dependent bypass/dismissal protection on deactivation, while disabled no-op
+and count-zero preserve those unowned identities. Independent readback, incomplete
+acknowledgment and partial creation recovery retain existing failure boundaries.
+Combined review/deployment cases verify simultaneous edits and deactivation,
+matching repeats without Environment reads, and rejection of collateral drift in
+either omitted group after a write.
+
+The supplied CLI exercises export, validation, plan, count-zero/update/disable and
+matching repeats. `TestBuiltCompositeClassicReviews` uses the actual public Action
+for activation, count-zero, deactivation, no-op, guarded failure and readback drift,
+checking private plans, unchanged checkout and success-only outputs. These isolated
+fixtures do not establish live approval behavior or effective merge enforcement.

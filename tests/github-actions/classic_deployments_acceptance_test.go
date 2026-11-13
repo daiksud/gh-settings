@@ -151,7 +151,7 @@ func TestBuiltCompositeClassicDeployments(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
+					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "repository"} {
 						ack[k] = rule[k]
 					}
 					body["updateBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}

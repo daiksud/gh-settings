@@ -278,8 +278,12 @@ adapter inventories rules rather than branches, completely paginates actor
 allowances, validates personal/public repository ownership and independently
 verifies partial updates against fresh omitted controls. No generic writable
 parameter passthrough is provided. App preserves declaration creation order,
-actual-write outcomes, failure stopping and guarded ID recording. Required
-deployments keep the complete raw snapshot separate from the active projection;
+actual-write outcomes, failure stopping and guarded ID recording. PR-review policy
+keeps a complete active projection alongside all five exact raw fields. Activation
+sends all five inputs; matching active policy is a no-op. Plan and fresh apply
+reject deactivation with unowned dismissal/bypass dependencies, while preserving
+actors through allowed count-zero transitions. Required deployments keep the
+complete raw snapshot separate from the active projection;
 needed writes with selected active references bind paginated Environment node
 identities before mutation and verify them after rule readback. Matching rules
 skip that prerequisite. Global Environment prune rejects contradictory selected
