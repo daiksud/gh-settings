@@ -2,7 +2,7 @@
 
 Manage a GitHub repository's settings as code, using a GitHub CLI extension or a [GitHub Action](docs/github-actions.md). Keep the intended values in `.github/settings.yml`, review differences with `plan`, and send declared values with `apply`.
 
-Feature adoption is limited to controls visible and configurable in GitHub's Web UI for **GitHub Free, personally owned public repositories**. All four conditions are required; API availability alone does not qualify a feature. See the [adoption scope and existing-feature audit limits](docs/settings.md#feature-adoption-scope); existing functionality has not been fully audited against this policy.
+The v1.0.0 target is UI-aligned settings management for **personally owned public repositories**, through both the CLI and public Action. Account plan and Preview status do not exclude a configurable target UI control. Current support is incomplete: see the [adoption policy](docs/settings.md#feature-adoption-scope) and [coverage ledger](docs/contributing/settings-coverage.md) for implemented settings, remaining work and API limitations.
 
 The extension uses your existing `gh` authentication. Actions use one GitHub App with explicit, short-lived installation tokens scoped per job/target, without a required PAT or personal-login combination. Validation needs no API authentication; nonmutating plan may still require write grants for complete reads. See the [authentication and trust policy](docs/github-actions.md#authentication-and-app-permissions), including trusted-base PR data-only planning and protected-main apply.
 
@@ -35,7 +35,7 @@ gh settings export
 
 ### 2. Edit the declaration
 
-Edit the saved `.github/settings.yml`. The default export covers standard resources and automatically observes supported Security families. Unavailable Security families produce info and are omitted initially or retained from an existing declaration; other supported groups require explicit export options. See the [export reference](docs/commands.md#export-behavior). Remove any resources or fields you do not want to manage. For example:
+Edit the saved `.github/settings.yml`. Current-source export automatically attempts all supported readable families. Independent unavailable families produce info and are omitted initially or retained from an existing declaration; core repository acquisition remains required. See the [export reference](docs/commands.md#export-behavior) and the selected release's contract. Remove any resources or fields you do not want to manage. For example:
 
 ```yaml
 version: daiksud/gh-settings@v0

@@ -43,13 +43,35 @@ This reference describes current source, not the contract of every published CLI
 
 ## Feature adoption scope
 
-As of **2026-11-08**, gh-settings adopts settings only when all four conditions hold: the owner uses **GitHub Free**, the repository is **personally owned**, it is **public**, and the control is **visible and configurable in GitHub's Web UI under those conditions**. A non-Free plan, organization ownership, private/internal visibility, or an unavailable/hidden UI control puts a setting outside the adoption scope. This applies throughout gh-settings, including General, Rulesets, Actions, Security, Pages and Environments.
+The [v1.0.0 goal (#668)](https://github.com/daiksud/gh-settings/issues/668)
+targets **personally owned public repositories**. A setting is eligible when it
+is configurable in that target's GitHub Web UI. Account plan, Copilot subscription,
+feature execution entitlement and Preview status are separate facts; none is a
+blanket exclusion. A writable API-only field does not create a target UI control.
 
-Eligibility and implementation feasibility are separate decisions. An API field alone does not establish eligibility; an eligible UI control still needs a confirmed official public API path for complete settings reads and updates before implementation. Evaluate the [API-unconfirmed Security controls](#security-ui-settings-not-managed-by-gh-settings) under the same four conditions. Adding an API for an excluded control does not bring it into scope.
+Eligibility, technical feasibility and implementation are separate dimensions.
+Complete YAML/export/plan/apply support requires the applicable official API
+observation and update paths. A read endpoint alone does not prove update support,
+and a write endpoint alone does not prove export support. An unconfirmed API
+contract remains unconfirmed, rather than being labeled unavailable. The
+[coverage ledger](contributing/settings-coverage.md) records these distinctions
+and the limits of fixture and live evidence.
 
-This Free-only policy replaces the earlier personal-public Security investigation's price-independent scope. Earlier issue inventories, API/entitlement descriptions and implementation decisions are historical evidence, not approval to adopt paid-plan, organization, private/internal or UI-hidden settings. Preview features, UI paths for creating/editing feature configuration files, and custom Dependabot auto-triage rules remain excluded. These file-authoring exclusions concern GitHub feature configuration, not gh-settings' own declaration file. GitHub preset ON/OFF is a separate candidate subject to the four conditions. [Code Security / Advanced Security product switches (#346)](https://github.com/daiksud/gh-settings/issues/346) are excluded: the target Web UI has no corresponding product-wide switch. This is a UI-scope decision, not a pricing or Copilot-subscription restriction.
+Personal-repository collaborators and invitations, classic branch protection,
+Environment-object pruning and custom configurable rules, including existing
+Environment protection apps, are adopted future work when supported by the
+target UI and applicable APIs. Organization-owned repositories and organization
+settings, repository rename/visibility/transfer/deletion, authoring GitHub feature
+configuration files and secret values are excluded. This file-authoring boundary
+does not exclude gh-settings' own declaration file. Existing App selection does
+not authorize installing an App or increasing its grants.
 
-**Existing-feature audit is incomplete.** The field contracts below describe implemented behavior and technical applicability, including previously implemented capabilities with broader API/entitlement conditions; they do not certify that every capability meets this narrowed policy. Documenting this scope adds no runtime plan/ownership/visibility gate, removes no existing feature and changes no live setting. Any reconciliation of existing behavior needs separately scoped work.
+This supersedes the Free-only policy recorded on 2026-11-08 and blanket Preview
+and custom-rule exclusions. Historical investigations remain evidence with their
+original dates, not current scope rules. The contracts below describe **current
+source**: newly eligible work does not make an unimplemented key valid or change
+current export, reconciliation, preservation or pruning behavior. The v1 goal is
+not a claim that current source or a pinned published package is complete.
 
 ## Collection pruning
 
@@ -61,7 +83,8 @@ unknown names fail locally. Current source supports `labels`, `rulesets`, `actio
 `agents-variables`, `environment-variables` and `actions-policies`.
 `environments` is not implemented yet. `all` must be standalone and currently
 fails explicitly rather than omitting that scope.
-Environment-object deletion still needs a separate adoption decision.
+Environment-object deletion is adopted future work; current source still rejects
+that scope until its deletion and preservation contract is implemented.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
@@ -187,7 +210,7 @@ Changing this setting can start CodeQL validation/analysis and consume Actions r
 
 ## AI Scan for pull requests
 
-Use the optional boolean `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` for a personally owned public repository. Omission leaves it unmanaged; false disables it. Null/other types fail. Ordinary `export` automatically attempts this toggle, with info and omission/prior-declaration retention when unavailable. This excludes the separate Preview repository-wide and AI-application scans.
+Use the optional boolean `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` for a personally owned public repository. Omission leaves it unmanaged; false disables it. Null/other types fail. Ordinary `export` automatically attempts this toggle, with info and omission/prior-declaration retention when unavailable. The separate Preview repository-wide and AI-application scan controls remain unimplemented; Preview status does not exclude them from the target-surface assessment.
 
 The [public repository AI Scan API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#get-ai-scan-enablement-for-a-repository) requires Code scanning alerts read and Administration write. Acquisition requires public visibility, a User owner and exact `pr_scan` enabled/disabled. Missing/null/unknown values, 403/404 and incomplete applicability remain errors. Plan only reads. Apply rereads, skips a matching value, sends only `pr_scan` and confirms it with fresh readback. Other AI scans, CodeQL and product/prerequisite controls are not sent or automatically enabled.
 
@@ -211,7 +234,7 @@ runner:
 | `query_suite` | `default` or `extended` |
 | `runner` | Owns the type/label pair. `type: standard_github_runner` forbids `label` and explicitly clears an old label through API null. `type: labeled_runner` requires a nonblank `label`; it can select an existing labeled GitHub or self-hosted runner. No runner/label/capacity is created. |
 
-Threat-model management is excluded: GitHub documents local sources as [public preview](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#including-local-sources-of-tainted-data-in-default-setup). `threat_model` is not an accepted YAML key, including stable-looking values. Configuration export never emits it and PATCH never sends it. A complete read retains the exact API `remote` or `remote_and_local` value as unowned preservation evidence; other types, missing/null or unknown values fail acquisition. Updating languages/query suite/runner on a repository using the Preview value must retain it exactly. Readback detects any collateral threat-model change; it never normalizes the Preview value to remote or claims to manage it.
+Threat-model management is not implemented. GitHub documents local sources as [public preview](https://docs.github.com/en/code-security/how-tos/find-and-fix-code-vulnerabilities/manage-your-configuration/edit-default-setup#including-local-sources-of-tainted-data-in-default-setup). Preview status is not a policy exclusion; the coverage ledger tracks this implementation gap. `threat_model` is not an accepted YAML key, including stable-looking values. Configuration export never emits it and PATCH never sends it. A complete read retains the exact API `remote` or `remote_and_local` value as unowned preservation evidence; other types, missing/null or unknown values fail acquisition. Updating languages/query suite/runner on a repository using the Preview value must retain it exactly. Readback detects any collateral threat-model change; it never normalizes the Preview value to remote or claims to manage it.
 
 Omission leaves each control unmanaged. Null, invalid choices, duplicate/empty language lists and incomplete runner pairs fail before remote work. Declare a runner object to change the pair; omitting it preserves both members. This configuration requires an **already configured** default setup in a personally owned public repository. It never enables CodeQL or its prerequisites. If currently disabled, enable default setup in a separate operation and confirm it before configuring these controls. Configuration plus explicit `default_setup: false` is invalid; declaring true does not waive the already-configured requirement.
 
@@ -227,7 +250,7 @@ This control applies to public repositories. Fresh visibility and complete statu
 
 ## Security UI settings not managed by gh-settings
 
-As of **2026-11-08**, the following controls remain unsupported. The earlier personal-public investigation did not establish a formal public API path for complete settings reads and updates; this does **not** establish that no API exists or certify GitHub Free UI eligibility. UI availability can depend on prerequisites. First evaluate each control under the [Free/personal/public/visible-and-configurable adoption scope](#feature-adoption-scope), then confirm an applicable API contract. A control outside that scope remains excluded even if an API becomes available.
+The investigation recorded on **2026-11-08** did not establish a formal public API path for complete settings reads and updates for the controls below. They remain unimplemented; that historical result does **not** prove that no API exists today. Reassess target Web UI availability and the applicable official API contract under the [personal-public adoption policy](#feature-adoption-scope), recording fresh evidence in the [coverage ledger](contributing/settings-coverage.md). UI availability can depend on prerequisites.
 
 | UI control | Unconfirmed settings API boundary |
 | --- | --- |
@@ -242,9 +265,9 @@ As of **2026-11-08**, the following controls remain unsupported. The earlier per
 
 The existing [Dependabot alerts and security updates](#dependabot-alerts-and-security-updates) and [private reporting enablement](#private-vulnerability-reporting) remain supported. The alerts API intrinsically enables/disables Dependency graph too; this side effect is not independent graph management. Individual alert operations, advisory operations, Rulesets and organization/enterprise configuration are not substitutes for the missing settings contracts.
 
-Separate scope decisions also remain: Preview features (including CodeQL threat-model management), configuration-file creation/editing and custom Dependabot auto-triage rules are excluded. GitHub preset ON/OFF above is distinct from custom rules. [Code Security / Advanced Security product switches (#346)](https://github.com/daiksud/gh-settings/issues/346) are not planned because the target Web UI has no corresponding product-wide switch; they are not API-unconfirmed individual controls. The implemented [CodeQL default setup](#codeql-default-setup), [CodeQL configuration](#codeql-default-configuration) and [AI Scan for pull requests](#ai-scan-for-pull-requests) remain separate supported controls.
+Configuration-file creation/editing remains excluded. Preview controls, including CodeQL threat-model management, and custom Dependabot auto-triage rules are eligible for assessment under the target UI/API policy but are not implemented. GitHub preset ON/OFF above is distinct from custom rules. [Code Security / Advanced Security product switches (#346)](https://github.com/daiksud/gh-settings/issues/346) are not planned because the target Web UI has no corresponding product-wide switch; they are not API-unconfirmed individual controls. The implemented [CodeQL default setup](#codeql-default-setup), [CodeQL configuration](#codeql-default-configuration) and [AI Scan for pull requests](#ai-scan-for-pull-requests) remain separate supported controls.
 
-Sources reviewed on 2026-11-08: [public REST definition](https://github.com/github/rest-api-description/blob/2f8f80e47ea4d3292cf4e37ba9d9b25475e06140/descriptions/api.github.com/api.github.com.json), [public GraphQL schema](https://docs.github.com/public/fpt/schema.docs.graphql), [GitHub preset documentation](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules), and the [historical personal-public inventory](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6719839333) with its [API recheck evidence](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6728386507), both predating the Free-only policy. The public [Dependabot runner settings API](https://docs.github.com/en/rest/dependabot/runner-settings) was also assessed: labeled runners apply only to private/internal repositories with Actions enabled; public repositories report `standard`, so this does not add a configurable personal-public control.
+Sources reviewed on 2026-11-08: [public REST definition](https://github.com/github/rest-api-description/blob/2f8f80e47ea4d3292cf4e37ba9d9b25475e06140/descriptions/api.github.com/api.github.com.json), [public GraphQL schema](https://docs.github.com/public/fpt/schema.docs.graphql), [GitHub preset documentation](https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules), and the [historical personal-public inventory](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6719839333) with its [API recheck evidence](https://github.com/daiksud/gh-settings/issues/323#issuecomment-6728386507), both historical evidence rather than current eligibility rules. The public [Dependabot runner settings API](https://docs.github.com/en/rest/dependabot/runner-settings) was also assessed: labeled runners apply only to private/internal repositories with Actions enabled; public repositories report `standard`, so this does not add a configurable personal-public control.
 
 ## Default workflow permissions
 
@@ -373,7 +396,7 @@ repository:
         review_effort_level: lite
 ```
 
-The optional string accepts `default`, `lite` and `balanced`. Omission leaves effort unmanaged, independently of `use_custom_instructions`. Null, empty strings, API spelling `inherit`, unknown choices and Preview `max` are invalid declarations. This control does not enable reviews, request a review, grant access, change licensing or edit instruction files. Stored configuration does not establish review entitlement or actual review execution.
+The optional string accepts `default`, `lite` and `balanced`. Omission leaves effort unmanaged, independently of `use_custom_instructions`. Null, empty strings, API spelling `inherit`, unknown choices and the currently unimplemented Preview `max` are invalid declarations. Preview status does not exclude Max from future implementation. This control does not enable reviews, request a review, grant access, change licensing or edit instruction files. Stored configuration does not establish review entitlement or actual review execution.
 
 GitHub reports configured effort, effective effort and available efforts separately. A configured `lite` or `balanced` remains an explicit override, even when its value equals the inherited effective effort. `default` compares against configured null, not against effective `balanced`. GitHub can also return configured null for a stored override that is no longer available. Therefore export and comparison use `default` only as the **observable** default state: it does not prove that an underlying override was erased. A matching configured-null state produces no difference and apply skips it; applying this declaration is not a forced reset of a hidden override.
 
@@ -438,7 +461,8 @@ unless the same declaration explicitly creates its Environment policy first;
 then no earlier variables are inferred and unexpected deletion candidates are
 rejected. Variable-only intent never creates or deletes an Environment, changes
 its policy/patterns or accesses secrets. Environment-object deletion is separate
-and undecided; `--prune environments` and `--prune all` remain rejected.
+and adopted for future implementation; `--prune environments` and
+`--prune all` remain rejected in current source.
 
 API evidence: [Actions variable lists/deletion](https://docs.github.com/rest/actions/variables)
 and [Agents variable lists/deletion](https://docs.github.com/rest/agents/variables).
@@ -465,7 +489,7 @@ The [Agents Variables REST API](https://docs.github.com/en/rest/agents/variables
 
 ## Excluded private Actions controls
 
-As of 2026-11-09, `repository.settings.actions.general.access` and `.fork_pull_request_workflows` are unsupported, including empty mappings and explicit false. The former shares a private repository's actions/workflows; the latter controls private fork workflow execution, tokens, secrets and approval. Neither satisfies the Free/personal/public adoption policy. See GitHub's [private Actions sharing documentation](https://docs.github.com/en/actions/how-tos/reuse-automations/share-with-your-organization) and [fork workflow settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
+As of 2026-11-09, `repository.settings.actions.general.access` and `.fork_pull_request_workflows` are unsupported, including empty mappings and explicit false. The former shares a private repository's actions/workflows; the latter controls private fork workflow execution, tokens, secrets and approval. Neither is a configurable control for the target public repository; the exclusion follows visibility, not account plan. See GitHub's [private Actions sharing documentation](https://docs.github.com/en/actions/how-tos/reuse-automations/share-with-your-organization) and [fork workflow settings](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
 
 The old `--actions-access` and `--private-fork-workflows` export options are rejected before repository/API/file work. No alias or migration is provided. Public contributor approval, Actions execution, workflow permissions, retention and cache controls remain separate. Removing these YAML management paths does not change live settings: their dedicated endpoints are not selected by supported public intent, so no private nested state is read-modify-written. Internal raw identities remain available for validation; an attempted private-only export projection fails instead of silently dropping values.
 
@@ -580,8 +604,9 @@ Preview rules, unknown rules/fields and unsupported event/enforcement values are
 lossily converted. A complete unsupported object's ID/name is retained so
 unlisted objects stay unmanaged without prune; selecting it for update, as a
 prune candidate, or including it in a full collection export fails. Incomplete or inconsistent reads always fail.
-Unadopted actor types, Preview lockfile controls, OIDC, workflow authoring and other
-configuration-file authoring remain excluded.
+Currently unsupported actor types, Preview lockfile controls and OIDC settings
+require target UI/API assessment and implementation; Preview status alone is not
+an exclusion. Workflow and other feature configuration-file authoring remain excluded.
 
 `--prune actions-policies` adds deletion of unlisted repository-owned IDs only
 when `policies` is present; `[]` selects every current policy as a candidate.
@@ -915,11 +940,11 @@ Independent supported collections canonicalize by identity.
 
 `rules.require_code_quality_results` requires `severity`: `errors`, `warnings_and_higher`, `notes_and_higher` or `all`. The UI choices map to the public API values `errors`, `warnings`, `notes` and `all`; API tokens are not YAML aliases. This is a managed rule on the selected whole Ruleset: omitting the group removes it, so include every supported protection that must remain. Exact canonical equality is a no-op. Changes and removals require strict mutation-response confirmation plus an independent GET.
 
-The scope correction on 2026-11-09 follows the user's observed availability of **Require code quality results** in a personal repository. The [official Rulesets reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-code-quality-results) documents the rule and Free public Rulesets, and the [public REST API](https://docs.github.com/en/rest/repos/rules#update-a-repository-ruleset) documents its severity field. Product entitlement descriptions are not evidence that this individual control is unavailable. The rule requires configured Code Quality analysis; managing it does not enable the product, start analysis, create workflows or change billing. Coverage remains a separate Preview exclusion. See [Code Quality normalization](#ruleset-quality-severity-observation-normalization).
+The scope correction on 2026-11-09 follows the user's observed availability of **Require code quality results** in a personal repository. The [official Rulesets reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-code-quality-results) documents the rule and Free public Rulesets, and the [public REST API](https://docs.github.com/en/rest/repos/rules#update-a-repository-ruleset) documents its severity field. Product entitlement descriptions are not evidence that this individual control is unavailable. The rule requires configured Code Quality analysis; managing it does not enable the product, start analysis, create workflows or change billing. Coverage remains unimplemented; its Preview status is not a policy exclusion. See [Code Quality normalization](#ruleset-quality-severity-observation-normalization).
 
-### Excluded branch controls and unowned Preview values
+### Unimplemented branch controls and unowned Preview values
 
-As of 2026-11-09, the public YAML does not accept `restrict_code_coverage`, `require_a_pull_request_before_merging.require_review_from_specific_teams` or `require_a_pull_request_before_merging.require_an_additional_approval_for_unattributed_copilot_pull_requests`, including empty collections and explicit false. Specific-team reviews do not satisfy the Free/personal/public adoption scope; coverage and unattributed Copilot additional approval are Preview exclusions. These exclusions follow the [official rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [coverage documentation](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage). They do not disable or remove live GitHub settings.
+The rejection introduced on 2026-11-09 remains current behavior: public YAML does not accept `restrict_code_coverage`, `require_a_pull_request_before_merging.require_review_from_specific_teams` or `require_a_pull_request_before_merging.require_an_additional_approval_for_unattributed_copilot_pull_requests`, including empty collections and explicit false. The personal-public Ruleset editor observed on 2026-11-13 visibly offered the **Require review from specific teams** checkbox, despite official documentation describing the control as unavailable for user-owned repositories. The checkbox was not expanded, so complete usable team selection and the personal-repository API contract remain unconfirmed; this discrepancy does not establish a policy exclusion or implemented support. Organization team ownership and access management remain outside the target. Coverage and unattributed Copilot additional approval are unimplemented target candidates; Preview status is not an exclusion. The [official rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [coverage documentation](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage) provide the control context. This policy change neither makes those keys valid nor disables live settings.
 
 Acquired `code_coverage`, nonempty PR `required_reviewers` and unknown or malformed rules still fail complete acquisition without dropping protection. Ordinary code-scanning merge protection, Code Quality thresholds, PR approval counts, public fork approval and automatic Copilot code review remain separate controls. All existing Ruleset updates independently recheck ownership, identity and unowned values before PUT; Code Quality presence and raw severity changes since acquisition also stop the update. Preflight is not an atomic lock: concurrent changes between GET and PUT can still race, and post-write failures report that writes may have applied without rollback.
 
@@ -927,7 +952,7 @@ The typed acquired PR additional-approval boolean is unowned preservation metada
 
 ### Unsupported Push Rulesets
 
-`target_pushes` and the `restrict_file_paths`, `restrict_file_path_length`, `restrict_file_extensions` and `restrict_file_size` controls are not accepted, including false or empty declarations. [GitHub limits Push Rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository) to paid-plan private/internal repositories and their forks, outside the [Free/personal/public scope](#feature-adoption-scope). No compatibility alias or automatic migration is provided.
+`target_pushes` and the `restrict_file_paths`, `restrict_file_path_length`, `restrict_file_extensions` and `restrict_file_size` controls are not accepted, including false or empty declarations. [GitHub limits Push Rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository) to paid-plan private/internal repositories and their forks, outside the [personal-public target](#feature-adoption-scope) because of repository visibility, not price. No compatibility alias or automatic migration is provided.
 
 An acquired repository-owned Push Ruleset or file-restriction rule fails complete acquisition. Export preserves its destination; plan, updates and explicit deletion stop before a Rulesets write. Unsupported policy is never silently omitted or converted into a branch/tag policy. Inherited organization/enterprise policy remains outside ownership.
 
@@ -943,7 +968,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 
 ## Environments
 
-`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Omission/`[]` selects nothing; unlisted Environments are never deleted. Deletion/rename markers, secrets and custom protection apps are unsupported. Selected non-sensitive variables have the separate ownership described below.
+`repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Omission/`[]` selects nothing; unlisted Environments are never deleted. Deletion/rename markers, secret values and custom protection apps are unsupported in current source. Environment pruning and existing-app selection are adopted future work; secret values remain excluded. Selected non-sensitive variables have the separate ownership described below.
 
 ```yaml
 version: daiksud/gh-settings@v0
@@ -1014,7 +1039,7 @@ Omitted mode stays omitted from PUT. Its server-selected result is neither prese
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted. Organization settings/custom properties/forking policy, collaborator grants/invitations/team access, repository renaming/visibility/transfer/deletion, legacy branch protection, inherited Rulesets, Pages visibility, Environment deletion/rename/custom apps/secrets and unadopted Actions/security controls remain outside scope. A visible GitHub control or writable API field does not adopt it. See the [architecture](contributing/architecture.md) and proposed [access design](features/repository-access.feature.md) without treating proposals as configuration.
+Only the listed UI controls are accepted by current source. Collaborators/invitations, classic branch protection, Environment pruning and existing custom protection apps are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 

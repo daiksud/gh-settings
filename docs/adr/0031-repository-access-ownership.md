@@ -6,7 +6,7 @@ description: Define collaborator and team ownership, invitation states and revoc
 
 ## Status
 
-Accepted historical design for #355. #356 and #357 are closed/not planned: collaborator/invitation management, including personal repositories, is excluded, and the organization-only exclusion remains. Neither current source nor published packages accept access declarations or export options. The design does not adopt implementation, authorize live grants, invitations, revocations, organization changes or credentials, or bypass the unresolved gates below.
+Historical organization-focused design for #355. The current [personal-public policy](../settings.md#feature-adoption-scope) adopts personal-repository collaborators and invitations for future implementation; the earlier not-planned decision for #356 no longer defines that boundary. Organization and team management, including #357, remain excluded. This ADR's organization role model and collection-removal convention are not the adopted personal-repository contract; use the [current access implementation boundary](../features/repository-access.feature.md). Neither current source nor published packages accept access declarations. No live grants, invitations, revocations or credential changes are authorized by this design.
 
 ## Context
 
@@ -26,7 +26,7 @@ Use complete fresh observations and deterministic nontransactional reconciliatio
 
 ## Consequences
 
-Any future adoption would require a separate scope decision and reviewed implementation, with unsupported cases rejected explicitly. Direct collaborator provenance, custom-role identity, complete team direct-versus-inherited evidence, invitation creation intent and operator/recovery identity are adoption gates. Partial/null/denied observations never become empty grants or a no-difference result. A future custom role cannot be reduced to its base role, and changing a parent team cannot be hidden as a child-team correction.
+The historical organization-specific proposal would require a separate scope decision and reviewed implementation, with unsupported cases rejected explicitly. Its direct collaborator provenance, custom-role identity, complete team direct-versus-inherited evidence, invitation creation intent and operator/recovery identity remain unresolved. Personal-repository implementation must establish its own applicable contract rather than inherit organization-only requirements. Partial/null/denied observations never become empty grants or a no-difference result. A future custom role cannot be reduced to its base role, and changing a parent team cannot be hidden as a child-team correction.
 
 The required-permissions precondition applies to this design without certifying actual grants, direct-source completeness or recovery identity. Endpoint-specific absence semantics would need an adoption decision: an authorization-related 404 rationale is not an extra permission-discrimination requirement, and another endpoint's 404 interpretation cannot establish absent direct access. Explicit denials, missing provenance/roles, incomplete pagination, timeouts and mismatching readback remain failures. This reconciliation neither resolves those observation gates nor reopens #356/#357.
 

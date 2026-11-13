@@ -60,6 +60,7 @@ Choose the reader and the question first. Use one authoritative page for a detai
 | Copyable consumer workflows and instructions specific to those files | [Examples](examples/github-actions/README.md) |
 | Tool setup, building, and making a code change | [Development guide](docs/contributing/development.md) |
 | Current design, code ownership, terminology, and future design boundaries | [Architecture](docs/contributing/architecture.md) and [glossary](docs/contributing/glossary.md) |
+| Target UI inventory, API feasibility, implementation coverage and evidence limits | [Settings coverage](docs/contributing/settings-coverage.md) |
 | Test ownership, local/CI checks, and verification boundaries | [Testing guide](docs/contributing/testing.md) |
 | PR scope, squash-message requirements, compatibility review, and actionable findings | [Code-review policy](.agents/skills/code-review/SKILL.md) |
 | Internal metadata, plan-report, and Summary interfaces | [Actions internals](docs/contributing/actions-internals.md) |
