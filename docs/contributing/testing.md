@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -458,3 +458,14 @@ no-op, detailed/private plans, exact changed-only GraphQL input, independent
 fork-sync drift failure and success-only outputs. Model and adapter fixtures also
 check omission, complete acquisition and preservation of fork-sync true/false.
 These fixtures do not establish live branch enforcement or API side effects.
+
+## Classic administrator-enforcement verification
+
+The new literal codec regression rejects the unsupported key on unchanged source.
+Model and adapter tests cover both acquired boolean values, clone isolation,
+omitted-state preservation, direct true/false mutation inputs, creation ACK and
+independent readback failures. The supplied CLI lifecycle exercises explicit false;
+`TestBuiltCompositeClassicAdmin` runs the actual public Action for both directions,
+matching repeat, private plans and collateral fork-sync drift. The Action keeps
+checkout YAML unchanged and publishes outputs only after confirmed success.
+Fixture results do not prove live administrator access or branch enforcement.

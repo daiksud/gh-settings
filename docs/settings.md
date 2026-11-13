@@ -1330,7 +1330,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and five independent controls. It is separate from Rulesets and does not clone
+and six independent controls. It is separate from Rulesets and does not clone
 all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1347,6 +1347,7 @@ repository:
         require_linear_history: true
         allow_deletions: false
         lock_branch: false
+        do_not_allow_bypassing_the_above_settings: true
 ```
 
 `id` is an optional positive numeric GraphQL `databaseId`. Without it an entry is
@@ -1367,9 +1368,9 @@ that this is priority order. See GitHub's
 [pattern and priority guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
 
 Each checkbox is optional. Omission preserves its latest observed value; explicit
-`false` requests false. Null, native GraphQL aliases, admin-enforcement flags and
-unlisted controls are rejected. Without explicit classic prune, omitted collections
-and `[]` manage no objects, and unlisted rules are preserved.
+`false` requests false. Null, native GraphQL aliases and unlisted controls are
+rejected. Without explicit classic prune, omitted collections and `[]` manage no
+objects, and unlisted rules are preserved.
 [Classic rule pruning](#classic-branch-protection-pruning) adds whole-rule deletion
 through a command option; there is no YAML deletion marker or reordering operation.
 
@@ -1388,7 +1389,17 @@ otherwise allowed. This checkbox does not rewrite the separate deletion setting
 or promise that it will take effect while locked. Readback verifies stored
 settings, not an attempted push, deletion or effective enforcement.
 
-Complete known PR, check/App binding, deployment, admin, fork-sync, force-push
+`do_not_allow_bypassing_the_above_settings` matches the UI checkbox: true applies
+this rule's protections to administrators; false removes this flag's enforcement.
+It maps directly to GraphQL `isAdminEnforced`. Omission preserves the acquired
+boolean, and neither direction changes actor allowance lists, other rule controls
+or repository Rulesets. Overlapping policies can still affect effective access.
+The unsaved target form was inspected on 2026-11-14. The
+[maintained provider's direct read/write mapping](https://github.com/integrations/terraform-provider-github/blob/1b9c5c13eb840a72c99d088f3bf3b5e00b950c04/github/resource_github_branch_protection.go)
+corroborates this polarity despite the ambiguous GraphQL description. This is
+mapping evidence, not a live test of administrator bypass or effective enforcement.
+
+Complete known PR, check/App binding, deployment, fork-sync, force-push
 and actor-allowance state is acquired as unowned preservation evidence. Null stays
 distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
@@ -1404,13 +1415,13 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern and these five
+Automatic export projects every readable rule's ID, pattern and these six
 checkboxes. It does not export or adopt the other controls. Unavailable acquisition
 retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
 GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
-admin enforcement, fork-sync and force-push selection remain separate work;
+fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
@@ -1425,17 +1436,17 @@ collection stays unmanaged. `[]` selects all initially acquired rules; a nonempt
 list retains declared numeric IDs and newly created rules. All retained rules must
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
-Ordinary create/update retains its five-control partial ownership.
+Ordinary create/update retains its six-control partial ownership.
 
-Deletion removes the entire rule, including configured PR, check, deployment,
-admin and actor protections that gh-settings cannot edit. An overlapping rule may
+Deletion removes the entire rule, including PR, check, deployment and actor
+protections that gh-settings cannot edit. An overlapping rule may
 then take effect; recreation cannot restore creation-age priority. The plan shows
 this consequence and each complete supported before-policy, without raw private
 companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-five flags and all known raw companions. Missing, denied, partial, unsupported or
+six flags and all known raw companions. Missing, denied, partial, unsupported or
 inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.

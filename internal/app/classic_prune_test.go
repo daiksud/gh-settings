@@ -93,7 +93,7 @@ func TestClassicPruneFixedCandidatesOrderingAndProgress(t *testing.T) {
 					if reads == 2 {
 						switch mode {
 						case "candidate-drift":
-							observed.Rules[0].Companions.AdminEnforced = true
+							*observed.Rules[0].Rule.DoNotAllowBypassingTheAboveSettings = true
 						case "late-arrival", "empty-selection":
 							late := appClassicObserved().Rules[0]
 							n := int64(9)
