@@ -37,7 +37,8 @@ their policy, secrets or omitted variables.
   write, including writes to other resources. A candidate that cannot safely be
   deleted fails the operation rather than being skipped.
 - Preserve Ruleset rejection of inherited/Push objects, unsupported/normalized
-  policy and unowned Preview or PR-rule data. Prune grants no broader ownership.
+  policy. A supported complete PR rule, including either additional-approval value,
+  is owned and eligible. Prune grants no broader ownership.
 - Create/update before deleting, with a fixed candidate set. A newly created
   object cannot become a deletion candidate. Detect changed candidates before
   their write, and never expand deletion to concurrently introduced objects.

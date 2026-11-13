@@ -200,9 +200,11 @@ Neither a source comment nor `environment: gh-settings` establishes a reviewer g
 The settings workflows pin the immutable v0.40.1 package at
 `be506a25af76356323c6cf4e07cd1dc8eaa4e760`. The operational declaration is
 validated directly with the current codec, including explicit Code Quality
-protection. Retired team-review and Preview additional-approval YAML controls
-are omitted. The package preserves the observed unowned Preview approval value
-when updating an existing PR rule; omission does not request disabling it.
+protection. Team-review and additional-approval YAML controls are omitted from
+this operational declaration. The pinned package preserves its observed additional-approval value
+when updating an existing PR rule. Current source supports the additional-approval
+control and declares true when it is omitted within a selected PR group; see the
+[ownership contract](../settings.md#pr-review-and-required-check-parameters).
 
 Actions and Agents repository variables are supported by that package under
 `settings.actions.variables` and `settings.agents.variables`, but neither family

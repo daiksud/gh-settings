@@ -87,7 +87,11 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 	client := topicsClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
 		calls++
 		if r.Method == "GET" && r.URL.Path == "/repos/owner/current/rulesets/7" {
-			data, _ := json.Marshal(changes[0].After())
+			policy := changes[0].After()
+			if calls == 1 {
+				policy = changes[0].Before()
+			}
+			data, _ := json.Marshal(policy)
 			return rulesetMutationResponse(t, r, 200, string(data), 7), nil
 		}
 		if r.Method != "PUT" || r.URL.Path != "/repos/owner/current/rulesets/7" {
@@ -105,7 +109,7 @@ func TestReviewRulesetWholeObjectPutUsesDeclaredDefaults(t *testing.T) {
 			rule := value.(map[string]any)
 			if rule["type"] == "pull_request" {
 				p := rule["parameters"].(map[string]any)
-				if p["required_approving_review_count"] != float64(0) || p["require_code_owner_review"] != false || p["dismiss_stale_reviews_on_push"] != false || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false {
+				if p["required_approving_review_count"] != float64(0) || p["require_code_owner_review"] != false || p["dismiss_stale_reviews_on_push"] != false || p["require_extra_approval_for_unattributed_changes"] != true || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false {
 					t.Fatal("lost declared defaults", p)
 				}
 				if p["dismissal_restriction"] != nil || p["allowed_merge_methods"] == nil {
@@ -220,17 +224,5 @@ func TestCreateReviewRulesetExactPolicyAndResponse(t *testing.T) {
 	}))
 	if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 2 {
 		t.Fatal(calls, err)
-	}
-}
-
-func TestRemovingReviewAndChecksRefusesUnownedLoss(t *testing.T) {
-	before, err := decodeRulesetPolicyFromTest([]byte(fullReviewRulesetJSON))
-	if err != nil {
-		t.Fatal(err)
-	}
-	after := before
-	after.Rules = &[]settings.RulesetRule{{Type: "deletion"}}
-	if _, err := settings.NewRulesetChange("update", 7, &before, &after); err == nil {
-		t.Fatal("removed unowned PR setting")
 	}
 }

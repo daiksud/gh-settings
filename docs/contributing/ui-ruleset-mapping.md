@@ -53,6 +53,7 @@ In these tables `R` means `repository.settings.rulesets[]`. The [model](../../in
 | Allowed merge methods | PR rule `.allowed_merge_methods` | Merge / Squash / Rebase → `merge` / `squash` / `rebase` |
 | Dismiss stale pull request approvals when new commits are pushed | PR rule `.dismiss_stale_pull_request_approvals_when_new_commits_are_pushed` | `dismiss_stale_reviews_on_push` |
 | Require review from Code Owners | PR rule `.require_review_from_code_owners` | `require_code_owner_review` |
+| Require an additional approval for unattributed Copilot pull requests | PR rule `.require_an_additional_approval_for_unattributed_copilot_pull_requests` | `require_extra_approval_for_unattributed_changes`; declaration default true; strict acquired boolean |
 | Require approval of the most recent reviewable push | PR rule `.require_approval_of_the_most_recent_reviewable_push` | `require_last_push_approval` |
 | Require conversation resolution before merging | PR rule `.require_conversation_resolution_before_merging` | `required_review_thread_resolution` |
 | Require status checks to pass | `R.rules.require_status_checks_to_pass` | Selects `required_status_checks` rule |
@@ -95,7 +96,7 @@ Actor/reviewer/source/tool identities and naming/file patterns are not closed en
 
 Bypass-mode normalization changes only a complete acquired mode string to `always`. Its record preserves exact actor type, ID presence and numeric value; canonical companions remain intact. Nil DeployKey identity is not interchangeable with a numeric actor. Invalid identity or actor/target applicability is never repaired by mode projection. Selected actor removal retains its original evidence and requires verified absence.
 
-Allowed merge methods uses the shared UI/native membership mapping and an owned named full-list default. One unsupported member projects the entire acquired list; duplicate members, empty lists and malformed elements fail before projection. Exact raw order remains separate from canonical effective-policy ordering. Removing an existing PR container is refused to preserve unowned values.
+Allowed merge methods uses the shared UI/native membership mapping and an owned named full-list default. One unsupported member projects the entire acquired list; duplicate members, empty lists and malformed elements fail before projection. Exact raw order remains separate from canonical effective-policy ordering. Removing the selected PR container removes its owned additional-approval member as well; acknowledgment and independent GET must confirm absence.
 
 Correctly typed booleans have no out-of-UI value. Missing fields, invalid types, failed reads and incomplete pagination remain acquisition errors. These observation fallback values never fill omitted desired declarations. Existing whole-object declaration defaults are a separate contract: selected Rulesets own their rule lists, nil/false simple checkboxes leave a rule unselected, and selecting a parameterized rule uses the existing declared-object normalization. Required tool thresholds still require explicit values.
 

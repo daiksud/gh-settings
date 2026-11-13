@@ -31,6 +31,7 @@ repository:
             allowed_merge_methods: [squash]
             dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: false
             require_review_from_code_owners: true
+            require_an_additional_approval_for_unattributed_copilot_pull_requests: false
             require_approval_of_the_most_recent_reviewable_push: false
             require_conversation_resolution_before_merging: true
           require_status_checks_to_pass:
@@ -79,7 +80,6 @@ func TestUIConfigRulesetExactRequests(t *testing.T) {
 			if err := json.Unmarshal([]byte(uiRulesetExpectedPayload), &response); err != nil {
 				t.Fatal(err)
 			}
-			delete(analysisParams(t, want, "pull_request"), "require_extra_approval_for_unattributed_changes")
 			response["id"], response["source_type"], response["source"] = id, "Repository", "owner/current"
 			response["current_user_can_bypass"] = "never"
 			body, err := json.Marshal(response)

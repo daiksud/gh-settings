@@ -56,12 +56,10 @@ func TestRulesetReviewChecksDefaultOmittedAndKeepExplicitValues(t *testing.T) {
 		t.Fatal(operations, err)
 	}
 	createPR := ruleOf(t, *operations[0].After(), "pull_request")
-	withoutObserved := cloneRulesetRule(RulesetRule{Type: "pull_request", Parameters: pr}).Parameters
-	withoutObserved.RequireExtraApprovalForUnattributedChanges = nil
-	if createPR.RequireExtraApprovalForUnattributedChanges != nil {
-		t.Fatal("guessed server Preview default")
+	if createPR.RequireExtraApprovalForUnattributedChanges == nil || !*createPR.RequireExtraApprovalForUnattributedChanges {
+		t.Fatal("missing declared additional-approval default")
 	}
-	if !reflect.DeepEqual(withoutObserved, createPR) {
+	if !reflect.DeepEqual(pr, createPR) {
 		t.Fatal("create/update defaults differ")
 	}
 	*pr.RequireCodeOwnerReview = true
@@ -141,7 +139,7 @@ func TestPullRequestRuleTargetUsesDeclaredObjectNotRetainedRules(t *testing.T) {
 	desired.ID, desired.Target = rsID(7), &tag
 	desired.Rules, desired.BypassActors = nil, nil
 	changes, err := ReconcileRulesets(rsObserved(t, RulesetState{ID: 7, Policy: before}), rsDesired(t, desired))
-	if err == nil || len(changes) != 0 {
+	if err != nil || len(changes) != 1 || *changes[0].After().Target != "tag" || len(*changes[0].After().Rules) != 0 {
 		t.Fatal("target edit retained undeclared PR rule", changes, err)
 	}
 }

@@ -10,7 +10,7 @@ import (
 )
 
 // Existing response/readback tests supply a successful independent preflight.
-// Dedicated unowned-protection tests exercise the real preflight failures/drift.
+// Dedicated complete-policy and drift tests exercise the real preflight failures/drift.
 func rulesetMutationClient(t *testing.T, change settings.RulesetChange, next transportFunc) *Client {
 	t.Helper()
 	preflight := change.Operation() == "update"

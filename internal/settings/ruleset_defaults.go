@@ -29,6 +29,7 @@ func normalizeRuleObject(rule *RulesetRule) {
 		defaultRuleValue(&p.AllowedMergeMethods, []string{"merge", "squash", "rebase"})
 		defaultRuleValue(&p.DismissStaleReviewsOnPush, false)
 		defaultRuleValue(&p.RequireCodeOwnerReview, false)
+		defaultRuleValue(&p.RequireExtraApprovalForUnattributedChanges, true)
 		defaultRuleValue(&p.RequireLastPushApproval, false)
 		defaultRuleValue(&p.RequiredApprovingReviewCount, 0)
 		defaultRuleValue(&p.RequiredReviewThreadResolution, false)
