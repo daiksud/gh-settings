@@ -2,6 +2,7 @@ package github
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,11 +53,14 @@ func TestCodeQLConfigurationCompleteReads(t *testing.T) {
 }
 func TestCodeQLConfigurationNarrowWritesAndCompanionVerification(t *testing.T) {
 	suite := "extended"
+	threat := "remote_and_local_sources"
 	langs := []string{"github_actions", "javascript_typescript"}
 	for _, test := range []struct {
 		d    settings.CodeQLConfigurationDeclaration
 		want map[string]any
 	}{
+		{settings.CodeQLConfigurationDeclaration{ThreatModel: &threat}, map[string]any{"threat_model": "remote_and_local"}},
+		{settings.CodeQLConfigurationDeclaration{ThreatModel: &threat, QuerySuite: &suite}, map[string]any{"threat_model": "remote_and_local", "query_suite": "extended"}},
 		{settings.CodeQLConfigurationDeclaration{QuerySuite: &suite}, map[string]any{"query_suite": "extended"}},
 		{settings.CodeQLConfigurationDeclaration{Languages: &langs}, map[string]any{"languages": []any{"actions", "javascript-typescript"}}},
 		{settings.CodeQLConfigurationDeclaration{Runner: &settings.CodeQLRunner{Type: "standard_github_runner"}}, map[string]any{"runner_type": "standard", "runner_label": nil}},
@@ -64,6 +68,9 @@ func TestCodeQLConfigurationNarrowWritesAndCompanionVerification(t *testing.T) {
 	} {
 		for _, mode := range []string{"ok", "accepted", "companion", "pending", "denied", "verify-denied"} {
 			raw := codeQLConfigRaw()
+			if test.d.ThreatModel != nil {
+				raw["languages"] = []string{"csharp"}
+			}
 			writes := 0
 			c := &CodeQLDefaultSetupClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
 				if r.URL.Path == "/repos/owner/current" {
@@ -97,6 +104,8 @@ func TestCodeQLConfigurationNarrowWritesAndCompanionVerification(t *testing.T) {
 				if mode == "companion" {
 					if test.d.QuerySuite == nil {
 						raw["query_suite"] = "extended"
+					} else if test.d.ThreatModel != nil {
+						raw["runner_label"] = "collateral-pool"
 					} else {
 						raw["threat_model"] = "remote_and_local"
 					}
@@ -122,7 +131,7 @@ func TestCodeQLConfigurationNarrowWritesAndCompanionVerification(t *testing.T) {
 	}
 }
 
-func TestCodeQLConfigurationPreservesExcludedPreviewThreatModel(t *testing.T) {
+func TestCodeQLConfigurationPreservesOmittedThreatModel(t *testing.T) {
 	for _, drift := range []bool{false, true} {
 		raw := codeQLConfigRaw()
 		raw["threat_model"] = "remote_and_local"
@@ -153,13 +162,93 @@ func TestCodeQLConfigurationPreservesExcludedPreviewThreatModel(t *testing.T) {
 			t.Fatal(err)
 		}
 		state, _ := observed.State()
-		if state.RawThreatModel != "remote_and_local" {
+		if state.ThreatModel != "remote_and_local_sources" {
 			t.Fatal("Preview value normalized", state)
 		}
 		suite := "extended"
 		changed, err := c.UpdateConfiguration(repo, settings.CodeQLConfigurationDeclaration{QuerySuite: &suite})
 		if (err == nil) == drift || changed == drift || writes != 1 {
 			t.Fatal(drift, changed, err, writes)
+		}
+	}
+}
+
+func TestCodeQLThreatModelRawReadback(t *testing.T) {
+	for _, rawThreat := range []string{"remote", "remote_and_local"} {
+		for _, mode := range []string{"ok", "pre-unknown", "missing", "null", "type", "unknown", "ui-spelling", "mismatch", "languages", "runner", "transport"} {
+			t.Run(rawThreat+"/"+mode, func(t *testing.T) {
+				raw := codeQLConfigRaw()
+				raw["languages"] = []string{"csharp", "java-kotlin"}
+				desired := "remote_sources"
+				raw["threat_model"] = "remote_and_local"
+				if rawThreat == "remote_and_local" {
+					desired = "remote_and_local_sources"
+					raw["threat_model"] = "remote"
+				}
+				if mode == "pre-unknown" {
+					raw["threat_model"] = "future"
+				}
+				var methods []string
+				writes := 0
+				c := &CodeQLDefaultSetupClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
+					if r.URL.Path == "/repos/owner/current" {
+						if r.Method != "GET" {
+							t.Fatal(r.Method)
+						}
+						return actionsResponse(r, 200, `{"visibility":"public","owner":{"type":"User"}}`), nil
+					}
+					if r.URL.Path != "/repos/owner/current/code-scanning/default-setup" {
+						t.Fatal(r.URL)
+					}
+					methods = append(methods, r.Method)
+					if r.Method == "PATCH" {
+						writes++
+						var payload map[string]any
+						if json.NewDecoder(r.Body).Decode(&payload) != nil || !reflect.DeepEqual(payload, map[string]any{"threat_model": rawThreat}) {
+							t.Fatal(payload)
+						}
+						if mode != "mismatch" {
+							raw["threat_model"] = rawThreat
+						}
+						// A successful acknowledgment is never the verification read.
+						return actionsResponse(r, 202, `{"run_id":42}`), nil
+					}
+					if r.Method != "GET" {
+						t.Fatal(r.Method)
+					}
+					if writes > 0 {
+						switch mode {
+						case "missing":
+							delete(raw, "threat_model")
+						case "null":
+							raw["threat_model"] = nil
+						case "type":
+							raw["threat_model"] = false
+						case "unknown":
+							raw["threat_model"] = "future"
+						case "ui-spelling":
+							raw["threat_model"] = desired
+						case "languages":
+							raw["languages"] = []string{"csharp"}
+						case "runner":
+							raw["runner_label"] = "changed-pool"
+						case "transport":
+							return nil, errors.New("connection lost")
+						}
+					}
+					b, _ := json.Marshal(raw)
+					return actionsResponse(r, 200, string(b)), nil
+				}).rest}
+				changed, err := c.UpdateConfiguration(repository.Repository{Owner: "owner", Name: "current"}, settings.CodeQLConfigurationDeclaration{ThreatModel: &desired})
+				var pre interface{ ReadFailedBeforeWrite() }
+				wantMethods := []string{"GET", "PATCH", "GET"}
+				if mode == "pre-unknown" {
+					wantMethods = []string{"GET"}
+				}
+				if (err == nil) != (mode == "ok") || changed != (mode == "ok") || errors.As(err, &pre) != (mode == "pre-unknown") || !reflect.DeepEqual(methods, wantMethods) {
+					t.Fatal(changed, err, methods)
+				}
+			})
 		}
 	}
 }

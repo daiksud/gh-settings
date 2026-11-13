@@ -70,7 +70,8 @@ func TestSecurityExportFirstExportAndReexportKeepUnknownDistinctFromFalse(t *tes
 func TestSecurityExportCodeQLKnownAndUnknown(t *testing.T) {
 	languages := []string{"go"}
 	suite := "default"
-	config := settings.CodeQLConfigurationDeclaration{Languages: &languages, QuerySuite: &suite}
+	threat := "remote_and_local_sources"
+	config := settings.CodeQLConfigurationDeclaration{Languages: &languages, QuerySuite: &suite, ThreatModel: &threat}
 	for _, prior := range []string{"first", "state-only", "details"} {
 		for _, state := range []string{"disabled", "enabled", "unknown", "enabled-unreadable-details"} {
 			t.Run(prior+"/"+state, func(t *testing.T) {
@@ -93,7 +94,7 @@ func TestSecurityExportCodeQLKnownAndUnknown(t *testing.T) {
 						}
 						setup := settings.NewCodeQLDefaultSetupObservation(state != "disabled")
 						if state == "enabled" {
-							observed, err := settings.NewCodeQLConfigurationObservation(settings.CodeQLConfigurationState{Languages: []string{"python"}, QuerySuite: "extended", Runner: settings.CodeQLRunner{Type: "standard_github_runner"}, RawThreatModel: "remote"})
+							observed, err := settings.NewCodeQLConfigurationObservation(settings.CodeQLConfigurationState{Languages: []string{"python"}, QuerySuite: "extended", Runner: settings.CodeQLRunner{Type: "standard_github_runner"}, ThreatModel: "remote_sources"})
 							return setup, observed, err
 						}
 						if state == "enabled-unreadable-details" {
@@ -115,7 +116,7 @@ func TestSecurityExportCodeQLKnownAndUnknown(t *testing.T) {
 						t.Fatal(d, disabledInfo)
 					}
 				case "enabled":
-					if d.CodeQLDefaultSetup == nil || !*d.CodeQLDefaultSetup || d.CodeQLConfiguration.Languages == nil || !reflect.DeepEqual(*d.CodeQLConfiguration.Languages, []string{"python"}) {
+					if d.CodeQLDefaultSetup == nil || !*d.CodeQLDefaultSetup || d.CodeQLConfiguration.Languages == nil || !reflect.DeepEqual(*d.CodeQLConfiguration.Languages, []string{"python"}) || d.CodeQLConfiguration.ThreatModel == nil || *d.CodeQLConfiguration.ThreatModel != "remote_sources" {
 						t.Fatal(d)
 					}
 				case "unknown":
