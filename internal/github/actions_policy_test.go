@@ -86,6 +86,9 @@ func TestActionsApplyPreservesCompanionsAndOrdersWrites(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			base := map[string]any{"enabled": false, "allowed_actions": test.policy, "sha_pinning_required": true}
+			if test.name == "disable" {
+				base["enabled"] = true
+			}
 			selected := map[string]any{"github_owned_allowed": true, "verified_allowed": true, "patterns_allowed": []any{"org/*", "!org/bad@*", "org/*"}}
 			writes := []map[string]any{}
 			operations := []string{}
@@ -119,7 +122,7 @@ func TestActionsApplyPreservesCompanionsAndOrdersWrites(t *testing.T) {
 				body, _ := json.Marshal(target)
 				return actionsResponse(req, 200, string(body)), nil
 			})
-			if err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, test.desired); err != nil {
+			if _, err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, test.desired); err != nil {
 				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(writes, test.want) {
@@ -142,7 +145,7 @@ func TestActionsApplyPreflightAndFailures(t *testing.T) {
 			}
 			return actionsResponse(req, 200, `{"enabled":false,"allowed_actions":"all","sha_pinning_required":false}`), nil
 		})
-		if err := client.ApplyActionsPolicy(repository.Repository{}, d); err == nil || calls != 1 {
+		if _, err := client.ApplyActionsPolicy(repository.Repository{}, d); err == nil || calls != 1 {
 			t.Fatal(err, calls)
 		}
 	}
@@ -156,17 +159,17 @@ func TestActionsApplyPreflightAndFailures(t *testing.T) {
 				}
 				return actionsResponse(req, 200, `{"enabled":false,"allowed_actions":"all","sha_pinning_required":true}`), nil
 			})
-			err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{Enabled: actionsPointer(true)})
+			_, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{Enabled: actionsPointer(true)})
 			if err == nil || writes != 1 || !strings.Contains(err.Error(), "may already have applied") {
 				t.Fatal(err, writes)
 			}
 		})
 	}
 	client := actionsClient(t, func(*http.Request) (*http.Response, error) { t.Fatal("invalid/unmanaged invoked API"); return nil, nil })
-	if err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{}); err != nil {
+	if _, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{AllowedActions: actionsPointer("unknown")}); err == nil {
+	if _, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{AllowedActions: actionsPointer("unknown")}); err == nil {
 		t.Fatal("invalid policy accepted")
 	}
 	// A successful write followed by a mismatching readback is not success or rollback.
@@ -176,7 +179,7 @@ func TestActionsApplyPreflightAndFailures(t *testing.T) {
 		}
 		return actionsResponse(req, 200, `{"enabled":false,"allowed_actions":"all","sha_pinning_required":true}`), nil
 	})
-	if err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{Enabled: actionsPointer(true)}); err == nil || !strings.Contains(err.Error(), "may already have applied") {
+	if _, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{Enabled: actionsPointer(true)}); err == nil || !strings.Contains(err.Error(), "may already have applied") {
 		t.Fatal(err)
 	}
 }
@@ -208,7 +211,7 @@ func TestActionsSelectedFailureNeverEnablesOrInventsState(t *testing.T) {
 				return actionsResponse(req, 200, `{"enabled":false,"allowed_actions":"`+policy+`","sha_pinning_required":true}`), nil
 			})
 			d := settings.ActionsPolicyDeclaration{Enabled: actionsPointer(true), AllowedActions: actionsPointer("selected"), SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: actionsPointer(false), VerifiedAllowed: actionsPointer(false), PatternsAllowed: actionsPointer([]string{})}}
-			err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, d)
+			_, err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, d)
 			want := 0
 			if method == "PUT" {
 				want = 1

@@ -66,7 +66,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 				}
 				if workflow {
 					writes = append(writes, body)
-				} else if !reflect.DeepEqual(body, map[string]any{"enabled": true, "allowed_actions": "all"}) {
+				} else if !reflect.DeepEqual(body, map[string]any{"enabled": true}) {
 					t.Error("overbroad execution radio payload", body)
 				}
 				for key, value := range body {

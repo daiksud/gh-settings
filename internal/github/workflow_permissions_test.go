@@ -153,7 +153,7 @@ func TestWorkflowPermissionsErrorsAndOmission(t *testing.T) {
 	if _, err := client.ApplyWorkflowPermissions(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("unknown")}); err == nil {
 		t.Fatal("invalid policy accepted")
 	}
-	if err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("read")}); err != nil {
+	if _, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: actionsPointer("read")}); err != nil {
 		t.Fatal("workflow-only declaration reached execution API", err)
 	}
 }

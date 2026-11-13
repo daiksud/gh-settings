@@ -121,7 +121,7 @@ type Writer struct {
 	ReadSecretScanning      func(repository.Repository) (settings.SecretScanningObservation, error)
 	SecretScanning          func(repository.Repository, settings.SecurityChange) (bool, error)
 	WorkflowPermissions     func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error)
-	Actions                 func(repository.Repository, settings.ActionsPolicyDeclaration) error
+	Actions                 func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error)
 	Repository              func(repository.Repository, settings.RepositoryDeclaration) (bool, error)
 	Topics                  func(repository.Repository, settings.TopicsDeclaration) (bool, error)
 	ReadLabels              func(repository.Repository) (settings.LabelObservation, error)

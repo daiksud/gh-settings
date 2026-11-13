@@ -2,6 +2,7 @@ package github
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"reflect"
 	"strings"
@@ -90,9 +91,15 @@ func TestNormalizedActionsExecutionHTTPWritesAndRawReadback(t *testing.T) {
 						}
 						var warnings []settings.ObservationNormalization
 						client.NormalizationWarning = func(n settings.ObservationNormalization) { warnings = append(warnings, n) }
-						err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, d)
+						wrote, err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, d)
+						if choice == "disable" && !enabled {
+							if err != nil || wrote || len(writes) != 0 || len(warnings) != 0 || !reflect.DeepEqual(operations, []string{"GET /repos/owner/current/actions/permissions"}) {
+								t.Fatal("matching disabled raw policy changed", wrote, writes, warnings, operations, err)
+							}
+							return
+						}
 						wantErr := drift != ""
-						if choice == "disable" && !enabled && drift == "ignored" || choice == "sha" && drift == "sha" {
+						if choice == "sha" && drift == "sha" {
 							wantErr = false
 						}
 						// An ignored selected-policy installation cannot proceed to the selected endpoint.
@@ -150,8 +157,9 @@ func TestNormalizedActionsExecutionIncompletePreflightNeverWrites(t *testing.T) 
 					return actionsResponse(req, 200, string(body)), nil
 				})
 				client.NormalizationWarning = func(settings.ObservationNormalization) { t.Fatal("incomplete observation warned") }
-				err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{Enabled: actionsPointer(true), AllowedActions: actionsPointer("all")})
-				if err == nil || calls != 1 {
+				_, err := client.ApplyActionsPolicy(repository.Repository{}, settings.ActionsPolicyDeclaration{Enabled: actionsPointer(true), AllowedActions: actionsPointer("all")})
+				var readFailure interface{ ReadFailedBeforeWrite() }
+				if err == nil || calls != 1 || !errors.As(err, &readFailure) {
 					t.Fatal(err, calls)
 				}
 			})
