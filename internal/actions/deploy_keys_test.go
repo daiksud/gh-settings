@@ -75,7 +75,7 @@ func TestDeployKeyAutolinkOIDCAndClassicDeletionReportCounts(t *testing.T) {
 	}
 	display := settings.DeployKeyDisplayFor(settings.DeployKeyDeclaration{Title: "release key", Key: key})
 	id, yes, no := int64(7), true, false
-	classic := settings.ClassicRule{ID: &id, BranchNamePattern: "old/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}}
+	classic := settings.ClassicRule{ID: &id, BranchNamePattern: "old/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}}
 	claims := []string{"repo", "context"}
 	report := PlanReport{Outcome: "changed", Target: "owner/current", Managed: 4, Changes: []PlanChange{}, DeployKeys: []DeployKeyPlanEntry{{Operation: "create", After: &display}}, OIDCSubject: []PlanChange{{Field: settings.OIDCSubjectPath, Before: settings.OIDCSubjectTemplate{UseDefaultTemplate: &yes}, After: settings.OIDCSubjectTemplate{UseDefaultTemplate: &no, SubjectClaimTemplate: &claims}}}, BranchProtectionRules: []settings.ClassicChange{{Before: &classic}}}
 	report.Autolinks = []settings.AutolinkChange{{After: &settings.Autolink{ReferencePrefix: "EXT-", TargetURL: "https://example.test/<num>", ReferenceFormat: "numeric"}}}

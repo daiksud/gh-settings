@@ -41,6 +41,9 @@ func CheckExportAcquisition(source settings.Declaration) error {
 	}
 	if source.BranchProtectionRules != nil {
 		for _, r := range *source.BranchProtectionRules {
+			if !settings.ClassicReviewsManaged(r.RequireAPullRequestBeforeMerging) {
+				return fmt.Errorf("classic export lacks acquired PR policy")
+			}
 			if !settings.ClassicDeploymentsSelected(r.RequireDeploymentsToSucceedBeforeMerging) {
 				return fmt.Errorf("classic export lacks acquired deployment control")
 			}
