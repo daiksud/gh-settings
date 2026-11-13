@@ -82,6 +82,9 @@ const (
 	AgentVariableDelete
 	EnvironmentVariableDelete
 	EnvironmentDelete
+	CollaboratorsRead
+	CollaboratorReconcile
+	CollaboratorIdentityBinding
 )
 
 type ApplyOperationStatus uint8
@@ -92,29 +95,32 @@ const (
 	OperationFailedRead
 	OperationFailedUnknown
 	OperationUnchanged
+	OperationFailedLocal
 )
 
 // ApplyOperation records only what this execution established for one operation.
 // A failed write has an unknown remote effect, rather than an unapplied status.
 type ApplyOperation struct {
-	ActionsPolicyName string
-	VariableName      string
-	Kind              ApplyOperationKind
-	SecurityField     string
-	LabelName         string
-	RulesetName       string
-	EnvironmentName   string
-	Status            ApplyOperationStatus
+	CollaboratorUsername string
+	ActionsPolicyName    string
+	VariableName         string
+	Kind                 ApplyOperationKind
+	SecurityField        string
+	LabelName            string
+	RulesetName          string
+	EnvironmentName      string
+	Status               ApplyOperationStatus
 }
 
 // ApplyResult retains known execution progress without claiming readback or rollback.
 // Individual label operations become known only after a complete fresh read.
 type ApplyResult struct {
-	Outcome    ApplyOutcome
-	Target     repository.Repository
-	Operations []ApplyOperation
-	CreatedIDs []CreatedObject
-	Notices    []string
+	Collaborators []CollaboratorResult
+	Outcome       ApplyOutcome
+	Target        repository.Repository
+	Operations    []ApplyOperation
+	CreatedIDs    []CreatedObject
+	Notices       []string
 }
 
 type CreatedObject struct {
@@ -132,7 +138,7 @@ func (result *ApplyResult) failOperation(index int, status ApplyOperationStatus)
 	result.Operations[index].Status = status
 	result.Outcome = ApplyFailed
 	for _, operation := range result.Operations {
-		if operation.Status == OperationCompleted && operation.Kind != VariablesRead && operation.Kind != AgentVariablesRead && operation.Kind != EnvironmentVariablesRead && operation.Kind != ActionsPoliciesRead && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != CodeQLConfigurationRead && operation.Kind != CodeQLDefaultSetupRead && operation.Kind != AIScanPullRequestsRead && operation.Kind != AIScanRepositoriesRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ActionsAccessRead && operation.Kind != CacheStorageRead && operation.Kind != CacheRetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
+		if operation.Status == OperationCompleted && operation.Kind != CollaboratorsRead && operation.Kind != CollaboratorIdentityBinding && operation.Kind != VariablesRead && operation.Kind != AgentVariablesRead && operation.Kind != EnvironmentVariablesRead && operation.Kind != ActionsPoliciesRead && operation.Kind != DependabotRead && operation.Kind != LabelsRead && operation.Kind != RulesetsRead && operation.Kind != EnvironmentsRead && operation.Kind != SecretScanningRead && operation.Kind != CodeQLConfigurationRead && operation.Kind != CodeQLDefaultSetupRead && operation.Kind != AIScanPullRequestsRead && operation.Kind != AIScanRepositoriesRead && operation.Kind != PrivateReportingRead && operation.Kind != ImmutableReleasesRead && operation.Kind != RetentionRead && operation.Kind != ActionsAccessRead && operation.Kind != CacheStorageRead && operation.Kind != CacheRetentionRead && operation.Kind != ForkApprovalRead && operation.Kind != PrivateForkRead && operation.Kind != ArchiveRead && operation.Kind != PagesRead {
 			result.Outcome = ApplyPartialFailure
 			break
 		}

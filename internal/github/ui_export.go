@@ -26,6 +26,16 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if general.General != (uimodel.General{}) {
 		result.Settings = &uimodel.RepositorySettings{General: &general.General}
 	}
+	if source.Collaborators != nil {
+		values := make([]uimodel.Collaborator, 0, source.Collaborators.Len())
+		for _, person := range source.Collaborators.Values() {
+			values = append(values, uimodel.Collaborator{Username: person.Username, ID: person.ID})
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.Collaborators = &values
+	}
 	if source.Labels != nil {
 		labels := make([]uimodel.Label, 0, source.Labels.Len())
 		for _, policy := range settings.SortedLabels(source.Labels.Values()) {

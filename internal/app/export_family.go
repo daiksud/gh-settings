@@ -13,6 +13,8 @@ func exportAcquiredFamily(path string, d settings.Declaration) (settings.Declara
 	switch path {
 	case "repository.about.topics":
 		family.Topics = d.Topics
+	case "repository.settings.collaborators":
+		family.Collaborators = d.Collaborators
 	case "repository.labels":
 		family.Labels = d.Labels
 	case "repository.settings.actions.policies":

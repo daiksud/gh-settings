@@ -108,6 +108,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	for _, c := range comparison.Pages {
 		fmt.Fprintln(&output, presentation.PagesLine(c))
 	}
+	for _, person := range comparison.Collaborators {
+		fmt.Fprintln(&output, presentation.CollaboratorLine(person))
+	}
 	return []byte(output.String())
 }
 

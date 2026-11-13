@@ -31,6 +31,17 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	}
 	result.Labels = labels
 	if repository.Settings != nil {
+		if repository.Settings.Collaborators != nil {
+			values := make([]settings.CollaboratorDeclaration, 0, len(*repository.Settings.Collaborators))
+			for _, person := range *repository.Settings.Collaborators {
+				values = append(values, settings.CollaboratorDeclaration{Username: person.Username, ID: person.ID})
+			}
+			validated, err := settings.NewCollaboratorDeclarations(values)
+			if err != nil {
+				return settings.Declaration{}, err
+			}
+			result.Collaborators = &validated
+		}
 		if page := repository.Settings.InteractionLimits; page != nil && page.PullRequestLimits != nil {
 			c := page.PullRequestLimits
 			if c.ExemptionList != nil {
