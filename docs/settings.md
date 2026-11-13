@@ -702,7 +702,7 @@ Operations are not transactional: an already enabled target can temporarily use 
 
 ## Sponsor button visibility
 
-Use `repository.settings.general.features.sponsorships`. This boolean controls the Sponsor button, not funding destinations. Omission is unmanaged; false disables. `.github/FUNDING.yml` is never created, read, changed or deleted by this control. Ordinary export includes the observed value through the existing shared GraphQL path. See [Sponsorships](features/sponsorships.feature.md).
+Use `repository.settings.general.features.sponsorships`. This boolean controls the Sponsor button, not funding destinations. Omission is unmanaged; false disables. `.github/FUNDING.yml` is never created, read, changed or deleted by this control. Ordinary export includes the observed value through the existing shared GraphQL path. Apply compares the declared boolean with fresh state, skips a match and independently verifies a changed value after mutation acknowledgment. See [Sponsorships](features/sponsorships.feature.md).
 
 ### Execution-policy observation normalization
 
@@ -716,7 +716,7 @@ Apply sends only declared policy/SHA members with the endpoint-required enabled 
 
 Complete successfully acquired Issue/PR creation-policy strings outside their two UI choices project to the named `all_users` fallback with native value `ALL`. Empty and whitespace strings remain exact acquired evidence. One scalar record retains its YAML path, original token and fallback. Missing/null members, wrong types, failed/partial reads and incomplete PR availability remain errors. Repository IDs/names retain strict identity validation.
 
-Export warns only for visible normalized policies and saves UI choices; disabled feature controls hide their latent policy without warnings or replay. Plan retains one write-required field decision even when desired intent equals the projected default. Omitted desired policies remain unmanaged. Apply sends only declared values, validates the mutation response and verifies fresh raw policy values against the original repository ID. An unchanged unknown token or changed ID fails verification with possible write effects retained. A failed access preflight makes no access mutation; earlier REST writes in the same repository operation can already be applied and remain partial progress. No rollback occurs. Checkbox-only access writes retain their existing two-request identity/mutation behavior.
+Export warns only for visible normalized policies and saves UI choices; disabled feature controls hide their latent policy without warnings or replay. Plan retains one write-required field decision even when desired intent equals the projected default. Omitted desired policies remain unmanaged. Apply acquires identity and only the originally declared PR availability, PR/Issue creation policies and Sponsorships members. Exact native matches require no mutation or second read; otherwise one shared mutation sends only changed declared values. Its response and an independent readback must confirm every original declared member against the original repository ID, including matching members omitted from the payload. Unknown raw policy strings remain write-required even at fallback equality. Checkbox-only intent does not acquire or warn about omitted policies; policy-only intent does not acquire or enable an omitted feature checkbox. Missing/null/wrong-type selected values and failed or partial acquisition stop before mutation. An unchanged unknown token, changed ID or declared-member drift after mutation fails with uncertain write effects. Only actual successful writes count toward later partial progress; earlier completed REST writes remain applied if access fails. No rollback occurs.
 
 ## Issue creation policy
 
@@ -724,7 +724,7 @@ Use `repository.settings.general.features.issue_permissions.creation_allowed_by`
 
 ## Pull request access
 
-Use boolean `repository.settings.general.features.pull_requests` and independent choice `features.pull_request_permissions.creation_allowed_by` under the same General root. Choices are `all_users` and `collaborators_only`. Explicit false plus a permission choice is invalid; omitted enabling checkbox is independent. Export hides its policy when Pull requests is disabled. Shared identity-checked GraphQL mutations contain only declared values. Mutation responses confirm declared members; declared policy strings also require fresh same-ID raw readback. No collaborator invitation/grant is implied. See [PR access](features/pull-request-access.feature.md).
+Use boolean `repository.settings.general.features.pull_requests` and independent choice `features.pull_request_permissions.creation_allowed_by` under the same General root. Choices are `all_users` and `collaborators_only`. Explicit false plus a permission choice is invalid; omitted enabling checkbox is independent. Export hides its policy when Pull requests is disabled. Shared identity-checked GraphQL reconciliation skips fresh matches and sends only changed declared values. Mutation responses and independent same-ID readback confirm all original declared members, including the checkbox. No collaborator invitation/grant is implied. See [PR access](features/pull-request-access.feature.md).
 
 ## Default branch
 

@@ -65,8 +65,14 @@ func TestPRAccessWriteOnlyDeclaredValues(t *testing.T) {
 					t.Fatal(string(data))
 				}
 				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "OWNER/CURRENT"}
+				if desired.HasPullRequests != nil {
+					fields["hasPullRequestsEnabled"] = calls == 1
+				}
 				if desired.PullRequestCreationPolicy != nil {
-					value := "ALL"
+					value := "COLLABORATORS_ONLY"
+					if *desired.PullRequestCreationPolicy == value {
+						value = "ALL"
+					}
 					if calls == 3 {
 						value = *desired.PullRequestCreationPolicy
 					}
@@ -95,21 +101,18 @@ func TestPRAccessWriteOnlyDeclaredValues(t *testing.T) {
 			body, _ := json.Marshal(map[string]any{"data": map[string]any{"updateRepository": map[string]any{"repository": response}}})
 			return labelsResponse(req, 200, string(body)), nil
 		}))
-		wantCalls := 2
-		if desired.PullRequestCreationPolicy != nil {
-			wantCalls = 3
-		}
-		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != wantCalls {
+		wantCalls := 3
+		if _, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != wantCalls {
 			t.Fatal(calls, err)
 		}
 	}
 	client := prAccessTestClient(t, transportFunc(func(*http.Request) (*http.Response, error) { t.Fatal("empty policy requested API"); return nil, nil }))
-	if err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{}); err != nil {
+	if _, err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{}); err != nil {
 		t.Fatal(err)
 	}
 }
 func TestPRAccessIdentityAndMutationFailures(t *testing.T) {
-	const lookup = `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","pullRequestCreationPolicy":"ALL"}}}`
+	const lookup = `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasPullRequestsEnabled":true,"pullRequestCreationPolicy":"ALL"}}}`
 	const applied = `{"data":{"updateRepository":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}}`
 	for _, tt := range []struct {
 		name, first, second string
@@ -139,7 +142,7 @@ func TestPRAccessIdentityAndMutationFailures(t *testing.T) {
 			}))
 			no := false
 			policy := "ALL"
-			err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasPullRequests: &no, PullRequestCreationPolicy: &policy})
+			_, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasPullRequests: &no, PullRequestCreationPolicy: &policy})
 			if err == nil || calls != tt.calls || (calls == 2 && !strings.Contains(err.Error(), "writes may already have applied")) {
 				t.Fatal(calls, err)
 			}
@@ -168,7 +171,7 @@ func TestPRAccessReadSelectionAndPartialDiscard(t *testing.T) {
 func TestInvalidPRAccessWriteFailsBeforeLookup(t *testing.T) {
 	client := prAccessTestClient(t, transportFunc(func(*http.Request) (*http.Response, error) { t.Fatal("invalid enum reached API"); return nil, nil }))
 	value := "UNKNOWN"
-	if err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{PullRequestCreationPolicy: &value}); err == nil {
+	if _, err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{PullRequestCreationPolicy: &value}); err == nil {
 		t.Fatal("unknown policy accepted")
 	}
 }
@@ -198,7 +201,7 @@ func TestPRAccessQueriesRejectRenamedRepository(t *testing.T) {
 				_, err = client.ReadPRAccess(repo)
 			} else {
 				no := false
-				err = client.ApplyRepositoryAccess(repo, settings.RepositoryDeclaration{HasPullRequests: &no})
+				_, err = client.ApplyRepositoryAccess(repo, settings.RepositoryDeclaration{HasPullRequests: &no})
 			}
 			if err == nil || calls != 1 || !strings.Contains(err.Error(), "stale checkout origin") {
 				t.Fatal("renamed repository accepted", calls, err)

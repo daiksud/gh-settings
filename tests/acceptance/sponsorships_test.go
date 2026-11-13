@@ -64,10 +64,10 @@ func TestSponsorshipsExportPlanApplyAndFundingIsolation(t *testing.T) {
 			return
 		}
 		if strings.HasPrefix(request.Query, "query") {
-			if strings.Join(strings.Fields(request.Query), " ") != `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { id nameWithOwner } }` || !reflect.DeepEqual(request.Variables, map[string]any{"owner": "owner", "name": "current"}) {
+			if strings.Join(strings.Fields(request.Query), " ") != `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { id nameWithOwner hasSponsorshipsEnabled } }` || !reflect.DeepEqual(request.Variables, map[string]any{"owner": "owner", "name": "current"}) {
 				t.Error("unexpected lookup", request)
 			}
-			fmt.Fprint(w, prIdentityResponse)
+			fmt.Fprintf(w, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasSponsorshipsEnabled":%t}}}`, enabled)
 			return
 		}
 		input, ok := request.Variables["input"].(map[string]any)
@@ -169,7 +169,6 @@ func TestSponsorshipsExportPlanApplyAndFundingIsolation(t *testing.T) {
 	defer mu.Unlock()
 	if enabled || !reflect.DeepEqual(writes, []map[string]any{
 		{"repositoryId": "opaque-id", "hasSponsorshipsEnabled": true},
-		{"repositoryId": "opaque-id", "hasSponsorshipsEnabled": true},
 		{"repositoryId": "opaque-id", "hasSponsorshipsEnabled": false},
 	}) {
 		t.Fatal(enabled, writes)
@@ -259,7 +258,7 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 					if test.name == "wrong target" {
 						fmt.Fprint(w, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/other"}}}`)
 					} else {
-						fmt.Fprint(w, prIdentityResponse)
+						fmt.Fprint(w, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasSponsorshipsEnabled":false}}}`)
 					}
 					return
 				}

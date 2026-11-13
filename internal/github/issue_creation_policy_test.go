@@ -57,7 +57,14 @@ func TestIssuePolicyWriteOnlyDeclaredValuesAndSharedMutation(t *testing.T) {
 				if !strings.Contains(request.Query, "followRenames: false") || !strings.Contains(request.Query, "issueCreationPolicy") || strings.Contains(request.Query, "hasIssuesEnabled") {
 					t.Fatal("companion lookup or rename following", string(data))
 				}
-				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current", "issueCreationPolicy": "ALL"}
+				before := "COLLABORATORS_ONLY"
+				if *desired.IssueCreationPolicy == before {
+					before = "ALL"
+				}
+				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current", "issueCreationPolicy": before}
+				if desired.HasPullRequests != nil {
+					fields["hasPullRequestsEnabled"] = calls == 1
+				}
 				if calls == 3 {
 					fields["issueCreationPolicy"] = *desired.IssueCreationPolicy
 				}
@@ -87,7 +94,7 @@ func TestIssuePolicyWriteOnlyDeclaredValuesAndSharedMutation(t *testing.T) {
 			body, _ := json.Marshal(map[string]any{"data": map[string]any{"updateRepository": map[string]any{"repository": result}}})
 			return labelsResponse(req, 200, string(body)), nil
 		}))
-		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 3 {
+		if _, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 3 {
 			t.Fatal(calls, err)
 		}
 	}
@@ -112,7 +119,7 @@ func TestIssuePolicyMutationRequiresMatchingResponse(t *testing.T) {
 			return labelsResponse(req, 200, `{"data":{"updateRepository":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current"`+field+`}}}`+suffix+`}`), nil
 		}))
 		policy := "COLLABORATORS_ONLY"
-		err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{IssueCreationPolicy: &policy})
+		_, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{IssueCreationPolicy: &policy})
 		if err == nil || calls != 2 || !strings.Contains(err.Error(), "writes may already have applied") {
 			t.Fatal(value, calls, err)
 		}
@@ -122,7 +129,7 @@ func TestIssuePolicyMutationRequiresMatchingResponse(t *testing.T) {
 	}
 	invalid := "UNKNOWN"
 	client := prAccessTestClient(t, transportFunc(func(*http.Request) (*http.Response, error) { t.Fatal("invalid policy reached API"); return nil, nil }))
-	if err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{IssueCreationPolicy: &invalid}); err == nil {
+	if _, err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{IssueCreationPolicy: &invalid}); err == nil {
 		t.Fatal("invalid enum accepted")
 	}
 }

@@ -19,6 +19,7 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
 	policy := "ALL"
+	enabled := true
 	var repositoryState map[string]any
 	if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
 		t.Fatal(err)
@@ -84,6 +85,9 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 		if strings.HasPrefix(request.Query, "query") {
 			operations = append(operations, "lookup")
 			fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
+			if strings.Contains(request.Query, "hasPullRequestsEnabled") {
+				fields["hasPullRequestsEnabled"] = enabled
+			}
 			if strings.Contains(request.Query, "issueCreationPolicy") {
 				fields["issueCreationPolicy"] = policy
 			}
@@ -106,7 +110,8 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 				if value != false {
 					t.Error(input)
 				}
-				result[key] = false
+				enabled = false
+				result[key] = enabled
 			default:
 				t.Error("undeclared companion", key)
 			}
@@ -183,15 +188,15 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if repositoryState["has_issues"] != false || repositoryState["has_projects"] != false || policy != "ALL" || len(writes) != 5 {
+	if repositoryState["has_issues"] != false || repositoryState["has_projects"] != false || policy != "ALL" || len(writes) != 4 {
 		t.Fatal("availability changed or extra mutation", repositoryState, policy, writes)
 	}
 	for i, input := range writes {
 		want := map[string]any{"repositoryId": "opaque-id", "issueCreationPolicy": "COLLABORATORS_ONLY"}
-		if i == 2 || i == 4 {
+		if i == 1 || i == 3 {
 			want["issueCreationPolicy"] = "ALL"
 		}
-		if i == 3 {
+		if i == 2 {
 			want["hasPullRequestsEnabled"] = false
 		}
 		if !reflect.DeepEqual(input, want) {
@@ -277,7 +282,11 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 					var request struct{ Query string }
 					json.NewDecoder(r.Body).Decode(&request)
 					if strings.HasPrefix(request.Query, "query") {
-						fmt.Fprint(w, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","issueCreationPolicy":"ALL"}}}`)
+						before := "COLLABORATORS_ONLY"
+						if tt.name == "ignored mutation" {
+							before = "ALL"
+						}
+						fmt.Fprintf(w, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","issueCreationPolicy":%q}}}`, before)
 						return
 					}
 					switch tt.name {

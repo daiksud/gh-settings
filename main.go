@@ -82,10 +82,10 @@ func writeRepository(repo repository.Repository, desired settings.RepositoryDecl
 			client.CommitMessageNormalizationWarning = warnCommitMessageNormalization
 			return client.ApplyRepository(repo, restDesired)
 		},
-		func(repo repository.Repository, accessDesired settings.RepositoryDeclaration) error {
+		func(repo repository.Repository, accessDesired settings.RepositoryDeclaration) (bool, error) {
 			client, err := github.NewRepositoryAccessClient(repo.Host)
 			if err != nil {
-				return err
+				return false, err
 			}
 			client.NormalizationWarning = warnNormalization
 			return client.ApplyRepositoryAccess(repo, accessDesired)
