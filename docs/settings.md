@@ -1384,8 +1384,8 @@ be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
 Ordinary create/update retains its six-control partial ownership.
 
-Deletion removes the entire rule, including configured PR, check, deployment,
-admin and actor protections that gh-settings cannot edit. An overlapping rule may
+Deletion removes the entire rule, including PR, check, deployment and actor
+protections that gh-settings cannot edit. An overlapping rule may
 then take effect; recreation cannot restore creation-age priority. The plan shows
 this consequence and each complete supported before-policy, without raw private
 companions. It does not delete branches. Inspect the complete plan before apply.
