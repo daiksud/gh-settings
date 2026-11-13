@@ -6,7 +6,7 @@ The v1.0.0 target is UI-aligned settings management for **personally owned publi
 
 The extension uses your existing `gh` authentication. Actions use one GitHub App with explicit, short-lived installation tokens scoped per job/target, without a required PAT or personal-login combination. Validation needs no API authentication; nonmutating plan may still require write grants for complete reads. See the [authentication and trust policy](docs/github-actions.md#authentication-and-app-permissions), including trusted-base PR data-only planning and protected-main apply.
 
-The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets ordinarily own only listed objects; explicit [prune scopes](docs/settings.md#collection-pruning), including Environments and standalone `all`, add bounded unlisted deletion. Existing Environment updates preserve omitted built-in controls; creation omissions remain API-controlled.
+The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets ordinarily own only listed objects; explicit [prune scopes](docs/settings.md#collection-pruning), including Environments, personal collaborators and standalone `all`, add bounded unlisted deletion. Existing Environment updates preserve omitted built-in controls; creation omissions remain API-controlled.
 
 ## Install
 
