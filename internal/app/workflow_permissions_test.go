@@ -22,7 +22,7 @@ func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
 			value := false
 			d.Actions.Enabled = &value
 		}
-		result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) {
+		result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) { return true, nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) {
 			return false, fmt.Errorf("wrapped read: %w", &workflowReadFailure{errors.New("denied before PUT")})
 		}})
 		want := ApplyFailed
@@ -49,7 +49,7 @@ func TestWorkflowPermissionNoopRetainsOnlyActualEarlierProgress(t *testing.T) {
 			d.Actions.Enabled = &enabled
 		}
 		writer := Writer{
-			Actions:             func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil },
+			Actions:             func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) { return true, nil },
 			WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) { return false, nil },
 			ReadRetention: func(repository.Repository) (settings.RetentionObservation, error) {
 				return settings.RetentionObservation{}, errors.New("later read denied")
@@ -78,7 +78,7 @@ func TestWorkflowPermissionNoopRetainsOnlyActualEarlierProgress(t *testing.T) {
 func TestWorkflowPermissionFailureRetainsEarlierExecutionProgress(t *testing.T) {
 	permission, enabled := "read", false
 	d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: &permission, Enabled: &enabled}}
-	result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) {
+	result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) { return true, nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) {
 		return false, errors.New("organization conflict")
 	}})
 	if err == nil || result.Outcome != ApplyPartialFailure || len(result.Operations) != 2 || result.Operations[0].Kind != ActionsPolicyUpdate || result.Operations[0].Status != OperationCompleted || result.Operations[1].Kind != WorkflowPermissionsUpdate || result.Operations[1].Status != OperationFailedUnknown {

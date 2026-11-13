@@ -178,7 +178,7 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	run("apply")
 	run("apply")
 	mu.Lock()
-	if selected["github_owned_allowed"] != false || selected["verified_allowed"] != false || !reflect.DeepEqual(selected["patterns_allowed"], []any{}) || len(writes) != 5 {
+	if selected["github_owned_allowed"] != false || selected["verified_allowed"] != false || !reflect.DeepEqual(selected["patterns_allowed"], []any{}) || len(writes) != 4 {
 		t.Fatal(selected, writes)
 	}
 	mu.Unlock()

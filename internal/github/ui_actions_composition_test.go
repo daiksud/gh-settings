@@ -16,7 +16,7 @@ func TestUIActionsRawDisabledSelectionAndExactTransition(t *testing.T) {
 		want := []struct{ method, path, body, response string }{
 			{"GET", "", "", `{"enabled":false,"allowed_actions":"selected","sha_pinning_required":false,"selected_actions_url":"https://untrusted.invalid/never"}`},
 			{"GET", "/selected-actions", "", `{"github_owned_allowed":true,"verified_allowed":true,"patterns_allowed":["latent/action@v1"]}`},
-			{"PUT", "", `{"enabled":false,"allowed_actions":"selected","sha_pinning_required":true}`, ""},
+			{"PUT", "", `{"enabled":false,"sha_pinning_required":true}`, ""},
 			{"PUT", "/selected-actions", `{"github_owned_allowed":false,"verified_allowed":true,"patterns_allowed":["example/a@v1","!example/a@v2","example/a@v1"]}`, ""},
 			{"PUT", "", `{"enabled":true}`, ""},
 			{"GET", "", "", `{"enabled":true,"allowed_actions":"selected","sha_pinning_required":true}`},
@@ -49,7 +49,7 @@ func TestUIActionsRawDisabledSelectionAndExactTransition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, d); err != nil || step != 7 {
+	if _, err := client.ApplyActionsPolicy(repository.Repository{Owner: "owner", Name: "current"}, d); err != nil || step != 7 {
 		t.Fatal(step, err)
 	}
 }

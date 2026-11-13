@@ -239,7 +239,7 @@ func TestForkApprovalNormalizationAcrossExecutableCommands(t *testing.T) {
 		t.Fatal("unverified readback lost earlier progress", status, output, diagnostic)
 	}
 	mu.Lock()
-	retained := execution["enabled"] == true && len(executionWrites) == beforeExecutionWrites+1 && reflect.DeepEqual(executionWrites[len(executionWrites)-1], map[string]any{"enabled": true, "allowed_actions": "all"}) && permission == "FUTURE" && reflect.DeepEqual(workflowWrites[len(workflowWrites)-1], map[string]any{"approval_policy": "first_time_contributors"})
+	retained := execution["enabled"] == true && len(executionWrites) == beforeExecutionWrites+1 && reflect.DeepEqual(executionWrites[len(executionWrites)-1], map[string]any{"enabled": true}) && permission == "FUTURE" && reflect.DeepEqual(workflowWrites[len(workflowWrites)-1], map[string]any{"approval_policy": "first_time_contributors"})
 	mu.Unlock()
 	if !retained {
 		t.Fatal("partial failure implied rollback or hid requested write", execution, executionWrites, workflowWrites, permission)
