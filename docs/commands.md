@@ -132,14 +132,15 @@ approval settings, Actions event/actor policies, Environments and their variable
 Actions/Agents repository variables, Copilot review controls, pull request limits
 and exemptions, Pages, archive state and supported Security controls.
 Product-wide security switches, private-only excluded controls, organization
-settings, Preview features and secrets remain outside the supported scope.
+settings and secret values remain outside the target. Unimplemented controls remain
+unavailable regardless of Preview status.
 
 Complete readable values replace prior declarations, including false and valid
 empty strings/lists. An independent unavailable, incomplete or unsupported family
 emits `info: export` on stderr and acquisition continues. First export omits it;
-re-export retains its valid prior declaration. Retained values are unverified
-intent. Failed pagination never supplies an empty or partial inventory. Variable
-inventories include plaintext values, never secret values; protect the output.
+re-export retains its valid prior declaration where compatible with acquired
+settings. Retained values are unverified intent. Failed pagination never supplies
+an empty or partial inventory. Variable inventories include plaintext values, never secret values; protect the output.
 Existing variable schema restrictions still apply: an unrepresentable inventory
 is reported and retained, not rewritten into plausible values.
 
@@ -158,10 +159,18 @@ Pages-absence declaration can delete a later site when subsequently applied;
 complete exported collections also become explicit ownership input to prune.
 Inspect the YAML before plan/apply.
 
-Target resolution and core repository observations remain required. Invalid or
-unreadable existing files, diagnostic IO and destination write failures remain
-fatal. Existing files are validated and snapshotted before API reads; guarded
-atomic replacement rejects changed/removed/symlink destinations and a file that
+Checkout/origin target resolution remains required. About/basic General, merge
+controls, PR access, Issue permissions and Sponsorships are independent groups;
+an unavailable group does not stop the others. Each group still requires complete
+observations before adoption. Confirmed disabled Issues or Pull requests suppress
+incompatible retained creation permissions; an unknown gate remains unknown.
+Partial or absent About/General is valid output, even when only later families
+are readable. Successful file production does not prove remote repository
+existence or access when all remote observations are unavailable.
+
+Invalid or unreadable existing files, family-info output failures and destination
+write failures remain fatal. Existing files are validated and snapshotted before
+API reads; guarded atomic replacement rejects changed/removed/symlink destinations and a file that
 appears during initial export. Initial file IO failure can leave a partial new
 file; this is not a concurrent-directory lock.
 

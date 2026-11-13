@@ -19,13 +19,15 @@ The target is a personally owned public repository. Account-plan names and
 Preview status do not exclude a configurable target UI control. Organization
 settings and API-only fields do not enlarge the target UI surface.
 
-The inventory was checked against source commit
+The inventory was initially checked against source commit
 `3f7fb20acef7a911708cc5effff69e4d5d1a5e41` and official documentation on
 **2026-11-13**. The [fixed official OpenAPI description][openapi] was updated on
 2026-11-12. UI dates below belong to the linked observation records: reading an
 old record or an official guide is not a new inspection of an authenticated UI.
 An unconfirmed row is an evidence gap, not proof that a control or API is absent.
-This document adds no accepted YAML, command, Action operation or live setting.
+Source coverage rows follow the contracts in this revision; the initial inventory
+is not certification of a later release. This reference alone adds no accepted
+YAML, command, Action operation or live setting.
 
 Each row keeps four different questions separate:
 
@@ -292,7 +294,7 @@ being confused with the missing implementations above.
 | Destination | Current source and evidence limit |
 | --- | --- |
 | Same supported operations through CLI and public Action | CLI supports export/plan/apply; the [public Action contract](../github-actions.md) currently supports plan/apply, not export. An installed CLI capability alone is not an Action operation. |
-| Automatic acquired-state export | [Automatic export](../settings.md#exported-values) and [retained Security intent](../settings.md#automatic-security-export-and-retained-intent) are implemented. Independent unavailable families retain valid prior intent with info; core/local failures remain fatal. This does not add missing setting families. |
+| Automatic acquired-state export | [Automatic export](../settings.md#exported-values) and [retained Security intent](../settings.md#automatic-security-export-and-retained-intent) are implemented. About/General groups and other independent unavailable families retain compatible valid prior intent with info; checkout/origin and local file failures remain fatal. No successful export certifies remote repository existence when all observations are unavailable. This does not add missing setting families. |
 | Complete meaningful false/zero/empty values | Existing family contracts retain observed values. Variable inventories containing values outside the current nonempty-value schema remain unavailable with info, not fabricated empties. Conditional and normalized observations retain their documented limits. |
 | Unowned companions and repeated matching apply | Environment policy omission is explicitly API-controlled; partial policies can cause repeated writes. Existing Ruleset selected objects have whole-policy semantics. These contracts require reconciliation with the destination before claiming uniform preservation/idempotence. |
 | Consistent optional pruning | [Collection pruning](../settings.md#collection-pruning) covers labels, Rulesets, Actions/Agents/Environment variables and Actions Policies. Environment objects are not implemented and standalone `all` currently fails explicitly. New collection adoption must also resolve its own deletion effects. |

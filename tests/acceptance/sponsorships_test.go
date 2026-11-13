@@ -201,6 +201,16 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 				defer mu.Unlock()
 				requests = append(requests, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
+				if test.command == "export" && r.Method == http.MethodGet {
+					switch r.URL.Path {
+					case "/repos/owner/current/topics":
+						fmt.Fprint(w, `{"names":[]}`)
+						return
+					case "/repos/owner/current/labels":
+						fmt.Fprint(w, `[]`)
+						return
+					}
+				}
 				if isSponsorshipsFixtureRead(r) {
 					if test.name == "partial read" {
 						fmt.Fprint(w, `{"data":{"repository":{"hasSponsorshipsEnabled":false}},"errors":[{"message":"sponsorship read denied"}]}`)
@@ -255,7 +265,7 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 				default:
 					fmt.Fprint(w, `{"data":{"updateRepository":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasSponsorshipsEnabled":true}}},"errors":[{"message":"sponsorship write denied"}]}`)
 				}
-			}, false, "/labels", "/topics")
+			}, test.command == "export", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -272,6 +282,21 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{test.command}, false)
+			if test.command == "export" {
+				if err != nil || result.runErr != nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "info: export repository.settings.general.features.sponsorships:") || hasNonInfoDiagnostic(result.stderr.String()) {
+					t.Fatal(err, result.stderr.String())
+				}
+				document := readExportDocument(t, fixture.work)
+				repo := exportMap(document, "repository")
+				features := exportMap(repo, "settings", "general", "features")
+				if _, present := features["sponsorships"]; present || !reflect.DeepEqual(repo["labels"], []any{}) || !reflect.DeepEqual(exportMap(repo, "about")["topics"], []any{}) {
+					t.Fatal("partial observation was adopted or later family lost", document)
+				}
+				if err := fixture.checkRequests(false); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
 			if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), test.want) {
 				t.Fatalf("error=%v run=%v stdout=%q stderr=%q", err, result.runErr, result.stdout.String(), result.stderr.String())
 			}

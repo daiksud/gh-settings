@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -45,60 +44,26 @@ func TestExportStoredSettings(t *testing.T) {
 				return nil
 			}))
 			no, yes := false, true
-			policy := "ALL"
 			issuePolicy := "ALL"
-			squashTitle, squashMessage, mergeTitle, mergeMessage := "COMMIT_OR_PR_TITLE", "COMMIT_MESSAGES", "MERGE_MESSAGE", "PR_TITLE"
+			mergeTitle, mergeMessage := "MERGE_MESSAGE", "PR_TITLE"
 			names := []string{"a", "b"}
 			id, color, description := int64(1), "abcdef", "existing label"
 			labels := appLabelDeclarations(t, settings.LabelDeclaration{ID: &id, Name: "bug", Color: &color, Description: &description})
 			want := settings.Declaration{
 				Repository: settings.RepositoryDeclaration{
-					HasPullRequests: &no, PullRequestCreationPolicy: &policy, IssueCreationPolicy: &issuePolicy, HasSponsorships: &no,
+					HasPullRequests: &no, IssueCreationPolicy: &issuePolicy, HasSponsorships: &no,
 					Description: &test.state.Description, Homepage: &test.state.Homepage, DefaultBranch: &test.state.DefaultBranch,
 					HasIssues: &test.state.HasIssues, HasProjects: &test.state.HasProjects, HasWiki: &test.state.HasWiki, HasDiscussions: &test.state.HasDiscussions, WebCommitSignoffRequired: &test.state.WebCommitSignoffRequired, IsTemplate: &test.state.IsTemplate,
 					AllowMergeCommit: &yes, AllowSquashMerge: &no, AllowRebaseMerge: &yes, DeleteBranchOnMerge: &no, AllowAutoMerge: &no, AllowUpdateBranch: &yes,
-					SquashMergeCommitTitle: &squashTitle, SquashMergeCommitMessage: &squashMessage, MergeCommitTitle: &mergeTitle, MergeCommitMessage: &mergeMessage,
+					MergeCommitTitle: &mergeTitle, MergeCommitMessage: &mergeMessage,
 				}, Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels,
 			}
-			wantCalls := []string{"target", "root", "repository", "topics", "labels", "save"}
+			if !test.state.HasIssues {
+				want.Repository.IssueCreationPolicy = nil
+			}
+			wantCalls := []string{"target", "root", "repository", "merge", "pr", "issue", "sponsorships", "topics", "labels", "save"}
 			if err != nil || !reflect.DeepEqual(saved, want) || !reflect.DeepEqual(calls, wantCalls) {
 				t.Fatalf("saved=%+v error=%v calls=%v, want %+v after %v", saved, err, calls, want, wantCalls)
-			}
-		})
-	}
-}
-
-func TestExportReadFailure(t *testing.T) {
-	for _, stage := range []string{"repository"} {
-		t.Run(stage, func(t *testing.T) {
-			cause := errors.New("complete read unavailable")
-			var calls []string
-			checkout := ExportCheckout{
-				Repository: func() (repository.Repository, error) {
-					calls = append(calls, "target")
-					return repository.Repository{}, nil
-				},
-				PrepareSave: func() (func(settings.Declaration) error, error) {
-					calls = append(calls, "root")
-					return func(settings.Declaration) error { calls = append(calls, "save"); return nil }, nil
-				},
-			}
-			err := Export(checkout, exportFixtureReader(t, settings.RepositoryState{}, func(name string, _ repository.Repository) error {
-				calls = append(calls, name)
-				if name == stage {
-					return cause
-				}
-				return nil
-			}))
-			want := []string{"target", "root", "repository", "topics", "labels"}
-			for i, name := range want {
-				if name == stage {
-					want = want[:i+1]
-					break
-				}
-			}
-			if err != cause || !reflect.DeepEqual(calls, want) {
-				t.Fatalf("error=%v calls=%v, want original read failure after %v", err, calls, want)
 			}
 		})
 	}
@@ -147,7 +112,7 @@ func TestExportStorageFailure(t *testing.T) {
 			return func(settings.Declaration) error { calls = append(calls, "save"); return cause }, nil
 		},
 	}, exportFixtureReader(t, settings.RepositoryState{}, func(name string, _ repository.Repository) error { calls = append(calls, name); return nil }))
-	want := []string{"target", "root", "repository", "topics", "labels", "save"}
+	want := []string{"target", "root", "repository", "merge", "pr", "issue", "sponsorships", "topics", "labels", "save"}
 	if err != cause || !reflect.DeepEqual(calls, want) {
 		t.Fatalf("error=%v calls=%v, want original save error after %v", err, calls, want)
 	}
@@ -161,12 +126,29 @@ func exportFixtureReader(t *testing.T, state settings.RepositoryState, step func
 			for _, field := range fields {
 				paths = append(paths, field.Path())
 			}
-			want := []string{"repository.description", "repository.homepage", "repository.default_branch", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.is_template", "repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge", "repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message", "repository.has_pull_requests", "repository.pull_request_creation_policy", "repository.issue_creation_policy", "repository.has_sponsorships"}
-			if !reflect.DeepEqual(paths, want) {
-				t.Fatalf("export fields=%v, want %v", paths, want)
+			groups := []struct {
+				name  string
+				paths []string
+			}{
+				{"repository", []string{"repository.description", "repository.homepage", "repository.default_branch", "repository.has_issues", "repository.has_projects", "repository.has_wiki", "repository.has_discussions", "repository.web_commit_signoff_required", "repository.is_template"}},
+				{"merge", []string{"repository.allow_merge_commit", "repository.allow_squash_merge", "repository.allow_rebase_merge", "repository.delete_branch_on_merge", "repository.allow_auto_merge", "repository.allow_update_branch", "repository.squash_merge_commit_title", "repository.squash_merge_commit_message", "repository.merge_commit_title", "repository.merge_commit_message"}},
+				{"pr", []string{"repository.has_pull_requests", "repository.pull_request_creation_policy"}},
+				{"issue", []string{"repository.issue_creation_policy"}},
+				{"sponsorships", []string{"repository.has_sponsorships"}},
 			}
+			name := ""
+			for _, group := range groups {
+				if reflect.DeepEqual(paths, group.paths) {
+					name = group.name
+					break
+				}
+			}
+			if name == "" {
+				t.Fatalf("unexpected export group fields=%v", paths)
+			}
+
 			methods := settings.MergeMethodsState{AllowMergeCommit: true, AllowRebaseMerge: true, AllowUpdateBranch: true, SquashMergeCommitTitle: "COMMIT_OR_PR_TITLE", SquashMergeCommitMessage: "COMMIT_MESSAGES", MergeCommitTitle: "MERGE_MESSAGE", MergeCommitMessage: "PR_TITLE"}
-			return settings.NewRepositoryObservation(&state, &methods, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(settings.SponsorshipsState{Enabled: false}), step("repository", repo)
+			return settings.NewRepositoryObservation(&state, &methods, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}).WithSponsorships(settings.SponsorshipsState{Enabled: false}), step(name, repo)
 		},
 		Topics: func(repo repository.Repository) ([]string, error) { return []string{"b", "a"}, step("topics", repo) },
 		Labels: func(repo repository.Repository) (settings.LabelObservation, error) {
@@ -175,47 +157,5 @@ func exportFixtureReader(t *testing.T, state settings.RepositoryState, step func
 			}
 			return settings.NewLabelObservation([]settings.LabelState{{ID: 1, Name: "bug", Color: "abcdef", Description: "existing label"}})
 		},
-	}
-}
-
-func TestExportMissingRepositoryObservationPreventsSave(t *testing.T) {
-	for _, test := range []struct {
-		name     string
-		observed settings.RepositoryObservation
-		missing  string
-	}{
-		{"missing base", settings.NewRepositoryObservation(nil, &settings.MergeMethodsState{}, nil), "repository.description"},
-		{"missing merge", settings.NewRepositoryObservation(&settings.RepositoryState{}, nil, nil), "repository.allow_merge_commit"},
-		{"missing PR access", settings.NewRepositoryObservation(&settings.RepositoryState{}, &settings.MergeMethodsState{}, nil), "repository.has_pull_requests"},
-		{"missing Issue policy", settings.NewRepositoryObservation(&settings.RepositoryState{}, &settings.MergeMethodsState{}, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}), "repository.issue_creation_policy"},
-		{"missing sponsorships", settings.NewRepositoryObservation(&settings.RepositoryState{}, &settings.MergeMethodsState{}, &settings.PRAccessState{PullRequestCreationPolicy: "ALL"}).WithIssueCreationPolicy(settings.IssueCreationPolicyState{Policy: "ALL"}), "repository.has_sponsorships"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			var calls []string
-			checkout := ExportCheckout{
-				Repository: func() (repository.Repository, error) {
-					calls = append(calls, "target")
-					return repository.Repository{}, nil
-				},
-				PrepareSave: func() (func(settings.Declaration) error, error) {
-					calls = append(calls, "root")
-					return func(settings.Declaration) error { calls = append(calls, "save"); return nil }, nil
-				},
-			}
-			err := Export(checkout, Reader{
-				ObserveRepository: func(repository.Repository, []settings.FieldID) (settings.RepositoryObservation, error) {
-					calls = append(calls, "repository")
-					return test.observed, nil
-				},
-				Topics: func(repository.Repository) ([]string, error) { calls = append(calls, "topics"); return nil, nil },
-				Labels: func(repository.Repository) (settings.LabelObservation, error) {
-					calls = append(calls, "labels")
-					return settings.LabelObservation{}, nil
-				},
-			})
-			if err == nil || !strings.Contains(err.Error(), test.missing) || !reflect.DeepEqual(calls, []string{"target", "root", "repository"}) {
-				t.Fatalf("error=%v calls=%v", err, calls)
-			}
-		})
 	}
 }

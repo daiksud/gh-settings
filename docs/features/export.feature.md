@@ -11,7 +11,8 @@ topics, labels and all supported readable setting families without changing
 GitHub settings. `export` saves `.github/settings.yml` at the checkout root and
 creates a missing `.github` directory. Success has no stdout; unavailable independent
 families emit bounded info and independent families continue. First export omits
-unavailable families; re-export retains their prior valid declarations. See the
+unavailable families; re-export retains their prior valid declarations where
+compatible with positively acquired settings. See the
 [automatic settings export contract](readable-settings-export.feature.md).
 
 Existing files are decoded and validated before observation. Invalid/unreadable
@@ -148,12 +149,13 @@ These origin-support changes are supported and do not change settings YAML synta
 
 ### Rule: Report export failures
 
-#### Scenario: Core repository settings cannot be retrieved
+#### Scenario: About and basic General settings cannot be retrieved
 
-- Given GitHub rejects or cannot complete the core repository settings read
+- Given GitHub rejects or cannot complete the About/basic General settings read
 - When the maintainer runs `gh settings export`
-- Then the command exits with a nonzero status
-- And standard error describes the failure
+- Then independent readable groups are still acquired and saved
+- And unavailable fields are omitted initially or retain compatible valid prior intent
+- And standard error contains bounded family information without upstream details
 - And standard output is empty
 
 #### Scenario: There is no usable current repository
@@ -172,13 +174,14 @@ These origin-support changes are supported and do not change settings YAML synta
 - Then the command exits with a nonzero status
 - And no GitHub API request is made
 
-#### Scenario: The core repository response cannot form complete settings
+#### Scenario: One repository response cannot form a complete observation
 
-- Given GitHub returns malformed core repository data or omits a required core setting
+- Given GitHub returns malformed repository data or omits a required group member
 - When the maintainer runs `gh settings export`
-- Then the command exits with a nonzero status
-- And standard error describes the invalid response
-- And standard output is empty
+- Then no partial value from that response is adopted
+- And other independent groups continue with bounded information for the failed group
+- And the resulting partial declaration validates locally
+- And successful output does not claim that unobserved settings or repository existence were verified
 
 #### Scenario: Standard output is unavailable
 
@@ -196,7 +199,7 @@ These origin-support changes are supported and do not change settings YAML synta
 
 ### Test mapping
 
-These scenarios map to ordinary Go tests, [application export tests](../../internal/app/export_test.go), [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Application tests record target and destination resolution, the request for every supported Repository FieldID, complete typed observations, and the final save without Git or files. Missing core repository observations stop export; independent unavailable families emit info and retain prior intent. Workspace tests retain guarded replacement and verify that a prepared saver remains bound to its resolved checkout root. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
+These scenarios map to ordinary Go tests, [application export tests](../../internal/app/export_test.go), [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Application tests record target and destination resolution, the request for every supported Repository FieldID, complete typed observations, and the final save without Git or files. The five About/General observation groups are independently complete; unavailable groups emit info and retain compatible prior intent while successful siblings are saved. The [partial-export process regressions](../../tests/acceptance/repository_export_isolation_test.go) verify retained partial declarations and positively observed dependency suppression. Workspace tests retain guarded replacement and verify that a prepared saver remains bound to its resolved checkout root. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
@@ -215,11 +218,11 @@ These scenarios map to ordinary Go tests, [application export tests](../../inter
 | Reject a rewrite-only transport alias | `TestCurrentRepositoryRejectsRewriteOnlyAlias` | `origin-alias` |
 | Read an origin from repository-specific Git configuration | `TestCurrentRepositoryIgnoresUnscopedOrigins` | `origin-worktree` |
 | Save export output and validate it locally | — | `TestExportThenValidate/ordinary-values`, `TestExportThenValidate/zero-and-null-strings` |
-| Settings cannot be retrieved | `TestReadRepositoryFailures`, `TestExportReadFailure` | `read-failure`, `TestExportExistingFile/api-failure` |
+| Unavailable base settings still save readable siblings | `TestReadRepositoryFailures`, [TestExportRepositoryUnavailableGroupsRetainOnlyPriorIntent](../../internal/app/export_repository_test.go) | `read-failure`, `TestExportExistingFile/api-failure` |
 | There is no usable current repository | `TestExportTargetFailureBeforeRead`, `TestExportRootFailureBeforeRead`, `TestCheckoutPrepareSaveOutsideGit` | `repository-failure` |
 | Global origin does not replace a missing checkout | `TestCurrentRepositoryRequiresCheckout` | — |
 | The response cannot form a complete configuration | `TestReadRepositoryFailures` | `incomplete-response`, `TestExportExistingFile/malformed-response`, `TestExportExistingFile/incomplete-response` |
-| Required Repository observations are missing | [TestExportMissingRepositoryObservationPreventsSave](../../internal/app/export_test.go), [TestRepositoryObservationDeclarationRequiresCompleteValues](../../internal/settings/requested_observation_test.go) | — |
+| Missing repository-group observations retain compatible prior intent | [TestExportRepositoryUnavailableGroupsRetainOnlyPriorIntent](../../internal/app/export_repository_test.go), [strict all-fields projection](../../internal/settings/requested_observation_test.go) | `TestRepositoryExportIndependentObservationsAcceptance` |
 | Standard output is unavailable | [TestExportDoesNotWriteStdout](../../internal/cli/run_test.go) | `TestExportExistingFile/replace` |
 | A command is not implemented | `TestUnsupportedCommand` | `unsupported-command` |
 

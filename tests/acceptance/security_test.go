@@ -215,7 +215,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 		t.Fatal(s, p, writes)
 	}
 	mu.Unlock()
-	// Unknown requested state and invalid selections preserve the existing file.
+	// Unavailable export retains Security intent; strict failures preserve the file.
 	for _, failure := range []string{"denied", "redirect", "invalid-selection"} {
 		mu.Lock()
 		mode = failure
@@ -231,7 +231,16 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 		}
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 		after, _ := os.ReadFile(path)
-		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(after) != string(original) {
+		if failure == "denied" {
+			if err != nil || r.runErr != nil || r.stdout.Len() != 0 || !strings.Contains(r.stderr.String(), "info: export repository.settings.advanced_security.secret_protection:") || hasNonInfoDiagnostic(r.stderr.String()) {
+				t.Fatal(failure, err, r.stderr.String())
+			}
+			document := readExportDocument(t, fixture.work)
+			secret := exportMap(document, "repository", "settings", "advanced_security", "secret_protection")
+			if !reflect.DeepEqual(secret, map[string]any{"enabled": false}) || !reflect.DeepEqual(exportMap(document, "repository", "about")["topics"], []any{}) {
+				t.Fatal("unavailable Security intent or independent Topics lost", document)
+			}
+		} else if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(after) != string(original) {
 			t.Fatal(failure, err, r.stderr.String(), string(after))
 		}
 		mu.Lock()

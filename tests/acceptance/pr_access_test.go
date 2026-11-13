@@ -218,6 +218,16 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 				defer mu.Unlock()
 				methods = append(methods, r.Method+" "+r.URL.Path)
 				w.Header().Set("Content-Type", "application/json")
+				if tt.command == "export" && r.Method == http.MethodGet {
+					switch r.URL.Path {
+					case "/repos/owner/current/topics":
+						fmt.Fprint(w, `{"names":[]}`)
+						return
+					case "/repos/owner/current/labels":
+						fmt.Fprint(w, `[]`)
+						return
+					}
+				}
 				if serveIssueCreationPolicyFixtureRead(w, r) || serveSponsorshipsFixtureRead(w, r) {
 					return
 				}
@@ -277,7 +287,7 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 				}
 				t.Error("unexpected later operation or redirect", r.Method, r.URL)
 				w.WriteHeader(400)
-			}, false, "/labels", "/topics")
+			}, tt.command == "export", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -292,6 +302,21 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 			}
 			writeSettingsFile(fixture.work, original)
 			result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{tt.command}, false)
+			if tt.command == "export" {
+				if err != nil || result.runErr != nil || result.stdout.Len() != 0 || !strings.Contains(result.stderr.String(), "info: export repository.settings.general.features.pull_requests:") || hasNonInfoDiagnostic(result.stderr.String()) {
+					t.Fatal(err, result.stderr.String())
+				}
+				document := readExportDocument(t, fixture.work)
+				repo := exportMap(document, "repository")
+				features := exportMap(repo, "settings", "general", "features")
+				if _, present := features["pull_requests"]; present || !reflect.DeepEqual(repo["labels"], []any{}) || !reflect.DeepEqual(exportMap(repo, "about")["topics"], []any{}) {
+					t.Fatal("partial observation was adopted or later family lost", document)
+				}
+				if err := fixture.checkRequests(false); err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
 			if err != nil || result.runErr == nil || result.stdout.Len() != 0 || !strings.Contains(withoutExportInfo(result.stderr.String()), tt.want) {
 				t.Fatal(err, result.stderr.String(), result.stdout.String())
 			}

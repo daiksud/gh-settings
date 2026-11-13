@@ -28,7 +28,7 @@ The [GraphQL Repository field](https://docs.github.com/en/graphql/reference/obje
 
 The shared `MergeMethodsState`, adapter and deferred callback retain their internal names but hold four merge-related booleans; current source also includes two PR option booleans and four commit enums. A declaration containing only the new field calls GraphQL without the base REST read. Omitting all merge-related fields skips GraphQL.
 
-Missing/null repository or field values, invalid types, transport/HTTP/JSON failures, and GraphQL errors including partial data fail the whole read. They never silently become false or fall back to a write-privileged REST read. A read failure preserves an existing export file and discards any partial plan comparison.
+Missing/null repository or field values, invalid types, transport/HTTP/JSON failures, and GraphQL errors including partial data fail the whole read. They never silently become false or fall back to a write-privileged REST read. A read failure discards any partial plan comparison. Export handles the complete merge group independently under the [readable-settings contract](readable-settings-export.feature.md), retaining compatible prior intent or omitting unavailable values while other groups still export.
 
 An [isolated PR Actions run](https://github.com/daiksud/gh-settings/actions/runs/39098804967) returned `deleteBranchOnMerge: true` with effective Contents read and Metadata read only. It used no checkout, App credentials, Environment or write permission. Its temporary workflow is excluded from the final implementation diff. This proves access for that token/repository, not all possible credentials.
 

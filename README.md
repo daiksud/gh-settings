@@ -35,7 +35,7 @@ gh settings export
 
 ### 2. Edit the declaration
 
-Edit the saved `.github/settings.yml`. Current-source export automatically attempts all supported readable families. Independent unavailable families produce info and are omitted initially or retained from an existing declaration; core repository acquisition remains required. See the [export reference](docs/commands.md#export-behavior) and the selected release's contract. Remove any resources or fields you do not want to manage. For example:
+Edit the saved `.github/settings.yml`. Current-source export automatically attempts all supported readable families. Independent unavailable families, including About/General groups, produce info and are omitted initially or retained where compatible with acquired settings. Checkout/origin resolution and local file checks remain required. See the [export reference](docs/commands.md#export-behavior) and the selected release's contract. Remove any resources or fields you do not want to manage. For example:
 
 ```yaml
 version: daiksud/gh-settings@v0

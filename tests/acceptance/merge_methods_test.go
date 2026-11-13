@@ -189,15 +189,24 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				t.Fatal(err)
 			}
 			if fail {
-				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "fixture read denied") || result.stdout.Len() != 0 {
+				if result.runErr != nil || !strings.Contains(result.stderr.String(), "info: export repository.settings.general.pull_requests:") || strings.Contains(result.stderr.String(), "fixture read denied") || result.stdout.Len() != 0 {
 					t.Fatalf("result=%+v", result)
 				}
-				if err := checkSettingsUnchanged(fixture.work, before); err != nil {
+				data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
+				if err != nil {
 					t.Fatal(err)
+				}
+				var document map[string]any
+				if err := yaml.Unmarshal(data, &document); err != nil {
+					t.Fatal(err)
+				}
+				general := exportMap(document, "repository", "settings", "general")
+				if _, present := general["pull_requests"]; present || general["default_branch"] != "main" {
+					t.Fatal("unavailable merge settings were fabricated or readable base discarded", string(data))
 				}
 				mu.Lock()
 				defer mu.Unlock()
-				if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql"}) {
+				if len(paths) < 7 || !reflect.DeepEqual(paths[:7], []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels"}) {
 					t.Fatalf("paths=%v", paths)
 				}
 				return

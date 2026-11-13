@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/workspace"
 )
@@ -92,7 +94,7 @@ func TestCheckoutUICompositionNoOpDocuments(t *testing.T) {
 	}
 }
 
-func TestCheckoutUIExportSaveDefersAndRejectsPartialOutput(t *testing.T) {
+func TestCheckoutUIExportSaveDefersAndRejectsInvalidOutput(t *testing.T) {
 	checkout, path := checkoutConfigFixture(t, "# original configuration\nversion: daiksud/gh-settings@v0\nrepository: {}\n")
 	_, save, err := prepareCheckoutSave(checkout)
 	if err != nil {
@@ -102,8 +104,9 @@ func TestCheckoutUIExportSaveDefersAndRejectsPartialOutput(t *testing.T) {
 	if err != nil || string(before) != "# original configuration\nversion: daiksud/gh-settings@v0\nrepository: {}\n" {
 		t.Fatalf("preparation changed destination: %s, %v", before, err)
 	}
-	if err := save(settings.Declaration{}); err == nil {
-		t.Fatal("incomplete export was saved")
+	title := "MERGE_MESSAGE"
+	if err := save(settings.Declaration{Repository: settings.RepositoryDeclaration{MergeCommitTitle: &title}}); err == nil {
+		t.Fatal("invalid export was saved")
 	}
 	if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, before) {
 		t.Fatalf("failed export changed destination: %s, %v", after, err)
@@ -116,6 +119,41 @@ func TestCheckoutUIExportSaveDefersAndRejectsPartialOutput(t *testing.T) {
 	after, err := os.ReadFile(path)
 	if err != nil || !strings.Contains(string(after), "version: daiksud/gh-settings@v0") || !strings.Contains(string(after), "features:\n                issues: false") || strings.Contains(string(after), "schemaVersion") || strings.Contains(string(after), "has_issues") {
 		t.Fatalf("export did not save current UI YAML: %s, %v", after, err)
+	}
+}
+
+func TestCheckoutUIExportWithEveryObservationUnavailableCreatesValidEmptyFile(t *testing.T) {
+	checkout, path := checkoutConfigFixture(t, "")
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	var infos []string
+	err := app.Export(app.ExportCheckout{
+		Repository: func() (repository.Repository, error) {
+			return repository.Repository{Host: "github.com", Owner: "owner", Name: "repo"}, nil
+		},
+		Info: func(path string, cause error) error {
+			infos = append(infos, path)
+			return nil
+		},
+		PrepareSave: func() (func(settings.Declaration) error, error) {
+			_, save, err := prepareCheckoutSave(checkout)
+			return save, err
+		},
+	}, app.Reader{})
+	if err != nil || len(infos) < 5 {
+		t.Fatalf("unavailable observations prevented export: info=%v, err=%v", infos, err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "version: daiksud/gh-settings@v0") || strings.Contains(string(data), "about:") || strings.Contains(string(data), "false") {
+		t.Fatalf("empty export fabricated intent: %s", data)
+	}
+	got, err := loadCheckoutDeclaration(checkout)
+	if err != nil || !got.Empty() {
+		t.Fatalf("empty first export is not a valid no-op declaration: %+v, %v", got, err)
 	}
 }
 

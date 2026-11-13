@@ -7,9 +7,9 @@ import (
 )
 
 // exportAcquiredFamily isolates projection validation from retained declarations
-// and from other reads. Only core About values accompany the acquired family.
+// and from other reads, including unavailable core About values.
 func exportAcquiredFamily(path string, d settings.Declaration) (settings.Declaration, error) {
-	family := settings.Declaration{Repository: settings.RepositoryDeclaration{Description: d.Repository.Description, Homepage: d.Repository.Homepage}}
+	var family settings.Declaration
 	switch path {
 	case "repository.about.topics":
 		family.Topics = d.Topics

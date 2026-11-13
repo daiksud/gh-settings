@@ -12,7 +12,7 @@ supported and implemented in current source. The field is `repository.settings.g
 
 - Omission leaves the field unmanaged; explicit true and false each count as one managed field. Null, quoted booleans and other types fail local validation before target, authentication or API access.
 - The complete repository REST observation requires a non-null boolean, including when another REST field triggered the read. Missing or malformed data fails the read and discards any partial comparison.
-- Export includes the observed boolean only after all required reads succeed. A failed read preserves the destination. Exported false remains an explicit declaration.
+- Export includes the observed boolean after complete base-group acquisition and projection. An unavailable base group follows the [readable-settings contract](readable-settings-export.feature.md); other groups still export. Exported false remains an explicit declaration.
 - Plan is read-only, compares declared values only, and places this field after `has_discussions` and before merge-related fields. This field alone needs no GraphQL request.
 - Apply sends only declared fields through one repository PATCH, with no preliminary GET. An explicit false is sent as native JSON false; omission does not add the key or alter other fields. Existing API errors stop later resources and do not imply rollback.
 - CLI output and rendered Summary use `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` with native booleans. The serialized private same-version report retains raw internal identifiers and bounds.

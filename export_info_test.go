@@ -21,6 +21,9 @@ func TestExportInfoNeverLogsUpstreamSecrets(t *testing.T) {
 		if strings.Contains(b.String(), secret) || !strings.HasPrefix(b.String(), "info: export ") {
 			t.Fatal(b.String())
 		}
+		if !strings.Contains(b.String(), "existing declaration retained where compatible with acquired settings") {
+			t.Fatal("diagnostic must qualify retention when acquired state disables dependent intent", b.String())
+		}
 		var he *api.HTTPError
 		if errors.As(cause, &he) && !strings.Contains(b.String(), "HTTP 403") {
 			t.Fatal(b.String())
