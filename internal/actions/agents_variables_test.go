@@ -103,7 +103,7 @@ func TestAgentsVariablesReportValidation(t *testing.T) {
 	if _, err := validatePlanReport(base, "owner/current"); err != nil {
 		t.Fatal("same names across families rejected", err)
 	}
-	max := settings.PullRequestLimitsFieldCount + 3 + settings.RepositoryFieldCount() + 10 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount
+	max := settings.PullRequestLimitsFieldCount + 3 + settings.RepositoryFieldCount() + 11 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount
 	for _, count := range []int{max, max + 1} {
 		_, err := validatePlanReport(PlanReport{Outcome: "no-difference", Target: "owner/current", Managed: count, Changes: []PlanChange{}}, "owner/current")
 		if (err != nil) != (count > max) {

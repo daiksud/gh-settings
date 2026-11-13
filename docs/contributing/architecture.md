@@ -141,7 +141,7 @@ Current-source Environments use name identity and partial built-in ownership. Ex
 
 Pages visibility and unadopted Actions endpoints remain outside current support. Existing-site Pages, Rulesets, and the documented Actions/security subsets are supported; organization-only custom properties are out of scope. Individual label issue/PR assignment management is not part of the labels feature.
 
-[ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. That historical ownership decision is superseded in unreleased source by the [ID-selected Rulesets specification](../features/rulesets.feature.md): name collisions require explicit adoption by ID, selected objects have fixed defaults, and ordinary apply preserves unlisted objects; [explicit prune](../settings.md#collection-pruning) adds bounded deletions. Inherited/push Rulesets and classic branch protection remain outside that managed collection. Classic branch protection is adopted future work as a separate resource; inherited organization policy and private-only Push controls remain outside the target. Use the selected published package to determine available behavior.
+[ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. That historical ownership decision is superseded in unreleased source by the [ID-selected Rulesets specification](../features/rulesets.feature.md): name collisions require explicit adoption by ID, selected objects have fixed defaults, and ordinary apply preserves unlisted objects; [explicit prune](../settings.md#collection-pruning) adds bounded deletions. Inherited/push Rulesets and classic branch protection remain outside that managed collection. Classic branch protection has a separate [four-control partial-ownership slice](../settings.md#classic-branch-protection); remaining controls and pruning are follow-up work; inherited organization policy and private-only Push controls remain outside the target. Use the selected published package to determine available behavior.
 
 [Ruleset coverage thresholds](../settings.md#code-coverage-thresholds) use the existing whole-object model and strict UI number codec. The model defaults selected declaration omissions to zero but requires complete finite acquired values; API projection never defaults a missing threshold. The writer retains a coverage presence/value drift guard beside Code Quality and PR additional approval, then verifies the complete ACK and independent readback. Existing reports and pruning consume the same validated policy.
 
@@ -255,3 +255,17 @@ preserves retained IDs; a confirmed-removal/later-failure result remains partial
 progress. CLI and typed Action reports render one whole-list change, counted once.
 The [cap specification](../features/pull-request-limits.feature.md#selected-exemption-list)
 records fixture ownership and live-evidence limits.
+
+## Classic branch protection
+
+The UI model and codec own the literal `branch_protection_rules` shape. The
+settings model keeps partial declarations, exact numeric/node identity selection,
+nullable typed companion snapshots and supported-only report changes. The GraphQL
+adapter inventories rules rather than branches, completely paginates actor
+allowances, validates personal/public repository ownership and independently
+verifies partial updates against fresh omitted controls. No generic writable
+parameter passthrough is provided. App preserves declaration creation order,
+actual-write outcomes, failure stopping and guarded ID recording. Export uses the
+existing independent-family retention boundary. The
+[feature specification](../features/classic-protection.feature.md) maps tests and
+records the inspected-schema and nontransactional limits.

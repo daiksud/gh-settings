@@ -178,6 +178,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Private vulnerability reporting | Metadata read and supported public applicability | Administration write and applicable repository authority |
 | Immutable release policy | Administration read; target GET 404 means disabled under the required-permissions precondition, with owner enforcement unknown | Administration write; fresh owner-enforcement preflight and readback |
 | Pages lifecycle/configuration | Pages read | Pages write plus Administration write and applicable repository authority |
+| Classic branch protection (current source) | Complete GraphQL rule/actor visibility, including raw companions | Authorized GraphQL create/update and independent full readback; exact installation grant sufficiency was not live-tested, and REST grant tables alone do not prove it |
 | Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility; parent pruning also needs Environments read for variable/secret metadata | Administration write plus complete supported observation/readback and prune absence confirmation |
 | PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
 
@@ -373,6 +374,15 @@ inherited `GH_DEBUG`. Status-only also hides parent names and policy. See the
 [Environment pruning contract](settings.md#environment-pruning) for custom-rule
 blocking, inactive-pattern visibility limits, fresh checks and nontransactional
 failure effects.
+
+Classic branch-protection entries use the same
+[partial-ownership contract](settings.md#classic-branch-protection) in CLI and
+Action. Detailed Summary shows requested pattern and checkbox changes; status-only
+hides names and values after validating the same private report. Unowned actor,
+PR/check and deployment snapshots never enter the report. This source addition
+does not change an immutable published Action or CLI, and it adds no live mutation
+to the repository workflows. Classic creation IDs are reported for recovery;
+Actions does not rewrite the configuration file.
 
 ## Repository AI Scan
 

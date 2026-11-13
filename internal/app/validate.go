@@ -11,6 +11,11 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 	if err != nil {
 		return settings.Declaration{}, err
 	}
+	if d.BranchProtectionRules != nil {
+		if err := settings.ValidateClassicRules(*d.BranchProtectionRules); err != nil {
+			return settings.Declaration{}, err
+		}
+	}
 	if err := d.Repository.ValidateCommitDependencies(); err != nil {
 		return settings.Declaration{}, err
 	}
