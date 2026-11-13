@@ -85,6 +85,14 @@ The harness requires an explicit binary path and Unix-socket support. It uses go
 
 Process cases cover export → edit → validate → plan → apply, native false/empty values, read-side null normalization, checkout selection, declared-field comparison, exact requests, file preservation, diagnostics, and failure paths. Plan is read-only. Repository REST apply reads fresh state, skips matches and independently verifies changed intent. Topics apply reads complete membership, skips matching sets, and verifies changed sets through an independent GET; nonempty label selections read fresh collection state afterward. Invalid input and empty CLI plan/apply make no API requests. Empty topics remain an authoritative managed set; empty labels select no objects. [Topics acceptance](../../tests/acceptance/topics_test.go) covers matching/reordered sets, explicit clearing, repeated apply, invalid or unavailable reads, rejected PUT, denied/mismatching readback, later-resource stopping and earlier repository progress through the built product. [Topics adapter tests](../../internal/github/topics_test.go) additionally verify complete response validation and redirects. [Topics application tests](../../internal/app/topics_test.go) distinguish actual writes, unchanged work, prewrite failures and unarchive progress, and preserve later Labels/final archive sequencing.
 
+[Label readback acceptance](../../tests/acceptance/label_readback_test.go) checks
+successful acknowledgments followed by stale or denied reads, recovery IDs without
+premature YAML recording, earlier confirmed IDs, rename paths, stopping before
+prune deletions and matching repetition. [ID writeback acceptance](../../tests/acceptance/label_ids_test.go)
+also covers opt-out, Actions suppression, concurrent edits and later failures.
+These fixtures use independent remote state and dummy credentials; they do not
+establish live GitHub behavior.
+
 ### Merge response acceptance
 
 [Merge transport tests](../../internal/github/merge_methods_test.go), [PR option tests](../../internal/github/pr_options_test.go), and [squash](../../internal/github/squash_commit_test.go)/[normal merge enum tests](../../internal/github/merge_commit_test.go) own response completeness: each required field must be present with the correct type and a supported enum value. Any GraphQL errors discard even complete data. [Observation tests](../../internal/github/observation_test.go) also reject missing fields that were not declared; expected responses use literal fixtures independent of production field definitions.

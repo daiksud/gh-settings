@@ -33,8 +33,8 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 		{name: "create plan leaves siblings", command: "plan", declaration: `{labels: [{name: new, color: "#abcdef"}]}`, body: current, want: "repository.labels: create \"new\" color=\"#abcdef\" description=\"\"\n", requests: []string{"GET /repos/owner/current/labels "}},
 		{name: "collision", command: "apply", declaration: `{labels: [{name: KEEP, color: "#abcdef"}]}`, body: current, errorText: "specify id: 7", requests: []string{"GET /repos/owner/current/labels "}},
 		{name: "missing ID", command: "apply", declaration: `{labels: [{id: 99, name: new, color: "#abcdef"}]}`, body: current, errorText: "refusing create fallback", requests: []string{"GET /repos/owner/current/labels "}},
-		{name: "defaults clear description", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: "#abcdef"}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`}},
-		{name: "same ID rename", command: "apply", declaration: `{labels: [{id: 7, name: renamed, color: "#abcdef"}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"renamed","color":"abcdef","description":""}`}},
+		{name: "defaults clear description", command: "apply", declaration: `{labels: [{id: 7, name: keep, color: "#abcdef"}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"keep","color":"abcdef","description":""}`, "GET /repos/owner/current/labels/keep "}},
+		{name: "same ID rename", command: "apply", declaration: `{labels: [{id: 7, name: renamed, color: "#abcdef"}]}`, body: current, want: "Applied repository settings.\n", requests: []string{"GET /repos/owner/current/labels ", "GET /repos/owner/current/labels/keep ", `PATCH /repos/owner/current/labels/keep {"new_name":"renamed","color":"abcdef","description":""}`, "GET /repos/owner/current/labels/renamed "}},
 		{name: "invalid null before API", command: "apply", declaration: `{labels: null}`, errorText: "repository.labels must not be null"},
 		{name: "missing color before API", command: "apply", declaration: `{labels: [{name: new}]}`, errorText: "labels color requires # followed by six hexadecimal characters"},
 		{name: "duplicate before API", command: "plan", declaration: `{labels: [{name: bug, color: "#abcdef"}, {name: BUG, color: "#abcdef"}]}`, errorText: "duplicate label"},
@@ -48,6 +48,7 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string
+			var updated map[string]any
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -64,6 +65,8 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 				case "GET":
 					if r.URL.Path == "/repos/owner/current/labels" {
 						fmt.Fprint(w, tc.body)
+					} else if updated != nil && r.URL.Path == "/repos/owner/current/labels/"+updated["name"].(string) {
+						json.NewEncoder(w).Encode(updated)
 					} else {
 						fmt.Fprint(w, `{"id":7}`)
 					}
@@ -72,7 +75,8 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 					if err := json.Unmarshal(body, &values); err != nil {
 						t.Error(err)
 					}
-					json.NewEncoder(w).Encode(map[string]any{"id": 7, "name": values["new_name"], "color": values["color"], "description": values["description"]})
+					updated = map[string]any{"id": 7, "name": values["new_name"], "color": values["color"], "description": values["description"]}
+					json.NewEncoder(w).Encode(updated)
 				default:
 					t.Error("unexpected mutation", r.Method)
 					w.WriteHeader(400)
