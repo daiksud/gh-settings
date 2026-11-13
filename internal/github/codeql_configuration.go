@@ -12,6 +12,8 @@ import (
 
 var codeQLLanguageAPI = map[string]string{"github_actions": "actions", "c_cpp": "c-cpp", "csharp": "csharp", "go": "go", "java_kotlin": "java-kotlin", "javascript_typescript": "javascript-typescript", "python": "python", "ruby": "ruby", "swift": "swift"}
 
+var codeQLThreatModelAPI = map[string]string{"remote_sources": "remote", "remote_and_local_sources": "remote_and_local"}
+
 func (c *CodeQLDefaultSetupClient) ReadConfiguration(repo repository.Repository) (settings.CodeQLConfigurationObservation, error) {
 	if err := readPersonalPublicSecurityTarget(c.rest, repo); err != nil {
 		return settings.CodeQLConfigurationObservation{}, err
@@ -58,7 +60,14 @@ func decodeCodeQLConfiguration(raw map[string]json.RawMessage) (settings.CodeQLC
 	if label != nil {
 		s.Runner.Label = *label
 	}
-	s.RawThreatModel = *threat
+	for ui, native := range codeQLThreatModelAPI {
+		if native == *threat {
+			s.ThreatModel = ui
+		}
+	}
+	if s.ThreatModel == "" {
+		return settings.CodeQLConfigurationObservation{}, fmt.Errorf("unsupported CodeQL threat model")
+	}
 
 	return settings.NewCodeQLConfigurationObservation(s)
 }
@@ -95,6 +104,9 @@ func (c *CodeQLDefaultSetupClient) UpdateConfiguration(repo repository.Repositor
 	}
 	if d.QuerySuite != nil {
 		payload["query_suite"] = *d.QuerySuite
+	}
+	if d.ThreatModel != nil {
+		payload["threat_model"] = codeQLThreatModelAPI[*d.ThreatModel]
 	}
 	if d.Runner != nil {
 		if d.Runner.Type == "standard_github_runner" {

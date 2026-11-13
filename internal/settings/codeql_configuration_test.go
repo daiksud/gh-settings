@@ -6,7 +6,7 @@ import (
 )
 
 func codeQLTestState() CodeQLConfigurationState {
-	return CodeQLConfigurationState{Languages: []string{"python", "go"}, QuerySuite: "default", Runner: CodeQLRunner{Type: "standard_github_runner"}, RawThreatModel: "remote"}
+	return CodeQLConfigurationState{Languages: []string{"python", "go"}, QuerySuite: "default", Runner: CodeQLRunner{Type: "standard_github_runner"}, ThreatModel: "remote_sources"}
 }
 func TestCodeQLConfigurationPresenceChoicesAndDefensiveState(t *testing.T) {
 	o, err := NewCodeQLConfigurationObservation(codeQLTestState())
@@ -31,7 +31,7 @@ func TestCodeQLConfigurationPresenceChoicesAndDefensiveState(t *testing.T) {
 		t.Fatal("observation aliased")
 	}
 	for _, langs := range [][]string{nil, {}, {"go", "go"}, {"actions"}, {"Go"}} {
-		if _, err := NewCodeQLConfigurationObservation(CodeQLConfigurationState{Languages: langs, QuerySuite: "default", Runner: codeQLTestState().Runner, RawThreatModel: "remote"}); err == nil {
+		if _, err := NewCodeQLConfigurationObservation(CodeQLConfigurationState{Languages: langs, QuerySuite: "default", Runner: codeQLTestState().Runner, ThreatModel: "remote_sources"}); err == nil {
 			t.Fatal(langs)
 		}
 	}
@@ -49,27 +49,52 @@ func TestCodeQLConfigurationPresenceChoicesAndDefensiveState(t *testing.T) {
 	}
 }
 
-func TestCodeQLPreviewThreatModelIsObservationOnly(t *testing.T) {
-	state := codeQLTestState()
-	state.RawThreatModel = "remote_and_local"
-	observed, err := NewCodeQLConfigurationObservation(state)
-	if err != nil {
-		t.Fatal(err)
+func TestCodeQLThreatModelSelectionAndPreservation(t *testing.T) {
+	for _, value := range []string{"remote_sources", "remote_and_local_sources"} {
+		state := codeQLTestState()
+		state.ThreatModel = value
+		observed, err := NewCodeQLConfigurationObservation(state)
+		if err != nil {
+			t.Fatal(err)
+		}
+		all, err := observed.Declaration()
+		if err != nil || all.ThreatModel == nil || *all.ThreatModel != value {
+			t.Fatal(all, err)
+		}
+		if n, changes, err := CompareCodeQLConfiguration(observed, all); err != nil || n != 4 || len(changes) != 0 {
+			t.Fatal(n, changes, err)
+		}
+		suite := "extended"
+		expected := ExpectedCodeQLConfiguration(state, CodeQLConfigurationDeclaration{QuerySuite: &suite})
+		if expected.ThreatModel != value {
+			t.Fatal("omitted threat model changed", expected)
+		}
+		for _, desired := range []string{"remote_sources", "remote_and_local_sources"} {
+			d := CodeQLConfigurationDeclaration{ThreatModel: &desired}
+			n, changes, err := CompareCodeQLConfiguration(observed, d)
+			if err != nil || n != 1 || (len(changes) == 1) != (value != desired) {
+				t.Fatal(n, changes, err)
+			}
+			expected = ExpectedCodeQLConfiguration(state, d)
+			want := copyCodeQLState(state)
+			want.ThreatModel = desired
+			if !reflect.DeepEqual(expected, want) {
+				t.Fatal("omitted companions changed", expected, want)
+			}
+		}
 	}
-	d, err := observed.Declaration()
-	if err != nil {
-		t.Fatal(err)
-	}
-	suite := "extended"
-	desired := CodeQLConfigurationDeclaration{QuerySuite: &suite}
-	expected := ExpectedCodeQLConfiguration(state, desired)
-	if expected.RawThreatModel != "remote_and_local" {
-		t.Fatal("Preview value changed", expected)
-	}
-	if n, _, err := CompareCodeQLConfiguration(observed, d); err != nil || n != 3 {
-		t.Fatal(n, err)
-	}
-	if _, err := NewCodeQLConfigurationChange("threat_model", "remote_sources", "remote_and_local_sources"); err == nil {
-		t.Fatal("excluded control accepted as managed change")
+	for _, value := range []string{"", "remote", "remote_and_local", "future", "REMOTE_SOURCES"} {
+		d := CodeQLConfigurationDeclaration{ThreatModel: &value}
+		state := codeQLTestState()
+		state.ThreatModel = value
+		if d.Validate() == nil {
+			t.Fatal("accepted invalid desired threat model", value)
+		}
+		if _, err := NewCodeQLConfigurationObservation(state); err == nil {
+			t.Fatal("accepted invalid observation", value)
+		}
+		if _, err := NewCodeQLConfigurationChange("threat_model", "remote_sources", value); err == nil {
+			t.Fatal("accepted invalid change", value)
+		}
 	}
 }
