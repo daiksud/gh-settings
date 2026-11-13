@@ -48,7 +48,7 @@ func processClassicClone(v map[string]any) map[string]any {
 	return result
 }
 func TestClassicProtectionExecutableLifecycle(t *testing.T) {
-	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard", "fork-true", "fork-false"} {
+	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "deployments-error-before", "deployments-error-after", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard", "fork-true", "fork-false"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rules := []map[string]any{processClassicRule(7, "Release/**")}
@@ -101,8 +101,12 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				}
 				switch {
 				case strings.Contains(request.Query, "ClassicDeploymentEnvironments"):
-					if mode != "deployments" {
+					if !strings.HasPrefix(mode, "deployments") {
 						t.Error("unexpected reference acquisition")
+					}
+					if mode == "deployments-error-before" || mode == "deployments-error-after" && len(writes) > 0 {
+						json.NewEncoder(w).Encode(map[string]any{"errors": []any{map[string]any{"message": "A_PRIVATE_DEPLOYMENT_UPSTREAM_FAILURE"}}})
+						return
 					}
 					target := processClassicTarget()
 					if forkMode {
@@ -248,7 +252,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 			if forkMode {
 				input = fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', lock_branch: true, allow_fork_syncing: %t}]}}\n", mode == "fork-true")
 			}
-			if mode == "deployments" {
+			if strings.HasPrefix(mode, "deployments") {
 				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_deployments_to_succeed_before_merging: {enabled: true, environments: [production]}}]}}\n"
 			}
 			if mode == "admin" {
@@ -299,11 +303,23 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 			if mode == "actions-create" {
 				env = append(env, "GITHUB_ACTIONS=true")
 			}
-			applied := run(mode == "companion-drift" || mode == "create-partial-ack-error", args...)
+			applied := run(mode == "companion-drift" || mode == "create-partial-ack-error" || strings.HasPrefix(mode, "deployments-error-"), args...)
 			mu.Lock()
 			count, followups := len(writes), followupAfterError
 			captured := append([]map[string]any{}, writes...)
 			mu.Unlock()
+			if strings.HasPrefix(mode, "deployments-error-") {
+				post := mode == "deployments-error-after"
+				want := 0
+				if post {
+					want = 1
+				}
+				data, err := os.ReadFile(path)
+				if err != nil || string(data) != input || count != want || applied.stdout.Len() != 0 || strings.Contains(applied.stderr.String(), "A_PRIVATE_DEPLOYMENT_UPSTREAM_FAILURE") || !strings.Contains(applied.stderr.String(), "read classic deployment references: request failed") || strings.Contains(applied.stderr.String(), "unconfirmed effects may remain") != post {
+					t.Fatal("deployment diagnostic boundary", count, applied.stderr.String(), err)
+				}
+				return
+			}
 			if mode == "create-partial-ack-error" {
 				data, err := os.ReadFile(path)
 				if err != nil || string(data) != input || count != 1 || followups != 0 || applied.stdout.Len() != 0 {

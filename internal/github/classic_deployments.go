@@ -31,15 +31,17 @@ func (c *ClassicProtectionClient) classicDeploymentReferences(repo repository.Re
 		}
 		var response json.RawMessage
 		if err := c.graphql.Do(query, map[string]any{"owner": repo.Owner, "name": repo.Name, "cursor": after}, &response); err != nil {
-			return nil, fmt.Errorf("read classic deployment references: %w", err)
+			// This identity-only lookup must not expose upstream bodies, transport
+			// errors or response-controlled member names through apply diagnostics.
+			return nil, fmt.Errorf("read classic deployment references: request failed")
 		}
 		top, err := classicObject(response, "repository")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid classic Environment repository response")
 		}
 		fields, err := accessObject(top["repository"], "classic Environment repository")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid classic Environment repository object")
 		}
 		connection, ok := fields["environments"]
 		if !ok {
@@ -49,14 +51,14 @@ func (c *ClassicProtectionClient) classicDeploymentReferences(repo repository.Re
 		raw, _ := json.Marshal(fields)
 		current, err := decodeClassicTarget(raw, repo)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("incomplete or unsupported classic Environment repository identity")
 		}
 		if current.id != target.id || current.archived != target.archived || current.isFork != target.isFork {
 			return nil, fmt.Errorf("classic Environment target identity or archive state changed")
 		}
 		nodes, total, end, next, err := classicPage(connection)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("incomplete classic Environment inventory page")
 		}
 		if expected >= 0 && expected != total {
 			return nil, fmt.Errorf("classic Environment inventory count changed")
@@ -65,20 +67,20 @@ func (c *ClassicProtectionClient) classicDeploymentReferences(repo repository.Re
 		for _, raw := range nodes {
 			fields, err := classicObject(raw, "id", "databaseId", "name")
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("incomplete classic Environment identity object")
 			}
 			id, err := accessString(fields, "id")
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("invalid classic Environment node identity")
 			}
 			name, err := accessString(fields, "name")
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("invalid classic Environment name")
 			}
 			// The schema permits null; positive numeric identity is supplementary only.
 			if !bytes.Equal(bytes.TrimSpace(fields["databaseId"]), []byte("null")) {
 				if _, err := classicInt(fields, "databaseId"); err != nil {
-					return nil, err
+					return nil, fmt.Errorf("invalid classic Environment numeric identity")
 				}
 			}
 			if ids[id] || inventory[name] != "" {
