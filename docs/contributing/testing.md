@@ -497,8 +497,15 @@ Environment-prune conflicts fail before unrelated writes or unarchive.
 The supplied CLI lifecycle checks export, plan, update and repeat no-op.
 `TestBuiltCompositeClassicDeployments` runs the real public Action through enabled,
 disabled, empty and matching configurations, private plans and post-write reference
-replacement. It checks unchanged checkout and success-only outputs. These isolated
-fixtures do not establish live deployment execution or effective branch protection.
+replacement. `TestClassicDeploymentReferenceDiagnostics` covers GraphQL, HTTP,
+transport and malformed-member acquisition failures before/after a mutation,
+including response-controlled member names. The real CLI lifecycle and supplied
+Action include pre/post-write diagnostic regressions; the Action also uses a
+malformed HTTP response to exercise the actual transport failure. Original
+supplied-product and owner regressions leaked the sentinel before correction.
+These checks retain mutation counts, certainty markers, unchanged checkout and
+success-only outputs. These isolated fixtures do not establish live deployment
+execution or effective branch protection.
 
 ## Classic PR-review verification
 

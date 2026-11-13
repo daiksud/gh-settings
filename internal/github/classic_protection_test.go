@@ -41,6 +41,7 @@ func classicFixtureClone(v map[string]any) map[string]any {
 }
 
 type classicAPIFixture struct {
+	response      func(string, *http.Request) (*http.Response, error)
 	t             *testing.T
 	client        *ClassicProtectionClient
 	rules         []map[string]any
@@ -166,6 +167,11 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 		f.calls = append(f.calls, phase)
 		if f.hook != nil {
 			f.hook(phase, body, request.Variables)
+		}
+		if f.response != nil {
+			if response, err := f.response(phase, req); response != nil || err != nil {
+				return response, err
+			}
 		}
 		envelope := map[string]any{"data": body}
 		if f.graphqlErrors != nil {
