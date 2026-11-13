@@ -123,6 +123,19 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Actions.Variables = &values
 	}
+	if source.OIDCSubject != nil {
+		if err := settings.ValidateOIDCSubject(*source.OIDCSubject); err != nil {
+			return uimodel.Repository{}, err
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		if result.Settings.Actions == nil {
+			result.Settings.Actions = &uimodel.ActionsSettings{}
+		}
+		copy := settings.CloneOIDCSubject(*source.OIDCSubject)
+		result.Settings.Actions.OIDC = &uimodel.OIDCSettings{SubjectClaim: &copy}
+	}
 	if source.AgentsVariables != nil {
 		values := variableValuesUI(*source.AgentsVariables)
 		if result.Settings == nil {

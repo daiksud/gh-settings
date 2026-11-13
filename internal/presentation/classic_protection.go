@@ -8,7 +8,7 @@ import (
 )
 
 func ClassicProtectionLine(c settings.ClassicChange) string {
-	names := []string{"require_conversation_resolution_before_merging", "require_signed_commits", "require_linear_history", "allow_deletions", "lock_branch"}
+	names := []string{"require_conversation_resolution_before_merging", "require_signed_commits", "require_linear_history", "allow_deletions", "lock_branch", "do_not_allow_bypassing_the_above_settings"}
 	if c.After == nil {
 		parts := []string{fmt.Sprintf("branch_name_pattern: %q", c.Before.BranchNamePattern)}
 		for i, value := range settings.ClassicFlags(*c.Before) {

@@ -21,20 +21,23 @@ func deploymentGroup(enabled bool, names ...string) *settings.ClassicDeployments
 }
 
 func TestClassicDeploymentReconciliation(t *testing.T) {
-	for _, mode := range []string{"enable", "change-list", "empty", "disable", "matching", "other-flag", "omitted", "omitted-drift", "replace-after", "missing-before", "foreign-before", "unknown-ack", "readback-drift", "other-companion-drift", "new-unselected", "create", "create-partial-error"} {
+	for _, mode := range []string{"enable", "change-list", "empty", "disable", "matching", "other-flag", "admin-flag", "omitted-admin-drift", "omitted", "omitted-drift", "replace-after", "missing-before", "foreign-before", "unknown-ack", "readback-drift", "other-companion-drift", "new-unselected", "create", "create-partial-error"} {
 		t.Run(mode, func(t *testing.T) {
 			rule := classicFixtureRule(7, "release/**")
 			rule["requiresDeployments"] = false
 			rule["requiredDeploymentEnvironments"] = []string{"staging", "production"}
 			f := newClassicAPIFixture(t, rule)
-			id, yes := int64(7), true
+			id, yes, no := int64(7), true, false
 			d := settings.ClassicRule{ID: &id, BranchNamePattern: "release/**", RequireDeploymentsToSucceedBeforeMerging: deploymentGroup(true, "production")}
 			switch mode {
-			case "change-list", "disable", "matching", "other-flag":
+			case "change-list", "disable", "matching", "other-flag", "admin-flag":
 				rule["requiresDeployments"] = true
 			}
-			if mode == "matching" || mode == "other-flag" {
+			if mode == "matching" || mode == "other-flag" || mode == "admin-flag" {
 				d.RequireDeploymentsToSucceedBeforeMerging = deploymentGroup(true, "production", "staging")
+			}
+			if mode == "admin-flag" {
+				d.DoNotAllowBypassingTheAboveSettings = &no
 			}
 			if mode == "disable" {
 				f.mutate = func(rule map[string]any) { rule["requiredDeploymentEnvironments"] = nil }
@@ -97,6 +100,9 @@ func TestClassicDeploymentReconciliation(t *testing.T) {
 					if mode == "omitted-drift" {
 						node["requiredDeploymentEnvironments"] = nil
 					}
+					if mode == "omitted-admin-drift" {
+						node["isAdminEnforced"] = false
+					}
 					if mode == "other-companion-drift" {
 						node["lockAllowsFetchAndMerge"] = true
 					}
@@ -114,6 +120,17 @@ func TestClassicDeploymentReconciliation(t *testing.T) {
 			if len(f.writes) != writes {
 				t.Fatal(f.writes, err)
 			}
+			if mode == "admin-flag" {
+				reads := 0
+				for _, call := range f.calls {
+					if call == "environments" {
+						reads++
+					}
+				}
+				if reads != 2 {
+					t.Fatal("administrator-only change did not recheck selected deployment identities", f.calls)
+				}
+			}
 			if mode == "matching" && result.Wrote {
 				t.Fatal(result)
 			}
@@ -127,6 +144,8 @@ func TestClassicDeploymentReconciliation(t *testing.T) {
 			switch mode {
 			case "disable":
 				want["requiresDeployments"] = false
+			case "admin-flag":
+				want["isAdminEnforced"] = false
 			case "other-flag", "omitted", "omitted-drift":
 				want["requiresCommitSignatures"] = true
 			default:

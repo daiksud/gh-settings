@@ -426,6 +426,59 @@ A cache size eviction limit above 10 GB can incur additional charges. It is an e
 
 Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
 
+## Actions OIDC subject template
+
+Use `repository.settings.actions.oidc.subject_claim` for the **Subject claim**
+page of a personally owned public repository:
+
+```yaml
+repository:
+  settings:
+    actions:
+      oidc:
+        subject_claim:
+          use_default_template: false
+          subject_claim_template: [repo, context, job_workflow_ref]
+```
+
+The group owns the complete active template. Omission or an empty mapping leaves
+it unmanaged. `use_default_template: false` requires an explicit ordered array;
+`true` forbids that array and selects GitHub's default template. An array without
+an explicit false mode is invalid. Keys are unique nonempty ASCII alphanumeric
+or underscore strings; order and case are preserved. There is no closed claim
+name list. Null, unsupported keys and coercions are rejected. An explicit
+`[]` is accepted locally because neither the official API schema nor the inspected
+form establishes a minimum; GitHub acceptance and exact readback are still required.
+
+Selecting default deactivates the custom template. It does not promise to retain
+hidden inactive keys that GitHub ignores in default mode. Changing a subject can
+stop cloud authentication: coordinate the corresponding cloud trust configuration
+before applying it. This tool does not issue tokens, run workflows, or change
+cloud trust, credentials, grants or billing.
+
+Ordinary export acquires this family independently. Known default exports true
+without keys; known custom exports false with its ordered keys. Unavailable or
+incomplete observations emit bounded info and retain the prior whole group, if
+present. Missing optional immutable mode remains unknown rather than false and
+does not prevent export or a matching no-op.
+
+Plan compares one managed group. Apply reacquires complete personal-public target
+identity and the active template, then skips a match. A needed PUT also requires
+a known immutable-subject boolean and replays its exact value, including false,
+without changing that mode. Writable immutable-mode support is not included.
+Missing or malformed required state fails before writing. A successful PUT must
+return HTTP 201 with a bounded empty acknowledgment, followed by independent GET
+confirmation of the original repository/owner identity, active template and
+unchanged immutable mode. A failed write or readback reports uncertain effects;
+earlier verified progress remains and later work stops. No rollback or automatic
+retry occurs, and fresh reads are not a concurrency lock.
+
+The official [repository OIDC API](https://docs.github.com/en/rest/actions/oidc)
+uses Actions read for observation and Actions write for updates. Its read-only
+subject prefix is neither YAML intent nor identity evidence; it and raw API bodies
+are excluded from diagnostics even with `GH_DEBUG=api`. Current-source support
+requires adoption through a package that includes this capability.
+
 ## Copilot code review custom instructions
 
 `repository.settings.copilot.code_review.use_custom_instructions` corresponds to **Copilot → Code review → Use custom instructions**:
@@ -693,9 +746,10 @@ Preview rules, unknown rules/fields and unsupported event/enforcement values are
 lossily converted. A complete unsupported object's ID/name is retained so
 unlisted objects stay unmanaged without prune; selecting it for update, as a
 prune candidate, or including it in a full collection export fails. Incomplete or inconsistent reads always fail.
-Currently unsupported actor types, Preview lockfile controls and OIDC settings
-require target UI/API assessment and implementation; Preview status alone is not
-an exclusion. Workflow and other feature configuration-file authoring remain excluded.
+Currently unsupported actor types, Preview lockfile controls and writable OIDC
+immutable mode require target UI/API assessment and implementation; Preview status
+alone is not an exclusion. The [OIDC active template](#actions-oidc-subject-template)
+has separate support. Workflow and other feature configuration-file authoring remain excluded.
 
 `--prune actions-policies` adds deletion of unlisted repository-owned IDs only
 when `policies` is present; `[]` selects every current policy as a candidate.
@@ -1276,7 +1330,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and five independent checkboxes plus the required-deployment group. It is separate
+and six independent checkboxes plus the required-deployment group. It is separate
 from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1293,6 +1347,7 @@ repository:
         require_linear_history: true
         allow_deletions: false
         lock_branch: false
+        do_not_allow_bypassing_the_above_settings: true
         require_deployments_to_succeed_before_merging:
           enabled: true
           environments: [staging, production]
@@ -1316,9 +1371,9 @@ that this is priority order. See GitHub's
 [pattern and priority guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
 
 Each checkbox is optional. Omission preserves its latest observed value; explicit
-`false` requests false. Null, native GraphQL aliases, admin-enforcement flags and
-unlisted controls are rejected. Without explicit classic prune, omitted collections
-and `[]` manage no objects, and unlisted rules are preserved.
+`false` requests false. Null, native GraphQL aliases and unlisted controls are
+rejected. Without explicit classic prune, omitted collections and `[]` manage no
+objects, and unlisted rules are preserved.
 [Classic rule pruning](#classic-branch-protection-pruning) adds whole-rule deletion
 through a command option; there is no YAML deletion marker or reordering operation.
 
@@ -1336,6 +1391,16 @@ GitHub documents that locked branches cannot be deleted, even when deletion is
 otherwise allowed. This checkbox does not rewrite the separate deletion setting
 or promise that it will take effect while locked. Readback verifies stored
 settings, not an attempted push, deletion or effective enforcement.
+
+`do_not_allow_bypassing_the_above_settings` matches the UI checkbox: true applies
+this rule's protections to administrators; false removes this flag's enforcement.
+It maps directly to GraphQL `isAdminEnforced`. Omission preserves the acquired
+boolean, and neither direction changes actor allowance lists, other rule controls
+or repository Rulesets. Overlapping policies can still affect effective access.
+The unsaved target form was inspected on 2026-11-14. The
+[maintained provider's direct read/write mapping](https://github.com/integrations/terraform-provider-github/blob/1b9c5c13eb840a72c99d088f3bf3b5e00b950c04/github/resource_github_branch_protection.go)
+corroborates this polarity despite the ambiguous GraphQL description. This is
+mapping evidence, not a live test of administrator bypass or effective enforcement.
 
 `require_deployments_to_succeed_before_merging` is a complete active group.
 Omission and `{}` leave it unmanaged. `enabled: true` requires an explicit
@@ -1375,7 +1440,7 @@ intentional Environment deletion.
 Omitting the deployment group preserves its raw flag, nullness, list order and
 inactive names exactly. Selecting it owns the complete active configuration;
 disabling sends only `requiresDeployments: false` and makes no promise about
-hidden inactive-list storage. Complete known PR, check/App binding, admin,
+hidden inactive-list storage. Complete known PR, check/App binding,
 fork-sync, force-push and actor-allowance state remains unowned preservation
 evidence. Null stays distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
@@ -1391,13 +1456,13 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern and these five
+Automatic export projects every readable rule's ID, pattern and these six
 checkboxes and active deployment configuration. It does not export or adopt the
 other controls. Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
 GraphQL cannot reveal future unselected schema fields. PR/check groups,
-admin enforcement, fork-sync and force-push selection remain separate work;
+fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
@@ -1414,15 +1479,15 @@ be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
 Ordinary create/update retains its partial-control ownership.
 
-Deletion removes the entire rule, including configured PR, check, deployment,
-admin and actor protections beyond the supported controls. An overlapping rule may
+Deletion removes the entire rule, including selected controls and unowned PR,
+check and actor protections. An overlapping rule may
 then take effect; recreation cannot restore creation-age priority. The plan shows
 this consequence and each complete supported before-policy, without raw private
 companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-five flags, active deployment projection and all known raw companions, including
+six flags, active deployment projection and all known raw companions, including
 inactive deployment names and their order. Missing, denied, partial, unsupported or
 inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck

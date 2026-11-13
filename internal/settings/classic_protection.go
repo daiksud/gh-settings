@@ -30,7 +30,7 @@ type ClassicActor struct{ Kind, ID string }
 // ClassicCompanions retains raw preservation evidence. Deployments additionally
 // has an active supported projection; selecting that group does not erase this snapshot.
 type ClassicCompanions struct {
-	AdminEnforced, AllowsForcePushes, BlocksCreations, DismissesStaleReviews                     bool
+	AllowsForcePushes, BlocksCreations, DismissesStaleReviews                                    bool
 	LockAllowsFetchAndMerge, RequireLastPushApproval                                             bool
 	RequiresApprovingReviews, RequiresCodeOwnerReviews, RequiresDeployments                      bool
 	RequiresStatusChecks, RequiresStrictStatusChecks, RestrictsPushes, RestrictsReviewDismissals bool
@@ -74,6 +74,7 @@ func CloneClassicRule(r ClassicRule) ClassicRule {
 	r.AllowDeletions = cloneClassicValue(r.AllowDeletions)
 	r.LockBranch = cloneClassicValue(r.LockBranch)
 	r.RequireDeploymentsToSucceedBeforeMerging = cloneClassicDeployments(r.RequireDeploymentsToSucceedBeforeMerging)
+	r.DoNotAllowBypassingTheAboveSettings = cloneClassicValue(r.DoNotAllowBypassingTheAboveSettings)
 	return r
 }
 func cloneClassicValue[T any](v *T) *T {
@@ -84,7 +85,7 @@ func cloneClassicValue[T any](v *T) *T {
 	return &c
 }
 func ClassicFlags(r ClassicRule) []*bool {
-	return []*bool{r.RequireConversationResolutionBeforeMerging, r.RequireSignedCommits, r.RequireLinearHistory, r.AllowDeletions, r.LockBranch}
+	return []*bool{r.RequireConversationResolutionBeforeMerging, r.RequireSignedCommits, r.RequireLinearHistory, r.AllowDeletions, r.LockBranch, r.DoNotAllowBypassingTheAboveSettings}
 }
 func ValidateClassicRules(rules []ClassicRule) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}

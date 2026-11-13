@@ -16,8 +16,8 @@ import (
 )
 
 const classicTargetFields = `id nameWithOwner isArchived isPrivate owner { __typename } squashMergeAllowed rebaseMergeAllowed`
-const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch requiresDeployments requiredDeploymentEnvironments`
-const classicCompanionFields = `isAdminEnforced allowsForcePushes blocksCreations dismissesStaleReviews lockAllowsFetchAndMerge requireLastPushApproval requiresApprovingReviews requiresCodeOwnerReviews requiresStatusChecks requiresStrictStatusChecks restrictsPushes restrictsReviewDismissals requiredApprovingReviewCount requiredStatusCheckContexts requiredStatusChecks { context app { id } }`
+const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch isAdminEnforced requiresDeployments requiredDeploymentEnvironments`
+const classicCompanionFields = `allowsForcePushes blocksCreations dismissesStaleReviews lockAllowsFetchAndMerge requireLastPushApproval requiresApprovingReviews requiresCodeOwnerReviews requiresStatusChecks requiresStrictStatusChecks restrictsPushes restrictsReviewDismissals requiredApprovingReviewCount requiredStatusCheckContexts requiredStatusChecks { context app { id } }`
 const classicRuleFields = classicOwnedFields + ` ` + classicCompanionFields + ` repository { ` + classicTargetFields + ` }`
 const classicInventoryQuery = `query ClassicProtectionInventory($owner: String!, $name: String!, $cursor: String) { repository(owner:$owner,name:$name,followRenames:false) { ` + classicTargetFields + ` branchProtectionRules(first:100,after:$cursor) { totalCount pageInfo { hasNextPage endCursor } nodes { ` + classicRuleFields + ` } } } }`
 const classicNodeQuery = `query ClassicProtectionRule($id:ID!) { node(id:$id) { __typename ... on BranchProtectionRule { ` + classicRuleFields + ` } } }`
@@ -113,8 +113,8 @@ func decodeClassicTarget(raw json.RawMessage, repo repository.Repository) (class
 	return t, err
 }
 
-var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "requiresDeployments", "requiredDeploymentEnvironments", "repository"}
-var classicCompanionKeys = []string{"isAdminEnforced", "allowsForcePushes", "blocksCreations", "dismissesStaleReviews", "lockAllowsFetchAndMerge", "requireLastPushApproval", "requiresApprovingReviews", "requiresCodeOwnerReviews", "requiresStatusChecks", "requiresStrictStatusChecks", "restrictsPushes", "restrictsReviewDismissals", "requiredApprovingReviewCount", "requiredStatusCheckContexts", "requiredStatusChecks"}
+var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "repository"}
+var classicCompanionKeys = []string{"allowsForcePushes", "blocksCreations", "dismissesStaleReviews", "lockAllowsFetchAndMerge", "requireLastPushApproval", "requiresApprovingReviews", "requiresCodeOwnerReviews", "requiresStatusChecks", "requiresStrictStatusChecks", "restrictsPushes", "restrictsReviewDismissals", "requiredApprovingReviewCount", "requiredStatusCheckContexts", "requiredStatusChecks"}
 
 func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete bool) (settings.ClassicState, classicTarget, error) {
 	var s settings.ClassicState
@@ -145,7 +145,7 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 		return s, target, err
 	}
 	s.RepositoryID = target.id
-	for k, dest := range map[string]**bool{"requiresConversationResolution": &s.Rule.RequireConversationResolutionBeforeMerging, "requiresCommitSignatures": &s.Rule.RequireSignedCommits, "requiresLinearHistory": &s.Rule.RequireLinearHistory, "allowsDeletions": &s.Rule.AllowDeletions, "lockBranch": &s.Rule.LockBranch} {
+	for k, dest := range map[string]**bool{"requiresConversationResolution": &s.Rule.RequireConversationResolutionBeforeMerging, "requiresCommitSignatures": &s.Rule.RequireSignedCommits, "requiresLinearHistory": &s.Rule.RequireLinearHistory, "allowsDeletions": &s.Rule.AllowDeletions, "lockBranch": &s.Rule.LockBranch, "isAdminEnforced": &s.Rule.DoNotAllowBypassingTheAboveSettings} {
 		v, e := classicBool(m, k)
 		if e != nil {
 			return s, target, e
@@ -171,7 +171,7 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 		return s, target, nil
 	}
 	c := &s.Companions
-	for k, dest := range map[string]*bool{"isAdminEnforced": &c.AdminEnforced, "allowsForcePushes": &c.AllowsForcePushes, "blocksCreations": &c.BlocksCreations, "dismissesStaleReviews": &c.DismissesStaleReviews, "lockAllowsFetchAndMerge": &c.LockAllowsFetchAndMerge, "requireLastPushApproval": &c.RequireLastPushApproval, "requiresApprovingReviews": &c.RequiresApprovingReviews, "requiresCodeOwnerReviews": &c.RequiresCodeOwnerReviews, "requiresStatusChecks": &c.RequiresStatusChecks, "requiresStrictStatusChecks": &c.RequiresStrictStatusChecks, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
+	for k, dest := range map[string]*bool{"allowsForcePushes": &c.AllowsForcePushes, "blocksCreations": &c.BlocksCreations, "dismissesStaleReviews": &c.DismissesStaleReviews, "lockAllowsFetchAndMerge": &c.LockAllowsFetchAndMerge, "requireLastPushApproval": &c.RequireLastPushApproval, "requiresApprovingReviews": &c.RequiresApprovingReviews, "requiresCodeOwnerReviews": &c.RequiresCodeOwnerReviews, "requiresStatusChecks": &c.RequiresStatusChecks, "requiresStrictStatusChecks": &c.RequiresStrictStatusChecks, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
 		v, e := classicBool(m, k)
 		if e != nil {
 			return s, target, e
@@ -584,7 +584,7 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 			input["pattern"] = desired.BranchNamePattern
 		}
 	}
-	names := []string{"requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch"}
+	names := []string{"requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced"}
 	flags := settings.ClassicFlags(desired)
 	var existing []*bool
 	if before != nil {

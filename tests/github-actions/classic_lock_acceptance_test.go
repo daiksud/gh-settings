@@ -17,16 +17,24 @@ import (
 )
 
 func TestBuiltCompositeClassicLock(t *testing.T) {
+	testBuiltCompositeClassicToggle(t, "lock_branch", "lockBranch")
+}
+
+func TestBuiltCompositeClassicAdmin(t *testing.T) {
+	testBuiltCompositeClassicToggle(t, "do_not_allow_bypassing_the_above_settings", "isAdminEnforced")
+}
+
+func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string) {
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "lock", "unlock", "fork-sync-drift"} {
+	for _, scenario := range []string{"matching", "enable", "disable", "fork-sync-drift"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.digest = fmt.Sprintf("%x", sha256.Sum256(product))
 			f.write(f.base["MOCK_ASSET"], string(product))
 			f.write(f.base["MOCK_CHECKSUMS"], f.digest+"  gh-settings-linux-amd64\n")
 			f.write(filepath.Join(f.packagePath, "action/cli-version"), version+"\n")
-			desired := scenario != "unlock"
-			input := fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'PRIVATE_LOCK/**', lock_branch: %t}]}}\n", desired)
+			desired := scenario != "disable"
+			input := fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'PRIVATE_LOCK/**', %s: %t}]}}\n", declarationKey, desired)
 			path := filepath.Join(f.caller, ".github/settings.yml")
 			f.write(path, input)
 			directory, err := os.MkdirTemp("/tmp", "ghs-lock-")
@@ -49,6 +57,7 @@ func TestBuiltCompositeClassicLock(t *testing.T) {
 				"isAdminEnforced": true, "allowsForcePushes": false, "blocksCreations": false, "dismissesStaleReviews": false, "lockAllowsFetchAndMerge": true, "requireLastPushApproval": false, "requiresApprovingReviews": false, "requiresCodeOwnerReviews": false, "requiresDeployments": false, "requiresStatusChecks": false, "requiresStrictStatusChecks": false, "restrictsPushes": false, "restrictsReviewDismissals": false,
 				"requiredApprovingReviewCount": nil, "requiredDeploymentEnvironments": nil, "requiredStatusCheckContexts": nil, "requiredStatusChecks": nil,
 			}
+			rule[apiKey] = lock
 			page := func(nodes []any) map[string]any {
 				return map[string]any{"totalCount": len(nodes), "nodes": nodes, "pageInfo": map[string]any{"hasNextPage": false, "endCursor": nil}}
 			}
@@ -107,15 +116,15 @@ func TestBuiltCompositeClassicLock(t *testing.T) {
 					node["__typename"] = "BranchProtectionRule"
 					body["node"] = node
 				case strings.Contains(request.Query, "mutation ClassicProtectionWrite"):
-					if !reflect.DeepEqual(request.Variables["input"], map[string]any{"branchProtectionRuleId": "B_7", "lockBranch": desired}) {
+					if !reflect.DeepEqual(request.Variables["input"], map[string]any{"branchProtectionRuleId": "B_7", apiKey: desired}) {
 						t.Error("unexpected mutation", request.Variables)
 						w.WriteHeader(400)
 						return
 					}
 					writes++
-					rule["lockBranch"] = desired
+					rule[apiKey] = desired
 					ack := map[string]any{}
-					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
+					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
 						ack[k] = rule[k]
 					}
 					body["updateBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}
@@ -143,10 +152,10 @@ func TestBuiltCompositeClassicLock(t *testing.T) {
 				if result.status != 0 || len(result.remainingReports) != 0 {
 					t.Fatal(result)
 				}
-				if mode == "status-only" && (strings.Contains(result.log+result.summary, "PRIVATE_LOCK") || strings.Contains(result.log+result.summary, "lock_branch")) {
+				if mode == "status-only" && (strings.Contains(result.log+result.summary, "PRIVATE_LOCK") || strings.Contains(result.log+result.summary, declarationKey)) {
 					t.Fatal("private policy leaked", result)
 				}
-				if mode == "detailed" && scenario != "matching" && !strings.Contains(result.summary, "lock_branch") {
+				if mode == "detailed" && scenario != "matching" && !strings.Contains(result.summary, declarationKey) {
 					t.Fatal(result.summary)
 				}
 			}

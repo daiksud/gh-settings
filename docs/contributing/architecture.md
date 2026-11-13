@@ -129,6 +129,19 @@ The shared [repository access adapter](../../internal/github/repository_access.g
 
 The [Actions policy feature](../features/actions-execution-policy.feature.md) is an independent resource, not a repository scalar observation group. `internal/settings` owns partial declarations, complete active observations, transition preflight and six bounded native comparisons. Inactive selected before values are explicitly unavailable. Workspace owns strict YAML; the Actions API adapter owns complete conditional reads, redirect rejection, fresh companion merge, raw matching/stage skips, policy-before-selection writes, delayed enabling and complete original-intent readback. Matching stages are not writes; prerequisite read failures remain distinct from uncertain attempted updates. Shared app operations defer the client until needed; export opts in, plan remains read-only and apply places this resource after existing ones. CLI and Summary share the presentation formatter; Summary reconstructs and validates the native comparisons without network access. No workflow, grant or pin is changed.
 
+## Actions OIDC active template
+
+The [OIDC template](../settings.md#actions-oidc-subject-template) is an independent
+settings observation and one whole active-template comparison. Workspace owns the
+strict UI union; the API adapter retains private immutable and numeric identity
+evidence. Matching active state needs no companion value. Needed writes require
+known immutable replay, bounded empty acknowledgment and complete independent
+readback. App exports the family independently and records real confirmed writes
+separately from no-ops or uncertain effects. CLI and Action presentation share
+ordered UI values; report reconstruction rejects invalid unions without exposing
+private API evidence. There is no generic endpoint registry, immutable-mode
+mutation, hidden-template preservation or credential/cloud trust management.
+
 ## Default workflow permissions
 
 The [workflow-permission feature](../features/workflow-permissions.feature.md) extends the actions declaration with two independent fields. `ExecutionEmpty` isolates the existing six-field execution path; `WorkflowPermissionsEmpty` selects a separate complete observation and callback. Shared app sequencing records workflow updates after execution policy as a distinct operation, distinguishing unchanged intent from confirmed writes and preserving only known partial progress. An API-neutral `PreWriteReadFailure` marker preserves a prerequisite read failure across the adapter/use-case boundary; only PUT/readback failures are recorded as unknown writes. The dedicated API adapter reuses settings comparison to skip matching intent, sends only changed declared optional PUT keys, and verifies the original declaration plus omitted raw companions against complete fresh readback; no execution endpoint is needed for workflow-only declarations. Explicit automatic export preserves existing resource choices. Three composable choices use a small CLI `ExportOptions` value; native comparisons reuse the closed eight-field Actions registry and existing formatter.

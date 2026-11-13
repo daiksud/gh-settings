@@ -131,7 +131,7 @@ func TestClassicPruneExecutableLifecycle(t *testing.T) {
 					rules = append(rules, rule)
 					events = append(events, "create:101")
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
 						ack[key] = rule[key]
 					}
 					body["createBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}

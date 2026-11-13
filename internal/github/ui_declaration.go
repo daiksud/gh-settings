@@ -41,6 +41,16 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 			}
 			result.BranchProtectionRules = &rules
 		}
+		if a := repository.Settings.Actions; a != nil && a.OIDC != nil && a.OIDC.SubjectClaim != nil {
+			d := a.OIDC.SubjectClaim
+			if d.UseDefaultTemplate != nil || d.SubjectClaimTemplate != nil {
+				if err := settings.ValidateOIDCSubject(*d); err != nil {
+					return settings.Declaration{}, err
+				}
+				copy := settings.CloneOIDCSubject(*d)
+				result.OIDCSubject = &copy
+			}
+		}
 		if repository.Settings.Collaborators != nil {
 			values := make([]settings.CollaboratorDeclaration, 0, len(*repository.Settings.Collaborators))
 			for _, person := range *repository.Settings.Collaborators {

@@ -153,7 +153,7 @@ owns its retained-user union, invitation dependency, operator and progress cases
 ## Classic branch-protection deletion
 
 The [classic pruning contract](../settings.md#classic-branch-protection-pruning)
-adds whole-rule deletion independently of partial five-control updates. Present
+adds whole-rule deletion independently of partial six-control updates. Present
 lists retain numeric IDs and successful creations; omission stays unmanaged.
 Complete private candidate snapshots precede any write. Recheck only the frozen
 initial candidates before family work and before each mutation; late unlisted
