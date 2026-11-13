@@ -7,7 +7,7 @@ defaults:
   run:
     shell: bash
 concurrency:
-  group: ci-push-${{ github.ref }}
+  group: ci-push-${{ github.sha }}
   cancel-in-progress: true
 jobs:
   resolve:
