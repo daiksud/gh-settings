@@ -29,6 +29,7 @@ type EnvironmentWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	Autolinks             func(repository.Repository) (settings.AutolinkObservation, error)
 	OIDCSubject           func(repository.Repository) (settings.OIDCSubjectObservation, error)
 	AIScanRepositories    func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	BranchProtectionRules func(repository.Repository) (settings.ClassicObservation, error)
@@ -77,6 +78,9 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadAutolinks              func(repository.Repository) (settings.AutolinkObservation, error)
+	CreateAutolink             func(repository.Repository, settings.AutolinkObservation, settings.Autolink) (settings.AutolinkWriteResult, error)
+	DeleteAutolink             func(repository.Repository, settings.AutolinkObservation, int64) (bool, error)
 	OIDCSubject                func(repository.Repository, settings.OIDCSubjectTemplate) (bool, error)
 	ReadAIScanRepositories     func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	AIScanRepositories         func(repository.Repository, settings.SecurityChange) (bool, error)

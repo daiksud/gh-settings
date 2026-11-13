@@ -132,7 +132,7 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 	covered := make(map[string]bool)
 	boundaryChecks := 0
 	for _, s := range steps {
-		if strings.Contains(s.Run, "TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin)") {
+		if strings.Contains(s.Run, "TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks)") {
 			boundaryChecks++
 			if s.Continue || s.If != "" || !reflect.DeepEqual(s.Env, map[string]string{"BINARY_PATH": "${{ inputs.binary-path }}", "GOTOOLCHAIN": "local"}) || !strings.Contains(s.Run, `-binary "$BINARY_PATH"`) {
 				t.Fatal("built composite checks must consume the supplied product and fail the candidate on regression")

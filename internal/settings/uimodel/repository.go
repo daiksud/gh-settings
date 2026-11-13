@@ -13,6 +13,7 @@ type Collaborator struct {
 }
 
 type RepositorySettings struct {
+	Autolinks             *[]Autolink
 	BranchProtectionRules *[]BranchProtectionRule
 	Collaborators         *[]Collaborator
 	InteractionLimits     *InteractionLimits
