@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const CodeQLConfigurationFieldCount = 3
+const CodeQLConfigurationFieldCount = 4
 const CodeQLConfigurationPath = "repository.settings.advanced_security.code_security.codeql_analysis"
 
 type CodeQLRunner struct {
@@ -15,13 +15,14 @@ type CodeQLRunner struct {
 	Label string `json:"label,omitempty"`
 }
 type CodeQLConfigurationDeclaration struct {
-	Languages  *[]string
-	QuerySuite *string
-	Runner     *CodeQLRunner
+	Languages   *[]string
+	QuerySuite  *string
+	Runner      *CodeQLRunner
+	ThreatModel *string
 }
 
 func (d CodeQLConfigurationDeclaration) Empty() bool {
-	return d.Languages == nil && d.QuerySuite == nil && d.Runner == nil
+	return d.Languages == nil && d.QuerySuite == nil && d.Runner == nil && d.ThreatModel == nil
 }
 func validateCodeQLLanguages(v []string) error {
 	if len(v) == 0 {
@@ -54,6 +55,9 @@ func (d CodeQLConfigurationDeclaration) Validate() error {
 	if d.QuerySuite != nil && *d.QuerySuite != "default" && *d.QuerySuite != "extended" {
 		return fmt.Errorf("CodeQL query_suite must be default or extended")
 	}
+	if d.ThreatModel != nil && *d.ThreatModel != "remote_sources" && *d.ThreatModel != "remote_and_local_sources" {
+		return fmt.Errorf("CodeQL threat_model must be remote_sources or remote_and_local_sources")
+	}
 	if d.Runner != nil {
 		if err := d.Runner.Validate(); err != nil {
 			return err
@@ -63,14 +67,14 @@ func (d CodeQLConfigurationDeclaration) Validate() error {
 }
 
 type CodeQLConfigurationState struct {
-	Languages      []string
-	QuerySuite     string
-	Runner         CodeQLRunner
-	RawThreatModel string
+	Languages   []string
+	QuerySuite  string
+	Runner      CodeQLRunner
+	ThreatModel string
 }
 
 func (s CodeQLConfigurationState) declaration() CodeQLConfigurationDeclaration {
-	return CodeQLConfigurationDeclaration{Languages: &s.Languages, QuerySuite: &s.QuerySuite, Runner: &s.Runner}
+	return CodeQLConfigurationDeclaration{Languages: &s.Languages, QuerySuite: &s.QuerySuite, Runner: &s.Runner, ThreatModel: &s.ThreatModel}
 }
 func copyCodeQLState(s CodeQLConfigurationState) CodeQLConfigurationState {
 	s.Languages = slices.Clone(s.Languages)
@@ -84,12 +88,6 @@ type CodeQLConfigurationObservation struct {
 }
 
 func NewCodeQLConfigurationObservation(s CodeQLConfigurationState) (CodeQLConfigurationObservation, error) {
-	// Threat-model configuration is outside managed scope. Retain the exact raw
-	// stable/Preview value solely to detect collateral changes after a narrow write.
-	if s.RawThreatModel != "remote" && s.RawThreatModel != "remote_and_local" {
-		return CodeQLConfigurationObservation{}, fmt.Errorf("missing or unsupported raw CodeQL threat model")
-	}
-
 	if err := s.declaration().Validate(); err != nil {
 		return CodeQLConfigurationObservation{}, err
 	}
@@ -150,6 +148,12 @@ func NewCodeQLConfigurationChange(field string, before, after any) (CodeQLConfig
 				return nil, fmt.Errorf("invalid CodeQL choice")
 			}
 			return s, (CodeQLConfigurationDeclaration{QuerySuite: &s}).Validate()
+		case "threat_model":
+			s, ok := v.(string)
+			if !ok {
+				return nil, fmt.Errorf("invalid CodeQL threat model value")
+			}
+			return s, (CodeQLConfigurationDeclaration{ThreatModel: &s}).Validate()
 		default:
 			return nil, fmt.Errorf("unknown CodeQL configuration field")
 		}
@@ -206,6 +210,11 @@ func CompareCodeQLConfiguration(o CodeQLConfigurationObservation, d CodeQLConfig
 			return 0, nil, err
 		}
 	}
+	if d.ThreatModel != nil {
+		if err := add("threat_model", s.ThreatModel, *d.ThreatModel); err != nil {
+			return 0, nil, err
+		}
+	}
 	return managed, changes, nil
 }
 func ExpectedCodeQLConfiguration(s CodeQLConfigurationState, d CodeQLConfigurationDeclaration) CodeQLConfigurationState {
@@ -217,6 +226,9 @@ func ExpectedCodeQLConfiguration(s CodeQLConfigurationState, d CodeQLConfigurati
 	}
 	if d.Runner != nil {
 		s.Runner = *d.Runner
+	}
+	if d.ThreatModel != nil {
+		s.ThreatModel = *d.ThreatModel
 	}
 	return copyCodeQLState(s)
 }

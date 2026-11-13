@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestEnvironmentAdminBypassExplicitValuesAndUnknownOmission(t *testing.T) {
+func TestEnvironmentAdminBypassExplicitValuesAndUnownedOmission(t *testing.T) {
 	for _, value := range []bool{false, true} {
 		current := environmentPolicy(t, "production")
 		current.CanAdminsBypass = &value
@@ -32,10 +32,10 @@ func TestEnvironmentAdminBypassExplicitValuesAndUnknownOmission(t *testing.T) {
 		request.CanAdminsBypass = nil
 		omitted, _ := NewEnvironmentDeclarations([]EnvironmentDeclaration{request})
 		changes, err = ReconcileEnvironments(observation, &omitted)
-		if err != nil || len(changes) != 1 || changes[0].After().CanAdminsBypass != nil || !EnvironmentHasAPIOmissions(*changes[0].After()) {
+		if err != nil || len(changes) != 0 {
 			t.Fatal(changes, err)
 		}
-		data, _ := json.Marshal(changes[0].After())
+		data, _ := json.Marshal(request)
 		if strings.Contains(string(data), "can_admins_bypass") {
 			t.Fatal("omission acquired bypass default", string(data))
 		}

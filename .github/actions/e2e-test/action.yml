@@ -27,6 +27,14 @@ runs:
         [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
         bash .action/tests/github-actions/prepare-candidate-download.sh \
           "$BINARY_PATH" "$EXPECTED_SHA256" "$SOURCE_SHA" "$CLI_VERSION"
+    - name: Check export file and privacy boundaries with the supplied product
+      env:
+        BINARY_PATH: ${{ inputs.binary-path }}
+        GOTOOLCHAIN: local
+      shell: bash
+      run: |
+        [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+        (cd .action && go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture)$' -count=1 -binary "$BINARY_PATH")
     - name: Create a configuration-only consumer checkout
       shell: bash
       run: |
@@ -296,6 +304,108 @@ runs:
         EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
       shell: bash
       run: bash .action/tests/github-actions/candidate-plan.sh assert private-invalid-config
+    - name: Prepare first export
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare-export first
+    - name: Export first through the actual root composite
+      id: export-first
+      uses: ./.action
+      env:
+        GH_DEBUG: api
+      with:
+        command: export
+        token: export-fixture-read
+    - name: Verify first export file and success-only outputs
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.export-first.outcome }}
+        PRIVATE_PLAN_OUTCOME: ${{ steps.export-first.outputs.plan-outcome }}
+        CONFIG_PATH: ${{ steps.export-first.outputs.config-path }}
+        CONFIG_SHA: ${{ steps.export-first.outputs.config-sha }}
+        TARGET: ${{ steps.export-first.outputs.target }}
+        CLI_VERSION: ${{ steps.export-first.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.export-first.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert-export first
+    - name: Prepare repeat export
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare-export repeat
+    - name: Export repeat through the actual root composite
+      id: export-repeat
+      uses: ./.action
+      env:
+        GH_DEBUG: api
+      with:
+        command: export
+        token: export-fixture-read
+    - name: Verify repeat export file and success-only outputs
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.export-repeat.outcome }}
+        PRIVATE_PLAN_OUTCOME: ${{ steps.export-repeat.outputs.plan-outcome }}
+        CONFIG_PATH: ${{ steps.export-repeat.outputs.config-path }}
+        CONFIG_SHA: ${{ steps.export-repeat.outputs.config-sha }}
+        TARGET: ${{ steps.export-repeat.outputs.target }}
+        CLI_VERSION: ${{ steps.export-repeat.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.export-repeat.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert-export repeat
+    - name: Prepare invalid export
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare-export invalid
+    - name: Export invalid through the actual root composite
+      id: export-invalid
+      continue-on-error: true
+      uses: ./.action
+      env:
+        GH_DEBUG: api
+      with:
+        command: export
+        token: export-fixture-read
+    - name: Verify invalid export file and success-only outputs
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.export-invalid.outcome }}
+        PRIVATE_PLAN_OUTCOME: ${{ steps.export-invalid.outputs.plan-outcome }}
+        CONFIG_PATH: ${{ steps.export-invalid.outputs.config-path }}
+        CONFIG_SHA: ${{ steps.export-invalid.outputs.config-sha }}
+        TARGET: ${{ steps.export-invalid.outputs.target }}
+        CLI_VERSION: ${{ steps.export-invalid.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.export-invalid.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert-export invalid
+    - name: Prepare symlink export
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh prepare-export symlink
+    - name: Export symlink through the actual root composite
+      id: export-symlink
+      continue-on-error: true
+      uses: ./.action
+      env:
+        GH_DEBUG: api
+      with:
+        command: export
+        token: export-fixture-read
+    - name: Verify symlink export file and success-only outputs
+      env:
+        ACTION_SHA: ${{ inputs.source-sha }}
+        PLAN_OUTCOME: ${{ steps.export-symlink.outcome }}
+        PRIVATE_PLAN_OUTCOME: ${{ steps.export-symlink.outputs.plan-outcome }}
+        CONFIG_PATH: ${{ steps.export-symlink.outputs.config-path }}
+        CONFIG_SHA: ${{ steps.export-symlink.outputs.config-sha }}
+        TARGET: ${{ steps.export-symlink.outputs.target }}
+        CLI_VERSION: ${{ steps.export-symlink.outputs.cli-version }}
+        CLI_SHA256: ${{ steps.export-symlink.outputs.cli-sha256 }}
+        EXPECTED_CLI_VERSION: ${{ inputs.cli-version }}
+        EXPECTED_CLI_SHA256: ${{ inputs.binary-sha256 }}
+      shell: bash
+      run: bash .action/tests/github-actions/candidate-plan.sh assert-export symlink
     - name: Stop the owned local repository API
       if: always()
       shell: bash

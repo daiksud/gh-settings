@@ -102,11 +102,11 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 	run("export")
 	run("validate")
 	data, _ := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if !strings.Contains(string(data), "query_suite: default") || !strings.Contains(string(data), "default_setup: true") || strings.Contains(string(data), "threat_model:") {
+	if !strings.Contains(string(data), "query_suite: default") || !strings.Contains(string(data), "default_setup: true") || !strings.Contains(string(data), "threat_model: remote_and_local_sources") {
 		t.Fatal(string(data))
 	}
-	// Excluded Preview declarations fail before any remote acquisition or write.
-	for _, value := range []string{"remote_and_local_sources", "remote_sources", "remote_and_local", "null"} {
+	// Invalid declarations fail before any remote acquisition or write.
+	for _, value := range []string{"remote", "remote_and_local", "unknown", "null", "false"} {
 		if err := writeSettingsFile(fixture.work, repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {threat_model: "+value+"}}}}\n")); err != nil {
 			t.Fatal(err)
 		}
@@ -114,14 +114,14 @@ func TestCodeQLConfigurationExportPlanApplyAndDisabledGuard(t *testing.T) {
 		beforeReads, beforeWrites := reads, writes
 		mu.Unlock()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-		if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "unknown") {
+		if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "threat_model") {
 			t.Fatal(value, err, r.stderr.String())
 		}
 		mu.Lock()
 		unchanged := reads == beforeReads && writes == beforeWrites
 		mu.Unlock()
 		if !unchanged {
-			t.Fatal("excluded declaration contacted API")
+			t.Fatal("invalid declaration contacted API")
 		}
 	}
 	input := repositoryInput("settings: {advanced_security: {code_security: {codeql_analysis: {languages: [github_actions, go], query_suite: extended, runner: {type: labeled_runner, label: scan-pool}}}}}\n")

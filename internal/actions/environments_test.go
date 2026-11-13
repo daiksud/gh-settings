@@ -83,10 +83,11 @@ func TestEnvironmentPlanReportSummaryAndClosedBoundary(t *testing.T) {
 	}
 }
 
-func TestEnvironmentPartialRequestReportDoesNotInventAPIOutcome(t *testing.T) {
+func TestEnvironmentPartialRequestReportDoesNotOwnPreservedCompanions(t *testing.T) {
 	timer, prevent, reviewers := 30, false, []settings.EnvironmentReviewer{}
 	before := settings.EnvironmentDeclaration{Name: "production", WaitTimer: &timer, PreventSelfReview: &prevent, CanAdminsBypass: &prevent, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}
-	after := settings.EnvironmentDeclaration{Name: "production"}
+	nextTimer := 5
+	after := settings.EnvironmentDeclaration{Name: "production", WaitTimer: &nextTimer}
 	change, err := settings.NewEnvironmentChange("update", &before, &after)
 	if err != nil {
 		t.Fatal(err)
@@ -105,13 +106,13 @@ func TestEnvironmentPartialRequestReportDoesNotInventAPIOutcome(t *testing.T) {
 		t.Fatal(err)
 	}
 	content, err := actions.RenderSummary(report, summaryMetadata())
-	if err != nil || !strings.Contains(content, "API-controlled") || !strings.Contains(content, "unknown until apply") {
+	if err != nil || !strings.Contains(content, "preserved from fresh state") || !strings.Contains(content, "omitted built-in controls") {
 		t.Fatal(content, err)
 	}
 	var raw map[string]json.RawMessage
 	afterJSON, _ := json.Marshal(report.Environments[0].After)
 	json.Unmarshal(afterJSON, &raw)
-	if len(raw) != 1 || raw["name"] == nil {
+	if len(raw) != 2 || raw["name"] == nil || string(raw["wait_timer"]) != "5" {
 		t.Fatal("fabricated after state", string(afterJSON))
 	}
 }

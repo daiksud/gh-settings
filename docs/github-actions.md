@@ -2,9 +2,9 @@
 
 ## Public Action and supported checkout
 
-`daiksud/gh-settings` validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout/data preparation, credentials and approval policy; they do not install the CLI or copy Action internals. The [selected Action pin](#published-package-and-consumer-pins) determines which CLI is installed.
+Current-source `daiksud/gh-settings` exports, validates, plans or applies the checked-out repository's `.github/settings.yml`. The Action installs its selected CLI release and exposes normal `with` inputs and step outputs.[^composite-metadata] Consumers provide the checkout/data preparation, credentials and approval policy; they do not install the CLI or copy Action internals. The [selected Action pin](#published-package-and-consumer-pins) determines which CLI is installed.
 
-Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and commit `.github/settings.yml` at its root.
+Use a fresh GitHub-hosted `ubuntu-24.04` x64 job with Bash, curl, GNU sha256sum and Git. macOS, Windows, ARM, containers and self-hosted runners are unsupported. Checkout the configuration repository at `GITHUB_WORKSPACE`, without a checkout `path` or persisted credentials, and keep `.github/settings.yml` at its root. Export can create the file and its `.github` directory on first use; validate/plan/apply require an existing configuration.
 
 A resolvable checkout commit and a directly configured GitHub.com `origin` are required even for validate's output metadata. Supported origins are HTTPS, `git@github.com:owner/repo.git` and full SSH URLs. The checkout's origin selects the target; the Action repository and `GH_REPO` do not. See [repository resolution](commands.md#repository-and-authentication) and [configuration semantics](settings.md#configuration-semantics).
 
@@ -14,26 +14,54 @@ Validate performs no settings API requests, but installing the public CLI still 
 
 | Input | Contract |
 | --- | --- |
-| `command` | Required, no default; exactly `validate`, `plan` or `apply`. |
-| `token` | Unused for validate; required and nonempty for plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
+| `command` | Required, no default; exactly `export`, `validate`, `plan` or `apply`. |
+| `token` | Unused for validate; required and nonempty for export/plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
 | `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables` and `actions-policies`; see [pruning](#explicit-collection-pruning). |
 
-Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Plan is nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action neither mints a token, identifies its credential type nor verifies its actual grants; there is no ambient-token or personal-credential fallback.
+Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action neither mints a token, identifies its credential type nor verifies its actual grants; there is no ambient-token or personal-credential fallback.
 
-There are no inputs for export, arbitrary arguments, configuration path, target, CLI version or download URL. The Action's checkout metadata and explicit plan/apply token requirements also apply to configurations with no managed fields.
+There are no inputs for arbitrary arguments, configuration path, target, CLI version or download URL. Nonempty `prune` is rejected for export and validate before installation. The Action's checkout metadata and explicit export/plan/apply token requirements also apply to configurations with no managed fields.
 
 | Success output | Meaning |
 | --- | --- |
 | `config-sha` | Full checked-out configuration commit (`HEAD`), not the settings file hash, workflow SHA or Action SHA. |
+| `config-path` | `.github/settings.yml`, relative to the checkout root, after successful export only; empty for other commands. It does not identify a committed file or transfer it to another job. |
 | `target` | Configuration checkout's resolved GitHub `origin`, in `OWNER/REPO` form. |
 | `cli-version` | Verified installed CLI release selected by the Action package. |
 | `cli-sha256` | SHA-256 of the verified installed binary. |
-| `plan-outcome` | `changed`, `no-difference` or `unmanaged` after a successful status-only plan and Summary write; empty for detailed/validate/apply calls. |
+| `plan-outcome` | `changed`, `no-difference` or `unmanaged` after a successful status-only plan and Summary write; empty for export, validate, apply and detailed plans. |
 
 Use `steps.<id>.outputs.<name>` only after successful completion. Outputs are published after the command and, for plan, successful Summary rendering, writing and ephemeral report cleanup. Differences, no differences and no managed fields are successful plan outcomes.
 
-Missing command/token, unsupported prerequisites, install/metadata/output failures and CLI/configuration/API errors fail the Action. A nonzero plan status is preserved; otherwise Summary status determines success. Failed calls have no successful output contract. Plan Summary displays escaped settings values and categorical failure diagnostics, and distinguishes workflow, configuration, Action and CLI identities. Validate/apply report through the Action step's outcome and logs; they do not render a plan Summary.
+Missing command/token, unsupported prerequisites, install/metadata/output failures and CLI/configuration/API errors fail the Action. A nonzero plan status is preserved; otherwise Summary status determines success. Failed calls have no successful output contract. Plan Summary displays escaped settings values and categorical failure diagnostics, and distinguishes workflow, configuration, Action and CLI identities. Export/validate/apply report through the Action step's outcome and logs; they do not render a plan Summary.
+
+### Export a local configuration
+
+Use `command: export` with an explicit installation token in a trusted checkout.
+Choose a reviewed Action package that implements export; the immutable v0.27.0
+pin shown below does not gain this capability from current source changes.
+The Action uses the same [automatic export](commands.md#export-behavior) as the
+CLI and returns `steps.<id>.outputs.config-path` only after success.
+`config-sha` still identifies checkout HEAD, rather than the generated file.
+
+Export attempts independent supported reads. Unavailable families produce bounded
+info and are omitted initially or retain compatible valid existing intent. A
+successful export does not certify that every family was readable. Invalid
+existing YAML, symlinks, unsafe destinations, concurrent edits and local I/O errors
+retain the shared CLI failure boundaries. No settings file is required for first
+export, but a resolvable checkout commit and direct origin are always required.
+
+The generated file can contain plaintext non-secret Variables. Export does not
+commit, push, upload, cache or render its contents in logs or Summary. It disables
+inherited `GH_DEBUG` during acquisition and discards command stdout; normal export
+diagnostics remain on stderr. The path output leaves publication to the caller.
+Other code in the same trusted job can still read the local file and credential.
+
+Export does not accept `prune` or `plan-reporting: status-only`, and creates no
+plan report or Summary. A failed first-file write can leave a local file, and
+result-output failure can occur after a completed export. Failed calls have no
+successful-output contract and do not roll back local changes.
 
 ### Private plan reporting
 
@@ -289,7 +317,7 @@ Complete family reads require Administration read plus applicable actor authoriz
 
 [Fork workflow policies](settings.md#fork-pr-workflow-policies), with public contributor approval separate from private fork execution/token/secrets/approval controls. Existing Administration read/write credentials are required; no Action input or grant is added. Summary shows UI choices and boolean differences, including credentials passed to forks. It remains credential-free presentation; apply independently rereads state. Fixtures do not establish live mutation compatibility, workflow execution safety or organization-policy enforcement.
 
-[Pages configuration](settings.md#pages-configuration) through validate/plan/apply and UI-named Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Existing caller grants and Action inputs are unchanged; no export input exists. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Complete Source intent creates missing sites; explicit deploy-from-branch with exact `branch: none` deletes them. Partial creation intent and deletion conflicts fail. Confirmed creation remains reported if an optional follow-up fails. Site visibility is not managed.
+[Pages configuration](settings.md#pages-configuration) through validate/plan/apply and UI-named Summary entries, including a domain-clearing null and inactive workflow source. Pages reads require Pages read; updates require Pages write and Administration write plus the applicable actor authorization. Export uses the same acquired-state contract; caller grants remain prerequisites. Configuration success does not promise deployment/DNS/certificate readiness, and partial update failures retain prior effects. Complete Source intent creates missing sites; explicit deploy-from-branch with exact `branch: none` deletes them. Partial creation intent and deletion conflicts fail. Confirmed creation remains reported if an optional follow-up fails. Site visibility is not managed.
 
 The Summary shares Actions workflow-permission and contributor-approval, Security and Pages display paths and choices with CLI plans. Private plan transport fields retain their internal identities; these are not public YAML field names.
 

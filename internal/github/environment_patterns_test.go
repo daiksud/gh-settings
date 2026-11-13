@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -121,16 +120,10 @@ func TestEnvironmentPatternUpsertSequenceOmissionAndPartialFailure(t *testing.T)
 				if r.Method == "PUT" && r.URL.Path == base {
 					var payload map[string]json.RawMessage
 					json.NewDecoder(r.Body).Decode(&payload)
-					if mode == "omitted" || mode == "omitted-api-changes" {
-						if len(payload) != 0 {
-							t.Fatal("omission was supplemented", payload)
-						}
-					} else {
-						if len(payload) != 1 || payload["deployment_branch_policy"] == nil {
-							t.Fatal("patterns or omitted values entered PUT", payload)
-						}
-						custom = true
+					if mode != "enter" || len(payload) != 5 || string(payload["wait_timer"]) != "30" || string(payload["prevent_self_review"]) != "false" || string(payload["can_admins_bypass"]) != "false" || string(payload["reviewers"]) != "[]" || string(payload["deployment_branch_policy"]) != `{"protected_branches":false,"custom_branch_policies":true}` {
+						t.Fatal("redundant PUT or missing preservation companions", payload)
 					}
+					custom = true
 					return respond(state())
 				}
 				if r.Method == "POST" && r.URL.Path == base+"/deployment-branch-policies" {
@@ -176,12 +169,16 @@ func TestEnvironmentPatternUpsertSequenceOmissionAndPartialFailure(t *testing.T)
 				t.Fatal(writes, err)
 			}
 			if mode == "omitted" || mode == "omitted-api-changes" {
-				if !reflect.DeepEqual(writes, []string{"PUT /repos/owner/current/environments/production"}) || len(patterns) != 2 {
+				if len(writes) != 0 || len(patterns) != 2 {
 					t.Fatal(writes, patterns)
 				}
 			}
 			if mode == "custom" || mode == "enter" {
-				if len(writes) != 3 || !strings.HasPrefix(writes[1], "POST ") || !strings.HasSuffix(writes[2], "/7") {
+				offset := 0
+				if mode == "enter" {
+					offset = 1
+				}
+				if len(writes) != 2+offset || !strings.HasPrefix(writes[offset], "POST ") || !strings.HasSuffix(writes[offset+1], "/7") {
 					t.Fatal(writes)
 				}
 			}

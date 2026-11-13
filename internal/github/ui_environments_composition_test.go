@@ -10,16 +10,21 @@ import (
 	"testing"
 )
 
-func TestUIEnvironmentExactPUTAndAPIOmissions(t *testing.T) {
+func TestUIEnvironmentExactPUTPreservesOmittedBuiltins(t *testing.T) {
 	before := `{"id":7,"name":"Production","can_admins_bypass":true,"protection_rules":[{"type":"wait_timer","wait_timer":30},{"type":"required_reviewers","prevent_self_review":true,"reviewers":[{"type":"User","reviewer":{"id":9,"type":"User"}}]}],"deployment_branch_policy":{"protected_branches":true,"custom_branch_policies":false}}`
 	after := `{"id":7,"name":"Production","can_admins_bypass":false,"protection_rules":[],"deployment_branch_policy":null}`
 	for _, test := range []struct {
 		ui      uimodel.Environment
 		payload string
+		partial bool
 	}{
-		{uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false)}}, `{"can_admins_bypass":false}`},
-		{uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: environmentUIPtr(0), PreventSelfReview: environmentUIPtr(false), AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false), RequiredReviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{})}, DeploymentBranchesAndTags: environmentUIPtr(uimodel.NoRestriction)}, `{"wait_timer":0,"prevent_self_review":false,"can_admins_bypass":false,"reviewers":[],"deployment_branch_policy":null}`},
+		{uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false)}}, `{"can_admins_bypass":false,"wait_timer":30,"prevent_self_review":true,"reviewers":[{"type":"User","id":9}],"deployment_branch_policy":{"protected_branches":true,"custom_branch_policies":false}}`, true},
+		{uimodel.Environment{Name: "Production", DeploymentProtectionRules: &uimodel.EnvironmentDeploymentProtectionRules{WaitTimer: environmentUIPtr(0), PreventSelfReview: environmentUIPtr(false), AllowAdministratorsToBypassConfiguredProtectionRules: environmentUIPtr(false), RequiredReviewers: environmentUIPtr([]uimodel.EnvironmentReviewer{})}, DeploymentBranchesAndTags: environmentUIPtr(uimodel.NoRestriction)}, `{"wait_timer":0,"prevent_self_review":false,"can_admins_bypass":false,"reviewers":[],"deployment_branch_policy":null}`, false},
 	} {
+		expectedAfter := after
+		if test.partial {
+			expectedAfter = strings.Replace(before, `"can_admins_bypass":true`, `"can_admins_bypass":false`, 1)
+		}
 		written := false
 		writes := 0
 		client := &EnvironmentsClient{rest: actionsClient(t, func(req *http.Request) (*http.Response, error) {
@@ -44,18 +49,18 @@ func TestUIEnvironmentExactPUTAndAPIOmissions(t *testing.T) {
 						t.Fatal(err)
 					}
 					if !reflect.DeepEqual(got, want) {
-						t.Fatal("replayed omitted fields or wrong explicit values", got, want)
+						t.Fatal("lost preservation companions or wrong explicit values", got, want)
 					}
 					written = true
 					writes++
-					return labelsResponse(req, 200, after), nil
+					return labelsResponse(req, 200, expectedAfter), nil
 				}
 				if req.Method != "GET" {
 					t.Fatal(req.Method)
 				}
 				body := before
 				if written {
-					body = after
+					body = expectedAfter
 				}
 				return labelsResponse(req, 200, body), nil
 			case "/repos/owner/current/environments/Production/deployment_protection_rules":
@@ -87,8 +92,12 @@ func TestUIEnvironmentExactPUTAndAPIOmissions(t *testing.T) {
 			t.Fatal(err)
 		}
 		view, err = EnvironmentsObservation(raw)
-		if err != nil || *view[0].Environment.DeploymentProtectionRules.WaitTimer != 0 || len(*view[0].Environment.DeploymentProtectionRules.RequiredReviewers) != 0 {
-			t.Fatal("API-controlled omission was replayed", view, err)
+		wantTimer, wantReviewers := 0, 0
+		if test.partial {
+			wantTimer, wantReviewers = 30, 1
+		}
+		if err != nil || *view[0].Environment.DeploymentProtectionRules.WaitTimer != wantTimer || len(*view[0].Environment.DeploymentProtectionRules.RequiredReviewers) != wantReviewers {
+			t.Fatal("explicit controls or preserved companions differ", view, err)
 		}
 	}
 }
@@ -111,7 +120,7 @@ func TestUIEnvironmentTypedPatternCRUDAndPartialFailure(t *testing.T) {
 					if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
 						t.Fatal(err)
 					}
-					want := map[string]any{"deployment_branch_policy": map[string]any{"protected_branches": false, "custom_branch_policies": true}}
+					want := map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "can_admins_bypass": true, "reviewers": []any{}, "deployment_branch_policy": map[string]any{"protected_branches": false, "custom_branch_policies": true}}
 					if !reflect.DeepEqual(got, want) {
 						t.Fatal(got)
 					}
@@ -181,7 +190,7 @@ func TestUIEnvironmentTypedPatternCRUDAndPartialFailure(t *testing.T) {
 		}
 		changed, err := client.Update(repository.Repository{Owner: "owner", Name: "current"}, d)
 		if failTag {
-			if err == nil || changed || !modeWritten || !createdBranch || removed || !strings.Contains(err.Error(), "earlier writes remain applied") || !reflect.DeepEqual(operations, []string{"mode", "branch", "tag"}) {
+			if err == nil || changed || !modeWritten || !createdBranch || removed || !strings.Contains(err.Error(), "earlier verified environment policy update remains applied") || !reflect.DeepEqual(operations, []string{"mode", "branch", "tag"}) {
 				t.Fatal(changed, operations, err)
 			}
 			continue
