@@ -73,6 +73,9 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 				t.Error(request)
 			}
 			fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
+			if strings.Contains(request.Query, "hasPullRequestsEnabled") {
+				fields["hasPullRequestsEnabled"] = enabled
+			}
 			if strings.Contains(request.Query, "pullRequestCreationPolicy") {
 				fields["pullRequestCreationPolicy"] = policy
 			}
@@ -84,7 +87,7 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 		if input["repositoryId"] != "opaque-id" {
 			t.Error(input)
 		}
-		result := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
+		result := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current", "hasPullRequestsEnabled": enabled, "pullRequestCreationPolicy": policy}
 		for key, value := range input {
 			switch key {
 			case "repositoryId":
@@ -168,14 +171,14 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	}
 	run("apply")
 	mu.Lock()
-	if len(writes) != 1 || !reflect.DeepEqual(writes[0], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": true, "pullRequestCreationPolicy": "COLLABORATORS_ONLY"}) {
+	if len(writes) != 1 || !reflect.DeepEqual(writes[0], map[string]any{"repositoryId": "opaque-id", "pullRequestCreationPolicy": "COLLABORATORS_ONLY"}) {
 		t.Fatal(writes)
 	}
 	mu.Unlock()
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
-	// Scalars retain direct-apply semantics: matching declarations are still sent.
+	// Direct apply skips the freshly matching declaration.
 	run("apply")
 	writeSettingsFile(fixture.work, generalInput("features: {pull_requests: false}\n"))
 	if got := run("plan"); got != "repository.settings.general.features.pull_requests: true → false\n" {
@@ -186,11 +189,11 @@ func TestPRAccessExportPlanApplyAndNativeReports(t *testing.T) {
 	run("apply")
 	mu.Lock()
 	defer mu.Unlock()
-	if len(writes) != 4 || !reflect.DeepEqual(writes[2], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": false}) || !reflect.DeepEqual(writes[3], map[string]any{"repositoryId": "opaque-id", "pullRequestCreationPolicy": "ALL"}) || enabled || policy != "ALL" {
+	if len(writes) != 3 || !reflect.DeepEqual(writes[1], map[string]any{"repositoryId": "opaque-id", "hasPullRequestsEnabled": false}) || !reflect.DeepEqual(writes[2], map[string]any{"repositoryId": "opaque-id", "pullRequestCreationPolicy": "ALL"}) || enabled || policy != "ALL" {
 		t.Fatal(writes, enabled, policy)
 	}
 	suffix := operations[len(operations)-9:]
-	if !reflect.DeepEqual(suffix, []string{"lookup identity", "mutate PR policy", "lookup identity", "read PR policy", "lookup identity", "mutate PR policy", "lookup identity", "mutate PR policy", "lookup identity"}) {
+	if !reflect.DeepEqual(suffix, []string{"read PR policy", "lookup identity", "read PR policy", "lookup identity", "mutate PR policy", "lookup identity", "lookup identity", "mutate PR policy", "lookup identity"}) {
 		t.Fatal("checked direct apply order changed", suffix)
 	}
 }
@@ -273,7 +276,7 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 						} else if tt.name == "lookup wrong target" {
 							fmt.Fprint(w, strings.Replace(prIdentityResponse, "owner/current", "other/repo", 1))
 						} else {
-							fmt.Fprint(w, prIdentityResponse)
+							fmt.Fprint(w, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasPullRequestsEnabled":true}}}`)
 						}
 						return
 					}

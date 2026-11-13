@@ -24,7 +24,7 @@ func TestSelectiveCreationPrerequisitesAcquireOnlyManagedPolicies(t *testing.T) 
 		{"PR", settings.RepositoryDeclaration{PullRequestCreationPolicy: &all}, []string{"id", "nameWithOwner", "pullRequestCreationPolicy"}, map[string]any{"pullRequestCreationPolicy": "FUTURE"}, map[settings.CreationPolicyControl]string{settings.PullRequestPermissionsControl: "FUTURE"}},
 		{"Issue empty", settings.RepositoryDeclaration{IssueCreationPolicy: &all}, []string{"id", "nameWithOwner", "issueCreationPolicy"}, map[string]any{"issueCreationPolicy": ""}, map[settings.CreationPolicyControl]string{settings.IssuePermissionsControl: ""}},
 		{"both", settings.RepositoryDeclaration{PullRequestCreationPolicy: &all, IssueCreationPolicy: &all}, []string{"id", "nameWithOwner", "pullRequestCreationPolicy", "issueCreationPolicy"}, map[string]any{"pullRequestCreationPolicy": " \t\n ", "issueCreationPolicy": "COLLABORATORS_ONLY"}, map[settings.CreationPolicyControl]string{settings.PullRequestPermissionsControl: " \t\n ", settings.IssuePermissionsControl: "COLLABORATORS_ONLY"}},
-		{"identity only", settings.RepositoryDeclaration{HasPullRequests: &yes}, []string{"id", "nameWithOwner"}, nil, nil},
+		{"checkbox only", settings.RepositoryDeclaration{HasPullRequests: &yes}, []string{"id", "nameWithOwner", "hasPullRequestsEnabled"}, map[string]any{"hasPullRequestsEnabled": true}, nil},
 		{"unrelated REST", settings.RepositoryDeclaration{HasIssues: &yes}, nil, nil, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -50,9 +50,6 @@ func TestSelectiveCreationPrerequisitesAcquireOnlyManagedPolicies(t *testing.T) 
 				if fields := strings.Fields(request.Query[start+1 : end]); !reflect.DeepEqual(fields, test.fields) {
 					t.Fatal("query acquired unmanaged fields", fields, test.fields)
 				}
-				if len(test.fields) == 2 && request.Query != repositoryAccessIdentityQuery {
-					t.Fatal("identity-only contract changed", request.Query)
-				}
 				fields := map[string]any{"id": "repo-id", "nameWithOwner": "owner/current"}
 				for name, value := range test.response {
 					fields[name] = value
@@ -60,7 +57,7 @@ func TestSelectiveCreationPrerequisitesAcquireOnlyManagedPolicies(t *testing.T) 
 				body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": fields}})
 				return labelsResponse(r, 200, string(body)), nil
 			}))
-			id, got, err := client.readAccessPrerequisites(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
+			id, _, got, err := client.readAccessPrerequisites(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
 			wantID := "repo-id"
 			wantCalls := 1
 			if len(test.fields) == 0 {
@@ -82,7 +79,7 @@ func TestSelectiveCreationPrerequisitesAcquireOnlyManagedPolicies(t *testing.T) 
 				*got[control].Value = "caller mutation"
 			}
 			if len(test.want) > 0 {
-				_, again, err := client.readAccessPrerequisites(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
+				_, _, again, err := client.readAccessPrerequisites(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -124,7 +121,7 @@ func TestSelectiveCreationPrerequisitesRejectPartialOrUnboundState(t *testing.T)
 				}
 				return labelsResponse(r, test.status, test.body), nil
 			}))
-			id, got, err := client.readAccessPrerequisites(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{PullRequestCreationPolicy: &all, IssueCreationPolicy: &all})
+			id, _, got, err := client.readAccessPrerequisites(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{PullRequestCreationPolicy: &all, IssueCreationPolicy: &all})
 			if err == nil || id != "" || len(got) != 0 {
 				t.Fatal("failed acquisition returned partial/unbound state", id, got, err)
 			}

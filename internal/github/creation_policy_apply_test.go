@@ -3,6 +3,7 @@ package github
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -65,8 +66,12 @@ func TestCreationPolicyApplyVerifiesFreshRawAndIdentity(t *testing.T) {
 					return labelsResponse(r, 200, string(body)), nil
 				}))
 				client.NormalizationWarning = func(n settings.ObservationNormalization) { warnings = append(warnings, n) }
-				err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired)
-				if (err != nil) != test.wantError || !reflect.DeepEqual(operations, []string{"query", "mutation", "query"}) || len(warnings) != test.warnings {
+				wrote, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired)
+				wantOperations := []string{"query", "mutation", "query"}
+				if test.before == test.desired {
+					wantOperations = []string{"query"}
+				}
+				if wrote != (test.before != test.desired) || (err != nil) != test.wantError || !reflect.DeepEqual(operations, wantOperations) || len(warnings) != test.warnings {
 					t.Fatal("raw/identity verification or scoped diagnostics failed", operations, warnings, err)
 				}
 				for _, warning := range warnings {
@@ -107,7 +112,7 @@ func TestCreationPolicyApplyAcquisitionAndMutationFailures(t *testing.T) {
 			}))
 			client.NormalizationWarning = func(settings.ObservationNormalization) { warnings++ }
 			policy := "ALL"
-			err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{IssueCreationPolicy: &policy})
+			_, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{IssueCreationPolicy: &policy})
 			var pre interface{ ReadFailedBeforeWrite() }
 			wantPre := strings.HasPrefix(mode, "preflight")
 			wantCalls, wantWarnings := 3, 1
@@ -134,11 +139,12 @@ func TestAccessOnlyCheckboxDoesNotAcquireOrWarnPolicies(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 			t.Fatal(err)
 		}
-		if calls == 1 {
-			if request.Query != repositoryAccessIdentityQuery {
+		if calls == 1 || calls == 3 {
+			if strings.Join(strings.Fields(request.Query), " ") != `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { id nameWithOwner hasPullRequestsEnabled } }` {
 				t.Fatal("unmanaged policy acquired", request.Query)
 			}
-			return labelsResponse(r, 200, `{"data":{"repository":{"id":"repo-id","nameWithOwner":"owner/current"}}}`), nil
+			body := fmt.Sprintf(`{"data":{"repository":{"id":"repo-id","nameWithOwner":"owner/current","hasPullRequestsEnabled":%t}}}`, calls == 1)
+			return labelsResponse(r, 200, body), nil
 		}
 		if !reflect.DeepEqual(request.Variables, map[string]any{"input": map[string]any{"repositoryId": "repo-id", "hasPullRequestsEnabled": false}}) {
 			t.Fatal("unmanaged policy replayed", request.Variables)
@@ -147,7 +153,7 @@ func TestAccessOnlyCheckboxDoesNotAcquireOrWarnPolicies(t *testing.T) {
 	}))
 	client.NormalizationWarning = func(settings.ObservationNormalization) { warnings++ }
 	no := false
-	if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasPullRequests: &no}); err != nil || calls != 2 || warnings != 0 {
+	if _, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasPullRequests: &no}); err != nil || calls != 3 || warnings != 0 {
 		t.Fatal("checkbox-only boundary changed", calls, warnings, err)
 	}
 }
