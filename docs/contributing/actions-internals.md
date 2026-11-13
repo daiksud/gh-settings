@@ -180,6 +180,13 @@ preserved because creation age affects priority. Update renderers show only
 requested values; deletions show absence and their whole-object effect. Status-only
 Summary suppresses identities and policy.
 
+The supported before-policy includes the six checkboxes and complete status-check
+projection. Active groups contain exact check names and App-node sources; inactive
+groups contain only `enabled: false`. Raw nullable context aliases, latent bindings
+and their ordering remain private. Status-only rendering suppresses the supported
+names and App IDs as well as rule identity. The group does not add another managed
+family count.
+
 ## Collaborator presentation
 
 The same-version `collaborators` report array contains `username`, user `id`,

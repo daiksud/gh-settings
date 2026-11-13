@@ -131,7 +131,7 @@ func TestClassicPruneExecutableLifecycle(t *testing.T) {
 					rules = append(rules, rule)
 					events = append(events, "create:101")
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
 						ack[key] = rule[key]
 					}
 					body["createBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}
@@ -199,7 +199,7 @@ func TestClassicPruneExecutableLifecycle(t *testing.T) {
 				if err != nil || (result.runErr != nil) != bad {
 					t.Fatal(args, result.stdout.String(), result.stderr.String(), err)
 				}
-				if strings.Contains(result.stdout.String()+result.stderr.String(), "PRIVATE_APP_CANARY") {
+				if strings.Contains(result.stdout.String()+result.stderr.String(), "requiredApprovingReviewCount") {
 					t.Fatal("private raw evidence leaked")
 				}
 				return result

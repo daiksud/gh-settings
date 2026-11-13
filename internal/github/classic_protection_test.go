@@ -28,7 +28,7 @@ func classicFixturePage(nodes []any, total int, next bool, cursor any) map[strin
 }
 func classicFixtureAck(rule map[string]any) map[string]any {
 	result := map[string]any{}
-	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "repository"} {
+	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
 		result[key] = rule[key]
 	}
 	return result
@@ -73,6 +73,9 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 			}
 		}
 		switch {
+		case strings.Contains(request.Query, "ClassicStatusApp"):
+			phase = "app"
+			body["node"] = map[string]any{"__typename": "App", "id": request.Variables["id"]}
 		case strings.Contains(request.Query, "mutation ClassicProtectionDelete"):
 			phase = "delete"
 			input := request.Variables["input"].(map[string]any)
@@ -108,6 +111,19 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 				if k != "repositoryId" && k != "branchProtectionRuleId" {
 					rule[k] = v
 				}
+			}
+			if checks, ok := input["requiredStatusChecks"].([]any); ok {
+				contexts, values := []string{}, []any{}
+				for _, item := range checks {
+					check := item.(map[string]any)
+					contexts = append(contexts, check["context"].(string))
+					var app any
+					if check["appId"] != "any" {
+						app = map[string]any{"id": check["appId"]}
+					}
+					values = append(values, map[string]any{"context": check["context"], "app": app})
+				}
+				rule["requiredStatusCheckContexts"], rule["requiredStatusChecks"] = contexts, values
 			}
 			if f.mutate != nil {
 				f.mutate(rule)

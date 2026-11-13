@@ -287,6 +287,15 @@ existing independent-family retention boundary. The
 [feature specification](../features/classic-protection.feature.md) maps tests and
 records the inspected-schema and nontransactional limits.
 
+The status-check model owns a complete active UI union while retaining both native
+booleans and nullable ordered lists in the private snapshot. Active projection
+requires coherent legacy contexts and App-bound checks; selected policy compares
+as an unordered set, while an omitted group retains raw order and nullness.
+Mutation acknowledgments include the entire supported group before independent
+rule/actor readback. Needed writes with selected non-`any` App sources also resolve
+distinct exact App nodes before and after verification; no-op, export and plan do
+not query installations or run history. Selected deactivation owns only its gate.
+
 ## Autolink reconciliation
 
 Autolinks have a concrete immutable collection owner in `internal/settings`, a read/create/delete REST adapter in `internal/github`, and shared export/plan/apply sequencing in `internal/app`. UI projection and workspace ID recording keep omission separate from an empty collection. Prune's private expected inventory begins at global preflight and changes only for verified own creations/deletions and unarchive. The adapter checks complete identity/configuration before writes and independently observes their results. Public comparison objects contain only create/delete configuration, with one managed-family count; no timestamp or target snapshot is serialized. The [public contract](../settings.md#autolink-references) owns input constraints and explicit replacement.

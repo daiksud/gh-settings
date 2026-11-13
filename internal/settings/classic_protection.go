@@ -64,6 +64,7 @@ type ClassicWriteResult struct {
 }
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
+	r.RequireStatusChecksToPassBeforeMerging = CloneClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging)
 	r.ID = cloneClassicValue(r.ID)
 	r.RequireConversationResolutionBeforeMerging = cloneClassicValue(r.RequireConversationResolutionBeforeMerging)
 	r.RequireSignedCommits = cloneClassicValue(r.RequireSignedCommits)
@@ -86,6 +87,9 @@ func ClassicFlags(r ClassicRule) []*bool {
 func ValidateClassicRules(rules []ClassicRule) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
+		if err := ValidateClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging); err != nil {
+			return err
+		}
 		if strings.TrimSpace(r.BranchNamePattern) == "" || strings.ContainsFunc(r.BranchNamePattern, unicode.IsControl) {
 			return fmt.Errorf("%s requires a nonblank exact branch_name_pattern without controls", ClassicProtectionPath)
 		}
@@ -122,6 +126,13 @@ func (o ClassicObservation) Validate() error {
 			}
 		}
 		c := s.Companions
+		status, err := ProjectClassicStatusChecks(c)
+		if err != nil {
+			return err
+		}
+		if !ClassicStatusChecksManaged(s.Rule.RequireStatusChecksToPassBeforeMerging) || !ClassicStatusChecksMatch(status, s.Rule.RequireStatusChecksToPassBeforeMerging) {
+			return fmt.Errorf("incomplete or inconsistent classic status-check projection")
+		}
 		if !c.ReviewCount.Present || !c.Deployments.Present || !c.Contexts.Present || !c.Checks.Present {
 			return fmt.Errorf("missing classic companion state")
 		}
@@ -188,6 +199,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	return result, nil
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
+	if !ClassicStatusChecksMatch(observed.RequireStatusChecksToPassBeforeMerging, desired.RequireStatusChecksToPassBeforeMerging) {
+		return false
+	}
 	if observed.BranchNamePattern != desired.BranchNamePattern {
 		return false
 	}
@@ -261,6 +275,9 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 			return fmt.Errorf("missing or duplicate classic change identity")
 		}
 		seen[*c.Before.ID] = true
+		if !ClassicStatusChecksManaged(c.Before.RequireStatusChecksToPassBeforeMerging) {
+			return fmt.Errorf("incomplete classic before status-check policy")
+		}
 		for _, b := range ClassicFlags(*c.Before) {
 			if b == nil {
 				return fmt.Errorf("incomplete classic before policy")
@@ -299,7 +316,14 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 	if !ClassicMatches(after.Rule, desired) {
 		return fmt.Errorf("classic requested controls did not persist")
 	}
-	if !reflect.DeepEqual(before.Companions, after.Companions) {
+	bCompanions, aCompanions := before.Companions, after.Companions
+	if ClassicStatusChecksManaged(desired.RequireStatusChecksToPassBeforeMerging) {
+		bCompanions.RequiresStatusChecks, aCompanions.RequiresStatusChecks = false, false
+		bCompanions.RequiresStrictStatusChecks, aCompanions.RequiresStrictStatusChecks = false, false
+		bCompanions.Contexts, aCompanions.Contexts = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
+		bCompanions.Checks, aCompanions.Checks = ClassicNullable[[]ClassicCheck]{}, ClassicNullable[[]ClassicCheck]{}
+	}
+	if !reflect.DeepEqual(bCompanions, aCompanions) {
 		return fmt.Errorf("unowned classic protection changed")
 	}
 	b, a, d := ClassicFlags(before.Rule), ClassicFlags(after.Rule), ClassicFlags(desired)
@@ -324,6 +348,13 @@ func (c *ClassicChange) UnmarshalJSON(data []byte) error {
 		if m, ok := v.(map[string]any); ok {
 			for k, x := range m {
 				if k != strings.ToLower(k) || !valid(x) {
+					return false
+				}
+			}
+		}
+		if list, ok := v.([]any); ok {
+			for _, x := range list {
+				if !valid(x) {
 					return false
 				}
 			}

@@ -15,7 +15,7 @@ import (
 
 func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 	id, yes, no := int64(7), true, false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}}
 	after := settings.ClassicRule{ID: &id, BranchNamePattern: before.BranchNamePattern, RequireSignedCommits: &yes}
 	plan := func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before, After: &after}}}}, nil
@@ -67,7 +67,7 @@ func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 
 func TestClassicDeletionReportAndClosedSummary(t *testing.T) {
 	id, no := int64(7), false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private-delete>", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private-delete>", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}}
 	plan := func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before}}}}, nil
 	}
@@ -94,5 +94,45 @@ func TestClassicDeletionReportAndClosedSummary(t *testing.T) {
 	report.BranchProtectionRules[0].Before.AllowDeletions = nil
 	if _, err := actions.RenderSummary(report, summaryMetadata()); err == nil {
 		t.Fatal("incomplete before accepted")
+	}
+}
+
+func TestClassicStatusCheckReportCompleteness(t *testing.T) {
+	id, yes, no := int64(7), true, false
+	checks := []settings.ClassicStatusCheck{{Name: "<check>", AcceptUpdatesFrom: "APP_source"}}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "main", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &yes, RequireBranchesToBeUpToDateBeforeMerging: &no, StatusChecks: &checks}}
+	report := actions.PlanReport{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before}}}
+	// Reuse the fully formed report envelope from the public plan command.
+	plan := func() (app.PlanResult, error) {
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: report.BranchProtectionRules}}, nil
+	}
+	path := filepath.Join(t.TempDir(), "report.json")
+	var out, errout bytes.Buffer
+	if status := actions.Run([]string{"plan", path}, &out, &errout, "dev", plan); status != 0 {
+		t.Fatal(status, errout.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || json.Unmarshal(data, &report) != nil {
+		t.Fatal(err, string(data))
+	}
+	for _, bad := range []string{
+		strings.Replace(string(data), `"name":`, `"NAME":`, 1),
+		strings.Replace(string(data), `"accept_updates_from":`, `"ACCEPT_UPDATES_FROM":`, 1),
+		strings.Replace(string(data), `"status_checks":[`, `"status_checks":[null,`, 1),
+	} {
+		var rejected actions.PlanReport
+		if json.Unmarshal([]byte(bad), &rejected) == nil {
+			t.Fatal("noncanonical nested status-check report accepted", bad)
+		}
+	}
+	summary, err := actions.RenderSummary(report, summaryMetadata())
+	if err != nil || !strings.Contains(summary, "APP_source") || !strings.Contains(summary, "accept_updates_from") || strings.Contains(summary, "<check>") || strings.Contains(string(data), "requiredStatusCheckContexts") {
+		t.Fatal(summary, string(data), err)
+	}
+	for _, value := range []*settings.ClassicStatusChecks{nil, {}, {Enabled: &yes}, {Enabled: &no, StatusChecks: &checks}} {
+		report.BranchProtectionRules[0].Before.RequireStatusChecksToPassBeforeMerging = value
+		if _, err := actions.RenderSummary(report, summaryMetadata()); err == nil {
+			t.Fatal("incomplete before-policy accepted", value)
+		}
 	}
 }

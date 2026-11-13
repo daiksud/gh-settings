@@ -1411,8 +1411,8 @@ See the [behavior specification](features/autolinks.feature.md).
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and six independent controls. It is separate from Rulesets and does not clone
-all branch protection. Current source supports personally owned public repositories;
+and six independent checkboxes plus the required status-check group. It is separate
+from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 
@@ -1455,8 +1455,8 @@ objects, and unlisted rules are preserved.
 [Classic rule pruning](#classic-branch-protection-pruning) adds whole-rule deletion
 through a command option; there is no YAML deletion marker or reordering operation.
 
-Plan compares only the requested pattern and checkboxes. Apply first acquires all
-selected identities and rejects collisions. Each existing rule is read again by
+Plan compares only the requested pattern, checkboxes and selected group. Apply first
+acquires all selected identities and rejects collisions. Each existing rule is read again by
 its acquired opaque node ID before comparison; matching intent sends no mutation.
 A changed request sends only changed declared inputs. Enabling linear history
 requires fresh squash or rebase availability, after any earlier repository updates;
@@ -1481,8 +1481,8 @@ corroborates this polarity despite the ambiguous GraphQL description. This is
 mapping evidence, not a live test of administrator bypass or effective enforcement.
 
 Complete known PR, check/App binding, deployment, fork-sync, force-push
-and actor-allowance state is acquired as unowned preservation evidence. Null stays
-distinct from zero or empty; complete disabled-group raw values are not rewritten.
+and actor-allowance state is acquired as preservation evidence. Omitted groups
+stay unowned. Null stays distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
 actor connections are paginated. After mutation acknowledgment, an independent
 query verifies original requested controls and all omitted known companions.
@@ -1496,18 +1496,77 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern and these six
-checkboxes. It does not export or adopt the other controls. Unavailable acquisition
-retains compatible prior declarations with bounded info; it never fabricates an
+Automatic export projects every readable rule's ID, pattern, six checkboxes and
+required status-check group. It does not export or adopt the other controls.
+Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
-GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
+GraphQL cannot reveal future unselected schema fields. PR/deployment groups,
 fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
 wildcard rules, and its permission table does not prove every GraphQL App grant.
 See the [behavior and verification specification](features/classic-protection.feature.md).
+
+### Required status checks
+
+The optional `require_status_checks_to_pass_before_merging` group owns the complete
+active policy when selected:
+
+```yaml
+require_status_checks_to_pass_before_merging:
+  enabled: true
+  require_branches_to_be_up_to_date_before_merging: false
+  status_checks:
+    - name: screening
+      accept_updates_from: APP_opaque_node_ID
+    - name: legacy
+      accept_updates_from: any
+```
+
+Omission or `{}` leaves the group unmanaged. A nonempty group requires `enabled`.
+With `true`, the strictness boolean and complete `status_checks` list are required;
+`[]` is valid, but does not establish useful check enforcement. With `false`, child
+controls are forbidden: this requests deactivation only. Null, wrong types, unknown
+members and native GraphQL aliases are rejected.
+
+Check names retain exact case and bytes and must be nonblank and free of control
+characters. Names must be unique, even when sources differ; this is a conservative
+product boundary. Distinct names may share one App. `accept_updates_from` is either
+the exact string `any` or an opaque GraphQL App node ID. Numeric App/installation
+IDs, slugs and inferred providers are not substitutes. The writer always sends
+`appId`; GitHub's [input contract][classic-check-input] otherwise infers the most
+recent source. gh-settings does not discover recently run checks, grant access or
+require App installation.
+
+For an active observed policy, both native check lists must be present and
+nonnull, names must be unique, and the legacy context list must contain exactly
+the same names as the App-bound list. This coherence check is a supported-observation
+restriction, not a guarantee about every GitHub rule. A malformed, missing or
+partial observation makes the whole classic family unavailable. An explicit null
+App means `any`; a missing App member is unknown. Inactive export contains only
+`enabled: false`. Its typed latent lists, including nullness, order and source
+bindings, remain private preservation evidence when the group is omitted.
+
+Creation or enabling sends all three writable members, including explicit false
+strictness and an empty list. Already active updates send changed members only;
+check order does not cause a write. Disabling sends only the false gate and permits GitHub to reset latent child values. The legacy context alias
+is never sent. Omitted groups must retain their exact raw state across other
+updates; selecting an active group owns its complete semantic policy.
+
+A matching fresh rule sends no mutation or App lookup. Before a needed write
+with a selected active group, each distinct non-`any` source must resolve through
+the same credential to the exact [App node][classic-check-app]. This applies even
+when only another declared checkbox changes. After the complete mutation
+acknowledgment, independent rule/actor readback verifies the entire original
+request and omitted state, then the same App identities are checked again.
+Prewrite failures stop before mutation; failed acknowledgment or subsequent
+verification leaves uncertain effects and creation IDs are recovery information
+only. Readback proves stored settings, not check execution or effective protection.
+
+[classic-check-input]: https://docs.github.com/en/graphql/reference/branches#requiredstatuscheckinput
+[classic-check-app]: https://docs.github.com/en/graphql/reference/apps#app
 
 ## Classic branch-protection pruning
 
@@ -1517,9 +1576,9 @@ collection stays unmanaged. `[]` selects all initially acquired rules; a nonempt
 list retains declared numeric IDs and newly created rules. All retained rules must
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
-Ordinary create/update retains its six-control partial ownership.
+Ordinary create/update retains its supported-control partial ownership.
 
-Deletion removes the entire rule, including PR, check, deployment and actor
+Deletion removes the entire rule, including PR, deployment and actor
 protections that gh-settings cannot edit. An overlapping rule may
 then take effect; recreation cannot restore creation-age priority. The plan shows
 this consequence and each complete supported before-policy, without raw private
@@ -1527,8 +1586,8 @@ companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-six flags and all known raw companions. Missing, denied, partial, unsupported or
-inconsistent evidence blocks the whole preflight. A retained rule's unreadable
+six flags, the raw status-check group and all other known companions. Missing, denied,
+partial, unsupported or inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.
 Newly observed unlisted rules remain untouched, including when the initial
