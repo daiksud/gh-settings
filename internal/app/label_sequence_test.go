@@ -20,9 +20,9 @@ func TestApplyLabelSequenceAndWritebackFailureStop(t *testing.T) {
 			result, err := Apply(func() (settings.Declaration, error) {
 				return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}, Labels: &labels}, nil
 			}, checkoutRepository, Writer{
-				Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+				Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 					calls = append(calls, "repository")
-					return nil
+					return true, nil
 				},
 				ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
 					calls = append(calls, "read")

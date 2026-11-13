@@ -23,15 +23,15 @@ func TestTopicsApplyOrderAndPartialFailures(t *testing.T) {
 				calls = append(calls, "target")
 				return target, nil
 			}, Writer{
-				Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
+				Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) (bool, error) {
 					calls = append(calls, "repository")
 					if repo != target || d.HasIssues == nil || *d.HasIssues {
 						t.Fatal("lost false")
 					}
 					if fail == "repository" {
-						return failure
+						return false, failure
 					}
-					return nil
+					return true, nil
 				},
 				Topics: func(repo repository.Repository, d settings.TopicsDeclaration) error {
 					calls = append(calls, "topics")

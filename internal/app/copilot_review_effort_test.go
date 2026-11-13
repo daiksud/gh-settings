@@ -108,9 +108,9 @@ func TestCopilotReviewEffortApply(t *testing.T) {
 	result, err := Apply(func() (settings.Declaration, error) {
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &description}, CopilotReviewEffort: &effort, Security: settings.SecurityDeclaration{PrivateVulnerabilityReporting: &enabled}}, nil
 	}, target, Writer{
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 			calls = append(calls, "repository")
-			return nil
+			return true, nil
 		},
 		CopilotReviewEffort: func(repository.Repository, string) (bool, error) {
 			calls = append(calls, "copilot")
@@ -126,7 +126,7 @@ func TestCopilotReviewEffortApply(t *testing.T) {
 	}
 	result, err = Apply(func() (settings.Declaration, error) {
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &description}}, nil
-	}, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil }, CopilotReviewEffort: func(repository.Repository, string) (bool, error) {
+	}, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return true, nil }, CopilotReviewEffort: func(repository.Repository, string) (bool, error) {
 		t.Fatal("called omitted setting")
 		return false, nil
 	}})

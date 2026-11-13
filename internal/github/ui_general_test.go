@@ -59,7 +59,7 @@ func TestUIGeneralInvalidBranch(t *testing.T) {
 
 func TestUIGeneralRESTPayload(t *testing.T) {
 	want := map[string]any{"is_template": true, "default_branch": "trunk", "has_issues": false, "has_projects": true, "has_wiki": false, "has_discussions": true, "web_commit_signoff_required": true, "allow_merge_commit": false, "allow_squash_merge": true, "allow_rebase_merge": false, "allow_update_branch": true, "allow_auto_merge": false, "delete_branch_on_merge": true}
-	client := topicsClient(t, func(req *http.Request) (*http.Response, error) {
+	client := writeRepositoryFixtureClient(t, want, func(req *http.Request) (*http.Response, error) {
 		if req.Method != "PATCH" || req.URL.Path != "/repos/owner/current" {
 			t.Fatalf("request=%s %s", req.Method, req.URL)
 		}
@@ -81,7 +81,7 @@ func TestUIGeneralRESTPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil {
+	if _, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil {
 		t.Fatal(err)
 	}
 }

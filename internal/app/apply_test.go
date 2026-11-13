@@ -20,12 +20,12 @@ func TestApplyDeclaredSettings(t *testing.T) {
 	}, func() (repository.Repository, error) {
 		calls = append(calls, "target")
 		return target, nil
-	}, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+	}, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) (bool, error) {
 		calls = append(calls, "write")
 		if repo != target || !reflect.DeepEqual(desired, want) {
 			t.Fatalf("target=%+v declaration=%+v, want %+v %+v", repo, desired, target, want)
 		}
-		return nil
+		return true, nil
 	}})
 	if err != nil || !reflect.DeepEqual(got, ApplyResult{Outcome: ApplyCompleted, Target: target, Operations: []ApplyOperation{{Kind: RepositoryUpdate, Status: OperationCompleted}}}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
 		t.Fatalf("result=%+v error=%v calls=%v, want applied after load/target/write", got, err, calls)
@@ -89,12 +89,12 @@ func TestApplyWriteFailure(t *testing.T) {
 	}, func() (repository.Repository, error) {
 		calls = append(calls, "target")
 		return target, nil
-	}, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+	}, Writer{Repository: func(repo repository.Repository, desired settings.RepositoryDeclaration) (bool, error) {
 		calls = append(calls, "write")
 		if repo != target || desired.HasIssues == nil || *desired.HasIssues {
 			t.Fatalf("target=%+v declaration=%+v", repo, desired)
 		}
-		return cause
+		return false, cause
 	}})
 	if err != cause || !reflect.DeepEqual(got, ApplyResult{Outcome: ApplyFailed, Target: target, Operations: []ApplyOperation{{Kind: RepositoryUpdate, Status: OperationFailedUnknown}}}) || !reflect.DeepEqual(calls, []string{"load", "target", "write"}) {
 		t.Fatalf("result=%+v error=%v calls=%v", got, err, calls)

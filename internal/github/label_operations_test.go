@@ -175,7 +175,11 @@ func TestLabelMutationsRequireIndependentCompleteReadback(t *testing.T) {
 					if tc.status == 0 {
 						return nil, cause
 					}
-					return labelsResponse(req, tc.status, tc.body), nil
+					response := labelsResponse(req, tc.status, tc.body)
+					if tc.status == http.StatusTemporaryRedirect {
+						response.Header.Set("Location", "https://api.github.com/repos/other/wrong/labels/new")
+					}
+					return response, nil
 				}))
 				repo := repository.Repository{Owner: "owner", Name: "current"}
 				if operation == "create" {

@@ -106,9 +106,9 @@ func TestCopilotMCPApply(t *testing.T) {
 	result, err := Apply(func() (settings.Declaration, error) {
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &description}, CopilotMCP: &enabled, Security: settings.SecurityDeclaration{PrivateVulnerabilityReporting: &enabled}}, nil
 	}, target, Writer{
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 			calls = append(calls, "repository")
-			return nil
+			return true, nil
 		},
 		CopilotMCP: func(repository.Repository, bool) (bool, error) {
 			calls = append(calls, "copilot")
@@ -124,7 +124,7 @@ func TestCopilotMCPApply(t *testing.T) {
 	}
 	result, err = Apply(func() (settings.Declaration, error) {
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &description}}, nil
-	}, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil }, CopilotMCP: func(repository.Repository, bool) (bool, error) { t.Fatal("called omitted setting"); return false, nil }})
+	}, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return true, nil }, CopilotMCP: func(repository.Repository, bool) (bool, error) { t.Fatal("called omitted setting"); return false, nil }})
 	if err != nil || result.Outcome != ApplyCompleted || len(result.Operations) != 1 {
 		t.Fatal(result, err)
 	}

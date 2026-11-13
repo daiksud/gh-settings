@@ -17,12 +17,12 @@ func TestSquashCommitSelectiveReadDirectWriteAndLocalValidation(t *testing.T) {
 		if err != nil || calls != 1 || got.Comparison.Managed < 1 {
 			t.Fatalf("plan=%+v calls=%d err=%v", got, calls, err)
 		}
-		result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) error {
+		result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(_ repository.Repository, d settings.RepositoryDeclaration) (bool, error) {
 			calls++
 			if d.SquashMergeCommitTitle == nil || *d.SquashMergeCommitTitle != "PR_TITLE" || !d.BaseEmpty() {
 				t.Fatalf("desired=%+v", d)
 			}
-			return nil
+			return true, nil
 		}})
 		if err != nil || !result.Completed() || calls != 2 {
 			t.Fatalf("apply=%+v err=%v", result, err)

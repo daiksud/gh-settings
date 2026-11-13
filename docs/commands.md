@@ -274,7 +274,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 
 | Resource | Request |
 | --- | --- |
-| `repository.about` and `repository.settings.general` scalars | Declared REST members use repository PATCH.[^github-update-repository] Declared merge/squash message menus additionally require selective complete GraphQL preflight and fresh raw readback; failed verification can retain other members in that PATCH. PR access, Issue permissions and Sponsorships share identity-checked, declared-only GraphQL updates; declared creation policies also use selective preflight and fresh same-ID raw readback. Earlier REST success remains partial progress if the later access substep fails; GraphQL-only intent skips PATCH. |
+| `repository.about` and `repository.settings.general` scalars | REST-backed controls require fresh complete base/selected merge observations, skip exact matches and send only changed controls in one repository PATCH.[^github-update-repository] A changed UI menu sends its complete pair; normalized raw pairs remain write-required. Independent readback verifies all originally declared REST members, including initially matching members omitted from PATCH; failed verification can retain other members in that PATCH. PR access, Issue permissions and Sponsorships share identity-checked, declared-only GraphQL updates; declared creation policies also use selective preflight and fresh same-ID raw readback. Earlier REST success remains partial progress if the later access substep fails; GraphQL-only intent skips PATCH. |
 | `repository.about.topics` | Topics PUT with the complete sorted set; `[]` clears it. |
 | `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST, followed by independent same-ID/full-settings GET at the resulting name.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST; unlisted deletion requires `--prune rulesets`. |
@@ -294,7 +294,9 @@ An explicit archive lifecycle surrounds these operations: unarchive first, final
 
 The version and outer YAML mappings are not API fields. False and empty strings are sent explicitly; omitted repository fields remain outside update requests. Selected labels send complete supported values, including description defaults. Apply rejects redirects, including on its label reads; update origin when a repository moves.
 
-Repository fields/topics retain their direct-write behavior. Nonempty label selections use fresh observations and stable create/update order. A valid ID fixes update identity; a name collision without an ID fails before label writes. Updates may rename the same object. Current source performs no implicit label deletion.
+Repository REST controls reconcile against fresh state; Topics retains its direct-write behavior. Nonempty label selections use fresh observations and stable create/update order. A valid ID fixes update identity; a name collision without an ID fails before label writes. Updates may rename the same object. Current source performs no implicit label deletion.
+
+For the nineteen members of the shared repository PATCH, base controls use the complete REST observation and merge controls use selected GraphQL booleans and owned menu pairs. An exact match needs no PATCH or second read. Changed scalars omit matching and undeclared members; changed menus send both declared components. Base-only intent does not query GraphQL. A post-write observation must confirm the original declared values and required raw menu companions. Default branch and Discussions also require matching mutation-response values when sent. An unavailable preflight fails before PATCH; mutation or readback failure may leave changes applied. Successful reads and no-ops are not reported as completed writes.
 
 Apply never consumes a saved plan. Concurrent remote changes can affect or invalidate an update; fresh checks and response verification are not a lock. Earlier writes remain applied after a later failure, with no automatic rollback/retry.
 
@@ -304,7 +306,7 @@ Success prints `Applied repository settings.` for managed work, followed by crea
 
 Local validation cannot establish remote permissions or server-side acceptance. Permission and API failures return a nonzero status.[^github-update-repository]
 
-Updates have no transaction, automatic retry or rollback. A failed command can leave repository settings or topics updated when a later label read or mutation fails, and earlier label changes can remain applied. After a failed/cancelled apply or output error, inspect current GitHub settings before deciding whether to retry; retrying resends declared repository/topic values and computes label operations from another fresh read.
+Updates have no transaction, automatic retry or rollback. A failed command can leave repository settings or topics updated when a later label read or mutation fails, and earlier label changes can remain applied. After a failed/cancelled apply or output error, inspect current GitHub settings before deciding whether to retry; retrying rereads REST-backed repository controls, resends declared Topics and computes label operations from another fresh read.
 
 Contributors can find the [behavior specifications](features/README.md), [testing guide](contributing/testing.md) and [internal Action interfaces](contributing/actions-internals.md) separately.
 

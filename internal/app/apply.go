@@ -7,7 +7,8 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// Apply keeps direct repository/topics writes; labels read their current collection before CRUD.
+// Apply reconciles repository settings and retains direct topics writes;
+// labels read their current collection before CRUD.
 func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options ...settings.PruneScopes) (result ApplyResult, err error) {
 	prune, optionErr := operationPrune(options)
 	if optionErr != nil {
@@ -77,8 +78,10 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		result.Operations = append(result.Operations, ApplyOperation{Kind: LabelsRead})
 	}
 	index := firstOrdinary
+	repositoryWrote := false
 	if repositoryManaged {
-		if err := write.Repository(repo, other); err != nil {
+		repositoryWrote, err = write.Repository(repo, other)
+		if err != nil {
 			status := OperationFailedUnknown
 			var readFailure PreWriteReadFailure
 			var writeEffects RepositoryWriteEffectsFailure
@@ -92,7 +95,10 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			}
 			return result, err
 		}
-		result.Operations[index].Status = OperationCompleted
+		result.Operations[index].Status = OperationUnchanged
+		if repositoryWrote {
+			result.Operations[index].Status = OperationCompleted
+		}
 		index++
 	}
 	if topicsManaged {
@@ -103,17 +109,21 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		result.Operations[index].Status = OperationCompleted
 		index++
 	}
-	hasWrites := repositoryManaged || topicsManaged || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
+	hasWrites := repositoryWrote || topicsManaged || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
 	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
+		progress := ""
+		if hasWrites {
+			progress = " (earlier resource writes remain applied)"
+		}
 		current, err := write.ReadLabels(repo)
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
-			return result, fmt.Errorf("read labels for apply (earlier resource writes remain applied): %w", err)
+			return result, fmt.Errorf("read labels for apply%s: %w", progress, err)
 		}
 		comparison, err := settings.CompareLabelsWithPrune(current, desired.Labels, prune.Has("labels"))
 		if err != nil {
 			result.failOperation(index, OperationFailedRead)
-			return result, fmt.Errorf("compare labels for apply (earlier resource writes remain applied): %w", err)
+			return result, fmt.Errorf("compare labels for apply%s: %w", progress, err)
 		}
 		if prune.Has("labels") && !sameLabelDeletions(prepared.labels, comparison.Labels.Values()) {
 			result.failOperation(index, OperationFailedRead)

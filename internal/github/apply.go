@@ -12,7 +12,8 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// NewWriteClient retains the write timeout and rejects redirects for writes.
+// NewWriteClient retains the write timeout and rejects redirects throughout
+// repository reconciliation, including its fresh reads.
 func NewWriteClient(host string) (*Client, error) {
 	return newWriteClient(api.ClientOptions{Host: host})
 }
@@ -32,7 +33,47 @@ func newWriteClient(options api.ClientOptions) (*Client, error) {
 	return &Client{rest: rest, commitMessages: &MergeMethodsClient{graphql: graphql}}, nil
 }
 
-func (client *Client) ApplyRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+// ApplyRepository reconciles the selected REST controls with fresh observations.
+// The bool records a successful PATCH acknowledgment, including a later failure.
+// A false result with an error does not establish that no mutation occurred.
+func (client *Client) ApplyRepository(repo repository.Repository, desired settings.RepositoryDeclaration) (bool, error) {
+	if desired.BaseEmpty() && desired.MergeMethodsEmpty() {
+		return false, nil
+	}
+	before, beforeMenus, err := client.readRepositoryPatch(repo, desired)
+	if err != nil {
+		return false, &repositoryPreWriteFailure{err}
+	}
+	patch, err := settings.RepositoryPatchChanges(before, desired)
+	if err != nil {
+		return false, &repositoryPreWriteFailure{err}
+	}
+	client.reportCommitMessageNormalizations(beforeMenus)
+	if patch.Empty() {
+		return false, nil
+	}
+	return client.patchRepository(repo, desired, patch, beforeMenus)
+}
+
+func (client *Client) readRepositoryPatch(repo repository.Repository, desired settings.RepositoryDeclaration) (settings.RepositoryDeclaration, repositoryCommitObservations, error) {
+	var observed settings.RepositoryDeclaration
+	if !desired.BaseEmpty() {
+		base, err := client.ReadRepository(repo)
+		if err != nil {
+			return settings.RepositoryDeclaration{}, nil, err
+		}
+		observed = base.Declaration()
+	}
+	if desired.MergeMethodsEmpty() {
+		return observed, nil, nil
+	}
+	if client.commitMessages == nil || client.commitMessages.graphql == nil {
+		return settings.RepositoryDeclaration{}, nil, fmt.Errorf("repository merge verification client is not configured")
+	}
+	return client.commitMessages.readRepositoryPatchMerge(repo, desired, observed)
+}
+
+func (client *Client) patchRepository(repo repository.Repository, original, desired settings.RepositoryDeclaration, beforeMenus repositoryCommitObservations) (bool, error) {
 	payload := struct {
 		Description              *string `json:"description,omitempty"`
 		Homepage                 *string `json:"homepage,omitempty"`
@@ -62,19 +103,7 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("encode repository settings: %w", err)
-	}
-	menusManaged := desired.SquashMergeCommitTitle != nil || desired.SquashMergeCommitMessage != nil || desired.MergeCommitTitle != nil || desired.MergeCommitMessage != nil
-	var before repositoryCommitObservations
-	if menusManaged {
-		if client.commitMessages == nil || client.commitMessages.graphql == nil {
-			return &commitMessagePreWriteFailure{fmt.Errorf("repository commit message verification client is not configured")}
-		}
-		before, err = client.commitMessages.readCommitMessages(repo, desired)
-		if err != nil {
-			return &commitMessagePreWriteFailure{err}
-		}
-		client.reportCommitMessageNormalizations(before)
+		return false, &repositoryPreWriteFailure{fmt.Errorf("encode repository settings: %w", err)}
 	}
 	var response map[string]json.RawMessage
 	var result any
@@ -82,46 +111,48 @@ func (client *Client) ApplyRepository(repo repository.Repository, desired settin
 		result = &response
 	}
 	if err := client.rest.Patch("repos/"+repo.Owner+"/"+repo.Name, bytes.NewReader(body), result); err != nil {
-		return fmt.Errorf("apply repository settings: %w", err)
+		return false, fmt.Errorf("apply repository settings: %w", err)
 	}
 	if desired.HasDiscussions != nil {
 		var actual *bool
 		value, present := response["has_discussions"]
 		if !present || json.Unmarshal(value, &actual) != nil || actual == nil {
-			return fmt.Errorf("apply repository settings: GitHub response lacks boolean has_discussions (repository writes may already have applied)")
+			return true, fmt.Errorf("apply repository settings: GitHub response lacks boolean has_discussions (repository writes may already have applied)")
 		}
 		if *actual != *desired.HasDiscussions {
-			return fmt.Errorf("apply repository settings: GitHub returned has_discussions=%t, expected %t (repository writes may already have applied)", *actual, *desired.HasDiscussions)
+			return true, fmt.Errorf("apply repository settings: GitHub returned has_discussions=%t, expected %t (repository writes may already have applied)", *actual, *desired.HasDiscussions)
 		}
 	}
 	if desired.DefaultBranch != nil {
 		var actual *string
 		value, present := response["default_branch"]
 		if !present || json.Unmarshal(value, &actual) != nil || actual == nil || !settings.ValidDefaultBranch(*actual) {
-			return fmt.Errorf("apply repository settings: GitHub response lacks valid default_branch (repository writes may already have applied)")
+			return true, fmt.Errorf("apply repository settings: GitHub response lacks valid default_branch (repository writes may already have applied)")
 		}
 		if *actual != *desired.DefaultBranch {
-			return fmt.Errorf("apply repository settings: GitHub returned default_branch=%q, expected %q (repository writes may already have applied)", *actual, *desired.DefaultBranch)
+			return true, fmt.Errorf("apply repository settings: GitHub returned default_branch=%q, expected %q (repository writes may already have applied)", *actual, *desired.DefaultBranch)
 		}
 	}
-	if menusManaged {
-		actual, err := client.commitMessages.readCommitMessages(repo, desired)
-		if err != nil {
-			return fmt.Errorf("verify repository commit messages (repository writes may already have applied): %w", err)
-		}
-		client.reportCommitMessageNormalizations(actual)
-		if !repositoryCommitMessagesMatch(before, actual, desired) {
-			return fmt.Errorf("GitHub commit message readback does not match declared values or preserved companions (repository writes may already have applied)")
-		}
+	actual, actualMenus, err := client.readRepositoryPatch(repo, original)
+	if err != nil {
+		return true, fmt.Errorf("verify repository settings (repository writes may already have applied): %w", err)
 	}
-	return nil
+	client.reportCommitMessageNormalizations(actualMenus)
+	remaining, err := settings.RepositoryPatchChanges(actual, original)
+	if err != nil {
+		return true, fmt.Errorf("verify repository settings (repository writes may already have applied): %w", err)
+	}
+	if !remaining.Empty() || !repositoryCommitMessagesMatch(beforeMenus, actualMenus, original) {
+		return true, fmt.Errorf("GitHub repository settings readback does not match declared values or preserved companions (repository writes may already have applied)")
+	}
+	return true, nil
 }
 
-type commitMessagePreWriteFailure struct{ cause error }
+type repositoryPreWriteFailure struct{ cause error }
 
-func (failure *commitMessagePreWriteFailure) Error() string  { return failure.cause.Error() }
-func (failure *commitMessagePreWriteFailure) Unwrap() error  { return failure.cause }
-func (*commitMessagePreWriteFailure) ReadFailedBeforeWrite() {}
+func (failure *repositoryPreWriteFailure) Error() string  { return failure.cause.Error() }
+func (failure *repositoryPreWriteFailure) Unwrap() error  { return failure.cause }
+func (*repositoryPreWriteFailure) ReadFailedBeforeWrite() {}
 
 func (client *Client) reportCommitMessageNormalizations(observed repositoryCommitObservations) {
 	if client.CommitMessageNormalizationWarning == nil {

@@ -77,9 +77,9 @@ func TestActionsPolicyPruneUnsupportedBlocksUnrelatedWrites(t *testing.T) {
 		ReadActionsPolicies: func(repository.Repository) (settings.ActionsPolicyObservation, error) {
 			return settings.NewActionsPolicyObservation([]settings.ActionsEventPolicyState{{ID: 7, Name: "unknown", Unsupported: "future rule"}})
 		},
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 			t.Fatal("unrelated write before candidate validation")
-			return nil
+			return true, nil
 		},
 	}, mustPrune(t, "actions-policies"))
 	if err == nil {

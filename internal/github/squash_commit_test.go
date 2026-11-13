@@ -72,7 +72,7 @@ func TestSquashCommitDeclaredOnlyPATCH(t *testing.T) {
 				}
 				return labelsResponse(r, 200, `{}`), nil
 			}))
-			if err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 1 {
+			if _, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 1 {
 				t.Fatalf("calls=%d err=%v", calls, err)
 			}
 		}

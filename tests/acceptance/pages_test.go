@@ -24,6 +24,13 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 	pagesReads, redirected := 0, 0
 	writes := []map[string]any{}
 	events := []string{}
+	var repositoryState map[string]any
+	if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+		t.Fatal(err)
+	}
+	repositoryState["id"] = 123
+	repositoryState["full_name"] = "owner/current"
+	repositoryState["archived"] = false
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -43,6 +50,13 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		switch r.URL.Path {
 		case "/repos/owner/current":
 			if r.Method == "PATCH" {
+				var patch map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&patch); err != nil || !reflect.DeepEqual(patch, map[string]any{"description": "changed"}) {
+					t.Error("unexpected repository payload", patch, err)
+				}
+				for key, value := range patch {
+					repositoryState[key] = value
+				}
 				events = append(events, "repository")
 				fmt.Fprint(w, `{}`)
 				return
@@ -52,12 +66,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 				w.WriteHeader(400)
 				return
 			}
-			var base map[string]any
-			json.Unmarshal([]byte(planResponse), &base)
-			base["id"] = 123
-			base["full_name"] = "owner/current"
-			base["archived"] = false
-			json.NewEncoder(w).Encode(base)
+			json.NewEncoder(w).Encode(repositoryState)
 		case "/repos/owner/current/topics":
 			fmt.Fprint(w, `{"names":[]}`)
 		case "/repos/owner/current/labels":
@@ -268,7 +277,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(events, []string{"repository", "pages"}) {
+	if !reflect.DeepEqual(events, []string{"repository", "pages"}) || repositoryState["description"] != "changed" {
 		t.Fatal(events)
 	}
 }
