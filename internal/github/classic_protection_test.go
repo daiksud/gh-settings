@@ -28,7 +28,7 @@ func classicFixturePage(nodes []any, total int, next bool, cursor any) map[strin
 }
 func classicFixtureAck(rule map[string]any) map[string]any {
 	result := map[string]any{}
-	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "repository"} {
+	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "repository"} {
 		result[key] = rule[key]
 	}
 	return result
@@ -182,9 +182,10 @@ func classicSelect(t *testing.T, f *classicAPIFixture, desired settings.ClassicR
 	return selected[0]
 }
 func TestClassicPartialWritesNoopAndReadback(t *testing.T) {
-	for index, key := range []string{"requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch"} {
+	for index, key := range []string{"requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced"} {
 		t.Run(key, func(t *testing.T) {
 			f := newClassicAPIFixture(t, classicFixtureRule(7, "release/**"))
+			f.rules[0][key] = false
 			id, v := int64(7), true
 			d := settings.ClassicRule{ID: &id, BranchNamePattern: "release/**"}
 			switch index {
@@ -198,6 +199,8 @@ func TestClassicPartialWritesNoopAndReadback(t *testing.T) {
 				d.AllowDeletions = &v
 			case 4:
 				d.LockBranch = &v
+			case 5:
+				d.DoNotAllowBypassingTheAboveSettings = &v
 			}
 			selection := classicSelect(t, f, d)
 			f.calls = nil

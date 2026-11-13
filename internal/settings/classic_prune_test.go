@@ -45,6 +45,7 @@ func TestClassicPruneFrozenIdentityAndPrivateEvidence(t *testing.T) {
 		func(o *ClassicObservation) { *o.Rules[0].Rule.ID = 90 },
 		func(o *ClassicObservation) { o.Rules[0].Rule.BranchNamePattern = "renamed" },
 		func(o *ClassicObservation) { *o.Rules[0].Rule.LockBranch = true },
+		func(o *ClassicObservation) { *o.Rules[0].Rule.DoNotAllowBypassingTheAboveSettings = true },
 		func(o *ClassicObservation) { o.Rules[0].Companions.Contexts.Value = nil },
 		func(o *ClassicObservation) { o.Rules[0].Companions.PushActors[0].ID = "other" },
 		func(o *ClassicObservation) { *(*o.Rules[0].Companions.Checks.Value)[0].AppID = "other" },
