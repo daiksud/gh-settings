@@ -488,9 +488,6 @@ func NewRulesetChange(operation string, id int64, before, after *RulesetDeclarat
 }
 
 func newRulesetChange(operation string, id int64, before, after *RulesetDeclaration, normalizations RulesetNormalizations) (RulesetChange, error) {
-	if err := validateRulesetUnmanagedChange(before, after); err != nil {
-		return RulesetChange{}, err
-	}
 	if !normalizations.IsZero() {
 		if err := validateRulesetNormalizationChange(operation, id, before, after, normalizations); err != nil {
 			return RulesetChange{}, err
@@ -569,9 +566,6 @@ func ReconcileRulesets(current RulesetObservation, desired *RulesetDeclarations)
 		prior, id := cloneRuleset(before.Policy), before.ID
 		prior.ID = &id
 		normalizations := RulesetNormalizations{Enforcement: before.EnforcementNormalization, QualitySeverity: before.QualitySeverityNormalization, RequiredApprovals: before.RequiredApprovalsNormalization, MergeMethods: before.MergeMethodsNormalization, TeamApprovals: before.TeamApprovalsNormalizations, ScanningAlerts: before.ScanningAlertsNormalizations, ScanningSecurityAlerts: before.ScanningSecurityAlertsNormalizations, BypassModes: before.BypassModeNormalizations}
-		if err := PreserveRulesetUnmanagedParameters(&prior, &after); err != nil {
-			return nil, err
-		}
 		if normalizations.IsZero() && reflect.DeepEqual(prior, after) {
 			continue
 		}

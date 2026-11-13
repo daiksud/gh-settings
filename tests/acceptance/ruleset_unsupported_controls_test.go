@@ -35,8 +35,6 @@ func TestRemovedRulesetDeclarationsFailBeforeRemoteWork(t *testing.T) {
 		"enforcement_status: active\n        rules: {require_code_quality_results: {}}",
 		"enforcement_status: active\n        rules: {restrict_code_coverage: {minimum_line_coverage_percentage: 0, maximum_line_coverage_drop: 0}}",
 		"enforcement_status: active\n        rules: {require_a_pull_request_before_merging: {require_review_from_specific_teams: []}}",
-		"enforcement_status: active\n        rules: {require_a_pull_request_before_merging: {require_an_additional_approval_for_unattributed_copilot_pull_requests: false}}",
-		"enforcement_status: active\n        rules: {require_a_pull_request_before_merging: {require_an_additional_approval_for_unattributed_copilot_pull_requests: true}}",
 		"enforcement_status: evaluate\n        rules: {}",
 		"enforcement_status: active\n        rules: {require_merge_queue: {}}",
 		"enforcement_status: active\n        rules: {restrict_commit_message: {requirement: must_contain_matching_pattern, pattern: issue}}",

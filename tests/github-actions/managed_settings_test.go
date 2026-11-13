@@ -101,7 +101,7 @@ func TestAdditionalManagedSettingsMatchObservedPolicy(t *testing.T) {
 				*p.RequiredApprovingReviewCount == 1 && p.RequireCodeOwnerReview != nil &&
 				*p.RequireCodeOwnerReview && p.DismissStaleReviewsOnPush != nil &&
 				*p.DismissStaleReviewsOnPush && p.RequiredReviewThreadResolution != nil &&
-				*p.RequiredReviewThreadResolution && p.RequireExtraApprovalForUnattributedChanges == nil
+				*p.RequiredReviewThreadResolution && p.RequireExtraApprovalForUnattributedChanges != nil && *p.RequireExtraApprovalForUnattributedChanges
 		case "required_status_checks":
 			p := rule.Parameters
 			if p == nil || p.RequiredStatusChecks == nil || p.StrictRequiredStatusChecksPolicy == nil ||

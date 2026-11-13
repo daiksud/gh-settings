@@ -11,11 +11,12 @@ func declareUIRulesetPR(ui uimodel.PullRequestRule) (*settings.RuleParameters, e
 		return nil, fmt.Errorf("required_approvals must be a UI choice from 0 to 10")
 	}
 	result := &settings.RuleParameters{
-		RequiredApprovingReviewCount:   copyUIRulesetValue(ui.RequiredApprovals),
-		DismissStaleReviewsOnPush:      copyUIRulesetValue(ui.DismissStalePullRequestApprovalsWhenNewCommitsArePushed),
-		RequireCodeOwnerReview:         copyUIRulesetValue(ui.RequireReviewFromCodeOwners),
-		RequireLastPushApproval:        copyUIRulesetValue(ui.RequireApprovalOfTheMostRecentReviewablePush),
-		RequiredReviewThreadResolution: copyUIRulesetValue(ui.RequireConversationResolutionBeforeMerging),
+		RequireExtraApprovalForUnattributedChanges: copyUIRulesetValue(ui.RequireAnAdditionalApprovalForUnattributedCopilotPullRequests),
+		RequiredApprovingReviewCount:               copyUIRulesetValue(ui.RequiredApprovals),
+		DismissStaleReviewsOnPush:                  copyUIRulesetValue(ui.DismissStalePullRequestApprovalsWhenNewCommitsArePushed),
+		RequireCodeOwnerReview:                     copyUIRulesetValue(ui.RequireReviewFromCodeOwners),
+		RequireLastPushApproval:                    copyUIRulesetValue(ui.RequireApprovalOfTheMostRecentReviewablePush),
+		RequiredReviewThreadResolution:             copyUIRulesetValue(ui.RequireConversationResolutionBeforeMerging),
 	}
 	if ui.AllowedMergeMethods != nil {
 		methods := make([]string, 0, len(*ui.AllowedMergeMethods))
@@ -36,6 +37,7 @@ func observeUIRulesetPR(p *settings.RuleParameters) (*uimodel.PullRequestRule, e
 		return nil, fmt.Errorf("required_approvals is missing or outside UI choices")
 	}
 	result := &uimodel.PullRequestRule{
+		RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: copyUIRulesetValue(p.RequireExtraApprovalForUnattributedChanges),
 		RequiredApprovals: copyUIRulesetValue(p.RequiredApprovingReviewCount),
 		DismissStalePullRequestApprovalsWhenNewCommitsArePushed: copyUIRulesetValue(p.DismissStaleReviewsOnPush),
 		RequireReviewFromCodeOwners:                             copyUIRulesetValue(p.RequireCodeOwnerReview),

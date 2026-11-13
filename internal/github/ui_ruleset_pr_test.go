@@ -12,6 +12,7 @@ func TestUIRulesetPRSettings(t *testing.T) {
 	for _, count := range []int{0, 10} {
 		ui := uiRulesetBase()
 		ui.Rules.RequireAPullRequestBeforeMerging = &uimodel.PullRequestRule{
+			RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: rulesetPtr(count == 10),
 			RequiredApprovals:   &count,
 			AllowedMergeMethods: rulesetPtr([]uimodel.MergeMethod{"merge", "squash", "rebase"}),
 			DismissStalePullRequestApprovalsWhenNewCommitsArePushed: rulesetPtr(false),
@@ -20,7 +21,7 @@ func TestUIRulesetPRSettings(t *testing.T) {
 			RequireConversationResolutionBeforeMerging:              rulesetPtr(true),
 		}
 		got, err := RulesetDeclaration(ui)
-		want := settings.RuleParameters{RequiredApprovingReviewCount: &count, AllowedMergeMethods: rulesetPtr([]string{"merge", "squash", "rebase"}), DismissStaleReviewsOnPush: rulesetPtr(false), RequireCodeOwnerReview: rulesetPtr(true), RequireLastPushApproval: rulesetPtr(false), RequiredReviewThreadResolution: rulesetPtr(true)}
+		want := settings.RuleParameters{RequireExtraApprovalForUnattributedChanges: rulesetPtr(count == 10), RequiredApprovingReviewCount: &count, AllowedMergeMethods: rulesetPtr([]string{"merge", "squash", "rebase"}), DismissStaleReviewsOnPush: rulesetPtr(false), RequireCodeOwnerReview: rulesetPtr(true), RequireLastPushApproval: rulesetPtr(false), RequiredReviewThreadResolution: rulesetPtr(true)}
 		if err != nil || got.Rules == nil || len(*got.Rules) != 1 || (*got.Rules)[0].Type != "pull_request" || !reflect.DeepEqual((*got.Rules)[0].Parameters, &want) {
 			t.Fatalf("rules=%+v err=%v want %+v", got.Rules, err, want)
 		}
@@ -61,6 +62,7 @@ func TestUIRulesetPRSingletonFlags(t *testing.T) {
 			api settings.RuleParameters
 		}{
 			{uimodel.PullRequestRule{DismissStalePullRequestApprovalsWhenNewCommitsArePushed: &value}, settings.RuleParameters{DismissStaleReviewsOnPush: &value}},
+			{uimodel.PullRequestRule{RequireAnAdditionalApprovalForUnattributedCopilotPullRequests: &value}, settings.RuleParameters{RequireExtraApprovalForUnattributedChanges: &value}},
 			{uimodel.PullRequestRule{RequireReviewFromCodeOwners: &value}, settings.RuleParameters{RequireCodeOwnerReview: &value}},
 			{uimodel.PullRequestRule{RequireApprovalOfTheMostRecentReviewablePush: &value}, settings.RuleParameters{RequireLastPushApproval: &value}},
 			{uimodel.PullRequestRule{RequireConversationResolutionBeforeMerging: &value}, settings.RuleParameters{RequiredReviewThreadResolution: &value}},

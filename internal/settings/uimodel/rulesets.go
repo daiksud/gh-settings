@@ -89,12 +89,13 @@ const (
 func DefaultRulesetMergeMethods() []MergeMethod { return []MergeMethod{Merge, Squash, Rebase} }
 
 type PullRequestRule struct {
-	RequiredApprovals                                       *int
-	AllowedMergeMethods                                     *[]MergeMethod
-	DismissStalePullRequestApprovalsWhenNewCommitsArePushed *bool
-	RequireReviewFromCodeOwners                             *bool
-	RequireApprovalOfTheMostRecentReviewablePush            *bool
-	RequireConversationResolutionBeforeMerging              *bool
+	RequireAnAdditionalApprovalForUnattributedCopilotPullRequests *bool
+	RequiredApprovals                                             *int
+	AllowedMergeMethods                                           *[]MergeMethod
+	DismissStalePullRequestApprovalsWhenNewCommitsArePushed       *bool
+	RequireReviewFromCodeOwners                                   *bool
+	RequireApprovalOfTheMostRecentReviewablePush                  *bool
+	RequireConversationResolutionBeforeMerging                    *bool
 }
 
 type BypassRole string

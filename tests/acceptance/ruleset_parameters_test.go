@@ -142,8 +142,9 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 			"restrict_creations": false, "restrict_deletions": true, "block_force_pushes": true, "require_linear_history": true, "require_signed_commits": false,
 			"require_a_pull_request_before_merging": map[string]any{
 				"required_approvals": 1, "allowed_merge_methods": []any{"squash"},
-				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed": true,
-				"require_review_from_code_owners":                                  true,
+				"require_an_additional_approval_for_unattributed_copilot_pull_requests": false,
+				"dismiss_stale_pull_request_approvals_when_new_commits_are_pushed":      true,
+				"require_review_from_code_owners":                                       true,
 
 				"require_approval_of_the_most_recent_reviewable_push": false,
 				"require_conversation_resolution_before_merging":      true,
@@ -160,6 +161,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 	}
 	pr := desired["rules"].(map[string]any)["require_a_pull_request_before_merging"].(map[string]any)
 	pr["required_approvals"] = 2
+	pr["require_an_additional_approval_for_unattributed_copilot_pull_requests"] = true
 	document := map[string]any{"version": "daiksud/gh-settings@v0", "repository": map[string]any{"settings": map[string]any{"rulesets": []any{desired}}}}
 
 	save := func() {
@@ -174,7 +176,7 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 	}
 	save()
 	out := run("plan")
-	if strings.Count(out, `update "default"`) != 1 || !strings.Contains(out, `"required_approvals":2`) {
+	if strings.Count(out, `update "default"`) != 1 || !strings.Contains(out, `"required_approvals":2`) || !strings.Contains(out, `"require_an_additional_approval_for_unattributed_copilot_pull_requests":true`) {
 		t.Fatal("order-only diff hidden", out)
 	}
 	reportPath := filepath.Join(fixture.root, "review-plan.json")
@@ -186,14 +188,14 @@ func TestRulesetPRChecksExistingExportEditApply(t *testing.T) {
 		t.Fatal(e, summary.stderr.String())
 	}
 	summaryData, _ := os.ReadFile(summaryPath)
-	if !strings.Contains(html.UnescapeString(string(summaryData)), `"required_approvals":2`) {
+	if !strings.Contains(html.UnescapeString(string(summaryData)), `"required_approvals":2`) || !strings.Contains(html.UnescapeString(string(summaryData)), `"require_an_additional_approval_for_unattributed_copilot_pull_requests":true`) {
 		t.Fatal("summary lost order", string(summaryData))
 	}
 	run("apply")
 	mu.Lock()
 	firstCount := len(writes)
 	firstPR := acceptanceRuleParams(t, writes[0], "pull_request")
-	if firstCount != 1 || firstPR["required_approving_review_count"] != float64(2) || firstPR["require_extra_approval_for_unattributed_changes"] != false {
+	if firstCount != 1 || firstPR["required_approving_review_count"] != float64(2) || firstPR["require_extra_approval_for_unattributed_changes"] != true {
 		t.Fatal("order edit changed siblings", writes)
 	}
 	mu.Unlock()
@@ -236,7 +238,7 @@ repository:
 	last := writes[len(writes)-1]
 	p := acceptanceRuleParams(t, last, "pull_request")
 	checks := acceptanceRuleParams(t, last, "required_status_checks")
-	if p["required_approving_review_count"] != float64(0) || p["dismiss_stale_reviews_on_push"] != false || p["require_code_owner_review"] != false || p["require_extra_approval_for_unattributed_changes"] != false || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false || len(p["allowed_merge_methods"].([]any)) != 3 {
+	if p["required_approving_review_count"] != float64(0) || p["dismiss_stale_reviews_on_push"] != false || p["require_code_owner_review"] != false || p["require_extra_approval_for_unattributed_changes"] != true || p["require_last_push_approval"] != false || p["required_review_thread_resolution"] != false || len(p["allowed_merge_methods"].([]any)) != 3 {
 		t.Fatal("lost review values", p)
 	}
 	if len(p["required_reviewers"].([]any)) != 0 {
@@ -270,18 +272,34 @@ repository:
 	if out := run("plan"); out != "No differences for managed repository settings.\n" {
 		t.Fatal(out)
 	}
-	// Removing a PR container cannot retain its unowned Preview member.
-	writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {restrict_deletions: true}}]}\n"))
-	result, e := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if e != nil || result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "cannot remove PR rule") {
-		t.Fatal(e, result.stderr.String())
+	// Explicit false is owned, and the same declaration makes no second write.
+	disabled := strings.Replace(clear, "required_approvals: 0", "required_approvals: 0\n            require_an_additional_approval_for_unattributed_copilot_pull_requests: false", 1)
+	if err := writeSettingsFile(fixture.work, disabled); err != nil {
+		t.Fatal(err)
 	}
+	run("validate")
+	run("apply")
+	if out := run("plan"); out != "No differences for managed repository settings.\n" {
+		t.Fatal(out)
+	}
+	run("apply")
+	mu.Lock()
+	if len(writes) != 4 || acceptanceRuleParams(t, policy, "pull_request")["require_extra_approval_for_unattributed_changes"] != false {
+		t.Fatal("explicit false or repeat changed", writes)
+	}
+	mu.Unlock()
+	// Omission removes the now wholly owned PR rule, including additional approval.
+	writeSettingsFile(fixture.work, repositoryInput("settings: {rulesets: [{id: 7, ruleset_name: default, enforcement_status: active, target_branches: {include_default_branch: true}, rules: {restrict_deletions: true}}]}\n"))
+	run("apply")
+	if out := run("plan"); out != "No differences for managed repository settings.\n" {
+		t.Fatal(out)
+	}
+	run("apply")
 	mu.Lock()
 	defer mu.Unlock()
-	if len(writes) != 3 {
-		t.Fatal("wrote refused container removal", writes)
+	if len(writes) != 5 || len(policy["rules"].([]any)) != 1 || policy["rules"].([]any)[0].(map[string]any)["type"] != "deletion" {
+		t.Fatal("owned PR removal or repeat changed", writes, policy)
 	}
-
 }
 func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 	binary := acceptanceBinary(t)
@@ -345,7 +363,7 @@ func TestRulesetPRChecksFailuresBeforeWrites(t *testing.T) {
 }
 
 func TestRulesetPRResponseMismatchStopsLaterWrites(t *testing.T) {
-	for _, removeAll := range []bool{false} {
+	for _, removeAll := range []bool{false, true} {
 		t.Run(fmt.Sprintf("remove-all-%t", removeAll), func(t *testing.T) {
 			binary := acceptanceBinary(t)
 			var mu sync.Mutex
@@ -371,7 +389,7 @@ func TestRulesetPRResponseMismatchStopsLaterWrites(t *testing.T) {
 						fmt.Fprint(w, acceptanceReviewRuleset)
 						return
 					}
-					acceptanceRuleParams(t, policy, "pull_request")["require_extra_approval_for_unattributed_changes"] = true
+					acceptanceRuleParams(t, policy, "pull_request")["require_extra_approval_for_unattributed_changes"] = false
 					policy["id"], policy["source_type"], policy["source"] = 7, "Repository", "owner/current"
 					json.NewEncoder(w).Encode(policy)
 				default:
