@@ -66,12 +66,18 @@ func TestSponsorshipsApplyOnlyDeclaredBooleanAndCombinedFields(t *testing.T) {
 				t.Fatal("unexpected method or path", req.Method, req.URL)
 			}
 			if calls == 1 || calls == 3 {
-				if !strings.Contains(request.Query, "followRenames: false") || strings.Contains(request.Query, "hasSponsorshipsEnabled") || !reflect.DeepEqual(request.Variables, map[string]any{"owner": "owner", "name": "current"}) {
+				if !strings.Contains(request.Query, "followRenames: false") || !strings.Contains(request.Query, "hasSponsorshipsEnabled") || !reflect.DeepEqual(request.Variables, map[string]any{"owner": "owner", "name": "current"}) {
 					t.Fatal("broad lookup", string(data))
 				}
-				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current"}
+				fields := map[string]any{"id": "opaque-id", "nameWithOwner": "owner/current", "hasSponsorshipsEnabled": !*d.HasSponsorships}
+				if calls == 3 {
+					fields["hasSponsorshipsEnabled"] = *d.HasSponsorships
+				}
+				if d.HasPullRequests != nil {
+					fields["hasPullRequestsEnabled"] = calls == 3
+				}
 				if d.IssueCreationPolicy != nil {
-					value := "ALL"
+					value := "COLLABORATORS_ONLY"
 					if calls == 3 {
 						value = *d.IssueCreationPolicy
 					}
@@ -99,16 +105,13 @@ func TestSponsorshipsApplyOnlyDeclaredBooleanAndCombinedFields(t *testing.T) {
 			}
 			return labelsResponse(req, 200, string(body)), nil
 		}))
-		wantCalls := 2
-		if d.IssueCreationPolicy != nil {
-			wantCalls = 3
-		}
-		if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, d); err != nil || calls != wantCalls {
+		wantCalls := 3
+		if _, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, d); err != nil || calls != wantCalls {
 			t.Fatal(calls, err)
 		}
 	}
 	client := prAccessTestClient(t, transportFunc(func(*http.Request) (*http.Response, error) { t.Fatal("omitted settings reached API"); return nil, nil }))
-	if err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{}); err != nil {
+	if _, err := client.ApplyRepositoryAccess(repository.Repository{}, settings.RepositoryDeclaration{}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -120,7 +123,7 @@ func TestSponsorshipsMutationRequiresConfirmedBoolean(t *testing.T) {
 			client := prAccessTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
 				calls++
 				if calls == 1 {
-					return labelsResponse(req, 200, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current"}}}`), nil
+					return labelsResponse(req, 200, `{"data":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasSponsorshipsEnabled":true}}}`), nil
 				}
 				field, suffix, id := `,"hasSponsorshipsEnabled":`+value, "", "opaque-id"
 				switch value {
@@ -136,7 +139,7 @@ func TestSponsorshipsMutationRequiresConfirmedBoolean(t *testing.T) {
 				return labelsResponse(req, 200, `{"data":{"updateRepository":{"repository":{"id":"`+id+`","nameWithOwner":"owner/current"`+field+`}}}`+suffix+`}`), nil
 			}))
 			no := false
-			err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasSponsorships: &no})
+			_, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasSponsorships: &no})
 			if err == nil || calls != 2 || !strings.Contains(err.Error(), "writes may already have applied") {
 				t.Fatal(calls, err)
 			}

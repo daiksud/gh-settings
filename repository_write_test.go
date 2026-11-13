@@ -30,6 +30,9 @@ func TestRepositoryWriteCompositionPreservesActualProgress(t *testing.T) {
 		{"matching REST only", "unchanged", "", false, false, app.ApplyMatchingLabels, app.OperationUnchanged},
 		{"changed REST only", "changed", "", true, false, app.ApplyCompleted, app.OperationCompleted},
 		{"access only", "", "changed", true, false, app.ApplyCompleted, app.OperationCompleted},
+		{"matching access only", "", "unchanged", false, false, app.ApplyMatchingLabels, app.OperationUnchanged},
+		{"matching REST and access", "unchanged", "unchanged", false, false, app.ApplyMatchingLabels, app.OperationUnchanged},
+		{"changed REST then matching access", "changed", "unchanged", true, false, app.ApplyCompleted, app.OperationCompleted},
 		{"access prerequisite failure", "", "preread", false, false, app.ApplyFailed, app.OperationFailedRead},
 		{"access uncertain failure", "", "mutation", false, false, app.ApplyFailed, app.OperationFailedUnknown},
 		{"matching REST then access", "unchanged", "changed", true, false, app.ApplyCompleted, app.OperationCompleted},
@@ -38,6 +41,9 @@ func TestRepositoryWriteCompositionPreservesActualProgress(t *testing.T) {
 		{"changed REST then access prerequisite failure", "changed", "preread", true, true, app.ApplyPartialFailure, app.OperationFailedUnknown},
 		{"matching REST then access uncertain failure", "unchanged", "mutation", false, false, app.ApplyFailed, app.OperationFailedUnknown},
 		{"changed REST then access uncertain failure", "changed", "mutation", true, true, app.ApplyPartialFailure, app.OperationFailedUnknown},
+		{"access readback failure", "", "readback", true, false, app.ApplyFailed, app.OperationFailedUnknown},
+		{"matching REST then access readback failure", "unchanged", "readback", true, false, app.ApplyFailed, app.OperationFailedUnknown},
+		{"changed REST then access readback failure", "changed", "readback", true, true, app.ApplyPartialFailure, app.OperationFailedUnknown},
 		{"REST prerequisite failure stops access", "preread", "changed", false, false, app.ApplyFailed, app.OperationFailedRead},
 		{"REST mutation failure stops access", "mutation", "changed", false, false, app.ApplyFailed, app.OperationFailedUnknown},
 		{"REST verification failure stops access", "readback", "changed", true, false, app.ApplyFailed, app.OperationFailedUnknown},
@@ -74,18 +80,20 @@ func TestRepositoryWriteCompositionPreservesActualProgress(t *testing.T) {
 						return true, cause
 					}
 					return test.rest == "changed", nil
-				}, func(got repository.Repository, access settings.RepositoryDeclaration) error {
+				}, func(got repository.Repository, access settings.RepositoryDeclaration) (bool, error) {
 					calls = append(calls, "access")
 					if got != target || !reflect.DeepEqual(access, desired) {
 						t.Fatal("original access declaration or target changed", got, access)
 					}
 					switch test.access {
 					case "preread":
-						return fmt.Errorf("access prerequisite: %w", &accessPrerequisiteFixtureFailure{cause})
+						return false, fmt.Errorf("access prerequisite: %w", &accessPrerequisiteFixtureFailure{cause})
 					case "mutation":
-						return cause
+						return false, cause
+					case "readback":
+						return true, cause
 					}
-					return nil
+					return test.access == "changed", nil
 				})
 				return wrote, err
 			}})
@@ -103,7 +111,7 @@ func TestRepositoryWriteCompositionPreservesActualProgress(t *testing.T) {
 			if result.Outcome != test.wantOutcome || len(result.Operations) != 1 || result.Operations[0].Kind != app.RepositoryUpdate || result.Operations[0].Status != test.wantStatus {
 				t.Fatal("composite progress was misreported", result, err)
 			}
-			wantFailure := restFailed || test.access == "preread" || test.access == "mutation"
+			wantFailure := restFailed || test.access == "preread" || test.access == "mutation" || test.access == "readback"
 			if !wantFailure {
 				if err != nil || !result.Completed() {
 					t.Fatal("successful composition failed", result, err)
@@ -118,6 +126,39 @@ func TestRepositoryWriteCompositionPreservesActualProgress(t *testing.T) {
 			}
 			if strings.Contains(err.Error(), "earlier repository writes remain applied") != test.wantEffects {
 				t.Fatal("diagnostic did not follow actual earlier REST progress", err)
+			}
+		})
+	}
+}
+
+func TestAccessNoopAndWriteBeforeLaterReadFailure(t *testing.T) {
+	for _, accessWrote := range []bool{false, true} {
+		t.Run(fmt.Sprint(accessWrote), func(t *testing.T) {
+			yes, topics := true, []string{"later"}
+			desired := settings.Declaration{Repository: settings.RepositoryDeclaration{HasPullRequests: &yes}, Topics: settings.TopicsDeclaration{Names: &topics}}
+			cause := errors.New("later Topics acquisition failed")
+			result, err := app.Apply(func() (settings.Declaration, error) { return desired, nil }, func() (repository.Repository, error) {
+				return repository.Repository{Owner: "owner", Name: "current"}, nil
+			}, app.Writer{
+				Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) (bool, error) {
+					return writeRepositoryWithWriters(repo, d, func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
+						t.Fatal("access-only declaration attempted REST work")
+						return false, nil
+					}, func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return accessWrote, nil })
+				},
+				Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) {
+					return false, &accessPrerequisiteFixtureFailure{cause}
+				},
+			})
+			wantOutcome, wantStatus := app.ApplyFailed, app.OperationUnchanged
+			if accessWrote {
+				wantOutcome, wantStatus = app.ApplyPartialFailure, app.OperationCompleted
+			}
+			if !errors.Is(err, cause) || result.Outcome != wantOutcome || !reflect.DeepEqual(result.Operations, []app.ApplyOperation{{Kind: app.RepositoryUpdate, Status: wantStatus}, {Kind: app.TopicsUpdate, Status: app.OperationFailedRead}}) {
+				t.Fatal("later read lost actual access progress", result, err)
+			}
+			if strings.Contains(err.Error(), "earlier repository settings update remains applied") != accessWrote {
+				t.Fatal("diagnostic invented earlier writes", err)
 			}
 		})
 	}
