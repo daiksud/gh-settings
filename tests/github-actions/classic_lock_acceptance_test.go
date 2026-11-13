@@ -124,7 +124,7 @@ func testBuiltCompositeClassicToggle(t *testing.T, declarationKey, apiKey string
 					writes++
 					rule[apiKey] = desired
 					ack := map[string]any{}
-					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "allowsForcePushes", "repository"} {
+					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "allowsForcePushes", "repository"} {
 						ack[k] = rule[k]
 					}
 					body["updateBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}

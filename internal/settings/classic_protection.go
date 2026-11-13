@@ -67,6 +67,7 @@ type ClassicWriteResult struct {
 }
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
+	r.RequireAPullRequestBeforeMerging = CloneClassicReviews(r.RequireAPullRequestBeforeMerging)
 	r.ID = cloneClassicValue(r.ID)
 	r.AllowForcePushes = CloneClassicForcePush(r.AllowForcePushes)
 	r.RequireConversationResolutionBeforeMerging = cloneClassicValue(r.RequireConversationResolutionBeforeMerging)
@@ -93,6 +94,9 @@ func validateClassicRules(rules []ClassicRule, acquired bool) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
 		if err := ValidateClassicForcePush(r.AllowForcePushes, acquired); err != nil {
+			return err
+		}
+		if err := ValidateClassicReviews(r.RequireAPullRequestBeforeMerging); err != nil {
 			return err
 		}
 		if err := ValidateClassicDeployments(r.RequireDeploymentsToSucceedBeforeMerging); err != nil {
@@ -141,11 +145,18 @@ func (o ClassicObservation) Validate() error {
 		if !ClassicForcePushEqual(force, s.Rule.AllowForcePushes) {
 			return fmt.Errorf("incomplete or inconsistent classic force-push projection")
 		}
-		projection, err := ClassicDeploymentProjection(c.RequiresDeployments, c.Deployments)
+		projection, err := ProjectClassicReviews(c)
 		if err != nil {
 			return err
 		}
-		if !classicDeploymentsEqual(projection, s.Rule.RequireDeploymentsToSucceedBeforeMerging) {
+		if !reflect.DeepEqual(projection, s.Rule.RequireAPullRequestBeforeMerging) {
+			return fmt.Errorf("incomplete classic PR review projection")
+		}
+		deploymentProjection, err := ClassicDeploymentProjection(c.RequiresDeployments, c.Deployments)
+		if err != nil {
+			return err
+		}
+		if !classicDeploymentsEqual(deploymentProjection, s.Rule.RequireDeploymentsToSucceedBeforeMerging) {
 			return fmt.Errorf("incomplete or inconsistent classic deployment projection")
 		}
 		if !c.ReviewCount.Present || !c.Deployments.Present || !c.Contexts.Present || !c.Checks.Present {
@@ -201,6 +212,11 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 				}
 			}
 		}
+		if selected != nil {
+			if err := ValidateClassicReviewTransition(*selected, d); err != nil {
+				return nil, err
+			}
+		}
 		result = append(result, ClassicSelection{RepositoryID: o.RepositoryID, Before: selected, Desired: CloneClassicRule(d)})
 	}
 	// Requested outcomes may not introduce a collision through two edits/creates.
@@ -215,6 +231,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
 	if ClassicForcePushSelected(desired.AllowForcePushes) && !ClassicForcePushEqual(observed.AllowForcePushes, desired.AllowForcePushes) {
+		return false
+	}
+	if !ClassicReviewsMatch(observed.RequireAPullRequestBeforeMerging, desired.RequireAPullRequestBeforeMerging) {
 		return false
 	}
 	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) && !classicDeploymentsEqual(observed.RequireDeploymentsToSucceedBeforeMerging, desired.RequireDeploymentsToSucceedBeforeMerging) {
@@ -301,6 +320,9 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 		if !ClassicForcePushSelected(c.Before.AllowForcePushes) {
 			return fmt.Errorf("incomplete classic before force-push policy")
 		}
+		if !ClassicReviewsManaged(c.Before.RequireAPullRequestBeforeMerging) {
+			return fmt.Errorf("incomplete classic review before policy")
+		}
 		if !ClassicDeploymentsSelected(c.Before.RequireDeploymentsToSucceedBeforeMerging) {
 			return fmt.Errorf("incomplete classic before deployments")
 		}
@@ -344,6 +366,7 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 	}
 	beforeCompanions, afterCompanions := before.Companions, after.Companions
 	maskSelectedClassicForcePush(&beforeCompanions, afterCompanions, desired.AllowForcePushes)
+	maskSelectedClassicReviews(&beforeCompanions, afterCompanions, desired.RequireAPullRequestBeforeMerging)
 	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) {
 		beforeCompanions.RequiresDeployments, afterCompanions.RequiresDeployments = false, false
 		beforeCompanions.Deployments, afterCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}

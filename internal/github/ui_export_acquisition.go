@@ -44,6 +44,9 @@ func CheckExportAcquisition(source settings.Declaration) error {
 			if !settings.ClassicForcePushSelected(r.AllowForcePushes) {
 				return fmt.Errorf("classic export lacks acquired force-push control")
 			}
+			if !settings.ClassicReviewsManaged(r.RequireAPullRequestBeforeMerging) {
+				return fmt.Errorf("classic export lacks acquired PR policy")
+			}
 			if !settings.ClassicDeploymentsSelected(r.RequireDeploymentsToSucceedBeforeMerging) {
 				return fmt.Errorf("classic export lacks acquired deployment control")
 			}

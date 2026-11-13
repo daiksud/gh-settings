@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -114,8 +115,10 @@ func TestBuiltCompositeCollaboratorPrune(t *testing.T) {
 		t.Fatal(plan)
 	}
 	private := f.run(t, "plan", "installation-prune-fixture-token", map[string]string{"github.action_ref": version, "inputs.prune": "all", "inputs.plan-reporting": "status-only"})
-	public := private.log + private.summary + fmt.Sprint(private.outputs)
-	if private.status != 0 || strings.Contains(public, "canary") || strings.Contains(public, "104") || strings.Contains(public, "PRIVATE") || len(private.remainingReports) != 0 {
+	// Artifact hashes may contain identity digits; check the complete output contract separately.
+	wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest, "plan-outcome": "changed"}
+	public := private.log + private.summary
+	if private.status != 0 || !reflect.DeepEqual(private.outputs, wantOutputs) || strings.Contains(public, "canary") || strings.Contains(public, "104") || strings.Contains(public, "PRIVATE") || len(private.remainingReports) != 0 {
 		t.Fatal(private)
 	}
 	for i := 0; i < 2; i++ {
