@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
+	"github.com/daiksud/gh-settings/internal/github"
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
@@ -36,7 +37,7 @@ func TestReadableExportIndependentFailuresRetainIntent(t *testing.T) {
 				prior := exportPrior(t)
 				run := func(reader Reader, info func(string, error) error) (settings.Declaration, error) {
 					var got settings.Declaration
-					err := Export(ExportCheckout{Existing: prior, Info: info, Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
+					err := Export(ExportCheckout{Check: github.CheckExportAcquisition, Existing: prior, Info: info, Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 						return func(d settings.Declaration) error { got = d; return nil }, nil
 					}}, reader)
 					return got, err
@@ -147,7 +148,7 @@ func TestReadableExportInfoFailureAndProjectionFailure(t *testing.T) {
 	}
 	seen := false
 	err = Export(ExportCheckout{Existing: prior, Repository: checkoutRepository, Check: func(d settings.Declaration) error {
-		if d.Rulesets != prior.Rulesets {
+		if d.Rulesets != nil && d.Rulesets != prior.Rulesets {
 			return errors.New("unsupported projection")
 		}
 		return nil

@@ -280,10 +280,13 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	beforeInvalid := len(writes)
 	mu.Unlock()
 	output, diagnostic, status = run("export")
-	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
+	if status != 0 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null acquisition", status, output, diagnostic)
 	}
-	checkSource(input)
+	assertExportRetains(t, fixture, input, "repository", "settings", "actions", "general", "actions_permissions")
+	if err := writeSettingsFile(fixture.work, input); err != nil {
+		t.Fatal(err)
+	}
 	output, diagnostic, status = run("apply")
 	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null preflight", status, output, diagnostic)

@@ -57,13 +57,17 @@ func TestEnvironmentDeploymentExportWarnsAfterCompleteAcquisitionInNameOrder(t *
 		}
 		saved := false
 		var got []warning
-		checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
+		checkout := ExportCheckout{Check: github.CheckExportAcquisition, Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 			return func(d settings.Declaration) error {
 				ui, err := github.UIFromExportDeclaration(d)
 				if err != nil {
 					return err
 				}
-				if mode != "unrequested" {
+				if mode == "ui" {
+					if ui.Settings != nil && ui.Settings.Environments != nil {
+						t.Fatal("incomplete acquisition was adopted")
+					}
+				} else if mode != "unrequested" {
 					entries := *ui.Settings.Environments
 					if len(entries) != 3 || entries[0].Name != "a" || entries[1].Name != "canonical" || entries[2].Name != "Z" || *entries[0].DeploymentBranchesAndTags != uimodel.NoRestriction || *entries[1].DeploymentBranchesAndTags != uimodel.ProtectedBranchesOnly || *entries[2].DeploymentBranchesAndTags != uimodel.NoRestriction || entries[0].DeploymentBranchOrTagRules != nil || entries[2].DeploymentBranchOrTagRules != nil {
 						t.Fatal("effective mode/export order/latent privacy", entries)
@@ -81,7 +85,7 @@ func TestEnvironmentDeploymentExportWarnsAfterCompleteAcquisitionInNameOrder(t *
 		if mode == "selected" || mode == "ui" {
 			want = []warning{{"a", settings.EnvironmentDeploymentNormalization{Path: settings.EnvironmentDeploymentModePath, RawPolicy: settings.EnvironmentBranchPolicy{}, Fallback: uimodel.NoRestriction}}, {"Z", settings.EnvironmentDeploymentNormalization{Path: settings.EnvironmentDeploymentModePath, RawPolicy: settings.EnvironmentBranchPolicy{ProtectedBranches: true, CustomBranchPolicies: true}, Fallback: uimodel.NoRestriction}}}
 		}
-		failed := mode == "read" || mode == "unacquired" || mode == "ui"
+		failed := mode == "read" || mode == "unacquired"
 		wantReads := 1
 		if mode == "unrequested" {
 			wantReads = 0

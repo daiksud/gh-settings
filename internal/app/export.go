@@ -83,7 +83,12 @@ func Export(checkout ExportCheckout, read Reader) error {
 		if available {
 			err = acquire(&candidate)
 			if err == nil && checkout.Check != nil {
-				err = checkout.Check(candidate)
+				family, familyErr := exportAcquiredFamily(path, candidate)
+				if familyErr != nil {
+					err = familyErr
+				} else {
+					err = checkout.Check(family)
+				}
 			}
 		}
 		if err != nil {

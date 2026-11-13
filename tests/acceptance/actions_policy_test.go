@@ -216,12 +216,10 @@ func TestActionsPolicyExportTransitionAndReconciliation(t *testing.T) {
 	mu.Unlock()
 	prior := full
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
-	if err != nil || r.runErr == nil {
-		t.Fatal("incomplete export succeeded", err, r.stderr.String())
+	if err != nil || r.runErr != nil || !strings.Contains(r.stderr.String(), "info: export repository.settings.actions.general.actions_permissions:") {
+		t.Fatal("incomplete acquisition did not continue", err, r.stderr.String())
 	}
-	if err := checkSettingsUnchanged(fixture.work, prior); err != nil {
-		t.Fatal(err)
-	}
+	assertExportRetains(t, fixture, prior, "repository", "settings", "actions", "general", "actions_permissions")
 }
 
 func TestActionsInvalidDeclarationsNeverContactAPI(t *testing.T) {

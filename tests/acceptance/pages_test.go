@@ -218,9 +218,12 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		mu.Unlock()
 		original, _ := os.ReadFile(path)
 		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
-		after, _ := os.ReadFile(path)
-		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(after) != string(original) {
+		if err != nil || r.runErr != nil || r.stdout.Len() != 0 || !strings.Contains(r.stderr.String(), "info: export repository.settings.pages:") {
 			t.Fatal(failure, err, r.stderr.String())
+		}
+		assertExportRetains(t, fixture, string(original), "repository", "settings", "pages")
+		if err := os.WriteFile(path, original, 0600); err != nil {
+			t.Fatal(err)
 		}
 		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "plan", report, "status-only"}, false)
 		if err != nil || r.runErr == nil || strings.Contains(withoutExportInfo(r.stderr.String()), "CANARY") {

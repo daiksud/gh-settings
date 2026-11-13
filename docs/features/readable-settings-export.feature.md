@@ -26,7 +26,10 @@ independent reads continue. Initial export omits unavailable families. Re-export
 retains valid prior declarations for them as unverified intent. Failed pages do
 not supply partial collections or empty defaults. Projection failure also retains
 the family; another successfully read Actions field must not erase unread Actions
-siblings. Existing normalization and API-specific 404 decisions are unchanged.
+siblings. Acquired families are validated independently from retained intent.
+Valid partial declarations remain partial when their family is unavailable; they
+must neither reject unrelated acquired values nor invent omitted controls.
+Existing normalization and API-specific 404 decisions are unchanged.
 
 Core repository identity/settings acquisition remains required. Invalid prior
 YAML, target/file safety, diagnostic IO and write failures remain fatal. File
@@ -74,5 +77,5 @@ projection failure, diagnostic IO and continued acquisition. It also covers full
 and empty variable inventories, unsupported values and independent Environment
 variables. Existing adapter tests own pagination and typed-response validation;
 plan/apply tests retain strict failure and mutation ownership. The [built-CLI late-page regression](../../tests/acceptance/readable_settings_export_test.go)
-exercises ordinary export, literal YAML, info privacy and file safety separately
+exercises ordinary export, literal YAML, partial Actions intent, info privacy and file safety separately
 from live read-only verification. No fixture establishes live settings mutation.

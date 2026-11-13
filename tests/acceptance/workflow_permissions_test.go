@@ -198,12 +198,10 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	incomplete = true
 	mu.Unlock()
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
-	if err != nil || r.runErr == nil {
+	if err != nil || r.runErr != nil || !strings.Contains(r.stderr.String(), "info: export repository.settings.actions.general.workflow_permissions:") {
 		t.Fatal(err, r.stderr.String())
 	}
-	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
-		t.Fatal(err)
-	}
+	assertExportRetains(t, fixture, input, "repository", "settings", "actions", "general", "workflow_permissions")
 	// Invalid local values never reach the endpoint.
 	before := fixture.reads.Load()
 	for _, body := range []string{`{workflow_permissions: {default_permissions: unknown}}`, `{workflow_permissions: null}`, `{workflow_permissions: {allow_github_actions_to_create_and_approve_pull_requests: null}}`, `{workflow_permissions: read_and_write_permissions}`, `{workflow_permissions: {selection: read_and_write_permissions}}`, `{allow_github_actions_to_create_and_approve_pull_requests: true}`} {

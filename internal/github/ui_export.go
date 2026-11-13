@@ -7,7 +7,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
 
-// UIFromExportDeclaration projects values already acquired and validated by export.
+// UIFromExportDeclaration projects acquired values and valid retained intent.
 // It does not establish acquisition or fill missing observation metadata.
 func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, error) {
 	if source.Repository.Description == nil || source.Repository.Homepage == nil {
@@ -29,7 +29,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if source.Labels != nil {
 		labels := make([]uimodel.Label, 0, source.Labels.Len())
 		for _, policy := range settings.SortedLabels(source.Labels.Values()) {
-			label, err := LabelPolicyUI(policy)
+			label, err := labelExportDeclarationUI(policy)
 			if err != nil {
 				return uimodel.Repository{}, fmt.Errorf("export Labels: %w", err)
 			}
@@ -51,13 +51,9 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Settings.Rulesets = &rulesets
 	}
-	actions, err := ActionsExecutionPolicyUI(source.Actions)
+	actions, err := actionsExportDeclarationUI(source.Actions)
 	if err != nil {
 		return uimodel.Repository{}, fmt.Errorf("export Actions execution: %w", err)
-	}
-	actions, err = WithActionsWorkflowPolicyUI(actions, source.Actions)
-	if err != nil {
-		return uimodel.Repository{}, fmt.Errorf("export Actions workflow permissions: %w", err)
 	}
 	actions, err = WithActionsCachePolicyUI(actions, source.Actions)
 	if err != nil {
@@ -183,7 +179,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 	}
 	if !source.Pages.Empty() {
-		pages, err := PagesPolicyUI(source.Pages)
+		pages, err := pagesExportDeclarationUI(source.Pages)
 		if err != nil {
 			return uimodel.Repository{}, fmt.Errorf("export Pages: %w", err)
 		}
@@ -195,7 +191,7 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if source.Environments != nil {
 		environments := make([]uimodel.Environment, 0, source.Environments.Len())
 		for _, policy := range source.Environments.Values() {
-			environment, err := EnvironmentPolicyUI(policy)
+			environment, err := EnvironmentReportUI(policy)
 			if err != nil {
 				return uimodel.Repository{}, fmt.Errorf("export Environments: %w", err)
 			}
@@ -237,4 +233,88 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 	}
 	return result, nil
+}
+
+// actionsExportDeclarationUI projects validated intent, which may contain only
+// one control from an unavailable family. API observations are checked before
+// becoming declarations; projecting retained intent must not invent acquisition.
+func actionsExportDeclarationUI(policy settings.ActionsPolicyDeclaration) (uimodel.ActionsGeneral, error) {
+	if err := policy.Validate(); err != nil {
+		return uimodel.ActionsGeneral{}, err
+	}
+	ui := uimodel.ActionsGeneral{RequireActionsToBePinnedToAFullLengthCommitSHA: copyUIValue(policy.SHAPinningRequired), AllowGitHubActionsToCreateAndApprovePullRequests: copyUIValue(policy.CanApprovePullRequestReviews)}
+	if policy.Enabled != nil {
+		allowed := ""
+		if policy.AllowedActions != nil {
+			allowed = *policy.AllowedActions
+		}
+		choice, valid := settings.ActionsPermissionsChoiceForValue(*policy.Enabled, allowed)
+		if !valid {
+			return uimodel.ActionsGeneral{}, fmt.Errorf("Actions permissions declaration is outside UI choices")
+		}
+		ui.ActionsPermissions = &choice
+	} else if policy.AllowedActions != nil {
+		return uimodel.ActionsGeneral{}, fmt.Errorf("Actions permissions declaration requires an explicit UI choice")
+	}
+	// Observed disabled policies may retain API-only latent selected values.
+	// A declaration with no permission choice can independently manage companions.
+	if policy.Enabled == nil || *policy.Enabled {
+		ui.AllowActionsCreatedByGitHub = copyUIValue(policy.SelectedActions.GitHubOwnedAllowed)
+		ui.AllowActionsByMarketplaceVerifiedCreators = copyUIValue(policy.SelectedActions.VerifiedAllowed)
+		if policy.SelectedActions.PatternsAllowed != nil {
+			patterns := append([]string{}, (*policy.SelectedActions.PatternsAllowed)...)
+			ui.AllowOrBlockSpecifiedActionsAndReusableWorkflows = &patterns
+		}
+	}
+	if policy.DefaultWorkflowPermissions != nil {
+		choice := uimodel.ReadRepositoryContentsAndPackagesPermissions
+		if *policy.DefaultWorkflowPermissions == "write" {
+			choice = uimodel.ReadAndWritePermissions
+		}
+		ui.WorkflowPermissions = &choice
+	}
+	return ui, nil
+}
+
+func labelExportDeclarationUI(policy settings.LabelDeclaration) (uimodel.Label, error) {
+	if err := settings.ValidateLabels([]settings.LabelDeclaration{policy}); err != nil {
+		return uimodel.Label{}, err
+	}
+	if policy.Color == nil {
+		return uimodel.Label{}, fmt.Errorf("label declaration requires color")
+	}
+	color := "#" + *policy.Color
+	return uimodel.Label{ID: copyUIValue(policy.ID), Name: policy.Name, Color: &color, Description: copyUIValue(policy.Description)}, nil
+}
+
+func pagesExportDeclarationUI(policy settings.PagesDeclaration) (uimodel.Pages, error) {
+	if err := policy.Validate(); err != nil {
+		return uimodel.Pages{}, err
+	}
+	ui := uimodel.Pages{EnforceHTTPS: copyUIValue(policy.HTTPSEnforced)}
+	if policy.BuildType != nil || policy.Source != nil {
+		b := &uimodel.PagesBuildAndDeployment{}
+		if policy.BuildType != nil {
+			choice, valid := settings.PagesModeChoiceForValue(*policy.BuildType)
+			if !valid {
+				return uimodel.Pages{}, fmt.Errorf("Pages source is outside UI choices")
+			}
+			b.Source = &choice
+		}
+		if policy.Source != nil {
+			b.Branch = copyUIValue(&policy.Source.Branch)
+			if !policy.Delete() {
+				folder, valid := settings.PagesFolderChoiceForValue(policy.Source.Path)
+				if !valid {
+					return uimodel.Pages{}, fmt.Errorf("Pages folder is outside UI choices")
+				}
+				b.SelectFolder = &folder
+			}
+		}
+		ui.BuildAndDeployment = b
+	}
+	if policy.CNAME != nil {
+		ui.CustomDomain = &uimodel.PagesCustomDomain{Value: copyUIValue(policy.CNAME.Value)}
+	}
+	return ui, nil
 }
