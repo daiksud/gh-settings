@@ -64,6 +64,7 @@ type ClassicWriteResult struct {
 }
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
+	r.RequireAPullRequestBeforeMerging = CloneClassicReviews(r.RequireAPullRequestBeforeMerging)
 	r.ID = cloneClassicValue(r.ID)
 	r.RequireConversationResolutionBeforeMerging = cloneClassicValue(r.RequireConversationResolutionBeforeMerging)
 	r.RequireSignedCommits = cloneClassicValue(r.RequireSignedCommits)
@@ -86,6 +87,9 @@ func ClassicFlags(r ClassicRule) []*bool {
 func ValidateClassicRules(rules []ClassicRule) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
+		if err := ValidateClassicReviews(r.RequireAPullRequestBeforeMerging); err != nil {
+			return err
+		}
 		if strings.TrimSpace(r.BranchNamePattern) == "" || strings.ContainsFunc(r.BranchNamePattern, unicode.IsControl) {
 			return fmt.Errorf("%s requires a nonblank exact branch_name_pattern without controls", ClassicProtectionPath)
 		}
@@ -122,6 +126,13 @@ func (o ClassicObservation) Validate() error {
 			}
 		}
 		c := s.Companions
+		projection, err := ProjectClassicReviews(c)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(projection, s.Rule.RequireAPullRequestBeforeMerging) {
+			return fmt.Errorf("incomplete classic PR review projection")
+		}
 		if !c.ReviewCount.Present || !c.Deployments.Present || !c.Contexts.Present || !c.Checks.Present {
 			return fmt.Errorf("missing classic companion state")
 		}
@@ -175,6 +186,11 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 				}
 			}
 		}
+		if selected != nil {
+			if err := ValidateClassicReviewTransition(*selected, d); err != nil {
+				return nil, err
+			}
+		}
 		result = append(result, ClassicSelection{RepositoryID: o.RepositoryID, Before: selected, Desired: CloneClassicRule(d)})
 	}
 	// Requested outcomes may not introduce a collision through two edits/creates.
@@ -188,6 +204,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	return result, nil
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
+	if !ClassicReviewsMatch(observed.RequireAPullRequestBeforeMerging, desired.RequireAPullRequestBeforeMerging) {
+		return false
+	}
 	if observed.BranchNamePattern != desired.BranchNamePattern {
 		return false
 	}
@@ -261,6 +280,9 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 			return fmt.Errorf("missing or duplicate classic change identity")
 		}
 		seen[*c.Before.ID] = true
+		if !ClassicReviewsManaged(c.Before.RequireAPullRequestBeforeMerging) {
+			return fmt.Errorf("incomplete classic review before policy")
+		}
 		for _, b := range ClassicFlags(*c.Before) {
 			if b == nil {
 				return fmt.Errorf("incomplete classic before policy")
@@ -299,6 +321,7 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 	if !ClassicMatches(after.Rule, desired) {
 		return fmt.Errorf("classic requested controls did not persist")
 	}
+	maskSelectedClassicReviews(&before.Companions, after.Companions, desired.RequireAPullRequestBeforeMerging)
 	if !reflect.DeepEqual(before.Companions, after.Companions) {
 		return fmt.Errorf("unowned classic protection changed")
 	}

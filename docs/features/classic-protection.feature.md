@@ -3,10 +3,10 @@
 The [configuration contract](../settings.md#classic-branch-protection) owns public
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
 Ordinary reconciliation manages conversation resolution, signed commits, linear
-history, branch locking, administrator enforcement and the Allow deletions checkbox,
-separately from Rulesets. Explicit
+history, branch locking, administrator enforcement, PR-review requirements and the
+Allow deletions checkbox, separately from Rulesets. Explicit
 [classic prune](prune.feature.md#classic-branch-protection-deletion) additionally
-removes whole unlisted rules. PR/check/deployment editing, fork-sync and force-push
+removes whole unlisted rules. Check/deployment editing, fork-sync and force-push
 actor editing remain separate work.
 
 ## Behavioral boundaries
@@ -42,15 +42,28 @@ actor editing remain separate work.
   requested value independently; incomplete acknowledgment or collateral changes
   remain failures. No bypass actors or unrelated protections are implicitly edited.
 
+- PR reviews form a complete active group. Omission/{} remains unmanaged; disabled
+  forbids children; enabled requires approval choice and all review checkboxes.
+  Approval false requests count zero, while true requires a count from 1 through 6.
+- Create and activation send all five fields explicitly; active updates send only
+  changes. Disabled export hides latent members, which remain exact private
+  preservation/prune evidence when the group is omitted.
+- Plan and writer-fresh checks block deactivation with dismissal restrictions,
+  dismissal actors or PR bypass actors. Matching disabled state and count-to-zero
+  stay allowed. Selected deactivation makes no inactive-child retention promise;
+  other controls and all unowned actor identities must survive independently.
+
 ## Verification mapping
 
 - Literal YAML booleans, omission, null/type/alias rejection and exact patterns:
-  `internal/workspace/ui_classic_protection_test.go` and `ui_classic_lock_test.go` and `ui_classic_admin_test.go`.
+  `internal/workspace/ui_classic_protection_test.go` and `ui_classic_lock_test.go` and `ui_classic_admin_test.go`; `ui_classic_reviews_test.go` covers the complete PR group.
 - Identity/collision selection, creation order, partial equality, nullable raw
-  companions and supported export: `internal/settings/classic_protection_test.go`.
+  companions and supported export: `internal/settings/classic_protection_test.go`
+  and `classic_reviews_test.go`.
 - Literal GraphQL inputs, complete 101-rule/101-actor pagination, unowned companion
   drift, fresh no-ops, create recovery and failure boundaries:
-  `internal/github/classic_protection_test.go` and `classic_lock_test.go` and `classic_admin_test.go`.
+  `internal/github/classic_protection_test.go` and `classic_lock_test.go` and `classic_admin_test.go`; `classic_reviews_test.go` checks activation, count-zero,
+  guarded deactivation and raw preservation.
 - Family preflight, declaration order, unarchive, actual progress and export
   retention: `internal/app/classic_protection_test.go`.
 - Closed report, escaped Summary and status-only privacy:
@@ -60,9 +73,11 @@ actor editing remain separate work.
   `tests/acceptance/classic_protection_test.go`.
 - Actual supplied Action lock/admin enable/disable/no-op, private plan and companion drift:
   `tests/github-actions/classic_lock_acceptance_test.go`.
+- Actual supplied Action PR activation/zero/disable/no-op, guarded rejection, private
+  plans and readback drift: `tests/github-actions/classic_reviews_acceptance_test.go`.
 
-The literal YAML acceptance case fails against the pre-change executable because
-`branch_protection_rules` is unknown. Automated verification uses local fixtures
+The PR-review literal regression fails on unchanged source because its group key
+is unknown. Automated verification uses local fixtures
 and dummy credentials. Official schema and read-only empty personal-public
 inventories establish the endpoint, not populated storage behavior, mutation
 permission or effective enforcement. No live branch protection was changed.

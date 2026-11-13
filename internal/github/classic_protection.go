@@ -15,8 +15,8 @@ import (
 )
 
 const classicTargetFields = `id nameWithOwner isArchived isPrivate owner { __typename } squashMergeAllowed rebaseMergeAllowed`
-const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch isAdminEnforced`
-const classicCompanionFields = `allowsForcePushes blocksCreations dismissesStaleReviews lockAllowsFetchAndMerge requireLastPushApproval requiresApprovingReviews requiresCodeOwnerReviews requiresDeployments requiresStatusChecks requiresStrictStatusChecks restrictsPushes restrictsReviewDismissals requiredApprovingReviewCount requiredDeploymentEnvironments requiredStatusCheckContexts requiredStatusChecks { context app { id } }`
+const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch isAdminEnforced requiresApprovingReviews requiredApprovingReviewCount dismissesStaleReviews requiresCodeOwnerReviews requireLastPushApproval`
+const classicCompanionFields = `allowsForcePushes blocksCreations lockAllowsFetchAndMerge requiresDeployments requiresStatusChecks requiresStrictStatusChecks restrictsPushes restrictsReviewDismissals requiredDeploymentEnvironments requiredStatusCheckContexts requiredStatusChecks { context app { id } }`
 const classicRuleFields = classicOwnedFields + ` ` + classicCompanionFields + ` repository { ` + classicTargetFields + ` }`
 const classicInventoryQuery = `query ClassicProtectionInventory($owner: String!, $name: String!, $cursor: String) { repository(owner:$owner,name:$name,followRenames:false) { ` + classicTargetFields + ` branchProtectionRules(first:100,after:$cursor) { totalCount pageInfo { hasNextPage endCursor } nodes { ` + classicRuleFields + ` } } } }`
 const classicNodeQuery = `query ClassicProtectionRule($id:ID!) { node(id:$id) { __typename ... on BranchProtectionRule { ` + classicRuleFields + ` } } }`
@@ -112,8 +112,8 @@ func decodeClassicTarget(raw json.RawMessage, repo repository.Repository) (class
 	return t, err
 }
 
-var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "repository"}
-var classicCompanionKeys = []string{"allowsForcePushes", "blocksCreations", "dismissesStaleReviews", "lockAllowsFetchAndMerge", "requireLastPushApproval", "requiresApprovingReviews", "requiresCodeOwnerReviews", "requiresDeployments", "requiresStatusChecks", "requiresStrictStatusChecks", "restrictsPushes", "restrictsReviewDismissals", "requiredApprovingReviewCount", "requiredDeploymentEnvironments", "requiredStatusCheckContexts", "requiredStatusChecks"}
+var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "repository"}
+var classicCompanionKeys = []string{"allowsForcePushes", "blocksCreations", "lockAllowsFetchAndMerge", "requiresDeployments", "requiresStatusChecks", "requiresStrictStatusChecks", "restrictsPushes", "restrictsReviewDismissals", "requiredDeploymentEnvironments", "requiredStatusCheckContexts", "requiredStatusChecks"}
 
 func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete bool) (settings.ClassicState, classicTarget, error) {
 	var s settings.ClassicState
@@ -151,15 +151,9 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 		}
 		*dest = &v
 	}
-	if err := settings.ValidateClassicRules([]settings.ClassicRule{s.Rule}); err != nil {
-		return s, target, err
-	}
-	if !complete {
-		return s, target, nil
-	}
 	c := &s.Companions
-	for k, dest := range map[string]*bool{"allowsForcePushes": &c.AllowsForcePushes, "blocksCreations": &c.BlocksCreations, "dismissesStaleReviews": &c.DismissesStaleReviews, "lockAllowsFetchAndMerge": &c.LockAllowsFetchAndMerge, "requireLastPushApproval": &c.RequireLastPushApproval, "requiresApprovingReviews": &c.RequiresApprovingReviews, "requiresCodeOwnerReviews": &c.RequiresCodeOwnerReviews, "requiresDeployments": &c.RequiresDeployments, "requiresStatusChecks": &c.RequiresStatusChecks, "requiresStrictStatusChecks": &c.RequiresStrictStatusChecks, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
-		v, e := classicBool(m, k)
+	for key, dest := range map[string]*bool{"requiresApprovingReviews": &c.RequiresApprovingReviews, "dismissesStaleReviews": &c.DismissesStaleReviews, "requiresCodeOwnerReviews": &c.RequiresCodeOwnerReviews, "requireLastPushApproval": &c.RequireLastPushApproval} {
+		v, e := classicBool(m, key)
 		if e != nil {
 			return s, target, e
 		}
@@ -168,6 +162,23 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 	c.ReviewCount, err = classicNullable[int](m["requiredApprovingReviewCount"])
 	if err != nil {
 		return s, target, err
+	}
+	s.Rule.RequireAPullRequestBeforeMerging, err = settings.ProjectClassicReviews(*c)
+	if err != nil {
+		return s, target, err
+	}
+	if err := settings.ValidateClassicRules([]settings.ClassicRule{s.Rule}); err != nil {
+		return s, target, err
+	}
+	if !complete {
+		return s, target, nil
+	}
+	for k, dest := range map[string]*bool{"allowsForcePushes": &c.AllowsForcePushes, "blocksCreations": &c.BlocksCreations, "lockAllowsFetchAndMerge": &c.LockAllowsFetchAndMerge, "requiresDeployments": &c.RequiresDeployments, "requiresStatusChecks": &c.RequiresStatusChecks, "requiresStrictStatusChecks": &c.RequiresStrictStatusChecks, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
+		v, e := classicBool(m, k)
+		if e != nil {
+			return s, target, e
+		}
+		*dest = v
 	}
 	c.Deployments, err = classicStringList(m["requiredDeploymentEnvironments"])
 	if err != nil {
@@ -494,6 +505,9 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 		if target.archived {
 			return pre(fmt.Errorf("archived repository cannot update classic protection"))
 		}
+		if err := settings.ValidateClassicReviewTransition(fresh, desired); err != nil {
+			return pre(err)
+		}
 		if settings.ClassicMatches(fresh.Rule, desired) {
 			return result, nil
 		}
@@ -577,6 +591,7 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 			input[names[i]] = *v
 		}
 	}
+	classicReviewInputs(input, before, desired.RequireAPullRequestBeforeMerging)
 	query := `mutation ClassicProtectionWrite($input:` + kind + `!){` + mutation + `(input:$input){branchProtectionRule{` + classicOwnedFields + ` repository{` + classicTargetFields + `}}}}`
 	var response json.RawMessage
 	mutationErr := c.graphql.Do(query, map[string]any{"input": input}, &response)

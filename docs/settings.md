@@ -1330,8 +1330,8 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and six independent controls. It is separate from Rulesets and does not clone
-all branch protection. Current source supports personally owned public repositories;
+and six independent checkboxes plus a complete PR-review group. It is separate
+from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 
@@ -1348,6 +1348,13 @@ repository:
         allow_deletions: false
         lock_branch: false
         do_not_allow_bypassing_the_above_settings: true
+        require_a_pull_request_before_merging:
+          enabled: true
+          require_approvals: true
+          required_number_of_approvals_before_merging: 2
+          dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: false
+          require_review_from_code_owners: false
+          require_approval_of_the_most_recent_reviewable_push: true
 ```
 
 `id` is an optional positive numeric GraphQL `databaseId`. Without it an entry is
@@ -1374,13 +1381,13 @@ objects, and unlisted rules are preserved.
 [Classic rule pruning](#classic-branch-protection-pruning) adds whole-rule deletion
 through a command option; there is no YAML deletion marker or reordering operation.
 
-Plan compares only the requested pattern and checkboxes. Apply first acquires all
+Plan compares only the requested pattern and controls. Apply first acquires all
 selected identities and rejects collisions. Each existing rule is read again by
 its acquired opaque node ID before comparison; matching intent sends no mutation.
 A changed request sends only changed declared inputs. Enabling linear history
 requires fresh squash or rebase availability, after any earlier repository updates;
 it does not implicitly enable a merge method. Creation sends the exact pattern
-and declared checkboxes; other defaults are controlled by GitHub.
+and declared controls; other defaults are controlled by GitHub.
 
 Lock branch makes matching branches read-only. It does not enable fork syncing;
 the acquired fork-sync setting stays unowned and must survive updates unchanged.
@@ -1399,8 +1406,41 @@ The unsaved target form was inspected on 2026-11-14. The
 corroborates this polarity despite the ambiguous GraphQL description. This is
 mapping evidence, not a live test of administrator bypass or effective enforcement.
 
-Complete known PR, check/App binding, deployment, fork-sync, force-push
-and actor-allowance state is acquired as unowned preservation evidence. Null stays
+`require_a_pull_request_before_merging` owns one complete active policy. Omission
+and `{}` leave it unmanaged; `enabled: false` forbids all child fields. With
+`enabled: true`, explicitly set `require_approvals` and all three review checkboxes
+shown above. Approval true requires an explicit count from 1 through 6; approval
+false forbids that count and requests native count 0. Do not omit active children
+or use null/native aliases. No default approval or parent enablement is inferred.
+Code Owner, stale-dismissal and latest-push choices remain independent of generic
+approval count. Stored configuration does not establish applicable Code Owners,
+review eligibility or effective merge enforcement.
+
+Creation and disabled-to-enabled transitions send all five native policy fields,
+including false booleans and count 0. Within an already-enabled policy, only changed
+fields are sent. Disabling sends only `requiresApprovingReviews: false`, without
+promising storage of inactive count or review booleans. Export hides inactive
+children; active count 0 exports approval false, while 1 through 6 exports approval
+true with its count. Unknown active counts are unavailable rather than clamped.
+Omission preserves every raw flag, count nullness and review boolean exactly.
+
+Plan rejects enabled-to-disabled transitions with `restrictsReviewDismissals`,
+review-dismissal actors or PR bypass actors. Apply repeats this check on the fresh
+rule before mutation. This is a conservative boundary for unowned dependent
+protections, not evidence that GitHub was observed deleting them. Matching disabled
+state remains a no-op even with latent actors. Changing an active approval count
+to zero is allowed while those unowned settings are independently preserved. The
+client never adds or removes bypass, review-dismissal or push actors.
+
+The personal-public unsaved form inspected on 2026-11-14 offered approval counts
+1 through 6 and left the other review checkboxes visible when Require approvals
+was unchecked. The
+[maintained provider's independent parent/count mapping](https://github.com/integrations/terraform-provider-github/blob/1b9c5c13eb840a72c99d088f3bf3b5e00b950c04/github/util_v4_branch_protection.go#L155-L204)
+and the official GraphQL read/create/update fields corroborate PR-required with
+zero generic approvals. No live rule or merge enforcement was tested.
+
+Complete known check/App binding, deployment, fork-sync, force-push and
+actor-allowance state is acquired as unowned preservation evidence. Null stays
 distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
 actor connections are paginated. After mutation acknowledgment, an independent
@@ -1416,11 +1456,11 @@ local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
 Automatic export projects every readable rule's ID, pattern and these six
-checkboxes. It does not export or adopt the other controls. Unavailable acquisition
-retains compatible prior declarations with bounded info; it never fabricates an
+checkboxes and active PR-review policy. It does not export or adopt other controls.
+Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
-GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
+GraphQL cannot reveal future unselected schema fields. Check/deployment groups,
 fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
@@ -1436,17 +1476,18 @@ collection stays unmanaged. `[]` selects all initially acquired rules; a nonempt
 list retains declared numeric IDs and newly created rules. All retained rules must
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
-Ordinary create/update retains its six-control partial ownership.
+Ordinary create/update retains partial-control ownership and complete active
+PR-review ownership.
 
-Deletion removes the entire rule, including PR, check, deployment and actor
-protections that gh-settings cannot edit. An overlapping rule may
-then take effect; recreation cannot restore creation-age priority. The plan shows
+Deletion removes the entire rule, including unowned protections. An overlapping
+rule may then take effect; recreation cannot restore creation-age priority. The plan shows
 this consequence and each complete supported before-policy, without raw private
 companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-six flags and all known raw companions. Missing, denied, partial, unsupported or
+six flags, active PR-review projection and all known raw companions, including
+inactive review count and booleans. Missing, denied, partial, unsupported or
 inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.
