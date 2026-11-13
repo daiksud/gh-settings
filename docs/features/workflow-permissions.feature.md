@@ -31,15 +31,16 @@ Test mapping: [TestWorkflowPermissionsCompleteReads](../../internal/github/workf
 
 Test mapping: [TestWorkflowPermissionSummaryTypes](../../internal/actions/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
 
-## Rule: Update only declared keys and preserve known progress
+## Rule: Update only changed declared keys and preserve known progress
 
-- Fresh complete preflight precedes a PUT containing only declared optional keys; no enabled/allowlist or inferred workflow companion is sent.
-- Fresh complete readback verifies desired and preserved companion values. Direct repeated apply still writes.
+- Fresh complete preflight compares declared intent against the raw observation. Matching intent sends no PUT and records an unchanged operation. A normalized fallback is not raw equality.
+- PUT contains only changed declared optional keys; no matching key, enabled/allowlist or inferred workflow companion is sent.
+- Fresh complete readback verifies the original declaration, including members that initially matched, and preserved raw companions. Repeated matching apply performs only the preflight read.
 - Workflow policy is a distinct operation after execution policy; organization conflicts and other failures retain earlier completed progress and never trigger rollback or permission expansion.
 - A preflight read failure records a confirmed read failure before any PUT. PUT and readback errors retain uncertain write effects; wrapped errors preserve this distinction.
 - Redirects, denied/conflicting writes, missing/malformed readback and mismatches fail honestly. An out-of-UI raw readback never confirms a declared permission, even when its fallback equals the request. An omitted permission is verified against its exact raw preflight companion and is not replayed or printed.
 
-Test mapping: [TestWorkflowPermissionsDeclaredOnlyPUTAndCompanionVerification and TestWorkflowPermissionsErrorsAndOmission](../../internal/github/workflow_permissions_test.go), [TestWorkflowPermissionFailureRetainsEarlierExecutionProgress and TestWorkflowPreflightReadFailureHasNoUncertainWrite](../../internal/app/workflow_permissions_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
+Test mapping: [matching regression](../../internal/github/workflow_permissions_reconcile_test.go), [changed-only payloads and verification failures](../../internal/github/workflow_permissions_test.go), [actual progress and prewrite failures](../../internal/app/workflow_permissions_test.go), [built CLI](../../tests/acceptance/workflow_permissions_test.go), [actual composite Action](../../tests/github-actions/composite_workflow_permissions_acceptance_test.go).
 
 ## Evidence boundary
 

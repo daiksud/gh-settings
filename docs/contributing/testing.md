@@ -182,6 +182,11 @@ build outputs, and these caches must not contain secrets.
 
 ### Hosted candidate composite
 
+[Supplied-product workflow permission checks](../../tests/github-actions/composite_workflow_permissions_acceptance_test.go)
+exercise the actual public Action with matching and changed declarations, repeated
+apply, minimal PUT payloads and failed independent readback. They verify success
+outputs only after completion; API responses remain isolated fixtures.
+
 The public-Action acceptance leg delegates its scenarios to the existing [candidate composite](../../.github/actions/e2e-test/action.yml), passing the verified source, version, digest, and binary path. It creates a separate consumer that tracks only `.github/settings.yml`, without a root `action.yml` or `action/` helper directory. The process leg instead runs the built executable through the local API acceptance tests.
 
 [Fixture preparation](../../tests/github-actions/prepare-candidate-download.sh) verifies the transferred candidate's checksum, executable-reported version, and Action checkout source. A bounded [curl stand-in](../../tests/github-actions/candidate-curl.sh) serves only the unchanged installer's two fixed versioned asset/checksum URLs from those verified bytes, without network forwarding. Actual `uses: ./.action` expansion exercises installation, checksum/version validation, metadata, and settings operations. No product rebuild, public caller version/download override, committed version rewrite, or old-release fallback is used.
@@ -230,7 +235,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeWorkflowPermissions)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 ### Export diagnostic delivery

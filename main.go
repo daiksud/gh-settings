@@ -207,10 +207,10 @@ func readWorkflowPermissions(repo repository.Repository) (settings.WorkflowPermi
 	}
 	return client.ReadWorkflowPermissions(repo)
 }
-func writeWorkflowPermissions(repo repository.Repository, desired settings.ActionsPolicyDeclaration) error {
+func writeWorkflowPermissions(repo repository.Repository, desired settings.ActionsPolicyDeclaration) (bool, error) {
 	client, err := github.NewActionsPolicyClient(repo.Host)
 	if err != nil {
-		return err
+		return false, err
 	}
 	client.NormalizationWarning = warnNormalization
 	return client.ApplyWorkflowPermissions(repo, desired)

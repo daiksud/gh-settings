@@ -3,6 +3,7 @@ package github
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
@@ -34,39 +35,44 @@ func (c *ActionsPolicyClient) ReadWorkflowPermissions(repo repository.Repository
 	return NormalizeWorkflowPermissions(state), nil
 }
 
-// ApplyWorkflowPermissions sends only declared optional PUT keys. Fresh complete
-// reads verify desired and preserved companions without promising atomicity.
-func (c *ActionsPolicyClient) ApplyWorkflowPermissions(repo repository.Repository, desired settings.ActionsPolicyDeclaration) error {
+// ApplyWorkflowPermissions sends only changed declared PUT keys and reports a
+// verified write. An error after an attempted PUT can still have write effects.
+func (c *ActionsPolicyClient) ApplyWorkflowPermissions(repo repository.Repository, desired settings.ActionsPolicyDeclaration) (bool, error) {
 	if err := desired.Validate(); err != nil {
-		return err
+		return false, err
 	}
 	if desired.WorkflowPermissionsEmpty() {
-		return nil
+		return false, nil
 	}
 	current, err := c.ReadWorkflowPermissions(repo)
 	if err != nil {
-		return &workflowPermissionsReadFailure{cause: err}
+		return false, &workflowPermissionsReadFailure{cause: err}
 	}
 	c.reportWorkflowNormalization(current, desired)
-	payload := map[string]any{}
-	if value := desired.DefaultWorkflowPermissions; value != nil {
-		payload["default_workflow_permissions"] = *value
+	_, changes, err := settings.CompareWorkflowPermissions(current, desired)
+	if err != nil {
+		return false, &workflowPermissionsReadFailure{cause: err}
 	}
-	if value := desired.CanApprovePullRequestReviews; value != nil {
-		payload["can_approve_pull_request_reviews"] = *value
+	if len(changes) == 0 {
+		return false, nil
+	}
+	payload := map[string]any{}
+	for _, change := range changes {
+		_, after := change.Values()
+		payload[strings.TrimPrefix(change.Field(), "actions.")] = after
 	}
 	if err := c.putActionsPolicy(actionsPolicyPath(repo)+"/workflow", payload); err != nil {
-		return fmt.Errorf("write default workflow permissions (this and earlier writes may already have applied): %w", err)
+		return false, fmt.Errorf("write default workflow permissions (this and earlier writes may already have applied): %w", err)
 	}
 	actual, err := c.ReadWorkflowPermissions(repo)
 	if err != nil {
-		return fmt.Errorf("verify default workflow permissions (writes may already have applied): %w", err)
+		return false, fmt.Errorf("verify default workflow permissions (writes may already have applied): %w", err)
 	}
 	c.reportWorkflowNormalization(actual, desired)
 	if !workflowPermissionsMatch(current, actual, desired) {
-		return fmt.Errorf("GitHub did not retain requested/default workflow permission companions (writes may already have applied)")
+		return false, fmt.Errorf("GitHub did not retain requested/default workflow permission companions (writes may already have applied)")
 	}
-	return nil
+	return true, nil
 }
 
 func (c *ActionsPolicyClient) reportWorkflowNormalization(state settings.WorkflowPermissionsState, desired settings.ActionsPolicyDeclaration) {

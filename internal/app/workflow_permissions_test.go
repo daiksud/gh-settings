@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -21,8 +22,8 @@ func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
 			value := false
 			d.Actions.Enabled = &value
 		}
-		result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) error {
-			return fmt.Errorf("wrapped read: %w", &workflowReadFailure{errors.New("denied before PUT")})
+		result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) {
+			return false, fmt.Errorf("wrapped read: %w", &workflowReadFailure{errors.New("denied before PUT")})
 		}})
 		want := ApplyFailed
 		if earlier {
@@ -31,8 +32,45 @@ func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
 		if err == nil || result.Outcome != want || result.Operations[len(result.Operations)-1].Status != OperationFailedRead {
 			t.Fatal(earlier, result, err)
 		}
+		if strings.Contains(err.Error(), "earlier resource writes remain applied") != earlier {
+			t.Fatal("incorrect earlier-progress diagnostic", err)
+		}
 		if earlier && result.Operations[0].Status != OperationCompleted {
 			t.Fatal("earlier progress lost", result)
+		}
+	}
+}
+
+func TestWorkflowPermissionNoopRetainsOnlyActualEarlierProgress(t *testing.T) {
+	for _, earlier := range []bool{false, true} {
+		permission, enabled, days := "read", false, 30
+		d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: &permission}}
+		if earlier {
+			d.Actions.Enabled = &enabled
+		}
+		writer := Writer{
+			Actions:             func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil },
+			WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) { return false, nil },
+			ReadRetention: func(repository.Repository) (settings.RetentionObservation, error) {
+				return settings.RetentionObservation{}, errors.New("later read denied")
+			},
+		}
+		result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, writer)
+		want := ApplyMatchingLabels
+		if earlier {
+			want = ApplyCompleted
+		}
+		if err != nil || result.Outcome != want || result.Operations[len(result.Operations)-1].Status != OperationUnchanged {
+			t.Fatal(earlier, result, err)
+		}
+		d.Actions.RetentionDays = &days
+		result, err = Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, writer)
+		want = ApplyFailed
+		if earlier {
+			want = ApplyPartialFailure
+		}
+		if err == nil || result.Outcome != want || result.Operations[len(result.Operations)-2].Status != OperationUnchanged {
+			t.Fatal("matching workflow fabricated prior write", earlier, result, err)
 		}
 	}
 }
@@ -40,8 +78,8 @@ func TestWorkflowPreflightReadFailureHasNoUncertainWrite(t *testing.T) {
 func TestWorkflowPermissionFailureRetainsEarlierExecutionProgress(t *testing.T) {
 	permission, enabled := "read", false
 	d := settings.Declaration{Actions: settings.ActionsPolicyDeclaration{DefaultWorkflowPermissions: &permission, Enabled: &enabled}}
-	result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) error {
-		return errors.New("organization conflict")
+	result, err := Apply(func() (settings.Declaration, error) { return d, nil }, checkoutRepository, Writer{Actions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil }, WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) {
+		return false, errors.New("organization conflict")
 	}})
 	if err == nil || result.Outcome != ApplyPartialFailure || len(result.Operations) != 2 || result.Operations[0].Kind != ActionsPolicyUpdate || result.Operations[0].Status != OperationCompleted || result.Operations[1].Kind != WorkflowPermissionsUpdate || result.Operations[1].Status != OperationFailedUnknown {
 		t.Fatal(result, err)
