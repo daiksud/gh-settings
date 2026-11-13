@@ -11,6 +11,10 @@ import (
 func EnvironmentDeclaration(ui uimodel.Environment) (settings.EnvironmentDeclaration, error) {
 	result := settings.EnvironmentDeclaration{Name: ui.Name}
 	if rules := ui.DeploymentProtectionRules; rules != nil {
+		if rules.CustomRules != nil {
+			ids := slices.Clone(*rules.CustomRules)
+			result.CustomRules = &ids
+		}
 		result.WaitTimer = copyUIEnvironmentValue(rules.WaitTimer)
 		result.PreventSelfReview = copyUIEnvironmentValue(rules.PreventSelfReview)
 		result.CanAdminsBypass = copyUIEnvironmentValue(rules.AllowAdministratorsToBypassConfiguredProtectionRules)
@@ -155,11 +159,15 @@ func EnvironmentsObservation(observation settings.EnvironmentObservation) ([]Pre
 // partial request without turning preserved companions into owned values.
 func EnvironmentReportUI(p settings.EnvironmentDeclaration) (uimodel.Environment, error) {
 	ui := uimodel.Environment{Name: p.Name}
-	if p.WaitTimer != nil || p.PreventSelfReview != nil || p.CanAdminsBypass != nil || p.Reviewers != nil {
+	if p.CustomRules != nil || p.WaitTimer != nil || p.PreventSelfReview != nil || p.CanAdminsBypass != nil || p.Reviewers != nil {
 		protection := &uimodel.EnvironmentDeploymentProtectionRules{
 			WaitTimer:         copyUIEnvironmentValue(p.WaitTimer),
 			PreventSelfReview: copyUIEnvironmentValue(p.PreventSelfReview),
 			AllowAdministratorsToBypassConfiguredProtectionRules: copyUIEnvironmentValue(p.CanAdminsBypass),
+		}
+		if p.CustomRules != nil {
+			ids := slices.Clone(*p.CustomRules)
+			protection.CustomRules = &ids
 		}
 		if p.Reviewers != nil {
 			reviewers := make([]uimodel.EnvironmentReviewer, 0, len(*p.Reviewers))

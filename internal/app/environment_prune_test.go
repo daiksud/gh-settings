@@ -18,7 +18,7 @@ func environmentPruneFixture(t *testing.T, archived bool, names ...string) setti
 	for i, name := range names {
 		timer, flag, reviewers := 0, false, []settings.EnvironmentReviewer{}
 		variables, _ := settings.NewVariableInventory(nil)
-		candidate, err := settings.NewEnvironmentPruneCandidate(repo, target, settings.EnvironmentState{ID: int64(i + 1), Policy: settings.EnvironmentDeclaration{Name: name, WaitTimer: &timer, PreventSelfReview: &flag, CanAdminsBypass: &flag, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}}, variables, []settings.EnvironmentSecretMetadata{}, true)
+		candidate, err := settings.NewEnvironmentPruneCandidate(repo, target, settings.EnvironmentState{CustomRules: []settings.EnvironmentCustomRule{}, ID: int64(i + 1), Policy: settings.EnvironmentDeclaration{Name: name, WaitTimer: &timer, PreventSelfReview: &flag, CanAdminsBypass: &flag, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}}, variables, []settings.EnvironmentSecretMetadata{}, true)
 		if err != nil {
 			t.Fatal(err)
 		}

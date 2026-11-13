@@ -184,7 +184,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Immutable release policy | Administration read; target GET 404 means disabled under the required-permissions precondition, with owner enforcement unknown | Administration write; fresh owner-enforcement preflight and readback |
 | Pages lifecycle/configuration | Pages read | Pages write plus Administration write and applicable repository authority |
 | Classic branch protection (current source) | Complete GraphQL rule/actor visibility, including raw companions | Authorized GraphQL create/update and independent full readback; exact installation grant sufficiency was not live-tested, and REST grant tables alone do not prove it |
-| Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility; parent pruning also needs Environments read for variable/secret metadata | Administration write plus complete supported observation/readback and prune absence confirmation |
+| Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility; App additions also need Administration read for available integrations; parent pruning also needs Environments read for variable/secret metadata | Administration write plus complete supported observation/readback and prune absence confirmation |
 | PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
 
 GitHub documents installation-token support for the relevant [repository/topic](https://docs.github.com/en/rest/repos/repos), [label](https://docs.github.com/en/rest/issues/labels), [Ruleset](https://docs.github.com/en/rest/repos/rules#get-a-repository-ruleset), [Actions permissions](https://docs.github.com/en/rest/actions/permissions), [cache limits](https://docs.github.com/en/rest/actions/cache), [Pages](https://docs.github.com/en/rest/pages/pages) and [Environment](https://docs.github.com/en/rest/deployments/environments) REST APIs. The Ruleset GET explicitly limits `bypass_actors` to actors with write access: nonmutating plan is **not** proof that a read-only installation token is sufficient. Missing visibility must fail, never become an empty bypass list.
@@ -380,6 +380,14 @@ inherited `GH_DEBUG`. Status-only also hides parent names and policy. See the
 [Environment pruning contract](settings.md#environment-pruning) for custom-rule
 blocking, inactive-pattern visibility limits, fresh checks and nontransactional
 failure effects.
+
+Current-source Environment protection App selection shares the CLI's
+[custom-rule ownership and verification](settings.md#custom-protection-apps).
+Detailed plans show App-ID membership; status-only output omits selections and
+Environment names. Raw binding evidence stays out of plan reports and transport
+debug logs. Apply publishes success outputs only after verification and never
+writes binding rule IDs to configuration. This source coverage does not upgrade
+the pinned published CLI or establish actual App permissions.
 
 Classic branch-protection entries use the same
 [partial-ownership contract](settings.md#classic-branch-protection) in CLI and

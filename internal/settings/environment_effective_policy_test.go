@@ -37,7 +37,7 @@ func TestEnvironmentEffectivePolicyFailsCollisionAndInvalidStateWithoutPartialPo
 
 func TestEnvironmentEffectivePolicyPreservesCanonicalProjectionBoundary(t *testing.T) {
 	for _, knownEmpty := range []bool{false, true} {
-		state := EnvironmentState{ID: 7, Policy: environmentPolicy(t, "production")}
+		state := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 7, Policy: environmentPolicy(t, "production")}
 		state.Policy.DeploymentBranchPolicy = &EnvironmentBranchPolicy{CustomBranchPolicies: true}
 		if knownEmpty {
 			patterns := []EnvironmentPattern{}

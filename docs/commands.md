@@ -387,3 +387,13 @@ then Environment work. Failed or changed access/operator/inviter evidence stops
 execution. Diagnostics distinguish attempted, acknowledged and verified deletion;
 see [collaborator pruning](settings.md#collaborator-pruning) for permissions,
 management-path protection, side effects and unavoidable races.
+
+## Environment protection App commands
+
+Current source manages installed Environment protection Apps through
+[`deployment_protection_rules.custom_rules`](settings.md#custom-protection-apps).
+App-only changes skip parent PUT, preserve raw companions and independently verify
+binding operations. Omission preserves the checkbox set; [] disables supported
+bindings without parent pruning. Positive rule IDs in failure diagnostics are
+recovery evidence, never YAML writeback. Required acquisition and uncertain effects
+remain failures; inspect state before retrying.

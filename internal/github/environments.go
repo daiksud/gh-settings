@@ -28,17 +28,17 @@ func (e *environmentPreWriteFailure) Unwrap() error        { return e.cause }
 func (*environmentPreWriteFailure) ReadFailedBeforeWrite() {}
 
 func NewEnvironmentsClient(host string) (*EnvironmentsClient, error) {
-	return newEnvironmentsClient(host, false)
+	return newEnvironmentsClient(host)
 }
 
 // NewEnvironmentPruneClient keeps child snapshot evidence out of transport logs,
-// including when callers inherit GH_DEBUG. Ordinary policy reads are unchanged.
+// including when callers inherit GH_DEBUG. Ordinary reads also suppress raw binding logs.
 func NewEnvironmentPruneClient(host string) (*EnvironmentsClient, error) {
-	return newEnvironmentsClient(host, true)
+	return newEnvironmentsClient(host)
 }
 
-func newEnvironmentsClient(host string, private bool) (*EnvironmentsClient, error) {
-	c, err := api.NewRESTClient(api.ClientOptions{Host: host, LogIgnoreEnv: private, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+func newEnvironmentsClient(host string) (*EnvironmentsClient, error) {
+	c, err := api.NewRESTClient(api.ClientOptions{Host: host, LogIgnoreEnv: true, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
 	if err != nil {
 		return nil, fmt.Errorf("configure Environments API: %w", err)
 	}
@@ -190,16 +190,15 @@ func decodeEnvironment(raw map[string]json.RawMessage) (settings.EnvironmentStat
 		}
 		result.Policy.DeploymentBranchPolicy = policy
 	}
-	// Validate complete observations without declaration defaulting.
-	observation, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{result})
-	if err != nil {
+	// This detail response contains built-ins only. Explicit custom and pattern
+	// acquisition is required before constructing a complete observation.
+	if result.ID <= 0 {
+		return result, fmt.Errorf("environment observation requires a positive ID")
+	}
+	if err := result.Policy.ValidateObservationPolicy(); err != nil {
 		return result, err
 	}
-	values, err := observation.Values()
-	if err != nil {
-		return result, err
-	}
-	return values[0], nil
+	return result, nil
 }
 
 func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (settings.EnvironmentState, error) {
@@ -214,21 +213,16 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 	if settings.EnvironmentIdentity(state.Policy.Name) != settings.EnvironmentIdentity(name) {
 		return state, fmt.Errorf("environment response name differs from selected name")
 	}
-	var custom map[string]json.RawMessage
-	if err := c.rest.Get(environmentPath(repo, name)+"/deployment_protection_rules", &custom); err != nil {
+	state.CustomRules, err = c.readCustomRules(repo, name)
+	if err != nil {
 		return state, fmt.Errorf("read custom environment protections: %w", err)
 	}
-	var count int
-	var rules []json.RawMessage
-	if err := requiredEnvironmentJSON(custom, "total_count", &count); err != nil {
+	ids, err := settings.EnvironmentCustomRuleIDs(state.CustomRules)
+	if err != nil {
 		return state, err
 	}
-	if err := requiredEnvironmentJSON(custom, "custom_deployment_protection_rules", &rules); err != nil {
-		return state, err
-	}
-	if count != 0 || len(rules) != 0 {
-		return state, fmt.Errorf("custom environment protection rules are not supported; no environment write is safe")
-	}
+	state.Policy.CustomRules = &ids
+
 	effectiveCustom := state.Policy.DeploymentBranchPolicy != nil && state.Policy.DeploymentBranchPolicy.CustomBranchPolicies
 	if effectiveCustom || record.RawPolicy.CustomBranchPolicies {
 		patterns, err := c.readPatterns(repo, name)
@@ -413,7 +407,17 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 			return pre(err)
 		}
 		policyWrite = !matches
-		expected, err = settings.PrepareEnvironmentUpdate(*before, intent)
+		expected = before.Policy
+		if policyWrite {
+			expected, err = settings.PrepareEnvironmentUpdate(*before, intent)
+			if err != nil {
+				return pre(err)
+			}
+		}
+	}
+	var available map[int64]environmentApp
+	if before != nil {
+		available, err = c.prepareCustomApps(repo, intent.Name, before.CustomRules, intent.CustomRules)
 		if err != nil {
 			return pre(err)
 		}
@@ -430,6 +434,7 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	}
 	delete(payload, "name")
 	delete(payload, "deployment_branch_patterns")
+	delete(payload, "custom_rules")
 	body, err = json.Marshal(payload)
 	if err != nil {
 		return pre(err)
@@ -440,6 +445,15 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	}
 	if fresh != initial {
 		return pre(fmt.Errorf("repository identity or archive state changed before environment update"))
+	}
+	if before != nil && (policyWrite || intent.DeploymentBranchPatterns != nil) {
+		again, err := c.readOne(repo, intent.Name)
+		if err != nil {
+			return pre(err)
+		}
+		if !sameEnvironmentAppCompanions(*before, again) || !settings.SameEnvironmentCustomRules(before.CustomRules, again.CustomRules) {
+			return pre(fmt.Errorf("environment identity or companions changed before parent/pattern writes"))
+		}
 	}
 	for _, state := range states {
 		c.warnDeploymentNormalization(state, intent)
@@ -455,9 +469,13 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 		}
 	}
 	confirmedPolicy := false
+	parentAttempted := policyWrite
+	patternsWrote := false
 	failed := func(err error) (bool, error) {
 		if confirmedPolicy {
 			err = &environmentWriteEffectsFailure{err}
+		} else if !parentAttempted {
+			return pre(err)
 		}
 		return false, err
 	}
@@ -487,7 +505,28 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 			}
 			return failed(err)
 		}
-		if attempted, err := c.applyPatterns(repo, intent.Name, state.Patterns, intent.DeploymentBranchPatterns); err != nil {
+		// Every pattern write retains the independently acquired custom bindings.
+		if before != nil && !settings.SameEnvironmentCustomRules(before.CustomRules, state.CustomRules) {
+			return failed(fmt.Errorf("custom protection bindings changed before pattern updates"))
+		}
+		guard := func() error {
+			fresh, err := identity.ReadArchive(repo)
+			if err != nil || fresh != initial {
+				return fmt.Errorf("repository identity changed before pattern update")
+			}
+			actual, err := c.readOne(repo, intent.Name)
+			if err != nil {
+				return err
+			}
+			if actual.ID != state.ID || !settings.SameEnvironmentCustomRules(state.CustomRules, actual.CustomRules) {
+				return fmt.Errorf("Environment identity or custom protection changed before pattern update")
+			}
+			return verifyEnvironmentParentCompanions(actual, &state, state.Policy, false)
+		}
+		attempted, err := c.applyPatterns(repo, intent.Name, state.Patterns, intent.DeploymentBranchPatterns, guard)
+		parentAttempted = parentAttempted || attempted
+		patternsWrote = attempted
+		if err != nil {
 			if !policyWrite && !attempted {
 				return pre(fmt.Errorf("prepare deployment pattern updates: %w", err))
 			}
@@ -500,27 +539,51 @@ func (c *EnvironmentsClient) Update(repo repository.Repository, desired settings
 	}
 	c.warnDeploymentNormalization(actual, intent)
 	c.warnRefTypeNormalizations(actual, intent)
-	if err := verifyEnvironmentRequestedState(actual, environmentBuiltins(expected)); err != nil {
+	if err := verifyEnvironmentParentCompanions(actual, before, expected, policyWrite); err != nil {
 		return failed(fmt.Errorf("verify environment readback (write may have applied): %w", err))
 	}
 	if policyWrite {
 		confirmedPolicy = true
 	}
-	if err := verifyEnvironmentRequestedState(actual, intent); err != nil {
+	intentBeforeApps := intent
+	intentBeforeApps.CustomRules = nil
+	if err := verifyEnvironmentRequestedState(actual, intentBeforeApps); err != nil {
 		return failed(fmt.Errorf("verify environment declared intent (write may have applied): %w", err))
 	}
 	if before != nil {
 		if err := verifyPreservedEnvironmentPatterns(*before, actual, intent); err != nil {
 			return failed(fmt.Errorf("verify environment companions (write may have applied): %w", err))
 		}
+		if !settings.SameEnvironmentCustomRules(before.CustomRules, actual.CustomRules) || ((intent.CustomRules != nil || len(before.CustomRules) > 0) && actual.ID != before.ID) {
+			return failed(fmt.Errorf("environment custom binding identities changed during parent/pattern update"))
+		}
+	} else if len(actual.CustomRules) != 0 {
+		return failed(fmt.Errorf("new Environment acquired unexpected custom protection bindings"))
 	}
-	return true, nil
+	parentWrote := policyWrite || patternsWrote
+	if parentWrote {
+		confirmedPolicy = true
+	}
+	if before == nil {
+		available, err = c.prepareCustomApps(repo, intent.Name, actual.CustomRules, intent.CustomRules)
+		if err != nil {
+			return failed(fmt.Errorf("prepare custom protection Apps after Environment creation: %w", err))
+		}
+	}
+	appsWrote, err := c.applyCustomApps(repo, initial, actual, intent.CustomRules, available)
+	if err != nil {
+		if confirmedPolicy {
+			return failed(err)
+		}
+		return false, err
+	}
+	return parentWrote || appsWrote, nil
 }
 
 type environmentWriteEffectsFailure struct{ cause error }
 
 func (e *environmentWriteEffectsFailure) Error() string {
-	return "earlier verified environment policy update remains applied: " + e.cause.Error()
+	return "earlier verified environment writes remain applied: " + e.cause.Error()
 }
 func (e *environmentWriteEffectsFailure) Unwrap() error             { return e.cause }
 func (*environmentWriteEffectsFailure) EnvironmentWritesCompleted() {}

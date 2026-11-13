@@ -84,7 +84,7 @@ func TestEnvironmentPatternDeletionConfirmsExactRawIdentityAndRetainsEarlierCrea
 						return nil, nil
 					}
 				}).rest}
-				_, err := client.applyPatterns(repository.Repository{Owner: "owner", Name: "current"}, "production", current, desired)
+				_, err := client.applyPatterns(repository.Repository{Owner: "owner", Name: "current"}, "production", current, desired, nil)
 				good := mode == "replace" || mode == "canonical companion" || mode == "clear" || mode == "omitted"
 				if (err == nil) != good || deleted != (good && mode != "omitted") {
 					t.Fatal("raw identity not confirmed safely", calls, created, deleted, err)

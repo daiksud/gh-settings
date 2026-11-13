@@ -8,7 +8,7 @@ import (
 
 func environmentPolicy(t *testing.T, name string) EnvironmentDeclaration {
 	t.Helper()
-	d, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: name, WaitTimer: paramInt(0), PreventSelfReview: paramBool(false), CanAdminsBypass: paramBool(false), Reviewers: &[]EnvironmentReviewer{}, DeploymentBranchPolicyDeclared: true}})
+	d, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{CustomRules: actionsTestPointer([]int64{}), Name: name, WaitTimer: paramInt(0), PreventSelfReview: paramBool(false), CanAdminsBypass: paramBool(false), Reviewers: &[]EnvironmentReviewer{}, DeploymentBranchPolicyDeclared: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +22,7 @@ func TestEnvironmentNamesSelectOwnedControlsWithoutDeletingOthers(t *testing.T) 
 	before.Reviewers = &[]EnvironmentReviewer{{Type: "User", ID: 7}}
 	before.DeploymentBranchPolicy = &EnvironmentBranchPolicy{ProtectedBranches: true}
 	unlisted := environmentPolicy(t, "unlisted")
-	observation, err := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: before}, {ID: 2, Policy: unlisted}})
+	observation, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: before}, {CustomRules: []EnvironmentCustomRule{}, ID: 2, Policy: unlisted}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,14 +101,14 @@ func TestEnvironmentValidationAndCompleteObservation(t *testing.T) {
 	if _, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: "Production"}, {Name: "production"}}); err == nil {
 		t.Fatal("case duplicate accepted")
 	}
-	if _, err := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: EnvironmentDeclaration{Name: "production"}}}); err == nil {
+	if _, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: EnvironmentDeclaration{Name: "production"}}}); err == nil {
 		t.Fatal("missing protection observation became defaults")
 	}
 	complete := environmentPolicy(t, "production")
-	if _, err := NewEnvironmentObservation([]EnvironmentState{{ID: 0, Policy: complete}}); err == nil {
+	if _, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 0, Policy: complete}}); err == nil {
 		t.Fatal("missing remote identity accepted")
 	}
-	if _, err := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: complete}, {ID: 2, Policy: complete}}); err == nil {
+	if _, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: complete}, {CustomRules: []EnvironmentCustomRule{}, ID: 2, Policy: complete}}); err == nil {
 		t.Fatal("ambiguous remote names accepted")
 	}
 }
@@ -125,7 +125,7 @@ func TestEnvironmentCanonicalCopiesAndReviewerOrder(t *testing.T) {
 	if *policy.WaitTimer != 10 {
 		t.Fatal("external pointer retained")
 	}
-	observation, err := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: policy}})
+	observation, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: policy}})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeAIScanRepositories|CompositeCollaboratorPrune)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -403,6 +403,20 @@ readback failure and success-only outputs. It does not establish live installati
 grants, recipient notification or GitHub's asynchronous removal side effects.
 Local CLI lifecycle fixtures explicitly set `GITHUB_ACTIONS=false`; run the full
 CLI suite with host `GITHUB_ACTIONS=true` to verify that isolation.
+
+## Environment protection App verification
+
+[Owner fixtures](../../internal/github/environment_custom_rules_test.go) check
+complete enabled and paginated available inventories, strict identities/statuses,
+add-before-remove capacity, omitted companions, independent readback, recovery
+and the retained parent-prune gate. [Built CLI cases](../../tests/acceptance/environment_apps_test.go)
+exercise validation/export, unavailable whole-family retention, debug privacy,
+replacement/no-op lifecycle, omitted bindings and failed-readback recovery.
+[Supplied-product Action checks](../../tests/github-actions/environment_apps_acceptance_test.go)
+run the actual installer and plan/apply steps, including status-only privacy,
+unchanged configuration and success-only outputs. The candidate selector includes
+these cases alongside every earlier product scenario. Fixtures do not establish
+live activation, App grants or combined built-in/custom capacity counting.
 
 ## Repository AI Scan verification
 

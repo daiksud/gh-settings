@@ -44,7 +44,7 @@ func TestUIEnvironmentNormalizedRefTypeOwnsProjectionAndRawMetadata(t *testing.T
 
 func TestUIEnvironmentNormalizedRefTypeCollisionReturnsNoPartialCollection(t *testing.T) {
 	state := observedEnvironmentRefTypeState(t, "future", true)
-	observation, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{ID: 11, Policy: uiEnvironmentObservedPolicy("alpha")}, state})
+	observation, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{{CustomRules: []settings.EnvironmentCustomRule{}, ID: 11, Policy: uiEnvironmentObservedPolicy("alpha")}, state})
 	if err != nil {
 		t.Fatal(err)
 	}

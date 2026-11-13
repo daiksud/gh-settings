@@ -165,7 +165,12 @@ repository:
 		map[string]any{"id": float64(7), "pattern": map[string]any{"type": "branch", "name": "main"}, "ref_type_normalization": map[string]any{"path": path, "raw_value": "future", "fallback": "branch"}},
 		map[string]any{"id": float64(8), "pattern": map[string]any{"type": "tag", "name": "main"}},
 	}
-	if entry["operation"] != "update" || !reflect.DeepEqual(entry["before"], entry["after"]) || !reflect.DeepEqual(entry["pattern_observations"], wantPatterns) || entry["deployment_mode_normalization"] != nil {
+	before := entry["before"].(map[string]any)
+	if !reflect.DeepEqual(before["custom_rules"], []any{}) {
+		t.Fatal("missing known-empty custom observation", string(data))
+	}
+	delete(before, "custom_rules") // App omission is unmanaged in the partial request.
+	if entry["operation"] != "update" || !reflect.DeepEqual(before, entry["after"]) || !reflect.DeepEqual(entry["pattern_observations"], wantPatterns) || entry["deployment_mode_normalization"] != nil {
 		t.Fatal("raw ownership or effective policy lost", string(data))
 	}
 	summary := filepath.Join(fixture.root, "summary.md")

@@ -56,7 +56,7 @@ func TestEnvironmentDeploymentReconciliationScopesEvidenceToExplicitMode(t *test
 			}
 		}
 	}
-	canonical := EnvironmentState{ID: 7, Policy: environmentPolicy(t, "production")}
+	canonical := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 7, Policy: environmentPolicy(t, "production")}
 	observed, err := NewEnvironmentObservation([]EnvironmentState{canonical})
 	if err != nil {
 		t.Fatal(err)

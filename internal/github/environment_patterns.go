@@ -73,13 +73,18 @@ func (c *EnvironmentsClient) readPatterns(repo repository.Repository, name strin
 	}
 }
 
-func (c *EnvironmentsClient) applyPatterns(repo repository.Repository, name string, current []settings.EnvironmentPatternState, desired *[]settings.EnvironmentPattern) (bool, error) {
+func (c *EnvironmentsClient) applyPatterns(repo repository.Repository, name string, current []settings.EnvironmentPatternState, desired *[]settings.EnvironmentPattern, beforeWrite func() error) (bool, error) {
 	attempted := false
 	changes, err := settings.ReconcileEnvironmentPatterns(current, desired)
 	if err != nil {
 		return attempted, err
 	}
 	for _, change := range changes {
+		if beforeWrite != nil {
+			if err := beforeWrite(); err != nil {
+				return attempted, err
+			}
+		}
 		switch change.Operation {
 		case "create":
 			body, err := json.Marshal(change.Pattern)
