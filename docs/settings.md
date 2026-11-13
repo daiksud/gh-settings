@@ -251,11 +251,56 @@ Changing this setting can start CodeQL validation/analysis and consume Actions r
 
 ## AI Scan for pull requests
 
-Use the optional boolean `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` for a personally owned public repository. Omission leaves it unmanaged; false disables it. Null/other types fail. Ordinary `export` automatically attempts this toggle, with info and omission/prior-declaration retention when unavailable. The separate Preview repository-wide and AI-application scan controls remain unimplemented; Preview status does not exclude them from the target-surface assessment.
+Use the optional boolean `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` for a personally owned public repository. Omission leaves it unmanaged; false disables it. Null/other types fail. Ordinary `export` automatically attempts this toggle, with info and omission/prior-declaration retention when unavailable. The separate [repository-wide toggle](#ai-scan-for-repositories) is supported; AI-application scanning remains unimplemented pending its API assessment.
 
 The [public repository AI Scan API](https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10#get-ai-scan-enablement-for-a-repository) requires Code scanning alerts read and Administration write. Acquisition requires public visibility, a User owner and exact `pr_scan` enabled/disabled. Missing/null/unknown values, 403/404 and incomplete applicability remain errors. Plan only reads. Apply rereads, skips a matching value, sends only `pr_scan` and confirms it with fresh readback. Other AI scans, CodeQL and product/prerequisite controls are not sent or automatically enabled.
 
 Enabling permits GitHub to process pull requests with AI; applicable billing and AI credits can apply. Disabling affects future AI findings. Neither configuration readback nor a successful PATCH establishes a completed scan, coverage, entitlement, grants or actual consumption. Write/readback errors retain unknown effects; there is no automatic retry or rollback. No alert fix, Copilot assignment, scan-execution or credits-purchase operation is performed.
+
+## AI Scan for repositories
+
+`repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_repositories`
+is an optional boolean for the **AI Scan for repositories** toggle on a personally
+owned public repository. Omission leaves it unmanaged; false disables it. Null and
+other types are invalid. It is independent of `ai_scan_for_pull_requests`:
+
+```yaml
+repository:
+  settings:
+    advanced_security:
+      code_security:
+        ai_scan:
+          ai_scan_for_repositories: true
+```
+
+Ordinary export attempts this setting automatically. The native `repository_scan` status must be enabled or disabled; missing/null,
+unsupported or denied observations are unavailable, never false. The optional API
+member's absence remains unknown. Re-export preserves valid prior repository-scan
+intent while independent PR-scan export can succeed. Declared plan/apply are
+strict. Repository and owner IDs, name, personal ownership and public visibility
+must be acquired; 403/404 is not disabled state.
+
+Apply rereads the declared status and skips matches. A needed change requires
+both native statuses. A missing or unsupported PR companion blocks mutation,
+while independently readable repository state can
+still be exported or planned. A needed PATCH sends only `repository_scan`,
+requires a matching acknowledgment and independently verifies the requested
+setting, original repository/owner identity and unchanged acquired PR companion.
+Failure stops later work and preserves confirmed earlier progress; attempted
+writes or failed readback may have changed configuration. There is no retry,
+rollback or concurrency lock. CLI and detailed Action reports show the boolean;
+status-only publication hides the setting and value.
+
+This controls eligibility to run separately requested scans; apply does not
+start a scan, enable CodeQL, edit workflows or change budgets. Scans may consume
+AI credits under GitHub's applicable billing and entitlements. The
+[AI Scan guide](https://docs.github.com/en/code-security/concepts/code-scanning/ai-scan-for-repositories)
+explains execution and availability; the
+[REST contract](https://docs.github.com/en/rest/code-scanning/code-scanning#get-ai-scan-enablement-for-a-repository)
+documents Code scanning alerts read and Administration write. A read-only target
+GET confirmed both statuses; modeled write tests do not establish real App grants,
+scan execution or billing. Check support in the selected published CLI/Action;
+this source addition does not upgrade its pin or publish a release.
 
 ## CodeQL default configuration
 

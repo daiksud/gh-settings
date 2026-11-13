@@ -13,7 +13,10 @@ type SecuritySettings struct {
 	GeneralReleases  *SecurityGeneralReleases
 }
 
-type AIScan struct{ AIScanForPullRequests *bool }
+type AIScan struct {
+	AIScanForPullRequests *bool
+	AIScanForRepositories *bool
+}
 
 type CodeSecurity struct {
 	AIScan         *AIScan

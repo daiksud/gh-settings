@@ -29,6 +29,7 @@ type EnvironmentWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	AIScanRepositories   func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	EnvironmentPrune     func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	EnvironmentNames     func(repository.Repository) ([]string, error)
 	CodeQLForExport      func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error)
@@ -71,6 +72,8 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadAIScanRepositories    func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
+	AIScanRepositories        func(repository.Repository, settings.SecurityChange) (bool, error)
 	ReadEnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	DeleteEnvironment         func(repository.Repository, settings.EnvironmentPruneCandidate) error
 	ReadVariables             func(repository.Repository) (settings.VariableInventory, error)

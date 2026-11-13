@@ -240,7 +240,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeAIScanRepositories)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -369,3 +369,11 @@ The offline [release CI tests](../../.github/scripts/test_release_ci.py) cover e
 ## Actions cache and sharing controls
 
 The [built-product fixture](../../tests/acceptance/actions_general_controls_test.go) verifies the independent cache-retention, cache-storage and private-sharing export options through actual CLI processes. It checks exact one-member REST writes, fresh readback, omission and existing-flag isolation, matching repeated apply, UI plan/report/Summary and destination preservation on unavailable reads. The [behavior specification](../features/actions-general-controls.feature.md) records the supported bounds, permissions and failure contract. These local fixtures establish neither live mutation nor actual installation permissions or billing behavior.
+
+## Repository AI Scan verification
+
+The [security specification](../features/security.feature.md#ai-scan-for-repositories)
+maps strict domain/API cases and the built CLI and actual supplied-product Action
+scenarios. They cover automatic export retention, independent PR status, native
+booleans, narrow PATCH, no-op repeat, target/companion readback failure, unchanged
+checkout and private/success-only publication. No live scan or write is performed.

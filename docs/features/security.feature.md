@@ -92,7 +92,7 @@ All fixtures use local APIs and dummy credentials. They establish modeled behavi
 
 Neither `security_and_analysis.code_security` nor `security_and_analysis.advanced_security` becomes a YAML enablement key, export family or implicit prerequisite. The existing `advanced_security` page and `code_security` section organize individual controls; those containers do not enable products. Missing product fields remain unavailable, not disabled. A rejected product request never authorizes retrying with another product or enrolling a contract.
 
-CodeQL default setup/configuration and AI Scan for pull requests are already implemented as described below. Other individual UI controls whose complete public API paths remain unconfirmed stay in the [separate inventory](../settings.md#security-ui-settings-not-managed-by-gh-settings).
+CodeQL default setup/configuration and both AI Scan toggles are implemented as described below. Other individual UI controls whose complete public API paths remain unconfirmed stay in the [separate inventory](../settings.md#security-ui-settings-not-managed-by-gh-settings).
 
 ## Automatic readable export
 
@@ -248,7 +248,7 @@ Owning checks: `internal/settings/codeql_default_setup_test.go`, `internal/works
 
 ## AI Scan for pull requests
 
-- Optional `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` manages only the personal public repository pull-request AI scan toggle. Omission stays unmanaged; false disables. The two separate Preview scan controls remain unimplemented; Preview status is not a policy exclusion.
+- Optional `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` manages only the personal public repository pull-request AI scan toggle. Omission stays unmanaged; false disables. The repository-scan toggle below is independently supported; AI-application scan configuration remains unconfirmed.
 - Ordinary export automatically attempts AI Scan. Complete visibility/owner/enablement reads precede projection; missing/null/unknown/denied state is unavailable and emits info for export. Plan/apply remain strict.
 - Apply fresh-reads and sends only `pr_scan`, skipping a matching state. It confirms enabled/disabled state with fresh readback; failed writes or mismatches retain unknown effects. CodeQL, product switches and other AI scans remain undeclared and untouched by the payload.
 - Enabling permits automated AI processing and may have billing/AI-credit effects. Successful configuration readback never proves completed scans or actual consumption. No explicit scan/fix/assignment operation is sent.
@@ -266,3 +266,41 @@ Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/work
 Owning checks: `internal/settings/codeql_configuration_test.go`, `internal/workspace/ui_codeql_configuration_test.go`, `internal/github/codeql_configuration_test.go`, `internal/app/codeql_configuration_test.go`, `internal/actions/codeql_configuration_test.go`, and `tests/acceptance/codeql_configuration_test.go` / `tests/acceptance/codeql_threat_model_test.go`.
 
 `threat_model` accepts `remote_sources` and `remote_and_local_sources`, mapping exactly to API `remote` and `remote_and_local`. Both are exported automatically from complete configured observations. A threat-only declaration counts one managed scalar, sends only `threat_model` when changed and preserves languages/query suite/runner through readback. Omission preserves the acquired threat model during other configuration updates. Unknown, missing, null or mistyped raw choices fail acquisition; no normalization or fallback makes them supported. Confirmed disabled export removes all four prior configuration controls. Adapter/model and real-binary cases cover both directions, no-op, unknown-detail retention, disabled cleanup and readback failure stopping. GitHub currently documents the local-source choice as Preview for Java/Kotlin and C#; fixture success does not establish live language availability or analysis completion. See the [configuration contract](../settings.md#codeql-default-configuration) and [coverage inventory](../contributing/settings-coverage.md).
+
+## AI Scan for repositories
+
+The [configuration contract](../settings.md#ai-scan-for-repositories) owns schema,
+permissions and execution boundaries.
+
+```gherkin
+Feature: Reconcile repository AI Scan configuration independently
+  Scenario: Export unknown repository status without losing prior intent
+    Given a valid prior repository-scan declaration and readable PR-scan status
+    When repository_scan is absent, denied or malformed
+    Then export retains that declaration with bounded information
+    And independently acquired PR-scan intent is exported
+
+  Scenario: Change and repeat repository AI Scan
+    Given a complete personally owned public repository and both native statuses
+    When apply changes the declared repository-scan boolean
+    Then PATCH contains only repository_scan
+    And acknowledgment and independent readback confirm the original target and PR companion
+    And repeat apply makes no mutation
+    And no scan is requested
+
+  Scenario: Fail readback without fabricated prior progress
+    Given a repository-scan PATCH was attempted
+    When target identity or the PR companion changed, or readback fails
+    Then apply stops and reports uncertain configuration effects
+    And only actual earlier writes count as confirmed partial progress
+```
+
+[Model](../../internal/settings/ai_scan_repositories_test.go),
+[codec](../../internal/workspace/ui_ai_scan_repositories_test.go),
+[adapter](../../internal/github/ai_scan_repositories_test.go) and
+[application](../../internal/app/ai_scan_repositories_test.go) own their invariants.
+[Built CLI](../../tests/acceptance/ai_scan_repositories_test.go) and
+[actual composite Action](../../tests/github-actions/ai_scan_repositories_acceptance_test.go)
+verify command boundaries, repeats, retained export, private reporting and
+success-only outputs. The new YAML regression failed on the unchanged source.
+Fixtures do not prove live write behavior, actual grants or AI-credit consumption.
