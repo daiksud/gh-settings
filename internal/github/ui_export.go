@@ -26,6 +26,20 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 	if general.General != (uimodel.General{}) {
 		result.Settings = &uimodel.RepositorySettings{General: &general.General}
 	}
+	if source.DeployKeys != nil {
+		values := make([]uimodel.DeployKey, 0, source.DeployKeys.Len())
+		for _, d := range source.DeployKeys.Values() {
+			if err := d.Validate(); err != nil {
+				return uimodel.Repository{}, err
+			}
+			title, key, grant := d.Title, d.Key.Canonical(), d.AllowWriteAccess
+			values = append(values, uimodel.DeployKey{ID: d.ID, Title: &title, Key: &key, AllowWriteAccess: &grant})
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.DeployKeys = &values
+	}
 	if source.Collaborators != nil {
 		values := make([]uimodel.Collaborator, 0, source.Collaborators.Len())
 		for _, person := range source.Collaborators.Values() {

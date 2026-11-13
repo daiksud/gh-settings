@@ -104,3 +104,11 @@ snapshot recorder with `repository.settings.collaborators` and `username`; it is
 local progress, not user creation or a completed remote grant. Failed readback
 records no binding. Earlier verified bindings and reported invitation IDs remain
 available on later failure, and output failure never retries a request.
+
+### Rule: Bind deploy keys only after complete verification
+
+[Deploy keys](deploy-keys.feature.md) are immutable objects selected by numeric ID
+and guarded by canonical public-key material. A matching entry makes no write;
+creation uses independent detail and complete-inventory readback before snapshot
+ID insertion. Same-title keys bind by fingerprint. Unverified positive recovery
+IDs never reach YAML, and a failed binding stops remaining destructive work.
