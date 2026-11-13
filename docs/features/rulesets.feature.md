@@ -214,8 +214,8 @@ settings, Copilot PR execution or enforcement was exercised.
 ## Unimplemented branch controls
 
 The [unimplemented-control contract](../settings.md#unimplemented-branch-controls)
-rejects coverage and team-required review declarations before API access. Preview
-status itself is not a policy exclusion. Acquired coverage, nonempty team reviewers
+rejects team-required review declarations before API access. Preview
+status itself is not a policy exclusion. Acquired nonempty team reviewers
 and unknown/malformed protection fail the complete collection without writes or
 partial export. Code Quality remains managed through its severity contract and
 retains its independent raw pre-update drift gate.
@@ -223,3 +223,38 @@ retains its independent raw pre-update drift gate.
 [API safety tests](../../internal/github/ruleset_scope_test.go) and
 [executable unsupported controls](../../tests/acceptance/ruleset_unsupported_controls_test.go)
 cover these rejection boundaries.
+
+## Code coverage thresholds
+
+The [coverage contract](../settings.md#code-coverage-thresholds) manages the branch
+Ruleset checkbox and both finite 0–100 numeric thresholds. Selected child
+omission defaults to explicit zero, which disables that threshold; selected 0/0
+is distinct from absent coverage. Omitting the group removes it under whole-object
+ownership. False/null groups, mistyped members, nonfinite/out-of-range values,
+API aliases and tag use fail validation before remote work.
+
+Complete raw observation requires both thresholds, despite their optional API
+schema. Missing values never receive declaration defaults. Export preserves
+actual zero/fractional values; unavailable Rulesets retain prior intent as a
+whole family. Code Quality normalization remains independent, and forged private
+reports cannot manufacture a complete valid coverage observation.
+
+Matching objects skip mutations. Fresh rule presence and either threshold must
+match the acquired coverage before a needed PUT, including removal intent and
+absent-to-present drift. Existing Code Quality and PR additional-approval checks
+remain. Create/update/removal require complete ACK and independent GET; failed
+confirmation retains positive creation-ID recovery without adopting an unverified
+ID into YAML. Explicit prune preserves complete fixed snapshots and rejects
+changed or incomplete coverage before DELETE.
+
+[Domain ownership](../../internal/settings/ruleset_coverage_test.go),
+[YAML](../../internal/workspace/ui_ruleset_coverage_test.go),
+[raw acquisition](../../internal/github/ruleset_coverage_read_test.go),
+[drift/readback/prune](../../internal/github/ruleset_coverage_write_test.go),
+[private reports](../../internal/actions/ruleset_coverage_test.go),
+[built CLI](../../tests/acceptance/ruleset_coverage_test.go) and
+[actual composite](../../tests/github-actions/ruleset_coverage_acceptance_test.go)
+cover these boundaries. The read-only personal-public UI form observed on
+2026-11-14 exposed optional blank number inputs with min 0, max 100 and arbitrary
+step. No form was submitted. Local fixtures establish product behavior, not live
+write acceptance, Code Quality entitlement, coverage availability or enforcement.

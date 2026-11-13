@@ -182,6 +182,13 @@ build outputs, and these caches must not contain secrets.
 
 ### Hosted candidate composite
 
+[Supplied-product Ruleset coverage checks](../../tests/github-actions/ruleset_coverage_acceptance_test.go)
+exercise detailed/status-only plans, exact threshold/default payloads, independent
+readback, repeated no-ops, failure propagation and unchanged source YAML. The
+[built CLI lifecycle](../../tests/acceptance/ruleset_coverage_test.go) additionally
+covers automatic export/retention, offline validation, removal, ID recovery and
+explicit pruning through isolated API fixtures.
+
 [Supplied-product workflow permission checks](../../tests/github-actions/composite_workflow_permissions_acceptance_test.go)
 exercise the actual public Action with matching and changed declarations, repeated
 apply, minimal PUT payloads and failed independent readback. They verify success
@@ -240,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeRulesetCoverage)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's

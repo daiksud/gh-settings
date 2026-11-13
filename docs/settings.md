@@ -898,7 +898,7 @@ Deletion uses [GitHub's repository Ruleset DELETE endpoint](https://docs.github.
 
 Every present-policy entry requires `ruleset_name`, `enforcement_status` (`active` or `disabled`) and exactly one of `target_branches`/`target_tags`. Branch targets support `include_default_branch`, `include_all_branches`, `include_by_pattern` and `exclude_by_pattern`; tag targets support `include_all_tags` and the pattern arrays. Patterns use the UI spelling without internal ref prefixes. An explicit empty target object selects empty include/exclude lists; omitting all target selectors is invalid. No protected scope is guessed.
 
-Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
+Omitted `bypass_list` and unselected `rules` become empty policy on an owned object. Basic booleans include `restrict_creations`, `restrict_deletions`, `block_force_pushes`, `require_linear_history` and `require_signed_commits`; false/omission leaves that rule unselected. Parameterized groups include `restrict_updates`, `require_a_pull_request_before_merging`, `require_status_checks_to_pass`, `require_code_scanning_results`, `require_code_quality_results`, `restrict_code_coverage`, `require_deployments_to_succeed`, `automatically_request_copilot_code_review`. Omitting a group removes it on the owned object; it does not preserve an existing group. Target-specific applicability remains required.
 
 `restrict_creations: true` allows only bypass actors to create matching branches or tags. `restrict_updates: {allow_fetch_and_merge: false}` allows only bypass actors to update them; selecting an empty object supplies a declaration-only false default. Explicit true allows pulling upstream changes. Both rules support branch and tag targets. Export preserves the acquired upstream-sync flag; an absent, null or malformed flag is an acquisition error. Updates adding, changing or removing either rule require independent whole-policy GET verification after mutation acknowledgment. These repository rules use the standard Rulesets plan availability and Administration write permission; no organization-wide Ruleset is managed. See [GitHub's rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [REST parameter contract](https://docs.github.com/en/rest/repos/rules).
 
@@ -1019,13 +1019,61 @@ Independent supported collections canonicalize by identity.
 
 `rules.require_code_quality_results` requires `severity`: `errors`, `warnings_and_higher`, `notes_and_higher` or `all`. The UI choices map to the public API values `errors`, `warnings`, `notes` and `all`; API tokens are not YAML aliases. This is a managed rule on the selected whole Ruleset: omitting the group removes it, so include every supported protection that must remain. Exact canonical equality is a no-op. Changes and removals require strict mutation-response confirmation plus an independent GET.
 
-The scope correction on 2026-11-09 follows the user's observed availability of **Require code quality results** in a personal repository. The [official Rulesets reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-code-quality-results) documents the rule and Free public Rulesets, and the [public REST API](https://docs.github.com/en/rest/repos/rules#update-a-repository-ruleset) documents its severity field. Product entitlement descriptions are not evidence that this individual control is unavailable. The rule requires configured Code Quality analysis; managing it does not enable the product, start analysis, create workflows or change billing. Coverage remains unimplemented; its Preview status is not a policy exclusion. See [Code Quality normalization](#ruleset-quality-severity-observation-normalization).
+The scope correction on 2026-11-09 follows the user's observed availability of **Require code quality results** in a personal repository. The [official Rulesets reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets#require-code-quality-results) documents the rule and Free public Rulesets, and the [public REST API](https://docs.github.com/en/rest/repos/rules#update-a-repository-ruleset) documents its severity field. Product entitlement descriptions are not evidence that this individual control is unavailable. The rule requires configured Code Quality analysis; managing it does not enable the product, start analysis, create workflows or change billing. Coverage uses the separate [coverage threshold rule](#code-coverage-thresholds). See [Code Quality normalization](#ruleset-quality-severity-observation-normalization).
+
+### Code coverage thresholds
+
+`rules.restrict_code_coverage` selects a branch rule with two numeric controls:
+
+```yaml
+rules:
+  restrict_code_coverage:
+    minimum_line_coverage_percentage: 80.5
+    maximum_line_coverage_drop: 2.25
+```
+
+Both accept finite numbers from 0 through 100, including fractions. The minimum
+is a line coverage percentage; the maximum drop is measured in percentage
+points relative to the default branch. **Zero disables that threshold.**
+A selected group defaults each omitted declaration member to 0 and sends both
+numbers. An empty mapping selects a rule with both thresholds disabled; it is
+distinct from omitting the group, which removes the rule on an owned Ruleset.
+These are declaration defaults, never defaults for unread GitHub state.
+
+The group must be a mapping. Booleans, null, quoted numbers, nonfinite or
+out-of-range values, API field aliases and tag targets are rejected. Include
+every supported protection that must remain on the selected whole object.
+Unlisted Rulesets remain untouched by ordinary apply; explicit Ruleset prune
+can delete a complete supported coverage Ruleset under its normal safety checks.
+
+Export requires both acquired numeric thresholds and writes their actual values,
+including zero. The official response schema makes them optional without
+specifying omission defaults; missing/null members therefore make acquisition
+unavailable rather than becoming disabled thresholds. Initial export omits the
+unavailable Rulesets family, and re-export retains its valid prior intent. No
+partial protection is exported. Exact matching objects cause no write. Before
+PUT, a fresh coverage presence/value snapshot must still match the original
+acquisition, alongside the Code Quality and additional-approval drift checks.
+The mutation response and independent GET must confirm the complete requested
+policy. Failed confirmation retains uncertain effects and creation-ID recovery;
+only verified IDs are written back to local YAML.
+
+The [official coverage guide](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage)
+and [Rules REST API](https://docs.github.com/en/rest/repos/rules) define the
+control. It requires Code Quality and uploaded coverage data for evaluation;
+it does not wait for uploads. Configure the associated required status checks
+when merging must wait for coverage results. Managing these thresholds does not
+enable Code Quality, upload data, author workflows, add checks, expand grants or
+change billing. Configuration acceptance, execution entitlement and effective
+merge enforcement are separate: fixture verification does not prove live
+account acceptance or enforcement. See the [coverage evidence](contributing/settings-coverage.md)
+and [behavior specification](features/rulesets.feature.md#code-coverage-thresholds).
 
 ### Unimplemented branch controls
 
-Public YAML does not accept `restrict_code_coverage` or `require_a_pull_request_before_merging.require_review_from_specific_teams`, including empty collections and explicit false. The personal-public Ruleset editor observed on 2026-11-13 visibly offered the **Require review from specific teams** checkbox, despite official documentation describing the control as unavailable for user-owned repositories. The checkbox was not expanded, so complete usable team selection and the personal-repository API contract remain unconfirmed; this discrepancy does not establish a policy exclusion or implemented support. Organization team ownership and access management remain outside the target. Coverage remains an unimplemented target candidate; Preview status is not an exclusion. The [official rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [coverage documentation](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage) provide the control context. This policy change neither makes those keys valid nor disables live settings.
+Public YAML does not accept `require_a_pull_request_before_merging.require_review_from_specific_teams`, including empty collections and explicit false. The personal-public Ruleset editor observed on 2026-11-13 visibly offered the **Require review from specific teams** checkbox, despite official documentation describing the control as unavailable for user-owned repositories. The checkbox was not expanded, so complete usable team selection and the personal-repository API contract remain unconfirmed; this discrepancy does not establish a policy exclusion or implemented support. Organization team ownership and access management remain outside the target. The [official rules reference](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets) and [coverage documentation](https://docs.github.com/en/code-security/how-tos/maintain-quality-code/restrict-code-coverage) provide the control context. This policy change neither makes those keys valid nor disables live settings.
 
-Acquired `code_coverage`, nonempty PR `required_reviewers` and unknown or malformed rules still fail complete acquisition without dropping protection. Ordinary code-scanning merge protection, Code Quality thresholds, PR approval counts, public fork approval and automatic Copilot code review remain separate controls. All existing Ruleset updates independently recheck ownership, identity and complete policy before PUT; changes to additional approval, PR-rule presence, Code Quality presence or raw severity since acquisition stop the update. Preflight is not an atomic lock: concurrent changes between GET and PUT can still race, and post-write failures report that writes may have applied without rollback.
+Acquired nonempty PR `required_reviewers` and unknown or malformed rules still fail complete acquisition without dropping protection. Ordinary code-scanning merge protection, Code Quality thresholds, PR approval counts, public fork approval and automatic Copilot code review remain separate controls. All existing Ruleset updates independently recheck ownership, identity and complete policy before PUT; changes to additional approval, PR-rule presence, Code Quality presence or raw severity, and Coverage presence or either threshold since acquisition stop the update. Preflight is not an atomic lock: concurrent changes between GET and PUT can still race, and post-write failures report that writes may have applied without rollback.
 
 ### Unsupported Push Rulesets
 

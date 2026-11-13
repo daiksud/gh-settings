@@ -30,6 +30,7 @@ type RulesetRules struct {
 	RequireStatusChecksToPass                                                                          *StatusChecksRule
 	RequireCodeScanningResults                                                                         *CodeScanningRule
 	RequireCodeQualityResults                                                                          *CodeQualityRule
+	RestrictCodeCoverage                                                                               *CodeCoverageRule
 	RequireDeploymentsToSucceed                                                                        *DeploymentsRule
 	AutomaticallyRequestCopilotCodeReview                                                              *CopilotCodeReviewRule
 }
@@ -56,6 +57,10 @@ type CodeScanningTool struct {
 
 type CodeScanningRule struct{ CodeScanningTools *[]CodeScanningTool }
 type CodeQualityRule struct{ Severity *CodeQualitySeverity }
+type CodeCoverageRule struct {
+	MinimumLineCoveragePercentage *float64
+	MaximumLineCoverageDrop       *float64
+}
 type CopilotCodeReviewRule struct {
 	ReviewNewPushes         *bool
 	ReviewDraftPullRequests *bool
