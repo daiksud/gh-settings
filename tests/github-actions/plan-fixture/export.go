@@ -17,14 +17,18 @@ func serveExport(w http.ResponseWriter, r *http.Request, log io.Writer) bool {
 	}
 	if r.Method == http.MethodPost && r.URL.RequestURI() == "/graphql" {
 		var request struct {
-			Query     string            `json:"query"`
-			Variables map[string]string `json:"variables"`
+			Query     string         `json:"query"`
+			Variables map[string]any `json:"variables"`
 		}
-		if json.NewDecoder(r.Body).Decode(&request) != nil || !reflect.DeepEqual(request.Variables, map[string]string{"owner": "example-owner", "name": "settings-fixture"}) {
+		if json.NewDecoder(r.Body).Decode(&request) != nil {
 			return false
 		}
 		query := strings.Join(strings.Fields(request.Query), " ")
-		known := false
+		classic := query == classicExportFixtureQuery && reflect.DeepEqual(request.Variables, map[string]any{"owner": "example-owner", "name": "settings-fixture", "cursor": nil})
+		if !classic && !reflect.DeepEqual(request.Variables, map[string]any{"owner": "example-owner", "name": "settings-fixture"}) {
+			return false
+		}
+		known := classic
 		for _, fields := range []string{"hasPullRequestsEnabled pullRequestCreationPolicy", "issueCreationPolicy", "hasSponsorshipsEnabled"} {
 			known = known || query == "query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { "+fields+" } }"
 		}
@@ -73,3 +77,6 @@ func serveExport(w http.ResponseWriter, r *http.Request, log io.Writer) bool {
 	fmt.Fprintln(w, response)
 	return true
 }
+
+// Literal inspected query: an unavailable classic family is still a bounded read.
+const classicExportFixtureQuery = `query ClassicProtectionInventory($owner: String!, $name: String!, $cursor: String) { repository(owner:$owner,name:$name,followRenames:false) { id nameWithOwner isArchived isPrivate owner { __typename } squashMergeAllowed rebaseMergeAllowed branchProtectionRules(first:100,after:$cursor) { totalCount pageInfo { hasNextPage endCursor } nodes { id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions isAdminEnforced allowsForcePushes blocksCreations dismissesStaleReviews lockBranch lockAllowsFetchAndMerge requireLastPushApproval requiresApprovingReviews requiresCodeOwnerReviews requiresDeployments requiresStatusChecks requiresStrictStatusChecks restrictsPushes restrictsReviewDismissals requiredApprovingReviewCount requiredDeploymentEnvironments requiredStatusCheckContexts requiredStatusChecks { context app { id } } repository { id nameWithOwner isArchived isPrivate owner { __typename } squashMergeAllowed rebaseMergeAllowed } } } } }`

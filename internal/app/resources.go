@@ -29,15 +29,16 @@ type EnvironmentWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
-	AIScanRepositories   func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
-	EnvironmentPrune     func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
-	Collaborators        func(repository.Repository) (settings.CollaboratorObservation, error)
-	ResolveCollaborator  func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
-	EnvironmentNames     func(repository.Repository) ([]string, error)
-	CodeQLForExport      func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error)
-	Variables            func(repository.Repository) (settings.VariableInventory, error)
-	AgentVariables       func(repository.Repository) (settings.VariableInventory, error)
-	EnvironmentVariables func(repository.Repository, string) (settings.VariableInventory, error)
+	AIScanRepositories    func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
+	BranchProtectionRules func(repository.Repository) (settings.ClassicObservation, error)
+	EnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
+	Collaborators         func(repository.Repository) (settings.CollaboratorObservation, error)
+	ResolveCollaborator   func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
+	EnvironmentNames      func(repository.Repository) ([]string, error)
+	CodeQLForExport       func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error)
+	Variables             func(repository.Repository) (settings.VariableInventory, error)
+	AgentVariables        func(repository.Repository) (settings.VariableInventory, error)
+	EnvironmentVariables  func(repository.Repository, string) (settings.VariableInventory, error)
 
 	PullRequestExemptions func(repository.Repository) (settings.PullRequestExemptionsObservation, error)
 	EnvironmentVariable   func(repository.Repository, string, string) (settings.VariableObservation, error)
@@ -78,6 +79,8 @@ type Writer struct {
 	AIScanRepositories        func(repository.Repository, settings.SecurityChange) (bool, error)
 	ReadEnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	DeleteEnvironment         func(repository.Repository, settings.EnvironmentPruneCandidate) error
+	ReadBranchProtectionRules func(repository.Repository) (settings.ClassicObservation, error)
+	BranchProtectionRule      func(repository.Repository, settings.ClassicSelection) (settings.ClassicWriteResult, error)
 	ReadCollaborators         func(repository.Repository) (settings.CollaboratorObservation, error)
 	ResolveCollaborator       func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
 	Collaborator              func(repository.Repository, settings.CollaboratorSelection) (settings.CollaboratorWriteResult, error)

@@ -162,7 +162,7 @@ func startCompositeExportAPI(t *testing.T, f *compositeFixture, beforeRead func(
 			return
 		}
 		body, _ := io.ReadAll(r.Body)
-		query := r.Method == http.MethodPost && r.URL.Path == "/graphql" && strings.Contains(string(body), `"query":"query(`) && !strings.Contains(string(body), "mutation")
+		query := r.Method == http.MethodPost && r.URL.Path == "/graphql" && (strings.Contains(string(body), `"query":"query(`) || strings.Contains(string(body), `"query":"query ClassicProtectionInventory(`)) && !strings.Contains(string(body), "mutation")
 		if !query && (r.Method != http.MethodGet || r.URL.Path != "/repos/owner/config" && !strings.HasPrefix(r.URL.Path, "/repos/owner/config/")) {
 			t.Error("export attempted a mutation or another target")
 			w.WriteHeader(http.StatusBadRequest)

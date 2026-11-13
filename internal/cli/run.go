@@ -101,6 +101,9 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		if err != nil {
 			return err
 		}
+		if err := settings.ValidateClassicChanges(result.Comparison.BranchProtectionRules); err != nil {
+			return err
+		}
 		if err := presentation.ValidateRulesetChanges(result.Comparison.Rulesets); err != nil {
 			return fmt.Errorf("repository.settings.rulesets: %w", err)
 		}
@@ -156,6 +159,8 @@ func createdCollectionPath(collection string) string {
 		return "repository.settings.actions.policies"
 	case "rulesets":
 		return "repository.settings.rulesets"
+	case "branch_protection_rules":
+		return settings.ClassicProtectionPath
 	default:
 		return collection
 	}
@@ -199,6 +204,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = "repository.settings.actions.policies"
 		case app.RulesetsRead, app.RulesetCreate, app.RulesetUpdate, app.RulesetDelete:
 			path = "repository.settings.rulesets"
+		case app.ClassicProtectionRead, app.ClassicProtectionCreate, app.ClassicProtectionUpdate:
+			path = settings.ClassicProtectionPath
 		case app.EnvironmentsRead, app.EnvironmentUpsert, app.EnvironmentDelete:
 			path = "repository.settings.environments"
 		case app.ActionsPolicyUpdate, app.WorkflowPermissionsUpdate, app.CacheRetentionRead, app.CacheRetentionUpdate, app.CacheStorageRead, app.CacheStorageUpdate, app.ActionsAccessRead, app.ActionsAccessUpdate, app.RetentionRead, app.RetentionUpdate, app.ForkApprovalRead, app.ForkApprovalUpdate, app.PrivateForkRead, app.PrivateForkUpdate:

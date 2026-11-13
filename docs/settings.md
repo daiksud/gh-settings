@@ -58,10 +58,10 @@ contract remains unconfirmed, rather than being labeled unavailable. The
 and the limits of fixture and live evidence.
 
 Personal-repository collaborators and invitations are supported through the
-[identity and invitation contract](#personal-collaborators). Classic branch
-protection and custom configurable rules, including
-existing Environment protection apps, remain adopted future work when supported
-by the target UI and applicable APIs. Organization-owned repositories and organization
+[identity and invitation contract](#personal-collaborators). Remaining classic
+protection controls and custom configurable rules, including existing Environment
+protection apps, remain adopted future work when supported by the target UI and
+applicable APIs. Organization-owned repositories and organization
 settings, repository rename/visibility/transfer/deletion, authoring GitHub feature
 configuration files and secret values are excluded. This file-authoring boundary
 does not exclude gh-settings' own declaration file. Existing App selection does
@@ -146,7 +146,7 @@ Earlier verified writes survive later failure. No retry or rollback occurs.
 
 ## Supported fields
 
-`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
+`repository.about`, `repository.labels` and `repository.settings` are siblings. Settings contains `general`, `rulesets`, `branch_protection_rules`, `actions.general`, `actions.policies`, `actions.variables`, `agents.variables`, `copilot.code_review`, `interaction_limits.pull_request_limits`, `advanced_security`, `pages` and `environments`. Unknown keys, including otherwise writable API fields, are rejected.
 
 The basic structure is `repository.settings.<page>[.<subpage>][.<section>].<control>`. Navigation-only sidebar categories are omitted. Do not invent a section solely to equalize depth: page-level controls remain direct, and compound values or resource entries retain their own nesting. The Actions sections use `actions_permissions.policy` and `workflow_permissions.default_permissions`; Secret Protection uses `secret_protection.enabled` with `push_protection` beside it. There is no generic `selection` or `value` wrapper for controls (variable entries have their own required `value`), no second Actions enable flag, and no universal `enabled` wrapper around simple booleans. These are public declaration names, not claims about HTML form attributes.
 
@@ -1217,6 +1217,87 @@ POST/PUT responses must confirm identity, ownership and requested comparable pol
 
 Unsupported protection is never omitted to produce a usable policy. Acquired Evaluate enforcement, merge queue, metadata restrictions, license compliance, or a present review-dismissal restriction stop Ruleset export, comparison and mutation. Review-dismissal absence in an API response does not prove the stored restriction is disabled. These controls are not accepted configuration. See the [Rulesets specification](features/rulesets.feature.md) and [UI mapping](contributing/ui-ruleset-mapping.md).
 
+## Classic branch protection
+
+`repository.settings.branch_protection_rules` manages exact classic rule patterns
+and four independent controls. It is separate from Rulesets and does not clone
+all branch protection. Current source supports personally owned public repositories;
+GitHub documents public availability, including Free, in its
+[protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+
+```yaml
+version: daiksud/gh-settings@v0
+repository:
+  settings:
+    branch_protection_rules:
+      - id: 123456
+        branch_name_pattern: 'release/**'
+        require_conversation_resolution_before_merging: true
+        require_signed_commits: true
+        require_linear_history: true
+        allow_deletions: false
+```
+
+`id` is an optional positive numeric GraphQL `databaseId`. Without it an entry is
+create-only: an existing exact pattern is a collision, even when its controls
+match. With ID, a missing or replaced rule fails instead of creating or adopting.
+An ID-selected pattern change updates that identity; it never deletes and
+recreates the rule. A rename to another rule's exact pattern is rejected. Existing
+same-pattern rules remain independently selectable by ID. Duplicate IDs and
+conflicting requested patterns fail before this family's writes.
+
+The pattern is required, nonblank and free of control characters. Its exact case,
+spaces and slash syntax are preserved. GitHub owns pattern matching and syntax;
+`*` does not cross `/`, and `qa/*` differs from `qa/**/*`. A matching branch need
+not exist. Only one classic rule applies to a branch, and creation age affects
+priority. New rules execute in YAML order; existing rules retain identity and
+creation age. Export sorts by numeric ID for stable presentation, without claiming
+that this is priority order. See GitHub's
+[pattern and priority guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
+
+Each checkbox is optional. Omission preserves its latest observed value; explicit
+`false` requests false. Null, native GraphQL aliases, admin-enforcement flags and
+unlisted controls are rejected. Omitted collections and `[]` manage no objects.
+Unlisted rules are preserved. This slice adds no prune scope, deletion marker or
+reordering operation; existing prune scopes do not delete classic rules.
+
+Plan compares only the requested pattern and checkboxes. Apply first acquires all
+selected identities and rejects collisions. Each existing rule is read again by
+its acquired opaque node ID before comparison; matching intent sends no mutation.
+A changed request sends only changed declared inputs. Enabling linear history
+requires fresh squash or rebase availability, after any earlier repository updates;
+it does not implicitly enable a merge method. Creation sends the exact pattern
+and declared checkboxes; other defaults are controlled by GitHub.
+
+Complete known PR, check/App binding, deployment, admin, lock/fork-sync, force-push
+and actor-allowance state is acquired as unowned preservation evidence. Null stays
+distinct from zero or empty; complete disabled-group raw values are not rewritten.
+Missing, malformed, partial, foreign or ambiguous observations fail. All nested
+actor connections are paginated. After mutation acknowledgment, an independent
+query verifies original requested controls and all omitted known companions.
+Collateral changes or failed readback stop later work with uncertain effects;
+earlier verified writes remain applied. No retry, rollback or atomic lock is
+promised. Stored-value readback does not establish effective branch enforcement.
+
+Only independently confirmed creations receive guarded numeric-ID writeback,
+using the original unique pattern. The existing file/symlink/concurrent-edit
+checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation or
+local recording fails, retain the reported numeric or opaque recovery identity
+and inspect the remote rule before retrying; never guess or decode node IDs.
+
+Automatic export projects every readable rule's ID, pattern and these four
+checkboxes. It does not export or adopt the other controls. Unavailable acquisition
+retains compatible prior declarations with bounded info; it never fabricates an
+empty or partial collection. The complete known query follows the inspected
+[GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
+GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
+admin enforcement, lock/fork-sync and force-push selection remain separate work;
+this is not complete classic UI coverage. Queries and mutations use existing
+[GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
+without granting permissions. The REST concrete-branch endpoint is not used for
+wildcard rules, and its permission table does not prove every GraphQL App grant.
+See the [behavior and verification specification](features/classic-protection.feature.md).
+
 ## Environments
 
 `repository.settings.environments` selects supported policies and variables by `name`, without numeric Environment/pattern ID writeback. Names are nonempty, have no leading/trailing whitespace/control characters and use Unicode simple folding for client identity. Spelling remains; slash/percent are URL-encoded as one segment. Without prune, omission/`[]` selects nothing and unlisted Environments are preserved. Explicit [Environment pruning](#environment-pruning) adds bounded parent deletion; omission remains unmanaged. Deletion/rename markers and secret values remain unsupported. Already installed custom protection Apps use the separate checkbox ownership below; installation and grants remain excluded. Selected non-sensitive variables have the separate ownership described below.
@@ -1349,7 +1430,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Collaborator removal/invitation cancellation and classic branch protection are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Collaborator removal/invitation cancellation and remaining classic branch-protection controls are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 

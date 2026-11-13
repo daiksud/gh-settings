@@ -14,8 +14,9 @@ an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables` and
-`environments`. Standalone `all` selects all seven; future collection additions
-must join its explicit expansion and tests.
+`environments`. Standalone `all` selects all seven; future supported prune scopes
+must join its explicit expansion and tests. Classic branch-protection pruning
+remains separate future work; these scopes do not delete classic rules.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit
 empty list selects all current objects for deletion; a nonempty list retains its
