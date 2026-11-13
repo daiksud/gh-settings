@@ -18,6 +18,7 @@ import (
 
 func TestBuiltCompositeOIDCSubject(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
+	testCompositeOIDCImmutable(t, product, version)
 	for _, scenario := range []string{"matching", "changed", "companion drift", "denied readback"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)

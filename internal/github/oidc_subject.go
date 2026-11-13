@@ -139,6 +139,7 @@ func (c *OIDCSubjectClient) Read(repo repository.Repository) (settings.OIDCSubje
 	if err != nil {
 		return settings.OIDCSubjectObservation{}, err
 	}
+	state.value.UseImmutableSubjectClaim = state.immutable
 	return settings.NewOIDCSubjectObservation(state.value)
 }
 func validOIDCAcknowledgment(b []byte) bool {
@@ -159,6 +160,10 @@ func (c *OIDCSubjectClient) Update(repo repository.Repository, desired settings.
 	if err != nil {
 		return pre(err)
 	}
+	before.value.UseImmutableSubjectClaim = before.immutable
+	if _, err := settings.OIDCSubjectBefore(before.value, desired); err != nil {
+		return pre(err)
+	}
 	if settings.OIDCSubjectMatches(before.value, desired) {
 		return false, nil
 	}
@@ -168,9 +173,16 @@ func (c *OIDCSubjectClient) Update(repo repository.Repository, desired settings.
 	if before.immutable == nil {
 		return pre(fmt.Errorf("OIDC immutable companion is unavailable; cannot preserve it for update"))
 	}
-	input := map[string]any{"use_default": *desired.UseDefaultTemplate, "use_immutable_subject": *before.immutable}
-	if !*desired.UseDefaultTemplate {
-		input["include_claim_keys"] = *desired.SubjectClaimTemplate
+	complete := settings.CloneOIDCSubject(before.value)
+	if desired.UseDefaultTemplate != nil {
+		complete.UseDefaultTemplate, complete.SubjectClaimTemplate = desired.UseDefaultTemplate, desired.SubjectClaimTemplate
+	}
+	if desired.UseImmutableSubjectClaim != nil {
+		complete.UseImmutableSubjectClaim = desired.UseImmutableSubjectClaim
+	}
+	input := map[string]any{"use_default": *complete.UseDefaultTemplate, "use_immutable_subject": *complete.UseImmutableSubjectClaim}
+	if !*complete.UseDefaultTemplate {
+		input["include_claim_keys"] = *complete.SubjectClaimTemplate
 	}
 	body, _ := json.Marshal(input)
 	r, err := c.rest.Request(http.MethodPut, oidcSubjectPath(repo), bytes.NewReader(body))
@@ -186,7 +198,8 @@ func (c *OIDCSubjectClient) Update(repo repository.Repository, desired settings.
 	if err != nil {
 		return false, fmt.Errorf("OIDC readback unavailable; configuration may have changed")
 	}
-	if after.id != before.id || after.ownerID != before.ownerID || after.archived != before.archived || !settings.OIDCSubjectMatches(after.value, desired) || after.immutable == nil || *after.immutable != *before.immutable {
+	after.value.UseImmutableSubjectClaim = after.immutable
+	if after.id != before.id || after.ownerID != before.ownerID || after.archived != before.archived || !settings.OIDCSubjectMatches(after.value, complete) {
 		return false, fmt.Errorf("OIDC readback did not confirm original identity, template and immutable companion; configuration may have changed")
 	}
 	return true, nil
