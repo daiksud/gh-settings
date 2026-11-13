@@ -15,8 +15,10 @@ func TestCopilotReviewEffortObservation(t *testing.T) {
 		{"default", nil, "balanced", []string{"lite", "balanced", "max"}, false},
 		{"lite", effortString("lite"), "lite", []string{"lite", "balanced"}, false},
 		{"explicit balanced", effortString("balanced"), "balanced", []string{"balanced"}, false},
-		{"preview configured", effortString("max"), "balanced", []string{"lite", "balanced", "max"}, true},
-		{"preview effective", nil, "max", []string{"lite", "balanced", "max"}, true},
+		{"max configured", effortString("max"), "max", []string{"lite", "balanced", "max"}, false},
+		{"max effective", nil, "max", []string{"lite", "balanced", "max"}, false},
+		{"unknown effective", nil, "future", []string{"future"}, true},
+		{"unavailable max configured", effortString("max"), "balanced", []string{"balanced"}, true},
 		{"unknown configured", effortString("future"), "balanced", []string{"balanced", "future"}, true},
 		{"inherit is API write only", effortString("inherit"), "balanced", []string{"balanced"}, true},
 		{"default is UI only", effortString("default"), "balanced", []string{"balanced"}, true},
@@ -62,7 +64,9 @@ func TestCopilotReviewEffortComparison(t *testing.T) {
 		{"explicit balanced differs from default", effortString("balanced"), effortString("default"), []string{"balanced"}, 1, 1, false},
 		{"matching explicit balanced", effortString("balanced"), effortString("balanced"), []string{"balanced"}, 1, 0, false},
 		{"unavailable lite", nil, effortString("lite"), []string{"balanced"}, 0, 0, true},
-		{"preview desired", nil, effortString("max"), []string{"balanced", "max"}, 0, 0, true},
+		{"max desired", nil, effortString("max"), []string{"balanced", "max"}, 1, 1, false},
+		{"matching max", effortString("max"), effortString("max"), []string{"balanced", "max"}, 1, 0, false},
+		{"unavailable max", nil, effortString("max"), []string{"balanced"}, 0, 0, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var o CopilotReviewEffortObservation
@@ -120,7 +124,7 @@ func TestCopilotReviewEffortOwnedCopiesAndAcquisition(t *testing.T) {
 	if (Declaration{CopilotReviewEffort: effortString("default")}).Empty() {
 		t.Fatal("default declaration is managed")
 	}
-	for _, pair := range [][2]string{{"max", "lite"}, {"lite", "inherit"}, {"default", "default"}} {
+	for _, pair := range [][2]string{{"future", "lite"}, {"lite", "inherit"}, {"default", "default"}} {
 		if _, err := NewCopilotReviewEffortChange(pair[0], pair[1]); err == nil {
 			t.Fatal(pair)
 		}
