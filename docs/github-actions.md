@@ -134,6 +134,18 @@ Current-source planning/apply support the independently declared [Review effort 
 
 Current-source planning/apply support the [Use custom instructions toggle](settings.md#copilot-code-review-custom-instructions). Check that the selected published package supports the key before adding it to a declaration; this source addition does not update the caller's pin. The API stores only configuration, not Copilot access or review activation. No instructions file, review request, workflow/token grant or license is created. Exact App-token permission grants and instruction consumption were not verified by the owner-authenticated storage probe. Full reports show native booleans; the existing status-only lifecycle hides the control and values in its published Summary.
 
+## Personal collaborators
+
+Current-source export/plan/apply supports the
+[personal collaborator contract](settings.md#personal-collaborators). Confirm
+support in the selected immutable package; this change does not update its pin.
+Detailed plan Summary distinguishes initial invitations, pending acceptance and
+active access, including matching pending people. Status-only publication omits
+recipient identities. Action apply never writes user IDs into the checkout;
+record the reported verified user IDs through a reviewed declaration update
+before relying on scheduled no-reinvitation behavior. An invitation is not proof
+of accepted access. No installation grant or recipient acceptance is created.
+
 ## Consumer files
 
 The [copyable PR/main examples](../examples/github-actions/README.md) need two workflow files plus `.github/settings.yml`. No caller script, root `action.yml` or copied `action/` directory is required.
@@ -153,6 +165,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | --- | --- | --- |
 | Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
+| Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation, fresh identity guard and independent active/pending readback |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |

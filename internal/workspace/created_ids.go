@@ -32,8 +32,8 @@ func (checkout Checkout) PrepareApply() (uimodel.Repository, func(string, string
 func createdIDRecorder(root string, snapshot []byte) func(string, string, int64) error {
 	expected := bytes.Clone(snapshot)
 	return func(collection, name string, id int64) error {
-		if id <= 0 || (collection != "labels" && collection != "rulesets" && collection != "actions_policies") {
-			return fmt.Errorf("invalid created object identity")
+		if id <= 0 || (collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators") {
+			return fmt.Errorf("invalid object identity")
 		}
 		var document yaml.Node
 		if err := yaml.Unmarshal(expected, &document); err != nil {
@@ -56,6 +56,10 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		repository := mappingValue(document.Content[0], "repository")
 		entries := mappingValue(repository, "labels")
 		nameKey, path := "name", "repository.labels"
+		if collection == "collaborators" {
+			entries = mappingValue(mappingValue(repository, "settings"), "collaborators")
+			nameKey, path = "username", "repository.settings.collaborators"
+		}
 		if collection == "rulesets" {
 			entries = mappingValue(mappingValue(repository, "settings"), "rulesets")
 			nameKey, path = "ruleset_name", "repository.settings.rulesets"
@@ -80,13 +84,13 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 			n := mappingValue(entry, nameKey)
 			if n != nil && n.Kind == yaml.ScalarNode && n.Value == name {
 				if selected != nil {
-					return fmt.Errorf("ambiguous created object %q", name)
+					return fmt.Errorf("ambiguous selected object %q", name)
 				}
 				selected = entry
 			}
 		}
 		if selected == nil {
-			return fmt.Errorf("created object %q is missing from original settings", name)
+			return fmt.Errorf("selected object %q is missing from original settings", name)
 		}
 		if mappingValue(selected, "id") != nil {
 			return fmt.Errorf("refusing to replace an existing ID for %q", name)
@@ -162,7 +166,7 @@ func replaceSettingsSnapshot(root string, expected, replacement []byte) error {
 		return err
 	}
 	if err := os.Rename(temporary, path); err != nil {
-		return fmt.Errorf("replace settings with created IDs: %w", err)
+		return fmt.Errorf("replace settings with recorded IDs: %w", err)
 	}
 	return nil
 }

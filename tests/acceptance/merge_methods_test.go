@@ -212,7 +212,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 				}
 				mu.Lock()
 				defer mu.Unlock()
-				if len(paths) < 7 || !reflect.DeepEqual(paths[:7], []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels"}) {
+				if len(paths) < 8 || !reflect.DeepEqual(paths[:8], []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current/labels"}) {
 					t.Fatalf("paths=%v", paths)
 				}
 				return
@@ -339,7 +339,7 @@ settings:
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
 				t.Fatalf("paths=%v", paths)
 			}
 		})

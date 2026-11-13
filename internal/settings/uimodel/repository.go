@@ -7,7 +7,13 @@ type Repository struct {
 	Settings *RepositorySettings
 }
 
+type Collaborator struct {
+	Username string
+	ID       *int64
+}
+
 type RepositorySettings struct {
+	Collaborators      *[]Collaborator
 	InteractionLimits  *InteractionLimits
 	Agents             *AgentsSettings
 	Copilot            *CopilotSettings
