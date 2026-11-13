@@ -26,7 +26,7 @@ func TestPruneCommaSeparatedOptionsAndLocalRejection(t *testing.T) {
 		if Run([]string{command, "--prune", "labels,rulesets"}, &out, &errout, "dev", ops) != 0 || calls != 1 {
 			t.Fatal(out.String(), errout.String(), calls)
 		}
-		for _, tail := range [][]string{{"--prune"}, {"--prune", ""}, {"--prune", "labels,"}, {"--prune", "all,labels"}, {"--prune", "all"}, {"--prune", "environments"}, {"--prune", "labels", "--prune", "rulesets"}, {"--prune", "unknown"}} {
+		for _, tail := range [][]string{{"--prune"}, {"--prune", ""}, {"--prune", "labels,"}, {"--prune", "all,labels"}, {"--prune", "labels", "--prune", "rulesets"}, {"--prune", "unknown"}} {
 			before := calls
 			out.Reset()
 			errout.Reset()

@@ -116,3 +116,39 @@ func TestEnvironmentPartialRequestReportDoesNotOwnPreservedCompanions(t *testing
 		t.Fatal("fabricated after state", string(afterJSON))
 	}
 }
+
+func TestEnvironmentDeleteReportHasCompleteBeforeAndNoAfter(t *testing.T) {
+	timer, flag, reviewers := 0, false, []settings.EnvironmentReviewer{}
+	before := settings.EnvironmentDeclaration{Name: "<old>", WaitTimer: &timer, PreventSelfReview: &flag, CanAdminsBypass: &flag, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}
+	change, err := settings.NewEnvironmentChange("delete", &before, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "plan.json")
+	var stdout, stderr bytes.Buffer
+	status := actions.Run([]string{"plan", path}, &stdout, &stderr, "dev", func() (app.PlanResult, error) {
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, Environments: []settings.EnvironmentChange{change}}}, nil
+	})
+	data, err := os.ReadFile(path)
+	if err != nil || status != 0 || bytes.Contains(data, []byte(`"after"`)) {
+		t.Fatal(string(data), err, stderr.String())
+	}
+	var report actions.PlanReport
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatal(err)
+	}
+	summary, err := actions.RenderSummary(report, summaryMetadata())
+	if err != nil || !strings.Contains(summary, "settings.environments: delete") || !strings.Contains(summary, "jobs waiting on protections fail") || strings.Contains(summary, "<old>") {
+		t.Fatal(summary, err)
+	}
+	for _, mutate := range []func(*actions.PlanReport){func(r *actions.PlanReport) { r.Environments[0].Before = nil }, func(r *actions.PlanReport) { r.Environments[0].After = &before }, func(r *actions.PlanReport) {
+		r.Environments[0].PatternObservations = &[]actions.EnvironmentPatternObservation{}
+	}} {
+		var bad actions.PlanReport
+		_ = json.Unmarshal(data, &bad)
+		mutate(&bad)
+		if _, err := actions.RenderSummary(bad, summaryMetadata()); err == nil {
+			t.Fatal("invalid delete report accepted", bad)
+		}
+	}
+}

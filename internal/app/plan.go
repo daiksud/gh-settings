@@ -244,6 +244,11 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 			}
 		}
 	}
+	if prune.Has("environments") && desired.Environments != nil {
+		if err := planEnvironmentPrune(repo, desired, read, &comparison); err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.environments", Target: repo, Err: err}
+		}
+	}
 	if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) || prune.Has("environment-variables") && len(desired.EnvironmentVariables) > 0 {
 		comparison.Managed++
 	}

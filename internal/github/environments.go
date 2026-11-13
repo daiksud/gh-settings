@@ -28,7 +28,17 @@ func (e *environmentPreWriteFailure) Unwrap() error        { return e.cause }
 func (*environmentPreWriteFailure) ReadFailedBeforeWrite() {}
 
 func NewEnvironmentsClient(host string) (*EnvironmentsClient, error) {
-	c, err := api.NewRESTClient(api.ClientOptions{Host: host, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
+	return newEnvironmentsClient(host, false)
+}
+
+// NewEnvironmentPruneClient keeps child snapshot evidence out of transport logs,
+// including when callers inherit GH_DEBUG. Ordinary policy reads are unchanged.
+func NewEnvironmentPruneClient(host string) (*EnvironmentsClient, error) {
+	return newEnvironmentsClient(host, true)
+}
+
+func newEnvironmentsClient(host string, private bool) (*EnvironmentsClient, error) {
+	c, err := api.NewRESTClient(api.ClientOptions{Host: host, LogIgnoreEnv: private, Timeout: 30 * time.Second, Headers: map[string]string{"X-GitHub-Api-Version": "2026-03-10"}, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }})
 	if err != nil {
 		return nil, fmt.Errorf("configure Environments API: %w", err)
 	}

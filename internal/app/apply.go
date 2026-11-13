@@ -220,6 +220,14 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if prune.Has("environments") && desired.Environments != nil {
+		if unarchived {
+			prepared.environments = prepared.environments.AfterUnarchive()
+		}
+		if err := checkEnvironmentPrune(&result, repo, desired, prepared.environments, write); err != nil {
+			return result, err
+		}
+	}
 	if desired.Environments != nil && desired.Environments.Len() > 0 {
 		wrote, err := applyEnvironments(&result, repo, desired.Environments, write)
 		if err != nil {
@@ -247,6 +255,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 	} else if !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) {
 		wrote, err := applyEnvironmentVariables(&result, repo, desired.EnvironmentVariables, write.EnvironmentVariable)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
+	if prune.Has("environments") && desired.Environments != nil {
+		wrote, err := applyEnvironmentPrune(&result, repo, prepared.environments, write)
 		if err != nil {
 			return result, err
 		}

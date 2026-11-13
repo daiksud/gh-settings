@@ -10,7 +10,7 @@ Ordinary `export` now follows the [automatic readable-settings contract](readabl
 
 ## Ownership and preservation
 
-Public entries live under `repository.settings.environments`. Only listed names are managed. The policy rules here apply to policy-selected entries; [variable-only entries](#selected-environment-variables) have independent ownership. Omitted and empty collections select no objects and make no Environment requests. Names select ordinary REST create-or-update, not numeric identity. Changing a name selects another object; the old unlisted object remains. Deletion, rename, secrets, deployment execution and numeric-ID writeback are outside this feature.
+Public entries live under `repository.settings.environments`. Without prune, only listed names are managed. The policy rules here apply to policy-selected entries; [variable-only entries](#selected-environment-variables) have independent ownership. Without prune, omitted and empty collections select no objects and make no Environment requests. Explicit [Environment pruning](prune.feature.md#environment-deletion) selects unlisted parents only for present collections, including explicit []. Names select ordinary REST create-or-update, not numeric identity. Changing a name selects another object; without prune, the old unlisted object remains. Parent deletion has the separate prune contract. Rename, secret values, deployment execution and numeric-ID writeback remain unsupported.
 
 Each listed existing policy owns its declared built-in controls. Matching partial and name-only requests skip mutation. A needed policy PUT overlays original partial intent on the writer’s latest complete built-in snapshot, preserving timer, reviewers, self-review, administrator bypass and canonical deployment mode. Plan and Summary keep the original partial request; companions never become desired ownership. Creation still sends partial intent, with omitted outcomes controlled by GitHub; a missing name-only selection sends `{}`. Complete independent readback verifies requested controls and preservation companions.
 
@@ -127,8 +127,8 @@ Environment-variable prune additionally binds complete inventories and deletion
 checks to the parent ID, rejecting detected replacement before the family write
 and before/after DELETE. Only explicitly declared Environment policy creation can
 precede variables for an absent parent. Unexpected candidates after that creation
-are rejected instead of deleting them. This adopts no Environment-object deletion
-or secret ownership. See [variable pruning](../settings.md#variable-pruning) and
+are rejected instead of deleting them. This variable scope adds no parent deletion
+or secret ownership; parent deletion requires the separate `environments` scope. See [variable pruning](../settings.md#variable-pruning) and
 `internal/github/variable_prune_test.go`, `internal/app/variable_prune_test.go`,
 `tests/acceptance/prune_variables_test.go` for bounded fixture evidence.
 
