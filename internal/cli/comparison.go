@@ -64,6 +64,9 @@ func RenderComparison(comparison settings.Comparison) []byte {
 	for _, change := range comparison.CopilotInstructions {
 		fmt.Fprintln(&output, presentation.CopilotInstructionsLine(change))
 	}
+	for _, change := range comparison.OIDCSubject {
+		fmt.Fprintln(&output, presentation.OIDCSubjectLine(change))
+	}
 	for _, change := range comparison.CopilotMCP {
 		fmt.Fprintln(&output, presentation.CopilotMCPLine(change))
 	}

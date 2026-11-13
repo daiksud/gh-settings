@@ -14,6 +14,7 @@ var failureResources = []string{
 	settings.PullRequestLimitsPath,
 	settings.CopilotReviewEffortPath,
 	settings.CopilotInstructionsPath,
+	settings.OIDCSubjectPath,
 	settings.CopilotMCPPath,
 	"repository.settings.actions.variables",
 	"repository.settings.agents.variables",

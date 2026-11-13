@@ -54,8 +54,10 @@ caller and published-package boundaries.
   Without prune, unlisted unsupported objects stay untouched. With prune, any
   unsupported deletion candidate aborts before all writes; incomplete observations
   always fail.
-- OIDC, unadopted actor kinds, Preview lockfile controls and workflow/configuration-
-  file authoring remain excluded. There is no delete input.
+- The [OIDC active template](oidc-subject.feature.md) has independent support.
+  Writable immutable mode, unadopted actor kinds and Preview lockfile controls
+  remain unimplemented; configuration-file authoring stays outside scope.
+  There is no policy delete input.
 
 ## Rule: Observe the whole collection and guard each mutation
 
