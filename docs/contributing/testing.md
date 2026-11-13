@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeClassicDeployments)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -443,3 +443,18 @@ no-op, detailed/private plans, exact changed-only GraphQL input, independent
 fork-sync drift failure and success-only outputs. Model and adapter fixtures also
 check omission, complete acquisition and preservation of fork-sync true/false.
 These fixtures do not establish live branch enforcement or API side effects.
+
+## Classic required-deployment verification
+
+The literal codec regression fails on the unchanged source. Owning model and
+adapter tests distinguish active empty/null/missing states, exact-name sets and
+raw inactive preservation. They verify nullable numeric Environment IDs, complete
+pagination, changed-only inputs, no-op without Environment access, reference drift,
+partial creation recovery and other companion preservation. App cases prove that
+Environment-prune conflicts fail before unrelated writes or unarchive.
+
+The supplied CLI lifecycle checks export, plan, update and repeat no-op.
+`TestBuiltCompositeClassicDeployments` runs the real public Action through enabled,
+disabled, empty and matching configurations, private plans and post-write reference
+replacement. It checks unchanged checkout and success-only outputs. These isolated
+fixtures do not establish live deployment execution or effective branch protection.

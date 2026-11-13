@@ -115,7 +115,7 @@ func TestBuiltCompositeClassicLock(t *testing.T) {
 					writes++
 					rule["lockBranch"] = desired
 					ack := map[string]any{}
-					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "repository"} {
+					for _, k := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
 						ack[k] = rule[k]
 					}
 					body["updateBranchProtectionRule"] = map[string]any{"branchProtectionRule": ack}

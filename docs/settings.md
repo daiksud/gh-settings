@@ -1276,8 +1276,8 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and five independent controls. It is separate from Rulesets and does not clone
-all branch protection. Current source supports personally owned public repositories;
+and five independent checkboxes plus the required-deployment group. It is separate
+from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 
@@ -1293,6 +1293,9 @@ repository:
         require_linear_history: true
         allow_deletions: false
         lock_branch: false
+        require_deployments_to_succeed_before_merging:
+          enabled: true
+          environments: [staging, production]
 ```
 
 `id` is an optional positive numeric GraphQL `databaseId`. Without it an entry is
@@ -1319,13 +1322,13 @@ and `[]` manage no objects, and unlisted rules are preserved.
 [Classic rule pruning](#classic-branch-protection-pruning) adds whole-rule deletion
 through a command option; there is no YAML deletion marker or reordering operation.
 
-Plan compares only the requested pattern and checkboxes. Apply first acquires all
+Plan compares only the requested pattern and controls. Apply first acquires all
 selected identities and rejects collisions. Each existing rule is read again by
 its acquired opaque node ID before comparison; matching intent sends no mutation.
 A changed request sends only changed declared inputs. Enabling linear history
 requires fresh squash or rebase availability, after any earlier repository updates;
 it does not implicitly enable a merge method. Creation sends the exact pattern
-and declared checkboxes; other defaults are controlled by GitHub.
+and declared controls; other defaults are controlled by GitHub.
 
 Lock branch makes matching branches read-only. It does not enable fork syncing;
 the acquired fork-sync setting stays unowned and must survive updates unchanged.
@@ -1334,9 +1337,47 @@ otherwise allowed. This checkbox does not rewrite the separate deletion setting
 or promise that it will take effect while locked. Readback verifies stored
 settings, not an attempted push, deletion or effective enforcement.
 
-Complete known PR, check/App binding, deployment, admin, fork-sync, force-push
-and actor-allowance state is acquired as unowned preservation evidence. Null stays
-distinct from zero or empty; complete disabled-group raw values are not rewritten.
+`require_deployments_to_succeed_before_merging` is a complete active group.
+Omission and `{}` leave it unmanaged. `enabled: true` requires an explicit
+`environments` list, including `[]`; `enabled: false` forbids that list. Names are
+an exact-spelling set: duplicates, blank names, controls and null values fail.
+No trimming, case folding or Environment creation is performed. Export sorts
+active names and emits only `enabled: false` for disabled groups. The unsaved
+personal-public form offered an empty selection on 2026-11-14; this is not proof
+that the server accepts it or that it enforces useful protection.
+
+A fresh matching rule sends no mutation and makes no Environment request. Before
+a needed mutation with an explicitly enabled nonempty group, the writer completely
+paginates identity-only Environment observations and resolves each exact name to
+its node ID. This also applies when another declared control caused the write.
+The [GraphQL Environment schema](https://docs.github.com/en/graphql/reference/deployments#environment)
+permits a null numeric database ID; the node ID remains the identity anchor.
+After independent rule readback, selected names and node IDs are checked again.
+Missing, ambiguous or foreign references fail before mutation; failed or changed
+post-write observations stop later work with uncertain effects. New unselected
+Environments do not cause drift. Disabling, omission and an empty active set do
+not acquire Environment identities. No-op equality does not establish Environment
+existence or deployment success.
+
+Referenced Environments must already exist at the Classic write stage, which
+precedes Environment creation and updates. Create a missing Environment in a
+separate apply. The client does not create, rename or deploy to a reference.
+Exact spelling is a conservative selection rule, not a claim about GitHub name
+matching. Replacement before fresh acquisition and later remote races are not
+ruled out. When Environment prune is selected, an explicitly enabled reference
+to a fixed deletion candidate fails global preflight before any writes or
+unarchive, even for a matching rule. Retain that Environment explicitly or change
+the requirement; references are never silently added to retained names. Conflict
+detection conservatively uses Environment deletion's existing name equivalence;
+reference selection remains exact. This check does not adopt omitted requirements or certify their viability after an
+intentional Environment deletion.
+
+Omitting the deployment group preserves its raw flag, nullness, list order and
+inactive names exactly. Selecting it owns the complete active configuration;
+disabling sends only `requiresDeployments: false` and makes no promise about
+hidden inactive-list storage. Complete known PR, check/App binding, admin,
+fork-sync, force-push and actor-allowance state remains unowned preservation
+evidence. Null stays distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
 actor connections are paginated. After mutation acknowledgment, an independent
 query verifies original requested controls and all omitted known companions.
@@ -1351,11 +1392,11 @@ local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
 Automatic export projects every readable rule's ID, pattern and these five
-checkboxes. It does not export or adopt the other controls. Unavailable acquisition
-retains compatible prior declarations with bounded info; it never fabricates an
+checkboxes and active deployment configuration. It does not export or adopt the
+other controls. Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
-GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
+GraphQL cannot reveal future unselected schema fields. PR/check groups,
 admin enforcement, fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
@@ -1371,17 +1412,18 @@ collection stays unmanaged. `[]` selects all initially acquired rules; a nonempt
 list retains declared numeric IDs and newly created rules. All retained rules must
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
-Ordinary create/update retains its five-control partial ownership.
+Ordinary create/update retains its partial-control ownership.
 
 Deletion removes the entire rule, including configured PR, check, deployment,
-admin and actor protections that gh-settings cannot edit. An overlapping rule may
+admin and actor protections beyond the supported controls. An overlapping rule may
 then take effect; recreation cannot restore creation-age priority. The plan shows
 this consequence and each complete supported before-policy, without raw private
 companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-five flags and all known raw companions. Missing, denied, partial, unsupported or
+five flags, active deployment projection and all known raw companions, including
+inactive deployment names and their order. Missing, denied, partial, unsupported or
 inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.
