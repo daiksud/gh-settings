@@ -310,17 +310,25 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 	if !desired.Actions.WorkflowPermissionsEmpty() {
 		index := len(result.Operations)
 		result.Operations = append(result.Operations, ApplyOperation{Kind: WorkflowPermissionsUpdate})
-		if err := write.WorkflowPermissions(repo, desired.Actions); err != nil {
+		wrote, err := write.WorkflowPermissions(repo, desired.Actions)
+		if err != nil {
 			status := OperationFailedUnknown
 			var readFailure PreWriteReadFailure
 			if errors.As(err, &readFailure) {
 				status = OperationFailedRead
 			}
 			result.failOperation(index, status)
-			return result, fmt.Errorf("apply workflow permissions (earlier resource writes remain applied): %w", err)
+			progress := ""
+			if hasWrites {
+				progress = " (earlier resource writes remain applied)"
+			}
+			return result, fmt.Errorf("apply workflow permissions%s: %w", progress, err)
 		}
-		result.Operations[index].Status = OperationCompleted
-		hasWrites = true
+		result.Operations[index].Status = OperationUnchanged
+		if wrote {
+			result.Operations[index].Status = OperationCompleted
+		}
+		hasWrites = hasWrites || wrote
 	}
 	if !desired.Actions.RetentionEmpty() {
 		wrote, err := applyRetention(&result, repo, desired.Actions, write)

@@ -101,7 +101,7 @@ func TestActionsGeneralFailureClassificationAndStopsLaterWrites(t *testing.T) {
 							return false, cause
 						}
 					}
-					writer := Writer{WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) error { return nil },
+					writer := Writer{WorkflowPermissions: func(repository.Repository, settings.ActionsPolicyDeclaration) (bool, error) { return true, nil },
 						ReadCacheRetention: func(repository.Repository) (settings.CacheRetentionObservation, error) {
 							if stage == "read" {
 								return settings.CacheRetentionObservation{}, cause

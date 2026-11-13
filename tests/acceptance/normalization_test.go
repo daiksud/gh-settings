@@ -170,6 +170,17 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 		t.Fatal("approval-only apply replayed an unmanaged fallback", status, output, diagnostic)
 	}
 	mu.Lock()
+	matched := permission == "FUTURE" && len(workflowWrites) == 0
+	approval = true
+	mu.Unlock()
+	if !matched {
+		t.Fatal("matching approval wrote an unmanaged raw companion")
+	}
+	output, diagnostic, status = run("apply")
+	if status != 0 || diagnostic != "" {
+		t.Fatal("approval change replayed an unmanaged fallback", status, output, diagnostic)
+	}
+	mu.Lock()
 	preserved := permission == "FUTURE" && len(workflowWrites) == 1 && reflect.DeepEqual(workflowWrites[0], map[string]any{"can_approve_pull_request_reviews": false})
 	mu.Unlock()
 	if !preserved {
