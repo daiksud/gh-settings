@@ -2,6 +2,7 @@ package uimodel
 
 // BranchProtectionRule owns only the selected classic controls, independently of Rulesets.
 type BranchProtectionRule struct {
+	AllowForcePushes                           *ClassicForcePush          `json:"allow_force_pushes,omitempty"`
 	RequireAPullRequestBeforeMerging           *ClassicPullRequestReviews `json:"require_a_pull_request_before_merging,omitempty"`
 	RequireStatusChecksToPassBeforeMerging     *ClassicStatusChecks       `json:"require_status_checks_to_pass_before_merging,omitempty"`
 	RequireDeploymentsToSucceedBeforeMerging   *ClassicDeployments        `json:"require_deployments_to_succeed_before_merging,omitempty"`
