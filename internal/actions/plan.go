@@ -20,6 +20,7 @@ const (
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
 	BranchProtectionRules   []settings.ClassicChange          `json:"branch_protection_rules,omitempty"`
+	OIDCSubject             []PlanChange                      `json:"oidc_subject,omitempty"`
 	Collaborators           []CollaboratorPlanEntry           `json:"collaborators,omitempty"`
 	PullRequestExemptions   []PullRequestExemptionsPlanChange `json:"pull_request_exemptions,omitempty"`
 	EnvironmentVariables    []EnvironmentVariablePlanChange   `json:"environment_variables,omitempty"`
@@ -164,6 +165,10 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	for _, change := range result.Comparison.CopilotInstructions {
 		before, after := change.Values()
 		report.CopilotInstructions = append(report.CopilotInstructions, PlanChange{Field: change.Field(), Before: before, After: after})
+	}
+	for _, change := range result.Comparison.OIDCSubject {
+		before, after := change.Values()
+		report.OIDCSubject = append(report.OIDCSubject, PlanChange{Field: change.Field(), Before: before, After: after})
 	}
 	for _, change := range result.Comparison.CopilotMCP {
 		before, after := change.Values()

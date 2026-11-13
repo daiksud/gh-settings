@@ -163,6 +163,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += managed
 		comparison.CopilotInstructions = changes
 	}
+	if desired.OIDCSubject != nil {
+		observed, err := read.OIDCSubject(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.OIDCSubjectPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareOIDCSubject(observed, desired.OIDCSubject)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.OIDCSubjectPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.OIDCSubject = changes
+	}
 	if desired.CopilotMCP != nil {
 		observed, err := read.CopilotMCP(repo)
 		if err != nil {

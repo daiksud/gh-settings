@@ -8,7 +8,7 @@ description: Observe complete independent families without selection flags or in
 
 Ordinary `export` attempts all supported public/personal UI setting families:
 About/General, Topics, Labels, Rulesets, Actions execution, workflow permissions,
-cache limits, retention, fork contributor approval, Actions event/actor policies,
+cache limits, retention, fork contributor approval, OIDC active templates, Actions event/actor policies,
 Environments and their variables, Actions/Agents repository variables, Copilot
 review controls, pull request limits/exemptions, Pages, archive state and Security.
 Private-only controls, product switches and organization settings remain outside
@@ -40,8 +40,8 @@ Issues or Pull requests suppress incompatible creation-permission details even
 when the detail read failed. Unknown gates do not imply enablement or disablement.
 Retained intent never supplies fresh normalization provenance.
 
-Checkout/origin target resolution remains required; no additional remote identity
-request is introduced. Successful local output does not certify repository
+Checkout/origin target resolution remains required. Family-specific remote
+identity checks remain independent acquisitions, not a mandatory global gate. Successful local output does not certify repository
 existence when remote observations are unavailable. Invalid prior YAML, target/file
 safety, family-info output, normalization-warning output and write failures remain
 fatal. Diagnostic delivery errors are kept separate from unavailable observations

@@ -18,7 +18,7 @@ func TestPullRequestLimitsReportValidation(t *testing.T) {
 }
 
 func TestPullRequestLimitsManagedBound(t *testing.T) {
-	report := PlanReport{Outcome: "no-difference", Target: "owner/current", Changes: []PlanChange{}, Managed: settings.PullRequestLimitsFieldCount + 3 + settings.RepositoryFieldCount() + 11 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount}
+	report := PlanReport{Outcome: "no-difference", Target: "owner/current", Changes: []PlanChange{}, Managed: settings.PullRequestLimitsFieldCount + 4 + settings.RepositoryFieldCount() + 11 + settings.ActionsPolicyFieldCount + settings.SecurityFieldCount + settings.CodeQLConfigurationFieldCount + settings.PagesFieldCount}
 	if _, err := validatePlanReport(report, "owner/current"); err != nil {
 		t.Fatal(err)
 	}
