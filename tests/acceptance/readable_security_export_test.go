@@ -18,6 +18,7 @@ func TestReadableSecurityExportFirstFileAndRetainedIntent(t *testing.T) {
 	var mu sync.Mutex
 	mode := "first"
 	lastReads := 0
+	codeqlReads := 0
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -62,7 +63,20 @@ func TestReadableSecurityExportFirstFileAndRetainedIntent(t *testing.T) {
 			}
 		case "/repos/owner/current/automated-security-fixes":
 			fmt.Fprint(w, `{"enabled":true}`) // incomplete family, not false
-		case "/repos/owner/current/code-scanning/default-setup", "/repos/owner/current/code-scanning/ai-scan":
+		case "/repos/owner/current/code-scanning/default-setup":
+			codeqlReads++
+			switch mode {
+			case "disabled":
+				fmt.Fprint(w, `{"state":"not-configured"}`)
+			case "configured":
+				fmt.Fprint(w, `{"state":"configured","languages":["python"],"query_suite":"extended","runner_type":"standard","runner_label":null,"threat_model":"remote"}`)
+			case "malformed":
+				fmt.Fprint(w, `{"state":true}`)
+			default:
+				w.WriteHeader(403)
+				fmt.Fprintf(w, `{"message":%q}`, sensitive)
+			}
+		case "/repos/owner/current/code-scanning/ai-scan":
 			w.WriteHeader(403)
 			fmt.Fprintf(w, `{"message":%q}`, sensitive)
 		default:
@@ -130,6 +144,51 @@ repository:
 		t.Fatal("later independent read skipped", lastReads)
 	}
 	mu.Unlock()
+
+	for _, scenario := range []string{"disabled", "configured", "malformed"} {
+		for _, existing := range []bool{true, false} {
+			if existing {
+				if err := writeSettingsFile(fixture.work, prior); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			mu.Lock()
+			mode = scenario
+			beforeSetup, beforeLast := codeqlReads, lastReads
+			mu.Unlock()
+			output := run()
+			switch scenario {
+			case "disabled":
+				if !strings.Contains(output, "default_setup: false") || strings.Contains(output, "languages:") || strings.Contains(output, "query_suite:") || strings.Contains(output, "runner:") {
+					t.Fatal(output)
+				}
+			case "configured":
+				if !strings.Contains(output, "default_setup: true") || !strings.Contains(output, "query_suite: extended") || !strings.Contains(output, "python") {
+					t.Fatal(output)
+				}
+			case "malformed":
+				if existing && (!strings.Contains(output, "default_setup: true") || !strings.Contains(output, "query_suite: default")) {
+					t.Fatal(output)
+				}
+				if !existing && strings.Contains(output, "codeql_analysis:") {
+					t.Fatal(output)
+				}
+			}
+			mu.Lock()
+			if codeqlReads != beforeSetup+1 || lastReads != beforeLast+1 {
+				t.Fatal("single observation/continuation", codeqlReads, lastReads)
+			}
+			mu.Unlock()
+			validation, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"validate"}, false)
+			if err != nil || validation.runErr != nil {
+				t.Fatal(err, validation.runErr, validation.stderr.String())
+			}
+		}
+	}
 	if err := writeSettingsFile(fixture.work, "invalid: "+sensitive+"\n"); err != nil {
 		t.Fatal(err)
 	}

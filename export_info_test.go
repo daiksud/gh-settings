@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/api"
+	"github.com/daiksud/gh-settings/internal/app"
 )
 
 func TestExportInfoNeverLogsUpstreamSecrets(t *testing.T) {
@@ -38,3 +39,16 @@ func (e *wrappedExportTestError) Unwrap() error { return e.error }
 type exportBrokenWriter struct{}
 
 func (exportBrokenWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
+
+func TestExportInfoConfirmedDisabledExplainsRemoval(t *testing.T) {
+	var b strings.Builder
+	if err := writeExportInfo(&b, "codeql", app.ErrExportCodeQLDisabled); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "confirmed disabled; existing configuration removed from export") || strings.Contains(b.String(), "retained") {
+		t.Fatal(b.String())
+	}
+	if err := writeExportInfo(exportBrokenWriter{}, "codeql", app.ErrExportCodeQLDisabled); !errors.Is(err, io.ErrClosedPipe) {
+		t.Fatal(err)
+	}
+}

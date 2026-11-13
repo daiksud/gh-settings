@@ -3,7 +3,6 @@ package app
 import (
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -28,13 +27,9 @@ func TestSecurityExportFirstExportAndReexportKeepUnknownDistinctFromFalse(t *tes
 					calls = append(calls, "dependabot")
 					return appDependabot(false, false), nil
 				},
-				CodeQLConfiguration: func(repository.Repository) (settings.CodeQLConfigurationObservation, error) {
-					calls = append(calls, "config")
-					return settings.CodeQLConfigurationObservation{}, nil
-				},
-				CodeQLDefaultSetup: func(repository.Repository) (settings.CodeQLDefaultSetupObservation, error) {
-					calls = append(calls, "setup")
-					return settings.NewCodeQLDefaultSetupObservation(false), nil
+				CodeQLForExport: func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error) {
+					calls = append(calls, "codeql")
+					return settings.NewCodeQLDefaultSetupObservation(false), settings.CodeQLConfigurationObservation{}, nil
 				},
 				AIScanPullRequests: func(repository.Repository) (settings.AIScanPullRequestsObservation, error) {
 					calls = append(calls, "ai")
@@ -53,7 +48,7 @@ func TestSecurityExportFirstExportAndReexportKeepUnknownDistinctFromFalse(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(calls, []string{"secret", "dependabot", "config", "setup", "ai", "private", "immutable"}) || len(infos) != 3 {
+			if !reflect.DeepEqual(calls, []string{"secret", "dependabot", "codeql", "ai", "private", "immutable"}) || len(infos) != 2 {
 				t.Fatal(calls, infos)
 			}
 			if existing {
@@ -72,26 +67,68 @@ func TestSecurityExportFirstExportAndReexportKeepUnknownDistinctFromFalse(t *tes
 		})
 	}
 }
-func TestSecurityExportRetainsCoherentCodeQLPairOnConflictingRead(t *testing.T) {
+func TestSecurityExportCodeQLKnownAndUnknown(t *testing.T) {
 	languages := []string{"go"}
 	suite := "default"
-	old := settings.SecurityDeclaration{CodeQLDefaultSetup: appSecurityBool(true), CodeQLConfiguration: settings.CodeQLConfigurationDeclaration{Languages: &languages, QuerySuite: &suite}}
-	var infos []string
-	d, err := exportSecurity(ExportCheckout{Existing: settings.Declaration{Security: old}, Info: func(path string, _ error) error { infos = append(infos, path); return nil }}, Reader{CodeQLDefaultSetup: func(repository.Repository) (settings.CodeQLDefaultSetupObservation, error) {
-		return settings.NewCodeQLDefaultSetupObservation(false), nil
-	}}, repository.Repository{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(d, old) || d.Validate() != nil {
-		t.Fatal(d)
-	}
-	found := false
-	for _, path := range infos {
-		found = found || strings.HasSuffix(path, "codeql_analysis")
-	}
-	if !found {
-		t.Fatal(infos)
+	config := settings.CodeQLConfigurationDeclaration{Languages: &languages, QuerySuite: &suite}
+	for _, prior := range []string{"first", "state-only", "details"} {
+		for _, state := range []string{"disabled", "enabled", "unknown", "enabled-unreadable-details"} {
+			t.Run(prior+"/"+state, func(t *testing.T) {
+				old := settings.SecurityDeclaration{}
+				if prior != "first" {
+					old.CodeQLDefaultSetup = appSecurityBool(true)
+				}
+				if prior == "details" {
+					old.CodeQLConfiguration = config
+				}
+				continued := false
+				disabledInfo := false
+				d, err := exportSecurity(ExportCheckout{Existing: settings.Declaration{Security: old}, Info: func(_ string, err error) error {
+					disabledInfo = disabledInfo || errors.Is(err, ErrExportCodeQLDisabled)
+					return nil
+				}}, Reader{
+					CodeQLForExport: func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error) {
+						if state == "unknown" {
+							return settings.CodeQLDefaultSetupObservation{}, settings.CodeQLConfigurationObservation{}, errors.New("unavailable")
+						}
+						setup := settings.NewCodeQLDefaultSetupObservation(state != "disabled")
+						if state == "enabled" {
+							observed, err := settings.NewCodeQLConfigurationObservation(settings.CodeQLConfigurationState{Languages: []string{"python"}, QuerySuite: "extended", Runner: settings.CodeQLRunner{Type: "standard_github_runner"}, RawThreatModel: "remote"})
+							return setup, observed, err
+						}
+						if state == "enabled-unreadable-details" {
+							return setup, settings.CodeQLConfigurationObservation{}, errors.New("incomplete details")
+						}
+						return setup, settings.CodeQLConfigurationObservation{}, nil
+					},
+					ImmutableReleases: func(repository.Repository) (settings.ImmutableReleasesObservation, error) {
+						continued = true
+						return settings.NewImmutableReleasesObservation(true, false), nil
+					},
+				}, repository.Repository{})
+				if err != nil || !continued || d.Validate() != nil {
+					t.Fatal(d, err, continued)
+				}
+				switch state {
+				case "disabled":
+					if d.CodeQLDefaultSetup == nil || *d.CodeQLDefaultSetup || !d.CodeQLConfiguration.Empty() || disabledInfo != (prior == "details") {
+						t.Fatal(d, disabledInfo)
+					}
+				case "enabled":
+					if d.CodeQLDefaultSetup == nil || !*d.CodeQLDefaultSetup || d.CodeQLConfiguration.Languages == nil || !reflect.DeepEqual(*d.CodeQLConfiguration.Languages, []string{"python"}) {
+						t.Fatal(d)
+					}
+				case "unknown":
+					if !reflect.DeepEqual(d.CodeQLDefaultSetup, old.CodeQLDefaultSetup) || !reflect.DeepEqual(d.CodeQLConfiguration, old.CodeQLConfiguration) {
+						t.Fatal(d, old)
+					}
+				case "enabled-unreadable-details":
+					if d.CodeQLDefaultSetup == nil || !*d.CodeQLDefaultSetup || !reflect.DeepEqual(d.CodeQLConfiguration, old.CodeQLConfiguration) {
+						t.Fatal(d, old)
+					}
+				}
+			})
+		}
 	}
 }
 

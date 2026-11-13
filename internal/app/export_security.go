@@ -8,11 +8,11 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// ErrExportCodeQLConflict is a bounded diagnostic category, not upstream text.
-var ErrExportCodeQLConflict = errors.New("observed and retained CodeQL declarations conflict")
+// ErrExportCodeQLDisabled is a bounded diagnostic category, not upstream text.
+var ErrExportCodeQLDisabled = errors.New("CodeQL default setup is confirmed disabled; configuration removed")
 
-// Acquisition and conversion are atomic within each independent family. A failed
-// family never becomes false or an empty observed value, including on re-export.
+// Failed acquisition never invents false or an empty observed value. CodeQL
+// state is independently usable when details from the same response are unknown.
 func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Repository) (settings.SecurityDeclaration, error) {
 	result := checkout.Existing.Security
 	var infoError error
@@ -70,37 +70,35 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 		return nil
 	})
 	observe("repository.settings.advanced_security.code_security.codeql_analysis", func(candidate *settings.SecurityDeclaration) error {
-		if read.CodeQLConfiguration == nil {
+		if read.CodeQLForExport == nil {
 			return fmt.Errorf("reader unavailable")
 		}
-
-		o, err := read.CodeQLConfiguration(repo)
-		if err != nil {
-			return err
-		}
-		d, err := o.Declaration()
-		if err != nil {
-			return err
-		}
-		candidate.CodeQLConfiguration = d
-
-		return nil
-	})
-	observe("repository.settings.advanced_security.code_security.codeql_analysis.default_setup", func(candidate *settings.SecurityDeclaration) error {
-		if read.CodeQLDefaultSetup == nil {
-			return fmt.Errorf("reader unavailable")
-		}
-
-		observed, err := read.CodeQLDefaultSetup(repo)
-		if err != nil {
-			return err
-		}
-		enabled, err := observed.Value()
-		if err != nil {
-			return err
+		setup, configuration, readErr := read.CodeQLForExport(repo)
+		enabled, stateErr := setup.Value()
+		if stateErr != nil {
+			if readErr != nil {
+				return readErr
+			}
+			return stateErr
 		}
 		candidate.CodeQLDefaultSetup = &enabled
-
+		if !enabled {
+			candidate.CodeQLConfiguration = settings.CodeQLConfigurationDeclaration{}
+			if !result.CodeQLConfiguration.Empty() && checkout.Info != nil {
+				infoError = errors.Join(infoError, checkout.Info("repository.settings.advanced_security.code_security.codeql_analysis", ErrExportCodeQLDisabled))
+			}
+			return nil
+		}
+		if readErr == nil {
+			var d settings.CodeQLConfigurationDeclaration
+			d, readErr = configuration.Declaration()
+			if readErr == nil {
+				candidate.CodeQLConfiguration = d
+			}
+		}
+		if readErr != nil && checkout.Info != nil {
+			infoError = errors.Join(infoError, checkout.Info("repository.settings.advanced_security.code_security.codeql_analysis", readErr))
+		}
 		return nil
 	})
 	observe("repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests", func(candidate *settings.SecurityDeclaration) error {
@@ -154,14 +152,5 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 
 		return nil
 	})
-	// The schema cannot express disabled CodeQL setup together with configuration.
-	// Preserve a coherent prior pair rather than erase an unavailable declaration.
-	if result.CodeQLDefaultSetup != nil && !*result.CodeQLDefaultSetup && !result.CodeQLConfiguration.Empty() {
-		result.CodeQLDefaultSetup = checkout.Existing.Security.CodeQLDefaultSetup
-		result.CodeQLConfiguration = checkout.Existing.Security.CodeQLConfiguration
-		if checkout.Info != nil {
-			infoError = errors.Join(infoError, checkout.Info("repository.settings.advanced_security.code_security.codeql_analysis", ErrExportCodeQLConflict))
-		}
-	}
 	return result, infoError
 }
