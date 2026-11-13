@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
 // A failing stderr must exercise warning delivery, not the already-fatal Info
@@ -41,7 +40,7 @@ func TestExportWarningOutputFailure(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), acceptanceProcessTimeout)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, acceptanceBinary(t), "export")
 			cmd.Dir, cmd.Env = fixture.work, env

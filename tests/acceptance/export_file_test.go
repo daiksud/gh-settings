@@ -13,7 +13,6 @@ import (
 	"strings"
 	"syscall"
 	"testing"
-	"time"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -173,7 +172,7 @@ func TestExportReportsWriteFailure(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, "version: daiksud/gh-settings@v0\nrepository: {}\n"); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), acceptanceProcessTimeout)
 	defer cancel()
 	// Limit only the child process. Ignore SIGXFSZ so the partial write reports an error.
 	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", `trap '' XFSZ; ulimit -f 1; exec "$@"`, "sh", acceptanceBinary(t), "export")
