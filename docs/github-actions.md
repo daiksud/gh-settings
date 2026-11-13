@@ -381,3 +381,11 @@ Environment names. Raw binding evidence stays out of plan reports and transport
 debug logs. Apply publishes success outputs only after verification and never
 writes binding rule IDs to configuration. This source coverage does not upgrade
 the pinned published CLI or establish actual App permissions.
+
+## Repository AI Scan
+
+Current source supports the [AI Scan for repositories toggle](settings.md#ai-scan-for-repositories)
+independently of PR scanning in export, plan and apply. Verify the selected
+immutable package supports it. Apply changes configuration and verifies the PR
+companion; it does not request a scan. Detailed reports show the boolean, while
+status-only publication hides it. Actual scan usage and billing remain separate.

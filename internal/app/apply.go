@@ -462,6 +462,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if desired.Security.AIScanRepositories != nil {
+		wrote, err := applyAIScanRepositories(&result, repo, desired.Security, write)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if desired.Security.PrivateVulnerabilityReporting != nil {
 		wrote, err := applyPrivateReporting(&result, repo, desired.Security, write)
 		if err != nil {

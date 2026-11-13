@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -408,3 +408,11 @@ run the actual installer and plan/apply steps, including status-only privacy,
 unchanged configuration and success-only outputs. The candidate selector includes
 these cases alongside every earlier product scenario. Fixtures do not establish
 live activation, App grants or combined built-in/custom capacity counting.
+
+## Repository AI Scan verification
+
+The [security specification](../features/security.feature.md#ai-scan-for-repositories)
+maps strict domain/API cases and the built CLI and actual supplied-product Action
+scenarios. They cover automatic export retention, independent PR status, native
+booleans, narrow PATCH, no-op repeat, target/companion readback failure, unchanged
+checkout and private/success-only publication. No live scan or write is performed.

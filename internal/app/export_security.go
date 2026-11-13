@@ -118,6 +118,23 @@ func exportSecurity(checkout ExportCheckout, read Reader, repo repository.Reposi
 
 		return nil
 	})
+	observe("repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_repositories", func(candidate *settings.SecurityDeclaration) error {
+		if read.AIScanRepositories == nil {
+			return fmt.Errorf("reader unavailable")
+		}
+
+		observed, err := read.AIScanRepositories(repo)
+		if err != nil {
+			return err
+		}
+		enabled, err := observed.Value()
+		if err != nil {
+			return err
+		}
+		candidate.AIScanRepositories = &enabled
+
+		return nil
+	})
 	observe("repository.settings.advanced_security.private_vulnerability_reporting", func(candidate *settings.SecurityDeclaration) error {
 		if read.PrivateReporting == nil {
 			return fmt.Errorf("reader unavailable")

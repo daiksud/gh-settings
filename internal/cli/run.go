@@ -209,6 +209,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = "repository.settings.advanced_security.dependabot"
 		case app.SecretScanningUpdate:
 			path = presentation.SettingPath(op.SecurityField)
+		case app.AIScanRepositoriesRead, app.AIScanRepositoriesUpdate:
+			path = "repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_repositories"
 		case app.AIScanPullRequestsRead, app.AIScanPullRequestsUpdate:
 			path = "repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests"
 		case app.CodeQLConfigurationRead, app.CodeQLConfigurationUpdate:
