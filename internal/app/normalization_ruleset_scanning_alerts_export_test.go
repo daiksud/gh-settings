@@ -59,12 +59,13 @@ func TestScanningAlertsExportUsesIndependentSinkAfterCompleteAcquisition(t *test
 				}, nil
 			}}
 			if mode != "nil sink" {
-				checkout.RulesetScanningAlertsNormalizationWarning = func(id int64, name string, n settings.RulesetScanningAlertsNormalization) {
+				checkout.RulesetScanningAlertsNormalizationWarning = func(id int64, name string, n settings.RulesetScanningAlertsNormalization) error {
 					if id != 7 || name != "scan" {
 						t.Fatal(id, name)
 					}
 					warnings = append(warnings, n.Tool+":"+n.RawValue)
 					n.Tool = "corrupt"
+					return nil
 				}
 			}
 			err = Export(checkout, reader)

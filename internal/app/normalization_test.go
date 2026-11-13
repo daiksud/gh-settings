@@ -38,7 +38,10 @@ func TestExportWorkflowNormalizationIsScopedToAcquiredOptIn(t *testing.T) {
 			err := Export(ExportCheckout{
 				Repository: checkoutRepository,
 
-				NormalizationWarning: func(normalization settings.ObservationNormalization) { warnings = append(warnings, normalization) },
+				NormalizationWarning: func(normalization settings.ObservationNormalization) error {
+					warnings = append(warnings, normalization)
+					return nil
+				},
 				PrepareSave: func() (func(settings.Declaration) error, error) {
 					return func(declaration settings.Declaration) error {
 						saved = true
@@ -130,8 +133,11 @@ func TestExportCommitMenuWarningsRetainVisibleRawSidecars(t *testing.T) {
 					return repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}, nil
 				},
 
-				NormalizationWarning:              func(settings.ObservationNormalization) { scalarWarnings++ },
-				CommitMessageNormalizationWarning: func(record settings.CommitMessageNormalization) { warnings = append(warnings, record) },
+				NormalizationWarning: func(settings.ObservationNormalization) error { scalarWarnings++; return nil },
+				CommitMessageNormalizationWarning: func(record settings.CommitMessageNormalization) error {
+					warnings = append(warnings, record)
+					return nil
+				},
 				PrepareSave: func() (func(settings.Declaration) error, error) {
 					return func(declaration settings.Declaration) error {
 						ui, err := github.UIFromExportDeclaration(declaration)
@@ -249,7 +255,10 @@ func TestExportForkNormalizationIsScopedToAcquiredOptIn(t *testing.T) {
 			err = Export(ExportCheckout{
 				Repository: checkoutRepository,
 
-				NormalizationWarning: func(normalization settings.ObservationNormalization) { warnings = append(warnings, normalization) },
+				NormalizationWarning: func(normalization settings.ObservationNormalization) error {
+					warnings = append(warnings, normalization)
+					return nil
+				},
 				PrepareSave: func() (func(settings.Declaration) error, error) {
 					return func(declaration settings.Declaration) error {
 						saved = true

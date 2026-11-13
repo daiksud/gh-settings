@@ -63,7 +63,7 @@ func TestPagesFolderExportWarningsRequireSelectedCompleteSource(t *testing.T) {
 			}
 			saved := false
 			var warnings []settings.ObservationNormalization
-			err = Export(ExportCheckout{Repository: checkoutRepository, NormalizationWarning: func(record settings.ObservationNormalization) { warnings = append(warnings, record) }, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err = Export(ExportCheckout{Repository: checkoutRepository, NormalizationWarning: func(record settings.ObservationNormalization) error { warnings = append(warnings, record); return nil }, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					if _, err := github.UIFromExportDeclaration(d); err != nil {
 						return err
