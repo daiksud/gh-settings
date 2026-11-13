@@ -56,6 +56,11 @@ func TestUILabelReadAndSelectedUpdate(t *testing.T) {
 				t.Fatalf("payload=%v want %v", got, want)
 			}
 			return labelsResponse(req, 200, `{"id":7,"name":"New","color":"00ff11","description":""}`), nil
+		case 4:
+			if req.Method != "GET" || req.URL.Path != "/repos/owner/current/labels/New" {
+				t.Fatal(req.Method, req.URL)
+			}
+			return labelsResponse(req, 200, `{"id":7,"name":"New","color":"00ff11","description":""}`), nil
 		default:
 			t.Fatal("unexpected request")
 			return nil, nil
@@ -87,7 +92,7 @@ func TestUILabelReadAndSelectedUpdate(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if calls != 3 {
+	if calls != 4 {
 		t.Fatal(calls)
 	}
 }
@@ -116,6 +121,9 @@ func TestUILabelCreateAndInvalidIDs(t *testing.T) {
 		t.Fatal(comparison, err)
 	}
 	client := topicsClient(t, func(req *http.Request) (*http.Response, error) {
+		if req.Method == "GET" && req.URL.Path == "/repos/owner/current/labels/New" {
+			return labelsResponse(req, 200, `{"id":9,"name":"New","color":"abcdef","description":""}`), nil
+		}
 		want := map[string]any{"name": "New", "color": "abcdef", "description": ""}
 		var got map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&got); err != nil {

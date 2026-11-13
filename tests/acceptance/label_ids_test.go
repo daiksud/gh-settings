@@ -34,6 +34,10 @@ func TestLabelsCreatedIDWritebackAndRepeatApply(t *testing.T) {
 				w.Header().Set("Content-Type", "application/json")
 				switch r.Method {
 				case "GET":
+					if r.URL.Path == "/repos/owner/current/labels/new" && created {
+						fmt.Fprint(w, `{"id":17,"name":"new","color":"abcdef","description":""}`)
+						return
+					}
 					labels := []map[string]any{{"id": 9, "name": "unmanaged", "color": "123456", "description": "retain"}}
 					if created {
 						labels = append(labels, map[string]any{"id": 17, "name": "new", "color": "abcdef", "description": ""})
@@ -113,6 +117,10 @@ func TestLabelsPartialFailureRetainsRecoverableCreatedIDs(t *testing.T) {
 				defer mu.Unlock()
 				w.Header().Set("Content-Type", "application/json")
 				if r.Method == "GET" {
+					if r.URL.Path == "/repos/owner/current/labels/a" && len(created) == 1 {
+						fmt.Fprint(w, `{"id":17,"name":"a","color":"abcdef","description":""}`)
+						return
+					}
 					fmt.Fprint(w, `[]`)
 					return
 				}
