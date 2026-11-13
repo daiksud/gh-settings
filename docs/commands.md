@@ -240,8 +240,9 @@ Use `gh settings plan --prune labels,rulesets` and
 other declared work. `--no-writeback` can be combined with apply. One
 comma-separated flag is allowed; repeats, duplicates, unknown names and empty
 elements fail before target resolution. `all` must stand alone and is currently
-rejected because Actions Policies and undecided Environment deletion are not
-implemented. Variable pruning uses `actions-variables`, `agents-variables` and
+rejected because Environment-object deletion is adopted but not yet
+implemented. Actions Policies use `actions-policies`; variable pruning uses
+`actions-variables`, `agents-variables` and
 `environment-variables` independently. See the [complete scope/presence and recovery contract](settings.md#collection-pruning).
 
 ## Apply behavior

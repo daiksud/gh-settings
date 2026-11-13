@@ -25,6 +25,7 @@ Start with [CONTRIBUTING](../CONTRIBUTING.md), including the [documentation plac
 | --- | --- |
 | Install development tools, build, and extend the implementation | [Development](contributing/development.md) |
 | Understand the current design and code boundaries | [Architecture](contributing/architecture.md) |
+| Check target UI eligibility, API evidence and current setting coverage | [Settings coverage](contributing/settings-coverage.md) |
 | Inspect the About, General and Labels UI/API boundary | [Repository UI mapping](contributing/ui-repository-mapping.md) |
 | Look up declaration, observed-state, and comparison terminology | [Model glossary](contributing/glossary.md) |
 | Inspect the Ruleset UI/API boundary and complete acquisition | [Ruleset UI mapping](contributing/ui-ruleset-mapping.md) |

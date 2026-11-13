@@ -315,5 +315,6 @@ these consequences; status-only retains its existing value-hiding boundary.
 
 The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
-do not add this capability to an existing published Action/CLI. Actions Policies, Environment objects and
-`all` currently fail explicitly; Environment-object deletion remains undecided.
+do not add this capability to an existing published Action/CLI. Actions Policies
+use `actions-policies`. Environment objects and `all` currently fail explicitly;
+Environment-object deletion is adopted but not yet implemented.

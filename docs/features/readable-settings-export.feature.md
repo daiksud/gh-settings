@@ -11,8 +11,9 @@ About/General, Topics, Labels, Rulesets, Actions execution, workflow permissions
 cache limits, retention, fork contributor approval, Actions event/actor policies,
 Environments and their variables, Actions/Agents repository variables, Copilot
 review controls, pull request limits/exemptions, Pages, archive state and Security.
-Existing excluded private-only controls, product switches, organization settings,
-Preview features and secrets remain excluded. No prerequisite is enabled.
+Private-only controls, product switches and organization settings remain outside
+the target. Unimplemented controls remain unavailable regardless of Preview status; secret
+values remain outside the product boundary. No prerequisite is enabled.
 
 Export selection options are removed under the v0.x policy. This is a breaking
 CLI and default-output-scope change, not a parallel legacy export mode.

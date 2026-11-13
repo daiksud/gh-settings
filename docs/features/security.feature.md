@@ -6,7 +6,7 @@ description: Planned declarations, complete observations, dependencies, and acce
 
 ## Status and scope
 
-The project-wide [Free/personal/public/UI adoption policy](../settings.md#feature-adoption-scope) also applies to Security; the historical scope and implemented contracts below do not certify a completed eligibility audit. For API-unconfirmed settings, to be reassessed under that policy, and separately excluded controls, see [Security UI settings not managed by gh-settings](../settings.md#security-ui-settings-not-managed-by-gh-settings).
+The project-wide [personal-public UI adoption policy](../settings.md#feature-adoption-scope) also applies to Security; the historical scope and implemented contracts below do not certify a completed eligibility audit. For API-unconfirmed settings, to be reassessed under that policy, and separately excluded controls, see [Security UI settings not managed by gh-settings](../settings.md#security-ui-settings-not-managed-by-gh-settings).
 
 [ADR 0026](../adr/0026-explicit-security-observations.md) records the decisions for [#343](https://github.com/daiksud/gh-settings/issues/343). This specification is the implementation acceptance contract for #344–#347, not a claim that unimplemented families are supported. Implementation PRs must update the public configuration, command, and Action references before claiming support.
 
@@ -88,7 +88,7 @@ All fixtures use local APIs and dummy credentials. They establish modeled behavi
 
 ### Product-switch exclusion
 
-[#346](https://github.com/daiksud/gh-settings/issues/346) is not planned under the Free/personal/public/Web UI adoption policy. The inspected target UI has Advanced Security and Code Security headings without corresponding product-wide switches. The exclusion is based on UI scope, not pricing or Copilot subscription requirements. The [decision and bounded live evidence](../adr/0026-explicit-security-observations.md#later-product-switch-scope-decision) supersede the earlier product-adoption gate.
+[#346](https://github.com/daiksud/gh-settings/issues/346) is not planned under the personal-public UI adoption policy. The inspected target UI has Advanced Security and Code Security headings without corresponding product-wide switches. The exclusion is based on UI scope, not pricing or Copilot subscription requirements. The [decision and bounded live evidence](../adr/0026-explicit-security-observations.md#later-product-switch-scope-decision) supersede the earlier product-adoption gate.
 
 Neither `security_and_analysis.code_security` nor `security_and_analysis.advanced_security` becomes a YAML enablement key, export family or implicit prerequisite. The existing `advanced_security` page and `code_security` section organize individual controls; those containers do not enable products. Missing product fields remain unavailable, not disabled. A rejected product request never authorizes retrying with another product or enrolling a contract.
 
@@ -248,7 +248,7 @@ Owning checks: `internal/settings/codeql_default_setup_test.go`, `internal/works
 
 ## AI Scan for pull requests
 
-- Optional `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` manages only the personal public repository pull-request AI scan toggle. Omission stays unmanaged; false disables. The two separate Preview scan controls are excluded.
+- Optional `repository.settings.advanced_security.code_security.ai_scan.ai_scan_for_pull_requests` manages only the personal public repository pull-request AI scan toggle. Omission stays unmanaged; false disables. The two separate Preview scan controls remain unimplemented; Preview status is not a policy exclusion.
 - Ordinary export automatically attempts AI Scan. Complete visibility/owner/enablement reads precede projection; missing/null/unknown/denied state is unavailable and emits info for export. Plan/apply remain strict.
 - Apply fresh-reads and sends only `pr_scan`, skipping a matching state. It confirms enabled/disabled state with fresh readback; failed writes or mismatches retain unknown effects. CodeQL, product switches and other AI scans remain undeclared and untouched by the payload.
 - Enabling permits automated AI processing and may have billing/AI-credit effects. Successful configuration readback never proves completed scans or actual consumption. No explicit scan/fix/assignment operation is sent.
@@ -265,4 +265,4 @@ Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/work
 
 Owning checks: `internal/settings/codeql_configuration_test.go`, `internal/workspace/ui_codeql_configuration_test.go`, `internal/github/codeql_configuration_test.go`, `internal/app/codeql_configuration_test.go`, `internal/actions/codeql_configuration_test.go`, and `tests/acceptance/codeql_configuration_test.go`.
 
-Preview correction: threat-model configuration is excluded. The `threat_model` key is rejected before remote work for every value, never exported and never patched. Complete observations retain exact `remote`/`remote_and_local` only to preserve unowned state; unrelated supported updates must retain an existing Preview value, while changed raw readback fails with uncertain write effects. `threat_model` cannot become a managed report change or count. Adapter/model tests and real-binary acceptance cover Preview preservation, export omission, pre-API rejection and collateral-change detection.
+Threat-model configuration remains unimplemented. The `threat_model` key is rejected before remote work for every value, never exported and never patched. Complete observations retain exact `remote`/`remote_and_local` only to preserve unowned state; unrelated supported updates must retain an existing Preview value, while changed raw readback fails with uncertain write effects. `threat_model` cannot become a managed report change or count. Adapter/model tests and real-binary acceptance cover Preview preservation, export omission, pre-API rejection and collateral-change detection. The [coverage inventory](../contributing/settings-coverage.md) separates this current rejection from the adopted Preview-inclusive policy.

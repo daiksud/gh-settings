@@ -15,9 +15,9 @@ an unsupported scope.
 The intended scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables` and
 `environments`. Current source implements labels/Rulesets, Actions Policies and
-all three variable scopes. Environment-object deletion remains undecided and is
+all three variable scopes. Environment-object deletion is adopted but unimplemented and is
 explicitly rejected before target resolution or remote access.
-`all` remains unavailable while any intended scope is unimplemented or undecided.
+`all` remains unavailable while any intended scope is unimplemented.
 This specification is not a claim that every stage has shipped.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit
@@ -58,13 +58,13 @@ their policy, secrets or omitted variables.
   deletion identities, honest counts and partial-failure status. No real target
   deletion or settings apply is part of the automated tests.
 
-## Environment deletion decision pending
+## Environment deletion implementation boundary
 
-Environment-object deletion is not adopted. GitHub documents deletion of its
+Environment-object deletion is adopted under the [personal-public scope](../settings.md#feature-adoption-scope), but is not implemented. GitHub documents deletion of its
 secrets and protection rules and automatic failure of jobs waiting on those
 rules. Secret values cannot be read back for restoration. Effects on variable
-ownership, workflow references and any recreation require a separate explicit
-adoption decision; do not infer reversibility. Until resolved, requests for
+ownership, workflow references and any recreation require explicit implementation
+and reporting; do not infer reversibility. Until implemented, requests for
 `environments` or `all` fail clearly rather than promising full support.
 
 Primary sources: [deleting an Environment](https://docs.github.com/actions/deployment/targeting-different-environments/using-environments-for-deployment#deleting-an-environment),
