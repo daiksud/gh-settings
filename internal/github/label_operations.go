@@ -17,7 +17,8 @@ func (failure *labelPreWriteFailure) Error() string  { return failure.cause.Erro
 func (failure *labelPreWriteFailure) Unwrap() error  { return failure.cause }
 func (*labelPreWriteFailure) ReadFailedBeforeWrite() {}
 
-// CreateLabel sends only the attributes retained by a typed create operation.
+// CreateLabel confirms the complete supported object with an independent read.
+// A positive acknowledgment ID remains available for recovery on failure.
 func (client *Client) CreateLabel(repo repository.Repository, change settings.LabelChange) (int64, error) {
 	if err := requireLabelOperation(change, "create"); err != nil {
 		return 0, err
@@ -40,12 +41,16 @@ func (client *Client) CreateLabel(repo repository.Repository, change settings.La
 		if err == nil {
 			_ = json.Unmarshal(response["id"], &id)
 			err = verifyLabelResponse(response, id, after)
+			if err == nil {
+				err = client.verifyLabelReadback(repo, id, after)
+			}
 		}
 	}, nil, nil)
 	return id, err
 }
 
-// UpdateLabel verifies the observed identity and sends the complete supported object.
+// UpdateLabel verifies the observed identity, sends the complete supported object,
+// and independently reads its resulting name to confirm the same ID and settings.
 func (client *Client) UpdateLabel(repo repository.Repository, change settings.LabelChange) error {
 	if err := requireLabelOperation(change, "update"); err != nil {
 		return err
@@ -76,9 +81,23 @@ func (client *Client) UpdateLabel(repo repository.Repository, change settings.La
 		err = client.rest.Patch(labelPath(repo, before.Name), bytes.NewReader(body), &response)
 		if err == nil {
 			err = verifyLabelResponse(response, before.ID, after)
+			if err == nil {
+				err = client.verifyLabelReadback(repo, before.ID, after)
+			}
 		}
 	}, nil)
 	return err
+}
+
+func (client *Client) verifyLabelReadback(repo repository.Repository, id int64, expected settings.LabelDeclaration) error {
+	var response map[string]json.RawMessage
+	if err := client.rest.Get(labelPath(repo, expected.Name), &response); err != nil {
+		return fmt.Errorf("read back label (write may have applied): %w", err)
+	}
+	if err := verifyLabelResponse(response, id, expected); err != nil {
+		return fmt.Errorf("read back label (write may have applied): %w", err)
+	}
+	return nil
 }
 
 func verifyLabelResponse(response map[string]json.RawMessage, id int64, expected settings.LabelDeclaration) error {
