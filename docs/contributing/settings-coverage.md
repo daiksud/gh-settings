@@ -102,7 +102,7 @@ groups below link the public contract instead of copying every field.
 | Web commit sign-off | Eligible | Recorded, 2026-10-28 | Read/write: [repository REST][repos-api] | Implemented: [sign-off](../settings.md#web-commit-sign-off) |
 | Immutable releases | Eligible | [Recorded General / Releases control](ui-security-mapping.md#verified-controls-and-placement), 2026-10-28 | Read/enable/disable: [repository immutable-release endpoints][repos-api] | Implemented: [immutable release policy](../settings.md#immutable-release-policy) |
 | Archive/unarchive | Eligible | Recorded, 2026-10-28 | Read/write: [repository REST][repos-api] | Implemented: [archive lifecycle](../settings.md#repository-archive-lifecycle) |
-| Social preview image | Eligible | Observed, 2026-11-13 | Unconfirmed complete image read/update contract | Not implemented |
+| Social preview image | Eligible | Observed, 2026-11-13 | Partial: [Repository GraphQL][repositories-graphql] exposes `openGraphImageUrl` and `usesCustomOpenGraphImage`; image update contract unconfirmed | Not implemented |
 | Restrict wiki editing to collaborators | Eligible | Recorded, 2026-10-28 | Unconfirmed complete settings contract | Not implemented |
 | Preserve this repository | Eligible | Observed, 2026-11-13 | Unconfirmed complete settings contract | Not implemented |
 | Allow comments on individual commits | Eligible | Observed, 2026-11-13 | Unconfirmed complete settings contract | Not implemented |
@@ -303,7 +303,7 @@ being confused with the missing implementations above.
 [v1-goal]: https://github.com/daiksud/gh-settings/issues/668
 [openapi]: https://github.com/github/rest-api-description/blob/bd6df26d2a0104874fe5025a25ebcde356413364/descriptions/api.github.com/api.github.com.json
 [repos-api]: https://docs.github.com/en/rest/repos/repos
-[repositories-graphql]: https://docs.github.com/en/graphql/reference/repositories
+[repositories-graphql]: https://docs.github.com/en/graphql/reference/repos
 [labels-api]: https://docs.github.com/en/rest/issues/labels
 [personal-access]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/repository-access-and-collaboration/permission-levels-for-a-personal-account-repository
 [personal-invitations]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/repository-access-and-collaboration/inviting-collaborators-to-a-personal-repository

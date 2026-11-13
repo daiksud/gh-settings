@@ -62,7 +62,7 @@ acquire grants or send invitations.
 The [Collaborators REST API](https://docs.github.com/en/rest/collaborators/collaborators)
 and [repository Invitations REST API](https://docs.github.com/en/rest/collaborators/invitations)
 are starting points for the personal-repository assessment. The historical
-[GraphQL PermissionSource](https://docs.github.com/en/graphql/reference/objects#permissionsource)
+[GraphQL PermissionSource](https://docs.github.com/en/graphql/reference/repos#permissionsource)
 investigation concerns direct-versus-effective roles; it is not proof of complete
 personal-repository observation or a requirement to use organization APIs.
 
