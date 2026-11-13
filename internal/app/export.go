@@ -79,6 +79,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.Topics.Names = &names
 		return nil
 	})
+	observe("repository.settings.collaborators", read.Collaborators != nil, func(candidate *settings.Declaration) error {
+		observed, err := read.Collaborators(repo)
+		if err != nil {
+			return err
+		}
+		desired, err := observed.Declaration()
+		if err != nil {
+			return err
+		}
+		candidate.Collaborators = &desired
+		return nil
+	})
 	observe("repository.labels", read.Labels != nil, func(candidate *settings.Declaration) error {
 		labelObservation, err := read.Labels(repo)
 		if err != nil {

@@ -72,7 +72,7 @@ Current unreleased source applies nonempty label selections after repository/Top
 
 Current source applies repository Actions policy after existing resources. The [Actions policy specification](actions-execution-policy.feature.md#rule-preflight-and-preserve-companions-before-ordered-writes) owns fresh reads, companion preservation, staged enabling, readback and partial failure.
 
-Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct GraphQL access/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Repository REST controls, Topics, collection reconciliation, partial Environment policies and the newer policy paths skip freshly matching operations. Existing Environment updates preserve fresh omitted built-ins; pattern-only changes skip policy PUT and verify the preserved snapshot. Creation omissions remain API-controlled; disabling custom mode with omitted nonempty patterns fails before the Environment mutation, preserving earlier completed resources. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
+Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, collaborator identity/invitation reconciliation, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct GraphQL access/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Repository REST controls, Topics, collection reconciliation, partial Environment policies and the newer policy paths skip freshly matching operations. Existing Environment updates preserve fresh omitted built-ins; pattern-only changes skip policy PUT and verify the preserved snapshot. Creation omissions remain API-controlled; disabling custom mode with omitted nonempty patterns fails before the Environment mutation, preserving earlier completed resources. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
 
 | Subset | Existing application and transport/process evidence |
 | --- | --- |
@@ -93,3 +93,14 @@ These fixtures verify modeled payloads, ordering, readback and uncertainty; they
 - Earlier/uncertain writes and failed local ID persistence remain distinct; conversion does not add rollback or live deployment.
 
 Test mapping: [root composition](../../checkout_config_test.go), [independent Ruleset requests](../../internal/github/ui_config_rulesets_test.go), and supplied-binary family tests. Current-source fixture success does not publish a release or upgrade an Action pin.
+
+### Rule: Keep collaborator binding and invitations distinct
+
+[Personal collaborator scenarios](repository-access.feature.md) own the strict
+user-ID and pending/active lifecycle. Apply resolves every selected person before
+its first collaborator operation, freshly rechecks each target and actor, and
+skips matching active/pending requests. Verified identity binding uses the existing
+snapshot recorder with `repository.settings.collaborators` and `username`; it is
+local progress, not user creation or a completed remote grant. Failed readback
+records no binding. Earlier verified bindings and reported invitation IDs remain
+available on later failure, and output failure never retries a request.
