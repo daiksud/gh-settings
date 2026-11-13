@@ -14,6 +14,7 @@ func TestCopilotReviewEffortPlan(t *testing.T) {
 		mode            string
 		changes         int
 	}{
+		{"explicit max", "default", "max", "", 1}, {"matching max", "max", "max", "", 0},
 		{"explicit balanced", "default", "balanced", "", 1}, {"inherit", "lite", "default", "", 1}, {"matching default", "default", "default", "", 0}, {"denied", "default", "lite", "denied", 0}, {"unread", "default", "lite", "unread", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -80,6 +81,8 @@ func TestCopilotReviewEffortApply(t *testing.T) {
 		status  ApplyOperationStatus
 	}{
 		{"changed default", "default", true, nil, ApplyCompleted, OperationCompleted},
+		{"changed max", "max", true, nil, ApplyCompleted, OperationCompleted},
+		{"matching max", "max", false, nil, ApplyMatchingLabels, OperationUnchanged},
 		{"changed lite", "lite", true, nil, ApplyCompleted, OperationCompleted},
 		{"matching default", "default", false, nil, ApplyMatchingLabels, OperationUnchanged},
 		{"preread failure", "lite", false, &effortReadFailure{errors.New("denied")}, ApplyFailed, OperationFailedRead},
@@ -154,7 +157,7 @@ func TestCopilotReviewEffortExport(t *testing.T) {
 		enabled string
 		mode    string
 	}{
-		{"lite", true, "lite", ""}, {"default", true, "default", ""}, {"balanced", true, "balanced", ""},
+		{"max", true, "max", ""}, {"lite", true, "lite", ""}, {"default", true, "default", ""}, {"balanced", true, "balanced", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			reader := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })

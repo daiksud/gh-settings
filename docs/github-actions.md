@@ -96,7 +96,7 @@ Current-source planning/apply support the independently declared [MCP tools togg
 
 ### Copilot review effort
 
-Current-source planning/apply support the independently declared [Review effort level](settings.md#copilot-code-review-effort-level). Confirm support in the selected published package before adding the key; this source change does not update a caller's pin. Full reports use string choices at the UI path; status-only output hides them. Default means the API's observable configured-null state and is not proof of a cleared hidden override. Unavailable or unsupported effort observations fail rather than falling back. The existing Copilot endpoint credential and review-entitlement boundaries below apply equally; no permission, license or review is created.
+Current-source planning/apply support the independently declared [Review effort level](settings.md#copilot-code-review-effort-level), including Max when the repository reports it as available. Confirm support in the selected published package before adding the key; this source change does not update a caller's pin. Full reports use string choices at the UI path; status-only output hides them. Default means the API's observable configured-null state and is not proof of a cleared hidden override. Unavailable or unsupported effort observations fail rather than falling back. The existing Copilot endpoint credential and review-entitlement boundaries below apply equally; no permission, license or review is created.
 
 ### Copilot custom instructions
 
