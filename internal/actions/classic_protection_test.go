@@ -15,7 +15,7 @@ import (
 
 func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 	id, yes, no := int64(7), true, false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}}
 	after := settings.ClassicRule{ID: &id, BranchNamePattern: before.BranchNamePattern, RequireSignedCommits: &yes}
 	plan := func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before, After: &after}}}}, nil
@@ -67,7 +67,7 @@ func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 
 func TestClassicDeletionReportAndClosedSummary(t *testing.T) {
 	id, no := int64(7), false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private-delete>", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private-delete>", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}}
 	plan := func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before}}}}, nil
 	}
@@ -82,7 +82,7 @@ func TestClassicDeletionReportAndClosedSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	summary, err := actions.RenderSummary(report, summaryMetadata())
-	if err != nil || strings.Contains(summary, "<private-delete>") || !strings.Contains(summary, "removes the whole rule") || !strings.Contains(summary, "allow_deletions: false") || !strings.Contains(summary, "lock_branch: false") || !strings.Contains(summary, "absent") || strings.Contains(string(data), `"after"`) {
+	if err != nil || strings.Contains(summary, "<private-delete>") || !strings.Contains(summary, "removes the whole rule") || !strings.Contains(summary, "allow_deletions: false") || !strings.Contains(summary, "lock_branch: false") || !strings.Contains(summary, "require_deployments_to_succeed_before_merging") || !strings.Contains(summary, "absent") || strings.Contains(string(data), `"after"`) {
 		t.Fatal(summary, string(data), err)
 	}
 	for _, bad := range []string{strings.Replace(string(data), `"before":`, `"after":null,"before":`, 1), strings.Replace(string(data), `"allow_deletions":false`, `"raw_companion":false`, 1), strings.Replace(string(data), `"allow_deletions":false`, `"allow_deletions":null`, 1)} {

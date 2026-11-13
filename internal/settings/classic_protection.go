@@ -26,6 +26,9 @@ type ClassicCheck struct {
 	AppID   *string
 }
 type ClassicActor struct{ Kind, ID string }
+
+// ClassicCompanions retains raw preservation evidence. Deployments additionally
+// has an active supported projection; selecting that group does not erase this snapshot.
 type ClassicCompanions struct {
 	AllowsForcePushes, BlocksCreations, DismissesStaleReviews                                    bool
 	LockAllowsFetchAndMerge, RequireLastPushApproval                                             bool
@@ -70,6 +73,7 @@ func CloneClassicRule(r ClassicRule) ClassicRule {
 	r.RequireLinearHistory = cloneClassicValue(r.RequireLinearHistory)
 	r.AllowDeletions = cloneClassicValue(r.AllowDeletions)
 	r.LockBranch = cloneClassicValue(r.LockBranch)
+	r.RequireDeploymentsToSucceedBeforeMerging = cloneClassicDeployments(r.RequireDeploymentsToSucceedBeforeMerging)
 	r.DoNotAllowBypassingTheAboveSettings = cloneClassicValue(r.DoNotAllowBypassingTheAboveSettings)
 	return r
 }
@@ -86,6 +90,9 @@ func ClassicFlags(r ClassicRule) []*bool {
 func ValidateClassicRules(rules []ClassicRule) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
+		if err := ValidateClassicDeployments(r.RequireDeploymentsToSucceedBeforeMerging); err != nil {
+			return err
+		}
 		if strings.TrimSpace(r.BranchNamePattern) == "" || strings.ContainsFunc(r.BranchNamePattern, unicode.IsControl) {
 			return fmt.Errorf("%s requires a nonblank exact branch_name_pattern without controls", ClassicProtectionPath)
 		}
@@ -122,6 +129,13 @@ func (o ClassicObservation) Validate() error {
 			}
 		}
 		c := s.Companions
+		projection, err := ClassicDeploymentProjection(c.RequiresDeployments, c.Deployments)
+		if err != nil {
+			return err
+		}
+		if !classicDeploymentsEqual(projection, s.Rule.RequireDeploymentsToSucceedBeforeMerging) {
+			return fmt.Errorf("incomplete or inconsistent classic deployment projection")
+		}
 		if !c.ReviewCount.Present || !c.Deployments.Present || !c.Contexts.Present || !c.Checks.Present {
 			return fmt.Errorf("missing classic companion state")
 		}
@@ -188,6 +202,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	return result, nil
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
+	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) && !classicDeploymentsEqual(observed.RequireDeploymentsToSucceedBeforeMerging, desired.RequireDeploymentsToSucceedBeforeMerging) {
+		return false
+	}
 	if observed.BranchNamePattern != desired.BranchNamePattern {
 		return false
 	}
@@ -261,6 +278,9 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 			return fmt.Errorf("missing or duplicate classic change identity")
 		}
 		seen[*c.Before.ID] = true
+		if !ClassicDeploymentsSelected(c.Before.RequireDeploymentsToSucceedBeforeMerging) {
+			return fmt.Errorf("incomplete classic before deployments")
+		}
 		for _, b := range ClassicFlags(*c.Before) {
 			if b == nil {
 				return fmt.Errorf("incomplete classic before policy")
@@ -299,7 +319,12 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 	if !ClassicMatches(after.Rule, desired) {
 		return fmt.Errorf("classic requested controls did not persist")
 	}
-	if !reflect.DeepEqual(before.Companions, after.Companions) {
+	beforeCompanions, afterCompanions := before.Companions, after.Companions
+	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) {
+		beforeCompanions.RequiresDeployments, afterCompanions.RequiresDeployments = false, false
+		beforeCompanions.Deployments, afterCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
+	}
+	if !reflect.DeepEqual(beforeCompanions, afterCompanions) {
 		return fmt.Errorf("unowned classic protection changed")
 	}
 	b, a, d := ClassicFlags(before.Rule), ClassicFlags(after.Rule), ClassicFlags(desired)
@@ -320,6 +345,13 @@ func (c *ClassicChange) UnmarshalJSON(data []byte) error {
 	valid = func(v any) bool {
 		if v == nil {
 			return false
+		}
+		if values, ok := v.([]any); ok {
+			for _, value := range values {
+				if !valid(value) {
+					return false
+				}
+			}
 		}
 		if m, ok := v.(map[string]any); ok {
 			for k, x := range m {

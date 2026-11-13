@@ -61,6 +61,9 @@ func planEnvironmentPrune(repo repository.Repository, desired settings.Declarati
 	if err != nil {
 		return err
 	}
+	if err := settings.CheckClassicDeploymentPruneConflict(desired.BranchProtectionRules, candidates); err != nil {
+		return err
+	}
 	for _, candidate := range candidates {
 		change, err := candidate.Change()
 		if err != nil {

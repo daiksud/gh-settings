@@ -28,7 +28,7 @@ func classicFixturePage(nodes []any, total int, next bool, cursor any) map[strin
 }
 func classicFixtureAck(rule map[string]any) map[string]any {
 	result := map[string]any{}
-	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "repository"} {
+	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
 		result[key] = rule[key]
 	}
 	return result
@@ -49,6 +49,7 @@ type classicAPIFixture struct {
 	hook          func(string, map[string]any, map[string]any)
 	mutate        func(map[string]any)
 	graphqlErrors []any
+	rejectWrites  bool
 }
 
 func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixture {
@@ -85,6 +86,10 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 			}
 			body["deleteBranchProtectionRule"] = map[string]any{"__typename": "DeleteBranchProtectionRulePayload"}
 		case strings.Contains(request.Query, "mutation ClassicProtectionWrite"):
+			if f.rejectWrites {
+				f.calls = append(f.calls, "write-denied")
+				return labelsResponse(req, 403, `{"message":"denied"}`), nil
+			}
 			phase = "write"
 			input := request.Variables["input"].(map[string]any)
 			f.writes = append(f.writes, input)
@@ -113,6 +118,11 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 				f.mutate(rule)
 			}
 			body[name] = map[string]any{"branchProtectionRule": classicFixtureAck(rule)}
+		case strings.Contains(request.Query, "ClassicDeploymentEnvironments"):
+			phase = "environments"
+			target := classicFixtureTarget()
+			target["environments"] = classicFixturePage([]any{map[string]any{"id": "E_prod", "databaseId": nil, "name": "production"}, map[string]any{"id": "E_stage", "databaseId": 2, "name": "staging"}}, 2, false, nil)
+			body["repository"] = target
 		case strings.Contains(request.Query, "ClassicProtectionInventory"):
 			phase = "inventory"
 			if request.Variables["owner"] != "owner" || request.Variables["name"] != "current" || !strings.Contains(request.Query, "followRenames:false") {
