@@ -278,7 +278,12 @@ adapter inventories rules rather than branches, completely paginates actor
 allowances, validates personal/public repository ownership and independently
 verifies partial updates against fresh omitted controls. No generic writable
 parameter passthrough is provided. App preserves declaration creation order,
-actual-write outcomes, failure stopping and guarded ID recording. Classic prune
+actual-write outcomes, failure stopping and guarded ID recording. Required
+deployments keep the complete raw snapshot separate from the active projection;
+needed writes with selected active references bind paginated Environment node
+identities before mutation and verify them after rule readback. Matching rules
+skip that prerequisite. Global Environment prune rejects contradictory selected
+references before any write without silently retaining deletion candidates. Classic prune
 adds private deep-copied full snapshots before any remote write, fixed candidate
 rechecks, create/update/writeback-before-delete ordering, exact GraphQL deletion
 acknowledgment and independent complete identity-absence readback. Shared scope
