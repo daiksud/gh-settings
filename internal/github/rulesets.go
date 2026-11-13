@@ -348,39 +348,29 @@ func (client *Client) ApplyRuleset(repo repository.Repository, change settings.R
 			return fail(err)
 		}
 	}
-	needsReadback := !change.Normalizations().IsZero()
-	for _, policy := range []*settings.RulesetDeclaration{change.Before(), after} {
-		if policy != nil && policy.Rules != nil {
-			for _, rule := range *policy.Rules {
-				needsReadback = needsReadback || rule.Type == "creation" || rule.Type == "update" || rule.Type == "pull_request" || rule.Type == "code_scanning" || rule.Type == "code_quality" || rule.Type == "required_deployments" || rule.Type == "copilot_code_review" || rule.Type == "code_coverage"
-			}
-		}
+	// Every create/update requires independent post-write confirmation.
+	// Compare every observable supported value; absent stays unobserved.
+	var readback map[string]json.RawMessage
+	if err := client.rest.Get(fmt.Sprintf("%s/%d?includes_parents=false", path, id), &readback); err != nil {
+		return fail(fmt.Errorf("read back Ruleset policy: %w", err))
 	}
-	if needsReadback {
-		// A successful PUT response alone is not the post-write GET contract.
-		// Compare every observable supported value; absent stays unobserved.
-		var readback map[string]json.RawMessage
-		if err := client.rest.Get(fmt.Sprintf("%s/%d?includes_parents=false", path, id), &readback); err != nil {
-			return fail(fmt.Errorf("read back Ruleset policy: %w", err))
-		}
-		var actual int64
-		if err := requiredRuleJSON(readback, "id", &actual); err != nil {
-			return fail(fmt.Errorf("verify Ruleset readback identity: %w", err))
-		}
-		if actual != id {
-			return fail(fmt.Errorf("Ruleset readback ID differs from mutation identity"))
-		}
-		owned, err := rulesetOwner(readback, repo)
-		if err != nil {
-			return fail(fmt.Errorf("verify Ruleset readback ownership: %w", err))
-		}
-		if !owned {
-			return fail(fmt.Errorf("Ruleset readback ownership is not the selected repository"))
-		}
-		client.warnRulesetReadbackNormalizations(id, readback)
-		if err := verifyReviewRulesetResponse(*after, readback); err != nil {
-			return fail(fmt.Errorf("Ruleset readback differs from requested observable policy: %w", err))
-		}
+	var actual int64
+	if err := requiredRuleJSON(readback, "id", &actual); err != nil {
+		return fail(fmt.Errorf("verify Ruleset readback identity: %w", err))
+	}
+	if actual != id {
+		return fail(fmt.Errorf("Ruleset readback ID differs from mutation identity"))
+	}
+	owned, err = rulesetOwner(readback, repo)
+	if err != nil {
+		return fail(fmt.Errorf("verify Ruleset readback ownership: %w", err))
+	}
+	if !owned {
+		return fail(fmt.Errorf("Ruleset readback ownership is not the selected repository"))
+	}
+	client.warnRulesetReadbackNormalizations(id, readback)
+	if err := verifyReviewRulesetResponse(*after, readback); err != nil {
+		return fail(fmt.Errorf("Ruleset readback differs from requested observable policy: %w", err))
 	}
 	return id, nil
 }

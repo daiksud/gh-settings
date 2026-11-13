@@ -28,7 +28,7 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			var created map[string]any
-			posts := 0
+			posts, details := 0, 0
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -41,6 +41,10 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 						fmt.Fprint(w, `[{"id":17,"name":"new","source_type":"Repository","source":"owner/current"}]`)
 					}
 				case r.Method == "GET" && r.URL.Path == "/repos/owner/current/rulesets/17" && created != nil:
+					details++
+					if r.URL.RawQuery != "includes_parents=false" {
+						t.Error(r.URL)
+					}
 					json.NewEncoder(w).Encode(created)
 				case r.Method == "POST" && r.URL.Path == "/repos/owner/current/rulesets":
 					posts++
@@ -77,6 +81,12 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 			if err != nil || first.runErr != nil || hasNonInfoDiagnostic(first.stderr.String()) || !strings.Contains(first.stdout.String(), `Created repository.settings.rulesets "new": id 17`) {
 				t.Fatal(first, err)
 			}
+			mu.Lock()
+			firstDetails := details
+			mu.Unlock()
+			if firstDetails != 1 {
+				t.Fatalf("created ID was not independently verified: detail reads=%d", firstDetails)
+			}
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 			if err != nil {
 				t.Fatal(err)
@@ -111,17 +121,41 @@ func TestRulesetsCreatedIDWritebackModesAndRepeatApply(t *testing.T) {
 }
 
 func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
-	for _, mode := range []string{"local conflict", "later remote failure", "unverified response"} {
+	for _, mode := range []string{"local conflict", "later remote failure", "unverified response", "denied readback", "mismatching readback", "later readback failure"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			var path, input string
 			posts := 0
+			created := map[string]map[string]any{}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
 				w.Header().Set("Content-Type", "application/json")
 				if r.Method == "GET" && r.URL.Path == "/repos/owner/current/rulesets" {
 					fmt.Fprint(w, `[]`)
+					return
+				}
+				if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/repos/owner/current/rulesets/") {
+					id := strings.TrimPrefix(r.URL.Path, "/repos/owner/current/rulesets/")
+					state, ok := created[id]
+					if !ok || r.URL.RawQuery != "includes_parents=false" {
+						t.Error("unexpected detail read", r.URL)
+						w.WriteHeader(404)
+						return
+					}
+					if mode == "denied readback" {
+						w.WriteHeader(403)
+						fmt.Fprint(w, `{"message":"fixture denied"}`)
+						return
+					}
+					observed := map[string]any{}
+					for key, value := range state {
+						observed[key] = value
+					}
+					if mode == "mismatching readback" || mode == "later readback failure" && id == "28" {
+						observed["enforcement"] = "disabled"
+					}
+					json.NewEncoder(w).Encode(observed)
 					return
 				}
 				if r.Method != "POST" || r.URL.Path != "/repos/owner/current/rulesets" {
@@ -134,7 +168,7 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 					t.Error(err)
 				}
-				if payload["name"] == "b" {
+				if payload["name"] == "b" && mode != "later readback failure" {
 					w.WriteHeader(403)
 					fmt.Fprint(w, `{"message":"fixture denied"}`)
 					return
@@ -144,7 +178,12 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 						t.Error(err)
 					}
 				}
-				payload["id"], payload["source_type"], payload["source"] = 27, "Repository", "owner/current"
+				id := 27
+				if payload["name"] == "b" {
+					id = 28
+				}
+				payload["id"], payload["source_type"], payload["source"] = id, "Repository", "owner/current"
+				created[fmt.Sprint(id)] = payload
 				if mode == "unverified response" {
 					payload["enforcement"] = "disabled"
 				}
@@ -160,6 +199,9 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 				t.Fatal(err)
 			}
 			input = repositoryInput("settings:\n  rulesets:\n    - {ruleset_name: a, enforcement_status: active, target_branches: {include_all_branches: true}}\n    - {ruleset_name: b, enforcement_status: active, target_branches: {include_all_branches: true}}\n")
+			if mode == "later readback failure" {
+				input += "      - {ruleset_name: c, enforcement_status: active, target_branches: {include_all_branches: true}}\n"
+			}
 			path = filepath.Join(fixture.work, ".github/settings.yml")
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
@@ -177,11 +219,15 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 				if string(data) != input+"# concurrent edit\n" || !strings.Contains(withoutExportInfo(result.stderr.String()), "local ID writeback failed") {
 					t.Fatal(string(data), result)
 				}
+			case "later readback failure":
+				if !strings.Contains(string(data), "id: 27") || strings.Contains(string(data), "id: 28") || !strings.Contains(result.stderr.String(), "id 28") || result.stdout.Len() != 0 {
+					t.Fatal("failed readback lost recovery or recorded unverified ID", string(data), result)
+				}
 			case "later remote failure":
 				if !strings.Contains(string(data), "id: 27") || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
 					t.Fatal(string(data), result)
 				}
-			case "unverified response":
+			case "unverified response", "denied readback", "mismatching readback":
 				if string(data) != input || !strings.Contains(withoutExportInfo(result.stderr.String()), "writes may already have applied") {
 					t.Fatal("unverified response recorded as success", string(data), result)
 				}
@@ -189,7 +235,7 @@ func TestRulesetsPartialCreationFailureRetainsRecoverableID(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 			want := 1
-			if mode == "later remote failure" {
+			if mode == "later remote failure" || mode == "later readback failure" {
 				want = 2
 			}
 			if posts != want {

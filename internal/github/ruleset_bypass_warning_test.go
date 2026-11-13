@@ -127,10 +127,7 @@ func TestRulesetBypassPrewriteWarningsKeepIdentityOwnershipAndIndependentSinks(t
 						}
 					}
 					gotID, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
-					wantOperations := []string{"PUT"}
-					if mode != "canonical" || scalar {
-						wantOperations = append(wantOperations, "GET")
-					}
+					wantOperations := []string{"PUT", "GET"}
 					if err != nil || gotID != 7 || !reflect.DeepEqual(got, want) || !reflect.DeepEqual(change.Normalizations(), original) || !reflect.DeepEqual(operations, wantOperations) {
 						t.Fatal("prewrite ownership/order or canonical silence lost", gotID, got, want, operations, err)
 					}

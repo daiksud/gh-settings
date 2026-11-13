@@ -107,7 +107,7 @@ func TestNormalizedRulesetBasicUpdatesRequireStrictFreshGET(t *testing.T) {
 		calls = append(calls, req.Method)
 		return labelsResponse(req, 200, basicRulesetJSON), nil
 	}))
-	if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, rulesetEnforcementChange(t, "active", false)); err != nil || !reflect.DeepEqual(calls, []string{"PUT"}) {
-		t.Fatal("ordinary basic update boundary changed", calls, err)
+	if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, rulesetEnforcementChange(t, "active", false)); err != nil || !reflect.DeepEqual(calls, []string{"PUT", "GET"}) {
+		t.Fatal("ordinary basic update was not independently verified", calls, err)
 	}
 }
