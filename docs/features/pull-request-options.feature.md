@@ -23,7 +23,7 @@ Omission is unmanaged, false is a declared value, and null/non-booleans fail loc
 
 The shared `MergeMethodsState`, fixed query and deferred read retain their names and now contain six booleans and four commit enums. Declaring only either new option skips the base REST read. Omitting all merge-related fields skips GraphQL. Earlier partial plan comparisons are discarded. Export retains compatible prior declarations for an unavailable merge group while complete independent groups still export.
 
-Apply sends declared fields only in the existing repository PATCH, with no preliminary read, inferred defaults or extra requests. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
+Apply follows [repository reconciliation](../commands.md#apply-behavior): fresh selected GraphQL observations, matching-value no-op, changed declared fields in the shared PATCH and independent readback. It infers no defaults. The existing target, timeout, redirect, partial-failure and direct-apply race behavior is retained.
 
 Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
@@ -38,7 +38,7 @@ An [isolated PR Actions proof](https://github.com/daiksud/gh-settings/actions/ru
 | Boolean presence, omission, order and equality | [Settings comparison](../../internal/settings/merge_methods_test.go) |
 | Strict types/spelling, aliases and round trips | [YAML codec](../../internal/workspace/ui_general_test.go) |
 | Complete fixed GraphQL read, missing/null/type failures, partial errors and declared-only PATCH | [Shared adapter boundary](../../internal/github/merge_methods_test.go), [new boolean reads](../../internal/github/pr_options_test.go) |
-| Deferred read, direct write, local validation and compatible export retention | [PR options](../../internal/app/pr_options_test.go), [shared failures](../../internal/app/merge_methods_test.go), [export](../../internal/app/export_test.go) |
+| Deferred read, conditional write, local validation and compatible export retention | [PR options](../../internal/app/pr_options_test.go), [shared failures](../../internal/app/merge_methods_test.go), [export](../../internal/app/export_test.go) |
 | Native boolean report/Summary, wrong types and managed bound | [Boolean presentation](../../internal/actions/merge_methods_test.go), [count validation](../../internal/actions/squash_commit_test.go) |
 | Real binary composition | [Installed-process acceptance](../../tests/acceptance/merge_methods_test.go): equality/differences, missing/null/partial errors, direct one/pair PATCH, validation before requests, full export and credential-free Summary. Existing acceptance covers unmanaged/no-op and prior fields. |
 

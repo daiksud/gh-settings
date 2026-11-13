@@ -258,20 +258,35 @@ func TestTopicsApplyReconciliationAcceptance(t *testing.T) {
 		{name: "rejected PUT", input: "[]", initial: `{"names":["old"]}`, putStatus: 422, errorText: "writes may already have applied", wantMethods: []string{"GET topics", "PUT topics"}},
 		{name: "denied verification", input: "[]", initial: `{"names":["old"]}`, verifyStatus: 403, errorText: "verify repository topics", wantMethods: []string{"GET topics", "PUT topics", "GET topics"}},
 		{name: "mismatching verification", input: "[]", initial: `{"names":["old"]}`, after: `{"names":["old"]}`, errorText: "does not match declared membership", wantMethods: []string{"GET topics", "PUT topics", "GET topics"}},
-		{name: "earlier repository write", input: "[]", readStatus: 403, repositoryWrite: true, errorText: "earlier repository settings update remains applied", wantMethods: []string{"PATCH current", "GET topics"}},
+		{name: "earlier repository write", input: "[]", readStatus: 403, repositoryWrite: true, errorText: "earlier repository settings update remains applied", wantMethods: []string{"GET current", "PATCH current", "GET current", "GET topics"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string
 			put := false
+			var repositoryState map[string]any
+			if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+				t.Fatal(err)
+			}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
 				kind := filepath.Base(r.URL.Path)
 				requests = append(requests, r.Method+" "+kind)
 				w.Header().Set("Content-Type", "application/json")
-				if r.URL.Path == "/repos/owner/current" && r.Method == "PATCH" && test.repositoryWrite {
-					fmt.Fprint(w, `{}`)
+				if r.URL.Path == "/repos/owner/current" && test.repositoryWrite {
+					if r.Method == "PATCH" {
+						var payload map[string]any
+						if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || !reflect.DeepEqual(payload, map[string]any{"has_issues": false}) {
+							t.Errorf("repository PATCH=%v error=%v", payload, err)
+						}
+						for key, value := range payload {
+							repositoryState[key] = value
+						}
+					} else if r.Method != "GET" {
+						t.Errorf("unexpected repository method: %s", r.Method)
+					}
+					_ = json.NewEncoder(w).Encode(repositoryState)
 					return
 				}
 				if r.URL.Path == "/repos/owner/current/labels" && r.Method == "GET" {

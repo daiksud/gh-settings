@@ -51,9 +51,9 @@ func TestVariablePruneAllCandidatesPrecedeUnrelatedWrites(t *testing.T) {
 			calls = append(calls, "agents")
 			return settings.VariableInventory{}, errors.New("page two incomplete")
 		},
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 			t.Fatal("write before complete candidate acquisition")
-			return nil
+			return true, nil
 		},
 	}, mustPrune(t, "actions-variables,agents-variables"))
 	if err == nil || !strings.Contains(err.Error(), "before any writes") || !reflect.DeepEqual(calls, []string{"actions", "agents"}) {

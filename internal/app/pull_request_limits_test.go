@@ -46,7 +46,7 @@ func TestPullRequestLimitsPartialAndArchive(t *testing.T) {
 	}
 	result, err := Apply(func() (settings.Declaration, error) {
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{Description: &description}, PullRequestLimits: settings.PullRequestLimitsDeclaration{Enabled: &enabled}}, nil
-	}, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil }, PullRequestLimits: func(repository.Repository, settings.PullRequestLimitsDeclaration) (bool, error) {
+	}, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return true, nil }, PullRequestLimits: func(repository.Repository, settings.PullRequestLimitsDeclaration) (bool, error) {
 		return false, errors.New("uncertain")
 	}})
 	if err == nil || result.Outcome != ApplyPartialFailure || len(result.Operations) != 2 || result.Operations[0].Status != OperationCompleted || result.Operations[1].Status != OperationFailedUnknown {

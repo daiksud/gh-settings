@@ -82,51 +82,57 @@ func TestUIAboutRejectsInvalidTopics(t *testing.T) {
 }
 
 func TestUIAboutEmptyPayloads(t *testing.T) {
-	calls := 0
-	client := topicsClient(t, func(req *http.Request) (*http.Response, error) {
-		calls++
-		if calls == 2 || calls == 4 {
-			if req.Method != "GET" || req.URL.Path != "/repos/owner/current/topics" {
-				t.Fatal(req.Method, req.URL)
+	var calls []string
+	base := repositoryPatchBaseFixture()
+	base["description"], base["homepage"] = "before", "https://before.test"
+	topics := []string{"old"}
+	client := writeTestClient(t, func(req *http.Request) (*http.Response, error) {
+		calls = append(calls, req.Method+" "+req.URL.Path)
+		var response any
+		switch req.Method + " " + req.URL.Path {
+		case "GET /repos/owner/current":
+			response = base
+		case "GET /repos/owner/current/topics":
+			response = map[string]any{"names": topics}
+		case "PATCH /repos/owner/current", "PUT /repos/owner/current/topics":
+			var got map[string]any
+			if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
+				t.Fatal(err)
 			}
-			body := `{"names":["old"]}`
-			if calls == 4 {
-				body = `{"names":[]}`
+			want := map[string]any{"description": "", "homepage": ""}
+			if req.Method == "PUT" {
+				want = map[string]any{"names": []any{}}
 			}
-			return labelsResponse(req, 200, body), nil
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("payload=%v want %v", got, want)
+			}
+			if req.Method == "PATCH" {
+				base["description"], base["homepage"] = "", ""
+			} else {
+				topics = []string{}
+			}
+			response = map[string]any{}
+		default:
+			t.Fatal(req.Method, req.URL)
 		}
-		var got map[string]any
-		if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
+		body, err := json.Marshal(response)
+		if err != nil {
 			t.Fatal(err)
 		}
-		want := map[string]any{"description": "", "homepage": ""}
-		if calls == 1 {
-			if req.Method != "PATCH" || req.URL.Path != "/repos/owner/current" {
-				t.Fatal(req.Method, req.URL)
-			}
-		} else {
-			want = map[string]any{"names": []any{}}
-			if calls != 3 || req.Method != "PUT" || req.URL.Path != "/repos/owner/current/topics" {
-				t.Fatal(req.Method, req.URL)
-			}
-		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("payload=%v want %v", got, want)
-		}
-		return labelsResponse(req, 200, `{}`), nil
+		return labelsResponse(req, 200, string(body)), nil
 	})
 	desired, err := AboutDeclaration(uimodel.About{Description: pointer(""), Website: pointer(""), Topics: pointer([]string{})})
 	if err != nil {
 		t.Fatal(err)
 	}
 	repo := repository.Repository{Owner: "owner", Name: "current"}
-	if err := client.ApplyRepository(repo, desired.Repository); err != nil {
-		t.Fatal(err)
+	if wrote, err := client.ApplyRepository(repo, desired.Repository); err != nil || !wrote {
+		t.Fatal(wrote, err)
 	}
 	if wrote, err := client.ApplyTopics(repo, desired.Topics); err != nil || !wrote {
 		t.Fatal(wrote, err)
 	}
-	if calls != 4 {
+	if !reflect.DeepEqual(calls, []string{"GET /repos/owner/current", "PATCH /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/topics", "PUT /repos/owner/current/topics", "GET /repos/owner/current/topics"}) {
 		t.Fatal(calls)
 	}
 }

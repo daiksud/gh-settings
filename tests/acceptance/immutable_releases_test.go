@@ -23,6 +23,10 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	mode := ""
 	policyReads, redirects := 0, 0
 	writes := []string{}
+	var repositoryState map[string]any
+	if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+		t.Fatal(err)
+	}
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		defer mu.Unlock()
@@ -42,13 +46,16 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 		switch r.URL.Path {
 		case "/repos/owner/current":
 			if r.Method == "GET" {
-				fmt.Fprint(w, planResponse)
+				json.NewEncoder(w).Encode(repositoryState)
 				return
 			}
 			if r.Method == "PATCH" {
 				var fields map[string]any
 				if err := json.NewDecoder(r.Body).Decode(&fields); err != nil || len(fields) != 1 || fields["description"] != "earlier" {
 					t.Error("unexpected earlier payload", fields, err)
+				}
+				for key, value := range fields {
+					repositoryState[key] = value
 				}
 				writes = append(writes, "PATCH description")
 				fmt.Fprint(w, `{}`)
@@ -224,6 +231,9 @@ func TestImmutableReleasesExportPlanApplyAndSummary(t *testing.T) {
 	}
 	mu.Lock()
 	partial := append([]string{}, writes[before:]...)
+	if repositoryState["description"] != "earlier" {
+		t.Fatal("earlier repository write was lost", repositoryState)
+	}
 	mu.Unlock()
 	if !reflect.DeepEqual(partial, []string{"PATCH description", "PUT immutable-releases"}) {
 		t.Fatal("partial writes/retry/rollback", partial)

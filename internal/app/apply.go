@@ -77,8 +77,10 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		result.Operations = append(result.Operations, ApplyOperation{Kind: LabelsRead})
 	}
 	index := firstOrdinary
+	repositoryWrote := false
 	if repositoryManaged {
-		if err := write.Repository(repo, other); err != nil {
+		repositoryWrote, err = write.Repository(repo, other)
+		if err != nil {
 			status := OperationFailedUnknown
 			var readFailure PreWriteReadFailure
 			var writeEffects RepositoryWriteEffectsFailure
@@ -92,7 +94,10 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 			}
 			return result, err
 		}
-		result.Operations[index].Status = OperationCompleted
+		result.Operations[index].Status = OperationUnchanged
+		if repositoryWrote {
+			result.Operations[index].Status = OperationCompleted
+		}
 		index++
 	}
 	topicsWrote := false
@@ -116,7 +121,7 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		index++
 	}
-	hasWrites := repositoryManaged || topicsWrote || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
+	hasWrites := repositoryWrote || topicsWrote || (archiveManaged && archiveState.Archived && !*desired.Repository.Archived)
 	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
 		progress := ""
 		if hasWrites {

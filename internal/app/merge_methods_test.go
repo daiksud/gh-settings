@@ -67,12 +67,12 @@ func TestPlanMixedRepositoryObservationFailureDiscardsComparison(t *testing.T) {
 func TestMergeMethodsApplyDirectAndInvalidLocal(t *testing.T) {
 	appCheckout(t, "version: daiksud/gh-settings@v0\nrepository: {settings: {general: {pull_requests: {allow_rebase_merging: false}}}}\n", true)
 	calls := 0
-	result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
+	result, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) (bool, error) {
 		calls++
 		if repo.Owner != "owner" || d.AllowRebaseMerge == nil || *d.AllowRebaseMerge || !d.BaseEmpty() {
 			t.Fatalf("target=%+v desired=%+v", repo, d)
 		}
-		return nil
+		return true, nil
 	}})
 	if err != nil || !result.Completed() || calls != 1 {
 		t.Fatalf("result=%+v calls=%d err=%v", result, calls, err)
@@ -98,12 +98,12 @@ func TestDeleteBranchOnMergeUsesDeferredReadAndDirectWrite(t *testing.T) {
 	if err != nil || calls != 1 || result.Comparison.Managed != 1 || len(result.Comparison.Changes) != 1 || comparisonAfterBool(t, result.Comparison.Changes[0]) != false {
 		t.Fatalf("plan=%+v err=%v calls=%d", result, err, calls)
 	}
-	applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) error {
+	applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Repository: func(repo repository.Repository, d settings.RepositoryDeclaration) (bool, error) {
 		calls++
 		if d.DeleteBranchOnMerge == nil || *d.DeleteBranchOnMerge || !d.BaseEmpty() {
 			t.Fatalf("desired=%+v", d)
 		}
-		return nil
+		return true, nil
 	}})
 	if err != nil || !applied.Completed() || calls != 2 {
 		t.Fatalf("apply=%+v err=%v calls=%d", applied, err, calls)

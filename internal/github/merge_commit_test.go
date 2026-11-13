@@ -57,7 +57,7 @@ func TestMergeCommitDeclaredOnlyPATCH(t *testing.T) {
 							actualMessage = message
 						}
 					}
-					body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{"mergeCommitTitle": actualTitle, "mergeCommitMessage": actualMessage}}})
+					body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{"mergeCommitAllowed": true, "mergeCommitTitle": actualTitle, "mergeCommitMessage": actualMessage}}})
 					return labelsResponse(r, 200, string(body)), nil
 				}
 				calls++
@@ -70,7 +70,7 @@ func TestMergeCommitDeclaredOnlyPATCH(t *testing.T) {
 				}
 				return labelsResponse(r, 200, `{}`), nil
 			}))
-			if err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 1 {
+			if _, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 1 {
 				t.Fatalf("calls=%d err=%v", calls, err)
 			}
 		}

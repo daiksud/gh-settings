@@ -132,7 +132,7 @@ func TestApplyMergeMethodPayload(t *testing.T) {
 		{settings.RepositoryDeclaration{HasIssues: &no, AllowMergeCommit: &no, AllowSquashMerge: &yes, AllowRebaseMerge: &no}, map[string]any{"has_issues": false, "allow_merge_commit": false, "allow_squash_merge": true, "allow_rebase_merge": false}},
 	} {
 		calls := 0
-		client := writeTestClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+		client := writeRepositoryFixtureClient(t, test.want, transportFunc(func(req *http.Request) (*http.Response, error) {
 			calls++
 			var body map[string]any
 			if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
@@ -143,7 +143,7 @@ func TestApplyMergeMethodPayload(t *testing.T) {
 			}
 			return labelsResponse(req, 200, `{}`), nil
 		}))
-		if err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, test.desired); err != nil || calls != 1 {
+		if _, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, test.desired); err != nil || calls != 1 {
 			t.Fatalf("calls=%d err=%v", calls, err)
 		}
 	}

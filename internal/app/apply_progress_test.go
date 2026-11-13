@@ -18,9 +18,9 @@ func TestTopicsFailureRetainsKnownApplyProgress(t *testing.T) {
 		calls = append(calls, "load")
 		return settings.Declaration{Repository: settings.RepositoryDeclaration{HasIssues: &disabled}, Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels}, nil
 	}, func() (repository.Repository, error) { calls = append(calls, "target"); return target, nil }, Writer{
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 			calls = append(calls, "repository")
-			return nil
+			return true, nil
 		},
 		Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) {
 			calls = append(calls, "topics")
