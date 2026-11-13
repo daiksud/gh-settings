@@ -407,11 +407,16 @@ the pinned published CLI or establish actual App permissions.
 
 Classic branch-protection entries use the same
 [partial-ownership contract](settings.md#classic-branch-protection) in CLI and
-Action. Detailed Summary shows requested pattern and checkbox changes; status-only
+Action. Detailed Summary shows requested patterns, checkboxes and selected active
+status-check policy, including check names and App-node sources; status-only
 hides names and values after validating the same private report. Unowned actor,
-PR/check and deployment snapshots never enter the report. Explicit classic prune
+PR, latent check and deployment snapshots never enter the report. Needed writes
+with selected status-check App sources require same-credential exact App-node
+reads before and after mutation; matching rules need no App lookup. A failed
+postwrite check suppresses success outputs and leaves uncertain effects.
+Explicit classic prune
 shows supported before-policy and whole-rule removal consequences, including
-protections outside the five editable controls. Omission remains unmanaged; []
+protections outside the supported controls. Omission remains unmanaged; []
 selects all acquired rules under its scope or standalone `all`. Complete frozen
 candidates, exact drift checks and independent complete absence verification use
 the [same deletion contract](settings.md#classic-branch-protection-pruning). This source addition
