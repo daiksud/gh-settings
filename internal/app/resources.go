@@ -30,6 +30,8 @@ type EnvironmentWriteEffectsFailure interface {
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
 	EnvironmentPrune     func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
+	Collaborators        func(repository.Repository) (settings.CollaboratorObservation, error)
+	ResolveCollaborator  func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
 	EnvironmentNames     func(repository.Repository) ([]string, error)
 	CodeQLForExport      func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error)
 	Variables            func(repository.Repository) (settings.VariableInventory, error)
@@ -73,6 +75,10 @@ type Reader struct {
 type Writer struct {
 	ReadEnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	DeleteEnvironment         func(repository.Repository, settings.EnvironmentPruneCandidate) error
+	ReadCollaborators         func(repository.Repository) (settings.CollaboratorObservation, error)
+	ResolveCollaborator       func(repository.Repository, settings.CollaboratorDeclaration) (settings.CollaboratorIdentity, error)
+	Collaborator              func(repository.Repository, settings.CollaboratorSelection) (settings.CollaboratorWriteResult, error)
+	BindCollaboratorID        func(string, int64) error
 	ReadVariables             func(repository.Repository) (settings.VariableInventory, error)
 	ReadAgentVariables        func(repository.Repository) (settings.VariableInventory, error)
 	ReadEnvironmentVariables  func(repository.Repository, string) (settings.VariableInventory, error)

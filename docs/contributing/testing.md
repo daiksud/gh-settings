@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeRulesetCoverage)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -376,3 +376,21 @@ The offline [release CI tests](../../.github/scripts/test_release_ci.py) cover e
 ## Actions cache and sharing controls
 
 The [built-product fixture](../../tests/acceptance/actions_general_controls_test.go) verifies the independent cache-retention, cache-storage and private-sharing export options through actual CLI processes. It checks exact one-member REST writes, fresh readback, omission and existing-flag isolation, matching repeated apply, UI plan/report/Summary and destination preservation on unavailable reads. The [behavior specification](../features/actions-general-controls.feature.md) records the supported bounds, permissions and failure contract. These local fixtures establish neither live mutation nor actual installation permissions or billing behavior.
+
+## Personal collaborator verification
+
+[Model tests](../../internal/settings/collaborators_test.go) cover user-ID selection,
+case matching, duplicate identities and pending versus active observations.
+[Adapter tests](../../internal/github/collaborators_test.go) cover full pagination,
+strict targets/roles, no-op races, bodyless requests, independent 201/204 readback
+and uncertain effects. [Application tests](../../internal/app/collaborators_test.go)
+separate local binding from remote progress and retain whole export families.
+[Workspace tests](../../internal/workspace/ui_collaborators_test.go) exercise
+safe snapshot binding and codec shape. [Action reports](../../internal/actions/collaborators_test.go)
+keep matching pending state visible and protect status-only publication.
+[Built CLI scenarios](../../tests/acceptance/collaborators_test.go) verify lifecycle,
+validation before requests, file persistence, export retention and recovery.
+[Supplied-product composite checks](../../tests/github-actions/composite_collaborators_acceptance_test.go)
+exercise the actual installer and Action plan/apply steps against a local service.
+These are fixture observations, not live invitations, access grants, App
+permission verification or recipient acceptance.

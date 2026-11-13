@@ -95,6 +95,14 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += topics.Managed
 		comparison.Changes = append(comparison.Changes, topics.Changes...)
 	}
+	if desired.Collaborators != nil && desired.Collaborators.Len() > 0 {
+		selected, err := prepareCollaborators(repo, *desired.Collaborators, read.Collaborators, read.ResolveCollaborator)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: "repository.settings.collaborators", Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.Collaborators = selected
+	}
 	if desired.Labels != nil && (desired.Labels.Len() > 0 || prune.Has("labels")) {
 		current, err := read.Labels(repo)
 		if err != nil {
