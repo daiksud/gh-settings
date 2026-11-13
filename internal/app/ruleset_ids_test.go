@@ -130,3 +130,62 @@ func TestRulesetCreationRecordsIDsAndPreservesEarlierLabelRecovery(t *testing.T)
 		})
 	}
 }
+
+func TestRulesetUnverifiedCreationReportsIDWithoutWritebackOrLaterWork(t *testing.T) {
+	policies := appRulesets(t, `[{name: a, enforcement: active, conditions: {ref_name: {include: ["~ALL"], exclude: []}}}, {name: b, enforcement: active, conditions: {ref_name: {include: ["~ALL"], exclude: []}}}]`)
+	cause := errors.New("independent readback denied; writes may already have applied")
+	calls := []string{}
+	result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Rulesets: policies}, nil }, checkoutRepository, Writer{
+		ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
+			return settings.NewRulesetObservation(nil, 0)
+		},
+		Ruleset: func(_ repository.Repository, change settings.RulesetChange) (int64, error) {
+			calls = append(calls, change.Name())
+			return 27, cause
+		},
+		CreatedID: func(string, string, int64) error { t.Fatal("unverified creation ID written to YAML"); return nil },
+	})
+	if !errors.Is(err, cause) || result.Outcome != ApplyFailed || !reflect.DeepEqual(calls, []string{"a"}) || !reflect.DeepEqual(result.CreatedIDs, []CreatedObject{{Collection: "rulesets", Name: "a", ID: 27}}) || !reflect.DeepEqual(result.Operations, []ApplyOperation{{Kind: RulesetsRead, Status: OperationCompleted}, {Kind: RulesetCreate, RulesetName: "a", Status: OperationFailedUnknown}, {Kind: RulesetCreate, RulesetName: "b", Status: OperationNotExecuted}}) {
+		t.Fatal(result, err, calls)
+	}
+}
+
+func TestRulesetReadbackFailureStopsPruneAndLaterResources(t *testing.T) {
+	state := appRulesetState(t)
+	unlisted := state
+	unlisted.ID, unlisted.Policy.Name = 8, "unlisted"
+	policies := appRulesets(t, `[{id: 7, name: basic, enforcement: disabled, conditions: {ref_name: {include: ['~ALL'], exclude: []}}, rules: [{type: deletion}]}]`)
+	active := true
+	cause := errors.New("independent readback differs; writes may already have applied")
+	var calls []string
+	result, err := Apply(func() (settings.Declaration, error) {
+		return settings.Declaration{Rulesets: policies, Repository: settings.RepositoryDeclaration{Archived: &active}}, nil
+	}, checkoutRepository, Writer{
+		ReadArchive: func(repo repository.Repository) (settings.ArchiveState, error) {
+			calls = append(calls, "archive-read")
+			return settings.ArchiveState{ID: 1, FullName: repo.Owner + "/" + repo.Name}, nil
+		},
+		Archive: func(repository.Repository, settings.ArchiveState, bool) error {
+			t.Fatal("archived after failed Ruleset verification")
+			return nil
+		},
+		ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
+			calls = append(calls, "inventory")
+			return settings.NewRulesetObservation([]settings.RulesetState{state, unlisted}, 0)
+		},
+		Ruleset: func(_ repository.Repository, change settings.RulesetChange) (int64, error) {
+			calls = append(calls, change.Operation())
+			if change.Operation() != "update" {
+				t.Fatal("prune deletion after failed verification")
+			}
+			return change.ID(), cause
+		},
+	}, mustPrune(t, "rulesets"))
+	if !errors.Is(err, cause) || result.Outcome != ApplyFailed || !reflect.DeepEqual(calls, []string{"inventory", "archive-read", "inventory", "update"}) {
+		t.Fatal(result, err, calls)
+	}
+	last := result.Operations[len(result.Operations)-1]
+	if last.Kind != RulesetDelete || last.Status != OperationNotExecuted {
+		t.Fatal(result.Operations)
+	}
+}
