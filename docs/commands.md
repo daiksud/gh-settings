@@ -272,7 +272,7 @@ Use `gh settings plan --prune labels,rulesets` and
 `gh settings apply --prune labels,rulesets`. This adds deletions without limiting
 other declared work. `--no-writeback` may be combined with apply. Current scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators`,
-`branch-protection-rules` and `deploy-keys`.
+`branch-protection-rules`, `autolinks` and `deploy-keys`.
 Standalone `all` selects every supported scope. Mixed `all`, unknown/duplicate
 names, empty elements and repeated flags fail locally. Export and validate reject
 prune. Omitted collections stay unmanaged; explicit [] selects all acquired
@@ -425,3 +425,7 @@ source comment even when titles repeat. `--no-writeback` reports recovery identi
 without changing YAML. Plans show title, SHA256 fingerprint and grant, never the
 raw key. `--prune deploy-keys` (or standalone `all`) explicitly removes unlisted
 keys after complete preflight and verifies absence; ordinary `[]` deletes nothing.
+
+## Autolink commands
+
+Automatic export independently attempts the complete [Autolinks family](settings.md#autolink-references). `validate` rejects invalid controls locally. `plan` shows immutable creates/deletions with prefix, URL and format; a matching bound ID is unchanged. `apply` verifies creation with independent object and inventory reads before guarded ID recording. `--prune autolinks` and standalone `all` select fixed unlisted deletion candidates only for a present collection. Replace a reference by explicitly pruning it, then creating its replacement in a later apply. `--no-writeback` leaves creation IDs for the documented follow-up process. Failures retain confirmed earlier progress and unconfirmed effects honestly.

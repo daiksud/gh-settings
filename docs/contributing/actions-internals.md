@@ -209,3 +209,7 @@ operation or raw-key/private-snapshot representation. Strict reconstruction reje
 missing/native-type violations, unknown fields, duplicate IDs/fingerprints and
 invalid operation shapes; integer IDs retain exact precision. Mixed creation and
 deletion count the family once. See [Deploy keys](../settings.md#deploy-keys).
+
+## Autolink report boundary
+
+The same-version `autolinks` report array contains exactly one `before` or `after` configuration per operation. A deletion has a complete positive-ID `before`; a creation has a complete IDless `after`. Each configuration contains `reference_prefix`, `target_url` and `reference_format`. There is no update operation. Closed decoding rejects null/unknown members; model validation rejects collisions, invalid URLs, missing controls and invalid identities. Mixed create/delete changes count one family. Private acquisition timestamps and target snapshots never enter reports. Detailed rendering quotes these non-secret controls; status-only projects only outcome/count metadata.

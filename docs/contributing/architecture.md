@@ -295,3 +295,7 @@ ordering and recovery versus verified progress. Workspace binds only a confirmed
 new ID by canonical-key fingerprint, preserving original scalar/comments; titles
 are display data, not selectors. Presentation/report boundaries contain only title,
 fingerprint, grant and selected ID. See the [public contract](../settings.md#deploy-keys).
+
+## Autolink reconciliation
+
+Autolinks have a concrete immutable collection owner in `internal/settings`, a read/create/delete REST adapter in `internal/github`, and shared export/plan/apply sequencing in `internal/app`. UI projection and workspace ID recording keep omission separate from an empty collection. Prune's private expected inventory begins at global preflight and changes only for verified own creations/deletions and unarchive. The adapter checks complete identity/configuration before writes and independently observes their results. Public comparison objects contain only create/delete configuration, with one managed-family count; no timestamp or target snapshot is serialized. The [public contract](../settings.md#autolink-references) owns input constraints and explicit replacement.

@@ -29,6 +29,7 @@ type EnvironmentWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	Autolinks             func(repository.Repository) (settings.AutolinkObservation, error)
 	OIDCSubject           func(repository.Repository) (settings.OIDCSubjectObservation, error)
 	DeployKeys            func(repository.Repository) (settings.DeployKeyObservation, error)
 	AIScanRepositories    func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
@@ -81,6 +82,9 @@ type Writer struct {
 	ReadDeployKeys             func(repository.Repository) (settings.DeployKeyObservation, error)
 	CreateDeployKey            func(repository.Repository, settings.DeployKeyObservation, settings.DeployKeyDeclaration) (settings.DeployKeyWriteResult, error)
 	DeleteDeployKey            func(repository.Repository, settings.DeployKeyObservation, int64) (settings.DeployKeyObservation, error)
+	ReadAutolinks              func(repository.Repository) (settings.AutolinkObservation, error)
+	CreateAutolink             func(repository.Repository, settings.AutolinkObservation, settings.Autolink) (settings.AutolinkWriteResult, error)
+	DeleteAutolink             func(repository.Repository, settings.AutolinkObservation, int64) (bool, error)
 	OIDCSubject                func(repository.Repository, settings.OIDCSubjectTemplate) (bool, error)
 	ReadAIScanRepositories     func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	AIScanRepositories         func(repository.Repository, settings.SecurityChange) (bool, error)

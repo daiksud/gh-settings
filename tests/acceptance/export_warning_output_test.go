@@ -118,6 +118,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 		"/actions/permissions":            `{"enabled":true,"allowed_actions":"all","sha_pinning_required":false}`,
 		"/actions/oidc/customization/sub": `{"use_default":true,"use_immutable_subject":true}`,
 		"/actions/permissions/workflow":   `{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`,
+		"/autolinks":                      `[]`,
 		"/actions/permissions/artifact-and-log-retention":   `{"days":90,"maximum_allowed_days":90}`,
 		"/actions/cache/retention-limit":                    `{"max_cache_retention_days":7}`,
 		"/actions/cache/storage-limit":                      `{"max_cache_size_gb":10}`,

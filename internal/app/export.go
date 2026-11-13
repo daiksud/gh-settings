@@ -136,6 +136,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.ActionsPolicies = &policies
 		return nil
 	})
+	observe(settings.AutolinksPath, read.Autolinks != nil, func(candidate *settings.Declaration) error {
+		observed, err := read.Autolinks(repo)
+		if err != nil {
+			return err
+		}
+		values, err := settings.ExportAutolinks(observed)
+		if err != nil {
+			return err
+		}
+		candidate.Autolinks = &values
+		return nil
+	})
 	observe(settings.ClassicProtectionPath, read.BranchProtectionRules != nil, func(candidate *settings.Declaration) error {
 		observed, err := read.BranchProtectionRules(repo)
 		if err != nil {

@@ -14,7 +14,7 @@ an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables`, `environments`,
-`collaborators`, `branch-protection-rules` and `deploy-keys`. Standalone `all` selects all currently recognized
+`collaborators`, `branch-protection-rules`, `autolinks` and `deploy-keys`. Standalone `all` selects all currently recognized
 scopes; future supported prune scopes must join the shared registry and tests.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit
@@ -189,3 +189,7 @@ exact target, full inventory and candidate detail; its 204 is followed by comple
 absence verification. Only this execution's verified creations/deletions and own
 unarchive alter expected state. External membership or enabled-state drift stops
 further work. Same material cannot be replaced implicitly in one apply.
+
+## Autolink pruning
+
+The `autolinks` scope and standalone `all` use the [Autolinks contract](../settings.md#autolink-references). Omitted collections remain unmanaged; present empty lists prune every acquired reference. Global preflight freezes all candidates and validates complete declared intent before any write. Expected inventory includes only verified own creations and excludes verified own deletions; only successful own unarchive changes the archive expectation. Complete inventory and individual candidate checks reject drift before DELETE, and empty 204 plus complete inventory absence verify each removal. Creation and required ID recording precede deletion. An immutable replacement needs explicit deletion followed by later creation; a current candidate cannot be silently adopted by prefix.

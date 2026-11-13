@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeDeployKeys)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeDeployKeys)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -480,3 +480,7 @@ with an unknown YAML key and missing export respectively. The supplied-product
 API with explicit token and `GH_DEBUG=api`: detailed/status-only plan, create without
 writeback, collision, bound no-op, ordinary empty preservation and unconfirmed
 prune failure. No real key is installed, generated, deleted or used for SSH.
+
+## Autolink verification
+
+The [behavior specification](../features/autolinks.feature.md) maps model, adapter, app, codec and report ownership. The literal codec baseline fails before support. Supplied CLI checks exercise export/validate/plan/create/ID-recording/prune/repeat, immutable failures, retained unavailable export, own unarchive and host Action-environment isolation. `TestBuiltCompositeAutolinks` uses the actual supplied binary and public composite for export, private/detailed plans, matching/no-op, create/prune, empty/all, unchanged YAML and failed-readback output suppression. All use local transports; no live reference or external destination is changed or fetched.

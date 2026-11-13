@@ -20,6 +20,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 
 type prunePreparation struct {
 	deployKeys           *settings.DeployKeyObservation
+	autolinks            settings.AutolinkObservation
 	collaborators        settings.CollaboratorPruneObservation
 	classicProtection    settings.ClassicPruneObservation
 	environments         settings.EnvironmentPruneObservation
@@ -53,6 +54,22 @@ func preparePrune(repo repository.Repository, desired settings.Declaration, prun
 		result.deployKeys = &observed
 	}
 
+	if prune.Has("autolinks") && desired.Autolinks != nil {
+		if write.ReadAutolinks == nil {
+			return result, fmt.Errorf("autolink prune reader unavailable")
+		}
+		var err error
+		result.autolinks, err = write.ReadAutolinks(repo)
+		if err != nil {
+			return result, err
+		}
+		if _, err = settings.CompareAutolinks(result.autolinks, *desired.Autolinks, true); err != nil {
+			return result, err
+		}
+		if result.autolinks.Target.Archived && (desired.Repository.Archived == nil || *desired.Repository.Archived) {
+			return result, fmt.Errorf("autolink prune requires explicit unarchive")
+		}
+	}
 	if prune.Has("collaborators") && desired.Collaborators != nil {
 		if write.ReadCollaboratorPrune == nil {
 			return result, fmt.Errorf("collaborator prune reader unavailable")
