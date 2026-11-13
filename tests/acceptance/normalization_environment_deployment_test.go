@@ -28,7 +28,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			patterns := map[int]map[string]any{7: {"id": 7, "type": "branch", "name": "LATENT_PATTERN"}}
 			reset := func() {
 				state["protection_rules"], state["can_admins_bypass"], state["deployment_branch_policy"] = []any{}, false, map[string]any{"protected_branches": raw, "custom_branch_policies": raw}
-				patterns = map[int]map[string]any{7: {"id": 7, "type": "branch", "name": "LATENT_PATTERN"}}
+				patterns = map[int]map[string]any{}
 			}
 			ignored, includeOther := true, false
 			mode := "no_restriction"
@@ -253,6 +253,11 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			if err != nil || !strings.Contains(string(data), "deployment_branches_and_tags: no_restriction") || strings.Contains(string(data), "LATENT_PATTERN") || strings.Contains(string(data), "protected_branches:") {
 				t.Fatal(string(data), err)
 			}
+			// Nonempty raw-pattern mode refusal has its own process regression.
+			// Keep these normalization/readback scenarios on a known-empty collection.
+			mu.Lock()
+			patterns = map[int]map[string]any{}
+			mu.Unlock()
 			report, summary := filepath.Join(fixture.root, "environment.json"), filepath.Join(fixture.root, "environment.md")
 			for _, choice := range []string{"no_restriction", "protected_branches_only", "selected_branches_and_tags"} {
 				input := intent(choice, false, "")
@@ -379,6 +384,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			}
 			mu.Lock()
 			reset()
+			patterns = map[int]map[string]any{7: {"id": 7, "type": "branch", "name": "LATENT_PATTERN"}}
 			beforePatterns := len(history)
 			beforeBlocked := envWrites
 			mu.Unlock()

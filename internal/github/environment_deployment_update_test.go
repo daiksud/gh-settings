@@ -53,6 +53,10 @@ func TestNormalizedEnvironmentDeploymentUpdateUsesLiteralIntentAndRawConfirmatio
 				rawPair := map[string]any{"protected_branches": raw, "custom_branch_policies": raw}
 				var actualMode any = rawPair
 				patterns := map[int64]settings.EnvironmentPattern{7: {Type: "branch", Name: "old"}}
+				if test.mode == "none" || test.mode == "protected" {
+					// These cases exercise acknowledgment/readback after safe empty acquisition.
+					patterns = map[int64]settings.EnvironmentPattern{}
+				}
 				var writes []string
 				repoReads, postDetailReads := 0, 0
 				postStarted := false

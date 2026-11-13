@@ -12,6 +12,10 @@ func TestEnvironmentDeploymentReconciliationScopesEvidenceToExplicitMode(t *test
 		for _, choice := range []uimodel.EnvironmentDeploymentChoice{uimodel.NoRestriction, uimodel.ProtectedBranchesOnly, uimodel.SelectedBranchesAndTags} {
 			for _, partial := range []bool{false, true} {
 				state := normalizedEnvironmentModeState(t, 7, "production", raw)
+				if raw && choice != uimodel.SelectedBranchesAndTags {
+					// Mode normalization is writable only after the raw collection is empty.
+					state.Patterns = []EnvironmentPatternState{}
+				}
 				unlisted := normalizedEnvironmentModeState(t, 9, "UNMANAGED", !raw)
 				observed, err := NewEnvironmentObservation([]EnvironmentState{unlisted, state})
 				if err != nil {

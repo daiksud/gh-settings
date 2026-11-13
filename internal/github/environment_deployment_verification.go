@@ -70,7 +70,7 @@ func environmentBuiltins(policy settings.EnvironmentDeclaration) settings.Enviro
 
 // Omitted patterns remain unowned. Verify their exact active raw identities when
 // selected mode stays selected, without treating projections as declarations.
-// Explicit mode transitions retain the separate inactive-pattern limitation.
+// Disabling custom mode is separately gated on complete empty raw patterns.
 func verifyPreservedEnvironmentPatterns(before, actual settings.EnvironmentState, intent settings.EnvironmentDeclaration) error {
 	if intent.DeploymentBranchPatterns != nil {
 		return nil
