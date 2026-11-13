@@ -69,7 +69,7 @@ func TestExportStoredSettings(t *testing.T) {
 }
 
 func TestExportReadFailure(t *testing.T) {
-	for _, stage := range []string{"repository", "topics", "labels"} {
+	for _, stage := range []string{"repository"} {
 		t.Run(stage, func(t *testing.T) {
 			cause := errors.New("complete read unavailable")
 			var calls []string

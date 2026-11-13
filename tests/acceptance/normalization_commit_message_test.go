@@ -37,7 +37,7 @@ func TestCommitMessageNormalizationExportDiagnostic(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, true)
+	}, true, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 					t.Error("unexpected operation", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}

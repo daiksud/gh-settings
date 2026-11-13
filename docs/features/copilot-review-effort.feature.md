@@ -6,11 +6,13 @@ description: Declare the observable repository review effort choice without enab
 
 ## Feature: Manage Review effort level
 
+Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
+
 ### Rule: Select effort independently
 
 - `repository.settings.copilot.code_review.review_effort_level` accepts only `default`, `lite` and `balanced`. Null, non-string, empty, API spelling `inherit`, unknown values and Preview `max` fail local validation.
 - Omission and empty page mappings leave effort unmanaged. The custom-instructions and [MCP](copilot-mcp.feature.md) toggles are independently selectable. One declared effort counts as one managed scalar, even when matching.
-- `export --copilot-review-effort` opts into effort only and composes with `--copilot-custom-instructions`, `--copilot-mcp` and other export flags. Duplicate flags fail before target, API or file work. Without an explicit Copilot selection, ordinary export performs no code-review settings request.
+- Ordinary `export` independently observes the effort choice; unavailable observations retain prior intent with info.
 
 ### Rule: Compare observable configuration honestly
 
@@ -43,7 +45,7 @@ The official [configuration guide](https://docs.github.com/en/copilot/how-tos/co
 | Strict desired YAML, omissions, independent selection and round trip | [Codec tests](../../internal/workspace/ui_copilot_review_effort_test.go) |
 | Complete acquisition, fresh availability, exact payload and independent verification | [Transport tests](../../internal/github/copilot_review_effort_test.go) |
 | Selected plan/export, apply progress and omitted-resource isolation | [Application tests](../../internal/app/copilot_review_effort_test.go) |
-| Composable export flag, duplicate rejection and help | [CLI tests](../../internal/cli/copilot_review_effort_test.go) |
+| Automatic export, retired-selector rejection and help | [CLI tests](../../internal/cli/export_test.go) |
 | Closed string reports, failure path and status-only privacy | [Action tests](../../internal/actions/copilot_review_effort_test.go) |
 | Built executable plan/apply/export, Action reporting and file preservation | [Process acceptance](../../tests/acceptance/copilot_review_effort_test.go) |
 

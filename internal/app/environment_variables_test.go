@@ -70,59 +70,6 @@ func TestEnvironmentVariablesApplyProgress(t *testing.T) {
 		})
 	}
 }
-func TestEnvironmentVariablesExportSelection(t *testing.T) {
-	for _, mode := range []string{"selected", "ordinary", "missing", "denied", "invalid", "unacquired"} {
-		t.Run(mode, func(t *testing.T) {
-			reader := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
-			var reads []string
-			reader.EnvironmentVariable = func(_ repository.Repository, environment, name string) (settings.VariableObservation, error) {
-				reads = append(reads, environment+":"+name)
-				switch mode {
-				case "missing":
-					return settings.NewAbsentVariableObservation(), nil
-				case "denied":
-					return settings.VariableObservation{}, errors.New("denied")
-				case "unacquired":
-					return settings.VariableObservation{}, nil
-				}
-				return settings.NewVariableObservation(settings.RepositoryVariable{Name: name, Value: environment + "-value"})
-			}
-			selections := []settings.EnvironmentVariableSelection{{Environment: "production", Name: "shared"}, {Environment: "production", Name: "second"}, {Environment: "staging", Name: "shared"}}
-			if mode == "ordinary" {
-				selections = nil
-			}
-			if mode == "invalid" {
-				selections = append(selections, settings.EnvironmentVariableSelection{Environment: "PRODUCTION", Name: "SHARED"})
-			}
-			saved, resolved := false, false
-			err := Export(ExportCheckout{EnvironmentVariables: selections, Repository: func() (repository.Repository, error) {
-				resolved = true
-				return repository.Repository{Owner: "owner", Name: "current"}, nil
-			}, PrepareSave: func() (func(settings.Declaration) error, error) {
-				return func(d settings.Declaration) error {
-					saved = true
-					if d.Environments != nil {
-						t.Fatal("variable selection fabricated policy intent")
-					}
-					if mode == "ordinary" {
-						if len(d.EnvironmentVariables) != 0 {
-							t.Fatal(d)
-						}
-						return nil
-					}
-					if len(d.EnvironmentVariables) != 2 || d.EnvironmentVariables[0].Environment != "production" || d.EnvironmentVariables[0].Variables.Len() != 2 || d.EnvironmentVariables[1].Variables.Len() != 1 {
-						t.Fatal(d.EnvironmentVariables)
-					}
-					return nil
-				}, nil
-			}}, reader)
-			fail := mode != "ordinary" && mode != "selected"
-			if (err != nil) != fail || saved == fail || mode == "invalid" && resolved || mode == "ordinary" && len(reads) != 0 {
-				t.Fatalf("err=%v saved=%v resolved=%v reads=%v", err, saved, resolved, reads)
-			}
-		})
-	}
-}
 
 func TestEnvironmentVariablesCombinedCreation(t *testing.T) {
 	policies, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "production"}})

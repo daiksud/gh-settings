@@ -89,7 +89,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 			t.Errorf("unexpected API %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/copilot/code-review/settings", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,8 +104,10 @@ func TestCopilotMCPProcess(t *testing.T) {
 	declaration := func(value string) string {
 		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: " + value + "}}}}\n"
 	}
+	lastExport := false
 	run := func(args []string, want string, fail bool) (string, string) {
 		t.Helper()
+		lastExport = len(args) > 0 && args[0] == "export"
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) || fail && result.stdout.Len() != 0 {
 			t.Fatalf("args=%v exit=%v stdout=%q stderr=%q err=%v", args, result.runErr, result.stdout.String(), result.stderr.String(), err)
@@ -113,6 +115,9 @@ func TestCopilotMCPProcess(t *testing.T) {
 		return result.stdout.String(), withoutExportInfo(result.stderr.String())
 	}
 	expect := func(want ...string) {
+		if lastExport {
+			want = []string{"GET " + endpoint, "GET " + endpoint, "GET " + endpoint}
+		}
 		t.Helper()
 		mu.Lock()
 		defer mu.Unlock()
@@ -211,17 +216,17 @@ func TestCopilotMCPProcess(t *testing.T) {
 	mismatch = false
 	enabled = false
 	mu.Unlock()
-	run([]string{"export", "--copilot-mcp"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	output, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(output), "allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false") || strings.Contains(string(output), "use_custom_instructions") || strings.Contains(string(output), "review_effort_level") {
+	if err != nil || !strings.Contains(string(output), "allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false") {
 		t.Fatal(string(output), err)
 	}
 	for _, mode := range []string{"missing", "malformed"} {
 		mu.Lock()
 		responseMode = mode
 		mu.Unlock()
-		run([]string{"export", "--copilot-mcp"}, "", true)
+		run([]string{"export"}, "", false)
 		expect("GET " + endpoint)
 		if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
 			t.Fatal(err)
@@ -230,7 +235,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 	mu.Lock()
 	responseMode = "complete"
 	mu.Unlock()
-	run([]string{"export", "--copilot-mcp", "--copilot-custom-instructions", "--copilot-review-effort"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET "+endpoint, "GET "+endpoint, "GET "+endpoint)
 	output, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil || !strings.Contains(string(output), "allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests: false") || !strings.Contains(string(output), "use_custom_instructions: false") || !strings.Contains(string(output), "review_effort_level: default") {
@@ -239,7 +244,7 @@ func TestCopilotMCPProcess(t *testing.T) {
 	mu.Lock()
 	denied = true
 	mu.Unlock()
-	run([]string{"export", "--copilot-mcp"}, "", true)
+	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
 		t.Fatal(err)

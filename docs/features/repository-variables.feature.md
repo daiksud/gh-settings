@@ -19,8 +19,8 @@ description: Upsert named non-sensitive variables and explicitly prune present c
 - Without prune, plan reads only declared names; explicit prune also acquires the complete selected inventory. Only HTTP 404 means absent; denied, malformed or incomplete reads fail.
 - Apply reads fresh selected names, creates absent variables, updates changed values and skips equal values. It verifies each successful write with an individual GET before continuing.
 - Failures stop later writes; earlier changes remain applied. A failed mutation or verification can have an unknown remote effect. There is no rollback, retry or concurrency lock.
-- Complete acquired GET string values remain observations, including an empty string if returned. Export rejects an observed empty value before saving because it cannot produce a supported nonempty declaration.
-- Ordinary export makes no variable requests. Repeatable `--variable NAME` selects Actions values and `--agent-variable NAME` selects Agents values. Both opt into individual reads of known non-sensitive variables. Selecting one family does not read the other. A missing selected export name fails without replacing output.
+- Complete acquired strings remain observations, including an empty string if returned. An inventory containing an unsupported empty desired value emits info and retains the prior collection rather than inventing a supported value.
+- Ordinary export independently acquires complete paginated Actions and Agents variable inventories. Failed pages or unsupported entries retain the affected prior collection with info; they never become a partial/empty list.
 - Configuration, export and plan reports can contain the plaintext values; never use these interfaces for credentials or other secrets.
 
 ### Scenario: Keep the same name independent across families
@@ -45,10 +45,10 @@ The separate [Agents Variables REST API](https://docs.github.com/en/rest/agents/
 | Required value, strict YAML, omission, empty-value rejection, ASCII identity and round trip | [Actions codec](../../internal/workspace/ui_variables_test.go), [Agents codec](../../internal/workspace/ui_agents_variables_test.go) |
 | Selected GET, complete values, absence, exact write payloads and verification failures | [Transport tests](../../internal/github/variables_test.go) |
 | Preserve Actions General and independent same-name family values during export projection | [Projection test](../../internal/github/ui_variables_export_test.go) |
-| Read-only plan, selected export, sorted upsert progress and partial failure | [Actions application](../../internal/app/variables_test.go), [Agents application](../../internal/app/agents_variables_test.go) |
-| Explicit named export options and invalid selections | [Actions CLI](../../internal/cli/variables_test.go), [Agents CLI](../../internal/cli/agents_variables_test.go) |
+| Read-only plan, automatic inventory export, sorted upsert progress and partial failure | [Actions application](../../internal/app/variables_test.go), [Agents application](../../internal/app/agents_variables_test.go) |
+| Explicit named export options and invalid selections | [Actions CLI](../../internal/cli/export_test.go), [Agents CLI](../../internal/cli/agents_variables_test.go) |
 | Typed plaintext reports, escaped Summary and status-only privacy | [Actions reports](../../internal/actions/variables_test.go), [Agents reports](../../internal/actions/agents_variables_test.go) |
-| Actual binary, local validation, family-specific Action report, exact API version, no redirects, create/update/skip, unlisted preservation and failed-export file preservation | [Process acceptance](../../tests/acceptance/variables_test.go) |
+| Actual binary, local validation, family-specific Action report, exact API version, no redirects, create/update/skip, unlisted preservation and unavailable-family retention | [Process acceptance](../../tests/acceptance/variables_test.go) |
 
 Automated tests use local fixtures and dummy credentials, without live repository changes. Live adoption evidence does not establish GitHub App credential permissions or workflow or agent consumption of a variable.
 

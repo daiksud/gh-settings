@@ -85,7 +85,7 @@ func TestRulesetCreationUpdatesExecutableLifecycle(t *testing.T) {
 					t.Error("unexpected request", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/rulesets", "/rulesets/7", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -102,7 +102,7 @@ func TestRulesetCreationUpdatesExecutableLifecycle(t *testing.T) {
 				}
 				return result.stdout.String()
 			}
-			run("export", true, "--rulesets")
+			run("export", true)
 			data, err := os.ReadFile(filepath.Join(fixture.work, ".github", "settings.yml"))
 			if err != nil {
 				t.Fatal(err)

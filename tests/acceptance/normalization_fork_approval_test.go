@@ -92,7 +92,7 @@ func TestForkApprovalNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Error("unexpected acquisition", req.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/permissions", "/actions/permissions/fork-pr-contributor-approval", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestForkApprovalNormalizationAcrossExecutableCommands(t *testing.T) {
 	path := "repository.settings.actions.general.approval_for_running_fork_pull_request_workflows_from_contributors"
 	fallback := "require_approval_for_first_time_contributors"
 	warning := "Warning: " + path + ": observed \"FUTURE\" is outside UI choices; using \"" + fallback + "\" (projection only)."
-	output, diagnostic, status := run("export", "--fork-approval")
+	output, diagnostic, status := run("export")
 	if diagnostic != warning+"\n" {
 		t.Fatalf("exact export warning lost: %q", diagnostic)
 	}

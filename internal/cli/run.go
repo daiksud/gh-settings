@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"slices"
 
 	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/presentation"
@@ -12,19 +11,6 @@ import (
 )
 
 var errUnsupportedCommand = errors.New("unsupported command or arguments; usage: gh settings <export|validate|plan|apply>")
-
-// ExportOptions selects independently acquired opt-in resources.
-type ExportOptions struct {
-	PullRequestExemptions                                                                                                       bool
-	EnvironmentVariables                                                                                                        []settings.EnvironmentVariableSelection
-	ActionsPolicies                                                                                                             bool
-	PullRequestLimits                                                                                                           bool
-	CopilotReviewEffort                                                                                                         bool
-	CopilotInstructions                                                                                                         bool
-	CopilotMCP                                                                                                                  bool
-	Variables, AgentsVariables                                                                                                  []string
-	Rulesets, Environments, Actions, WorkflowPermissions, CacheRetention, CacheStorage, Retention, ForkApproval, Archive, Pages bool
-}
 
 type PlanOptions struct{ Prune settings.PruneScopes }
 type ApplyOptions struct {
@@ -34,7 +20,7 @@ type ApplyOptions struct {
 
 // Operations binds shared application operations to their real dependencies.
 type Operations struct {
-	Export   func(ExportOptions) error
+	Export   func() error
 	Validate func() (settings.Declaration, error)
 	Plan     func(PlanOptions) (app.PlanResult, error)
 	Apply    func(ApplyOptions) (app.ApplyResult, error)
@@ -51,125 +37,15 @@ func Run(args []string, stdout, stderr io.Writer, version string, operations Ope
 
 func executeCommand(args []string, stdout io.Writer, version string, operations Operations) error {
 	if len(args) > 0 && args[0] == "export" {
-		var options ExportOptions
-		for i := 1; i < len(args); i++ {
-			flag := args[i]
-			switch flag {
-			case "--copilot-custom-instructions":
-				if options.CopilotInstructions {
-					return errUnsupportedCommand
-				}
-				options.CopilotInstructions = true
-			case "--copilot-mcp":
-				if options.CopilotMCP {
-					return errUnsupportedCommand
-				}
-				options.CopilotMCP = true
-			case "--pull-request-limit-exemptions":
-				if options.PullRequestExemptions {
-					return errUnsupportedCommand
-				}
-				options.PullRequestExemptions = true
-			case "--pull-request-limits":
-				if options.PullRequestLimits {
-					return errUnsupportedCommand
-				}
-				options.PullRequestLimits = true
-			case "--copilot-review-effort":
-				if options.CopilotReviewEffort {
-					return errUnsupportedCommand
-				}
-				options.CopilotReviewEffort = true
-			case "--environment-variable":
-				if i+2 >= len(args) {
-					return errUnsupportedCommand
-				}
-				options.EnvironmentVariables = append(options.EnvironmentVariables, settings.EnvironmentVariableSelection{Environment: args[i+1], Name: args[i+2]})
-				var err error
-				options.EnvironmentVariables, err = settings.CanonicalEnvironmentVariableSelections(options.EnvironmentVariables)
-				if err != nil {
-					return err
-				}
-				i += 2
-			case "--variable", "--agent-variable":
-				if i+1 >= len(args) {
-					return errUnsupportedCommand
-				}
-				i++
-				name, err := settings.VariableName(args[i])
-				if err != nil {
-					return err
-				}
-				selection := &options.Variables
-				if flag == "--agent-variable" {
-					selection = &options.AgentsVariables
-				}
-				if slices.Contains(*selection, name) {
-					return fmt.Errorf("duplicate repository variable name %q", name)
-				}
-				*selection = append(*selection, name)
-			case "--security":
-				return fmt.Errorf("--security is removed; export now observes supported Security families automatically")
-			case "--fork-approval":
-				if options.ForkApproval {
-					return errUnsupportedCommand
-				}
-				options.ForkApproval = true
-			case "--pages":
-				if options.Pages {
-					return errUnsupportedCommand
-				}
-				options.Pages = true
-			case "--archive":
-				if options.Archive {
-					return errUnsupportedCommand
-				}
-				options.Archive = true
-			case "--cache-retention":
-				if options.CacheRetention {
-					return errUnsupportedCommand
-				}
-				options.CacheRetention = true
-			case "--cache-storage":
-				if options.CacheStorage {
-					return errUnsupportedCommand
-				}
-				options.CacheStorage = true
-			case "--retention":
-				if options.Retention {
-					return errUnsupportedCommand
-				}
-				options.Retention = true
-			case "--environments":
-				if options.Environments {
-					return errUnsupportedCommand
-				}
-				options.Environments = true
-			case "--rulesets":
-				if options.Rulesets {
-					return errUnsupportedCommand
-				}
-				options.Rulesets = true
-			case "--actions-policies":
-				if options.ActionsPolicies {
-					return errUnsupportedCommand
-				}
-				options.ActionsPolicies = true
-			case "--actions":
-				if options.Actions {
-					return errUnsupportedCommand
-				}
-				options.Actions = true
-			case "--workflow-permissions":
-				if options.WorkflowPermissions {
-					return errUnsupportedCommand
-				}
-				options.WorkflowPermissions = true
+		if len(args) != 1 {
+			switch args[1] {
+			case "--security", "--rulesets", "--environments", "--actions", "--actions-policies", "--workflow-permissions", "--cache-retention", "--cache-storage", "--retention", "--fork-approval", "--archive", "--pages", "--copilot-custom-instructions", "--copilot-mcp", "--copilot-review-effort", "--pull-request-limits", "--pull-request-limit-exemptions", "--variable", "--agent-variable", "--environment-variable":
+				return fmt.Errorf("export selection options are removed; export now observes supported settings automatically")
 			default:
 				return errUnsupportedCommand
 			}
 		}
-		return operations.Export(options)
+		return operations.Export()
 	}
 	var applyOptions ApplyOptions
 	var planOptions PlanOptions
@@ -211,11 +87,8 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		if _, err := fmt.Fprintln(stdout, "Usage: gh settings export [--copilot-custom-instructions] [--copilot-mcp] [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-review-effort] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--cache-retention] [--cache-storage] [--retention] [--fork-approval]\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport the current repository's basic settings, topics, labels and readable Security settings as YAML to .github/settings.yml at the checkout root.\nRetain unavailable Security declarations in an existing valid file; report unread families with info on stderr. Refuse invalid or concurrently changed files. Other resource selection options remain explicit.\nUse --copilot-custom-instructions to export the stored Use custom instructions boolean; this does not enable or request Copilot review.\nUse --pull-request-limits to export all three persistent Pull request limits controls; administrator access is required. Temporary restrictions remain unmanaged.\nUse --pull-request-limit-exemptions to independently export the complete Exemption list; explicit lists replace membership and [] clears it. Administration write is required. Automatic exemption rules remain unmanaged.\nUse --copilot-mcp to export the stored MCP tools boolean; this does not configure servers, grant access or enable reviews.\nUse --copilot-review-effort to export the observable Default, Lite or Balanced review effort; Default does not prove an unavailable stored override is absent.\nUse --variable NAME to export only explicitly named non-sensitive repository Actions variables; repeat for each name. Values are plaintext; repository Variables read is required.\nUse --agent-variable NAME to export only explicitly named non-sensitive repository Agents variables; repeat for each name. Values are plaintext; repository Agent variables read is required.\nUse --environment-variable ENVIRONMENT NAME to export only explicitly named non-sensitive Environment variables; repeat for each pair. Values are plaintext; Environments read is required. This does not select Environment protection settings.\nUse --pages to include Pages configuration or the Branch none deletion declaration; Pages read is required.\nUse --archive to include the repository lifecycle state (requires repository metadata read).\nUse --rulesets to include supported repository branch/tag Rulesets; complete bypass visibility is required.\nUse --actions-policies to include complete repository Actions event/actor policies; Administration write is required.\nUse --actions to include repository Actions execution policy; Administration read is required.\nUse --workflow-permissions to include default workflow token permissions; Administration read is required.\nUse --cache-retention to include cache retention days; Metadata and Administration read are required.\nUse --cache-storage to include the cache size eviction limit; Actions read is required.\nUse --retention to include repository check/run/status/artifact/log retention; Administration read is required.\nUse --fork-approval for the public contributor approval policy; Administration read is required.\nValidate .github/settings.yml locally.\nPlan differences for declared repository settings. --prune labels,rulesets adds unlisted deletions only for explicitly present collections; [] deletes all in that scope. Scopes actions-variables, agents-variables, environment-variables and actions-policies are also supported. environments and all are not yet available. Label deletion removes Issue/PR assignments and can include automatically created Dependabot labels.\nApply declared repository settings directly. New label, Ruleset and Actions policy IDs are recorded in YAML unless --no-writeback or GITHUB_ACTIONS=true; no Git commit or push is made."); err != nil {
-			return fmt.Errorf("write help: %w", err)
-		}
-
-		if _, err := fmt.Fprintln(stdout, "Use --environments with export to include complete supported named Environment policies; Actions read is required. Environment names select whole objects for create-or-update, never numeric-ID writeback or unlisted deletion."); err != nil {
+		_, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport all supported readable settings to .github/settings.yml. Independent unavailable settings emit info and retain valid prior declarations; initial export omits them. Variables are plaintext. Secrets are never read. Refuse invalid or concurrently changed files.\nPlan is read-only; apply changes declared settings. --prune adds unlisted deletions for present collections. Supported scopes: labels, rulesets, actions-policies, actions-variables, agents-variables, environment-variables. all and environments remain unavailable.")
+		if err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
 		return nil

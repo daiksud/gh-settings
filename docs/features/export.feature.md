@@ -7,12 +7,12 @@ description: Specify the user-visible YAML export and its ordinary Go test mappi
 ## Feature: Export repository settings as YAML
 
 A repository maintainer can capture supported visible About/General controls,
-topics, labels and automatically readable Security settings without changing
+topics, labels and all supported readable setting families without changing
 GitHub settings. `export` saves `.github/settings.yml` at the checkout root and
-creates a missing `.github` directory. Success has no stdout; unavailable Security
+creates a missing `.github` directory. Success has no stdout; unavailable independent
 families emit bounded info and independent families continue. First export omits
 unavailable families; re-export retains their prior valid declarations. See the
-[automatic Security export contract](readable-security-export.feature.md).
+[automatic settings export contract](readable-settings-export.feature.md).
 
 Existing files are decoded and validated before observation. Invalid/unreadable
 files and nonregular/symlink destinations are rejected. Successful encoding uses
@@ -40,7 +40,7 @@ This feature assumes an owner-controlled checkout whose directory and link entri
 
 - Given `.github/settings.yml` is an existing regular file
 - When the maintainer successfully runs `gh settings export`
-- Then that file contains acquired values and retained unavailable Security intent
+- Then that file contains acquired values and retained unavailable independent intent
 
 #### Scenario: Report a failed write
 
@@ -148,9 +148,9 @@ These origin-support changes are supported and do not change settings YAML synta
 
 ### Rule: Report export failures
 
-#### Scenario: Settings cannot be retrieved
+#### Scenario: Core repository settings cannot be retrieved
 
-- Given GitHub rejects or cannot complete the settings read
+- Given GitHub rejects or cannot complete the core repository settings read
 - When the maintainer runs `gh settings export`
 - Then the command exits with a nonzero status
 - And standard error describes the failure
@@ -172,9 +172,9 @@ These origin-support changes are supported and do not change settings YAML synta
 - Then the command exits with a nonzero status
 - And no GitHub API request is made
 
-#### Scenario: The response cannot form a complete configuration
+#### Scenario: The core repository response cannot form complete settings
 
-- Given GitHub returns malformed data or omits a supported setting
+- Given GitHub returns malformed core repository data or omits a required core setting
 - When the maintainer runs `gh settings export`
 - Then the command exits with a nonzero status
 - And standard error describes the invalid response
@@ -196,7 +196,7 @@ These origin-support changes are supported and do not change settings YAML synta
 
 ### Test mapping
 
-These scenarios map to ordinary Go tests, [application export tests](../../internal/app/export_test.go), [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Application tests record target and destination resolution, the request for every supported Repository FieldID, complete typed observations, and the final save without Git or files. Missing required observations stop export before later reads or saving. Workspace tests retain guarded replacement and verify that a prepared saver remains bound to its resolved checkout root. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
+These scenarios map to ordinary Go tests, [application export tests](../../internal/app/export_test.go), [GitHub read adapter tests](../../internal/github/repository_test.go), [workspace repository tests](../../internal/workspace/repository_test.go), [workspace file tests](../../internal/workspace/config_file_test.go), [export process cases](../../tests/acceptance/scenarios_export.go), [file output cases](../../tests/acceptance/export_file_test.go), [existing-file and worktree cases](../../tests/acceptance/export_workflow_test.go), and the [export-then-validate process test](../../tests/acceptance/export_validate_test.go), without a separate BDD runner. Application tests record target and destination resolution, the request for every supported Repository FieldID, complete typed observations, and the final save without Git or files. Missing core repository observations stop export; independent unavailable families emit info and retain prior intent. Workspace tests retain guarded replacement and verify that a prepared saver remains bound to its resolved checkout root. Acceptance invokes the same already-built CLI against a local Unix-socket API fixture, rather than running the Go unit suite again:
 
 | Scenario | Go test | Process acceptance case |
 | --- | --- | --- |
@@ -230,21 +230,24 @@ Export changes the local configuration but only reads GitHub settings; [apply](.
 - Given repository settings and topic names can be read.
 - When export runs.
 - Then repository fields and sorted topic names are saved with the exact current version marker and UI paths.
-- And a failed topics read leaves an existing destination unchanged.
+- And a failed topics read emits info, retains prior topics and continues independent reads.
 
-Test mapping: [TestExportReadFailure/topics](../../internal/app/export_test.go) and [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).
+Test mapping: [TestReadableExportIndependentFailuresRetainIntent/Topics](../../internal/app/export_test.go) and [TestTopicsExportAndActionReport](../../tests/acceptance/topics_test.go).
 
 ### Rule: Read labels completely
 
-Current source reads every label page after repository settings and topics before saving. Export includes IDs and complete supported settings for each observed object; a failed or incomplete read preserves the destination. Listed objects, not remote collection membership, are owned. The [Labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures) owns these scenarios.
+Current source reads every label page after repository settings and topics before saving. Export includes IDs and complete supported settings for each observed object; a failed or incomplete read retains prior Labels with info while independent reads continue. Listed objects, not remote collection membership, are owned. The [Labels specification](labels.feature.md#rule-observe-complete-identity-and-report-honest-failures) owns these scenarios.
 
-### Rule: Actions execution policy export opt-in
+### Rule: Acquire supported setting families independently
 
-Current source keeps ordinary export unchanged and adds explicit `--actions`, composing with `--rulesets`. The [Actions policy specification](actions-execution-policy.feature.md#rule-export-only-complete-observable-policy) owns complete active/inactive reads, preserved destinations and test mappings.
-
-Ordinary export reads the non-opt-in repository fields, topics and labels. Each explicit selection adds only its independent resource: `--rulesets`, `--actions`, `--workflow-permissions`, `--retention`, `--fork-approval`, repeatable distinct `--security` families, `--archive`, `--pages` and `--environments`. Duplicate/unknown selections fail before export. Complete all requested observations and serialization before opening the destination; an inapplicable/denied/partial selection fails without plausible defaults or a successful partial save. Unchanged exact supported exports validate and plan with zero differences. Out-of-UI workflow permissions follow the [normalization specification](workflow-permissions.feature.md#feature-retain-provenance-for-out-of-ui-workflow-permissions), which retains warnings and does not treat a fallback match as raw equality. Complete merge/squash pairs and creation policies follow the same distinction under their [menu](../settings.md#commit-message-observation-normalization) and [creation-policy](../settings.md#creation-policy-observation-normalization) contracts. Complete Security status strings follow the [typed boolean normalization policy](../settings.md#secret-scanning-and-push-protection), including inconsistent projection errors without saving. Public-fork approval follows its [raw-aware normalization policy](../settings.md#fork-pr-workflow-policies). Complete Pages modes and legacy folders follow their [raw-source policy](../settings.md#pages-configuration), retaining fallback-equal write intent and preserving unowned source values. Actions execution follows its [visible/latent normalization policy](../settings.md#execution-policy-observation-normalization). Ruleset enforcement and [Required approvals](../settings.md#ruleset-required-approvals-observation-normalization) retain [ID-bound raw provenance](../settings.md#ruleset-enforcement-observation-normalization); export warnings follow name order, then enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order) and actor-ordered [bypass modes](../settings.md#ruleset-bypass-mode-observation-normalization) per object; fallback-equal selected intent remains actionable. Resource applicability can prevent combining otherwise independently parsed choices; private-only fork and sharing controls are excluded.
-
-The dedicated [Rulesets](rulesets.feature.md), [workflow permissions](workflow-permissions.feature.md), [retention](retention.feature.md), [security](security.feature.md), [fork workflow](fork-workflows.feature.md), [PR access](pull-request-access.feature.md) and [Issue policy](issue-creation-policy.feature.md) specifications own complete-read and payload details. Existing process coverage includes [Rulesets](../../tests/acceptance/rulesets_test.go), [workflow permissions](../../tests/acceptance/workflow_permissions_test.go), [retention](../../tests/acceptance/retention_test.go), [Secret scanning](../../tests/acceptance/security_test.go), [private reporting](../../tests/acceptance/private_reporting_test.go), [fork workflows](../../tests/acceptance/normalization_fork_approval_test.go) [PR access](../../tests/acceptance/pr_access_test.go) and [Issue policy](../../tests/acceptance/issue_creation_policy_test.go). These test mappings prove modeled current-source behavior; publication evidence remains separate from fixture verification.
+Ordinary export attempts every supported family without selectors. Complete
+observations replace prior intent. Unavailable or unsupported observations emit
+bounded info and retain prior declarations, while other reads continue. This
+includes complete object/variable inventories and independently read Actions
+siblings. See the [automatic readable-settings contract](readable-settings-export.feature.md).
+Existing explicit normalization policies still own raw/effective projections;
+retained intent is never described as verified remote state. Plan/apply remain
+strict and require complete observations for declared settings.
 
 ### Rule: Convert completely before replacing the destination
 
@@ -277,7 +280,7 @@ Test mapping: [reader completeness](../../internal/github/environment_deployment
 
 Given a complete active Selected pattern with an unsupported string type, export warns with its Environment, ID, name and raw/fallback values, and writes the literal `branch` UI choice alongside unchanged canonical companions. IDs and normalization evidence remain outside YAML. Warnings occur only after complete acquisition and before effective materialization.
 
-If distinct raw identities collide after projection, emit scoped warnings and fail without replacing the existing file. If a later type is missing/null or acquisition fails, emit no partial normalization warnings and preserve the file. Patterns under effective No restriction remain latent; only applicable mode diagnostics and effective mode are exported. None of these paths writes repository settings.
+If distinct raw identities collide after projection, emit scoped warnings and info, retaining the prior Environment declaration while other families continue. If a later type is missing/null or acquisition fails, emit info without partial normalization warnings and retain prior family intent. Patterns under effective No restriction remain latent; only applicable mode diagnostics and effective mode are exported. None of these paths writes repository settings.
 
 Test mapping: [owned export](../../internal/app/normalization_environment_ref_type_export_test.go) and [built executable](../../tests/acceptance/normalization_environment_ref_type_test.go). The [Environment ref-type policy](../settings.md#environment-ref-type-observation-normalization) owns reconciliation and raw verification.
 
@@ -285,7 +288,7 @@ Test mapping: [owned export](../../internal/app/normalization_environment_ref_ty
 
 - Complete acquired out-of-UI mode strings export `always` with exact Ruleset/actor warnings and unchanged canonical companions. No actor, identity, role or permission is synthesized.
 - Warnings require complete requested acquisition and preserve name/type/numeric-ID order. Missing/null modes, malformed identities and failed later reads preserve the destination without partial normalization warnings. A later UI conversion failure may retain valid acquisition warnings while still saving nothing.
-- Callback mutation cannot change the owned observation or saved policy. Ordinary export does not read Rulesets. Selected fallback equality remains actionable and actual removal requires strict raw confirmation.
+- Callback mutation cannot change the owned observation or saved policy. Ordinary export attempts Rulesets. Selected fallback equality remains actionable and actual removal requires strict raw confirmation.
 
 Test mapping: [export scope/order/ownership](../../internal/app/normalization_ruleset_bypass_export_test.go), [complete reader](../../internal/github/ruleset_bypass_read_test.go) and [executable export/plan/apply](../../tests/acceptance/normalization_ruleset_bypass_test.go).
 
@@ -293,19 +296,19 @@ Test mapping: [export scope/order/ownership](../../internal/app/normalization_ru
 
 A complete unique nonempty string list containing an unsupported method exports the full Merge, Squash, Rebase default with the exact raw list in an ID/name-bound warning. Original raw order is retained; canonical companion fields and absent PR rules remain intact. Callback mutations cannot change the exported policy or retained observation. Warnings follow name order, then enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), bypass actors.
 
-Missing/null/empty/duplicate/malformed lists or incomplete acquisition fail before save and emit no partial projection warnings. Ordinary export does not request Rulesets; pure readers never warn or write. [Export tests](../../internal/app/normalization_ruleset_merge_methods_export_test.go) and [executable commands](../../tests/acceptance/normalization_ruleset_merge_methods_test.go) cover scope, typed provenance, literal UI output and destination preservation. The [Allowed merge methods policy](../settings.md#ruleset-allowed-merge-methods-observation-normalization) owns reconciliation and strict confirmation.
+Missing/null/empty/duplicate/malformed lists or incomplete acquisition emit info and retain prior family intent without partial projection warnings. Ordinary export attempts Rulesets; pure readers never warn or write. [Export tests](../../internal/app/normalization_ruleset_merge_methods_export_test.go) and [executable commands](../../tests/acceptance/normalization_ruleset_merge_methods_test.go) cover scope, typed provenance, literal UI output and destination preservation. The [Allowed merge methods policy](../settings.md#ruleset-allowed-merge-methods-observation-normalization) owns reconciliation and strict confirmation.
 
 ## Rule: Export scanning Alerts with exact tool identity
 
 A complete out-of-UI Alerts string exports Errors and an exact raw-string warning scoped to Ruleset ID/name and tool name. Tool identity remains unchanged; names sort exactly, canonical thresholds and Security alerts remain intact. Absent rules and empty tool lists stay distinct. Missing/null/non-string values, duplicate or invalid tools and incomplete acquisition produce no plausible partial export or normalization evidence.
 
-The [export tests](../../internal/app/normalization_ruleset_scanning_alerts_export_test.go) verify the independently optional warning sink, canonical/unrequested silence, owned callbacks and failure-before-save behavior. The [executable sequence](../../tests/acceptance/normalization_ruleset_scanning_alerts_test.go) checks literal UI YAML, contextual warnings, write-required plans and reports, detailed/status-only Summary, independently authored mutations, rejected raw drift, actual tool/rule removal, canonical repetition and unlisted-ID privacy. These fixtures use local APIs and dummy credentials.
+The [export tests](../../internal/app/normalization_ruleset_scanning_alerts_export_test.go) verify the independently optional warning sink, canonical silence, owned callbacks and failure-before-save behavior. The [executable sequence](../../tests/acceptance/normalization_ruleset_scanning_alerts_test.go) checks literal UI YAML, contextual warnings, write-required plans and reports, detailed/status-only Summary, independently authored mutations, rejected raw drift, actual tool/rule removal, canonical repetition and unlisted-ID privacy. These fixtures use local APIs and dummy credentials.
 
 ## Rule: Export scanning Security alerts independently
 
 Complete unsupported Security alerts strings export High or higher with exact raw evidence and Ruleset/tool context. Alerts records and canonical companion values remain independent. Each threshold's warnings use exact tool-name order; Security alerts follow Alerts. Invalid identities, missing/null/non-string members, duplicates and incomplete reads preserve the destination without invented defaults.
 
-[Export use-case tests](../../internal/app/normalization_ruleset_scanning_security_alerts_export_test.go) verify the independent sink, owned values, canonical/unrequested silence and failure boundaries. [Executable tests](../../tests/acceptance/normalization_ruleset_scanning_security_alerts_test.go) verify literal UI export, normalized write-required plans/reports, detailed/status-only Summary, independent whole-policy payloads, rejected raw drift, canonical repetition, actual removal and simultaneous Alerts/Security alerts evidence. They use local APIs and dummy credentials and make no live settings changes.
+[Export use-case tests](../../internal/app/normalization_ruleset_scanning_security_alerts_export_test.go) verify the independent sink, owned values, canonical silence and failure boundaries. [Executable tests](../../tests/acceptance/normalization_ruleset_scanning_security_alerts_test.go) verify literal UI export, normalized write-required plans/reports, detailed/status-only Summary, independent whole-policy payloads, rejected raw drift, canonical repetition, actual removal and simultaneous Alerts/Security alerts evidence. They use local APIs and dummy credentials and make no live settings changes.
 
 ### Rule: Automatic Security export preserves unread prior intent
 
@@ -314,4 +317,4 @@ cover independent continuation, omission versus preservation, known false values
 last-family success, bounded diagnostics and invalid-existing-file rejection.
 [Snapshot tests](../../internal/workspace/export_snapshot_test.go) cover concurrent
 edits and a file appearing after first-export preparation. Plan/apply retain their
-strict observation failures; other resource opt-in contracts remain unchanged.
+strict observation failures; all supported families now use automatic export.

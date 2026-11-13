@@ -77,7 +77,7 @@ func TestLabelsPlanAndApplyAcceptance(t *testing.T) {
 					t.Error("unexpected mutation", r.Method)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -161,7 +161,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 					t.Errorf("path=%s", r.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -179,12 +179,10 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 				t.Fatal(err)
 			}
 			if fail {
-				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
+				if result.runErr != nil || !strings.Contains(result.stderr.String(), "info: export ") || !strings.Contains(result.stderr.String(), "HTTP 403") {
 					t.Fatalf("result=%+v", result)
 				}
-				if err := checkSettingsUnchanged(fixture.work, before); err != nil {
-					t.Fatal(err)
-				}
+				assertExportRetains(t, fixture, before, "repository", "labels")
 			} else {
 				if result.runErr != nil || hasNonInfoDiagnostic(result.stderr.String()) || result.stdout.Len() != 0 {
 					t.Fatalf("result=%+v", result)
@@ -213,10 +211,7 @@ func TestLabelsExportPaginationAndFailure(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			want := []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current"}
-			if fail {
-				want = want[:len(want)-4]
-			}
+			want := []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels?per_page=100&page=1", "GET /repos/owner/current/labels?per_page=100&page=2", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current"}
 			if !reflect.DeepEqual(paths, want) {
 				t.Fatalf("paths=%v", paths)
 			}
@@ -234,7 +229,7 @@ func TestLabelsActionReportAndCredentialFreeSummary(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `[{"id":9,"name":"old","color":"abcdef","description":null}]`)
-	}, true)
+	}, true, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

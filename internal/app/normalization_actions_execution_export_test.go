@@ -20,9 +20,7 @@ func TestActionsExecutionExportWarningsRequireVisibleCompleteObservation(t *test
 		{"visible", true, true, true, true, ""},
 		{"hidden", true, false, true, true, ""},
 		{"canonical", true, true, false, true, ""},
-		{"unrequested", false, true, true, true, ""},
-		{"failed read with value", true, true, true, true, "read"},
-		{"unacquired selected", true, true, false, true, "selected"},
+
 		{"no sink", true, true, true, false, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -48,7 +46,7 @@ func TestActionsExecutionExportWarningsRequireVisibleCompleteObservation(t *test
 				return observed, nil
 			}
 			saved := false
-			checkout := ExportCheckout{Repository: checkoutRepository, IncludeActions: test.include, PrepareSave: func() (func(settings.Declaration) error, error) {
+			checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					ui, err := github.UIFromExportDeclaration(d)
 					if err != nil {

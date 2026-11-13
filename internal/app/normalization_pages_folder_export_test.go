@@ -18,9 +18,7 @@ func TestPagesFolderExportWarningsRequireSelectedCompleteSource(t *testing.T) {
 		{"normalized legacy", true, true, false, ""},
 		{"canonical legacy", true, false, false, ""},
 		{"inactive workflow source", true, false, true, ""},
-		{"unrequested", false, true, false, ""},
-		{"failed acquisition", true, true, false, "read"},
-		{"unacquired", true, false, false, "unacquired"},
+
 		{"later conversion failure", true, true, false, "conversion"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -55,7 +53,7 @@ func TestPagesFolderExportWarningsRequireSelectedCompleteSource(t *testing.T) {
 			}
 			reader.Rulesets = func(repository.Repository) (settings.RulesetObservation, error) {
 				if test.failure != "conversion" {
-					t.Fatal("unrequested Rulesets")
+					return settings.NewRulesetObservation(nil, 0)
 				}
 				state := appRulesetState(t)
 				mode := "always"
@@ -65,7 +63,7 @@ func TestPagesFolderExportWarningsRequireSelectedCompleteSource(t *testing.T) {
 			}
 			saved := false
 			var warnings []settings.ObservationNormalization
-			err = Export(ExportCheckout{Repository: checkoutRepository, IncludePages: test.include, IncludeRulesets: test.failure == "conversion", NormalizationWarning: func(record settings.ObservationNormalization) { warnings = append(warnings, record) }, PrepareSave: func() (func(settings.Declaration) error, error) {
+			err = Export(ExportCheckout{Repository: checkoutRepository, NormalizationWarning: func(record settings.ObservationNormalization) { warnings = append(warnings, record) }, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					if _, err := github.UIFromExportDeclaration(d); err != nil {
 						return err

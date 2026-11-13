@@ -33,3 +33,12 @@ Do not manage site visibility or infer it from repository privacy. Observe the s
 Existing complete source declarations now create when absent. The reserved branch spelling intentionally changes its interpretation; accompanying folder intent is rejected. The v0.x public contract documents these effects without retaining an obsolete existing-site-only implementation.
 
 Bounded verification establishes configuration convergence, not DNS, certificate or deployment readiness. Fixtures establish client behavior only. This implementation authorizes no live Pages changes, grant changes, release, commit, push or merge. The [behavior specification](../features/pages.feature.md) owns test mappings and detailed failures.
+
+## Later default readable-settings decision
+
+On 2026-11-13 the user extended automatic export to every supported readable
+setting family. This supersedes export opt-in/selection clauses above; strict
+plan/apply and existing API-specific absence rules remain. See the
+[automatic export contract](../features/readable-settings-export.feature.md).
+Independent unavailable families emit bounded info, continue other reads and
+retain valid prior intent; no secret API or new unsupported setting is adopted.

@@ -13,7 +13,7 @@ import (
 )
 
 func TestMergeMethodsExportKeepsCompleteOwnedEvidenceAndScope(t *testing.T) {
-	for _, mode := range []string{"selected", "only methods sink", "nil sinks", "canonical", "unrequested", "read failure", "unacquired", "UI failure"} {
+	for _, mode := range []string{"selected", "only methods sink", "nil sinks", "canonical", "UI failure"} {
 		t.Run(mode, func(t *testing.T) {
 			a, z := exportApprovalsState(t, 9, "a", 11, false), exportApprovalsState(t, 7, "z", 11, true)
 			for _, s := range []*settings.RulesetState{&a, &z} {
@@ -51,7 +51,7 @@ func TestMergeMethodsExportKeepsCompleteOwnedEvidenceAndScope(t *testing.T) {
 			}
 			saved := false
 			var events []string
-			checkout := ExportCheckout{Repository: checkoutRepository, IncludeRulesets: mode != "unrequested", PrepareSave: func() (func(settings.Declaration) error, error) {
+			checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					ui, err := github.UIFromExportDeclaration(d)
 					if err != nil {

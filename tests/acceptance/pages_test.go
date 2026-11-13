@@ -123,7 +123,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 			t.Error("unrelated request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/pages", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,12 +148,6 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 	}
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
-	mu.Lock()
-	if pagesReads != 0 {
-		t.Fatal("ordinary export requested Pages")
-	}
-	mu.Unlock()
-	run("export", "--pages")
 	run("validate")
 	if got := run("plan"); !strings.Contains(got, "No differences") {
 		t.Fatal(got)
@@ -205,7 +199,7 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		t.Fatal(writes)
 	}
 	mu.Unlock()
-	run("export", "--pages")
+	run("export")
 	data, _ = os.ReadFile(path)
 	if !strings.Contains(string(data), "custom_domain: null") || !strings.Contains(run("plan"), "No differences") {
 		t.Fatal(string(data))
@@ -223,10 +217,13 @@ func TestPagesExistingSiteExportPlanApplyAndPrivateSummary(t *testing.T) {
 		before := len(writes)
 		mu.Unlock()
 		original, _ := os.ReadFile(path)
-		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--pages"}, false)
-		after, _ := os.ReadFile(path)
-		if err != nil || r.runErr == nil || r.stdout.Len() != 0 || string(after) != string(original) {
+		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
+		if err != nil || r.runErr != nil || r.stdout.Len() != 0 || !strings.Contains(r.stderr.String(), "info: export repository.settings.pages:") {
 			t.Fatal(failure, err, r.stderr.String())
+		}
+		assertExportRetains(t, fixture, string(original), "repository", "settings", "pages")
+		if err := os.WriteFile(path, original, 0600); err != nil {
+			t.Fatal(err)
 		}
 		r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"action", "plan", report, "status-only"}, false)
 		if err != nil || r.runErr == nil || strings.Contains(withoutExportInfo(r.stderr.String()), "CANARY") {

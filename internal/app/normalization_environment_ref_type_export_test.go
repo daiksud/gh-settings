@@ -1,8 +1,6 @@
 package app
 
 import (
-	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -24,57 +22,6 @@ func exportEnvironmentRefTypeState(t *testing.T, id int64, name string, patterns
 	}
 	state.Policy.DeploymentBranchPatterns = &effective
 	return state
-}
-
-func TestEnvironmentRefTypeExportCollisionAndAcquisitionFailureNeverSave(t *testing.T) {
-	future := settings.ObservationNormalization{Path: settings.EnvironmentRefTypePath, RawValue: "future", Fallback: "branch"}
-	a := exportEnvironmentRefTypeState(t, 1, "a", []settings.EnvironmentPatternState{{ID: 3, Pattern: settings.EnvironmentPattern{Type: "branch", Name: "main"}, RefTypeNormalization: future}})
-	collision := exportEnvironmentRefTypeState(t, 2, "b", []settings.EnvironmentPatternState{{ID: 9, Pattern: settings.EnvironmentPattern{Type: "branch", Name: "main"}, RefTypeNormalization: future}})
-	collision.Patterns = append(collision.Patterns, settings.EnvironmentPatternState{ID: 10, Pattern: settings.EnvironmentPattern{Type: "branch", Name: "main"}})
-	collision.Policy.DeploymentBranchPatterns = nil
-	z := exportEnvironmentRefTypeState(t, 4, "Z", []settings.EnvironmentPatternState{{ID: 6, Pattern: settings.EnvironmentPattern{Type: "branch", Name: "main"}, RefTypeNormalization: future}})
-	observed, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{z, collision, a})
-	if err != nil {
-		t.Fatal(err)
-	}
-	cause := errors.New("incomplete environment acquisition")
-	for _, mode := range []string{"collision", "read", "unacquired"} {
-		for _, sink := range []bool{true, false} {
-			reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
-			reader.Environments = func(repository.Repository, []string) (settings.EnvironmentObservation, error) {
-				if mode == "read" {
-					return observed, cause
-				}
-				if mode == "unacquired" {
-					return settings.EnvironmentObservation{}, nil
-				}
-				return observed, nil
-			}
-			saved := false
-			var got, want []string
-			checkout := ExportCheckout{Repository: checkoutRepository, IncludeEnvironments: true, PrepareSave: func() (func(settings.Declaration) error, error) {
-				return func(settings.Declaration) error { saved = true; return nil }, nil
-			}}
-			if sink {
-				checkout.EnvironmentRefTypeNormalizationWarning = func(name string, pattern settings.EnvironmentPatternState) {
-					if pattern.RefTypeNormalization != future || pattern.Pattern.Type != "branch" {
-						t.Fatal("raw normalization evidence changed", pattern)
-					}
-					got = append(got, fmt.Sprintf("%s/%d/%s", name, pattern.ID, pattern.Pattern.Name))
-				}
-				if mode == "collision" {
-					want = []string{"a/3/main", "b/9/main", "Z/6/main"}
-				}
-			}
-			err := Export(checkout, reader)
-			if err == nil || saved || !reflect.DeepEqual(got, want) {
-				t.Fatal("failed materialization/acquisition escaped as export", mode, sink, saved, got, want, err)
-			}
-			if mode == "read" && !errors.Is(err, cause) {
-				t.Fatal("read failure cause lost", err)
-			}
-		}
-	}
 }
 
 func TestEnvironmentRefTypeExportWarningsAndEffectivePolicy(t *testing.T) {
@@ -108,7 +55,7 @@ func TestEnvironmentRefTypeExportWarningsAndEffectivePolicy(t *testing.T) {
 			}
 		}
 		saved := false
-		checkout := ExportCheckout{Repository: checkoutRepository, IncludeEnvironments: true, PrepareSave: func() (func(settings.Declaration) error, error) {
+		checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 			return func(d settings.Declaration) error {
 				if !reflect.DeepEqual(got, want) {
 					t.Fatal("save preceded scoped warnings", got, want)

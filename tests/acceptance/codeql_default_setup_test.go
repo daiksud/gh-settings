@@ -73,7 +73,7 @@ func TestCodeQLDefaultSetupExportPlanApply(t *testing.T) {
 		}
 		t.Error("unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false, "/code-scanning/default-setup")
+	}, false, "/code-scanning/default-setup", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

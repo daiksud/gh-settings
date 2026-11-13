@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/daiksud/gh-settings/internal/settings"
-	"reflect"
+
 	"testing"
 )
 
@@ -129,66 +129,6 @@ func TestRepositoryVariablesApplyProgress(t *testing.T) {
 		if err != nil || result.Outcome != ApplyUnmanaged {
 			t.Fatal(result, err)
 		}
-	}
-}
-
-func TestRepositoryVariablesExportSelection(t *testing.T) {
-	for _, mode := range []string{"ordinary", "selected", "missing", "denied", "invalid", "observed-empty"} {
-		t.Run(mode, func(t *testing.T) {
-			reader := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
-			var reads []string
-			reader.Variable = func(repo repository.Repository, name string) (settings.VariableObservation, error) {
-				reads = append(reads, name)
-				if mode == "missing" {
-					return settings.NewAbsentVariableObservation(), nil
-				}
-				if mode == "denied" {
-					return settings.VariableObservation{}, errors.New("denied")
-				}
-				value := map[string]string{"DISPLAY_NAME": "日本語-v2", "SECOND": "present"}[name]
-				if mode == "observed-empty" {
-					value = ""
-				}
-				return settings.NewVariableObservation(settings.RepositoryVariable{Name: name, Value: value})
-			}
-			names := []string{"display_name", "SECOND"}
-			if mode == "ordinary" {
-				names = nil
-			}
-			if mode == "invalid" {
-				names = []string{"a", "A"}
-			}
-			resolved, saved := 0, false
-			err := Export(ExportCheckout{Variables: names, Repository: func() (repository.Repository, error) {
-				resolved++
-				return repository.Repository{Owner: "owner", Name: "current"}, nil
-			}, PrepareSave: func() (func(settings.Declaration) error, error) {
-				return func(d settings.Declaration) error {
-					saved = true
-					if mode == "ordinary" {
-						if d.Variables != nil {
-							t.Fatal("ordinary export included variables")
-						}
-						return nil
-					}
-					values := d.Variables.Values()
-					if len(values) != 2 || values[0].Name != "DISPLAY_NAME" || values[0].Value != "日本語-v2" || values[1].Name != "SECOND" || values[1].Value != "present" {
-						t.Fatal(values)
-					}
-					return nil
-				}, nil
-			}}, reader)
-			if mode == "selected" && !reflect.DeepEqual(reads, []string{"DISPLAY_NAME", "SECOND"}) {
-				t.Fatal("unexpected reads", reads)
-			}
-			fail := mode == "missing" || mode == "denied" || mode == "invalid" || mode == "observed-empty"
-			if (err != nil) != fail || saved == fail {
-				t.Fatal(mode, err, saved)
-			}
-			if mode == "ordinary" && len(reads) != 0 || mode == "invalid" && (resolved != 0 || len(reads) != 0) {
-				t.Fatal("unselected/invalid remote access", reads, resolved)
-			}
-		})
 	}
 }
 

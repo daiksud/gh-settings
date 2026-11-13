@@ -105,7 +105,7 @@ func rulesetDeploymentsExportPlanApplyRetainsAllProtections(t *testing.T, target
 		payload["id"], payload["source"], payload["source_type"] = float64(26024001), "owner/current", "Repository"
 		state = payload
 		json.NewEncoder(w).Encode(state)
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/26024001", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func rulesetDeploymentsExportPlanApplyRetainsAllProtections(t *testing.T, target
 		}
 		return out.stdout.String()
 	}
-	run("export", "--rulesets")
+	run("export")
 	run("validate")
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	exported, err := os.ReadFile(path)

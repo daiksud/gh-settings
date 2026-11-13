@@ -108,7 +108,7 @@ func TestDependabotExportPlanApplyAndVerifiedDisable(t *testing.T) {
 		}
 		t.Error("unexpected endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false, "/vulnerability-alerts", "/automated-security-fixes")
+	}, false, "/vulnerability-alerts", "/automated-security-fixes", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,12 +6,14 @@ description: Declare the stored MCP tools toggle without configuring servers or 
 
 ## Feature: Manage Allow Copilot to use MCP tools when reviewing pull requests
 
+Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
+
 ### Rule: Select one stored boolean independently
 
 - `repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests` is an optional boolean. Omission and empty page mappings leave it unmanaged; true and false are explicit intent. Null and non-booleans fail validation before target or API work.
 - One declared toggle counts as one managed scalar, including when unchanged. A complete typed acquisition is required; unread, missing or malformed state must not become false.
-- Custom instructions and review effort remain independently selectable. `export --copilot-mcp` selects only the MCP boolean, including false, and composes with other Copilot and export options. Duplicate flags fail before target, API or file work.
-- Without an explicit Copilot selection, ordinary export and `--actions` make no code-review settings request. Failed selected acquisition preserves the existing file.
+- Custom instructions, review effort and MCP remain independent declared controls; ordinary export attempts all of them, including false. Duplicate flags fail before target, API or file work.
+- Ordinary export attempts all supported code-review controls independently. Failed acquisition emits info and retains prior declarations.
 
 ### Rule: Apply narrowly and verify preservation
 
@@ -40,7 +42,7 @@ The official [configuration guide](https://docs.github.com/en/copilot/how-tos/co
 | Strict boolean YAML, omissions, independent selection and round trip | [Codec tests](../../internal/workspace/ui_copilot_mcp_test.go) |
 | Complete acquisition, fresh preflight, MCP-only payload and independent preservation verification | [Transport tests](../../internal/github/copilot_mcp_test.go) |
 | Selected plan/export, direct apply progress and omitted-resource isolation | [Application tests](../../internal/app/copilot_mcp_test.go) |
-| Composable export flag, duplicate rejection and help | [CLI tests](../../internal/cli/copilot_mcp_test.go) |
+| Automatic export, retired-selector rejection and help | [CLI tests](../../internal/cli/export_test.go) |
 | Export false while retaining existing family projections | [Projection tests](../../internal/github/ui_copilot_mcp_export_test.go) |
 | Typed boolean reports, fixed failure path and status-only privacy | [Action tests](../../internal/actions/copilot_mcp_test.go) |
 | Built executable plan/apply/export and file preservation | [Process acceptance](../../tests/acceptance/copilot_mcp_test.go) |

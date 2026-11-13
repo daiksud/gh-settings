@@ -9,8 +9,7 @@ description: Observe independent Security families without inventing values or e
 Ordinary `export` attempts all seven supported Security families independently:
 Secret Protection, Dependabot, CodeQL configuration, CodeQL default setup, AI Scan,
 private vulnerability reporting and immutable releases. Product-wide Code Security
-and Advanced Security switches remain excluded. Other resource selection options
-retain their existing scope in this change.
+and Advanced Security switches remain excluded. All other supported families now follow the [automatic settings contract](readable-settings-export.feature.md).
 
 `--security FAMILY` is removed and reports automatic observation guidance before
 remote work. It is not retained as a no-op alias. This is an incompatible export

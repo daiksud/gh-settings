@@ -2,7 +2,7 @@
 
 ## Environment export
 
-`gh settings export --environments` includes all supported named Environment policies, never variables, and composes with other export options. It requires complete Environment/custom-protection reads and preserves the existing output-file safety contract. Ordinary export does not read Environments.
+Ordinary `export` observes all supported named Environment policies and independently inventories their variables. Unavailable policy or variable observations emit info and retain prior intent; one Environment variable failure does not stop another.
 
 `validate`, `plan` and `apply` accept the [Environment configuration contract](settings.md#environments); policy-selected names select ordinary create-or-update, not numeric IDs; [variable-only entries](#environment-variable-commands) do not upsert policy. No Environment writeback occurs, regardless of `--no-writeback` or GitHub Actions mode. Unlisted objects remain untouched. Name-only entries send an empty upsert body. Omitted built-in values remain API-controlled; the client promises neither preservation nor reset. Inspect plan before apply.
 
@@ -13,7 +13,7 @@ Environment deployment-mode observations follow the [raw-pair contract](settings
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.
 
 ```text
-gh settings export [--pull-request-limits] [--pull-request-limit-exemptions] [--copilot-mcp] [--copilot-review-effort] [--copilot-custom-instructions] [--variable NAME]... [--agent-variable NAME]... [--environment-variable ENVIRONMENT NAME]... [--environments] [--pages] [--archive] [--rulesets] [--actions-policies] [--actions] [--workflow-permissions] [--retention] [--cache-retention] [--cache-storage] [--fork-approval]
+gh settings export
 gh settings validate
 gh settings plan
 gh settings apply [--no-writeback]
@@ -21,7 +21,7 @@ gh settings apply [--no-writeback]
 
 | Command | Contract |
 | --- | --- |
-| `export` | Read ordinary and explicitly selected settings and save `.github/settings.yml`. Existing configuration is not required. |
+| `export` | Read all supported readable settings and save `.github/settings.yml`. Existing configuration is not required. |
 | `validate` | Check the configuration locally against the supported schema. |
 | `plan` | Validate, then read managed resources and show comparisons/selected-object operations. |
 | `apply` | Validate, then execute the declared families in order with their existing reconciliation/preflight rules. |
@@ -58,13 +58,7 @@ Plan shows creates and ID-bound updates, including default-derived values; `--pr
 
 ## Actions event policy commands
 
-`export --actions-policies` independently selects the complete
-[Actions event/actor policy collection](settings.md#actions-event-policies), including
-IDs and explicit workflow include/exclude selections, sorted by policy name,
-event name, actor identity and pattern. It composes with other export options;
-duplicates fail before repository/API/file work. Ordinary export and `--actions`
-do not read it. All pages/details must be complete and supported before saving;
-unsupported policies or failed reads preserve the existing destination.
+Ordinary `export` observes the complete [Actions event/actor policy collection](settings.md#actions-event-policies), including IDs and explicit workflow include/exclude selections, in stable order. Every page/detail must succeed; otherwise info reports the family and its valid existing declaration is retained.
 
 `validate` checks the complete listed objects locally. Without prune, omission
 and `[]` make no policy requests. `--prune actions-policies` adds unlisted
@@ -91,28 +85,25 @@ selected published package or live active-policy enforcement.
 
 ## Copilot custom instructions commands
 
-Current source accepts the [Use custom instructions boolean](settings.md#copilot-code-review-custom-instructions). `export --copilot-custom-instructions` explicitly selects this setting and composes with other options; duplicate flags fail before target/API/file work. Without an explicit Copilot selection, ordinary export and `--actions` acquire no Copilot code-review settings. A complete true/false read is required before saving.
+Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
 
 Plan shows the native boolean comparison. Apply reads fresh state, skips a match and verifies narrow PATCH updates. The flag stores configuration without enabling or requesting reviews and does not read or edit instruction files. API permission and review-entitlement boundaries remain separate; this option does not expand either.
 
 ## Copilot MCP tools commands
 
-`export --copilot-mcp` selects only the [MCP tools boolean](settings.md#copilot-code-review-mcp-tools), including false. It composes with the other Copilot flags and export options; duplicates fail before target/API/file work. Ordinary export and `--actions` do not select it. Complete selected acquisition is required before saving; a failure preserves the existing file.
+Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
 
 Plan shows native booleans at `repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests`. Apply reads fresh complete settings, skips matches, PATCHes only `mcp_enabled` and independently verifies the requested boolean and unchanged sibling settings. Failures retain honest partial or unknown-effect reporting. This control does not configure MCP servers or secrets, grant access, request reviews or establish MCP execution.
 
 ## Copilot review effort commands
 
-`export --copilot-review-effort` selects only the [Review effort level](settings.md#copilot-code-review-effort-level). It composes with `--copilot-custom-instructions`, `--copilot-mcp` and other export options; duplicate flags fail before target/API/file work. Complete selected acquisition is required before saving, and a failure preserves the existing file.
+Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
 
 Plan and detailed Action reports show `default`, `lite` or `balanced` at `repository.settings.copilot.code_review.review_effort_level`. Default is an observable configured-null state, not proof that GitHub erased an unavailable saved override. Apply reads fresh availability, skips observable matches, sends only the declared effort when needed and independently verifies readback. Unsupported or unavailable observations are errors, never successful fallback. This command neither enables nor requests Copilot reviews.
 
 ## Pull request limit exemptions
 
-`export --pull-request-limit-exemptions` independently reads the complete
-[Exemption list](settings.md#pull-request-limit-exemption-list), requiring
-Administration write. It does not read or enable the cap. The existing
-`--pull-request-limits` selection continues to export only its three controls.
+Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
 
 An explicitly declared `exemption_list` owns complete membership; `[]` clears it,
 while omission makes no list request. Apply removes obsolete users before adding
@@ -123,58 +114,65 @@ automatic exemption rule or collaborator grant is managed.
 
 ## Environment variable commands
 
-`export --environment-variable ENVIRONMENT NAME` selects one known non-sensitive [Environment variable](settings.md#environment-variables). Repeat the flag for additional Environment/name pairs; quote Environment names containing spaces. Names validate before target/API work, with duplicate pairs rejected using folded Environment identity and uppercase variable identity. Ordinary export and `--environments` make no variable requests. Every selected value must be acquired before the output file is saved.
+Ordinary `export` inventories all supported Actions, Agents and Environment variables through their complete paginated list APIs. Values are plaintext in the output file; secret APIs are never used. An incomplete or unsupported inventory emits info and retains its prior valid declaration. Environment names must be acquired completely, then variable inventories proceed independently for each parent. See [automatic export](#export-behavior).
 
 Variable-only declarations do not upsert an Environment or touch its policy, patterns or secrets. A missing Environment fails. Combined policy/variable declarations apply selected policy first, then variables in stable Environment/name order, before repository Actions and Agents variables. Earlier successful writes remain applied on later failure. Values are plaintext in detailed output; status-only Summary hides details. No bulk selection, deletion, rename or ID writeback is supported.
 
 ## Repository variables commands
 
-Current source accepts separate [Actions](settings.md#actions-repository-variables) and [Agents](settings.md#agents-repository-variables) repository variable declarations. `export --variable NAME` selects one known non-sensitive Actions name; `export --agent-variable NAME` selects one Agents name. Repeat either flag for other names. Names validate before target/API work, including case-insensitive duplicate rejection within each family. The same canonical name can be selected in both families independently. Ordinary export and `--actions` do not read variables. All selected individual GETs must succeed and find the requested names before saving; a failure preserves the existing output file. There is no bulk/all selection.
+Ordinary `export` inventories all supported Actions, Agents and Environment variables through their complete paginated list APIs. Values are plaintext in the output file; secret APIs are never used. An incomplete or unsupported inventory emits info and retains its prior valid declaration. Environment names must be acquired completely, then variable inventories proceed independently for each parent. See [automatic export](#export-behavior).
 
 Plan is read-only and identifies the selected family. Ordinary apply upserts only declared names, preserving unlisted variables and skipping equal values. Explicit [variable prune scopes](settings.md#variable-pruning) add unlisted deletions for present lists. Actions variables are processed before Agents variables, with stable name order within each family. Earlier successful writes remain applied after a later failure. Values are plaintext and appear in configuration, detailed plan/report and Summary; never use these features for secrets. Actions variables require the repository **Variables** read/write permission; Agents variables require the separate **Agent variables** read/write permission. Neither grants access to the other family.
 
 ## Export behavior
 
-`export --cache-retention` and `export --cache-storage` independently select [cache limits](settings.md#actions-cache-policy). They compose with other export flags; duplicates fail before API/file work. Ordinary export, `--actions` and `--retention` do not acquire them. Complete selected reads are required before saving. Cache storage needs Actions read; cache retention needs repository metadata and Administration read. Both updates need Administration write and their preflight/readback permissions.
+Run `gh settings export` without selection flags. It reads supported About/General,
+Topics, Labels, Rulesets, Actions execution/workflow/cache/retention/contributor
+approval settings, Actions event/actor policies, Environments and their variables,
+Actions/Agents repository variables, Copilot review controls, pull request limits
+and exemptions, Pages, archive state and supported Security controls.
+Product-wide security switches, private-only excluded controls, organization
+settings, Preview features and secrets remain outside the supported scope.
 
-`export --retention` for the [repository retention policy](settings.md#check-run-status-artifact-and-log-retention). It composes with the other selections; duplicates fail before reads or file changes. Both configured days and the read-only maximum must be acquired completely; only days are exported. Retention reads occur after workflow permissions and before security families. Other export selections compose with it.
+Complete readable values replace prior declarations, including false and valid
+empty strings/lists. An independent unavailable, incomplete or unsupported family
+emits `info: export` on stderr and acquisition continues. First export omits it;
+re-export retains its valid prior declaration. Retained values are unverified
+intent. Failed pagination never supplies an empty or partial inventory. Variable
+inventories include plaintext values, never secret values; protect the output.
+Existing variable schema restrictions still apply: an unrepresentable inventory
+is reported and retained, not rewritten into plausible values.
 
-Ordinary `export` automatically attempts all seven supported Security families:
-Secret Protection, Dependabot, CodeQL configuration/default setup, AI Scan,
-private vulnerability reporting and immutable releases. Complete readable values
-are exported, including false. An unavailable family emits `info: export` on
-stderr and does not stop independent Security reads. First export omits it;
-re-export retains its prior declaration if present. Retained values are unverified
-user intent. Errors and missing data never become false or empty collections.
-Info includes the family and bounded HTTP/network/observation reason, never raw
-response messages, bodies, URLs or credentials. See [automatic Security export](features/readable-security-export.feature.md).
+Environment names are listed completely independently of policy details. A
+failed variable inventory preserves that Environment's prior variables and does
+not stop other Environments. Complete absence can remove stale observed entries;
+unknown never implies absence. CodeQL state and details share one response:
+confirmed `not-configured` exports false and removes incompatible old details
+with info; unknown state retains intent. Existing API-specific 404 and explicit
+normalization policies remain unchanged. Plan/apply remain strict.
 
-`--security FAMILY` is removed, with automatic-observation guidance before remote
-work. Other resource opt-ins retain their existing scope. Existing invalid or
-unreadable settings files, origin/core export failures and file/diagnostic IO
-failures remain fatal. Valid prior files are snapshotted before reads; changed
-files are not overwritten. CodeQL state and details come from one response.
-Confirmed disabled setup exports false and removes prior details with info;
-unknown state retains prior intent. Configured setup exports true even if
-unavailable details must be retained. Plan/apply remain strict and do not
-skip declared Security reads. Existing endpoint-specific 404 and normalization
-decisions remain unchanged; no new credentials, grants, enabling or scans occur.
+The old export selection options are removed under the v0.x policy and report
+that supported settings are observed automatically. This is a breaking CLI and
+export-scope change. Export does not apply settings. In particular, the existing
+Pages-absence declaration can delete a later site when subsequently applied;
+complete exported collections also become explicit ownership input to prune.
+Inspect the YAML before plan/apply.
 
-`export --workflow-permissions` independently includes complete default workflow-token/PR-approval policy. It composes with `--actions` and `--rulesets` in any order; duplicate/unknown options fail before export. All reads precede saving.
+Target resolution and core repository observations remain required. Invalid or
+unreadable existing files, diagnostic IO and destination write failures remain
+fatal. Existing files are validated and snapshotted before API reads; guarded
+atomic replacement rejects changed/removed/symlink destinations and a file that
+appears during initial export. Initial file IO failure can leave a partial new
+file; this is not a concurrent-directory lock.
 
-`export --actions` additionally reads complete repository Actions execution policy; active selected policy includes its complete selection. It can be combined with `--rulesets` in either order. Extra resources are read after labels (Rulesets before Actions when both are requested), and all reads finish before saving. Inactive selected values are omitted, never guessed. See the [Actions policy contract](settings.md#actions-execution-policy) for required credentials and transition limits.
-
-`export --rulesets` additionally reads complete repository-owned branch and tag Rulesets. Ordinary export does not include Rulesets. Complete bypass visibility is required; unsupported/hidden data fails before saving. Complete out-of-UI enforcement, Required approvals, Allowed merge methods, scanning Alerts, scanning Security alerts, bypass modes emit contextual normalization warnings in exported name order: enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), then bypass actors ordered by type and numeric ID; other successful exact observations stay silent. See the [Rulesets contract](settings.md#rulesets) before adoption.
-
-Export uses the [repository and authentication rules](#repository-and-authentication) above. It reads repository settings, then topics, then every labels page, and serializes the complete supported configuration before opening the destination. Label reads use pages of 100 until a short page; a failed later page fails the operation before any file replacement. Unsupported fields and read-only metadata are excluded. Export preserves false and empty strings; the [settings reference](settings.md#exported-values) explains response normalization and invalid-response handling.
-
-Export creates `.github` when missing. Existing regular `.github/settings.yml` must be valid and is snapshotted before observation. Unavailable Security families retain their prior declarations; serialization uses the observed/retained values. Symlinks, including dangling links, and nonregular destinations are rejected. Guarded atomic replacement refuses concurrent file edits; a destination appearing during initial export is not overwritten. Initial-file IO failure can leave a partial new file. This is not a concurrent-directory lock.
-
-Success writes no stdout and exits 0. Unavailable Security families emit info on stderr; a core/other selected-resource failure is still fatal. Explicit observation-normalization warnings can appear on stderr; see the [workflow](settings.md#default-workflow-permissions), [commit-message](settings.md#commit-message-observation-normalization), [creation-policy](settings.md#creation-policy-observation-normalization), [public-fork](settings.md#fork-pr-workflow-policies) [Security](settings.md#secret-scanning-and-push-protection) and [Pages](settings.md#pages-configuration) field semantics. Export changes no GitHub settings. Failures exit 1 and report diagnostics on stderr, with no stdout. Read the saved file after success; do not redirect export stdout, because the shell can truncate the destination before the command runs:
+Success exits0 with no stdout. Read `.github/settings.yml` after success; do not
+redirect stdout to that path. Info gives only bounded family/HTTP/network reasons,
+never upstream messages, response bodies, URLs, variable values or credentials.
+See the [behavior specification](features/readable-settings-export.feature.md).
 
 ```sh
 gh settings export
-cat .github/settings.yml
+gh settings validate
 ```
 
 ## Validate behavior
@@ -298,28 +296,20 @@ Contributors can find the [behavior specifications](features/README.md), [testin
 
 ## Fork workflow export choices
 
-`gh settings export --fork-approval` adds the public contributor approval choice and requires Administration read. Ordinary export does not acquire it. It composes with the other supported export selections; duplicates fail before remote work. Private-only export flags are [unsupported](settings.md#excluded-private-actions-controls).
+Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
 
 Plan and the credential-free Action Summary use the UI paths, booleans and approval choices. Matching apply skips these PUTs. A differing private partial declaration must explicitly include the required run flag; enabling run also requires the three companion choices. Incomplete/denied/inapplicable observations fail visibly, and direct-apply partial effects remain possible. See the [configuration contract](settings.md#fork-pr-workflow-policies) for exact values, applicability and failure behavior.
 
-`export --pages` includes [Pages configuration](settings.md#pages-configuration) or explicit Branch none deletion intent for absence. It composes with other selections and rejects duplicates; ordinary export adds no Pages request. Other failed/incomplete reads preserve the destination. See [Pages commands](#pages-commands) for lifecycle behavior.
+Ordinary `export` includes [Pages configuration](settings.md#pages-configuration). Under the existing required-permissions precondition, target GET 404 exports `source: deploy_from_a_branch` and `branch: none`. Applying that declaration later intentionally deletes any site then present. Other unavailable observations emit info and retain existing intent.
 
 Actions workflow permissions, fork contributor approval, Security and Pages differences use their public YAML paths and UI choices on both sides. Observation-normalization warnings retain the raw value as provenance and do not establish raw-state equality.
 
 ## Pages commands
 
-`export --pages` acquires [Pages configuration](settings.md#pages-configuration). Target GET 404 exports explicit `source: deploy_from_a_branch` and `branch: none`, without folder/domain/HTTPS. Applying that export intentionally deletes any site present at apply time. Other read failures preserve the destination; ordinary export makes no Pages request.
+Ordinary `export` includes [Pages configuration](settings.md#pages-configuration). Under the existing required-permissions precondition, target GET 404 exports `source: deploy_from_a_branch` and `branch: none`. Applying that declaration later intentionally deletes any site then present. Other unavailable observations emit info and retain existing intent.
 
 Plan remains read-only and displays creation, deletion or declared configuration differences. Apply creates absent sites only with complete explicit Source intent, directly deletes with the exact Branch none selector, and updates present sites without erasing omitted controls. Contradictory deletion and incomplete creation intent fail before Pages writes. A confirmed creation followed by optional domain/HTTPS failure remains applied and is reported as partial progress; no automatic rollback or write retry occurs. Site visibility and deployment readiness are not managed.
 
 ## Persistent pull request limits commands
 
-`export --pull-request-limits` selects all three [persistent cap controls](settings.md#persistent-pull-request-limits),
-including latent values while disabled. The flag composes with other export
-options; duplicates fail before target/API/file work. Ordinary export makes no
-cap request. Administrator access and complete typed acquisition are required;
-failed export preserves the existing file. Plan remains read-only. Apply uses
-fresh preflight, narrow PATCH and bounded independent confirmation, with honest
-uncertain effects on readback failure. Temporary restrictions and automatic
-exemption rules are not selected. The explicit Exemption list has its separate
-selection described above.
+Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.

@@ -126,7 +126,7 @@ func TestSecretScanningExportPlanApplyAndSummary(t *testing.T) {
 			t.Error("unexpected endpoint", r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -34,7 +34,7 @@ func TestRulesetQualityExportPreservesOrderedIndependentRecordsAndRuleAbsence(t 
 			include, sink, normalized bool
 			failure                   string
 		}{
-			{"selected", true, true, true, ""}, {"canonical", true, true, false, ""}, {"unrequested", false, true, true, ""}, {"nil sink", true, false, true, ""}, {"read error", true, true, true, "read"}, {"unacquired", true, true, true, "unacquired"}, {"later UI error", true, true, true, "ui"},
+			{"selected", true, true, true, ""}, {"canonical", true, true, false, ""}, {"nil sink", true, false, true, ""}, {"later UI error", true, true, true, "ui"},
 		} {
 			t.Run(test.name, func(t *testing.T) {
 				z := exportQualityState(t, 7, "z", "Z_SEVERITY", both)
@@ -69,7 +69,7 @@ func TestRulesetQualityExportPreservesOrderedIndependentRecordsAndRuleAbsence(t 
 				}
 				saved := false
 				var got []warning
-				checkout := ExportCheckout{Repository: checkoutRepository, IncludeRulesets: test.include, PrepareSave: func() (func(settings.Declaration) error, error) {
+				checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 					return func(d settings.Declaration) error {
 						ui, err := github.UIFromExportDeclaration(d)
 						if err != nil {

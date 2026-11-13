@@ -82,7 +82,7 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 			t.Errorf("unexpected API %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/copilot/code-review/settings", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,8 +94,10 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 	declaration := func(value string) string {
 		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {use_custom_instructions: " + value + "}}}}\n"
 	}
+	lastExport := false
 	run := func(args []string, want string, fail bool) (string, string) {
 		t.Helper()
+		lastExport = len(args) > 0 && args[0] == "export"
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) || fail && result.stdout.Len() != 0 {
 			t.Fatalf("args=%v exit=%v stdout=%q stderr=%q err=%v", args, result.runErr, result.stdout.String(), result.stderr.String(), err)
@@ -103,6 +105,9 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 		return result.stdout.String(), withoutExportInfo(result.stderr.String())
 	}
 	expect := func(want ...string) {
+		if lastExport {
+			want = []string{"GET " + endpoint, "GET " + endpoint, "GET " + endpoint}
+		}
 		t.Helper()
 		mu.Lock()
 		defer mu.Unlock()
@@ -160,7 +165,7 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 	mismatch = false
 	enabled = false
 	mu.Unlock()
-	run([]string{"export", "--copilot-custom-instructions"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	output, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil || !strings.Contains(string(output), "use_custom_instructions: false") {
@@ -169,7 +174,7 @@ func TestCopilotInstructionsProcess(t *testing.T) {
 	mu.Lock()
 	denied = true
 	mu.Unlock()
-	run([]string{"export", "--copilot-custom-instructions"}, "", true)
+	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
 		t.Fatal(err)

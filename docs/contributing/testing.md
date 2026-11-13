@@ -70,7 +70,7 @@ The [Ruleset mapping](ui-ruleset-mapping.md) records the supported UI controls a
 
 Expected payloads and choices are literal fixtures, independent of production maps. Existing Ruleset owner tests retain denied/malformed/incomplete reads, pagination, inherited filtering and unsupported Push rejection, identity/target failures and partial-write coverage. Local conversion/transport tests do not establish live policy changes, effective enforcement, new YAML acceptance or normalization warnings.
 
-Current-source [archive lifecycle model](../../internal/settings/archive_test.go), [API](../../internal/github/archive_test.go), [application](../../internal/app/archive_test.go), and [built-process acceptance](../../tests/acceptance/archive_test.go) tests verify typed state, target identity, narrow updates, ordered transitions, partial failures, and export opt-in. They use local fixtures only; live lifecycle permissions and recovery are not established.
+Current-source [archive lifecycle model](../../internal/settings/archive_test.go), [API](../../internal/github/archive_test.go), [application](../../internal/app/archive_test.go), and [built-process acceptance](../../tests/acceptance/archive_test.go) tests verify typed state, target identity, narrow updates, ordered transitions, partial failures, and automatic export. They use local fixtures only; live lifecycle permissions and recovery are not established.
 
 ## Local process acceptance
 

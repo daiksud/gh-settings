@@ -54,16 +54,8 @@ func TestUIFromExportDeclarationRejectsIncompleteAndInvalidSources(t *testing.T)
 	for _, mutate := range []func(*settings.Declaration){
 		func(d *settings.Declaration) { d.Repository.Description = nil },
 		func(d *settings.Declaration) { d.Repository.Homepage = nil },
-		func(d *settings.Declaration) { d.Topics.Names = nil },
 		func(d *settings.Declaration) {
 			d.Repository.MergeCommitTitle, d.Repository.MergeCommitMessage = rulesetPtr("UNKNOWN"), rulesetPtr("BLANK")
-		},
-		func(d *settings.Declaration) {
-			labels, err := settings.NewLabelDeclarations([]settings.LabelDeclaration{{ID: rulesetPtr(int64(17)), Name: "bug", Color: rulesetPtr("abcdef")}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			d.Labels = &labels
 		},
 	} {
 		source := uiExportBase()
@@ -243,8 +235,8 @@ func TestUIFromExportDeclarationPages(t *testing.T) {
 	}
 	source.Pages.BuildType = rulesetPtr("workflow")
 	got, err = UIFromExportDeclaration(source)
-	if err == nil || !reflect.DeepEqual(got, uimodel.Repository{}) {
-		t.Fatalf("incomplete Pages returned partial export: %#v, %v", got, err)
+	if err != nil || got.Settings.Pages.BuildAndDeployment.Source == nil || got.Settings.Pages.EnforceHTTPS != nil || got.Settings.Pages.CustomDomain != nil {
+		t.Fatalf("partial Pages intent was lost or completed: %#v, %v", got, err)
 	}
 }
 
@@ -285,8 +277,8 @@ func TestUIFromExportDeclarationEnvironments(t *testing.T) {
 	}
 	source.Environments = &policies
 	got, err = UIFromExportDeclaration(source)
-	if err == nil || !reflect.DeepEqual(got, uimodel.Repository{}) {
-		t.Fatalf("incomplete Environment returned partial export: %#v, %v", got, err)
+	if err != nil || (*got.Settings.Environments)[1].DeploymentProtectionRules.WaitTimer != nil {
+		t.Fatalf("partial Environment intent was lost or completed: %#v, %v", got, err)
 	}
 }
 
@@ -310,5 +302,63 @@ func TestUIFromExportDeclarationSortsLabelsWithoutChangingSource(t *testing.T) {
 	}
 	if source.Labels.Values()[0].Name != "z" || source.Labels.Values()[1].Name != "a" {
 		t.Fatal("label export sorted the source in place")
+	}
+}
+
+func TestUIFromExportDeclarationRetainsPartialIntent(t *testing.T) {
+	for _, policy := range []settings.ActionsPolicyDeclaration{
+		{CanApprovePullRequestReviews: rulesetPtr(false)},
+		{DefaultWorkflowPermissions: rulesetPtr("read")},
+		{SHAPinningRequired: rulesetPtr(false)},
+		{SelectedActions: settings.SelectedActionsDeclaration{GitHubOwnedAllowed: rulesetPtr(false)}},
+		{Enabled: rulesetPtr(false)},
+		{Enabled: rulesetPtr(true), AllowedActions: rulesetPtr("selected")},
+	} {
+		source := uiExportBase()
+		source.Actions = policy
+		source.Pages = settings.PagesDeclaration{HTTPSEnforced: rulesetPtr(false)}
+		labels, err := settings.NewLabelDeclarations([]settings.LabelDeclaration{{Name: "keep", Color: rulesetPtr("abcdef")}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		source.Labels = &labels
+		envs, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "prod", WaitTimer: rulesetPtr(5)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		source.Environments = &envs
+		ui, err := UIFromExportDeclaration(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		retained, err := DeclarationFromUI(ui)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(retained.Actions, source.Actions) || !reflect.DeepEqual(retained.Pages, source.Pages) || !reflect.DeepEqual(retained.Labels, source.Labels) || !reflect.DeepEqual(retained.Environments, source.Environments) {
+			t.Fatalf("partial declarations changed: %#v", retained)
+		}
+	}
+}
+
+func TestCheckExportAcquisitionRejectsPartialObservations(t *testing.T) {
+	labels, err := settings.NewLabelDeclarations([]settings.LabelDeclaration{{Name: "keep", Color: rulesetPtr("abcdef")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	envs, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "prod", WaitTimer: rulesetPtr(5)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []settings.Declaration{
+		{Labels: &labels}, {Environments: &envs},
+		{Actions: settings.ActionsPolicyDeclaration{CanApprovePullRequestReviews: rulesetPtr(false)}},
+		{Actions: settings.ActionsPolicyDeclaration{SHAPinningRequired: rulesetPtr(false)}},
+		{Pages: settings.PagesDeclaration{HTTPSEnforced: rulesetPtr(false)}},
+	} {
+		source.Repository = uiExportBase().Repository
+		if err := CheckExportAcquisition(source); err == nil {
+			t.Fatal("partial observation accepted")
+		}
 	}
 }

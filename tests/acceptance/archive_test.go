@@ -30,7 +30,7 @@ func TestArchivedRepositoryEmptyLabelsDoNotBlockApply(t *testing.T) {
 		reads++
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"id":42,"full_name":"owner/current","archived":true}`)
-	}, false)
+	}, false, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 		}
 		t.Error("unexpected request", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false)
+	}, false, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,11 +161,6 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	path := filepath.Join(fixture.work, ".github/settings.yml")
 	run("export")
 	raw, err := os.ReadFile(path)
-	if err != nil || strings.Contains(string(raw), "archive_this_repository:") {
-		t.Fatal("ordinary export added lifecycle", string(raw), err)
-	}
-	run("export", "--archive")
-	raw, err = os.ReadFile(path)
 	if err != nil || !strings.Contains(string(raw), "archive_this_repository: false") {
 		t.Fatal("explicit archive export missing", string(raw), err)
 	}
@@ -262,13 +257,17 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	failed, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export", "--archive"}, false)
-	if err != nil || failed.runErr == nil {
+	failed, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"export"}, false)
+	if err != nil || failed.runErr != nil || !strings.Contains(failed.stderr.String(), "info: export repository.settings.general.danger_zone.archive_this_repository") {
 		t.Fatal("missing archive read succeeded", err)
 	}
 	after, err := os.ReadFile(path)
-	if err != nil || string(before) != string(after) {
-		t.Fatal("failed export modified target", err)
+	if err != nil {
+		t.Fatal("export failed", err)
+	}
+	assertExportRetains(t, fixture, string(before), "repository", "settings", "general", "danger_zone")
+	if len(after) == 0 {
+		t.Fatal("empty output")
 	}
 	mu.Lock()
 	if reads < 5 {

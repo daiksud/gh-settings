@@ -37,7 +37,7 @@ Names are locators and review labels; positive immutable IDs are expected identi
 | Matching effective access without a direct grant | Distinct from a matching direct grant; never invent or silently adopt one |
 | Incomplete role/provenance, hidden actor or 404 without an adopted endpoint-specific absence contract | Error, not absent, inherited or no-difference |
 
-Use explicit, independent future export selection for collaborators and teams; ordinary export must retain its existing access requirements. Opted-in export includes all and only the supported owned entries, with complete direct roles and pinned identity. Pending entries retain pending metadata in presentation and must not be exported as completed grants. The implementation must define an executable invitation-aware declaration before exporting pending invitations; until then a selected collection containing one fails export and preserves the old file. Never silently omit unsupported owned entries from an authoritative export.
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
 ## Role and source evidence
 

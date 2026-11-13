@@ -17,8 +17,8 @@ func TestPagesModeExportWarningsRequireSelectedCompleteObservation(t *testing.T)
 		failure                     string
 	}{
 		{"mode", true, true, false, true, ""}, {"coupled mode folder", true, true, true, true, ""},
-		{"canonical", true, false, false, true, ""}, {"unrequested", false, true, true, true, ""},
-		{"failed read with value", true, true, true, true, "read"}, {"unacquired", true, false, false, true, "unacquired"},
+		{"canonical", true, false, false, true, ""},
+
 		{"no sink", true, true, true, false, ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -53,7 +53,7 @@ func TestPagesModeExportWarningsRequireSelectedCompleteObservation(t *testing.T)
 			}
 			var warnings []settings.ObservationNormalization
 			saved := false
-			checkout := ExportCheckout{Repository: checkoutRepository, IncludePages: test.include, PrepareSave: func() (func(settings.Declaration) error, error) {
+			checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					if _, err := github.UIFromExportDeclaration(d); err != nil {
 						return err

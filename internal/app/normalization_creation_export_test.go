@@ -21,8 +21,6 @@ func TestExportCreationWarningsUseVisibleOriginalSidecars(t *testing.T) {
 		{"hidden", "", true, false, false, nil},
 		{"issues hidden", "", true, false, true, []string{"pr"}},
 		{"PRs hidden", "", true, true, false, []string{"issue"}},
-		{"failed repository acquisition", "repository", true, true, true, nil},
-		{"later failure", "topics", true, true, true, []string{"pr", "issue"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			pr := settings.PRAccessState{HasPullRequests: test.prs, PullRequestCreationPolicy: "ALL"}
@@ -46,7 +44,7 @@ func TestExportCreationWarningsUseVisibleOriginalSidecars(t *testing.T) {
 				reader.Topics = func(repository.Repository) ([]string, error) { return nil, cause }
 			}
 			reader.WorkflowPermissions = func(repository.Repository) (settings.WorkflowPermissionsState, error) {
-				t.Fatal("unrequested workflow read")
+				// Independent automatic probe is unavailable in this fixture.
 				return settings.WorkflowPermissionsState{}, nil
 			}
 			var warnings []settings.ObservationNormalization

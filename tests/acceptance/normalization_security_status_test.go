@@ -110,7 +110,7 @@ func TestSecurityStatusNormalizationAcrossExecutableCommands(t *testing.T) {
 					t.Error("unexpected endpoint", req.URL)
 					w.WriteHeader(400)
 				}
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -6,6 +6,8 @@ description: Select UI execution permission choices with complete reads and stag
 
 Status: implemented in current source, supported. The [configuration contract](../settings.md#actions-execution-policy) is authoritative for users; this specification records scenarios and test mappings.
 
+Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
+
 ## Rule: Validate only explicit native values
 
 - Given `repository.settings.actions.general.actions_permissions` or any individual control is omitted, it remains unmanaged; empty mappings manage nothing.
@@ -19,12 +21,12 @@ Public `actions_permissions.policy` accepts `allow_all_actions_and_reusable_work
 
 ## Rule: Export only complete observable policy
 
-- Ordinary export does not instantiate an Actions client or require additional Administration read.
-- `export --actions` reads a complete policy. It exports the chosen UI policy and SHA checkbox in `actions_permissions`, with selected companions only when execution is enabled and policy selected. Disabled/other choices omit hidden companions while complete acquired raw state remains internal; no inactive value is invented.
-- Options compose with `--rulesets` in either order. Duplicate/unknown flags fail before export.
-- Missing/null/wrongly typed fields, permission errors and incomplete selected reads fail before saving, including when Actions are disabled. Exact supported exported values roundtrip to zero differences; a visible normalized fallback still requires a write.
+- Ordinary export attempts Actions execution policy with its existing required permissions. Unavailable policy emits info and retains prior intent.
+- `export` reads a complete policy. It exports the chosen UI policy and SHA checkbox in `actions_permissions`, with selected companions only when execution is enabled and policy selected. Disabled/other choices omit hidden companions while complete acquired raw state remains internal; no inactive value is invented.
+- Export has no selection flags; retired selectors fail before API work.
+- Missing/null/wrongly typed fields, permission errors and incomplete selected reads emit info and retain prior execution intent, including when Actions are disabled. Exact supported exported values roundtrip to zero differences; a visible normalized fallback still requires a write.
 
-Test mapping: [TestActionsReadIsCompleteAndSelectedIsConditional](../../internal/github/actions_policy_test.go), [TestExportPolicyFlagsComposeAndRejectDuplicates](../../internal/cli/actions_policy_test.go), [TestActionsPolicyExportTransitionAndReconciliation](../../tests/acceptance/actions_policy_test.go).
+Test mapping: [TestActionsReadIsCompleteAndSelectedIsConditional](../../internal/github/actions_policy_test.go), [TestExportPolicyFlagsComposeAndRejectDuplicates](../../internal/cli/export_test.go), [TestActionsPolicyExportTransitionAndReconciliation](../../tests/acceptance/actions_policy_test.go).
 
 ## Rule: Plan inactive values honestly
 

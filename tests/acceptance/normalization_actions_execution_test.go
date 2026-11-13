@@ -96,7 +96,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/actions/permissions", "/actions/permissions/selected-actions", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	path := "repository.settings.actions.general.actions_permissions.policy"
 	fallback := "allow_all_actions_and_reusable_workflows"
 	warning := "Warning: " + path + ": observed \"FUTURE_POLICY\" is outside UI choices; using \"" + fallback + "\" (projection only)."
-	output, diagnostic, status := run("export", "--actions")
+	output, diagnostic, status := run("export")
 	if status != 0 || output != "" || diagnostic != warning+"\n" {
 		t.Fatal("export", status, output, diagnostic)
 	}
@@ -217,7 +217,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 		t.Fatal("disable preserve", status, output, diagnostic)
 	}
 	checkSource(input)
-	output, diagnostic, status = run("export", "--actions")
+	output, diagnostic, status = run("export")
 	data, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil || status != 0 || diagnostic != "" || !strings.Contains(string(data), "policy: disable_actions") || strings.Contains(string(data), "FUTURE_POLICY") {
 		t.Fatal("hidden export", status, string(data), diagnostic, err)
@@ -279,11 +279,14 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	base["allowed_actions"] = nil
 	beforeInvalid := len(writes)
 	mu.Unlock()
-	output, diagnostic, status = run("export", "--actions")
-	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
+	output, diagnostic, status = run("export")
+	if status != 0 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null acquisition", status, output, diagnostic)
 	}
-	checkSource(input)
+	assertExportRetains(t, fixture, input, "repository", "settings", "actions", "general", "actions_permissions")
+	if err := writeSettingsFile(fixture.work, input); err != nil {
+		t.Fatal(err)
+	}
 	output, diagnostic, status = run("apply")
 	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null preflight", status, output, diagnostic)

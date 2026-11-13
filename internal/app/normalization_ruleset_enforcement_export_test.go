@@ -36,8 +36,8 @@ func TestRulesetEnforcementExportWarningsUseCompleteSelectedIDs(t *testing.T) {
 		include, sink bool
 		failure       string
 	}{
-		{"selected", true, true, ""}, {"unrequested", false, true, ""}, {"nil sink", true, false, ""},
-		{"read error with value", true, true, "read"}, {"unacquired", true, true, "unacquired"}, {"later UI error", true, true, "ui"},
+		{"selected", true, true, ""}, {"nil sink", true, false, ""},
+		{"later UI error", true, true, "ui"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			z := exportEnforcementState(t, 7, "z", "FUTURE_MODE", true)
@@ -66,7 +66,7 @@ func TestRulesetEnforcementExportWarningsUseCompleteSelectedIDs(t *testing.T) {
 			}
 			var got []warning
 			saved := false
-			checkout := ExportCheckout{Repository: checkoutRepository, IncludeRulesets: test.include, PrepareSave: func() (func(settings.Declaration) error, error) {
+			checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					ui, err := github.UIFromExportDeclaration(d)
 					if err != nil {

@@ -111,7 +111,7 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 			t.Errorf("unexpected API %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/interaction-limits/pulls/creation-cap", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -257,7 +257,7 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 	readbackMode = "complete"
 	mu.Unlock()
 	// Explicit opt-in exports a complete disabled triple, including native false.
-	run([]string{"export", "--pull-request-limits"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	exported, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil {
@@ -274,16 +274,16 @@ func TestPullRequestLimitsProcess(t *testing.T) {
 		mu.Lock()
 		responseMode = mode
 		mu.Unlock()
-		run([]string{"export", "--pull-request-limits"}, "", true)
+		run([]string{"export"}, "", false)
 		expect("GET " + endpoint)
 		if err := checkSettingsUnchanged(fixture.work, string(exported)); err != nil {
 			t.Fatal(err)
 		}
 	}
 	run([]string{"export"}, "", false)
-	expect()
+	expect("GET " + endpoint)
 	ordinary, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || strings.Contains(string(ordinary), "pull_request_limits") {
+	if err != nil || !strings.Contains(string(ordinary), "pull_request_limits") {
 		t.Fatal(string(ordinary), err)
 	}
 }

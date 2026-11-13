@@ -57,7 +57,7 @@ func TestTopicsPlanApplyAcceptance(t *testing.T) {
 				} else {
 					fmt.Fprint(w, `{}`)
 				}
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -166,7 +166,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 					return
 				}
 				fmt.Fprint(w, `{"names":["z","a"]}`)
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -184,12 +184,10 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 				t.Fatal(err)
 			}
 			if fail {
-				if result.runErr == nil || !strings.Contains(withoutExportInfo(result.stderr.String()), "403") {
+				if result.runErr != nil || !strings.Contains(result.stderr.String(), "info: export ") || !strings.Contains(result.stderr.String(), "HTTP 403") {
 					t.Fatalf("result=%+v", result)
 				}
-				if err := checkSettingsUnchanged(fixture.work, before); err != nil {
-					t.Fatal(err)
-				}
+				assertExportRetains(t, fixture, before, "repository", "about", "topics")
 				return
 			}
 			if result.runErr != nil || result.stdout.Len() != 0 || hasNonInfoDiagnostic(result.stderr.String()) {
@@ -236,7 +234,7 @@ func TestTopicsExportAndActionReport(t *testing.T) {
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/topics"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/topics"}) {
 				t.Fatalf("requests=%v", paths)
 			}
 		})

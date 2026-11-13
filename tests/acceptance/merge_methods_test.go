@@ -104,7 +104,7 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 					t.Errorf("unexpected request=%s %s", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, test.command != "apply")
+			}, test.command != "apply", "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -171,7 +171,7 @@ func TestMergeMethodsExportAndActionPresentation(t *testing.T) {
 					t.Errorf("unexpected %s %s", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, true)
+			}, true, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -324,7 +324,7 @@ settings:
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
 				t.Fatalf("paths=%v", paths)
 			}
 		})

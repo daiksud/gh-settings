@@ -22,6 +22,7 @@ type RepositoryWriteEffectsFailure interface {
 
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
+	EnvironmentNames     func(repository.Repository) ([]string, error)
 	CodeQLForExport      func(repository.Repository) (settings.CodeQLDefaultSetupObservation, settings.CodeQLConfigurationObservation, error)
 	Variables            func(repository.Repository) (settings.VariableInventory, error)
 	AgentVariables       func(repository.Repository) (settings.VariableInventory, error)

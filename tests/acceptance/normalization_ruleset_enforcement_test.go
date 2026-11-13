@@ -116,7 +116,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/7", "/rulesets/9", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 	}
 	path := "repository.settings.rulesets.enforcement_status"
 	warning := `Warning: repository.settings.rulesets.enforcement_status: observed "FUTURE_ENFORCEMENT" is outside UI choices; using "disabled" (projection only). Ruleset 7 "basic".`
-	output, diagnostic, status := run("export", "--rulesets")
+	output, diagnostic, status := run("export")
 	if status != 0 || output != "" || diagnostic != warning+"\n" {
 		t.Fatal("export", status, output, diagnostic)
 	}
@@ -275,11 +275,14 @@ func TestRulesetEnforcementNormalizationAcrossExecutableCommands(t *testing.T) {
 	beforeInvalid := len(writes)
 	mu.Unlock()
 	input = intent("disabled", "")
-	output, diagnostic, status = run("export", "--rulesets")
-	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
+	output, diagnostic, status = run("export")
+	if status != 0 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null export", status, output, diagnostic)
 	}
-	checkSource(input)
+	assertExportRetains(t, fixture, input, "repository", "settings", "rulesets")
+	if err := writeSettingsFile(fixture.work, input); err != nil {
+		t.Fatal(err)
+	}
 	output, diagnostic, status = run("apply")
 	if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 		t.Fatal("null preflight", status, output, diagnostic)

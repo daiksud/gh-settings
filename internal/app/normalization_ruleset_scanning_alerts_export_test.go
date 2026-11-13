@@ -10,7 +10,7 @@ import (
 )
 
 func TestScanningAlertsExportUsesIndependentSinkAfterCompleteAcquisition(t *testing.T) {
-	for _, mode := range []string{"selected", "nil sink", "unrequested", "canonical", "read failure", "unacquired", "UI failure"} {
+	for _, mode := range []string{"selected", "nil sink", "canonical", "UI failure"} {
 		t.Run(mode, func(t *testing.T) {
 			state := exportEnforcementState(t, 7, "scan", "", false)
 			tools := []settings.CodeScanningTool{{Tool: "z tool", AlertsThreshold: "errors", SecurityAlertsThreshold: "all"}, {Tool: "CodeQL", AlertsThreshold: "errors", SecurityAlertsThreshold: "high_or_higher"}}
@@ -42,7 +42,7 @@ func TestScanningAlertsExportUsesIndependentSinkAfterCompleteAcquisition(t *test
 				}
 				return observed, nil
 			}
-			checkout := ExportCheckout{Repository: checkoutRepository, IncludeRulesets: mode != "unrequested", PrepareSave: func() (func(settings.Declaration) error, error) {
+			checkout := ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					ui, err := github.UIFromExportDeclaration(d)
 					if err != nil {

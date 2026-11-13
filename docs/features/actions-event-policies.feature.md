@@ -6,6 +6,8 @@ description: Manage listed event/actor policies and workflow targets by ID witho
 
 ## Contract
 
+Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
+
 The [configuration reference](../settings.md#actions-event-policies) owns the
 public schema, supported 36-event vocabulary, permissions and recovery semantics.
 The [command reference](../commands.md#actions-event-policy-commands) owns export
@@ -79,14 +81,12 @@ caller and published-package boundaries.
 
 ## Rule: Export independently and recover created identities
 
-- `export --actions-policies` selects the full collection, including IDs, sorted
+- `export` selects the full collection, including IDs, sorted
   by exact policy name with sorted events, actors and patterns. Absent restriction
   rules export explicitly as `enabled: false`. Export always emits an
-  explicit canonical `target_workflows`, including `[~ALL]`/`[]` for all. It composes with other export flags;
-  duplicate flags fail before target/API/file work. Ordinary export and
-  `--actions` do not select it.
+  explicit canonical `target_workflows`, including `[~ALL]`/`[]` for all. Ordinary export attempts it independently of other families.
 - All pages/details must be acquired and representable before saving. An
-  unsupported object or failed read preserves the existing export destination;
+  unsupported object or failed read emits info and retains the prior collection;
   unsupported protections are never silently erased.
 - Confirmed new IDs use the guarded original-byte snapshot recorder with
   collection identity `actions_policies` and `policy_name` selector. Existing

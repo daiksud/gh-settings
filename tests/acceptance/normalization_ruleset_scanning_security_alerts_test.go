@@ -134,7 +134,7 @@ func TestRulesetScanningSecurityAlertsNormalizationAcrossExecutableCommands(t *t
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/7", "/rulesets/9", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestRulesetScanningSecurityAlertsNormalizationAcrossExecutableCommands(t *t
 	warningA := `Warning: ` + path + `: observed "" is outside UI choices; using "high_or_higher" (projection only). Ruleset 7 "basic", tool="CodeQL".`
 	warningZ := `Warning: ` + path + `: observed "future" is outside UI choices; using "high_or_higher" (projection only). Ruleset 7 "basic", tool="z tool".`
 	warnings := warningA + "\n" + warningZ + "\n"
-	output, diagnostic, status := run("export", "--rulesets")
+	output, diagnostic, status := run("export")
 	if status != 0 || output != "" || diagnostic != warnings {
 		t.Fatal("export", status, output, diagnostic)
 	}
@@ -337,8 +337,18 @@ func TestRulesetScanningSecurityAlertsNormalizationAcrossExecutableCommands(t *t
 		beforeWrites := writes
 		mu.Unlock()
 		input = intent("equal")
-		for _, args := range [][]string{{"export", "--rulesets"}, {"apply"}} {
+		for _, args := range [][]string{{"export"}, {"apply"}} {
 			output, diagnostic, status = run(args...)
+			if args[0] == "export" {
+				if status != 0 || output != "" || strings.Contains(diagnostic, "Warning:") {
+					t.Fatal("unavailable export failed", status, diagnostic)
+				}
+				assertExportRetains(t, fixture, input, "repository", "settings", "rulesets")
+				if err := writeSettingsFile(fixture.work, input); err != nil {
+					t.Fatal(err)
+				}
+				continue
+			}
 			if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 				t.Fatal("malformed acquisition", args, status, output, diagnostic)
 			}

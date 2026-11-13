@@ -8,7 +8,7 @@ The [configuration reference](../settings.md#actions-cache-policy) owns YAML sem
 ## Declaration and acquisition
 
 - Cache retention and size are optional whole integers; their bounds are 1–365 days and 1–10000 GB. Public retention has an additional 90-day cap. Empty cache sections are unmanaged; zero, null, fractional and string values fail validation.
-- Each export flag reads only its selected resource, in addition to ordinary export. Duplicate flags fail before remote work. Every selected read and conversion must succeed before saving; denied, missing, malformed or incomplete responses preserve the destination.
+- Ordinary export attempts each supported control. Complete values are adopted independently; denied, missing, malformed or incomplete observations emit info and retain prior declarations without stopping other reads.
 - Plan reads only declared controls and is nonmutating. Numeric comparisons render numbers. Same-version Action reports and credential-free Summary retain the existing validated comparison boundary.
 
 ## Endpoint boundaries

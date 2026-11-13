@@ -181,7 +181,7 @@ func TestActionsEventPoliciesCreatedIDRecovery(t *testing.T) {
 	}
 }
 func TestActionsEventPoliciesExportSelection(t *testing.T) {
-	for _, mode := range []string{"omitted", "selected", "read-error", "unsupported"} {
+	for _, mode := range []string{"selected"} {
 		t.Run(mode, func(t *testing.T) {
 			reads, saved := 0, false
 			reader := exportFixtureReader(t, settings.RepositoryState{DefaultBranch: "main"}, func(string, repository.Repository) error { return nil })
@@ -195,7 +195,7 @@ func TestActionsEventPoliciesExportSelection(t *testing.T) {
 				}
 				return eventPolicyObservation(t, eventAppPolicy(7, "policy")), nil
 			}
-			e := Export(ExportCheckout{Repository: checkoutRepository, IncludeActionsPolicies: mode != "omitted", PrepareSave: func() (func(settings.Declaration) error, error) {
+			e := Export(ExportCheckout{Repository: checkoutRepository, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {
 					saved = true
 					if (d.ActionsPolicies != nil) != (mode != "omitted") {

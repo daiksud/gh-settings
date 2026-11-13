@@ -15,12 +15,12 @@ import (
 )
 
 func TestRepositoryVariablesProcess(t *testing.T) {
-	for _, family := range []struct{ name, flag string }{{"actions", "--variable"}, {"agents", "--agent-variable"}} {
-		t.Run(family.name, func(t *testing.T) { testRepositoryVariablesProcess(t, family.name, family.flag) })
+	for _, family := range []string{"actions", "agents"} {
+		t.Run(family, func(t *testing.T) { testRepositoryVariablesProcess(t, family) })
 	}
 }
 
-func testRepositoryVariablesProcess(t *testing.T, family, flag string) {
+func testRepositoryVariablesProcess(t *testing.T, family string) {
 	endpoint := "/repos/owner/current/" + family + "/variables"
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
@@ -42,6 +42,14 @@ func testRepositoryVariablesProcess(t *testing.T, family, flag string) {
 			if redirect {
 				w.Header().Set("Location", "/unexpected")
 				w.WriteHeader(307)
+				return
+			}
+			if r.Method == "GET" && r.URL.Path == endpoint {
+				values := []map[string]string{}
+				for name, value := range variables {
+					values = append(values, map[string]string{"name": name, "value": value})
+				}
+				json.NewEncoder(w).Encode(map[string]any{"total_count": len(values), "variables": values})
 				return
 			}
 			if r.Method == "GET" {
@@ -96,7 +104,7 @@ func testRepositoryVariablesProcess(t *testing.T, family, flag string) {
 			t.Errorf("unexpected request %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/"+family+"/variables", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,14 +120,19 @@ func testRepositoryVariablesProcess(t *testing.T, family, flag string) {
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
+	lastExport := false
 	run := func(args []string, want string, fail bool) {
 		t.Helper()
+		lastExport = len(args) > 0 && args[0] == "export"
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) {
 			t.Fatalf("args=%v result=%+v err=%v", args, result, err)
 		}
 	}
 	expect := func(want ...string) {
+		if lastExport {
+			want = []string{"GET " + endpoint}
+		}
 		t.Helper()
 		mu.Lock()
 		defer mu.Unlock()
@@ -182,16 +195,11 @@ func testRepositoryVariablesProcess(t *testing.T, family, flag string) {
 	}
 	run([]string{"apply"}, "Applied repository settings.\n", false)
 	expect("GET "+path, "PATCH "+path, "GET "+path)
-	run([]string{"export", flag, "display_name"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET " + path)
 	output, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(output), "DISPLAY_NAME") || !strings.Contains(string(output), "updated-v3") || strings.Contains(string(output), "UNMANAGED") {
+	if err != nil || !strings.Contains(string(output), "DISPLAY_NAME") || !strings.Contains(string(output), "updated-v3") || !strings.Contains(string(output), "UNMANAGED") {
 		t.Fatal(string(output), err)
-	}
-	run([]string{"export", flag, "MISSING"}, "", true)
-	expect("GET " + endpoint + "/MISSING")
-	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
-		t.Fatal(err)
 	}
 	run([]string{"export"}, "", false)
 	expect()

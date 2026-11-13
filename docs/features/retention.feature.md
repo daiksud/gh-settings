@@ -12,11 +12,11 @@ The repository policy applies to new checks (suites/runs/annotations), workflow 
 
 ## Declaration and complete observation
 
-`repository.settings.actions.general.check_workflow_run_status_artifact_and_log_retention` is an optional native integer in 1–400. Omission/empty mapping is unmanaged; zero, negative, null, float, string and other types fail locally. A lower current maximum narrows the valid desired range; read-only metadata cannot be declared or exported as intent. Ordinary export and existing opt-ins retain their requests; `--retention` composes independently and completes both integer reads before saving.
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
 A zero observation is unacquired, not default 90/400 or zero. Both fields must be present with exact keys and integer types; incomplete, denied, malformed and redirected responses fail. Complete configured days may exceed a newly lowered maximum; observation does not invent a correlation or clamp the value. Desired comparisons/preflight reject above-cap intent, including matching values. Export fails when the current value cannot form a valid declaration rather than promising a zero-plan round-trip. An allowed lower declaration can reconcile a known over-cap current value.
 
-Test mapping: [TestRetentionAcquisitionBoundsAndReadOnlyMaximum](../../internal/settings/retention_test.go), [Actions UI codec](../../internal/workspace/ui_actions_test.go), [TestRetentionReadsRequireBothIntegers](../../internal/github/retention_test.go), [TestRetentionExportOptInAndComposition](../../internal/cli/retention_test.go).
+Test mapping: [TestRetentionAcquisitionBoundsAndReadOnlyMaximum](../../internal/settings/retention_test.go), [Actions UI codec](../../internal/workspace/ui_actions_test.go), [TestRetentionReadsRequireBothIntegers](../../internal/github/retention_test.go), [TestRetentionExportOptInAndComposition](../../internal/cli/export_test.go).
 
 ## Read-only plan and direct apply
 

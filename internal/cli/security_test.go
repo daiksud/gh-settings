@@ -15,8 +15,8 @@ func TestSecuritySelectionRemovedBeforeExport(t *testing.T) {
 		}
 		called := false
 		var out, errout bytes.Buffer
-		status := cli.Run(args, &out, &errout, "dev", cli.Operations{Export: func(cli.ExportOptions) error { called = true; return nil }})
-		if status != 1 || called || !strings.Contains(errout.String(), "observes supported Security families automatically") {
+		status := cli.Run(args, &out, &errout, "dev", cli.Operations{Export: func() error { called = true; return nil }})
+		if status != 1 || called || !strings.Contains(errout.String(), "observes supported settings automatically") {
 			t.Fatal(args, status, called, errout.String())
 		}
 	}

@@ -86,7 +86,7 @@ func TestLabelsPruneExecutableLifecycle(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/labels/")
 	if err != nil {
 		t.Fatal(err)
 	}

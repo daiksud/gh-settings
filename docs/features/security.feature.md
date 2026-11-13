@@ -49,8 +49,7 @@ For plan/entitlement boundaries see [GitHub security features](https://docs.gith
 
 ### Dependabot state-reading decision
 
-The [scoped decision in ADR 0026](../adr/0026-explicit-security-observations.md#dependabot-state-reads) interprets GET 404 as disabled for both Dependabot endpoints under the required-permissions precondition. No authorization discriminator, successful unrelated endpoint, token inspection or GraphQL replacement is required. Retain 404 provenance and unavailable pause metadata; this is an endpoint-specific interpretation, not certification of actual grants or live behavior. Explicit 401/403 and all other unsuccessful statuses remain errors.
-The [Dependabot adapter](../../internal/github/dependabot.go) uses the existing security REST version/timeout and redirect rejection. Each family observation completely acquires alerts then updates with one GET per endpoint and returns no partial family on failure. Declared plan/apply and ordinary export request these reads. No credential-discovery requests are made.
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
 #### Response evidence and pause metadata
 
@@ -97,12 +96,7 @@ CodeQL default setup/configuration and AI Scan for pull requests are already imp
 
 ## Automatic readable export
 
-Ordinary export attempts all seven supported Security families. Each complete
-observation is converted independently; denied, unavailable, inapplicable,
-incomplete or unsupported observations emit bounded info and do not stop later
-Security reads. New files omit unavailable families; valid existing files retain
-their prior intent. Errors never become false. `--security FAMILY` is removed.
-Product-wide Code Security / Advanced Security controls remain excluded.
+Ordinary `export` attempts this supported family automatically under the [readable-settings contract](readable-settings-export.feature.md). Complete observations replace prior values; unavailable/incomplete/unsupported observations emit info and retain prior valid declarations. Plan/apply keep their strict declared-state and mutation contracts.
 
 The [automatic export specification](readable-security-export.feature.md) owns
 retention, CodeQL consistency, safe diagnostics and local-file guards. Existing
@@ -265,7 +259,7 @@ Owning checks: `internal/settings/ai_scan_pull_requests_test.go`, `internal/work
 
 - Optional `languages`, `query_suite` and `runner` (owned type/label pair) live under `repository.settings.advanced_security.code_security.codeql_analysis`. Omission preserves each control. Language sets are nonempty/unique and compare without order. All choices and runner-label requirements are strict.
 - Configuration requires complete personally owned public, already-configured default setup observations. Explicit disable plus configuration fails local validation. Declaring true does not auto-enable the prerequisite when configuring; configuration runs first and fails safely if not acquired. No advanced workflow files or runner capacity are created.
-- Ordinary export attempts all three controls as a complete family; disabled or incomplete state emits info and retains prior declarations if present. Enablement remains an independent observation, subject to coherent CodeQL export.
+- Ordinary export observes CodeQL state and details from one GET. Confirmed not-configured exports false and removes incompatible details with info; unknown state retains prior intent. Configured state exports true and readable details.
 - Apply fresh-reads, skips matching configuration, sends only declared members in one PATCH, and compares all three controls and the unowned raw threat model on readback, including omitted companions. Standard runner owns clearing the old label with null. Pending/unknown effects fail without retry/rollback; asynchronous validation/analysis and Actions consumption can occur, and scan completion is never claimed.
 - CLI and Action Summary report closed typed configuration values at UI paths, with bounded counts, duplicate/unknown/invalid report rejection and escaped values.
 

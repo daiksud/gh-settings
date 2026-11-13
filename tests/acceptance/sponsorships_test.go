@@ -80,7 +80,7 @@ func TestSponsorshipsExportPlanApplyAndFundingIsolation(t *testing.T) {
 		enabled = value
 		writes = append(writes, input)
 		fmt.Fprintf(w, `{"data":{"updateRepository":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasSponsorshipsEnabled":%t}}}}`, enabled)
-	}, false)
+	}, false, "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 				default:
 					fmt.Fprint(w, `{"data":{"updateRepository":{"repository":{"id":"opaque-id","nameWithOwner":"owner/current","hasSponsorshipsEnabled":true}}},"errors":[{"message":"sponsorship write denied"}]}`)
 				}
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}

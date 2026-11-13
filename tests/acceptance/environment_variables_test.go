@@ -15,7 +15,6 @@ import (
 )
 
 func TestEnvironmentVariablesProcess(t *testing.T) {
-	flag := "--environment-variable"
 	environment := "preview/path name"
 	environmentPath := "/repos/owner/current/environments/" + environment
 	endpoint := environmentPath + "/variables"
@@ -31,6 +30,10 @@ func TestEnvironmentVariablesProcess(t *testing.T) {
 		defer mu.Unlock()
 		apiCalls++
 		w.Header().Set("Content-Type", "application/json")
+		if r.Method == "GET" && r.URL.Path == "/repos/owner/current/environments" {
+			json.NewEncoder(w).Encode(map[string]any{"total_count": 1, "environments": []map[string]any{{"id": 123, "name": environment}}})
+			return
+		}
 		if r.URL.Path == environmentPath {
 			if missingEnvironment {
 				w.WriteHeader(404)
@@ -57,6 +60,14 @@ func TestEnvironmentVariablesProcess(t *testing.T) {
 			if redirect {
 				w.Header().Set("Location", "/unexpected")
 				w.WriteHeader(307)
+				return
+			}
+			if r.Method == "GET" && r.URL.Path == endpoint {
+				values := []map[string]string{}
+				for name, value := range variables {
+					values = append(values, map[string]string{"name": name, "value": value})
+				}
+				json.NewEncoder(w).Encode(map[string]any{"total_count": len(values), "variables": values})
 				return
 			}
 			if r.Method == "GET" {
@@ -111,7 +122,7 @@ func TestEnvironmentVariablesProcess(t *testing.T) {
 			t.Errorf("unexpected request %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/environments", "/environments/*/variables", "/environments/", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,14 +138,22 @@ func TestEnvironmentVariablesProcess(t *testing.T) {
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
+	lastExport := false
 	run := func(args []string, want string, fail bool) {
 		t.Helper()
+		lastExport = len(args) > 0 && args[0] == "export"
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) {
 			t.Fatalf("args=%v result=%+v err=%v", args, result, err)
 		}
 	}
 	expect := func(want ...string) {
+		if lastExport {
+			want = []string{"GET " + endpoint}
+			if missingEnvironment {
+				want = nil
+			}
+		}
 		t.Helper()
 		mu.Lock()
 		defer mu.Unlock()
@@ -193,21 +212,16 @@ func TestEnvironmentVariablesProcess(t *testing.T) {
 	}
 	run([]string{"apply"}, "Applied repository settings.\n", false)
 	expect("GET "+path, "PATCH "+path, "GET "+path)
-	run([]string{"export", flag, environment, "display_name"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET " + path)
 	output, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || !strings.Contains(string(output), environment) || strings.Contains(string(output), "deployment_protection_rules") || !strings.Contains(string(output), "DISPLAY_NAME") || !strings.Contains(string(output), "updated-v3") || strings.Contains(string(output), "UNMANAGED") {
+	if err != nil || !strings.Contains(string(output), environment) || strings.Contains(string(output), "deployment_protection_rules") || !strings.Contains(string(output), "DISPLAY_NAME") || !strings.Contains(string(output), "updated-v3") || !strings.Contains(string(output), "UNMANAGED") {
 		t.Fatal(string(output), err)
-	}
-	run([]string{"export", flag, environment, "MISSING"}, "", true)
-	expect("GET " + endpoint + "/MISSING")
-	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
-		t.Fatal(err)
 	}
 	mu.Lock()
 	missingEnvironment = true
 	mu.Unlock()
-	run([]string{"export", flag, environment, "DISPLAY_NAME"}, "", true)
+	run([]string{"export"}, "", false)
 	expect()
 	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
 		t.Fatal(err)

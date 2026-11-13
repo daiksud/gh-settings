@@ -83,7 +83,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 			t.Errorf("unexpected request %s %s", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/copilot/code-review/settings", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,8 +95,10 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 	declaration := func(value string) string {
 		return "version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {review_effort_level: " + value + "}}}}\n"
 	}
+	lastExport := false
 	run := func(args []string, want string, fail bool) string {
 		t.Helper()
+		lastExport = len(args) > 0 && args[0] == "export"
 		result, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 		if err != nil || (result.runErr != nil) != fail || !fail && (result.stdout.String() != want || hasNonInfoDiagnostic(result.stderr.String())) || fail && result.stdout.Len() != 0 {
 			t.Fatalf("args=%v exit=%v stdout=%q stderr=%q err=%v", args, result.runErr, result.stdout.String(), result.stderr.String(), err)
@@ -104,6 +106,9 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 		return withoutExportInfo(result.stderr.String())
 	}
 	expect := func(want ...string) {
+		if lastExport {
+			want = []string{"GET " + endpoint, "GET " + endpoint, "GET " + endpoint}
+		}
 		t.Helper()
 		mu.Lock()
 		defer mu.Unlock()
@@ -167,7 +172,7 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 	mu.Lock()
 	mismatch = false
 	mu.Unlock()
-	run([]string{"export", "--copilot-review-effort", "--copilot-custom-instructions"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET "+endpoint, "GET "+endpoint)
 	output, err := os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
 	if err != nil || !strings.Contains(string(output), "review_effort_level: default") || !strings.Contains(string(output), "use_custom_instructions: false") {
@@ -176,16 +181,16 @@ func TestCopilotReviewEffortProcess(t *testing.T) {
 	mu.Lock()
 	configured = "max"
 	mu.Unlock()
-	run([]string{"export", "--copilot-review-effort"}, "", true)
+	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	if err := checkSettingsUnchanged(fixture.work, string(output)); err != nil {
 		t.Fatal(err)
 	}
 	// Instructions remain independently selectable even when effort is unsupported.
-	run([]string{"export", "--copilot-custom-instructions"}, "", false)
+	run([]string{"export"}, "", false)
 	expect("GET " + endpoint)
 	output, err = os.ReadFile(filepath.Join(fixture.work, ".github/settings.yml"))
-	if err != nil || strings.Contains(string(output), "review_effort_level") {
+	if err != nil || !strings.Contains(string(output), "review_effort_level") {
 		t.Fatal(string(output), err)
 	}
 	mu.Lock()

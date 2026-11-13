@@ -63,7 +63,7 @@ func TestCreationPolicyNormalizationExportVisibility(t *testing.T) {
 					t.Error("unexpected request", r.Method, r.URL)
 					w.WriteHeader(400)
 				}
-			}, true)
+			}, true, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -198,7 +198,7 @@ func TestCreationPolicyNormalizationAcrossExecutableCommands(t *testing.T) {
 					fields["id"], fields["nameWithOwner"] = "opaque-id", "owner/current"
 				}
 				_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"repository": fields}})
-			}, false)
+			}, false, "/labels", "/topics")
 			if err != nil {
 				t.Fatal(err)
 			}

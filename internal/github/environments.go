@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -246,9 +248,84 @@ func (c *EnvironmentsClient) readOne(repo repository.Repository, name string) (s
 	return states[0], nil
 }
 
-// Read inventories names completely before selecting detail reads. A nil names
-// slice requests all environments for export; an empty slice selects nothing.
-// A failed inventory/detail/custom-protection read never becomes absence.
+type environmentInventoryEntry struct {
+	Name string
+	ID   int64
+}
+
+// inventory acquires every name/ID before policy or variable acquisition.
+func (c *EnvironmentsClient) inventory(repo repository.Repository) ([]environmentInventoryEntry, error) {
+	seenNames, seenIDs := map[string]bool{}, map[int64]bool{}
+	identities := []environmentInventoryEntry{}
+	expectedTotal, observed := -1, 0
+	for page := 1; ; page++ {
+		var raw map[string]json.RawMessage
+		if err := c.rest.Get(fmt.Sprintf("%s?per_page=100&page=%d", environmentsPath(repo), page), &raw); err != nil {
+			return nil, fmt.Errorf("list environments: %w", err)
+		}
+		var count int
+		var entries []map[string]json.RawMessage
+		if err := requiredEnvironmentJSON(raw, "total_count", &count); err != nil {
+			return nil, err
+		}
+		if err := requiredEnvironmentJSON(raw, "environments", &entries); err != nil {
+			return nil, err
+		}
+		if count < 0 || (expectedTotal >= 0 && expectedTotal != count) {
+			return nil, fmt.Errorf("environment inventory count changed or is invalid")
+		}
+		expectedTotal = count
+		for _, entry := range entries {
+			var name string
+			var id int64
+			if err := requiredEnvironmentJSON(entry, "name", &name); err != nil {
+				return nil, err
+			}
+			if err := requiredEnvironmentJSON(entry, "id", &id); err != nil {
+				return nil, err
+			}
+			key := settings.EnvironmentIdentity(name)
+			if name == "" || id <= 0 || seenNames[key] || seenIDs[id] {
+				return nil, fmt.Errorf("ambiguous environment inventory")
+			}
+			seenNames[key], seenIDs[id] = true, true
+			observed++
+			identities = append(identities, environmentInventoryEntry{Name: name, ID: id})
+		}
+		if observed > count {
+			return nil, fmt.Errorf("environment inventory exceeds declared count")
+		}
+		if observed == count {
+			break
+		}
+		if len(entries) != 100 {
+			return nil, fmt.Errorf("incomplete environment inventory")
+		}
+	}
+	return identities, nil
+}
+
+// Names lists complete supported identities independently of policy access.
+func (c *EnvironmentsClient) Names(repo repository.Repository) ([]string, error) {
+	entries, err := c.inventory(repo)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if _, err := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: entry.Name}}); err != nil {
+			return nil, err
+		}
+		names = append(names, entry.Name)
+	}
+	slices.SortFunc(names, func(a, b string) int {
+		return strings.Compare(settings.EnvironmentIdentity(a), settings.EnvironmentIdentity(b))
+	})
+	return names, nil
+}
+
+// Read acquires a complete inventory before selecting detail reads. Nil selects
+// all; an empty list selects nothing. Failed reads never become absence.
 func (c *EnvironmentsClient) Read(repo repository.Repository, names []string) (settings.EnvironmentObservation, error) {
 	if names != nil && len(names) == 0 {
 		return settings.NewEnvironmentObservation(nil)
@@ -257,58 +334,23 @@ func (c *EnvironmentsClient) Read(repo repository.Repository, names []string) (s
 	for _, name := range names {
 		selected[settings.EnvironmentIdentity(name)] = true
 	}
-	seenNames, seenIDs := map[string]bool{}, map[int64]bool{}
+	entries, err := c.inventory(repo)
+	if err != nil {
+		return settings.EnvironmentObservation{}, err
+	}
 	states := []settings.EnvironmentState{}
-	expectedTotal, observed := -1, 0
-	for page := 1; ; page++ {
-		var raw map[string]json.RawMessage
-		if err := c.rest.Get(fmt.Sprintf("%s?per_page=100&page=%d", environmentsPath(repo), page), &raw); err != nil {
-			return settings.EnvironmentObservation{}, fmt.Errorf("list environments: %w", err)
+	for _, entry := range entries {
+		if names != nil && !selected[settings.EnvironmentIdentity(entry.Name)] {
+			continue
 		}
-		var count int
-		var entries []map[string]json.RawMessage
-		if err := requiredEnvironmentJSON(raw, "total_count", &count); err != nil {
+		state, err := c.readOne(repo, entry.Name)
+		if err != nil {
 			return settings.EnvironmentObservation{}, err
 		}
-		if err := requiredEnvironmentJSON(raw, "environments", &entries); err != nil {
-			return settings.EnvironmentObservation{}, err
+		if state.ID != entry.ID {
+			return settings.EnvironmentObservation{}, fmt.Errorf("environment identity changed during acquisition")
 		}
-		if count < 0 || (expectedTotal >= 0 && expectedTotal != count) {
-			return settings.EnvironmentObservation{}, fmt.Errorf("environment inventory count changed or is invalid")
-		}
-		expectedTotal = count
-		for _, entry := range entries {
-			var name string
-			var id int64
-			if err := requiredEnvironmentJSON(entry, "name", &name); err != nil {
-				return settings.EnvironmentObservation{}, err
-			}
-			if err := requiredEnvironmentJSON(entry, "id", &id); err != nil {
-				return settings.EnvironmentObservation{}, err
-			}
-			key := settings.EnvironmentIdentity(name)
-			if name == "" || id <= 0 || seenNames[key] || seenIDs[id] {
-				return settings.EnvironmentObservation{}, fmt.Errorf("ambiguous environment inventory")
-			}
-			seenNames[key], seenIDs[id] = true, true
-			observed++
-			if names == nil || selected[key] {
-				state, err := c.readOne(repo, name)
-				if err != nil {
-					return settings.EnvironmentObservation{}, err
-				}
-				states = append(states, state)
-			}
-		}
-		if observed > count {
-			return settings.EnvironmentObservation{}, fmt.Errorf("environment inventory exceeds declared count")
-		}
-		if observed == count {
-			break
-		}
-		if len(entries) != 100 {
-			return settings.EnvironmentObservation{}, fmt.Errorf("incomplete environment inventory")
-		}
+		states = append(states, state)
 	}
 	return settings.NewEnvironmentObservation(states)
 }

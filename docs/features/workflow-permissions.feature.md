@@ -17,11 +17,11 @@ Test mapping: [Actions UI codec](../../internal/workspace/ui_actions_test.go), [
 
 ## Rule: Acquire complete policy only when requested
 
-- Ordinary export and `--actions` retain their existing scope. `--workflow-permissions` independently includes both complete values in their section and composes with other opt-ins.
+- Ordinary export independently attempts both workflow values and Actions execution policy; an unavailable family retains prior intent with info.
 - Missing/null/malformed members and denied reads fail without invented defaults or replacing the destination. Complete correctly typed out-of-UI permission strings use the defined fallback and retain their raw provenance.
 - Supported exact values roundtrip to zero differences. A normalized export does not prove raw equality. Workflow-only plan reads only its own policy endpoint.
 
-Test mapping: [TestWorkflowPermissionsCompleteReads](../../internal/github/workflow_permissions_test.go), [TestWorkflowExportOptionsAndDuplicateRejection](../../internal/cli/actions_policy_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
+Test mapping: [TestWorkflowPermissionsCompleteReads](../../internal/github/workflow_permissions_test.go), [TestWorkflowExportOptionsAndDuplicateRejection](../../internal/cli/export_test.go), [TestWorkflowPermissionsExportPlanApplyAndSummary](../../tests/acceptance/workflow_permissions_test.go).
 
 ## Rule: Show permission changes explicitly
 

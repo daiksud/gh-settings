@@ -136,7 +136,7 @@ func TestRulesetBypassNormalizationAcrossExecutableCommands(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/labels", "/rulesets", "/rulesets/7", "/rulesets/9", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestRulesetBypassNormalizationAcrossExecutableCommands(t *testing.T) {
 	keyWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "KEY_MODE" is outside UI choices; using "always" (projection only). Ruleset 7 "basic", {"deploy_keys":true}.`
 	teamWarning := `Warning: repository.settings.rulesets.bypass_list.bypass_mode: observed "FUTURE_MODE" is outside UI choices; using "always" (projection only). Ruleset 7 "basic", {"team":9}.`
 	warnings := keyWarning + "\n" + teamWarning + "\n"
-	output, diagnostic, status := run("export", "--rulesets")
+	output, diagnostic, status := run("export")
 	if status != 0 || output != "" || diagnostic != warnings {
 		t.Fatal("export normalization", status, output, diagnostic)
 	}
@@ -328,8 +328,18 @@ func TestRulesetBypassNormalizationAcrossExecutableCommands(t *testing.T) {
 	beforeInvalid := writes
 	mu.Unlock()
 	input = intent("always")
-	for _, args := range [][]string{{"export", "--rulesets"}, {"apply"}} {
+	for _, args := range [][]string{{"export"}, {"apply"}} {
 		output, diagnostic, status = run(args...)
+		if args[0] == "export" {
+			if status != 0 || output != "" || strings.Contains(diagnostic, "Warning:") {
+				t.Fatal("unavailable export failed", status, diagnostic)
+			}
+			assertExportRetains(t, fixture, input, "repository", "settings", "rulesets")
+			if err := writeSettingsFile(fixture.work, input); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
 		if status != 1 || output != "" || strings.Contains(diagnostic, "Warning:") {
 			t.Fatal("malformed acquisition", args, status, output, diagnostic)
 		}

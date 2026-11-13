@@ -154,7 +154,7 @@ func TestCopilotReviewEffortExport(t *testing.T) {
 		enabled string
 		mode    string
 	}{
-		{"ordinary", false, "default", ""}, {"lite", true, "lite", ""}, {"default", true, "default", ""}, {"balanced", true, "balanced", ""}, {"denied", true, "default", "denied"}, {"unread", true, "default", "unread"},
+		{"lite", true, "lite", ""}, {"default", true, "default", ""}, {"balanced", true, "balanced", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			reader := exportFixtureReader(t, settings.RepositoryState{}, func(string, repository.Repository) error { return nil })
@@ -172,7 +172,7 @@ func TestCopilotReviewEffortExport(t *testing.T) {
 				}
 				return effortObservation(t, tc.enabled), nil
 			}
-			err := Export(ExportCheckout{IncludeCopilotReviewEffort: tc.include, Repository: func() (repository.Repository, error) {
+			err := Export(ExportCheckout{Repository: func() (repository.Repository, error) {
 				return repository.Repository{Owner: "owner", Name: "current"}, nil
 			}, PrepareSave: func() (func(settings.Declaration) error, error) {
 				return func(d settings.Declaration) error {

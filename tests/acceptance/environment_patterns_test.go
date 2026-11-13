@@ -72,7 +72,7 @@ func TestEnvironmentPatternBinaryTypedReconciliationAndRepeat(t *testing.T) {
 			t.Error("unexpected request", r.Method, r.URL)
 			w.WriteHeader(400)
 		}
-	}, false)
+	}, false, "/environments", "/environments/production")
 	if err != nil {
 		t.Fatal(err)
 	}

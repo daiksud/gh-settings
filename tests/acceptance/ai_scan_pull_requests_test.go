@@ -73,7 +73,7 @@ func TestAIScanPullRequestsExportPlanApply(t *testing.T) {
 		}
 		t.Error("unrelated endpoint", r.Method, r.URL)
 		w.WriteHeader(400)
-	}, false, "/code-scanning/ai-scan")
+	}, false, "/code-scanning/ai-scan", "/labels", "/topics")
 	if err != nil {
 		t.Fatal(err)
 	}
