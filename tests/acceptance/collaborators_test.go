@@ -94,7 +94,7 @@ func collaboratorProcessFixture(t *testing.T, state *collaboratorProcessState) (
 		t.Fatal(err)
 	}
 	t.Cleanup(f.close)
-	env := append(exportFixtureEnv(f.cfg), "SETTINGS_TARGET=owner/current")
+	env := append(labelIDFixtureEnv(f.cfg, false), "SETTINGS_TARGET=owner/current")
 	if err := setupOrdinaryOrigin(f.work, env); err != nil {
 		t.Fatal(err)
 	}
