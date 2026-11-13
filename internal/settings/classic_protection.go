@@ -26,6 +26,9 @@ type ClassicCheck struct {
 	AppID   *string
 }
 type ClassicActor struct{ Kind, ID string }
+
+// ClassicCompanions retains raw preservation evidence. Deployments additionally
+// has an active supported projection; selecting that group does not erase this snapshot.
 type ClassicCompanions struct {
 	AllowsForcePushes, BlocksCreations, DismissesStaleReviews                                    bool
 	LockAllowsFetchAndMerge, RequireLastPushApproval                                             bool
@@ -71,6 +74,7 @@ func CloneClassicRule(r ClassicRule) ClassicRule {
 	r.RequireLinearHistory = cloneClassicValue(r.RequireLinearHistory)
 	r.AllowDeletions = cloneClassicValue(r.AllowDeletions)
 	r.LockBranch = cloneClassicValue(r.LockBranch)
+	r.RequireDeploymentsToSucceedBeforeMerging = cloneClassicDeployments(r.RequireDeploymentsToSucceedBeforeMerging)
 	r.DoNotAllowBypassingTheAboveSettings = cloneClassicValue(r.DoNotAllowBypassingTheAboveSettings)
 	return r
 }
@@ -88,6 +92,9 @@ func ValidateClassicRules(rules []ClassicRule) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
 		if err := ValidateClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging); err != nil {
+			return err
+		}
+		if err := ValidateClassicDeployments(r.RequireDeploymentsToSucceedBeforeMerging); err != nil {
 			return err
 		}
 		if strings.TrimSpace(r.BranchNamePattern) == "" || strings.ContainsFunc(r.BranchNamePattern, unicode.IsControl) {
@@ -132,6 +139,13 @@ func (o ClassicObservation) Validate() error {
 		}
 		if !ClassicStatusChecksManaged(s.Rule.RequireStatusChecksToPassBeforeMerging) || !ClassicStatusChecksMatch(status, s.Rule.RequireStatusChecksToPassBeforeMerging) {
 			return fmt.Errorf("incomplete or inconsistent classic status-check projection")
+		}
+		projection, err := ClassicDeploymentProjection(c.RequiresDeployments, c.Deployments)
+		if err != nil {
+			return err
+		}
+		if !classicDeploymentsEqual(projection, s.Rule.RequireDeploymentsToSucceedBeforeMerging) {
+			return fmt.Errorf("incomplete or inconsistent classic deployment projection")
 		}
 		if !c.ReviewCount.Present || !c.Deployments.Present || !c.Contexts.Present || !c.Checks.Present {
 			return fmt.Errorf("missing classic companion state")
@@ -200,6 +214,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
 	if !ClassicStatusChecksMatch(observed.RequireStatusChecksToPassBeforeMerging, desired.RequireStatusChecksToPassBeforeMerging) {
+		return false
+	}
+	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) && !classicDeploymentsEqual(observed.RequireDeploymentsToSucceedBeforeMerging, desired.RequireDeploymentsToSucceedBeforeMerging) {
 		return false
 	}
 	if observed.BranchNamePattern != desired.BranchNamePattern {
@@ -278,6 +295,9 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 		if !ClassicStatusChecksManaged(c.Before.RequireStatusChecksToPassBeforeMerging) {
 			return fmt.Errorf("incomplete classic before status-check policy")
 		}
+		if !ClassicDeploymentsSelected(c.Before.RequireDeploymentsToSucceedBeforeMerging) {
+			return fmt.Errorf("incomplete classic before deployments")
+		}
 		for _, b := range ClassicFlags(*c.Before) {
 			if b == nil {
 				return fmt.Errorf("incomplete classic before policy")
@@ -322,6 +342,10 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 		bCompanions.RequiresStrictStatusChecks, aCompanions.RequiresStrictStatusChecks = false, false
 		bCompanions.Contexts, aCompanions.Contexts = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
 		bCompanions.Checks, aCompanions.Checks = ClassicNullable[[]ClassicCheck]{}, ClassicNullable[[]ClassicCheck]{}
+	}
+	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) {
+		bCompanions.RequiresDeployments, aCompanions.RequiresDeployments = false, false
+		bCompanions.Deployments, aCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
 	}
 	if !reflect.DeepEqual(bCompanions, aCompanions) {
 		return fmt.Errorf("unowned classic protection changed")

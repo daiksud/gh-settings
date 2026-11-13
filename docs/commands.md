@@ -362,7 +362,7 @@ its [supported controls](settings.md#classic-branch-protection), exact pattern
 and numeric ID. It does not enumerate existing branches or clone all protection.
 Unavailable acquisition retains valid prior intent with info. `validate` rejects
 unsupported keys and invalid identities before remote work. `plan` shows only
-requested pattern, checkbox and selected status-check group differences and counts
+requested pattern, checkbox and selected active-group differences and counts
 the collection once. The [required status-check group](settings.md#required-status-checks)
 uses exact names with explicit `any` or opaque App-node sources; it does not
 discover recent checks or infer a provider.

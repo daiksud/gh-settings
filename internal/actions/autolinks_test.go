@@ -73,7 +73,7 @@ func TestAutolinkOIDCAndClassicDeletionReportCounts(t *testing.T) {
 	id, classicID, yes, no := int64(7), int64(8), true, false
 	before := settings.Autolink{ID: &id, ReferencePrefix: "OLD-", TargetURL: "https://example.test/<num>", ReferenceFormat: "numeric"}
 	after := settings.Autolink{ReferencePrefix: "NEW-", TargetURL: "https://example.test/<num>", ReferenceFormat: "numeric"}
-	classic := settings.ClassicRule{ID: &classicID, BranchNamePattern: "old/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}}
+	classic := settings.ClassicRule{ID: &classicID, BranchNamePattern: "old/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}}
 	keys := []string{"repo", "context"}
 	oidc, err := settings.NewOIDCSubjectChange(settings.OIDCSubjectTemplate{UseDefaultTemplate: &yes}, settings.OIDCSubjectTemplate{UseDefaultTemplate: &no, SubjectClaimTemplate: &keys})
 	if err != nil {

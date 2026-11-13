@@ -3,6 +3,7 @@ package github
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -10,6 +11,86 @@ import (
 )
 
 var classicTestRepo = repository.Repository{Host: "github.com", Owner: "owner", Name: "current"}
+
+func TestClassicStatusAndDeploymentsReconcileIndependently(t *testing.T) {
+	for _, mode := range []string{"both-selected", "both-disabled", "status-selected-deployment-drift", "deployments-selected-status-drift"} {
+		t.Run(mode, func(t *testing.T) {
+			f := newClassicAPIFixture(t, classicFixtureRule(7, "main"))
+			id, no := int64(7), false
+			d := settings.ClassicRule{
+				ID: &id, BranchNamePattern: "main",
+				RequireStatusChecksToPassBeforeMerging:   classicStatusDesired(false, settings.ClassicStatusCheck{Name: "build", AcceptUpdatesFrom: "APP_private"}),
+				RequireDeploymentsToSucceedBeforeMerging: deploymentGroup(true, "staging"),
+			}
+			want := map[string]any{"branchProtectionRuleId": "B_7", "requiresStrictStatusChecks": false, "requiredDeploymentEnvironments": []any{"staging"}}
+			switch mode {
+			case "both-disabled":
+				d.RequireStatusChecksToPassBeforeMerging = &settings.ClassicStatusChecks{Enabled: &no}
+				d.RequireDeploymentsToSucceedBeforeMerging = deploymentGroup(false)
+				want = map[string]any{"branchProtectionRuleId": "B_7", "requiresStatusChecks": false, "requiresDeployments": false}
+				f.mutate = func(rule map[string]any) {
+					rule["requiredStatusCheckContexts"], rule["requiredStatusChecks"], rule["requiredDeploymentEnvironments"] = nil, nil, nil
+					rule["requiresStrictStatusChecks"] = false
+				}
+			case "status-selected-deployment-drift":
+				d.RequireDeploymentsToSucceedBeforeMerging = nil
+				delete(want, "requiredDeploymentEnvironments")
+			case "deployments-selected-status-drift":
+				d.RequireStatusChecksToPassBeforeMerging = nil
+				delete(want, "requiresStrictStatusChecks")
+			}
+			selection := classicSelect(t, f, d)
+			f.calls = nil
+			f.hook = func(phase string, body map[string]any, _ map[string]any) {
+				if phase != "node" || len(f.writes) == 0 {
+					return
+				}
+				node := body["node"].(map[string]any)
+				if mode == "status-selected-deployment-drift" {
+					node["requiredDeploymentEnvironments"] = []string{"staging"}
+				}
+				if mode == "deployments-selected-status-drift" {
+					node["requiresStrictStatusChecks"] = false
+				}
+			}
+			result, err := f.client.Apply(classicTestRepo, selection)
+			if (err != nil) != strings.Contains(mode, "drift") || !result.Wrote {
+				t.Fatal(result, err)
+			}
+			if len(f.writes) != 1 || !reflect.DeepEqual(f.writes[0], want) {
+				t.Fatal("unexpected combined payload", f.writes, want)
+			}
+			if strings.Contains(mode, "drift") {
+				var pre interface{ ReadFailedBeforeWrite() }
+				if errors.As(err, &pre) {
+					t.Fatal("post-write preservation failure marked pre-write", err)
+				}
+				return
+			}
+			counts := map[string]int{}
+			for _, call := range f.calls {
+				counts[call]++
+			}
+			reads := 0
+			if mode == "both-selected" {
+				reads = 2
+			}
+			if counts["app"] != reads || counts["environments"] != reads {
+				t.Fatal("selected reference confirmations differ", f.calls)
+			}
+			f.calls = nil
+			result, err = f.client.Apply(classicTestRepo, selection)
+			if err != nil || result.Wrote || len(f.writes) != 1 {
+				t.Fatal("matching repeated apply wrote", result, err, f.writes)
+			}
+			for _, call := range f.calls {
+				if call == "environments" || call == "app" {
+					t.Fatal("matching repeated apply fetched references", f.calls)
+				}
+			}
+		})
+	}
+}
 
 func classicStatusDesired(strict bool, checks ...settings.ClassicStatusCheck) *settings.ClassicStatusChecks {
 	yes := true

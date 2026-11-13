@@ -166,6 +166,13 @@ func preparePrune(repo repository.Repository, desired settings.Declaration, prun
 		if err != nil {
 			return result, err
 		}
+		candidates, err := result.environments.Candidates()
+		if err != nil {
+			return result, err
+		}
+		if err := settings.CheckClassicDeploymentPruneConflict(desired.BranchProtectionRules, candidates); err != nil {
+			return result, err
+		}
 		unarchive := desired.Repository.Archived != nil && !*desired.Repository.Archived
 		if err = result.environments.ValidateApply(unarchive); err != nil {
 			return result, err

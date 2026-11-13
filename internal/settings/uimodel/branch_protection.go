@@ -3,6 +3,7 @@ package uimodel
 // BranchProtectionRule owns only the selected classic controls, independently of Rulesets.
 type BranchProtectionRule struct {
 	RequireStatusChecksToPassBeforeMerging     *ClassicStatusChecks `json:"require_status_checks_to_pass_before_merging,omitempty"`
+	RequireDeploymentsToSucceedBeforeMerging   *ClassicDeployments  `json:"require_deployments_to_succeed_before_merging,omitempty"`
 	ID                                         *int64               `json:"id,omitempty"`
 	BranchNamePattern                          string               `json:"branch_name_pattern"`
 	RequireConversationResolutionBeforeMerging *bool                `json:"require_conversation_resolution_before_merging,omitempty"`
@@ -23,4 +24,10 @@ type ClassicStatusChecks struct {
 type ClassicStatusCheck struct {
 	Name              string `json:"name"`
 	AcceptUpdatesFrom string `json:"accept_updates_from"`
+}
+
+// ClassicDeployments is a complete active configuration, independent of latent names.
+type ClassicDeployments struct {
+	Enabled      *bool     `json:"enabled,omitempty"`
+	Environments *[]string `json:"environments,omitempty"`
 }

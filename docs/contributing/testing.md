@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicStatusChecks)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeClassicStatusChecks)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -477,7 +477,9 @@ on unchanged source. Owner tests cover the strict active union, exact names and
 explicit sources, alias coherence, raw inactive preservation, set-order no-ops,
 activation with false/empty children, minimal updates and complete acknowledgment.
 Adapter tests also cover deduplicated App lookups, prewrite and postwrite failures,
-raw companion drift and independently verified policy. The supplied CLI lifecycle
+raw companion drift and independently verified policy. Combined deployment cases
+check simultaneous edits and deactivation, both independent reference checks,
+repeated no-ops and collateral drift in either omitted group. The supplied CLI lifecycle
 checks export/validate/plan/apply/repeat and creation recovery without ID writeback
 after failed App confirmation. `TestBuiltCompositeClassicStatusChecks` checks the
 actual public Action with an explicit token, detailed/status-only plans, matching
@@ -487,3 +489,18 @@ These local fixtures do not establish live App grants, storage or enforcement.
 ## Autolink verification
 
 The [behavior specification](../features/autolinks.feature.md) maps model, adapter, app, codec and report ownership. The literal codec baseline fails before support. Supplied CLI checks exercise export/validate/plan/create/ID-recording/prune/repeat, immutable failures, retained unavailable export, own unarchive and host Action-environment isolation. `TestBuiltCompositeAutolinks` uses the actual supplied binary and public composite for export, private/detailed plans, matching/no-op, create/prune, empty/all, unchanged YAML and failed-readback output suppression. All use local transports; no live reference or external destination is changed or fetched.
+
+## Classic required-deployment verification
+
+The literal codec regression fails on the unchanged source. Owning model and
+adapter tests distinguish active empty/null/missing states, exact-name sets and
+raw inactive preservation. They verify nullable numeric Environment IDs, complete
+pagination, changed-only inputs, no-op without Environment access, reference drift,
+partial creation recovery and other companion preservation. App cases prove that
+Environment-prune conflicts fail before unrelated writes or unarchive.
+
+The supplied CLI lifecycle checks export, plan, update and repeat no-op.
+`TestBuiltCompositeClassicDeployments` runs the real public Action through enabled,
+disabled, empty and matching configurations, private plans and post-write reference
+replacement. It checks unchanged checkout and success-only outputs. These isolated
+fixtures do not establish live deployment execution or effective branch protection.
