@@ -124,12 +124,17 @@ Current-source CLI and Action planning/apply accept separate [Actions repository
 
 ### Actions OIDC subject template
 
-Current source supports the [active OIDC template](settings.md#actions-oidc-subject-template)
-through shared export, plan and apply use cases. Detailed reports show the complete
-active mode and ordered claim keys; status-only output hides them. Apply publishes
+Current source supports [OIDC subject configuration](settings.md#actions-oidc-subject-template)
+through shared export, plan and apply use cases. The complete active template and
+immutable boolean can be selected independently. Detailed reports show only
+selected units; status-only output hides them. Export can refresh the active
+template while retaining a previous unavailable immutable leaf with bounded info.
+An immutable-only PUT replays fresh active custom keys. Apply publishes
 success outputs only after a matching no-op or verified update. Select a package
 that includes this capability; the examples' existing pin is unchanged. Changing
 the subject requires coordination with the caller's cloud trust configuration.
+Stored booleans do not certify effective token format or reversibility, and the
+Action neither issues a token nor edits cloud trust or checkout YAML during apply.
 
 ### Copilot MCP tools
 
@@ -185,7 +190,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
 | Agents repository variables (current source) | Repository Agent variables read for selected names | Repository Agent variables write, including fresh read and exact readback |
 | Actions event policies (current source) | Administration **write**, including list/GET, export and plan ([official API](https://docs.github.com/en/rest/actions/policies)) | Administration write, complete preflight, fresh detail guard and independent acknowledgment/readback |
-| Actions OIDC active template (current source) | Actions read and complete personal-public target identity | Actions write, known immutable companion replay and independent readback |
+| Actions OIDC subject configuration (current source) | Actions read and complete personal-public target identity | Actions write, complete active-template/immutable evidence, fresh omitted-unit replay and independent readback |
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
 | Actions cache size eviction limit | Actions read | Administration write plus Actions read for preflight/readback |

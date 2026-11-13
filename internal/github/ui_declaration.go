@@ -50,7 +50,7 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 		}
 		if a := repository.Settings.Actions; a != nil && a.OIDC != nil && a.OIDC.SubjectClaim != nil {
 			d := a.OIDC.SubjectClaim
-			if d.UseDefaultTemplate != nil || d.SubjectClaimTemplate != nil {
+			if d.UseDefaultTemplate != nil || d.SubjectClaimTemplate != nil || d.UseImmutableSubjectClaim != nil {
 				if err := settings.ValidateOIDCSubject(*d); err != nil {
 					return settings.Declaration{}, err
 				}
