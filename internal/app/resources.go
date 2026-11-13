@@ -31,6 +31,7 @@ type EnvironmentWriteEffectsFailure interface {
 type Reader struct {
 	Autolinks             func(repository.Repository) (settings.AutolinkObservation, error)
 	OIDCSubject           func(repository.Repository) (settings.OIDCSubjectObservation, error)
+	DeployKeys            func(repository.Repository) (settings.DeployKeyObservation, error)
 	AIScanRepositories    func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	BranchProtectionRules func(repository.Repository) (settings.ClassicObservation, error)
 	EnvironmentPrune      func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
@@ -78,6 +79,9 @@ type Reader struct {
 
 // Writer sends each resource independently; successful earlier writes are not rolled back.
 type Writer struct {
+	ReadDeployKeys             func(repository.Repository) (settings.DeployKeyObservation, error)
+	CreateDeployKey            func(repository.Repository, settings.DeployKeyObservation, settings.DeployKeyDeclaration) (settings.DeployKeyWriteResult, error)
+	DeleteDeployKey            func(repository.Repository, settings.DeployKeyObservation, int64) (settings.DeployKeyObservation, error)
 	ReadAutolinks              func(repository.Repository) (settings.AutolinkObservation, error)
 	CreateAutolink             func(repository.Repository, settings.AutolinkObservation, settings.Autolink) (settings.AutolinkWriteResult, error)
 	DeleteAutolink             func(repository.Repository, settings.AutolinkObservation, int64) (bool, error)

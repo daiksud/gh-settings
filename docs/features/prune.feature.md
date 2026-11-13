@@ -14,7 +14,7 @@ an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables`, `environments`,
-`collaborators`, `branch-protection-rules` and `autolinks`. Standalone `all` selects all currently recognized
+`collaborators`, `branch-protection-rules`, `autolinks` and `deploy-keys`. Standalone `all` selects all currently recognized
 scopes; future supported prune scopes must join the shared registry and tests.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit
@@ -180,6 +180,15 @@ no-op. Its unsupported-scope baseline fails before this feature.
 `tests/github-actions/classic_prune_acceptance_test.go` checks the actual supplied
 product's detailed/status-only plan and standalone `all` apply/repeat behavior;
 the candidate artifact gate includes it. All mutations are isolated fixtures.
+
+## Keep deploy key deletion candidates fixed
+
+[Deploy key pruning](../settings.md#deploy-key-pruning) retains selected IDs and
+acquires complete private snapshots before any mutation. Each DELETE checks the
+exact target, full inventory and candidate detail; its 204 is followed by complete
+absence verification. Only this execution's verified creations/deletions and own
+unarchive alter expected state. External membership or enabled-state drift stops
+further work. Same material cannot be replaced implicitly in one apply.
 
 ## Autolink pruning
 
