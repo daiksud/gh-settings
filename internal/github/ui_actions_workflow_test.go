@@ -59,7 +59,7 @@ func TestUIActionsWorkflowExactDeclaredOnlyWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := client.ApplyWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 3 {
+	if _, err := client.ApplyWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 3 {
 		t.Fatal(calls, err)
 	}
 }
