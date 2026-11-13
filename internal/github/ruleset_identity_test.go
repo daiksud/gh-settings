@@ -69,13 +69,23 @@ func TestRulesetMutationRequiresReturnedIdentityAndCompletePolicy(t *testing.T) 
 					if operation == "update" {
 						wantMethod, wantPath = "PUT", wantPath+"/7"
 					}
+					if calls == 2 && !test.fail {
+						wantMethod, wantPath = "GET", "/repos/owner/current/rulesets/7"
+						if req.URL.RawQuery != "includes_parents=false" {
+							t.Fatal(req.URL)
+						}
+					}
 					if req.Method != wantMethod || req.URL.Path != wantPath {
 						t.Fatal(req.Method, req.URL)
 					}
 					return labelsResponse(req, test.status, test.body), nil
 				}))
 				got, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change)
-				if (err != nil) != test.fail || got != test.wantID || calls != 1 {
+				wantCalls := 1
+				if !test.fail {
+					wantCalls = 2
+				}
+				if (err != nil) != test.fail || got != test.wantID || calls != wantCalls {
 					t.Fatal(got, err, calls)
 				}
 			})
