@@ -132,15 +132,18 @@ The [Actions policy feature](../features/actions-execution-policy.feature.md) is
 ## Actions OIDC active template
 
 The [OIDC template](../settings.md#actions-oidc-subject-template) is an independent
-settings observation and one whole active-template comparison. Workspace owns the
-strict UI union; the API adapter retains private immutable and numeric identity
-evidence. Matching active state needs no companion value. Needed writes require
-known immutable replay, bounded empty acknowledgment and complete independent
-readback. App exports the family independently and records real confirmed writes
+settings observation and one comparison family with independent active-template
+and immutable units. Workspace owns the strict template union and optional boolean;
+the API adapter retains complete active and optional immutable evidence separately
+from numeric identity. Matching template-only state needs no immutable value.
+Needed writes require known immutable and replay the omitted active unit, followed
+by bounded empty acknowledgment and complete independent readback. App exports
+the two units from one read with separate acquired checks and retention, and records real confirmed writes
 separately from no-ops or uncertain effects. CLI and Action presentation share
 ordered UI values; report reconstruction rejects invalid unions without exposing
-private API evidence. There is no generic endpoint registry, immutable-mode
-mutation, hidden-template preservation or credential/cloud trust management.
+private API evidence. Report before/after units must match exactly; replayed
+companions do not become user intent. There is no generic endpoint registry,
+hidden-template preservation or credential/cloud trust management.
 
 ## Default workflow permissions
 
@@ -301,6 +304,17 @@ names drive standalone `all`, CLI help and Action capability output. Export uses
 existing independent-family retention boundary. The
 [feature specification](../features/classic-protection.feature.md) maps tests and
 records the inspected-schema and nontransactional limits.
+
+The status-check model owns a complete active UI union while retaining both native
+booleans and nullable ordered lists in the private snapshot. Active projection
+requires coherent legacy contexts and App-bound checks; selected policy compares
+as an unordered set, while an omitted group retains raw order and nullness.
+Mutation acknowledgments include the entire supported group before independent
+rule/actor readback. Needed writes with selected non-`any` App sources also resolve
+distinct exact App nodes before and after verification; no-op, export and plan do
+not query installations or run history. Selected deactivation owns only its gate.
+
+## Deploy key lifecycle
 
 Deploy keys use a parsed public-key value and closed observations in
 `internal/settings/deploy_keys.go`. The GitHub adapter owns bounded, nonlogging

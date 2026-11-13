@@ -439,10 +439,13 @@ repository:
         subject_claim:
           use_default_template: false
           subject_claim_template: [repo, context, job_workflow_ref]
+          use_immutable_subject_claim: true
 ```
 
-The group owns the complete active template. Omission or an empty mapping leaves
-it unmanaged. `use_default_template: false` requires an explicit ordered array;
+The group has two independently selectable units: the complete active template
+and the optional `use_immutable_subject_claim` boolean. Omission or an empty mapping
+leaves it unmanaged. An immutable-only declaration is valid. If either template
+field is selected, `use_default_template: false` requires an explicit ordered array;
 `true` forbids that array and selects GitHub's default template. An array without
 an explicit false mode is invalid. Keys are unique nonempty ASCII alphanumeric
 or underscore strings; order and case are preserved. There is no closed claim
@@ -456,20 +459,38 @@ stop cloud authentication: coordinate the corresponding cloud trust configuratio
 before applying it. This tool does not issue tokens, run workflows, or change
 cloud trust, credentials, grants or billing.
 
+`use_immutable_subject_claim` requests the API configuration corresponding to the
+UI checkbox, including explicit true or false. It does not certify effective token
+format, universal UI editability or a reversible transition. GitHub documents
+[mandatory immutable subjects](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims)
+for some repositories independently of manual opt-in. gh-settings does not infer
+eligibility from creation dates, rename/transfer history or the returned prefix.
+The editable legacy control was observed unsaved on 2026-11-14; persisted legacy
+opt-out has not been live-verified. GitHub decides whether a particular update is
+permitted. A false configuration readback is not proof of a name-only cloud token.
+
 Ordinary export acquires this family independently. Known default exports true
-without keys; known custom exports false with its ordered keys. Unavailable or
-incomplete observations emit bounded info and retain the prior whole group, if
-present. Missing optional immutable mode remains unknown rather than false and
-does not prevent export or a matching no-op.
+without keys; known custom exports false with its ordered keys. Known immutable
+configuration exports its boolean, including false. A missing optional immutable
+field remains unknown: export refreshes the readable active template and retains
+only valid previous immutable intent, or omits that leaf on first export, with
+bounded info. Retained intent is not acquired evidence. Whole-family transport,
+identity or malformed-data failure retains compatible prior whole intent. Required
+diagnostic delivery must succeed before saving.
 
 Plan compares one managed group. Apply reacquires complete personal-public target
-identity and the active template, then skips a match. A needed PUT also requires
-a known immutable-subject boolean and replays its exact value, including false,
-without changing that mode. Writable immutable-mode support is not included.
+identity and active configuration, then skips known matching selected values.
+Selecting immutable requires its known boolean even for comparison; unknown is
+neither false nor a proven difference. A matching template-only declaration can
+still skip with unknown immutable. A needed PUT requires both complete active
+template and known immutable evidence. Immutable-only writes replay the fresh
+active mode and exact ordered custom keys; template-only writes replay immutable.
+Combined intent supplies both. Omission never silently selects a different mode.
 Missing or malformed required state fails before writing. A successful PUT must
 return HTTP 201 with a bounded empty acknowledgment, followed by independent GET
-confirmation of the original repository/owner identity, active template and
-unchanged immutable mode. A failed write or readback reports uncertain effects;
+confirmation of the original repository/owner identity, archive state, requested
+values and replayed active companions. The read-only prefix may legitimately
+change and is not an equality guard. A failed write or readback reports uncertain effects;
 earlier verified progress remains and later work stops. No rollback or automatic
 retry occurs, and fresh reads are not a concurrency lock.
 
@@ -746,10 +767,10 @@ Preview rules, unknown rules/fields and unsupported event/enforcement values are
 lossily converted. A complete unsupported object's ID/name is retained so
 unlisted objects stay unmanaged without prune; selecting it for update, as a
 prune candidate, or including it in a full collection export fails. Incomplete or inconsistent reads always fail.
-Currently unsupported actor types, Preview lockfile controls and writable OIDC
-immutable mode require target UI/API assessment and implementation; Preview status
-alone is not an exclusion. The [OIDC active template](#actions-oidc-subject-template)
-has separate support. Workflow and other feature configuration-file authoring remain excluded.
+Currently unsupported actor types and Preview lockfile controls require target
+UI/API assessment and implementation; Preview status alone is not an exclusion.
+[OIDC subject configuration](#actions-oidc-subject-template) has separate support.
+Workflow and other feature configuration-file authoring remain excluded.
 
 `--prune actions-policies` adds deletion of unlisted repository-owned IDs only
 when `policies` is present; `[]` selects every current policy as a candidate.
@@ -1495,8 +1516,8 @@ See the [behavior specification](features/autolinks.feature.md).
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and six independent checkboxes, conditional fork syncing, and complete PR-review
-and required-deployment groups. It is separate
+and six independent checkboxes, conditional fork syncing, and complete PR-review,
+required status-check and deployment groups. It is separate
 from Rulesets and does not clone all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1646,9 +1667,9 @@ intentional Environment deletion.
 Omitting the deployment group preserves its raw flag, nullness, list order and
 inactive names exactly. Selecting it owns the complete active configuration;
 disabling sends only `requiresDeployments: false` and makes no promise about
-hidden inactive-list storage. Complete known check/App binding,
-force-push and actor-allowance state remains unowned preservation
-evidence. Null stays distinct from zero or empty; complete disabled-group raw values are not rewritten.
+hidden inactive-list storage. Complete known PR, check/App binding, deployment,
+fork-sync, force-push and actor-allowance state is acquired as preservation
+evidence. Omitted groups stay unowned. Null stays distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
 actor connections are paginated. After mutation acknowledgment, an independent
 query verifies original requested controls and all omitted known companions.
@@ -1696,19 +1717,77 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern and these six
-checkboxes, applicable fork syncing and active PR-review and deployment policies.
-It does not export or adopt other controls.
+Automatic export projects every readable rule's ID, pattern, six checkboxes, applicable fork syncing and
+active PR-review, status-check and deployment groups. It does not export or adopt the other controls.
 Unavailable acquisition retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
-GraphQL cannot reveal future unselected schema fields. Check groups
+GraphQL cannot reveal future unselected schema fields. Actor restrictions
 and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
 wildcard rules, and its permission table does not prove every GraphQL App grant.
 See the [behavior and verification specification](features/classic-protection.feature.md).
+
+### Required status checks
+
+The optional `require_status_checks_to_pass_before_merging` group owns the complete
+active policy when selected:
+
+```yaml
+require_status_checks_to_pass_before_merging:
+  enabled: true
+  require_branches_to_be_up_to_date_before_merging: false
+  status_checks:
+    - name: screening
+      accept_updates_from: APP_opaque_node_ID
+    - name: legacy
+      accept_updates_from: any
+```
+
+Omission or `{}` leaves the group unmanaged. A nonempty group requires `enabled`.
+With `true`, the strictness boolean and complete `status_checks` list are required;
+`[]` is valid, but does not establish useful check enforcement. With `false`, child
+controls are forbidden: this requests deactivation only. Null, wrong types, unknown
+members and native GraphQL aliases are rejected.
+
+Check names retain exact case and bytes and must be nonblank and free of control
+characters. Names must be unique, even when sources differ; this is a conservative
+product boundary. Distinct names may share one App. `accept_updates_from` is either
+the exact string `any` or an opaque GraphQL App node ID. Numeric App/installation
+IDs, slugs and inferred providers are not substitutes. The writer always sends
+`appId`; GitHub's [input contract][classic-check-input] otherwise infers the most
+recent source. gh-settings does not discover recently run checks, grant access or
+require App installation.
+
+For an active observed policy, both native check lists must be present and
+nonnull, names must be unique, and the legacy context list must contain exactly
+the same names as the App-bound list. This coherence check is a supported-observation
+restriction, not a guarantee about every GitHub rule. A malformed, missing or
+partial observation makes the whole classic family unavailable. An explicit null
+App means `any`; a missing App member is unknown. Inactive export contains only
+`enabled: false`. Its typed latent lists, including nullness, order and source
+bindings, remain private preservation evidence when the group is omitted.
+
+Creation or enabling sends all three writable members, including explicit false
+strictness and an empty list. Already active updates send changed members only;
+check order does not cause a write. Disabling sends only the false gate and permits GitHub to reset latent child values. The legacy context alias
+is never sent. Omitted groups must retain their exact raw state across other
+updates; selecting an active group owns its complete semantic policy.
+
+A matching fresh rule sends no mutation or App lookup. Before a needed write
+with a selected active group, each distinct non-`any` source must resolve through
+the same credential to the exact [App node][classic-check-app]. This applies even
+when only another declared checkbox changes. After the complete mutation
+acknowledgment, independent rule/actor readback verifies the entire original
+request and omitted state, then the same App identities are checked again.
+Prewrite failures stop before mutation; failed acknowledgment or subsequent
+verification leaves uncertain effects and creation IDs are recovery information
+only. Readback proves stored settings, not check execution or effective protection.
+
+[classic-check-input]: https://docs.github.com/en/graphql/reference/branches#requiredstatuscheckinput
+[classic-check-app]: https://docs.github.com/en/graphql/reference/apps#app
 
 ## Classic branch-protection pruning
 
@@ -1719,7 +1798,7 @@ list retains declared numeric IDs and newly created rules. All retained rules mu
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
 Ordinary create/update retains partial-control ownership and complete active
-PR-review and deployment ownership.
+PR-review, status-check and deployment ownership.
 
 Deletion removes the entire rule, including unowned protections. An overlapping
 rule may then take effect; recreation cannot restore creation-age priority. The plan shows
@@ -1728,10 +1807,9 @@ companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-six flags, fork applicability and conditional syncing, active PR-review/deployment
-projections and all known raw companions,
-including inactive review count/booleans and deployment names/order. Missing, denied, partial, unsupported or
-inconsistent evidence blocks the whole preflight. A retained rule's unreadable
+six flags, fork applicability and conditional syncing, active PR-review/status-check/deployment projections and all known raw companions,
+including inactive PR-review, status-check and deployment values. Missing, denied, partial,
+unsupported or inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.
 Newly observed unlisted rules remain untouched, including when the initial

@@ -17,6 +17,7 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		if c.Before.AllowForkSyncing != nil {
 			parts = append(parts, fmt.Sprintf("allow_fork_syncing: %t", *c.Before.AllowForkSyncing))
 		}
+		parts = append(parts, classicStatusChecksLine(c.Before.RequireStatusChecksToPassBeforeMerging))
 		parts = append(parts, classicReviewsLine(c.Before.RequireAPullRequestBeforeMerging))
 		parts = append(parts, classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging))
 		return fmt.Sprintf("%s: delete (id %d) before {%s} → absent (removes the whole rule, including other configured protections; an overlapping rule may take effect)", settings.ClassicProtectionPath, *c.Before.ID, strings.Join(parts, ", "))
@@ -71,12 +72,19 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		parts = append(parts, value)
 	}
 	line := fmt.Sprintf("%s: %s%s %s", settings.ClassicProtectionPath, operation, identity, strings.Join(parts, ", "))
+	if settings.ClassicStatusChecksManaged(c.After.RequireStatusChecksToPassBeforeMerging) {
+		line += ", " + classicStatusChecksLine(c.After.RequireStatusChecksToPassBeforeMerging)
+	}
 	if c.Before == nil {
 		line += " (omitted controls are API-controlled on creation)"
 	}
 	return line
 }
 
+func classicStatusChecksLine(group *settings.ClassicStatusChecks) string {
+	data, _ := json.Marshal(group)
+	return "require_status_checks_to_pass_before_merging: " + string(data)
+}
 func classicReviewsLine(group *settings.ClassicPullRequestReviews) string {
 	data, _ := json.Marshal(group)
 	return "require_a_pull_request_before_merging: " + string(data)

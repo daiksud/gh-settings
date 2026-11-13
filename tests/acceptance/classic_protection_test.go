@@ -35,7 +35,7 @@ func processClassicRule(id int, pattern string) map[string]any {
 		"id": fmt.Sprintf("B_%d", id), "databaseId": id, "pattern": pattern, "repository": processClassicTarget(),
 		"requiresConversationResolution": false, "requiresCommitSignatures": false, "requiresLinearHistory": false, "allowsDeletions": false,
 		"isAdminEnforced": true, "allowsForcePushes": false, "blocksCreations": false, "dismissesStaleReviews": true, "lockBranch": false, "lockAllowsFetchAndMerge": false, "requireLastPushApproval": true, "requiresApprovingReviews": true, "requiresCodeOwnerReviews": true, "requiresDeployments": false, "requiresStatusChecks": true, "requiresStrictStatusChecks": true, "restrictsPushes": false, "restrictsReviewDismissals": false,
-		"requiredApprovingReviewCount": 2, "requiredDeploymentEnvironments": nil, "requiredStatusCheckContexts": []string{"build"}, "requiredStatusChecks": []any{map[string]any{"context": "build", "app": map[string]any{"id": "PRIVATE_APP_CANARY"}}},
+		"requiredApprovingReviewCount": 2, "requiredDeploymentEnvironments": nil, "requiredStatusCheckContexts": []string{"build"}, "requiredStatusChecks": []any{map[string]any{"context": "build", "app": map[string]any{"id": "APP_status_source"}}},
 	}
 }
 func processClassicPage(nodes []any) map[string]any {
@@ -176,7 +176,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "lockAllowsFetchAndMerge", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "lockAllowsFetchAndMerge", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
 						ack[key] = rule[key]
 					}
 					body[mutation] = map[string]any{"branchProtectionRule": ack}
@@ -220,7 +220,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					t.Fatal(want, string(data))
 				}
 			}
-			if strings.Contains(string(data), "PRIVATE_APP") || strings.Contains(string(data), "required_approving") {
+			if !strings.Contains(string(data), "accept_updates_from: APP_status_source") || strings.Contains(string(data), "required_approving") {
 				t.Fatal("unowned policy exported", string(data))
 			}
 			if mode == "unavailable-export" {
@@ -281,7 +281,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 			report := filepath.Join(fixture.root, "classic.json")
 			run(false, "action", "plan", report)
 			reportData, _ := os.ReadFile(report)
-			if strings.Contains(string(reportData), "PRIVATE_APP") || !strings.Contains(string(reportData), "branch_protection_rules") {
+			if strings.Contains(string(reportData), "requiredApprovingReviewCount") || !strings.Contains(string(reportData), "branch_protection_rules") {
 				t.Fatal(string(reportData))
 			}
 			run(false, "action", "plan", report, "status-only")

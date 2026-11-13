@@ -95,12 +95,13 @@ selected published package or live active-policy enforcement.
 
 ## Actions OIDC subject template commands
 
-The [active OIDC template](settings.md#actions-oidc-subject-template) is one managed
-group. Export independently acquires it and retains prior intent with bounded info
-when unavailable. Plan shows the ordered before/after template. Apply freshly
-skips matches or preserves the known immutable companion in a needed PUT, then
-independently verifies identity and exact state. Unknown immutable mode blocks a
-needed write, but not a matching no-op. Failures distinguish prewrite errors from
+The [OIDC configuration](settings.md#actions-oidc-subject-template) is one managed
+group with independently selected active-template and immutable units. Export
+refreshes readable units and retains unavailable prior intent with bounded info.
+Plan shows only selected before/after units. Apply skips known matches or replays
+fresh omitted active companions in a needed PUT, then independently verifies
+identity and exact state. Unknown immutable blocks selecting that leaf and any
+needed write, but not a matching template-only no-op. Failures distinguish prewrite errors from
 uncertain attempted effects; no local ID writeback or prune operation is involved.
 
 ## Copilot custom instructions commands
@@ -362,7 +363,10 @@ its [supported controls](settings.md#classic-branch-protection), exact pattern
 and numeric ID. It does not enumerate existing branches or clone all protection.
 Unavailable acquisition retains valid prior intent with info. `validate` rejects
 unsupported keys and invalid identities before remote work. `plan` shows only
-requested pattern/checkbox differences and counts the collection once.
+requested pattern, checkbox and selected active-group differences and counts
+the collection once. The [required status-check group](settings.md#required-status-checks)
+uses exact names with explicit `any` or opaque App-node sources; it does not
+discover recent checks or infer a provider.
 
 `apply` preserves new-rule declaration order, skips fresh matching intent, sends
 changed declared inputs and independently verifies requested and omitted known

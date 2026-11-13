@@ -61,7 +61,7 @@ The [Actions-owned report](../../internal/actions/plan.go) has these fields:
 | `target` | Available origin owner/repository; omitted for unmanaged, validation or target-resolution failure. |
 | `managed` | Number of managed fields/collections in a successful comparison; nonempty label selections count once, empty labels count zero. Zero on failure does not mean unmanaged. |
 | `changes` | Ordered repository/topic field/before/after entries; values remain native strings, booleans or topic string arrays. Field paths are `repository.FIELD` or `topics.names`. Empty comparisons, failures and label-only changes use an empty array. |
-| `oidc_subject` | Optional singleton active-template change at the fixed UI group path, with complete `before` and `after` unions. Reject unknown/null members, invalid mode/key combinations, equal values and duplicates. Ordered keys remain ordered; counts as one scalar group and status-only output hides it. Raw immutable/prefix evidence never enters the report. |
+| `oidc_subject` | Optional singleton configuration change at the fixed UI group path. `before` and `after` select identical active-template/immutable units; selected templates are complete unions and selected immutable values are native booleans. Reject unknown/null members, invalid unions, mismatched ownership, equal values and duplicates. Ordered keys remain ordered; counts as one scalar group and status-only output hides it. Replayed unselected companions and raw prefix evidence never enter the report. |
 | `copilot_mcp` | Optional singleton native boolean change with the fixed MCP UI `field`, `before` and `after`. Reconstruction rejects unsupported paths/types, equal values and duplicates; counts as one scalar. Status-only output hides it. |
 | `copilot_review_effort` | Optional singleton string change with fixed UI `field`, `before` and `after`, using `default`, `lite`, `balanced` or `max`. Default represents observable configured null, not raw override erasure. Reconstruction rejects unsupported paths/values, equal choices and duplicates; counts as one scalar. Status-only output hides it. |
 | `copilot_custom_instructions` | Optional singleton native boolean change with fixed UI `field`, `before` and `after`. Reconstruction rejects unknown paths, types, equal values and duplicate controls; counts as one scalar. Status-only output hides it. |
@@ -172,14 +172,21 @@ saved apply input.
 Classic protection uses a same-version `branch_protection_rules` array with a
 complete supported `before` projection for updates and the original partial
 `after` request. Creates omit `before` and numeric ID. Prune deletions require
-complete supported `before` and absent `after`, including active PR-review and
-deployment groups, and show whole-rule removal
+complete supported `before` and absent `after`, including active PR-review,
+status-check and deployment groups, and show whole-rule removal
 consequences; private raw companions are never serialized. The closed report rejects
 null/unknown/noncanonical members, mismatched IDs, duplicate selection and no-op
 updates; it contains no raw companion or actor snapshots. Declaration order is
 preserved because creation age affects priority. Update renderers show only
 requested values; deletions show absence and their whole-object effect. Status-only
 Summary suppresses identities and policy.
+
+The supported before-policy includes the six checkboxes and complete deployment
+and status-check projections. Active status-check groups contain exact check names
+and App-node sources; inactive groups contain only `enabled: false`. Raw nullable context aliases, latent bindings
+and their ordering remain private. Status-only rendering suppresses the supported
+names and App IDs as well as rule identity. The group does not add another managed
+family count.
 
 Classic `allow_fork_syncing` is conditional: when present in Before or After it
 requires `lock_branch: true`. Missing Before sync can describe an inactive rule or

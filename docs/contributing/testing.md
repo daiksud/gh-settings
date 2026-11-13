@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicReviews|CompositeClassicForkSync)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -441,6 +441,16 @@ checks actual installer/runtime/report/output behavior and is required by the
 candidate gate. These fixtures issue no real tokens or cloud requests and do not
 prove live permissions or server acceptance of an empty custom key list.
 
+The immutable-only literal codec baseline fails on unchanged source. The
+`oidc_immutable_test.go` owner tests distinguish absent from false, selected units
+from fresh companions, leaf retention from acquired data and diagnostic failures
+from save success. Adapter fixtures cover exact custom-key replay, known no-ops,
+400/422 without retry, prefix changes and requested/companion readback drift.
+The supplied CLI and additional scenarios within `TestBuiltCompositeOIDCSubject`
+exercise immutable export, plan, apply/repeat, unknown evidence, privacy, unchanged
+YAML and success-only output. These do not establish reversible legacy opt-in,
+effective token format or live cloud authentication.
+
 ## Classic whole-rule prune verification
 
 Classic whole-rule pruning has model/adapter/application safety checks in the
@@ -469,6 +479,22 @@ independent readback failures. The supplied CLI lifecycle exercises explicit fal
 matching repeat, private plans and collateral fork-sync drift. The Action keeps
 checkout YAML unchanged and publishes outputs only after confirmed success.
 Fixture results do not prove live administrator access or branch enforcement.
+
+## Classic required status-check verification
+
+The literal codec baseline rejects `require_status_checks_to_pass_before_merging`
+on unchanged source. Owner tests cover the strict active union, exact names and
+explicit sources, alias coherence, raw inactive preservation, set-order no-ops,
+activation with false/empty children, minimal updates and complete acknowledgment.
+Adapter tests also cover deduplicated App lookups, prewrite and postwrite failures,
+raw companion drift and independently verified policy. Combined deployment cases
+check simultaneous edits and deactivation, both independent reference checks,
+repeated no-ops and collateral drift in either omitted group. The supplied CLI lifecycle
+checks export/validate/plan/apply/repeat and creation recovery without ID writeback
+after failed App confirmation. `TestBuiltCompositeClassicStatusChecks` checks the
+actual public Action with an explicit token, detailed/status-only plans, matching
+and repeated no-ops, changed apply, unchanged YAML and failure output suppression.
+These local fixtures do not establish live App grants, storage or enforcement.
 
 ## Deploy key lifecycle
 
@@ -512,7 +538,10 @@ and count-zero preserve those unowned identities. Independent readback, incomple
 acknowledgment and partial creation recovery retain existing failure boundaries.
 Combined review/deployment cases verify simultaneous edits and deactivation,
 matching repeats without Environment reads, and rejection of collateral drift in
-either omitted group after a write.
+either omitted group after a write. The combined status/review/deployment adapter
+cases additionally verify simultaneous creation and update, all-group disable,
+matching no-ops without reference lookups, omitted-group drift, and a fresh PR
+dependency blocking the whole combined update.
 
 The supplied CLI exercises export, validation, plan, count-zero/update/disable and
 matching repeats. `TestBuiltCompositeClassicReviews` uses the actual public Action

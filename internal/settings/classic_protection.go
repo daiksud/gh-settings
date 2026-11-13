@@ -27,8 +27,8 @@ type ClassicCheck struct {
 }
 type ClassicActor struct{ Kind, ID string }
 
-// ClassicCompanions retains raw preservation evidence. Deployments additionally
-// has an active supported projection; selecting that group does not erase this snapshot.
+// ClassicCompanions retains raw preservation evidence for all groups, including
+// PR reviews, status checks and deployments with active supported projections.
 type ClassicCompanions struct {
 	AllowsForcePushes, BlocksCreations, DismissesStaleReviews                                    bool
 	LockAllowsFetchAndMerge, RequireLastPushApproval                                             bool
@@ -71,6 +71,7 @@ type ClassicWriteResult struct {
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
 	r.AllowForkSyncing = cloneClassicValue(r.AllowForkSyncing)
+	r.RequireStatusChecksToPassBeforeMerging = CloneClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging)
 	r.RequireAPullRequestBeforeMerging = CloneClassicReviews(r.RequireAPullRequestBeforeMerging)
 	r.ID = cloneClassicValue(r.ID)
 	r.RequireConversationResolutionBeforeMerging = cloneClassicValue(r.RequireConversationResolutionBeforeMerging)
@@ -97,6 +98,9 @@ func ValidateClassicRules(rules []ClassicRule) error {
 	for _, r := range rules {
 		if r.AllowForkSyncing != nil && (r.LockBranch == nil || !*r.LockBranch) {
 			return fmt.Errorf("allow_fork_syncing requires explicit lock_branch: true")
+		}
+		if err := ValidateClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging); err != nil {
+			return err
 		}
 		if err := ValidateClassicReviews(r.RequireAPullRequestBeforeMerging); err != nil {
 			return err
@@ -143,6 +147,13 @@ func (o ClassicObservation) Validate() error {
 			return fmt.Errorf("incomplete or inconsistent classic fork-sync projection")
 		}
 		c := s.Companions
+		status, err := ProjectClassicStatusChecks(c)
+		if err != nil {
+			return err
+		}
+		if !ClassicStatusChecksManaged(s.Rule.RequireStatusChecksToPassBeforeMerging) || !ClassicStatusChecksMatch(status, s.Rule.RequireStatusChecksToPassBeforeMerging) {
+			return fmt.Errorf("incomplete or inconsistent classic status-check projection")
+		}
 		projection, err := ProjectClassicReviews(c)
 		if err != nil {
 			return err
@@ -234,6 +245,9 @@ func ClassicMatches(observed, desired ClassicRule) bool {
 	if desired.AllowForkSyncing != nil && (observed.AllowForkSyncing == nil || *desired.AllowForkSyncing != *observed.AllowForkSyncing) {
 		return false
 	}
+	if !ClassicStatusChecksMatch(observed.RequireStatusChecksToPassBeforeMerging, desired.RequireStatusChecksToPassBeforeMerging) {
+		return false
+	}
 	if !ClassicReviewsMatch(observed.RequireAPullRequestBeforeMerging, desired.RequireAPullRequestBeforeMerging) {
 		return false
 	}
@@ -313,6 +327,9 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 			return fmt.Errorf("missing or duplicate classic change identity")
 		}
 		seen[*c.Before.ID] = true
+		if !ClassicStatusChecksManaged(c.Before.RequireStatusChecksToPassBeforeMerging) {
+			return fmt.Errorf("incomplete classic before status-check policy")
+		}
 		if !ClassicReviewsManaged(c.Before.RequireAPullRequestBeforeMerging) {
 			return fmt.Errorf("incomplete classic review before policy")
 		}
@@ -357,16 +374,22 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 	if !ClassicMatches(after.Rule, desired) {
 		return fmt.Errorf("classic requested controls did not persist")
 	}
-	beforeCompanions, afterCompanions := before.Companions, after.Companions
+	bCompanions, aCompanions := before.Companions, after.Companions
 	if desired.AllowForkSyncing != nil {
-		beforeCompanions.LockAllowsFetchAndMerge = afterCompanions.LockAllowsFetchAndMerge
+		bCompanions.LockAllowsFetchAndMerge = aCompanions.LockAllowsFetchAndMerge
 	}
-	maskSelectedClassicReviews(&beforeCompanions, afterCompanions, desired.RequireAPullRequestBeforeMerging)
+	maskSelectedClassicReviews(&bCompanions, aCompanions, desired.RequireAPullRequestBeforeMerging)
+	if ClassicStatusChecksManaged(desired.RequireStatusChecksToPassBeforeMerging) {
+		bCompanions.RequiresStatusChecks, aCompanions.RequiresStatusChecks = false, false
+		bCompanions.RequiresStrictStatusChecks, aCompanions.RequiresStrictStatusChecks = false, false
+		bCompanions.Contexts, aCompanions.Contexts = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
+		bCompanions.Checks, aCompanions.Checks = ClassicNullable[[]ClassicCheck]{}, ClassicNullable[[]ClassicCheck]{}
+	}
 	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) {
-		beforeCompanions.RequiresDeployments, afterCompanions.RequiresDeployments = false, false
-		beforeCompanions.Deployments, afterCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
+		bCompanions.RequiresDeployments, aCompanions.RequiresDeployments = false, false
+		bCompanions.Deployments, aCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
 	}
-	if !reflect.DeepEqual(beforeCompanions, afterCompanions) {
+	if !reflect.DeepEqual(bCompanions, aCompanions) {
 		return fmt.Errorf("unowned classic protection changed")
 	}
 	b, a, d := ClassicFlags(before.Rule), ClassicFlags(after.Rule), ClassicFlags(desired)
@@ -388,16 +411,16 @@ func (c *ClassicChange) UnmarshalJSON(data []byte) error {
 		if v == nil {
 			return false
 		}
-		if values, ok := v.([]any); ok {
-			for _, value := range values {
-				if !valid(value) {
+		if m, ok := v.(map[string]any); ok {
+			for k, x := range m {
+				if k != strings.ToLower(k) || !valid(x) {
 					return false
 				}
 			}
 		}
-		if m, ok := v.(map[string]any); ok {
-			for k, x := range m {
-				if k != strings.ToLower(k) || !valid(x) {
+		if list, ok := v.([]any); ok {
+			for _, x := range list {
+				if !valid(x) {
 					return false
 				}
 			}
