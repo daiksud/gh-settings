@@ -93,6 +93,16 @@ need **Administration write for observation as well as mutation**, including
 export and plan. Current-source support does not establish support in the
 selected published package or live active-policy enforcement.
 
+## Actions OIDC subject template commands
+
+The [active OIDC template](settings.md#actions-oidc-subject-template) is one managed
+group. Export independently acquires it and retains prior intent with bounded info
+when unavailable. Plan shows the ordered before/after template. Apply freshly
+skips matches or preserves the known immutable companion in a needed PUT, then
+independently verifies identity and exact state. Unknown immutable mode blocks a
+needed write, but not a matching no-op. Failures distinguish prewrite errors from
+uncertain attempted effects; no local ID writeback or prune operation is involved.
+
 ## Copilot custom instructions commands
 
 Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
@@ -138,7 +148,7 @@ Plan is read-only and identifies the selected family. Ordinary apply upserts onl
 
 Run `gh settings export` without selection flags. It reads supported About/General,
 Topics, Labels, Rulesets, Actions execution/workflow/cache/retention/contributor
-approval settings, Actions event/actor policies, Environments and their variables,
+approval settings, OIDC active templates, Actions event/actor policies, Environments and their variables,
 Actions/Agents repository variables, Copilot review controls, pull request limits
 and exemptions, Pages, archive state and supported Security controls.
 Product-wide security switches, private-only excluded controls, organization

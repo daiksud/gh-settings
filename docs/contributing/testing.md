@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -425,6 +425,21 @@ maps strict domain/API cases and the built CLI and actual supplied-product Actio
 scenarios. They cover automatic export retention, independent PR status, native
 booleans, narrow PATCH, no-op repeat, target/companion readback failure, unchanged
 checkout and private/success-only publication. No live scan or write is performed.
+
+## Actions OIDC subject template verification
+
+[Owner tests](../../internal/github/oidc_subject_test.go) cover complete active
+observations, exact ordered keys, missing immutable no-op versus write blocking,
+true/false companion replay, default transitions, bounded acknowledgments and
+independent identity/state readback. [Application tests](../../internal/app/oidc_subject_test.go)
+cover independent export retention, managed counts and verified prior progress.
+The [built CLI lifecycle](../../tests/acceptance/oidc_subject_test.go) verifies
+export, plan, repeated apply, failure and raw-debug privacy against an isolated API;
+it fails against the unchanged binary because OIDC is not exported. The
+[supplied-product composite](../../tests/github-actions/oidc_subject_acceptance_test.go)
+checks actual installer/runtime/report/output behavior and is required by the
+candidate gate. These fixtures issue no real tokens or cloud requests and do not
+prove live permissions or server acceptance of an empty custom key list.
 
 ## Classic whole-rule prune verification
 
