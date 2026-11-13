@@ -22,9 +22,9 @@ func TestTopicsFailureRetainsKnownApplyProgress(t *testing.T) {
 			calls = append(calls, "repository")
 			return true, nil
 		},
-		Topics: func(repository.Repository, settings.TopicsDeclaration) error {
+		Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) {
 			calls = append(calls, "topics")
-			return cause
+			return false, cause
 		},
 		ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
 			t.Fatal("read after failed update")

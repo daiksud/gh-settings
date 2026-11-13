@@ -113,7 +113,7 @@ type Writer struct {
 	WorkflowPermissions     func(repository.Repository, settings.ActionsPolicyDeclaration) error
 	Actions                 func(repository.Repository, settings.ActionsPolicyDeclaration) error
 	Repository              func(repository.Repository, settings.RepositoryDeclaration) (bool, error)
-	Topics                  func(repository.Repository, settings.TopicsDeclaration) error
+	Topics                  func(repository.Repository, settings.TopicsDeclaration) (bool, error)
 	ReadLabels              func(repository.Repository) (settings.LabelObservation, error)
 	CreateLabel             func(repository.Repository, settings.LabelChange) (int64, error)
 	CreatedID               func(string, string, int64) error

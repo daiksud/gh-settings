@@ -16,12 +16,12 @@ description: Reconcile declared repository controls after local validation.
 
 ### Rule: Reconcile repository controls before continuing other resources
 
-- When REST-backed About/General controls are declared, read fresh complete base/selected merge state, skip exact matches and send only changed controls in one repository PATCH. A changed UI menu sends its complete pair; raw normalized pairs remain actionable. GraphQL-backed PR/Issue/Sponsor controls use their separate identity-checked mutation; a GraphQL-only declaration sends no PATCH. Topics uses a separate PUT.
+- When REST-backed About/General controls are declared, read fresh complete base/selected merge state, skip exact matches and send only changed controls in one repository PATCH. A changed UI menu sends its complete pair; raw normalized pairs remain actionable. GraphQL-backed PR/Issue/Sponsor controls use their separate identity-checked mutation; a GraphQL-only declaration sends no PATCH. Topics use the separate reconciliation contract below.
 - Reject redirects, including those that would convert PATCH into GET.
 - Omit the version marker, outer UI mappings, and every undeclared field from API payloads.
 - Preserve false and empty strings as explicit values.
 - When `repository.settings.general.features.discussions` is sent, verify the PATCH response contains the requested boolean. Missing, null, wrong-type or unequal values fail after the request, can leave repository writes applied, and stop later resources without rollback. Omission keeps the previous response handling.
-- Repository reconciliation uses fresh observations, not a saved comparison. After PATCH, independently verify the original declared intent, including members omitted from PATCH because they initially matched. Base-only declarations require no GraphQL read. Topics retains its direct PUT; apply never requires a saved plan.
+- Repository reconciliation uses fresh observations, not a saved comparison. After PATCH, independently verify the original declared intent, including members omitted from PATCH because they initially matched. Base-only declarations require no GraphQL read. Apply never requires a saved plan.
 - An exact repository match performs no PATCH. Unavailable preflight is a read failure; mutation/readback errors retain uncertain effects. A repository no-op is unchanged and does not count as earlier writes if a later resource fails.
 - Preserve the configuration file except guarded confirmed-created-ID writeback, and leave omitted scalar fields unmanaged.
 
@@ -50,26 +50,29 @@ Focused application tests record declaration loading, target resolution, resourc
 | Export → edit → validate → plan → apply; fresh match skips PATCH and omitted values remain unmanaged | `TestExportEditValidatePlanApply` |
 | No-op, minimal changed payload, repeated apply, denied preflight/readback and verification of initially matching members | [Repository reconciliation acceptance](../../tests/acceptance/repository_reconcile_test.go) |
 
-### Rule: Apply declared resources independently
+### Rule: Reconcile Topics against complete fresh membership
 
-- Given repository fields and topic names are declared.
-- When apply runs.
-- Then fresh repository reconciliation completes before topics PUT; a changed repository PATCH requires independent readback.
-- And the PUT contains only the sorted names array, including an explicit empty array.
-- And a failure stops later operations without rolling back successful writes.
-- And omitted About topics produce no Topics request.
+- Omitted About topics produce no Topics read or write; explicit `[]` remains managed.
+- Fresh repository reconciliation completes before Topics reconciliation.
+- Read and validate the complete current names array. Missing, null, malformed, invalid, denied or redirected reads stop before any Topics PUT; no empty set is invented.
+- Compare membership independently of order. Exact, reordered and already-empty matches perform no PUT and record unchanged work.
+- Changed membership sends one PUT containing only the sorted complete names array, including explicit `[]` to clear it.
+- Independently GET complete names again and verify exact membership; an acknowledgement is insufficient.
+- Failed PUT or failed/mismatching readback stops later operations with uncertain effects. There is no rollback, automatic retry or locking.
+- A prewrite failure records a read failure. Earlier actual repository or unarchive writes remain partial progress; a matching Topics declaration is not a write.
+- Matching Topics continue into Labels and final archive as declared. Repeated apply reads fresh state and skips a now-matching PUT.
 
-Test mapping: [TestTopicsApplyOrderAndPartialFailures](../../internal/app/topics_test.go), [TestApplyTopicsPayloadAndErrors](../../internal/github/topics_test.go), [TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
+Test mapping: [TestApplyTopicsReconciliation and TestApplyTopicsRepeatAndOmission](../../internal/github/topics_test.go), [TestTopicsApplyOrderAndPartialFailures, TestTopicsApplyReportsActualWritesAndReadFailures and TestTopicsNoopContinuesLabelsAndFinalArchive](../../internal/app/topics_test.go), [TestTopicsApplyReconciliationAcceptance and TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
 
 ### Rule: Reconcile labels against fresh state
 
-Current unreleased source applies nonempty label selections after repository/topics writes. It preflights ID-selected updates and ID-less creates against complete fresh state, never deleting unlisted objects. Whole supported values include fixed description defaults. Confirmed create IDs are written to the original YAML unless opt-out/Actions disables recording; failures preserve earlier remote writes and recoverable IDs. See the [Labels specification](labels.feature.md).
+Current unreleased source applies nonempty label selections after repository/Topics operations. It preflights ID-selected updates and ID-less creates against complete fresh state, never deleting unlisted objects. Whole supported values include fixed description defaults. Confirmed create IDs are written to the original YAML unless opt-out/Actions disables recording; failures preserve earlier remote writes and recoverable IDs. See the [Labels specification](labels.feature.md).
 
 ### Rule: Actions execution policy sequencing
 
 Current source applies repository Actions policy after existing resources. The [Actions policy specification](actions-execution-policy.feature.md#rule-preflight-and-preserve-companions-before-ordered-writes) owns fresh reads, companion preservation, staged enabling, readback and partial failure.
 
-Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct GraphQL access/topics/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
+Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct GraphQL access/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Repository REST controls, Topics, collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
 
 | Subset | Existing application and transport/process evidence |
 | --- | --- |
