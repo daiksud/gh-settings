@@ -179,7 +179,16 @@ func TestRulesetsCRUDExactPolicyAndActorNull(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			var sentPolicy string
+			calls := 0
 			client := rulesetMutationClient(t, change, transportFunc(func(r *http.Request) (*http.Response, error) {
+				calls++
+				if calls == 2 {
+					if r.Method != "GET" || r.URL.Path != "/repos/owner/current/rulesets/7" || r.URL.RawQuery != "includes_parents=false" {
+						t.Fatal(r.Method, r.URL)
+					}
+					return rulesetMutationResponse(t, r, 200, sentPolicy, 7), nil
+				}
 				if r.Method != method || r.URL.Path != path {
 					t.Fatal(r)
 				}
@@ -205,10 +214,11 @@ func TestRulesetsCRUDExactPolicyAndActorNull(t *testing.T) {
 						t.Fatal("DeployKey null omitted")
 					}
 				}
-				return rulesetMutationResponse(t, r, 200, string(data), 7), nil
+				sentPolicy = string(data)
+				return rulesetMutationResponse(t, r, 200, sentPolicy, 7), nil
 			}))
-			if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil {
-				t.Fatal(err)
+			if _, err := client.ApplyRuleset(repository.Repository{Owner: "owner", Name: "current"}, change); err != nil || calls != 2 {
+				t.Fatal(err, calls)
 			}
 		})
 	}
