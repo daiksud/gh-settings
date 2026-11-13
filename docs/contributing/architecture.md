@@ -301,6 +301,17 @@ existing independent-family retention boundary. The
 [feature specification](../features/classic-protection.feature.md) maps tests and
 records the inspected-schema and nontransactional limits.
 
+The status-check model owns a complete active UI union while retaining both native
+booleans and nullable ordered lists in the private snapshot. Active projection
+requires coherent legacy contexts and App-bound checks; selected policy compares
+as an unordered set, while an omitted group retains raw order and nullness.
+Mutation acknowledgments include the entire supported group before independent
+rule/actor readback. Needed writes with selected non-`any` App sources also resolve
+distinct exact App nodes before and after verification; no-op, export and plan do
+not query installations or run history. Selected deactivation owns only its gate.
+
+## Deploy key lifecycle
+
 Deploy keys use a parsed public-key value and closed observations in
 `internal/settings/deploy_keys.go`. The GitHub adapter owns bounded, nonlogging
 transport, exact target/URL binding, complete pagination and independent creation

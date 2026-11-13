@@ -27,8 +27,8 @@ type ClassicCheck struct {
 }
 type ClassicActor struct{ Kind, ID string }
 
-// ClassicCompanions retains raw preservation evidence. Deployments additionally
-// has an active supported projection; selecting that group does not erase this snapshot.
+// ClassicCompanions retains raw preservation evidence for all groups, including
+// PR reviews, status checks and deployments with active supported projections.
 type ClassicCompanions struct {
 	AllowsForcePushes, BlocksCreations, DismissesStaleReviews                                    bool
 	LockAllowsFetchAndMerge, RequireLastPushApproval                                             bool
@@ -67,6 +67,7 @@ type ClassicWriteResult struct {
 }
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
+	r.RequireStatusChecksToPassBeforeMerging = CloneClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging)
 	r.RequireAPullRequestBeforeMerging = CloneClassicReviews(r.RequireAPullRequestBeforeMerging)
 	r.ID = cloneClassicValue(r.ID)
 	r.AllowForcePushes = CloneClassicForcePush(r.AllowForcePushes)
@@ -94,6 +95,9 @@ func validateClassicRules(rules []ClassicRule, acquired bool) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
 		if err := ValidateClassicForcePush(r.AllowForcePushes, acquired); err != nil {
+			return err
+		}
+		if err := ValidateClassicStatusChecks(r.RequireStatusChecksToPassBeforeMerging); err != nil {
 			return err
 		}
 		if err := ValidateClassicReviews(r.RequireAPullRequestBeforeMerging); err != nil {
@@ -144,6 +148,13 @@ func (o ClassicObservation) Validate() error {
 		}
 		if !ClassicForcePushEqual(force, s.Rule.AllowForcePushes) {
 			return fmt.Errorf("incomplete or inconsistent classic force-push projection")
+		}
+		status, err := ProjectClassicStatusChecks(c)
+		if err != nil {
+			return err
+		}
+		if !ClassicStatusChecksManaged(s.Rule.RequireStatusChecksToPassBeforeMerging) || !ClassicStatusChecksMatch(status, s.Rule.RequireStatusChecksToPassBeforeMerging) {
+			return fmt.Errorf("incomplete or inconsistent classic status-check projection")
 		}
 		projection, err := ProjectClassicReviews(c)
 		if err != nil {
@@ -233,6 +244,9 @@ func ClassicMatches(observed, desired ClassicRule) bool {
 	if ClassicForcePushSelected(desired.AllowForcePushes) && !ClassicForcePushEqual(observed.AllowForcePushes, desired.AllowForcePushes) {
 		return false
 	}
+	if !ClassicStatusChecksMatch(observed.RequireStatusChecksToPassBeforeMerging, desired.RequireStatusChecksToPassBeforeMerging) {
+		return false
+	}
 	if !ClassicReviewsMatch(observed.RequireAPullRequestBeforeMerging, desired.RequireAPullRequestBeforeMerging) {
 		return false
 	}
@@ -320,6 +334,9 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 		if !ClassicForcePushSelected(c.Before.AllowForcePushes) {
 			return fmt.Errorf("incomplete classic before force-push policy")
 		}
+		if !ClassicStatusChecksManaged(c.Before.RequireStatusChecksToPassBeforeMerging) {
+			return fmt.Errorf("incomplete classic before status-check policy")
+		}
 		if !ClassicReviewsManaged(c.Before.RequireAPullRequestBeforeMerging) {
 			return fmt.Errorf("incomplete classic review before policy")
 		}
@@ -364,14 +381,20 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 	if !ClassicMatches(after.Rule, desired) {
 		return fmt.Errorf("classic requested controls did not persist")
 	}
-	beforeCompanions, afterCompanions := before.Companions, after.Companions
-	maskSelectedClassicForcePush(&beforeCompanions, afterCompanions, desired.AllowForcePushes)
-	maskSelectedClassicReviews(&beforeCompanions, afterCompanions, desired.RequireAPullRequestBeforeMerging)
-	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) {
-		beforeCompanions.RequiresDeployments, afterCompanions.RequiresDeployments = false, false
-		beforeCompanions.Deployments, afterCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
+	bCompanions, aCompanions := before.Companions, after.Companions
+	maskSelectedClassicForcePush(&bCompanions, aCompanions, desired.AllowForcePushes)
+	maskSelectedClassicReviews(&bCompanions, aCompanions, desired.RequireAPullRequestBeforeMerging)
+	if ClassicStatusChecksManaged(desired.RequireStatusChecksToPassBeforeMerging) {
+		bCompanions.RequiresStatusChecks, aCompanions.RequiresStatusChecks = false, false
+		bCompanions.RequiresStrictStatusChecks, aCompanions.RequiresStrictStatusChecks = false, false
+		bCompanions.Contexts, aCompanions.Contexts = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
+		bCompanions.Checks, aCompanions.Checks = ClassicNullable[[]ClassicCheck]{}, ClassicNullable[[]ClassicCheck]{}
 	}
-	if !reflect.DeepEqual(beforeCompanions, afterCompanions) {
+	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) {
+		bCompanions.RequiresDeployments, aCompanions.RequiresDeployments = false, false
+		bCompanions.Deployments, aCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
+	}
+	if !reflect.DeepEqual(bCompanions, aCompanions) {
 		return fmt.Errorf("unowned classic protection changed")
 	}
 	b, a, d := ClassicFlags(before.Rule), ClassicFlags(after.Rule), ClassicFlags(desired)
