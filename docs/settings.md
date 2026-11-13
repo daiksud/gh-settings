@@ -58,10 +58,10 @@ contract remains unconfirmed, rather than being labeled unavailable. The
 and the limits of fixture and live evidence.
 
 Personal-repository collaborators and invitations are supported through the
-[identity and invitation contract](#personal-collaborators). Remaining classic
-protection controls and custom configurable rules, including existing Environment
-protection apps, remain adopted future work when supported by the target UI and
-applicable APIs. Organization-owned repositories and organization
+[identity and invitation contract](#personal-collaborators). Existing Environment
+protection App selection follows the [custom protection contract](#custom-protection-apps).
+Remaining classic protection controls and additional configurable custom rules
+remain adopted future work when supported by the target UI and applicable APIs. Organization-owned repositories and organization
 settings, repository rename/visibility/transfer/deletion, authoring GitHub feature
 configuration files and secret values are excluded. This file-authoring boundary
 does not exclude gh-settings' own declaration file. Existing App selection does
@@ -81,13 +81,13 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables`, `environment-variables`, `actions-policies`, `environments` and
+`agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and
 `branch-protection-rules`. Standalone `all` selects all currently supported scopes; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets/Actions Policies/classic rules, canonical names for variables, folded names for Environments). ID-less entries
+labels/Rulesets/Actions Policies/classic rules, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy/classic rule entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -882,8 +882,10 @@ user IDs, excluding the owner by owner ID. Personal collaborators have GitHub's
 fixed write permission; no role or permission field is accepted. Email-only
 invitations have an unconfirmed complete API roundtrip and remain unsupported.
 
-Omission is unmanaged. `[]` and unlisted people cause no access mutation. Removal
-and invitation cancellation are not implemented, including under `--prune all`.
+Omission is unmanaged. Without prune, `[]` and unlisted people cause no access
+mutation. Explicit [`--prune collaborators`](#collaborator-pruning), including
+standalone `all`, adds bounded invitation cancellation and active-grant removal
+for a present collection.
 An ID-bound person must still be active or pending; disappearance fails without
 reinviting. A username-only entry is initial-add intent. Existing active access
 or a matching pending invitation makes no PUT; apply records the verified user ID
@@ -909,8 +911,8 @@ or revocation. Deliberately removing an ID restores initial-add intent and can
 notify that person again. There is no hidden journal: if an ambiguous request was
 sent, no verified binding was saved and the invitation later disappears, another
 username-only invocation cannot prove the earlier request happened. Resolve access
-before retrying. No automatic retry, polling, acceptance, cancellation or rollback
-occurs.
+before retrying. No automatic retry, polling, acceptance or rollback occurs.
+Cancellation and removal require explicit prune intent.
 
 Both inventories must be fully paginated and typed. Missing/null invitees,
 unsupported actors/roles, malformed state, explicit `expired: true`, duplicate
@@ -926,7 +928,7 @@ correction. Reused usernames never silently select a different ID. Apply resolve
 all declared people before the first collaborator operation, then rechecks the
 repository/owner IDs, personal-public status, complete inventories and current
 username identity before each request. A prepared pending invitation that vanished
-is not resent. An explicit own unarchive occurs before these reads; archived
+is not resent. Without prune, an explicit own unarchive occurs before these reads; archived
 repositories cannot receive a new invitation. These reads are not atomic, and the
 username-addressed PUT has no atomic expected-user-ID condition, leaving a narrow
 concurrent rename/reassignment race. Later failures stop subsequent operations
@@ -940,6 +942,60 @@ and Administration read for invitations; mutation requires Administration write.
 Installation-token support is documented, but local fixtures do not establish a
 real App's grants or a recipient's notification/acceptance. See the
 [behavior specification](features/repository-access.feature.md).
+
+### Collaborator pruning
+
+`plan --prune collaborators` and `apply --prune collaborators` use the existing
+`repository.settings.collaborators` list. Omission stays unmanaged even under
+`all`; `[]` selects every supported non-owner active grant and pending invitation.
+A nonempty list retains the union of ID-bound people and resolved username-only
+people, including initial-add intent. The owner is always protected. No deletion
+marker, role expansion, email invitation, recipient acceptance or installation
+removal is introduced.
+
+Before **any** remote write, including unarchive and unrelated settings, apply
+acquires complete supported active/pending inventories and freezes selected user
+IDs, active removal candidates and invitation-ID cancellation candidates. Failed,
+partial, duplicate, unsupported or ambiguous evidence blocks the whole preflight.
+The same credential must positively identify the personal repository owner, or
+prove installation target access through a complete authenticated
+[installation repository inventory](https://docs.github.com/en/rest/apps/installations?apiVersion=2026-03-10#list-repositories-accessible-to-the-app-installation)
+and complete admin-only invitation visibility. A failed `/user` alone is not
+installation evidence. Ambiguous positive identities and a non-owner user fail.
+No App/installation ID is invented, no second credential is requested, and token
+prefixes or `GITHUB_ACTOR` do not determine the management path. Administration
+write remains a mutation prerequisite; successful reads do not prove that grant.
+
+Inviter identities are private dependency evidence, never YAML or report values.
+An active removal is refused if a retained invitation has unknown inviter identity
+or was sent by that candidate. Only initially selected invitations are cancelled;
+a late invitation cannot be cancelled to unblock removal. Ordinary selected
+reconciliation and verified local bindings run first, followed by fixed invitation
+cancellations, then fixed active removals, before Environment work. A selected
+pending person's acceptance may advance to active; a cancellation candidate's
+acceptance, disappearance or replacement fails instead of becoming a grant removal.
+Frozen selected IDs prevent later username reassignment from changing retention.
+
+Every DELETE freshly checks the exact repository/owner, management path and complete
+remaining inventories, accounting only for confirmed operations. Only a verified
+own unarchive may change expected archive state. After cancellations, active
+removal requires no remaining invitation dependency and a last immutable-ID and
+username-to-ID check. A bodyless repository invitation-ID or collaborator-username
+DELETE must return empty 204, followed by independent complete readback. It must
+confirm absence and unchanged remaining access; 204 alone is not verified success.
+CLI/detailed Summary distinguish cancellation from removal. Apply diagnostics
+separate attempted, acknowledged and verified effects, retain earlier bindings and
+verified deletions, and stop later work without retry, rollback or failed-readback
+adoption. Local binding alone is not a remote partial write.
+
+GitHub documents additional collaborator-removal effects on issue assignments,
+stars, package access, invitations and forks. These may settle asynchronously;
+verified list absence does not certify their completion. Removing a grant does
+not make public content inaccessible. Inventories are not atomic, the DELETE is
+username-addressed without an expected-ID condition, and invitation creation can
+race the final dependency check. Removing and re-adding an identical active grant
+between reads is indistinguishable because there is no membership incarnation ID.
+Review these effects before apply; there is no transaction or hidden journal.
 
 ## Labels
 
@@ -1220,7 +1276,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and four independent controls. It is separate from Rulesets and does not clone
+and five independent controls. It is separate from Rulesets and does not clone
 all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1236,6 +1292,7 @@ repository:
         require_signed_commits: true
         require_linear_history: true
         allow_deletions: false
+        lock_branch: false
 ```
 
 `id` is an optional positive numeric GraphQL `databaseId`. Without it an entry is
@@ -1270,7 +1327,14 @@ requires fresh squash or rebase availability, after any earlier repository updat
 it does not implicitly enable a merge method. Creation sends the exact pattern
 and declared checkboxes; other defaults are controlled by GitHub.
 
-Complete known PR, check/App binding, deployment, admin, lock/fork-sync, force-push
+Lock branch makes matching branches read-only. It does not enable fork syncing;
+the acquired fork-sync setting stays unowned and must survive updates unchanged.
+GitHub documents that locked branches cannot be deleted, even when deletion is
+otherwise allowed. This checkbox does not rewrite the separate deletion setting
+or promise that it will take effect while locked. Readback verifies stored
+settings, not an attempted push, deletion or effective enforcement.
+
+Complete known PR, check/App binding, deployment, admin, fork-sync, force-push
 and actor-allowance state is acquired as unowned preservation evidence. Null stays
 distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
@@ -1286,13 +1350,13 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern and these four
+Automatic export projects every readable rule's ID, pattern and these five
 checkboxes. It does not export or adopt the other controls. Unavailable acquisition
 retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
 GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
-admin enforcement, lock/fork-sync and force-push selection remain separate work;
+admin enforcement, fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for
@@ -1307,7 +1371,7 @@ collection stays unmanaged. `[]` selects all initially acquired rules; a nonempt
 list retains declared numeric IDs and newly created rules. All retained rules must
 be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
 renames fail before any remote write, including unrelated settings or unarchive.
-Ordinary create/update retains its four-control partial ownership.
+Ordinary create/update retains its five-control partial ownership.
 
 Deletion removes the entire rule, including configured PR, check, deployment,
 admin and actor protections that gh-settings cannot edit. An overlapping rule may
@@ -1317,7 +1381,7 @@ companions. It does not delete branches. Inspect the complete plan before apply.
 
 Before any remote write, acquire the complete rule/actor inventory and freeze each
 unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
-four flags and all known raw companions. Missing, denied, partial, unsupported or
+five flags and all known raw companions. Missing, denied, partial, unsupported or
 inconsistent evidence blocks the whole preflight. A retained rule's unreadable
 state can also block this complete inventory. Before this family's work, recheck
 the initial candidates: disappearance, replacement or state drift stops execution.
@@ -1476,7 +1540,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Collaborator removal/invitation cancellation and remaining classic branch-protection controls are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Remaining classic branch-protection controls are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 

@@ -220,8 +220,17 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Collaborators != nil && desired.Collaborators.Len() > 0 {
-		wrote, err := applyCollaborators(&result, repo, *desired.Collaborators, write)
+	if desired.Collaborators != nil && (desired.Collaborators.Len() > 0 || prune.Has("collaborators")) {
+		var wrote bool
+		var err error
+		if prune.Has("collaborators") {
+			if unarchived {
+				prepared.collaborators = prepared.collaborators.AfterUnarchive()
+			}
+			wrote, err = applyCollaboratorPrune(&result, repo, prepared.collaborators, write)
+		} else {
+			wrote, err = applyCollaborators(&result, repo, *desired.Collaborators, write)
+		}
 		if err != nil {
 			return result, err
 		}

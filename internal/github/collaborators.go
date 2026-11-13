@@ -118,6 +118,7 @@ type collaboratorRawInvitation struct {
 	Invitee     *collaboratorRawUser `json:"invitee"`
 	Permissions *string              `json:"permissions"`
 	CreatedAt   *string              `json:"created_at"`
+	Inviter     json.RawMessage      `json:"inviter"`
 	Expired     json.RawMessage      `json:"expired"`
 }
 
@@ -148,6 +149,10 @@ func collaboratorPageComplete(length int, link string) (bool, error) {
 	return length < 100, nil
 }
 func (c *Client) ReadCollaborators(repo repository.Repository) (settings.CollaboratorObservation, error) {
+	return c.readCollaborators(repo, nil)
+}
+
+func (c *Client) readCollaborators(repo repository.Repository, evidence *[]settings.CollaboratorPruneEntry) (settings.CollaboratorObservation, error) {
 	target, err := c.collaboratorTarget(repo)
 	if err != nil {
 		return settings.CollaboratorObservation{}, err
@@ -189,6 +194,15 @@ func (c *Client) ReadCollaborators(repo repository.Repository) (settings.Collabo
 			if err := row.validateRole(); err != nil {
 				return settings.CollaboratorObservation{}, err
 			}
+			if evidence != nil {
+				var permissions map[string]bool
+				if row.Permissions != nil {
+					if err := json.Unmarshal(row.Permissions, &permissions); err != nil {
+						return settings.CollaboratorObservation{}, fmt.Errorf("invalid collaborator permission evidence")
+					}
+				}
+				*evidence = append(*evidence, settings.CollaboratorPruneEntry{State: settings.CollaboratorState{Person: person, Status: "active"}, Permissions: permissions})
+			}
 			if err := appendRow(settings.CollaboratorState{Person: person, Status: "active"}); err != nil {
 				return settings.CollaboratorObservation{}, err
 			}
@@ -211,6 +225,13 @@ func (c *Client) ReadCollaborators(repo repository.Repository) (settings.Collabo
 			row, err := invitation.state(target)
 			if err != nil {
 				return settings.CollaboratorObservation{}, err
+			}
+			if evidence != nil {
+				entry, err := invitation.pruneEntry(row)
+				if err != nil {
+					return settings.CollaboratorObservation{}, err
+				}
+				*evidence = append(*evidence, entry)
 			}
 			if err := appendRow(row); err != nil {
 				return settings.CollaboratorObservation{}, err

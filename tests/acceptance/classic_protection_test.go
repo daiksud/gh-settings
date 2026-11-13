@@ -48,7 +48,7 @@ func processClassicClone(v map[string]any) map[string]any {
 	return result
 }
 func TestClassicProtectionExecutableLifecycle(t *testing.T) {
-	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift"} {
+	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rules := []map[string]any{processClassicRule(7, "Release/**")}
@@ -155,7 +155,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "repository"} {
 						ack[key] = rule[key]
 					}
 					body[mutation] = map[string]any{"branchProtectionRule": ack}
@@ -194,7 +194,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 			run(false, "export")
 			path := filepath.Join(fixture.work, ".github/settings.yml")
 			data, _ := os.ReadFile(path)
-			for _, want := range []string{"branch_protection_rules:", "id: 7", "branch_name_pattern: Release/**", "require_signed_commits: false", "allow_deletions: false"} {
+			for _, want := range []string{"branch_protection_rules:", "id: 7", "branch_name_pattern: Release/**", "require_signed_commits: false", "allow_deletions: false", "lock_branch: false"} {
 				if !strings.Contains(string(data), want) {
 					t.Fatal(want, string(data))
 				}
@@ -214,6 +214,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				return
 			}
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_signed_commits: true}]}}\n"
+			if mode == "lock" {
+				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', lock_branch: true}]}}\n"
+			}
 			if strings.Contains(mode, "create") {
 				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{branch_name_pattern: 'z/**', require_signed_commits: true}, {branch_name_pattern: 'z/*', allow_deletions: false}]}}\n"
 			}
@@ -267,6 +270,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					t.Fatal(applied.stderr.String(), count)
 				}
 				return
+			}
+			if mode == "lock" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "lockBranch": true}}) {
+				t.Fatal(captured)
 			}
 			if mode == "update" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "requiresCommitSignatures": true}}) {
 				t.Fatal(captured)

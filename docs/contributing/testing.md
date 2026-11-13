@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeClassicPrune)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -395,6 +395,15 @@ exercise the actual installer and Action plan/apply steps against a local servic
 These are fixture observations, not live invitations, access grants, App
 permission verification or recipient acceptance.
 
+The supplied-product collaborator-prune composite uses an installation-shaped
+fixture with one explicit token for `/user`, complete installation target access,
+admin invitation inventory and both DELETE endpoints. It exercises detailed and
+status-only plans, comma scopes and `all`, no-writeback, repeated apply, bounded
+readback failure and success-only outputs. It does not establish live installation
+grants, recipient notification or GitHub's asynchronous removal side effects.
+Local CLI lifecycle fixtures explicitly set `GITHUB_ACTIONS=false`; run the full
+CLI suite with host `GITHUB_ACTIONS=true` to verify that isolation.
+
 ## Environment protection App verification
 
 [Owner fixtures](../../internal/github/environment_custom_rules_test.go) check
@@ -417,9 +426,20 @@ scenarios. They cover automatic export retention, independent PR status, native
 booleans, narrow PATCH, no-op repeat, target/companion readback failure, unchanged
 checkout and private/success-only publication. No live scan or write is performed.
 
+## Classic whole-rule prune verification
+
 Classic whole-rule pruning has model/adapter/application safety checks in the
 `classic_prune_test.go` owner files and actual CLI coverage in
 [`tests/acceptance/classic_prune_test.go`](../../tests/acceptance/classic_prune_test.go).
 The [supplied-product Action case](../../tests/github-actions/classic_prune_acceptance_test.go)
 checks private snapshots, both reporting modes, standalone `all`, repeat no-op
 and unchanged YAML using the candidate artifact. It does not delete live rules.
+
+## Classic branch-lock verification
+
+The supplied CLI lifecycle covers acquired false export, lock changes and repeated
+apply. The supplied-product ClassicLock composite exercises lock/unlock, matching
+no-op, detailed/private plans, exact changed-only GraphQL input, independent
+fork-sync drift failure and success-only outputs. Model and adapter fixtures also
+check omission, complete acquisition and preservation of fork-sync true/false.
+These fixtures do not establish live branch enforcement or API side effects.

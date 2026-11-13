@@ -39,6 +39,7 @@ type Reader struct {
 	Variables             func(repository.Repository) (settings.VariableInventory, error)
 	AgentVariables        func(repository.Repository) (settings.VariableInventory, error)
 	EnvironmentVariables  func(repository.Repository, string) (settings.VariableInventory, error)
+	CollaboratorPrune     func(repository.Repository, settings.CollaboratorDeclarations) (settings.CollaboratorPruneObservation, error)
 
 	PullRequestExemptions func(repository.Repository) (settings.PullRequestExemptionsObservation, error)
 	EnvironmentVariable   func(repository.Repository, string, string) (settings.VariableObservation, error)
@@ -77,6 +78,9 @@ type Reader struct {
 type Writer struct {
 	ReadAIScanRepositories     func(repository.Repository) (settings.AIScanRepositoriesObservation, error)
 	AIScanRepositories         func(repository.Repository, settings.SecurityChange) (bool, error)
+	ReadCollaboratorPrune      func(repository.Repository, settings.CollaboratorDeclarations) (settings.CollaboratorPruneObservation, error)
+	RefreshCollaboratorPrune   func(repository.Repository, settings.CollaboratorPruneObservation, *settings.CollaboratorWriteResult) (settings.CollaboratorPruneObservation, error)
+	DeleteCollaborator         func(repository.Repository, settings.CollaboratorPruneObservation, settings.CollaboratorDeletion) (settings.CollaboratorPruneObservation, settings.CollaboratorDeleteResult, error)
 	ReadEnvironmentPrune       func(repository.Repository, []string) (settings.EnvironmentPruneObservation, error)
 	DeleteEnvironment          func(repository.Repository, settings.EnvironmentPruneCandidate) error
 	ReadBranchProtectionRules  func(repository.Repository) (settings.ClassicObservation, error)
