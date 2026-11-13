@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -566,3 +566,19 @@ cases export and validate both values after application; the actual supplied
 `TestBuiltCompositeClassicForkSync` verifies matching, enable/disable, private plans,
 readback failure and source immutability. The official UI documentation is evidence
 for the control; fixtures do not establish live syncing or branch authorization.
+Combined fork/force/PR-review/status-check/deployment cases verify exact create and
+update payloads, matching repeats, both raw omission directions, selected matching
+sync acknowledgment drift, fork identity drift and prewrite actor lookup failure.
+
+## Classic force-push verification
+
+The [Classic specification](../features/classic-protection.feature.md#force-push-actor-ownership)
+links literal codec, model, API, app and product tests. Fixtures distinguish native
+false with allowances from disabled, preserve hidden actors under Everyone and
+retain known Team for read-only Before/prune. The actual supplied
+`TestBuiltCompositeClassicForcePush` covers matching, App selection, explicit
+clearing, private plans, required lookup on unrelated changes and uncertain actor
+readback. Static identities and local transport do not prove live App access,
+force-push success or enforcement. Combined force-push/PR-review/status-check/deployment
+cases verify creation, updates, disabling and repeat no-ops, omitted-group drift
+and fresh PR transition guards. Published package pins remain unchanged.

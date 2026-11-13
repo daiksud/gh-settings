@@ -10,18 +10,20 @@ import (
 )
 
 func TestClassicForkSyncStatusReviewsAndDeploymentsCompose(t *testing.T) {
-	for _, mode := range []string{"all-selected", "create-all", "all-disabled-sync-false", "status-selected-sync-drift", "sync-selected-status-drift", "sync-selected-review-drift", "sync-selected-deployment-drift", "status-selected-fork-drift", "nonfork-selection", "pre-app-invalid", "environment-fork-drift"} {
+	for _, mode := range []string{"all-selected", "create-all", "all-disabled-sync-false", "status-selected-sync-drift", "sync-selected-status-drift", "sync-selected-review-drift", "sync-selected-deployment-drift", "status-selected-fork-drift", "nonfork-selection", "pre-app-invalid", "environment-fork-drift", "sync-selected-force-drift", "force-selected-sync-drift", "force-identities-invalid", "force-write-matching-sync-ack-drift", "force-write-fork-ack-drift"} {
 		t.Run(mode, func(t *testing.T) {
 			f := newClassicAPIFixture(t, classicFixtureRule(7, "main"))
 			f.hook = func(_ string, body, _ map[string]any) { setClassicForkEvidence(body, mode != "nonfork-selection") }
 			id, yes, no := int64(7), true, false
 			desired := settings.ClassicRule{
-				ID: &id, BranchNamePattern: "main", LockBranch: &yes, AllowForkSyncing: &yes,
+				AllowForcePushes: desiredForce("specified_actors", settings.ClassicForcePushActor{Type: "app", ID: "A_1"}),
+				ID:               &id, BranchNamePattern: "main", LockBranch: &yes, AllowForkSyncing: &yes,
 				RequireAPullRequestBeforeMerging:         apiReviews(true, 3, false),
 				RequireStatusChecksToPassBeforeMerging:   classicStatusDesired(false, settings.ClassicStatusCheck{Name: "build", AcceptUpdatesFrom: "APP_private"}),
 				RequireDeploymentsToSucceedBeforeMerging: deploymentGroup(true, "staging"),
 			}
 			want := map[string]any{
+				"allowsForcePushes": false, "bypassForcePushActorIds": []any{"A_1"},
 				"branchProtectionRuleId": "B_7", "lockBranch": true, "lockAllowsFetchAndMerge": true,
 				"requiredApprovingReviewCount": float64(3), "dismissesStaleReviews": false,
 				"requiresCodeOwnerReviews": false, "requireLastPushApproval": false,
@@ -37,19 +39,30 @@ func TestClassicForkSyncStatusReviewsAndDeploymentsCompose(t *testing.T) {
 			case "all-disabled-sync-false":
 				f.rules[0]["lockBranch"], f.rules[0]["lockAllowsFetchAndMerge"] = true, true
 				desired.AllowForkSyncing = &no
+				desired.AllowForcePushes = desiredForce("disabled")
+				f.forceActors["B_7"] = []settings.ClassicActor{{Kind: "Team", ID: "T_old"}}
 				desired.RequireAPullRequestBeforeMerging = apiReviews(false, 0, false)
 				desired.RequireStatusChecksToPassBeforeMerging = &settings.ClassicStatusChecks{Enabled: &no}
 				desired.RequireDeploymentsToSucceedBeforeMerging = deploymentGroup(false)
-				want = map[string]any{"branchProtectionRuleId": "B_7", "lockAllowsFetchAndMerge": false, "requiresApprovingReviews": false, "requiresStatusChecks": false, "requiresDeployments": false}
+				want = map[string]any{"branchProtectionRuleId": "B_7", "allowsForcePushes": false, "bypassForcePushActorIds": []any{}, "lockAllowsFetchAndMerge": false, "requiresApprovingReviews": false, "requiresStatusChecks": false, "requiresDeployments": false}
 				f.mutate = func(rule map[string]any) {
 					for _, key := range []string{"requiredApprovingReviewCount", "requiredStatusCheckContexts", "requiredStatusChecks", "requiredDeploymentEnvironments"} {
 						rule[key] = nil
 					}
 				}
-			case "status-selected-sync-drift", "status-selected-fork-drift":
+			case "status-selected-sync-drift", "status-selected-fork-drift", "force-selected-sync-drift":
 				desired.AllowForkSyncing, desired.LockBranch = nil, nil
 				delete(want, "lockBranch")
 				delete(want, "lockAllowsFetchAndMerge")
+			case "force-write-matching-sync-ack-drift":
+				f.rules[0]["lockBranch"], f.rules[0]["lockAllowsFetchAndMerge"] = true, true
+				delete(want, "lockBranch")
+				delete(want, "lockAllowsFetchAndMerge")
+			case "sync-selected-force-drift":
+				desired.AllowForcePushes = nil
+				f.forceActors["B_7"] = []settings.ClassicActor{{Kind: "Team", ID: "T_old"}}
+				delete(want, "allowsForcePushes")
+				delete(want, "bypassForcePushActorIds")
 			case "sync-selected-status-drift":
 				desired.RequireStatusChecksToPassBeforeMerging = nil
 				delete(want, "requiresStrictStatusChecks")
@@ -82,12 +95,27 @@ func TestClassicForkSyncStatusReviewsAndDeploymentsCompose(t *testing.T) {
 				if phase == "app" && mode == "pre-app-invalid" {
 					body["node"] = map[string]any{"__typename": "User", "id": "APP_private"}
 				}
+				if phase == "force-identities" && mode == "force-identities-invalid" {
+					body["nodes"] = []any{map[string]any{"id": "A_1", "__typename": "User"}}
+				}
+				if phase == "write" && mode == "force-write-matching-sync-ack-drift" {
+					body["updateBranchProtectionRule"].(map[string]any)["branchProtectionRule"].(map[string]any)["lockAllowsFetchAndMerge"] = false
+				}
+				if phase == "write" && mode == "force-write-fork-ack-drift" {
+					setClassicForkEvidence(body, false)
+				}
+				if phase == "actors" && len(f.writes) > 0 && mode == "sync-selected-force-drift" {
+					n := body["node"].(map[string]any)
+					if _, ok := n["bypassForcePushAllowances"]; ok {
+						n["bypassForcePushAllowances"] = classicFixturePage([]any{map[string]any{"actor": map[string]any{"__typename": "Team", "id": "T_new"}}}, 1, false, nil)
+					}
+				}
 				if phase != "node" || len(f.writes) == 0 {
 					return
 				}
 				node := body["node"].(map[string]any)
 				switch mode {
-				case "status-selected-sync-drift":
+				case "status-selected-sync-drift", "force-selected-sync-drift":
 					node["lockAllowsFetchAndMerge"] = true
 				case "sync-selected-status-drift":
 					node["requiresStrictStatusChecks"] = false
@@ -100,7 +128,7 @@ func TestClassicForkSyncStatusReviewsAndDeploymentsCompose(t *testing.T) {
 				}
 			}
 			result, err := f.client.Apply(classicRepo(), selections[0])
-			prewrite := mode == "pre-app-invalid" || mode == "environment-fork-drift"
+			prewrite := mode == "pre-app-invalid" || mode == "environment-fork-drift" || mode == "force-identities-invalid"
 			bad := prewrite || strings.Contains(mode, "drift")
 			var marker interface{ ReadFailedBeforeWrite() }
 			if (err != nil) != bad || errors.As(err, &marker) != prewrite {
@@ -126,7 +154,7 @@ func TestClassicForkSyncStatusReviewsAndDeploymentsCompose(t *testing.T) {
 			if mode == "all-disabled-sync-false" {
 				wantReferences = 0
 			}
-			if counts["app"] != wantReferences || counts["environments"] != wantReferences {
+			if counts["app"] != wantReferences || counts["environments"] != wantReferences || (wantReferences > 0 && counts["force-identities"] != 1) {
 				t.Fatal("independent reference guards lost", f.calls)
 			}
 			if mode == "create-all" {
@@ -139,7 +167,7 @@ func TestClassicForkSyncStatusReviewsAndDeploymentsCompose(t *testing.T) {
 				t.Fatal("matching repeated combined intent wrote", result, err, f.writes)
 			}
 			for _, phase := range f.calls {
-				if phase == "app" || phase == "environments" {
+				if phase == "app" || phase == "environments" || phase == "force-identities" {
 					t.Fatal("matching state resolved write prerequisites", f.calls)
 				}
 			}

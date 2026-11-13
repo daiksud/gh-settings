@@ -4,11 +4,10 @@ The [configuration contract](../settings.md#classic-branch-protection) owns publ
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
 Ordinary reconciliation manages conversation resolution, signed commits, linear
 history, branch locking, conditional fork syncing, administrator enforcement, the Allow deletions checkbox
-and complete active PR-review, required status-check and deployment groups,
+and complete active PR-review, required status-check, deployment and force-push groups,
 separately from Rulesets. Explicit
 [classic prune](prune.feature.md#classic-branch-protection-deletion) additionally
-removes whole unlisted rules. Force-push
-actor editing remains separate work.
+removes whole unlisted rules. Other actor controls remain separate work.
 
 ## Behavioral boundaries
 
@@ -151,3 +150,28 @@ lifecycle cases verify export/validate/plan/apply/repeat and final roundtrip.
 matching state, private plans, readback failure and unchanged checkout. Official
 UI documentation supplies evidence; no authenticated fork form, fork creation,
 upstream synchronization or live protection change was performed.
+
+## Force-push actor ownership
+
+`allow_force_pushes` distinguishes disabled, Everyone and a nonempty specified
+User/App set. Native false with nonempty allowances is specified, not disabled.
+Everyone preserves hidden actor identities; explicit disabled clears both native
+controls. Unmanaged groups preserve all known state, including Team. Acquired
+Before accepts known Team while desired After/YAML rejects it. Active Team sets
+make automatic export unavailable rather than silently losing members.
+
+Every needed rule mutation with selected specified actors requires exact node-ID
+and type resolution, including unrelated-flag changes with matching actors. Only
+whole-rule no-op skips these lookups. Scalar ACK does not fabricate an actor
+projection; independent complete paginated readback verifies requested membership
+and raw preservation. Creation errors keep recovery separate from confirmed IDs.
+
+The literal baseline is `TestClassicForcePushLiteralCodec`. Model cases in
+`internal/settings/classic_force_push_test.go` cover projection, preservation and
+closed Before/After contracts. `internal/github/classic_force_push_test.go` covers
+all transitions, paginated actors, bounded identity queries, no-op, partial ACK and
+readback failures. App tests retain prior export on active Team and preserve it
+through other updates. CLI lifecycle force cases and the actual supplied
+`TestBuiltCompositeClassicForcePush` exercise User/App selection, Everyone,
+disabling, repeat no-op, private plans, lookup failures, uncertain readback and
+unchanged source. No live push, setting mutation or App installation is claimed.

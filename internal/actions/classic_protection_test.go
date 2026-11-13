@@ -15,7 +15,7 @@ import (
 
 func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 	id, yes, no := int64(7), true, false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}, AllowForcePushes: &settings.ClassicForcePush{Enabled: &no}}
 	after := settings.ClassicRule{ID: &id, BranchNamePattern: before.BranchNamePattern, RequireSignedCommits: &yes}
 	plan := func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before, After: &after}}}}, nil
@@ -67,7 +67,7 @@ func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 
 func TestClassicDeletionReportAndClosedSummary(t *testing.T) {
 	id, no := int64(7), false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private-delete>", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private-delete>", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &no}, AllowForcePushes: &settings.ClassicForcePush{Enabled: &no}}
 	plan := func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before}}}}, nil
 	}
@@ -100,7 +100,7 @@ func TestClassicDeletionReportAndClosedSummary(t *testing.T) {
 func TestClassicStatusCheckReportCompleteness(t *testing.T) {
 	id, yes, no := int64(7), true, false
 	checks := []settings.ClassicStatusCheck{{Name: "<check>", AcceptUpdatesFrom: "APP_source"}}
-	before := settings.ClassicRule{RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, ID: &id, BranchNamePattern: "main", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &yes, RequireBranchesToBeUpToDateBeforeMerging: &no, StatusChecks: &checks}}
+	before := settings.ClassicRule{AllowForcePushes: &settings.ClassicForcePush{Enabled: &no}, RequireAPullRequestBeforeMerging: &settings.ClassicPullRequestReviews{Enabled: &no}, ID: &id, BranchNamePattern: "main", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no, RequireDeploymentsToSucceedBeforeMerging: &settings.ClassicDeployments{Enabled: &no}, RequireStatusChecksToPassBeforeMerging: &settings.ClassicStatusChecks{Enabled: &yes, RequireBranchesToBeUpToDateBeforeMerging: &no, StatusChecks: &checks}}
 	report := actions.PlanReport{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before}}}
 	// Reuse the fully formed report envelope from the public plan command.
 	plan := func() (app.PlanResult, error) {
