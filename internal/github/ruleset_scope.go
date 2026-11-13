@@ -21,9 +21,6 @@ func rejectUnsupportedRulesetScope(raw map[string]json.RawMessage) error {
 		if err := requiredRuleJSON(rule, "type", &kind); err != nil {
 			return err
 		}
-		if kind == "code_coverage" {
-			return fmt.Errorf("unsupported Ruleset rule %q outside Free/public non-Preview scope", kind)
-		}
 		if kind != "pull_request" {
 			continue
 		}
@@ -68,10 +65,26 @@ func (client *Client) preflightRulesetUpdate(repo repository.Repository, change 
 	if !reflect.DeepEqual(rulesetQualitySnapshot(&current, records.QualitySeverity), rulesetQualitySnapshot(change.Before(), change.Normalizations().QualitySeverity)) {
 		return fmt.Errorf("Code Quality rule changed before update; no update sent")
 	}
+	if !reflect.DeepEqual(rulesetCoverageSnapshot(&current), rulesetCoverageSnapshot(change.Before())) {
+		return fmt.Errorf("Code Coverage rule changed before update; no update sent")
+	}
 	actual, present := settings.RulesetAdditionalApproval(&current)
 	expected, wasPresent := settings.RulesetAdditionalApproval(change.Before())
 	if present != wasPresent || !reflect.DeepEqual(actual, expected) {
 		return fmt.Errorf("PR additional-approval value changed before update; no update sent")
+	}
+	return nil
+}
+
+// A newly acquired rule must not erase coverage added or edited since selection.
+// Nil is absent; a present zero pair is a selected rule with disabled thresholds.
+func rulesetCoverageSnapshot(policy *settings.RulesetDeclaration) *[2]float64 {
+	if policy != nil && policy.Rules != nil {
+		for _, rule := range *policy.Rules {
+			if rule.Type == "code_coverage" {
+				return &[2]float64{*rule.Parameters.MinimumCoverage, *rule.Parameters.MaxCoverageDrop}
+			}
+		}
 	}
 	return nil
 }
