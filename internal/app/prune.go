@@ -19,6 +19,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 }
 
 type prunePreparation struct {
+	deployKeys           *settings.DeployKeyObservation
 	autolinks            settings.AutolinkObservation
 	collaborators        settings.CollaboratorPruneObservation
 	classicProtection    settings.ClassicPruneObservation
@@ -35,6 +36,24 @@ type prunePreparation struct {
 // Subsequent family reads must not widen or change these deletion candidates.
 func preparePrune(repo repository.Repository, desired settings.Declaration, prune settings.PruneScopes, write Writer) (prunePreparation, error) {
 	var result prunePreparation
+	if prune.Has("deploy-keys") && desired.DeployKeys != nil {
+		observed, err := write.ReadDeployKeys(repo)
+		if err != nil {
+			return result, err
+		}
+		if _, _, err := settings.PrepareDeployKeys(observed, desired.DeployKeys, true); err != nil {
+			return result, err
+		}
+		target, _, err := observed.Values()
+		if err != nil {
+			return result, err
+		}
+		if target.Archived && (desired.Repository.Archived == nil || *desired.Repository.Archived) {
+			return result, fmt.Errorf("deploy key pruning requires an active target or explicit unarchive")
+		}
+		result.deployKeys = &observed
+	}
+
 	if prune.Has("autolinks") && desired.Autolinks != nil {
 		if write.ReadAutolinks == nil {
 			return result, fmt.Errorf("autolink prune reader unavailable")

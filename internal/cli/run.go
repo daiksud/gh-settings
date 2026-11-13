@@ -168,6 +168,8 @@ func createdCollectionPath(collection string) string {
 		return "repository.settings.actions.policies"
 	case "rulesets":
 		return "repository.settings.rulesets"
+	case "deploy_keys":
+		return settings.DeployKeysPath
 	case "autolinks":
 		return settings.AutolinksPath
 	case "branch_protection_rules":
@@ -187,6 +189,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		}
 		path := ""
 		switch op.Kind {
+		case app.DeployKeysRead, app.DeployKeyCreate, app.DeployKeyDelete:
+			path = settings.DeployKeysPath
 		case app.CopilotReviewEffortUpdate:
 			path = settings.CopilotReviewEffortPath
 		case app.CopilotInstructionsUpdate:
