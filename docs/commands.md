@@ -8,6 +8,8 @@ Ordinary `export` observes all supported named Environment policies and independ
 
 Environment deployment-mode observations follow the [raw-pair contract](settings.md#environment-deployment-mode-observation-normalization). Export warns only after complete selected acquisition, in folded-name order. Detailed plan/Summary label all Environment before-objects as effective policy and add a scoped normalized/write-required UI decision only for explicit mode intent. Status-only hides names and pair values. Omitted canonical mode is preserved as a fresh companion without unowned warnings; an unreplayable raw mode blocks a needed policy PUT; explicit mode requires canonical raw confirmation, while unknown-mode pattern intent requires explicit Selected.
 
+Disabling an existing Environment custom deployment mode is rejected when its raw pattern collection is nonempty and omitted from the declaration. First apply `deployment_branch_or_tag_rules: []` while Selected, then change mode. Complete empty acquisition is required; a prior empty plan does not bypass the fresh apply check. See the [Environment contract](settings.md#environments).
+
 ## Scope and status
 
 The four settings commands manage the GitHub.com repository containing the current Git checkout. Configuration lives at that checkout's root `.github/settings.yml`, including when commands run from a subdirectory. The [settings reference](settings.md) defines repository fields, topics, labels and configuration semantics.

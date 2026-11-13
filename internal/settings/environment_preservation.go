@@ -31,6 +31,17 @@ func PrepareEnvironmentUpdate(state EnvironmentState, requested EnvironmentDecla
 	if EnvironmentIdentity(state.Policy.Name) != EnvironmentIdentity(requested.Name) {
 		return EnvironmentDeclaration{}, fmt.Errorf("environment preservation identity differs from requested name")
 	}
+	if requested.DeploymentBranchPolicyDeclared && raw != nil && raw.CustomBranchPolicies && (requested.DeploymentBranchPolicy == nil || !requested.DeploymentBranchPolicy.CustomBranchPolicies) {
+		if state.Patterns == nil {
+			return EnvironmentDeclaration{}, fmt.Errorf("environment %q requires complete deployment pattern acquisition before changing mode", requested.Name)
+		}
+		if err := ValidateEnvironmentPatternObservation(state.Patterns); err != nil {
+			return EnvironmentDeclaration{}, err
+		}
+		if requested.DeploymentBranchPatterns == nil && len(state.Patterns) > 0 {
+			return EnvironmentDeclaration{}, fmt.Errorf("environment %q cannot change deployment mode without deleting omitted deployment patterns; first apply deployment_branch_or_tag_rules: [] while Selected, then change mode", requested.Name)
+		}
+	}
 	requested = cloneEnvironment(requested)
 	expected := cloneEnvironment(state.Policy)
 	expected.DeploymentBranchPatterns = nil
