@@ -362,18 +362,8 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.Runners = &values
 		return nil
 	})
-	observe(settings.OIDCSubjectPath, read.OIDCSubject != nil, func(candidate *settings.Declaration) error {
-		observed, err := read.OIDCSubject(repo)
-		if err != nil {
-			return err
-		}
-		value, err := observed.Value()
-		if err != nil {
-			return err
-		}
-		candidate.OIDCSubject = &value
-		return nil
-	})
+	declaration.OIDCSubject, err = exportOIDCSubject(checkout, read, repo, declaration.OIDCSubject)
+	diagnosticError = errors.Join(diagnosticError, err)
 	observe("repository.settings.copilot.code_review.allow_copilot_to_use_mcp_tools_when_reviewing_pull_requests", read.CopilotMCP != nil, func(candidate *settings.Declaration) error {
 		observed, err := read.CopilotMCP(repo)
 		if err != nil {

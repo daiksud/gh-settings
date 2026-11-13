@@ -18,7 +18,7 @@ func oidcReportValue(v any) (settings.OIDCSubjectTemplate, error) {
 		return settings.OIDCSubjectTemplate{}, fmt.Errorf("invalid OIDC template report")
 	}
 	for k, v := range raw {
-		if (k != "use_default_template" && k != "subject_claim_template") || bytes.Equal(bytes.TrimSpace(v), []byte("null")) {
+		if (k != "use_default_template" && k != "subject_claim_template" && k != "use_immutable_subject_claim") || bytes.Equal(bytes.TrimSpace(v), []byte("null")) {
 			return settings.OIDCSubjectTemplate{}, fmt.Errorf("invalid OIDC template report member")
 		}
 	}

@@ -8,11 +8,16 @@ import (
 )
 
 const OIDCSubjectPath = "repository.settings.actions.oidc.subject_claim"
+const OIDCImmutablePath = OIDCSubjectPath + ".use_immutable_subject_claim"
+const OIDCTemplatePath = OIDCSubjectPath + ".use_default_template"
 
 type OIDCSubjectTemplate = uimodel.OIDCSubjectTemplate
 
 func ValidateOIDCSubject(d OIDCSubjectTemplate) error {
 	if d.UseDefaultTemplate == nil {
+		if d.SubjectClaimTemplate == nil && d.UseImmutableSubjectClaim != nil {
+			return nil
+		}
 		return fmt.Errorf("%s requires use_default_template", OIDCSubjectPath)
 	}
 	if *d.UseDefaultTemplate {
@@ -39,6 +44,10 @@ func ValidateOIDCSubject(d OIDCSubjectTemplate) error {
 	return nil
 }
 func CloneOIDCSubject(v OIDCSubjectTemplate) OIDCSubjectTemplate {
+	if v.UseImmutableSubjectClaim != nil {
+		x := *v.UseImmutableSubjectClaim
+		v.UseImmutableSubjectClaim = &x
+	}
 	if v.UseDefaultTemplate != nil {
 		x := *v.UseDefaultTemplate
 		v.UseDefaultTemplate = &x
@@ -50,10 +59,35 @@ func CloneOIDCSubject(v OIDCSubjectTemplate) OIDCSubjectTemplate {
 	return v
 }
 func OIDCSubjectMatches(a, b OIDCSubjectTemplate) bool {
-	if ValidateOIDCSubject(a) != nil || ValidateOIDCSubject(b) != nil || *a.UseDefaultTemplate != *b.UseDefaultTemplate {
+	if ValidateOIDCSubject(a) != nil || ValidateOIDCSubject(b) != nil {
 		return false
 	}
-	return *a.UseDefaultTemplate || slices.Equal(*a.SubjectClaimTemplate, *b.SubjectClaimTemplate)
+	if b.UseImmutableSubjectClaim != nil && (a.UseImmutableSubjectClaim == nil || *a.UseImmutableSubjectClaim != *b.UseImmutableSubjectClaim) {
+		return false
+	}
+	if b.UseDefaultTemplate == nil {
+		return true
+	}
+	return a.UseDefaultTemplate != nil && *a.UseDefaultTemplate == *b.UseDefaultTemplate && (*a.UseDefaultTemplate || slices.Equal(*a.SubjectClaimTemplate, *b.SubjectClaimTemplate))
+}
+
+// Selected evidence never turns an unknown optional member into a desired value.
+func OIDCSubjectBefore(observed, desired OIDCSubjectTemplate) (OIDCSubjectTemplate, error) {
+	if err := ValidateOIDCSubject(desired); err != nil {
+		return OIDCSubjectTemplate{}, err
+	}
+	before := CloneOIDCSubject(observed)
+	if desired.UseDefaultTemplate == nil {
+		before.UseDefaultTemplate, before.SubjectClaimTemplate = nil, nil
+	} else if before.UseDefaultTemplate == nil {
+		return OIDCSubjectTemplate{}, fmt.Errorf("OIDC active template unavailable")
+	}
+	if desired.UseImmutableSubjectClaim == nil {
+		before.UseImmutableSubjectClaim = nil
+	} else if before.UseImmutableSubjectClaim == nil {
+		return OIDCSubjectTemplate{}, fmt.Errorf("OIDC immutable configuration unavailable")
+	}
+	return before, ValidateOIDCSubject(before)
 }
 
 type OIDCSubjectObservation struct {
@@ -62,6 +96,9 @@ type OIDCSubjectObservation struct {
 }
 
 func NewOIDCSubjectObservation(v OIDCSubjectTemplate) (OIDCSubjectObservation, error) {
+	if v.UseDefaultTemplate == nil {
+		return OIDCSubjectObservation{}, fmt.Errorf("OIDC active template unavailable")
+	}
 	if err := ValidateOIDCSubject(v); err != nil {
 		return OIDCSubjectObservation{}, err
 	}
@@ -83,6 +120,9 @@ func NewOIDCSubjectChange(before, after OIDCSubjectTemplate) (OIDCSubjectChange,
 	if err := ValidateOIDCSubject(after); err != nil {
 		return OIDCSubjectChange{}, err
 	}
+	if (before.UseDefaultTemplate == nil) != (after.UseDefaultTemplate == nil) || (before.UseImmutableSubjectClaim == nil) != (after.UseImmutableSubjectClaim == nil) {
+		return OIDCSubjectChange{}, fmt.Errorf("OIDC report ownership units differ")
+	}
 	if OIDCSubjectMatches(before, after) {
 		return OIDCSubjectChange{}, fmt.Errorf("unchanged OIDC template")
 	}
@@ -100,6 +140,10 @@ func CompareOIDCSubject(o OIDCSubjectObservation, d *OIDCSubjectTemplate) (int, 
 		return 0, nil, err
 	}
 	before, err := o.Value()
+	if err != nil {
+		return 0, nil, err
+	}
+	before, err = OIDCSubjectBefore(before, *d)
 	if err != nil {
 		return 0, nil, err
 	}

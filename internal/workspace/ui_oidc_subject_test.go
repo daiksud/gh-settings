@@ -34,7 +34,7 @@ func TestUIOIDCSubjectTemplateRoundtrip(t *testing.T) {
 }
 
 func TestUIOIDCSubjectTemplateBoundary(t *testing.T) {
-	for _, body := range []string{"use_default_template: false", "subject_claim_template: []", "use_default_template: true, subject_claim_template: []", "use_default_template: null", "use_default_template: 'false', subject_claim_template: []", "use_default_template: false, subject_claim_template: null", "use_default_template: false, subject_claim_template: [repo, repo]", "use_default_template: false, subject_claim_template: [repo-name]", "use_default_template: false, subject_claim_template: [1]", "use_default_template: false, subject_claim_template: [null]", "use_default_template: true, use_immutable_subject_claim: true"} {
+	for _, body := range []string{"use_default_template: false", "subject_claim_template: []", "use_default_template: true, subject_claim_template: []", "use_default_template: null", "use_default_template: 'false', subject_claim_template: []", "use_default_template: false, subject_claim_template: null", "use_default_template: false, subject_claim_template: [repo, repo]", "use_default_template: false, subject_claim_template: [repo-name]", "use_default_template: false, subject_claim_template: [1]", "use_default_template: false, subject_claim_template: [null]"} {
 		input := "version: daiksud/gh-settings@v0\nrepository: {settings: {actions: {oidc: {subject_claim: {" + body + "}}}}}\n"
 		value, err := DecodeConfig([]byte(input))
 		if err == nil {
