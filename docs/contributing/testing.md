@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicReviews)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicReviews|CompositeRunnerLabels)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -519,3 +519,20 @@ matching repeats. `TestBuiltCompositeClassicReviews` uses the actual public Acti
 for activation, count-zero, deactivation, no-op, guarded failure and readback drift,
 checking private plans, unchanged checkout and success-only outputs. These isolated
 fixtures do not establish live approval behavior or effective merge enforcement.
+
+## Existing runner label evidence
+
+`internal/settings/runners_test.go` owns explicit-set validation, Unicode
+simple-fold identity and immutable observations. Workspace literal round-trip
+and invalid-shape tests cover the YAML boundary; the unchanged baseline rejects
+`actions.runners`. GitHub owner tests cover selected-only reads, complete
+pagination, optional-ID evidence, classifications/counts, conditional no-ops,
+exact replacement/clear, acknowledgment and independent readback failures.
+App tests verify family-local all-selection preparation, actual-write progress,
+unarchive ordering, independent export retention and diagnostic save failures.
+Action report tests enforce the closed private schema, exact large numeric IDs and family counts.
+`TestRunnerLabelsLifecycle` runs the built CLI, while `TestBuiltCompositeRunnerLabels`
+runs the supplied product through the actual installer/composite for export,
+plan, status-only privacy, change/repeat/clear and failed verification without
+output publication or input edits. These local fixtures do not certify live
+labels, server Unicode semantics, host state or job execution.

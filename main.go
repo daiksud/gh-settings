@@ -20,7 +20,7 @@ var version = "dev"
 func main() {
 	checkout := workspace.NewCheckout(".")
 	loadDeclaration := func() (settings.Declaration, error) { return loadCheckoutDeclaration(checkout) }
-	reader := app.Reader{DeployKeys: readDeployKeys, Autolinks: readAutolinks, OIDCSubject: readOIDCSubject, CollaboratorPrune: readCollaboratorPrune, AIScanRepositories: readAIScanRepositories, BranchProtectionRules: readClassicProtection, Collaborators: readCollaborators, ResolveCollaborator: resolveCollaborator, CodeQLForExport: readCodeQLForExport, ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
+	reader := app.Reader{Runners: readRunners, AllRunners: readAllRunners, DeployKeys: readDeployKeys, Autolinks: readAutolinks, OIDCSubject: readOIDCSubject, CollaboratorPrune: readCollaboratorPrune, AIScanRepositories: readAIScanRepositories, BranchProtectionRules: readClassicProtection, Collaborators: readCollaborators, ResolveCollaborator: resolveCollaborator, CodeQLForExport: readCodeQLForExport, ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	reader.EnvironmentNames = readEnvironmentNames
 	reader.Environments = readEnvironments
 	reader.EnvironmentPrune = readEnvironmentPrune
@@ -69,7 +69,7 @@ func main() {
 			if record != nil {
 				bind = func(username string, id int64) error { return record("collaborators", username, id) }
 			}
-			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadDeployKeys: readDeployKeys, CreateDeployKey: createDeployKey, DeleteDeployKey: deleteDeployKey, ReadAutolinks: readAutolinks, CreateAutolink: createAutolink, DeleteAutolink: deleteAutolink, OIDCSubject: writeOIDCSubject, ReadCollaboratorPrune: readCollaboratorPrune, RefreshCollaboratorPrune: refreshCollaboratorPrune, DeleteCollaborator: deleteCollaborator, ReadAIScanRepositories: readAIScanRepositories, AIScanRepositories: writeAIScanRepositories, ReadBranchProtectionRules: readClassicProtection, BranchProtectionRule: writeClassicProtection, DeleteBranchProtectionRule: deleteClassicProtection, ReadEnvironmentPrune: readEnvironmentPrune, DeleteEnvironment: deleteEnvironment, ReadCollaborators: readCollaborators, ResolveCollaborator: resolveCollaborator, Collaborator: reconcileCollaborator, BindCollaboratorID: bind, ReadVariables: readVariables, ReadAgentVariables: readAgentVariables, ReadEnvironmentVariables: readEnvironmentVariables, DeleteVariable: deleteVariable, DeleteAgentVariable: deleteAgentVariable, DeleteEnvironmentVariable: deleteEnvironmentVariable, ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
+			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadRunners: readRunners, RunnerLabels: writeRunnerLabels, ReadDeployKeys: readDeployKeys, CreateDeployKey: createDeployKey, DeleteDeployKey: deleteDeployKey, ReadAutolinks: readAutolinks, CreateAutolink: createAutolink, DeleteAutolink: deleteAutolink, OIDCSubject: writeOIDCSubject, ReadCollaboratorPrune: readCollaboratorPrune, RefreshCollaboratorPrune: refreshCollaboratorPrune, DeleteCollaborator: deleteCollaborator, ReadAIScanRepositories: readAIScanRepositories, AIScanRepositories: writeAIScanRepositories, ReadBranchProtectionRules: readClassicProtection, BranchProtectionRule: writeClassicProtection, DeleteBranchProtectionRule: deleteClassicProtection, ReadEnvironmentPrune: readEnvironmentPrune, DeleteEnvironment: deleteEnvironment, ReadCollaborators: readCollaborators, ResolveCollaborator: resolveCollaborator, Collaborator: reconcileCollaborator, BindCollaboratorID: bind, ReadVariables: readVariables, ReadAgentVariables: readAgentVariables, ReadEnvironmentVariables: readEnvironmentVariables, DeleteVariable: deleteVariable, DeleteAgentVariable: deleteAgentVariable, DeleteEnvironmentVariable: deleteEnvironmentVariable, ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
 				return readPagesForApply(repo, desired.Pages)
 			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotMCP: updateCopilotMCP, PullRequestLimits: updatePullRequestLimits, PullRequestExemptions: updatePullRequestExemptions, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, EnvironmentVariable: upsertEnvironmentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, ReadActionsPolicies: readActionsPolicies, ActionsEventPolicy: writeActionsEventPolicy, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
@@ -721,4 +721,26 @@ func deleteClassicProtection(repo repository.Repository, candidate settings.Clas
 		return &classicClientPrewriteFailure{err}
 	}
 	return client.Delete(repo, candidate)
+}
+
+func readAllRunners(repo repository.Repository) (settings.RunnerObservation, error) {
+	c, e := github.NewRunnersClient(repo.Host)
+	if e != nil {
+		return settings.RunnerObservation{}, e
+	}
+	return c.ReadAll(repo)
+}
+func readRunners(repo repository.Repository, d []settings.RunnerLabels) (settings.RunnerObservation, error) {
+	c, e := github.NewRunnersClient(repo.Host)
+	if e != nil {
+		return settings.RunnerObservation{}, e
+	}
+	return c.ReadSelected(repo, d)
+}
+func writeRunnerLabels(repo repository.Repository, d settings.RunnerLabels) (bool, error) {
+	c, e := github.NewRunnersClient(repo.Host)
+	if e != nil {
+		return false, e
+	}
+	return c.Update(repo, d)
 }

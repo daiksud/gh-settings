@@ -350,6 +350,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.CopilotInstructions = &enabled
 		return nil
 	})
+	observe(settings.RunnersPath, read.AllRunners != nil, func(candidate *settings.Declaration) error {
+		observed, err := read.AllRunners(repo)
+		if err != nil {
+			return err
+		}
+		values, err := observed.Values()
+		if err != nil {
+			return err
+		}
+		candidate.Runners = &values
+		return nil
+	})
 	observe(settings.OIDCSubjectPath, read.OIDCSubject != nil, func(candidate *settings.Declaration) error {
 		observed, err := read.OIDCSubject(repo)
 		if err != nil {

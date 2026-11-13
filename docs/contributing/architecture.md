@@ -308,3 +308,16 @@ fingerprint, grant and selected ID. See the [public contract](../settings.md#dep
 ## Autolink reconciliation
 
 Autolinks have a concrete immutable collection owner in `internal/settings`, a read/create/delete REST adapter in `internal/github`, and shared export/plan/apply sequencing in `internal/app`. UI projection and workspace ID recording keep omission separate from an empty collection. Prune's private expected inventory begins at global preflight and changes only for verified own creations/deletions and unarchive. The adapter checks complete identity/configuration before writes and independently observes their results. Public comparison objects contain only create/delete configuration, with one managed-family count; no timestamp or target snapshot is serialized. The [public contract](../settings.md#autolink-references) owns input constraints and explicit replacement.
+
+## Existing runner custom labels
+
+Settings owns selected-ID declarations, Unicode simple-fold set comparison and
+complete acquired custom/readonly partitions. Workspace owns strict YAML. The
+dedicated GitHub adapter owns private repository/runner identity and raw label-ID
+evidence, bounded and debug-suppressed reads, inventory pagination, declared-set
+PUT, complete acknowledgment and independent verification. Export uses all-runner
+acquisition; plan and apply use selected IDs only. App prepares the complete
+selection before its first write, then records per-runner actual-write results,
+excluding acquisition and no-ops from earlier completed-write evidence. Presentation
+uses only selected IDs/custom labels. There is no prune registration, lifecycle
+writer, token generation, recovery ID or hidden journal.
