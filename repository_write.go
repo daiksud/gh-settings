@@ -7,7 +7,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-func writeRepositoryWithWriters(repo repository.Repository, desired settings.RepositoryDeclaration, restWrite func(repository.Repository, settings.RepositoryDeclaration) (bool, error), accessWrite func(repository.Repository, settings.RepositoryDeclaration) error) (bool, error) {
+func writeRepositoryWithWriters(repo repository.Repository, desired settings.RepositoryDeclaration, restWrite func(repository.Repository, settings.RepositoryDeclaration) (bool, error), accessWrite func(repository.Repository, settings.RepositoryDeclaration) (bool, error)) (bool, error) {
 	restDesired := desired
 	restDesired.Archived = nil
 	restDesired.HasPullRequests = nil
@@ -25,7 +25,7 @@ func writeRepositoryWithWriters(repo repository.Repository, desired settings.Rep
 	if desired.RepositoryAccessEmpty() {
 		return restWrote, nil
 	}
-	err := accessWrite(repo, desired)
+	accessWrote, err := accessWrite(repo, desired)
 	if err != nil && restWrote {
 		err = &repositoryWriteEffectsFailure{cause: err}
 		if desired.IssueCreationPolicy != nil || desired.HasSponsorships != nil {
@@ -34,9 +34,9 @@ func writeRepositoryWithWriters(repo repository.Repository, desired settings.Rep
 		return true, fmt.Errorf("apply PR access (earlier repository writes remain applied): %w", err)
 	}
 	if err != nil {
-		return false, err
+		return accessWrote, err
 	}
-	return true, nil
+	return restWrote || accessWrote, nil
 }
 
 // Earlier REST work completed in this composite operation. Preserve the inner

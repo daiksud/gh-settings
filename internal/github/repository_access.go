@@ -15,9 +15,6 @@ import (
 const prAccessQuery = `query($owner: String!, $name: String!) {
  repository(owner: $owner, name: $name, followRenames: false) { hasPullRequestsEnabled pullRequestCreationPolicy }
 }`
-const repositoryAccessIdentityQuery = `query($owner: String!, $name: String!) {
- repository(owner: $owner, name: $name, followRenames: false) { id nameWithOwner }
-}`
 
 type RepositoryAccessClient struct {
 	graphql              *api.GraphQLClient
@@ -84,62 +81,71 @@ func validateAccessTarget(fields map[string]json.RawMessage, repo repository.Rep
 	}
 	return id, nil
 }
-func (client *RepositoryAccessClient) ApplyRepositoryAccess(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+
+// ApplyRepositoryAccess reconciles selected access values with fresh raw state.
+// The bool records a successful mutation acknowledgment, including later failure.
+// A false result with an error does not establish that no mutation occurred.
+func (client *RepositoryAccessClient) ApplyRepositoryAccess(repo repository.Repository, desired settings.RepositoryDeclaration) (bool, error) {
 	if desired.RepositoryAccessEmpty() {
-		return nil
+		return false, nil
 	}
 	if desired.PullRequestCreationPolicy != nil && !settings.ValidPullRequestCreationPolicy(*desired.PullRequestCreationPolicy) {
-		return fmt.Errorf("unsupported pull_request_creation_policy")
+		return false, fmt.Errorf("unsupported pull_request_creation_policy")
 	}
 	if desired.IssueCreationPolicy != nil && !settings.ValidIssueCreationPolicy(*desired.IssueCreationPolicy) {
-		return fmt.Errorf("unsupported issue_creation_policy")
+		return false, fmt.Errorf("unsupported issue_creation_policy")
 	}
 	label := repositoryAccessLabel(desired)
-	id, before, err := client.readAccessPrerequisites(repo, desired)
+	id, before, policies, err := client.readAccessPrerequisites(repo, desired)
 	if err != nil {
-		return &repositoryAccessPreWriteFailure{cause: fmt.Errorf("resolve %s repository prerequisites: %w", label, err)}
+		return false, &repositoryAccessPreWriteFailure{cause: fmt.Errorf("resolve %s repository prerequisites: %w", label, err)}
 	}
-	client.reportCreationPolicyNormalizations(before)
+	changed, err := settings.RepositoryAccessChanges(before, desired)
+	if err != nil {
+		return false, &repositoryAccessPreWriteFailure{cause: err}
+	}
+	client.reportCreationPolicyNormalizations(policies)
+	if changed.RepositoryAccessEmpty() {
+		return false, nil
+	}
 	input := map[string]any{"repositoryId": id}
-	selected := "id nameWithOwner"
-	if desired.HasPullRequests != nil {
-		input["hasPullRequestsEnabled"] = *desired.HasPullRequests
-		selected += " hasPullRequestsEnabled"
+	if changed.HasPullRequests != nil {
+		input["hasPullRequestsEnabled"] = *changed.HasPullRequests
 	}
-	if desired.PullRequestCreationPolicy != nil {
-		input["pullRequestCreationPolicy"] = *desired.PullRequestCreationPolicy
-		selected += " pullRequestCreationPolicy"
+	if changed.PullRequestCreationPolicy != nil {
+		input["pullRequestCreationPolicy"] = *changed.PullRequestCreationPolicy
 	}
-	if desired.IssueCreationPolicy != nil {
-		input["issueCreationPolicy"] = *desired.IssueCreationPolicy
-		selected += " issueCreationPolicy"
+	if changed.IssueCreationPolicy != nil {
+		input["issueCreationPolicy"] = *changed.IssueCreationPolicy
 	}
-	if desired.HasSponsorships != nil {
-		input["hasSponsorshipsEnabled"] = *desired.HasSponsorships
-		selected += " hasSponsorshipsEnabled"
+	if changed.HasSponsorships != nil {
+		input["hasSponsorshipsEnabled"] = *changed.HasSponsorships
 	}
+	selected := strings.Join(repositoryAccessFields(desired), " ")
 	query := `mutation($input: UpdateRepositoryInput!) { updateRepository(input:$input) { repository { ` + selected + ` } } }`
 	var response map[string]json.RawMessage
 	if err := client.graphql.Do(query, map[string]any{"input": input}, &response); err != nil {
-		return fmt.Errorf("apply %s (repository writes may already have applied): %w", label, err)
+		return false, fmt.Errorf("apply %s (repository writes may already have applied): %w", label, err)
 	}
 	if err := verifyAccessMutation(response, repo, id, desired); err != nil {
-		return fmt.Errorf("verify %s response (repository writes may already have applied): %w", label, err)
+		return true, fmt.Errorf("verify %s response (repository writes may already have applied): %w", label, err)
 	}
-	if desired.PullRequestCreationPolicy != nil || desired.IssueCreationPolicy != nil {
-		actualID, actual, err := client.readAccessPrerequisites(repo, desired)
-		if err != nil {
-			return fmt.Errorf("verify %s readback (repository writes may already have applied): %w", label, err)
-		}
-		if actualID != id {
-			return fmt.Errorf("verify %s readback: repository ID changed (repository writes may already have applied)", label)
-		}
-		client.reportCreationPolicyNormalizations(actual)
-		if !repositoryCreationPoliciesMatch(actual, desired) {
-			return fmt.Errorf("verify %s raw readback: GitHub did not retain declared creation policies (repository writes may already have applied)", label)
-		}
+	actualID, actual, actualPolicies, err := client.readAccessPrerequisites(repo, desired)
+	if err != nil {
+		return true, fmt.Errorf("verify %s readback (repository writes may already have applied): %w", label, err)
 	}
-	return nil
+	if actualID != id {
+		return true, fmt.Errorf("verify %s readback: repository ID changed (repository writes may already have applied)", label)
+	}
+	client.reportCreationPolicyNormalizations(actualPolicies)
+	remaining, err := settings.RepositoryAccessChanges(actual, desired)
+	if err != nil {
+		return true, fmt.Errorf("verify %s readback (repository writes may already have applied): %w", label, err)
+	}
+	if !remaining.RepositoryAccessEmpty() || !repositoryCreationPoliciesMatch(actualPolicies, desired) {
+		return true, fmt.Errorf("verify %s raw readback: GitHub did not retain declared access settings (repository writes may already have applied)", label)
+	}
+	return true, nil
 }
 
 type repositoryAccessPreWriteFailure struct{ cause error }

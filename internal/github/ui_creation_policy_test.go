@@ -59,11 +59,11 @@ func TestUICreationPolicyGraphQLPayload(t *testing.T) {
 			if !reflect.DeepEqual(body.Variables, map[string]any{"owner": "owner", "name": "current"}) {
 				t.Fatal(body.Variables)
 			}
-			issue := "ALL"
+			issue, pr := "ALL", "COLLABORATORS_ONLY"
 			if calls == 3 {
-				issue = "COLLABORATORS_ONLY"
+				issue, pr = "COLLABORATORS_ONLY", "ALL"
 			}
-			body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{"id": "repo-id", "nameWithOwner": "owner/current", "pullRequestCreationPolicy": "ALL", "issueCreationPolicy": issue}}})
+			body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{"id": "repo-id", "nameWithOwner": "owner/current", "pullRequestCreationPolicy": pr, "issueCreationPolicy": issue, "hasPullRequestsEnabled": calls == 3, "hasSponsorshipsEnabled": calls == 1}}})
 			return labelsResponse(req, 200, string(body)), nil
 		}
 		want := map[string]any{"input": map[string]any{"repositoryId": "repo-id", "hasPullRequestsEnabled": true, "hasSponsorshipsEnabled": false, "issueCreationPolicy": "COLLABORATORS_ONLY", "pullRequestCreationPolicy": "ALL"}}
@@ -76,7 +76,7 @@ func TestUICreationPolicyGraphQLPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 3 {
+	if _, err := client.ApplyRepositoryAccess(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil || calls != 3 {
 		t.Fatalf("calls=%d err=%v", calls, err)
 	}
 }

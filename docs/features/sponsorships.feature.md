@@ -50,17 +50,19 @@ Current source supports `repository.settings.general.features.sponsorships`. It 
 
 - Given a current checkout origin identifies the requested repository
 - When direct apply runs with only Sponsorships declared
-- Then one rename-disabled lookup validates its opaque repository ID and name
-- And one `updateRepository` mutation sends only that ID and the declared boolean
+- Then one rename-disabled query validates its opaque repository ID, name and declared boolean
+- And a fresh match skips mutation and a second read
+- And a changed value sends one `updateRepository` mutation with only that ID and boolean
 - And no REST PATCH or unrelated setting update is sent
-- And the mutation response must retain the same identity and requested value
-- And repeated scalar apply still sends its declared value
+- And the mutation response and an independent query must retain the same identity and requested value
+- And repeated matching apply sends no mutation
 
 #### Scenario: Share a mixed GraphQL mutation
 
 - Given PR access, Issue creation policy and Sponsorships are explicitly declared
 - When apply runs
-- Then they share one validated lookup and one declared-only mutation
+- Then they share one complete selected query and at most one changed-only mutation
+- And acknowledgment and independent readback verify every originally declared member
 - And omitted companion values are not synthesized
 
 #### Scenario: Fail after an earlier REST write
@@ -83,8 +85,8 @@ Current source supports `repository.settings.general.features.sponsorships`. It 
 
 ### Verification
 
-[Model tests](../../internal/settings/sponsorships_test.go) own acquired-state, omission, native false and partial-export behavior. [Codec tests](../../internal/workspace/ui_general_test.go) own strict scalar types and round trips. [Adapter tests](../../internal/github/sponsorships_test.go) inspect exact queries/variables, field selection, declared-only combined mutations, response identity/boolean checks, partial errors and read routing. Existing adapter tests retain authorization, rename, redirect and unrelated-field boundaries.
+[Model tests](../../internal/settings/sponsorships_test.go) own acquired-state, omission, native false and partial-export behavior. [Codec tests](../../internal/workspace/ui_general_test.go) own strict scalar types and round trips. [Adapter tests](../../internal/github/sponsorships_test.go) inspect exact queries/variables, field selection, declared-only combined mutations, response identity/boolean checks, partial errors and read routing. Existing adapter tests retain authorization, rename, redirect and unrelated-field boundaries. [Shared reconciliation tests](../../internal/github/repository_access_reconcile_test.go) cover independent readback and strict failure stages; [process regressions](../../tests/acceptance/repository_access_reconcile_test.go) prove no-op behavior and stopping on stale/denied readback.
 
-[Process acceptance](../../tests/acceptance/sponsorships_test.go) executes the supplied binary through export, validate, plan, Action report/Summary and direct apply with an isolated Unix-socket API. It verifies false export, native output, repeat updates, absent/unchanged funding files, incomplete reads/exports, wrong targets, ignored or partial mutations, redirects, earlier REST writes and prevention of later writes. [Report tests](../../internal/actions/sponsorships_test.go) reject non-boolean presentation values. Existing full-export fixtures and report-count boundaries include the new scalar.
+[Process acceptance](../../tests/acceptance/sponsorships_test.go) executes the supplied binary through export, validate, plan, Action report/Summary and direct apply with an isolated Unix-socket API. It verifies false export, native output, repeated matching apply, absent/unchanged funding files, incomplete reads/exports, wrong targets, ignored or partial mutations, redirects, earlier REST writes and prevention of later writes. [Report tests](../../internal/actions/sponsorships_test.go) reject non-boolean presentation values. Existing full-export fixtures and report-count boundaries include the new scalar.
 
 These fixtures use dummy credentials and modeled responses. They do not toggle a real repository, prove live token grants or missing-funding UI behavior, publish a package, or initiate any financial transaction. GitHub's [GraphQL contract](https://docs.github.com/en/graphql/reference/repos#updaterepositoryinput) defines the boolean, and its [Sponsor button guide](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository) owns administrator access and funding prerequisites.
