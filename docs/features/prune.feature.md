@@ -14,7 +14,7 @@ an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables`, `environments`,
-`collaborators` and `branch-protection-rules`. Standalone `all` selects all currently recognized
+`collaborators`, `branch-protection-rules` and `autolinks`. Standalone `all` selects all currently recognized
 scopes; future supported prune scopes must join the shared registry and tests.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit
@@ -180,3 +180,7 @@ no-op. Its unsupported-scope baseline fails before this feature.
 `tests/github-actions/classic_prune_acceptance_test.go` checks the actual supplied
 product's detailed/status-only plan and standalone `all` apply/repeat behavior;
 the candidate artifact gate includes it. All mutations are isolated fixtures.
+
+## Autolink pruning
+
+The `autolinks` scope and standalone `all` use the [Autolinks contract](../settings.md#autolink-references). Omitted collections remain unmanaged; present empty lists prune every acquired reference. Global preflight freezes all candidates and validates complete declared intent before any write. Expected inventory includes only verified own creations and excludes verified own deletions; only successful own unarchive changes the archive expectation. Complete inventory and individual candidate checks reject drift before DELETE, and empty 204 plus complete inventory absence verify each removal. Creation and required ID recording precede deletion. An immutable replacement needs explicit deletion followed by later creation; a current candidate cannot be silently adopted by prefix.

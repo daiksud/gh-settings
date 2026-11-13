@@ -32,7 +32,7 @@ func (checkout Checkout) PrepareApply() (uimodel.Repository, func(string, string
 func createdIDRecorder(root string, snapshot []byte) func(string, string, int64) error {
 	expected := bytes.Clone(snapshot)
 	return func(collection, name string, id int64) error {
-		if id <= 0 || (collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators" && collection != "branch_protection_rules") {
+		if id <= 0 || (collection != "labels" && collection != "rulesets" && collection != "actions_policies" && collection != "collaborators" && collection != "branch_protection_rules" && collection != "autolinks") {
 			return fmt.Errorf("invalid object identity")
 		}
 		var document yaml.Node
@@ -63,6 +63,10 @@ func createdIDRecorder(root string, snapshot []byte) func(string, string, int64)
 		if collection == "rulesets" {
 			entries = mappingValue(mappingValue(repository, "settings"), "rulesets")
 			nameKey, path = "ruleset_name", "repository.settings.rulesets"
+		}
+		if collection == "autolinks" {
+			entries = mappingValue(mappingValue(repository, "settings"), "autolinks")
+			nameKey, path = "reference_prefix", "repository.settings.autolinks"
 		}
 		if collection == "branch_protection_rules" {
 			entries = mappingValue(mappingValue(repository, "settings"), "branch_protection_rules")

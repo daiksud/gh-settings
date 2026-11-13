@@ -32,6 +32,13 @@ func CheckExportAcquisition(source settings.Declaration) error {
 			return err
 		}
 	}
+	if source.Autolinks != nil {
+		for _, v := range *source.Autolinks {
+			if v.ID == nil {
+				return fmt.Errorf("autolink export lacks acquired identity")
+			}
+		}
+	}
 	if source.BranchProtectionRules != nil {
 		for _, r := range *source.BranchProtectionRules {
 			if !settings.ClassicDeploymentsSelected(r.RequireDeploymentsToSucceedBeforeMerging) {
