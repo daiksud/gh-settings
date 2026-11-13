@@ -37,6 +37,19 @@ func UIFromExportDeclaration(source settings.Declaration) (uimodel.Repository, e
 		}
 		result.Labels = &labels
 	}
+	if source.BranchProtectionRules != nil {
+		if err := settings.ValidateClassicRules(*source.BranchProtectionRules); err != nil {
+			return uimodel.Repository{}, err
+		}
+		rules := make([]uimodel.BranchProtectionRule, 0, len(*source.BranchProtectionRules))
+		for _, v := range *source.BranchProtectionRules {
+			rules = append(rules, settings.CloneClassicRule(v))
+		}
+		if result.Settings == nil {
+			result.Settings = &uimodel.RepositorySettings{}
+		}
+		result.Settings.BranchProtectionRules = &rules
+	}
 	if source.Rulesets != nil {
 		rulesets := make([]uimodel.Ruleset, 0, source.Rulesets.Len())
 		for _, policy := range source.Rulesets.Values() {

@@ -6,15 +6,16 @@ import "github.com/daiksud/gh-settings/internal/settings/uimodel"
 // remain independent of YAML grouping; they are never decoded as a second format.
 // Every scalar pointer preserves omission independently from explicit false/zero.
 type uiSettingsDocument struct {
-	InteractionLimits *uimodel.InteractionLimits
-	Agents            *uimodel.AgentsSettings
-	Copilot           *uimodel.CopilotSettings
-	General           *uiGeneralDocument
-	Rulesets          *[]uimodel.Ruleset
-	Actions           *uiActionsDocument
-	AdvancedSecurity  *uiAdvancedSecurityDocument
-	Pages             *uimodel.Pages
-	Environments      *[]uimodel.Environment
+	BranchProtectionRules *[]uimodel.BranchProtectionRule
+	InteractionLimits     *uimodel.InteractionLimits
+	Agents                *uimodel.AgentsSettings
+	Copilot               *uimodel.CopilotSettings
+	General               *uiGeneralDocument
+	Rulesets              *[]uimodel.Ruleset
+	Actions               *uiActionsDocument
+	AdvancedSecurity      *uiAdvancedSecurityDocument
+	Pages                 *uimodel.Pages
+	Environments          *[]uimodel.Environment
 }
 
 type uiGeneralDocument struct {
@@ -75,7 +76,7 @@ type uiSecretProtectionDocument struct {
 
 func (document uiSettingsDocument) model() uimodel.RepositorySettings {
 	result := uimodel.RepositorySettings{InteractionLimits: document.InteractionLimits, Agents: document.Agents, Copilot: document.Copilot,
-		Rulesets: document.Rulesets, Pages: document.Pages, Environments: document.Environments,
+		BranchProtectionRules: document.BranchProtectionRules, Rulesets: document.Rulesets, Pages: document.Pages, Environments: document.Environments,
 	}
 	if general := document.General; general != nil {
 		result.General = &uimodel.General{
@@ -130,7 +131,7 @@ func (document uiActionsGeneralDocument) model() uimodel.ActionsGeneral {
 }
 
 func uiSettingsDocumentFromModel(model uimodel.RepositorySettings) uiSettingsDocument {
-	result := uiSettingsDocument{InteractionLimits: model.InteractionLimits, Agents: model.Agents, Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
+	result := uiSettingsDocument{BranchProtectionRules: model.BranchProtectionRules, InteractionLimits: model.InteractionLimits, Agents: model.Agents, Copilot: model.Copilot, Rulesets: model.Rulesets, Pages: model.Pages, Environments: model.Environments}
 	if general := model.General; general != nil {
 		result.General = &uiGeneralDocument{
 			TemplateRepository: general.TemplateRepository, DefaultBranch: general.DefaultBranch,

@@ -8,15 +8,16 @@ type Repository struct {
 }
 
 type RepositorySettings struct {
-	InteractionLimits  *InteractionLimits
-	Agents             *AgentsSettings
-	Copilot            *CopilotSettings
-	General            *General
-	Rulesets           *[]Ruleset
-	Actions            *ActionsSettings
-	SecurityAndQuality *SecurityAndQuality
-	Pages              *Pages
-	Environments       *[]Environment
+	BranchProtectionRules *[]BranchProtectionRule
+	InteractionLimits     *InteractionLimits
+	Agents                *AgentsSettings
+	Copilot               *CopilotSettings
+	General               *General
+	Rulesets              *[]Ruleset
+	Actions               *ActionsSettings
+	SecurityAndQuality    *SecurityAndQuality
+	Pages                 *Pages
+	Environments          *[]Environment
 }
 
 type RepositoryVariable struct {

@@ -132,6 +132,10 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Host == "api.github.com" {
+			if isClassicProtectionFixtureRead(r) {
+				fmt.Fprint(w, `{"data":{"repository":{"id":"R_current","nameWithOwner":"owner/current","isArchived":false,"isPrivate":false,"owner":{"__typename":"User"},"squashMergeAllowed":true,"rebaseMergeAllowed":false,"branchProtectionRules":{"totalCount":0,"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}`)
+				return
+			}
 			if isIssueCreationPolicyFixtureRead(r) {
 				body := issueCreationPolicyFixtureResponse
 				if normalized {
@@ -166,7 +170,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 		}
 		t.Error("unexpected export operation", r.Method, r.Host, r.URL)
 		w.WriteHeader(http.StatusBadRequest)
-	}, false)
+	}, false, "/classic-protection")
 	if err != nil {
 		t.Fatal(err)
 	}

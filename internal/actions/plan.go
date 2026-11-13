@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	BranchProtectionRules   []settings.ClassicChange          `json:"branch_protection_rules,omitempty"`
 	PullRequestExemptions   []PullRequestExemptionsPlanChange `json:"pull_request_exemptions,omitempty"`
 	EnvironmentVariables    []EnvironmentVariablePlanChange   `json:"environment_variables,omitempty"`
 	ActionsPolicies         ActionsEventPolicyPlanChanges     `json:"actions_policies,omitempty"`
@@ -59,11 +60,18 @@ type PlanChange struct {
 func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	result, planErr := plan()
 	if planErr == nil {
+		if err := settings.ValidateClassicChanges(result.Comparison.BranchProtectionRules); err != nil {
+			planErr = &app.PlanError{Stage: "read-failure", Path: settings.ClassicProtectionPath, Target: result.Target, Err: err}
+			result.Comparison = settings.Comparison{}
+		}
+	}
+	if planErr == nil {
 		if err := presentation.ValidateRulesetChanges(result.Comparison.Rulesets); err != nil {
 			planErr = &app.PlanError{Stage: "read-failure", Path: "repository.settings.rulesets", Target: result.Target, Err: err}
 			result.Comparison = settings.Comparison{}
 		}
 	}
+
 	if planErr == nil {
 		if err := presentation.ValidateActionsEventPolicyChanges(result.Comparison.ActionsPolicies); err != nil {
 			planErr = &app.PlanError{Stage: "read-failure", Path: "repository.settings.actions.policies", Target: result.Target, Err: err}
@@ -111,6 +119,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		)
 		report.Changes = append(report.Changes, entry)
 	}
+	report.BranchProtectionRules = result.Comparison.BranchProtectionRules
 	report.CommitMessageContexts = result.Comparison.CommitMessageContexts
 	report.ActionsExecutionContext = result.Comparison.ActionsExecutionContext
 	for _, change := range result.Comparison.CommitMessages {

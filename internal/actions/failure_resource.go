@@ -28,7 +28,7 @@ var failureResources = []string{
 	"repository.settings.advanced_security.private_vulnerability_reporting",
 	"repository.settings.advanced_security",
 	"repository.settings.actions.general", "repository.settings.environments",
-	"repository.settings.rulesets", "repository.settings.pages", "repository.settings.general",
+	"repository.settings.branch_protection_rules", "repository.settings.rulesets", "repository.settings.pages", "repository.settings.general",
 	"repository.about.topics", "repository.about", "repository.labels", "repository.settings", "repository",
 }
 

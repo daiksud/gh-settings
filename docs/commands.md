@@ -343,3 +343,20 @@ Plan remains read-only and displays creation, deletion or declared configuration
 ## Persistent pull request limits commands
 
 Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
+
+## Classic branch-protection commands
+
+Ordinary `export` attempts the complete classic rule inventory and projects only
+its [four supported controls](settings.md#classic-branch-protection), exact pattern
+and numeric ID. It does not enumerate existing branches or clone all protection.
+Unavailable acquisition retains valid prior intent with info. `validate` rejects
+unsupported keys and invalid identities before remote work. `plan` shows only
+requested pattern/checkbox differences and counts the collection once.
+
+`apply` preserves new-rule declaration order, skips fresh matching intent, sends
+changed declared inputs and independently verifies requested and omitted known
+state. Existing IDs update in place; ID-less exact-pattern collisions fail.
+Confirmed new numeric IDs use guarded writeback unless `--no-writeback` or
+GitHub Actions suppresses it. Capture recovery identities after uncertain effects
+before retrying. Omitted/empty lists and unrelated prune scopes never delete
+classic rules. CLI and Action share these ownership and failure semantics.

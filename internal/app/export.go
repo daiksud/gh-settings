@@ -112,6 +112,18 @@ func Export(checkout ExportCheckout, read Reader) error {
 		candidate.ActionsPolicies = &policies
 		return nil
 	})
+	observe(settings.ClassicProtectionPath, read.BranchProtectionRules != nil, func(candidate *settings.Declaration) error {
+		observed, err := read.BranchProtectionRules(repo)
+		if err != nil {
+			return err
+		}
+		rules, err := settings.ExportClassicRules(observed)
+		if err != nil {
+			return err
+		}
+		candidate.BranchProtectionRules = &rules
+		return nil
+	})
 	observe("repository.settings.rulesets", read.Rulesets != nil, func(candidate *settings.Declaration) error {
 		observed, err := read.Rulesets(repo)
 		if err != nil {

@@ -50,3 +50,5 @@ guide](../github-actions.md) own user-facing behavior.
 Update affected scenarios, tests, and the authoritative user reference together
 when current behavior changes. Use [testing](../contributing/testing.md) for
 validation boundaries and [ADRs](../adr/README.md) for decision rationale.
+
+- [Classic branch protection](classic-protection.feature.md): exact patterns, four independent controls, partial preservation and verified identity.

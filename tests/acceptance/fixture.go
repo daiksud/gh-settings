@@ -91,6 +91,10 @@ func startHTTPFixture(handler http.HandlerFunc, readOnly bool, availablePaths ..
 		if fixture.exporting.Load() && isAutomaticSettingRead(r) {
 			available := false
 			for _, path := range availablePaths {
+				if path == "/classic-protection" && isClassicProtectionFixtureRead(r) {
+					available = true
+					continue
+				}
 				if path == "/actions/" || path == "/agents/" {
 					continue
 				}
@@ -267,6 +271,9 @@ func serveSponsorshipsFixtureRead(w http.ResponseWriter, r *http.Request) bool {
 }
 
 func isAutomaticSettingRead(r *http.Request) bool {
+	if isClassicProtectionFixtureRead(r) {
+		return true
+	}
 	if r.Method != http.MethodGet {
 		return false
 	}
@@ -286,3 +293,24 @@ func withoutExportInfo(stderr string) string {
 	return strings.Join(retained, "")
 }
 func hasNonInfoDiagnostic(stderr string) bool { return withoutExportInfo(stderr) != "" }
+
+// Classic inventory reads are a distinct export family. This admits no mutation
+// and leaves the request body intact for the owning literal GraphQL fixture.
+func isClassicProtectionFixtureRead(r *http.Request) bool {
+	if r.Method != "POST" || r.URL.Path != "/graphql" {
+		return false
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return false
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	var q struct {
+		Query     string
+		Variables map[string]any
+	}
+	if json.Unmarshal(body, &q) != nil {
+		return false
+	}
+	return strings.HasPrefix(q.Query, "query ClassicProtectionInventory(") && !strings.Contains(q.Query, "mutation") && q.Variables["owner"] == "owner" && q.Variables["name"] == "current" && len(q.Variables) == 3
+}

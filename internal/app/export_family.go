@@ -17,6 +17,8 @@ func exportAcquiredFamily(path string, d settings.Declaration) (settings.Declara
 		family.Labels = d.Labels
 	case "repository.settings.actions.policies":
 		family.ActionsPolicies = d.ActionsPolicies
+	case settings.ClassicProtectionPath:
+		family.BranchProtectionRules = d.BranchProtectionRules
 	case "repository.settings.rulesets":
 		family.Rulesets = d.Rulesets
 	case "repository.settings.environments":
