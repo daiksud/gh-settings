@@ -107,7 +107,7 @@ Plan shows native booleans at `repository.settings.copilot.code_review.allow_cop
 
 Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
 
-Plan and detailed Action reports show `default`, `lite` or `balanced` at `repository.settings.copilot.code_review.review_effort_level`. Default is an observable configured-null state, not proof that GitHub erased an unavailable saved override. Apply reads fresh availability, skips observable matches, sends only the declared effort when needed and independently verifies readback. Unsupported or unavailable observations are errors, never successful fallback. This command neither enables nor requests Copilot reviews.
+Plan and detailed Action reports show `default`, `lite`, `balanced` or `max` at `repository.settings.copilot.code_review.review_effort_level`. Default is an observable configured-null state, not proof that GitHub erased an unavailable saved override. Apply reads fresh availability, skips observable matches, sends only the declared effort when needed and independently verifies readback. Unsupported or unavailable observations are errors, never successful fallback. This command neither enables nor requests Copilot reviews.
 
 ## Pull request limit exemptions
 

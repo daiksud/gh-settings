@@ -7,7 +7,7 @@ import (
 )
 
 func TestCopilotReviewEffortYAML(t *testing.T) {
-	for _, value := range []string{"default", "lite", "balanced"} {
+	for _, value := range []string{"default", "lite", "balanced", "max"} {
 		for _, sibling := range []string{"", ", use_custom_instructions: false"} {
 			data := []byte("version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {review_effort_level: " + value + sibling + "}}}}\n")
 			ui, err := DecodeConfig(data)
@@ -33,7 +33,7 @@ func TestCopilotReviewEffortYAML(t *testing.T) {
 			t.Fatal("accepted invalid type", value)
 		}
 	}
-	for _, value := range []string{"max", "inherit", "Balanced", "''", "unknown"} {
+	for _, value := range []string{"MAX", "inherit", "Balanced", "''", "unknown"} {
 		ui, err := DecodeConfig([]byte("version: daiksud/gh-settings@v0\nrepository: {settings: {copilot: {code_review: {review_effort_level: " + value + ", use_custom_instructions: false}}}}\n"))
 		if err != nil {
 			t.Fatal(err)
