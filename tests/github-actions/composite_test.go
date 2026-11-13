@@ -161,7 +161,7 @@ func TestRootCompositeApply(t *testing.T) {
 }
 
 func TestRootCompositeRejectsUnknownCommand(t *testing.T) {
-	for _, command := range []string{"", "export", "validate --flag", `$(touch "$GITHUB_WORKSPACE/injected")`} {
+	for _, command := range []string{"", "export --output arbitrary", "validate --flag", `$(touch "$GITHUB_WORKSPACE/injected")`} {
 		t.Run(command, func(t *testing.T) {
 			result := runComposite(t, command, "", nil)
 			if result.status == 0 || result.downloaded || result.calls != "" || len(result.outputs) != 0 || result.injected {
@@ -173,7 +173,7 @@ func TestRootCompositeRejectsUnknownCommand(t *testing.T) {
 
 func TestRootCompositeRequiresExplicitToken(t *testing.T) {
 	ambient := map[string]string{"GH_TOKEN": "ambient-fixture", "GITHUB_TOKEN": "ambient-fixture"}
-	for _, command := range []string{"plan", "apply"} {
+	for _, command := range []string{"export", "plan", "apply"} {
 		t.Run(command, func(t *testing.T) {
 			result := runComposite(t, command, "", ambient)
 			if result.status == 0 || result.downloaded || result.calls != "" || len(result.outputs) != 0 {
@@ -193,6 +193,7 @@ func TestRootCompositePreservesCLIStatus(t *testing.T) {
 		{"shared plan validation", "plan", "MOCK_VALIDATE_STATUS", "plan\n"},
 		{"plan", "plan", "MOCK_REMOTE_STATUS", "plan\n"},
 		{"apply", "apply", "MOCK_REMOTE_STATUS", "apply\n"},
+		{"export", "export", "MOCK_REMOTE_STATUS", "export\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := runComposite(t, test.command, "fixture-token", map[string]string{test.failure: "37"})
@@ -347,7 +348,7 @@ func newCompositeFixture(t *testing.T) *compositeFixture {
 	if len(action.Inputs) != 4 || action.Inputs["prune"].Required || action.Inputs["prune"].Default == nil || *action.Inputs["prune"].Default != "" || action.Inputs["plan-reporting"].Default == nil || *action.Inputs["plan-reporting"].Default != "detailed" || !action.Inputs["command"].Required || action.Inputs["token"].Required || action.Inputs["command"].Description == "" || action.Inputs["token"].Description == "" || action.Inputs["command"].Default != nil || action.Inputs["token"].Default != nil {
 		t.Fatal("input contract changed")
 	}
-	if len(action.Outputs) != 5 {
+	if len(action.Outputs) != 6 {
 		t.Fatal("public output contract changed")
 	}
 	fixture := t.TempDir()
@@ -418,6 +419,15 @@ case "$1" in
       *) exit 99 ;;
     esac ;;
   validate) [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]] || exit 98; status=${MOCK_VALIDATE_STATUS:-0} ;;
+  export)
+    [[ $# == 1 && ${GH_TOKEN:-} == fixture-token && -z ${GITHUB_TOKEN:-} && -z ${GH_DEBUG:-} ]] || exit 98
+    printf 'GET\n' >> "$MOCK_API"
+    echo CANARY-export-stdout
+    status=${MOCK_REMOTE_STATUS:-0}
+    if [[ $status == 0 ]]; then
+      mkdir -p .github
+      printf 'version: daiksud/gh-settings@v0\nrepository:\n  settings:\n    actions:\n      variables:\n        - name: CANARY\n          value: CANARY-export-variable\n' > .github/settings.yml
+    fi ;;
   apply)
     if [[ -n ${MOCK_EXPECT_PRUNE:-} ]]; then [[ $# == 3 && $2 == --prune && $3 == "$MOCK_EXPECT_PRUNE" && ${SETTINGS_PRUNE:-} == "$MOCK_EXPECT_PRUNE" ]] || exit 97; fi
     [[ (${GH_TOKEN:-} == fixture-token || ${GH_TOKEN:-} == app-fixture) && -z ${GITHUB_TOKEN:-} ]] || exit 98
@@ -456,7 +466,7 @@ exit 1
 	}
 	write(filepath.Join(bin, "git"), `#!/usr/bin/env bash
 set -euo pipefail
-if [[ "$1 $2" == "ls-remote --tags" ]]; then
+if [[ "$1 ${2:-}" == "ls-remote --tags" ]]; then
   [[ "${MOCK_PINNED_ACTION_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || exit 1
   printf '%s\trefs/tags/%s\n' "$MOCK_PINNED_ACTION_SHA" "$MOCK_CLI_VERSION"
   exit 0
@@ -575,7 +585,7 @@ func (f *compositeFixture) run(t *testing.T, command, token string, extra map[st
 	}
 	resolve := func(value string) string { return fixtureValue(t, value, values) }
 	for _, step := range action.Runs.Steps {
-		for _, name := range []string{"binary-path", "config-sha", "target", "cli-version", "cli-sha256", "exit-status", "plan-outcome"} {
+		for _, name := range []string{"binary-path", "config-path", "config-sha", "target", "cli-version", "cli-sha256", "exit-status", "plan-outcome"} {
 			values["steps."+step.ID+".outputs."+name] = ""
 		}
 	}

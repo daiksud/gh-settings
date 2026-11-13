@@ -187,6 +187,76 @@ YAML
     cat "$PLAN_FIXTURE/requests" "$summary"
     printf 'Actual plan and Summary bytes verified; publication is not asserted.\n'
     ;;
+  prepare-export)
+    [[ $# == 2 && -S "$PLAN_FIXTURE/api.sock" ]]
+    [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+    case "$2" in
+      first)
+        git rm --quiet .github/settings.yml
+        git -c commit.gpgsign=false -c user.name=Fixture -c user.email=fixture@example.invalid commit --quiet -m 'test: prepare first export'
+        [[ ! -e .github/settings.yml ]]
+        ;;
+      repeat) [[ -f .github/settings.yml && ! -L .github/settings.yml ]] ;;
+      invalid) printf 'invalid: [\n' > .github/settings.yml ;;
+      symlink)
+        rm .github/settings.yml
+        printf 'version: daiksud/gh-settings@v0\n' > "$PLAN_FIXTURE/outside.yml"
+        ln -s "$PLAN_FIXTURE/outside.yml" .github/settings.yml
+        ;;
+      *) exit 1 ;;
+    esac
+    git rev-parse HEAD > "$PLAN_FIXTURE/config-sha"
+    git write-tree > "$PLAN_FIXTURE/index-tree"
+    if [[ "$2" != first ]]; then
+      cp .github/settings.yml "$PLAN_FIXTURE/export-before"
+    fi
+    : > "$PLAN_FIXTURE/requests"
+    : > "$PLAN_FIXTURE/summaries-before"
+    shopt -s nullglob
+    for summary in "${GITHUB_STEP_SUMMARY%/*}"/step_summary_*; do
+      printf '%s\n' "$summary" >> "$PLAN_FIXTURE/summaries-before"
+    done
+    ;;
+  assert-export)
+    [[ $# == 2 && -S "$PLAN_FIXTURE/api.sock" ]]
+    [[ -z ${GH_TOKEN:-} && -z ${GITHUB_TOKEN:-} ]]
+    [[ "$(git -C .action rev-parse HEAD)" == "$ACTION_SHA" ]]
+    [[ "$(git rev-parse HEAD)" == "$(cat "$PLAN_FIXTURE/config-sha")" ]]
+    [[ "$(git write-tree)" == "$(cat "$PLAN_FIXTURE/index-tree")" && -z "$(git ls-files)" ]]
+    [[ -z "$PRIVATE_PLAN_OUTCOME" ]]
+    case "$2" in
+      first|repeat)
+        [[ "$PLAN_OUTCOME" == success && "$CONFIG_PATH" == .github/settings.yml ]]
+        [[ "$CONFIG_SHA" == "$(cat "$PLAN_FIXTURE/config-sha")" && "$CONFIG_SHA" != "$ACTION_SHA" ]]
+        [[ "$TARGET" == example-owner/settings-fixture && "$CLI_VERSION" == "$EXPECTED_CLI_VERSION" && "$CLI_SHA256" == "$EXPECTED_CLI_SHA256" ]]
+        [[ -f .github/settings.yml && ! -L .github/settings.yml ]]
+        grep -Fq 'CANARY-local-export-value' .github/settings.yml
+        grep -Fq 'Exported repository' .github/settings.yml
+        grep -Fxq 'GET /repos/example-owner/settings-fixture/actions/variables?per_page=30&page=1' "$PLAN_FIXTURE/requests"
+        [[ "$(grep -c '^POST /graphql query$' "$PLAN_FIXTURE/requests")" == 4 ]]
+        # The API server validates every route, query, target and read-only token.
+        if grep -Evq '^(GET /repos/example-owner/settings-fixture([/?].*)?|POST /graphql query)$' "$PLAN_FIXTURE/requests"; then exit 1; fi
+        if [[ "$2" == repeat ]]; then cmp .github/settings.yml "$PLAN_FIXTURE/export-before"; fi
+        ;;
+      invalid|symlink)
+        [[ "$PLAN_OUTCOME" == failure && -z "$CONFIG_PATH$CONFIG_SHA$TARGET$CLI_VERSION$CLI_SHA256" ]]
+        [[ ! -s "$PLAN_FIXTURE/requests" ]]
+        cmp .github/settings.yml "$PLAN_FIXTURE/export-before"
+        if [[ "$2" == symlink ]]; then [[ -L .github/settings.yml ]]; fi
+        ;;
+      *) exit 1 ;;
+    esac
+    shopt -s nullglob
+    for summary in "${GITHUB_STEP_SUMMARY%/*}"/step_summary_*; do
+      [[ "$summary" != *-scrubbed && -s "$summary" ]] || continue
+      if grep -Fxq "$summary" "$PLAN_FIXTURE/summaries-before"; then continue; fi
+      echo 'export unexpectedly wrote a Summary' >&2
+      exit 1
+    done
+    reports=("$RUNNER_TEMP"/gh-settings-cli.*/plan.json)
+    [[ ${#reports[@]} == 0 ]]
+    printf 'Candidate export %s: outcome=%s; file/identity/output/read-only boundaries verified without printing values.\n' "$2" "$PLAN_OUTCOME"
+    ;;
   stop)
     [[ $# == 1 ]]
     if [[ -n ${PLAN_FIXTURE:-} ]]; then

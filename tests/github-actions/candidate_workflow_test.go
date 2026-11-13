@@ -130,6 +130,18 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 		t.Fatal("candidate verification must consume all four producer inputs before scenarios")
 	}
 	covered := make(map[string]bool)
+	boundaryChecks := 0
+	for _, s := range steps {
+		if strings.Contains(s.Run, "TestBuilt(CompositeExport|CandidateExportFixture)") {
+			boundaryChecks++
+			if s.Continue || s.If != "" || !reflect.DeepEqual(s.Env, map[string]string{"BINARY_PATH": "${{ inputs.binary-path }}", "GOTOOLCHAIN": "local"}) || !strings.Contains(s.Run, `-binary "$BINARY_PATH"`) {
+				t.Fatal("built composite checks must consume the supplied product and fail the candidate on regression")
+			}
+		}
+	}
+	if boundaryChecks != 1 {
+		t.Fatal("candidate must run the supplied-product export boundary checks")
+	}
 	for _, test := range []struct {
 		id, command, token, assertion string
 		failure                       bool
@@ -142,6 +154,10 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 		{id: "write-failure", command: "apply", token: "apply-fixture-write", assertion: "assert apply-write-failure", failure: true},
 		{id: "apply-invalid", command: "apply", token: "apply-fixture-write", assertion: "assert apply-invalid", failure: true},
 		{id: "apply-empty", command: "apply", token: "apply-fixture-write", assertion: "assert apply-empty"},
+		{id: "export-first", command: "export", token: "export-fixture-read", assertion: "assert-export first"},
+		{id: "export-repeat", command: "export", token: "export-fixture-read", assertion: "assert-export repeat"},
+		{id: "export-invalid", command: "export", token: "export-fixture-read", assertion: "assert-export invalid", failure: true},
+		{id: "export-symlink", command: "export", token: "export-fixture-read", assertion: "assert-export symlink", failure: true},
 		{id: "private", command: "plan", token: "plan-fixture-read", assertion: "assert private"},
 		{id: "private-read-failure", command: "plan", token: "plan-fixture-read", assertion: "assert private-read-failure", failure: true},
 		{id: "private-invalid-config", command: "plan", token: "plan-fixture-read", assertion: "assert private-invalid-config", failure: true},
@@ -183,7 +199,13 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 					t.Fatalf("scenario %s is missing its result/Summary assertion: %+v", test.id, assertion)
 				}
 			}
-			if strings.HasPrefix(test.id, "private") {
+			if strings.HasPrefix(test.id, "export-") {
+				wantEnv["CONFIG_PATH"] = "${{ steps." + test.id + ".outputs.config-path }}"
+				if !reflect.DeepEqual(scenario.Env, map[string]string{"GH_DEBUG": "api"}) {
+					t.Fatal("export must exercise inherited HTTP debug removal")
+				}
+			}
+			if strings.HasPrefix(test.id, "private") || strings.HasPrefix(test.id, "export-") {
 				wantEnv["PRIVATE_PLAN_OUTCOME"] = "${{ steps." + test.id + ".outputs.plan-outcome }}"
 			}
 			if !reflect.DeepEqual(assertion.Env, wantEnv) {

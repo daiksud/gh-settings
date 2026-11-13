@@ -26,6 +26,21 @@ This page describes current Go interfaces, including typed label operations and 
 
 The [composite Action](../../action.yml) installs one verified Go executable, resolves metadata, runs the selected command, renders a plan Summary when needed, then publishes success outputs. The plan report is temporary presentation data. The same executable owns metadata and Summary rendering; shell owns installation bootstrap and Actions wiring. [ADR 0023](../adr/0023-public-composite-action.md) records the public packaging decision, and the [testing guide](testing.md) describes verification boundaries.
 
+## Public export wiring
+
+The composite invokes the verified CLI's ordinary `export` operation directly;
+there is no separate internal `action export` protocol. Existing metadata already
+supports a committed checkout with no settings file. The CLI owns acquisition,
+existing-intent retention and guarded checkout-root file creation/replacement.
+
+Export requires the explicit command-step token, rejects prune and private-plan
+reporting before installation, unsets `GH_DEBUG`, and discards stdout. It creates
+no plan report or Summary. After success the result step publishes the fixed
+relative `config-path=.github/settings.yml` alongside the four identity outputs;
+other commands leave config-path empty. This output never publishes file contents
+or implies that HEAD contains the exported file. The installer, metadata schema
+and immutable package selection remain unchanged.
+
 ## Source Actions metadata
 
 The CLI provides `gh settings action metadata` for same-version CLI/Action wiring. This is separate from the four settings commands. The composite invokes it through the verified executable. It resolves the current consumer checkout, including subdirectories, using the shared Go origin rules and ignoring `GH_REPO`. Neither the executable directory nor an Action source directory selects the target; no `GITHUB_WORKSPACE` override mode is added. No settings file, token or API request is needed.
