@@ -54,7 +54,15 @@ The [topics contract](settings.md#topics) defines names, omission and explicit c
 
 The [labels contract](settings.md#labels) uses ID-based listed-object ownership: ordinary apply manages only listed objects; [explicit collection pruning](settings.md#collection-pruning) adds deletions for present lists. An ID selects an existing label; no ID means create-only and a name collision reports the existing ID.
 
-Plan shows creates and ID-bound updates, including default-derived values; `--prune labels` also shows unlisted deletions and their Issue/PR assignment loss. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply records confirmed new IDs in the original YAML after each creation; `--no-writeback` or `GITHUB_ACTIONS=true` disables this. Created IDs remain visible for recovery, including when later remote operations or local writeback fail. There is no automatic commit, push, create retry or rollback.
+Plan shows creates and ID-bound updates, including default-derived values; `--prune labels` also shows unlisted deletions and their Issue/PR assignment loss. Color is required; omitted description defaults to empty on create and update. A supported rename keeps the ID. Apply skips matching objects and independently reads each created/updated label at its resulting name to verify the same ID and complete supported settings before proceeding. A failed readback stops later writes, including prune deletions, with uncertain effects.
+
+Apply records confirmed new IDs in the original YAML after creation verification;
+`--no-writeback` or `GITHUB_ACTIONS=true` disables this. A positive ID from a create
+response remains visible for recovery even if verification fails, but is only
+automatically recorded after successful independent readback. Earlier confirmed
+IDs remain available after later remote or local writeback failure. See
+[Label ownership and ID writeback](settings.md#labels). There is no automatic
+commit, push, create retry or rollback.
 
 ## Actions event policy commands
 
@@ -268,7 +276,7 @@ Declared resources are sent in this order, skipping resources that are unmanaged
 | --- | --- |
 | `repository.about` and `repository.settings.general` scalars | REST-backed controls require fresh complete base/selected merge observations, skip exact matches and send only changed controls in one repository PATCH.[^github-update-repository] A changed UI menu sends its complete pair; normalized raw pairs remain write-required. Independent readback verifies all originally declared REST members, including initially matching members omitted from PATCH; failed verification can retain other members in that PATCH. PR access, Issue permissions and Sponsorships share identity-checked, declared-only GraphQL updates; declared creation policies also use selective preflight and fresh same-ID raw readback. Earlier REST success remains partial progress if the later access substep fails; GraphQL-only intent skips PATCH. |
 | `repository.about.topics` | Fresh complete GET; skip matching membership, otherwise PUT the complete sorted set and verify through an independent GET. `[]` clears it. |
-| `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST.[^github-labels] |
+| `repository.labels` | Complete label reads, then required ID-selected PATCH or create-only POST, followed by independent same-ID/full-settings GET at the resulting name.[^github-labels] |
 | `repository.settings.rulesets` | Complete supported reads, then selected-object PUT/create-only POST with independent ID/ownership/whole-policy GET verification. Failed verification retains reported creation IDs for recovery and stops later work; unlisted deletion requires `--prune rulesets`. |
 | `repository.settings.environments` | Stable name-order upserts, then explicit typed pattern reconciliation; omitted built-ins are API-controlled. |
 | `repository.settings.environments[].variables` | After selected Environment policies, fresh selected-name GET and conditional POST/PATCH with exact GET verification. Variable-only intent sends no policy PUT. |
