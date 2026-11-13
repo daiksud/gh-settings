@@ -343,6 +343,19 @@ func NewEnvironmentChange(operation string, before, after *EnvironmentDeclaratio
 }
 
 func newEnvironmentChange(operation string, before, after *EnvironmentDeclaration, record EnvironmentDeploymentNormalization, patterns []EnvironmentPatternState) (EnvironmentChange, error) {
+	if operation == "delete" {
+		if before == nil || after != nil || record != (EnvironmentDeploymentNormalization{}) || patterns != nil {
+			return EnvironmentChange{}, fmt.Errorf("Environment delete requires only a complete before policy")
+		}
+		if err := validateEnvironment(*before, true); err != nil {
+			return EnvironmentChange{}, err
+		}
+		if before.DeploymentBranchPolicy != nil && before.DeploymentBranchPolicy.CustomBranchPolicies && before.DeploymentBranchPatterns == nil {
+			return EnvironmentChange{}, fmt.Errorf("Environment delete requires active patterns")
+		}
+		value := cloneEnvironment(*before)
+		return EnvironmentChange{operation: operation, before: &value}, nil
+	}
 	if after == nil {
 		return EnvironmentChange{}, fmt.Errorf("environment change requires after policy")
 	}

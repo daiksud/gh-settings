@@ -23,6 +23,7 @@ func main() {
 	reader := app.Reader{CodeQLForExport: readCodeQLForExport, ActionsPolicies: readActionsPolicies, CopilotReviewEffort: readCopilotReviewEffort, CopilotMCP: readCopilotMCP, PullRequestLimits: readPullRequestLimits, PullRequestExemptions: readPullRequestExemptions, CopilotInstructions: readCopilotInstructions, Variable: readVariable, AgentVariable: readAgentVariable, EnvironmentVariable: readEnvironmentVariable, CodeQLConfiguration: readCodeQLConfiguration, Dependabot: readDependabot, Pages: readPages, Archive: readArchive, ObserveRepository: github.ObserveRepository, Topics: readTopics, Labels: readLabels, Rulesets: readRulesets, Actions: readActionsPolicy, WorkflowPermissions: readWorkflowPermissions, SecretScanning: readSecretScanning, CodeQLDefaultSetup: readCodeQLDefaultSetup, AIScanPullRequests: readAIScanPullRequests, PrivateReporting: readPrivateReporting, ImmutableReleases: readImmutableReleases, Retention: readRetention, ActionsAccess: readActionsAccess, CacheStorage: readCacheStorage, CacheRetention: readCacheRetention, ForkApproval: readForkApproval, PrivateFork: readPrivateFork}
 	reader.EnvironmentNames = readEnvironmentNames
 	reader.Environments = readEnvironments
+	reader.EnvironmentPrune = readEnvironmentPrune
 	reader.Variables = readVariables
 	reader.AgentVariables = readAgentVariables
 	reader.EnvironmentVariables = readEnvironmentVariables
@@ -64,7 +65,7 @@ func main() {
 			if options.NoWriteback || os.Getenv("GITHUB_ACTIONS") == "true" {
 				record = nil
 			}
-			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadVariables: readVariables, ReadAgentVariables: readAgentVariables, ReadEnvironmentVariables: readEnvironmentVariables, DeleteVariable: deleteVariable, DeleteAgentVariable: deleteAgentVariable, DeleteEnvironmentVariable: deleteEnvironmentVariable, ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
+			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadEnvironmentPrune: readEnvironmentPrune, DeleteEnvironment: deleteEnvironment, ReadVariables: readVariables, ReadAgentVariables: readAgentVariables, ReadEnvironmentVariables: readEnvironmentVariables, DeleteVariable: deleteVariable, DeleteAgentVariable: deleteAgentVariable, DeleteEnvironmentVariable: deleteEnvironmentVariable, ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
 				return readPagesForApply(repo, desired.Pages)
 			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotMCP: updateCopilotMCP, PullRequestLimits: updatePullRequestLimits, PullRequestExemptions: updatePullRequestExemptions, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, EnvironmentVariable: upsertEnvironmentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, ReadActionsPolicies: readActionsPolicies, ActionsEventPolicy: writeActionsEventPolicy, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
@@ -152,6 +153,25 @@ func readRulesets(repo repository.Repository) (settings.RulesetObservation, erro
 	}
 	return client.ReadRulesets(repo)
 }
+
+func readEnvironmentPrune(repo repository.Repository, retained []string) (settings.EnvironmentPruneObservation, error) {
+	client, err := github.NewEnvironmentPruneClient(repo.Host)
+	if err != nil {
+		return settings.EnvironmentPruneObservation{}, err
+	}
+	return client.ReadEnvironmentPrune(repo, retained)
+}
+func deleteEnvironment(repo repository.Repository, candidate settings.EnvironmentPruneCandidate) error {
+	client, err := github.NewEnvironmentPruneClient(repo.Host)
+	if err != nil {
+		return &environmentPruneClientReadFailure{err}
+	}
+	return client.DeleteEnvironment(repo, candidate)
+}
+
+type environmentPruneClientReadFailure struct{ error }
+
+func (*environmentPruneClientReadFailure) ReadFailedBeforeWrite() {}
 
 func readEnvironments(repo repository.Repository, names []string) (settings.EnvironmentObservation, error) {
 	client, err := github.NewEnvironmentsClient(repo.Host)

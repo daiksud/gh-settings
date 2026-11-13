@@ -16,6 +16,9 @@ func EnvironmentLine(change settings.EnvironmentChange) string {
 	before := environmentPolicy(environmentVisibleBefore(change.Before(), change.After()))
 	after := environmentPolicy(change.After())
 	line := fmt.Sprintf("repository.settings.environments: %s %q: effective before policy %s → request %s", change.Operation(), change.Name(), before, after)
+	if change.Operation() == "delete" {
+		line += " (removes contained configuration and secrets; jobs waiting on protections fail; recreation does not restore them)"
+	}
 	if requested := change.After(); requested != nil && settings.EnvironmentHasAPIOmissions(*requested) {
 		if change.Operation() == "create" {
 			line += " (omitted fields are API-controlled on creation)"

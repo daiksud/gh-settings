@@ -79,6 +79,7 @@ const (
 	VariableDelete
 	AgentVariableDelete
 	EnvironmentVariableDelete
+	EnvironmentDelete
 )
 
 type ApplyOperationStatus uint8
