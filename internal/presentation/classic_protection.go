@@ -15,6 +15,7 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 			parts = append(parts, fmt.Sprintf("%s: %t", names[i], *value))
 		}
 		parts = append(parts, classicStatusChecksLine(c.Before.RequireStatusChecksToPassBeforeMerging))
+		parts = append(parts, classicReviewsLine(c.Before.RequireAPullRequestBeforeMerging))
 		parts = append(parts, classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging))
 		return fmt.Sprintf("%s: delete (id %d) before {%s} → absent (removes the whole rule, including other configured protections; an overlapping rule may take effect)", settings.ClassicProtectionPath, *c.Before.ID, strings.Join(parts, ", "))
 	}
@@ -42,6 +43,13 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 			parts = append(parts, fmt.Sprintf("%s: %t → %t", names[i], *before[i], *v))
 		}
 	}
+	if settings.ClassicReviewsManaged(c.After.RequireAPullRequestBeforeMerging) {
+		value := classicReviewsLine(c.After.RequireAPullRequestBeforeMerging)
+		if c.Before != nil {
+			value = classicReviewsLine(c.Before.RequireAPullRequestBeforeMerging) + " → " + value
+		}
+		parts = append(parts, value)
+	}
 	if settings.ClassicDeploymentsSelected(c.After.RequireDeploymentsToSucceedBeforeMerging) {
 		value := classicDeploymentLine(c.After.RequireDeploymentsToSucceedBeforeMerging)
 		if c.Before != nil {
@@ -62,6 +70,10 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 func classicStatusChecksLine(group *settings.ClassicStatusChecks) string {
 	data, _ := json.Marshal(group)
 	return "require_status_checks_to_pass_before_merging: " + string(data)
+}
+func classicReviewsLine(group *settings.ClassicPullRequestReviews) string {
+	data, _ := json.Marshal(group)
+	return "require_a_pull_request_before_merging: " + string(data)
 }
 
 func classicDeploymentLine(group *settings.ClassicDeployments) string {

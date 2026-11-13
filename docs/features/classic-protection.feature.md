@@ -4,10 +4,10 @@ The [configuration contract](../settings.md#classic-branch-protection) owns publ
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
 Ordinary reconciliation manages conversation resolution, signed commits, linear
 history, branch locking, administrator enforcement, the Allow deletions checkbox
-and complete active required status-check and deployment groups,
+and complete active PR-review, required status-check and deployment groups,
 separately from Rulesets. Explicit
 [classic prune](prune.feature.md#classic-branch-protection-deletion) additionally
-removes whole unlisted rules. PR editing, fork-sync and force-push
+removes whole unlisted rules. Fork-sync and force-push
 actor editing remain separate work.
 
 ## Behavioral boundaries
@@ -67,18 +67,30 @@ identities before and after complete rule/actor verification, without installati
 or recent-run discovery. Failed postwrite lookup retains creation recovery IDs but
 does not record them in YAML. Whole-rule prune still checks the complete raw group.
 
+- PR reviews form a complete active group. Omission/{} remains unmanaged; disabled
+  forbids children; enabled requires approval choice and all review checkboxes.
+  Approval false requests count zero, while true requires a count from 1 through 6.
+- Create and activation send all five fields explicitly; active updates send only
+  changes. Disabled export hides latent members, which remain exact private
+  preservation/prune evidence when the group is omitted.
+- Plan and writer-fresh checks block deactivation with dismissal restrictions,
+  dismissal actors or PR bypass actors. Matching disabled state and count-to-zero
+  stay allowed. Selected deactivation makes no inactive-child retention promise;
+  other controls and all unowned actor identities must survive independently.
+
 ## Verification mapping
 
 - Literal YAML booleans, omission, null/type/alias rejection and exact patterns:
   `internal/workspace/ui_classic_protection_test.go`, `ui_classic_lock_test.go`, `ui_classic_admin_test.go` and
-  `ui_classic_deployments_test.go`.
+  `ui_classic_deployments_test.go`; `ui_classic_reviews_test.go` covers the complete PR group.
 - Identity/collision selection, creation order, partial equality, nullable raw
   companions and supported export: `internal/settings/classic_protection_test.go`
-  and `classic_deployments_test.go`.
+  and `classic_deployments_test.go` and `classic_reviews_test.go`.
 - Literal GraphQL inputs, complete 101-rule/101-actor pagination, unowned companion
   drift, fresh no-ops, create recovery and failure boundaries:
   `internal/github/classic_protection_test.go`, `classic_lock_test.go`, `classic_admin_test.go` and
-  `classic_deployments_test.go`.
+  `classic_deployments_test.go`; `classic_reviews_test.go` checks activation, count-zero,
+  guarded deactivation and raw preservation.
 - Family preflight, declaration order, unarchive, actual progress and export
   retention and Environment-prune conflicts: `internal/app/classic_protection_test.go`
   and `classic_deployments_test.go`.
@@ -102,8 +114,11 @@ does not record them in YAML. Whole-rule prune still checks the complete raw gro
 - Actual supplied Action deployment enable/disable/empty/no-op, private output and
   reference replacement failure: `tests/github-actions/classic_deployments_acceptance_test.go`.
 
-The required-deployment literal regression fails on unchanged source because
-its group key is unknown. Automated verification uses local fixtures
+- Actual supplied Action PR activation/zero/disable/no-op, guarded rejection, private
+  plans and readback drift: `tests/github-actions/classic_reviews_acceptance_test.go`.
+
+The PR-review and required-deployment literal regressions fail on their unchanged
+sources because the respective group key is unknown. Automated verification uses local fixtures
 and dummy credentials. Official schema and read-only empty personal-public
 inventories establish the endpoint, not populated storage behavior, mutation
 permission or effective enforcement. No live branch protection was changed.

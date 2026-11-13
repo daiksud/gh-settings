@@ -48,10 +48,13 @@ func processClassicClone(v map[string]any) map[string]any {
 	return result
 }
 func TestClassicProtectionExecutableLifecycle(t *testing.T) {
-	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments"} {
+	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rules := []map[string]any{processClassicRule(7, "Release/**")}
+			if mode == "reviews-guard" {
+				rules[0]["restrictsReviewDismissals"] = true
+			}
 			writes := []map[string]any{}
 			denied := false
 			partialErrorSent, followupAfterError := false, 0
@@ -162,7 +165,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "requiresStatusChecks", "requiresStrictStatusChecks", "requiredStatusCheckContexts", "requiredStatusChecks", "repository"} {
 						ack[key] = rule[key]
 					}
 					body[mutation] = map[string]any{"branchProtectionRule": ack}
@@ -201,7 +204,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 			run(false, "export")
 			path := filepath.Join(fixture.work, ".github/settings.yml")
 			data, _ := os.ReadFile(path)
-			for _, want := range []string{"branch_protection_rules:", "id: 7", "branch_name_pattern: Release/**", "require_signed_commits: false", "allow_deletions: false", "lock_branch: false", "do_not_allow_bypassing_the_above_settings: true"} {
+			for _, want := range []string{"branch_protection_rules:", "id: 7", "branch_name_pattern: Release/**", "require_signed_commits: false", "allow_deletions: false", "lock_branch: false", "do_not_allow_bypassing_the_above_settings: true", "require_a_pull_request_before_merging:", "required_number_of_approvals_before_merging: 2"} {
 				if !strings.Contains(string(data), want) {
 					t.Fatal(want, string(data))
 				}
@@ -221,6 +224,16 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				return
 			}
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_signed_commits: true}]}}\n"
+			if strings.HasPrefix(mode, "reviews-") {
+				group := "{enabled: false}"
+				if mode == "reviews-zero" {
+					group = "{enabled: true, require_approvals: false, dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: false, require_review_from_code_owners: false, require_approval_of_the_most_recent_reviewable_push: false}"
+				}
+				if mode == "reviews-count" {
+					group = "{enabled: true, require_approvals: true, required_number_of_approvals_before_merging: 6, dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: true, require_review_from_code_owners: true, require_approval_of_the_most_recent_reviewable_push: true}"
+				}
+				input = fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_a_pull_request_before_merging: %s}]}}\n", group)
+			}
 			if mode == "deployments" {
 				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_deployments_to_succeed_before_merging: {enabled: true, environments: [production]}}]}}\n"
 			}
@@ -235,6 +248,17 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 			}
 			if err := writeSettingsFile(fixture.work, input); err != nil {
 				t.Fatal(err)
+			}
+			run(false, "validate")
+			if mode == "reviews-guard" {
+				run(true, "plan")
+				result := run(true, "apply")
+				mu.Lock()
+				defer mu.Unlock()
+				if len(writes) != 0 || !strings.Contains(result.stderr.String(), "unowned bypass or dismissal") {
+					t.Fatal(writes, result.stderr.String())
+				}
+				return
 			}
 			plan := run(false, "plan")
 			if !strings.Contains(plan.stdout.String(), "branch_protection_rules:") {
@@ -283,6 +307,23 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					t.Fatal(applied.stderr.String(), count)
 				}
 				return
+			}
+			if strings.HasPrefix(mode, "reviews-") {
+				want := map[string]any{"branchProtectionRuleId": "B_7"}
+				switch mode {
+				case "reviews-zero":
+					want["requiredApprovingReviewCount"] = float64(0)
+					want["dismissesStaleReviews"] = false
+					want["requiresCodeOwnerReviews"] = false
+					want["requireLastPushApproval"] = false
+				case "reviews-count":
+					want["requiredApprovingReviewCount"] = float64(6)
+				case "reviews-disable":
+					want["requiresApprovingReviews"] = false
+				}
+				if !reflect.DeepEqual(captured, []map[string]any{want}) {
+					t.Fatal(captured, want)
+				}
 			}
 			if mode == "deployments" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "requiresDeployments": true, "requiredDeploymentEnvironments": []any{"production"}}}) {
 				t.Fatal(captured)

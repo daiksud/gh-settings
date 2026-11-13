@@ -327,3 +327,120 @@ func TestClassicStatusChecksObservationCompleteness(t *testing.T) {
 		})
 	}
 }
+
+func TestClassicStatusReviewsAndDeploymentsCompose(t *testing.T) {
+	for _, mode := range []string{"all-selected", "create-all", "all-disabled", "status-selected-review-drift", "reviews-selected-status-drift", "review-guard-blocks-status"} {
+		t.Run(mode, func(t *testing.T) {
+			f := newClassicAPIFixture(t, classicFixtureRule(7, "main"))
+			id, no := int64(7), false
+			desired := settings.ClassicRule{
+				ID: &id, BranchNamePattern: "main",
+				RequireAPullRequestBeforeMerging:         apiReviews(true, 3, false),
+				RequireStatusChecksToPassBeforeMerging:   classicStatusDesired(false, settings.ClassicStatusCheck{Name: "build", AcceptUpdatesFrom: "APP_private"}),
+				RequireDeploymentsToSucceedBeforeMerging: deploymentGroup(true, "staging"),
+			}
+			want := map[string]any{
+				"branchProtectionRuleId": "B_7", "requiredApprovingReviewCount": float64(3),
+				"dismissesStaleReviews": false, "requiresCodeOwnerReviews": false, "requireLastPushApproval": false,
+				"requiresStrictStatusChecks": false, "requiredDeploymentEnvironments": []any{"staging"},
+			}
+			switch mode {
+			case "create-all":
+				f.rules, desired.ID = nil, nil
+				delete(want, "branchProtectionRuleId")
+				want["repositoryId"], want["pattern"] = "R_current", "main"
+				want["requiresApprovingReviews"], want["requiresStatusChecks"], want["requiresDeployments"] = true, true, true
+				want["requiredStatusChecks"] = []any{map[string]any{"context": "build", "appId": "APP_private"}}
+			case "all-disabled":
+				desired.RequireAPullRequestBeforeMerging = apiReviews(false, 0, false)
+				desired.RequireStatusChecksToPassBeforeMerging = &settings.ClassicStatusChecks{Enabled: &no}
+				desired.RequireDeploymentsToSucceedBeforeMerging = deploymentGroup(false)
+				want = map[string]any{"branchProtectionRuleId": "B_7", "requiresApprovingReviews": false, "requiresStatusChecks": false, "requiresDeployments": false}
+				f.mutate = func(rule map[string]any) {
+					for _, key := range []string{"requiredApprovingReviewCount", "requiredStatusCheckContexts", "requiredStatusChecks", "requiredDeploymentEnvironments"} {
+						rule[key] = nil
+					}
+					for _, key := range []string{"dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresStrictStatusChecks"} {
+						rule[key] = false
+					}
+				}
+			case "status-selected-review-drift":
+				desired.RequireAPullRequestBeforeMerging = nil
+				for _, key := range []string{"requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval"} {
+					delete(want, key)
+				}
+			case "reviews-selected-status-drift":
+				desired.RequireStatusChecksToPassBeforeMerging = nil
+				delete(want, "requiresStrictStatusChecks")
+			case "review-guard-blocks-status":
+				desired.RequireAPullRequestBeforeMerging = apiReviews(false, 0, false)
+			}
+			selection := classicSelect(t, f, desired)
+			f.calls = nil
+			f.hook = func(phase string, body map[string]any, _ map[string]any) {
+				if phase != "node" {
+					return
+				}
+				node := body["node"].(map[string]any)
+				if mode == "review-guard-blocks-status" {
+					node["restrictsReviewDismissals"] = true
+				}
+				if len(f.writes) == 0 {
+					return
+				}
+				if mode == "status-selected-review-drift" {
+					node["requiredApprovingReviewCount"] = float64(1)
+				}
+				if mode == "reviews-selected-status-drift" {
+					node["requiresStrictStatusChecks"] = false
+				}
+			}
+			result, err := f.client.Apply(classicTestRepo, selection)
+			bad := strings.Contains(mode, "drift") || mode == "review-guard-blocks-status"
+			if (err != nil) != bad {
+				t.Fatal(result, err)
+			}
+			var pre interface{ ReadFailedBeforeWrite() }
+			if mode == "review-guard-blocks-status" {
+				if !errors.As(err, &pre) || result.Wrote || len(f.writes) != 0 {
+					t.Fatal("review guard did not block the whole combined update", result, err, f.writes)
+				}
+				for _, call := range f.calls {
+					if call == "app" || call == "environments" {
+						t.Fatal("guarded update resolved unrelated references", f.calls)
+					}
+				}
+				return
+			}
+			if !result.Wrote || len(f.writes) != 1 || !reflect.DeepEqual(f.writes[0], want) {
+				t.Fatal("combined payload differs", result, err, f.writes, want)
+			}
+			if bad {
+				if errors.As(err, &pre) {
+					t.Fatal("postwrite omitted-group drift lost uncertainty", err)
+				}
+				return
+			}
+			counts := map[string]int{}
+			for _, call := range f.calls {
+				counts[call]++
+			}
+			wantReferences := 2
+			if mode == "all-disabled" {
+				wantReferences = 0
+			}
+			if counts["app"] != wantReferences || counts["environments"] != wantReferences {
+				t.Fatal("combined references not independently verified", f.calls)
+			}
+			if mode == "create-all" {
+				desired.ID = &result.ID
+				selection = classicSelect(t, f, desired)
+			}
+			f.calls = nil
+			result, err = f.client.Apply(classicTestRepo, selection)
+			if err != nil || result.Wrote || len(f.writes) != 1 || !reflect.DeepEqual(f.calls, []string{"node", "actors", "actors", "actors", "actors"}) {
+				t.Fatal("matching combined intent did work", result, err, f.calls)
+			}
+		})
+	}
+}
