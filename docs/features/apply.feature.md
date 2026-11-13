@@ -14,15 +14,15 @@ description: Send declared repository fields directly after local validation.
 - Otherwise resolve the same GitHub.com origin as export and ignore `GH_REPO`.
 - Accept origin values only from checkout-local/worktree scopes, including their included files; system/global/command origin values cannot select the mutation target.
 
-### Rule: Send repository and topics declarations directly
+### Rule: Apply declared repository fields
 
-- When ordinary REST-backed About/General scalars are declared, send the declared internal members in the repository PATCH. GraphQL-backed PR/Issue/Sponsor controls use their separate identity-checked mutation; a GraphQL-only declaration sends no PATCH. Topics uses a separate PUT.
+- When ordinary REST-backed About/General scalars are declared, send the declared internal members in the repository PATCH. GraphQL-backed PR/Issue/Sponsor controls use their separate identity-checked mutation; a GraphQL-only declaration sends no PATCH. Topics use the separate reconciliation contract below.
 - Reject redirects, including those that would convert PATCH into GET.
 - Omit the version marker, outer UI mappings, and every undeclared field from API payloads.
 - Preserve false and empty strings as explicit values.
 - When `repository.settings.general.features.discussions` is declared, verify the PATCH response contains the requested boolean. Missing, null, wrong-type or unequal values fail after the request, can leave repository writes applied, and stop later resources without rollback. Omission keeps the previous response handling.
-- Ordinary direct repository/Topics writes do not reconcile a saved comparison; family-specific identity/prerequisite/readback checks still apply. Apply never requires a saved plan.
-- Send declared values even if they already match or remote values changed after plan.
+- Ordinary direct repository writes do not reconcile a saved comparison; family-specific identity/prerequisite/readback checks still apply. Apply never requires a saved plan.
+- Send declared repository values even if they already match or remote values changed after plan.
 - Preserve the configuration file except guarded confirmed-created-ID writeback, and leave omitted scalar fields unmanaged.
 
 ### Rule: Report success and failures
@@ -49,26 +49,29 @@ Focused application tests record declaration loading, target resolution, resourc
 | Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, failure status/stderr/empty stdout, unchanged file | [`TestApplyAcceptance`](../../tests/acceptance/apply_test.go) |
 | Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |
 
-### Rule: Apply declared resources independently
+### Rule: Reconcile Topics against complete fresh membership
 
-- Given repository fields and topic names are declared.
-- When apply runs.
-- Then repository PATCH precedes topics PUT without a preliminary GET.
-- And the PUT contains only the sorted names array, including an explicit empty array.
-- And a failure stops later operations without rolling back successful writes.
-- And omitted About topics produce no Topics request.
+- Omitted About topics produce no Topics read or write; explicit `[]` remains managed.
+- Declared repository operations precede Topics reconciliation.
+- Read and validate the complete current names array. Missing, null, malformed, invalid, denied or redirected reads stop before any Topics PUT; no empty set is invented.
+- Compare membership independently of order. Exact, reordered and already-empty matches perform no PUT and record unchanged work.
+- Changed membership sends one PUT containing only the sorted complete names array, including explicit `[]` to clear it.
+- Independently GET complete names again and verify exact membership; an acknowledgement is insufficient.
+- Failed PUT or failed/mismatching readback stops later operations with uncertain effects. There is no rollback, automatic retry or locking.
+- A prewrite failure records a read failure. Earlier actual repository or unarchive writes remain partial progress; a matching Topics declaration is not a write.
+- Matching Topics continue into Labels and final archive as declared. Repeated apply reads fresh state and skips a now-matching PUT.
 
-Test mapping: [TestTopicsApplyOrderAndPartialFailures](../../internal/app/topics_test.go), [TestApplyTopicsPayloadAndErrors](../../internal/github/topics_test.go), [TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
+Test mapping: [TestApplyTopicsReconciliation and TestApplyTopicsRepeatAndOmission](../../internal/github/topics_test.go), [TestTopicsApplyOrderAndPartialFailures, TestTopicsApplyReportsActualWritesAndReadFailures and TestTopicsNoopContinuesLabelsAndFinalArchive](../../internal/app/topics_test.go), [TestTopicsApplyReconciliationAcceptance and TestTopicsPlanApplyAcceptance](../../tests/acceptance/topics_test.go).
 
 ### Rule: Reconcile labels against fresh state
 
-Current unreleased source applies nonempty label selections after repository/topics writes. It preflights ID-selected updates and ID-less creates against complete fresh state, never deleting unlisted objects. Whole supported values include fixed description defaults. Confirmed create IDs are written to the original YAML unless opt-out/Actions disables recording; failures preserve earlier remote writes and recoverable IDs. See the [Labels specification](labels.feature.md).
+Current unreleased source applies nonempty label selections after repository/Topics operations. It preflights ID-selected updates and ID-less creates against complete fresh state, never deleting unlisted objects. Whole supported values include fixed description defaults. Confirmed create IDs are written to the original YAML unless opt-out/Actions disables recording; failures preserve earlier remote writes and recoverable IDs. See the [Labels specification](labels.feature.md).
 
 ### Rule: Actions execution policy sequencing
 
 Current source applies repository Actions policy after existing resources. The [Actions policy specification](actions-execution-policy.feature.md#rule-preflight-and-preserve-companions-before-ordered-writes) owns fresh reads, companion preservation, staged enabling, readback and partial failure.
 
-Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct repository/topics/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
+Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct repository/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Topics, collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
 
 | Subset | Existing application and transport/process evidence |
 | --- | --- |

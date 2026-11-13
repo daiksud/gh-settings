@@ -252,7 +252,7 @@ do not establish deployed protection.
 it. Unlisted Environments remain unmanaged; removing a declaration does not
 itself delete the live Environment. Deletion is a separate authorized operation.
 
-An earlier zero-difference PR plan does not make a later apply write-free: declared repository fields and topics retain their direct PATCH/PUT behavior. Earlier successful writes remain applied if a later operation fails. Assess the exact execution rather than inferring no writes from a prior plan or the generic success message.
+An earlier zero-difference PR plan does not make a later apply write-free: declared repository fields retain their direct PATCH behavior, and Topics reconcile against a new complete read before any PUT. Earlier successful writes remain applied if a later operation fails. Assess the exact execution rather than inferring no writes from a prior plan or the generic success message.
 
 There is no prepare/handoff job or main-side pre-approval plan. The validated declaration and exact committed configuration provide review context; direct apply does not consume a saved plan and may overwrite intervening changes to managed values. The presence of `environment: gh-settings` identifies the selected Environment but does not establish whether reviewers are currently configured.
 

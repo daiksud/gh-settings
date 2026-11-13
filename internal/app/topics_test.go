@@ -33,15 +33,15 @@ func TestTopicsApplyOrderAndPartialFailures(t *testing.T) {
 					}
 					return nil
 				},
-				Topics: func(repo repository.Repository, d settings.TopicsDeclaration) error {
+				Topics: func(repo repository.Repository, d settings.TopicsDeclaration) (bool, error) {
 					calls = append(calls, "topics")
 					if repo != target || d.Names == nil || len(*d.Names) != 0 {
 						t.Fatal("lost clear")
 					}
 					if fail == "topics" {
-						return failure
+						return false, failure
 					}
-					return nil
+					return true, nil
 				},
 			})
 			want := []string{"load", "target", "repository", "topics"}
@@ -70,7 +70,7 @@ func TestTopicsOnlyPlanAndApply(t *testing.T) {
 				t.Fatalf("comparison=%+v", result.Comparison)
 			}
 			calls := 0
-			applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Topics: func(repository.Repository, settings.TopicsDeclaration) error { calls++; return nil }})
+			applied, err := Apply(checkoutDeclaration, checkoutRepository, Writer{Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) { calls++; return true, nil }})
 			if err != nil || !applied.Completed() || calls != 1 {
 				t.Fatalf("result=%+v calls=%d error=%v", applied, calls, err)
 			}
@@ -93,5 +93,159 @@ func TestInvalidTopicsBeforeRemote(t *testing.T) {
 	}
 	if _, err := Apply(checkoutDeclaration, checkoutRepository, Writer{}); err == nil || !strings.Contains(err.Error(), "repository.about.topics must contain strings") {
 		t.Fatalf("error=%v", err)
+	}
+}
+
+type topicsReadFailure struct{ error }
+
+func (*topicsReadFailure) ReadFailedBeforeWrite() {}
+
+func TestTopicsApplyReportsActualWritesAndReadFailures(t *testing.T) {
+	for _, test := range []struct {
+		name                                                   string
+		wrote, prewrite, unknown, earlierRepository, unarchive bool
+		wantOutcome                                            ApplyOutcome
+		wantStatus                                             ApplyOperationStatus
+	}{
+		{name: "matching", wantOutcome: ApplyMatchingLabels, wantStatus: OperationUnchanged},
+		{name: "changed", wrote: true, wantOutcome: ApplyCompleted, wantStatus: OperationCompleted},
+		{name: "preflight failed", prewrite: true, wantOutcome: ApplyFailed, wantStatus: OperationFailedRead},
+		{name: "write uncertain", unknown: true, wantOutcome: ApplyFailed, wantStatus: OperationFailedUnknown},
+		{name: "earlier repository write", earlierRepository: true, prewrite: true, wantOutcome: ApplyPartialFailure, wantStatus: OperationFailedRead},
+		{name: "earlier unarchive", unarchive: true, prewrite: true, wantOutcome: ApplyPartialFailure, wantStatus: OperationFailedRead},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			names, disabled := []string{}, false
+			desired := settings.Declaration{Topics: settings.TopicsDeclaration{Names: &names}}
+			if test.earlierRepository {
+				desired.Repository.HasIssues = &disabled
+			}
+			if test.unarchive {
+				desired.Repository.Archived = &disabled
+			}
+			calls := []string{}
+			cause := errors.New("topics unavailable")
+			result, err := Apply(func() (settings.Declaration, error) { return desired, nil }, func() (repository.Repository, error) {
+				return repository.Repository{Owner: "owner", Name: "current"}, nil
+			}, Writer{
+				Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+					calls = append(calls, "repository")
+					return nil
+				},
+				ReadArchive: func(repository.Repository) (settings.ArchiveState, error) {
+					return settings.ArchiveState{ID: 2, FullName: "owner/current", Archived: true}, nil
+				},
+				Archive: func(repository.Repository, settings.ArchiveState, bool) error {
+					calls = append(calls, "unarchive")
+					return nil
+				},
+				Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) {
+					calls = append(calls, "topics")
+					if test.prewrite {
+						return false, &topicsReadFailure{cause}
+					}
+					if test.unknown {
+						return false, cause
+					}
+					return test.wrote, nil
+				},
+			})
+			last := result.Operations[len(result.Operations)-1]
+			if result.Outcome != test.wantOutcome || last.Kind != TopicsUpdate || last.Status != test.wantStatus || (err != nil) != (test.prewrite || test.unknown) {
+				t.Fatal(result, err)
+			}
+			wantCalls := []string{"topics"}
+			if test.earlierRepository {
+				wantCalls = []string{"repository", "topics"}
+			}
+			if test.unarchive {
+				wantCalls = []string{"unarchive", "topics"}
+			}
+			if !reflect.DeepEqual(calls, wantCalls) {
+				t.Fatal(calls)
+			}
+		})
+	}
+}
+
+func TestTopicsNoopContinuesLabelsAndFinalArchive(t *testing.T) {
+	for _, mode := range []string{"matching labels", "label read failure", "label comparison failure", "archive"} {
+		t.Run(mode, func(t *testing.T) {
+			names, id, color, archived := []string{}, int64(7), "abcdef", true
+			labels := appLabelDeclarations(t, settings.LabelDeclaration{ID: &id, Name: "bug", Color: &color})
+			desired := settings.Declaration{Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels}
+			if mode == "archive" {
+				desired.Repository.Archived = &archived
+			}
+			var calls []string
+			result, err := Apply(func() (settings.Declaration, error) { return desired, nil }, func() (repository.Repository, error) {
+				return repository.Repository{Owner: "owner", Name: "current"}, nil
+			}, Writer{
+				Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) {
+					calls = append(calls, "topics")
+					return false, nil
+				},
+				ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+					calls = append(calls, "labels")
+					if mode == "label read failure" {
+						return settings.LabelObservation{}, errors.New("read denied")
+					}
+					if mode == "label comparison failure" {
+						return settings.LabelObservation{}, nil
+					}
+					return settings.NewLabelObservation([]settings.LabelState{{ID: id, Name: "bug", Color: color}})
+				},
+				ReadArchive: func(repository.Repository) (settings.ArchiveState, error) {
+					calls = append(calls, "archive-read")
+					return settings.ArchiveState{ID: 2, FullName: "owner/current"}, nil
+				},
+				Archive: func(_ repository.Repository, _ settings.ArchiveState, desired bool) error {
+					if !desired {
+						t.Fatal("unexpected unarchive")
+					}
+					calls = append(calls, "archive")
+					return nil
+				},
+			})
+			wantOutcome, wantCalls := ApplyMatchingLabels, []string{"topics", "labels"}
+			if strings.Contains(mode, "failure") {
+				wantOutcome = ApplyFailed
+				if err == nil || strings.Contains(err.Error(), "earlier resource writes") {
+					t.Fatal(err)
+				}
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if mode == "archive" {
+				wantOutcome, wantCalls = ApplyCompleted, []string{"archive-read", "topics", "labels", "archive-read", "archive"}
+			}
+			if result.Outcome != wantOutcome || !reflect.DeepEqual(calls, wantCalls) {
+				t.Fatal(result, calls)
+			}
+			for _, operation := range result.Operations {
+				if operation.Kind == TopicsUpdate && operation.Status != OperationUnchanged {
+					t.Fatal(operation)
+				}
+			}
+		})
+	}
+}
+
+func TestTopicsWriteThenLabelsReadFailureIsPartial(t *testing.T) {
+	names, color := []string{}, "abcdef"
+	labels := appLabelDeclarations(t, settings.LabelDeclaration{Name: "bug", Color: &color})
+	cause := errors.New("labels denied")
+	result, err := Apply(func() (settings.Declaration, error) {
+		return settings.Declaration{Topics: settings.TopicsDeclaration{Names: &names}, Labels: &labels}, nil
+	}, func() (repository.Repository, error) {
+		return repository.Repository{Owner: "owner", Name: "current"}, nil
+	}, Writer{
+		Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) { return true, nil },
+		ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
+			return settings.LabelObservation{}, cause
+		},
+	})
+	if !errors.Is(err, cause) || !strings.Contains(err.Error(), "earlier resource writes remain applied") || result.Outcome != ApplyPartialFailure || !reflect.DeepEqual(result.Operations, []ApplyOperation{{Kind: TopicsUpdate, Status: OperationCompleted}, {Kind: LabelsRead, Status: OperationFailedRead}}) {
+		t.Fatal(result, err)
 	}
 }

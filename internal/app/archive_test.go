@@ -324,8 +324,8 @@ func TestArchiveUnarchiveProgressSurvivesSubsequentFailures(t *testing.T) {
 			Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
 				return errors.New("repository write denied")
 			},
-			Topics: func(repository.Repository, settings.TopicsDeclaration) error {
-				return errors.New("topics write denied")
+			Topics: func(repository.Repository, settings.TopicsDeclaration) (bool, error) {
+				return false, errors.New("topics write denied")
 			},
 		})
 		if err == nil || result.Outcome != ApplyPartialFailure || !strings.Contains(err.Error(), "repository was unarchived") || !strings.Contains(err.Error(), "earlier changes remain applied") || !strings.Contains(err.Error(), variant+" write denied") {

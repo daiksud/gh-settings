@@ -85,6 +85,16 @@ func TestUIAboutEmptyPayloads(t *testing.T) {
 	calls := 0
 	client := topicsClient(t, func(req *http.Request) (*http.Response, error) {
 		calls++
+		if calls == 2 || calls == 4 {
+			if req.Method != "GET" || req.URL.Path != "/repos/owner/current/topics" {
+				t.Fatal(req.Method, req.URL)
+			}
+			body := `{"names":["old"]}`
+			if calls == 4 {
+				body = `{"names":[]}`
+			}
+			return labelsResponse(req, 200, body), nil
+		}
 		var got map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
 			t.Fatal(err)
@@ -96,7 +106,7 @@ func TestUIAboutEmptyPayloads(t *testing.T) {
 			}
 		} else {
 			want = map[string]any{"names": []any{}}
-			if calls != 2 || req.Method != "PUT" || req.URL.Path != "/repos/owner/current/topics" {
+			if calls != 3 || req.Method != "PUT" || req.URL.Path != "/repos/owner/current/topics" {
 				t.Fatal(req.Method, req.URL)
 			}
 		}
@@ -113,10 +123,10 @@ func TestUIAboutEmptyPayloads(t *testing.T) {
 	if err := client.ApplyRepository(repo, desired.Repository); err != nil {
 		t.Fatal(err)
 	}
-	if err := client.ApplyTopics(repo, desired.Topics); err != nil {
-		t.Fatal(err)
+	if wrote, err := client.ApplyTopics(repo, desired.Topics); err != nil || !wrote {
+		t.Fatal(wrote, err)
 	}
-	if calls != 2 {
+	if calls != 4 {
 		t.Fatal(calls)
 	}
 }
