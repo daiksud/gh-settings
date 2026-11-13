@@ -181,6 +181,11 @@ preserved because creation age affects priority. Update renderers show only
 requested values; deletions show absence and their whole-object effect. Status-only
 Summary suppresses identities and policy.
 
+Classic `allow_fork_syncing` is conditional: when present in Before or After it
+requires `lock_branch: true`. Missing Before sync can describe an inactive rule or
+a non-fork; reports cannot prove target applicability. Private acquired `isFork`
+and the complete native Boolean supply that evidence without entering the report.
+
 ## Collaborator presentation
 
 The same-version `collaborators` report array contains `username`, user `id`,

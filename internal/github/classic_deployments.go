@@ -51,7 +51,7 @@ func (c *ClassicProtectionClient) classicDeploymentReferences(repo repository.Re
 		if err != nil {
 			return nil, err
 		}
-		if current.id != target.id || current.archived != target.archived {
+		if current.id != target.id || current.archived != target.archived || current.isFork != target.isFork {
 			return nil, fmt.Errorf("classic Environment target identity or archive state changed")
 		}
 		nodes, total, end, next, err := classicPage(connection)

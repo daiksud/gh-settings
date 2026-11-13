@@ -42,7 +42,7 @@ func (c *ClassicProtectionClient) Delete(repo repository.Repository, candidate s
 	if err != nil {
 		return fmt.Errorf("verify classic deletion inventory (write may have applied): %w", err)
 	}
-	if err := candidate.VerifyTarget(remaining.RepositoryID, remaining.Archived); err != nil {
+	if err := candidate.VerifyTarget(remaining.RepositoryID, remaining.Archived, remaining.IsFork); err != nil {
 		return fmt.Errorf("verify classic deletion target (write may have applied): %w", err)
 	}
 	for _, state := range remaining.Rules {

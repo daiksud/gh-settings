@@ -28,7 +28,7 @@ func TestClassicProtectionValidatesLiteralControls(t *testing.T) {
 }
 
 func processClassicTarget() map[string]any {
-	return map[string]any{"id": "R_current", "nameWithOwner": "owner/current", "isPrivate": false, "isArchived": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": true}
+	return map[string]any{"id": "R_current", "nameWithOwner": "owner/current", "isPrivate": false, "isFork": false, "isArchived": false, "owner": map[string]any{"__typename": "User"}, "squashMergeAllowed": true, "rebaseMergeAllowed": true}
 }
 func processClassicRule(id int, pattern string) map[string]any {
 	return map[string]any{
@@ -48,10 +48,15 @@ func processClassicClone(v map[string]any) map[string]any {
 	return result
 }
 func TestClassicProtectionExecutableLifecycle(t *testing.T) {
-	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard"} {
+	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard", "fork-true", "fork-false"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rules := []map[string]any{processClassicRule(7, "Release/**")}
+			forkMode := strings.HasPrefix(mode, "fork-")
+			if forkMode {
+				rules[0]["repository"].(map[string]any)["isFork"] = true
+				rules[0]["lockAllowsFetchAndMerge"] = true
+			}
 			if mode == "reviews-guard" {
 				rules[0]["restrictsReviewDismissals"] = true
 			}
@@ -100,6 +105,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						t.Error("unexpected reference acquisition")
 					}
 					target := processClassicTarget()
+					if forkMode {
+						target["isFork"] = true
+					}
 					target["environments"] = processClassicPage([]any{map[string]any{"id": "E_production", "databaseId": nil, "name": "production"}})
 					body["repository"] = target
 				case strings.Contains(request.Query, "ClassicProtectionInventory"):
@@ -109,6 +117,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						return
 					}
 					target := processClassicTarget()
+					if forkMode {
+						target["isFork"] = true
+					}
 					nodes := []any{}
 					for _, v := range rules {
 						nodes = append(nodes, v)
@@ -165,7 +176,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "lockAllowsFetchAndMerge", "repository"} {
 						ack[key] = rule[key]
 					}
 					body[mutation] = map[string]any{"branchProtectionRule": ack}
@@ -233,6 +244,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					group = "{enabled: true, require_approvals: true, required_number_of_approvals_before_merging: 6, dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: true, require_review_from_code_owners: true, require_approval_of_the_most_recent_reviewable_push: true}"
 				}
 				input = fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_a_pull_request_before_merging: %s}]}}\n", group)
+			}
+			if forkMode {
+				input = fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', lock_branch: true, allow_fork_syncing: %t}]}}\n", mode == "fork-true")
 			}
 			if mode == "deployments" {
 				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_deployments_to_succeed_before_merging: {enabled: true, environments: [production]}}]}}\n"
@@ -325,6 +339,15 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					t.Fatal(captured, want)
 				}
 			}
+			if forkMode {
+				want := map[string]any{"branchProtectionRuleId": "B_7", "lockBranch": true}
+				if mode == "fork-false" {
+					want["lockAllowsFetchAndMerge"] = false
+				}
+				if !reflect.DeepEqual(captured, []map[string]any{want}) {
+					t.Fatal(captured, want)
+				}
+			}
 			if mode == "deployments" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "requiresDeployments": true, "requiredDeploymentEnvironments": []any{"production"}}}) {
 				t.Fatal(captured)
 			}
@@ -364,6 +387,14 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				t.Error("repeat mutation", writes)
 			}
 			mu.Unlock()
+			if forkMode {
+				run(false, "export")
+				run(false, "validate")
+				data, _ := os.ReadFile(path)
+				if !strings.Contains(string(data), fmt.Sprintf("allow_fork_syncing: %t", mode == "fork-true")) || !strings.Contains(string(data), "lock_branch: true") {
+					t.Fatal(string(data))
+				}
+			}
 		})
 	}
 }

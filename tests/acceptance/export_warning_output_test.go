@@ -138,7 +138,7 @@ func silentExportFixture(t *testing.T, normalized bool) *apiFixture {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Host == "api.github.com" {
 			if isClassicProtectionFixtureRead(r) {
-				fmt.Fprint(w, `{"data":{"repository":{"id":"R_current","nameWithOwner":"owner/current","isArchived":false,"isPrivate":false,"owner":{"__typename":"User"},"squashMergeAllowed":true,"rebaseMergeAllowed":false,"branchProtectionRules":{"totalCount":0,"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}`)
+				fmt.Fprint(w, `{"data":{"repository":{"id":"R_current","nameWithOwner":"owner/current","isArchived":false,"isPrivate":false,"isFork":false,"owner":{"__typename":"User"},"squashMergeAllowed":true,"rebaseMergeAllowed":false,"branchProtectionRules":{"totalCount":0,"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}`)
 				return
 			}
 			if isIssueCreationPolicyFixtureRead(r) {

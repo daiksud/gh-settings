@@ -2,6 +2,7 @@ package uimodel
 
 // BranchProtectionRule owns only the selected classic controls, independently of Rulesets.
 type BranchProtectionRule struct {
+	AllowForkSyncing                           *bool                      `json:"allow_fork_syncing,omitempty"`
 	RequireAPullRequestBeforeMerging           *ClassicPullRequestReviews `json:"require_a_pull_request_before_merging,omitempty"`
 	ID                                         *int64                     `json:"id,omitempty"`
 	BranchNamePattern                          string                     `json:"branch_name_pattern"`

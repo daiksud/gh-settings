@@ -287,7 +287,13 @@ complete raw snapshot separate from the active projection;
 needed writes with selected active references bind paginated Environment node
 identities before mutation and verify them after rule readback. Matching rules
 skip that prerequisite. Global Environment prune rejects contradictory selected
-references before any write without silently retaining deletion candidates. Classic prune
+references before any write without silently retaining deletion candidates.
+Fork syncing is a conditional projection of its raw Boolean: only locked forks
+expose it publicly, and selecting it requires explicit lock ownership. Required
+typed fork status travels through private observations/selections and all target
+checks, including actor pages and prune absence confirmation. Inactive raw sync
+remains omission-preservation evidence; public reports contain no fork metadata.
+Classic prune
 adds private deep-copied full snapshots before any remote write, fixed candidate
 rechecks, create/update/writeback-before-delete ordering, exact GraphQL deletion
 acknowledgment and independent complete identity-absence readback. Shared scope

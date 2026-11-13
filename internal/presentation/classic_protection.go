@@ -14,6 +14,9 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		for i, value := range settings.ClassicFlags(*c.Before) {
 			parts = append(parts, fmt.Sprintf("%s: %t", names[i], *value))
 		}
+		if c.Before.AllowForkSyncing != nil {
+			parts = append(parts, fmt.Sprintf("allow_fork_syncing: %t", *c.Before.AllowForkSyncing))
+		}
 		parts = append(parts, classicReviewsLine(c.Before.RequireAPullRequestBeforeMerging))
 		parts = append(parts, classicDeploymentLine(c.Before.RequireDeploymentsToSucceedBeforeMerging))
 		return fmt.Sprintf("%s: delete (id %d) before {%s} → absent (removes the whole rule, including other configured protections; an overlapping rule may take effect)", settings.ClassicProtectionPath, *c.Before.ID, strings.Join(parts, ", "))
@@ -41,6 +44,17 @@ func ClassicProtectionLine(c settings.ClassicChange) string {
 		} else {
 			parts = append(parts, fmt.Sprintf("%s: %t → %t", names[i], *before[i], *v))
 		}
+	}
+	if c.After.AllowForkSyncing != nil {
+		value := fmt.Sprintf("allow_fork_syncing: %t", *c.After.AllowForkSyncing)
+		if c.Before != nil {
+			previous := "inactive"
+			if c.Before.AllowForkSyncing != nil {
+				previous = fmt.Sprintf("%t", *c.Before.AllowForkSyncing)
+			}
+			value = fmt.Sprintf("allow_fork_syncing: %s → %t", previous, *c.After.AllowForkSyncing)
+		}
+		parts = append(parts, value)
 	}
 	if settings.ClassicReviewsManaged(c.After.RequireAPullRequestBeforeMerging) {
 		value := classicReviewsLine(c.After.RequireAPullRequestBeforeMerging)
