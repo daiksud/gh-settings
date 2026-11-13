@@ -79,6 +79,10 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 			state := map[string]any{"mergeCommitAllowed": true, "squashMergeAllowed": true, "rebaseMergeAllowed": false, "deleteBranchOnMerge": false, "autoMergeAllowed": false, "allowUpdateBranch": false, "mergeCommitTitle": "MERGE_MESSAGE", "mergeCommitMessage": "PR_TITLE", "squashMergeCommitTitle": "COMMIT_OR_PR_TITLE", "squashMergeCommitMessage": "COMMIT_MESSAGES"}
 			state[titleField], state[messageField] = "FUTURE_TITLE", "FUTURE_MESSAGE"
 			keepUnknown, template := true, false
+			var baseState map[string]any
+			if err := json.Unmarshal([]byte(planResponse), &baseState); err != nil {
+				t.Fatal(err)
+			}
 			var requests []string
 			var patches []map[string]any
 			var wantPatch map[string]any
@@ -91,7 +95,7 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 				case isMergeMethodsFixtureRead(r), isCommitMessageFixtureRead(r):
 					_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"repository": state}})
 				case r.Method == "GET" && r.URL.Path == "/repos/owner/current":
-					fmt.Fprint(w, planResponse)
+					_ = json.NewEncoder(w).Encode(baseState)
 				case r.Method == "PATCH" && r.URL.Path == "/repos/owner/current":
 					var payload map[string]any
 					if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || !reflect.DeepEqual(payload, wantPatch) {
@@ -100,6 +104,11 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 						return
 					}
 					patches = append(patches, payload)
+					for key, value := range payload {
+						if _, owned := baseState[key]; owned {
+							baseState[key] = value
+						}
+					}
 					if value, present := payload["is_template"]; present {
 						template = value.(bool)
 					}
@@ -232,7 +241,7 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 			if status != 0 || diagnostic != "" || output != "Applied repository settings.\n" {
 				t.Fatal("scalar-only apply acquired menu", status, output, diagnostic)
 			}
-			checkRequests("PATCH /repos/owner/current")
+			checkRequests("GET /repos/owner/current", "PATCH /repos/owner/current", "GET /repos/owner/current")
 			mu.Lock()
 			preserved := state[titleField] == "FUTURE_TITLE" && state[messageField] == "FUTURE_MESSAGE"
 			mu.Unlock()
@@ -247,7 +256,7 @@ func TestCommitMessageNormalizationAcrossExecutableCommands(t *testing.T) {
 			if status != 1 || output != "" || strings.Count(diagnostic, "Warning:") != 2 || !strings.Contains(diagnostic, "may already have applied") {
 				t.Fatal("unknown readback claimed success", status, output, diagnostic)
 			}
-			checkRequests("POST /graphql", "PATCH /repos/owner/current", "POST /graphql")
+			checkRequests("GET /repos/owner/current", "POST /graphql", "PATCH /repos/owner/current", "GET /repos/owner/current", "POST /graphql")
 			mu.Lock()
 			retained := template && state[titleField] == "FUTURE_TITLE" && state[messageField] == "FUTURE_MESSAGE"
 			mu.Unlock()

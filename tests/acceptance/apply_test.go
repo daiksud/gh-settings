@@ -82,6 +82,20 @@ func TestApplyAcceptance(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			requests := make(chan string, 10)
+			remote := map[string]any{"default_branch": "main", "description": "old", "homepage": "old-url", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}
+			var desired map[string]any
+			if test.payload != "" {
+				if err := json.Unmarshal([]byte(test.payload), &desired); err != nil {
+					t.Fatal(err)
+				}
+				for key, value := range desired {
+					if boolean, ok := value.(bool); ok {
+						remote[key] = !boolean
+					} else {
+						remote[key] = "previous"
+					}
+				}
+			}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				body, err := io.ReadAll(r.Body)
 				if err != nil {
@@ -89,6 +103,10 @@ func TestApplyAcceptance(t *testing.T) {
 				}
 				requests <- fmt.Sprintf("%s %s %s", r.Method, r.URL.Path, body)
 				w.Header().Set("Content-Type", "application/json")
+				if r.Method == http.MethodGet && r.URL.Path == "/repos/owner/current" {
+					_ = json.NewEncoder(w).Encode(remote)
+					return
+				}
 				status := test.status
 				if status == 0 {
 					status = 200
@@ -101,6 +119,11 @@ func TestApplyAcceptance(t *testing.T) {
 					}
 				}
 				w.WriteHeader(status)
+				if status == 200 {
+					for key, value := range desired {
+						remote[key] = value
+					}
+				}
 				responseBody := test.response
 				if responseBody == "" {
 					responseBody = `{"message":"fixture response"}`
@@ -151,16 +174,26 @@ func TestApplyAcceptance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			wantRequests := 1
+			wantRequests := 3
 			if test.noAPI {
 				wantRequests = 0
+			} else if test.wantError != "" && !test.outputFailure {
+				wantRequests = 2
 			}
 			if len(requests) != wantRequests {
 				t.Fatalf("requests=%d want=%d", len(requests), wantRequests)
 			}
-			if wantRequests == 1 {
+			if wantRequests > 0 {
+				if got := <-requests; got != "GET /repos/owner/current " {
+					t.Fatalf("preflight=%s", got)
+				}
 				if got := <-requests; got != "PATCH /repos/owner/current "+test.payload {
 					t.Fatalf("request=%s want body=%s", got, test.payload)
+				}
+				if wantRequests == 3 {
+					if got := <-requests; got != "GET /repos/owner/current " {
+						t.Fatalf("readback=%s", got)
+					}
 				}
 			}
 			if test.wantError == "" {
@@ -269,7 +302,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	remote["description"] = "external change"
-	remote["has_issues"] = false // Even if already equal after plan, apply must send the declaration.
+	remote["has_issues"] = false // Fresh apply observes this match and skips PATCH.
 	mu.Unlock()
 	result, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
 	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || hasNonInfoDiagnostic(result.stderr.String()) {
@@ -277,7 +310,7 @@ func TestExportEditValidatePlanApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "PATCH"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
+	if !reflect.DeepEqual(methods, []string{"GET", "POST", "POST", "POST", "POST", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET", "GET"}) || !reflect.DeepEqual(remote, map[string]any{"default_branch": "main", "description": "external change", "homepage": "old-url", "has_issues": false, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}) {
 		t.Fatalf("methods=%v remote=%v", methods, remote)
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {

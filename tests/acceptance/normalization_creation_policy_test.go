@@ -304,7 +304,7 @@ func TestCreationPolicyNormalizationAcrossExecutableCommands(t *testing.T) {
 			if status != 0 || output != "Applied repository settings.\n" || diagnostic != "" {
 				t.Fatal("scalar operation acquired policy", status, output, diagnostic)
 			}
-			checkOperations("REST write")
+			checkOperations("REST read", "REST write", "REST read")
 			mu.Lock()
 			preserved := rawPolicy == "FUTURE_POLICY" && len(writes) == 0
 			projects = true
@@ -318,7 +318,7 @@ func TestCreationPolicyNormalizationAcrossExecutableCommands(t *testing.T) {
 			if status != 1 || output != "" || strings.Count(diagnostic, "Warning:") != 2 || !strings.Contains(diagnostic, "may already have applied") || !strings.Contains(diagnostic, "earlier repository writes remain applied") {
 				t.Fatal("raw failure hid write effects", status, output, diagnostic)
 			}
-			checkOperations("REST write", "query", "mutation", "query")
+			checkOperations("REST read", "REST write", "REST read", "query", "mutation", "query")
 			mu.Lock()
 			retained := !projects && rawPolicy == "FUTURE_POLICY" && len(writes) == 1
 			mu.Unlock()

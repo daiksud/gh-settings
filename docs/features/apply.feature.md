@@ -1,7 +1,7 @@
 ---
 type: Feature
 title: Apply repository settings
-description: Send declared repository fields directly after local validation.
+description: Reconcile declared repository controls after local validation.
 ---
 
 ## Feature: Apply declared settings
@@ -14,15 +14,15 @@ description: Send declared repository fields directly after local validation.
 - Otherwise resolve the same GitHub.com origin as export and ignore `GH_REPO`.
 - Accept origin values only from checkout-local/worktree scopes, including their included files; system/global/command origin values cannot select the mutation target.
 
-### Rule: Send repository and topics declarations directly
+### Rule: Reconcile repository controls before continuing other resources
 
-- When ordinary REST-backed About/General scalars are declared, send the declared internal members in the repository PATCH. GraphQL-backed PR/Issue/Sponsor controls use their separate identity-checked mutation; a GraphQL-only declaration sends no PATCH. Topics uses a separate PUT.
+- When REST-backed About/General controls are declared, read fresh complete base/selected merge state, skip exact matches and send only changed controls in one repository PATCH. A changed UI menu sends its complete pair; raw normalized pairs remain actionable. GraphQL-backed PR/Issue/Sponsor controls use their separate identity-checked mutation; a GraphQL-only declaration sends no PATCH. Topics uses a separate PUT.
 - Reject redirects, including those that would convert PATCH into GET.
 - Omit the version marker, outer UI mappings, and every undeclared field from API payloads.
 - Preserve false and empty strings as explicit values.
-- When `repository.settings.general.features.discussions` is declared, verify the PATCH response contains the requested boolean. Missing, null, wrong-type or unequal values fail after the request, can leave repository writes applied, and stop later resources without rollback. Omission keeps the previous response handling.
-- Ordinary direct repository/Topics writes do not reconcile a saved comparison; family-specific identity/prerequisite/readback checks still apply. Apply never requires a saved plan.
-- Send declared values even if they already match or remote values changed after plan.
+- When `repository.settings.general.features.discussions` is sent, verify the PATCH response contains the requested boolean. Missing, null, wrong-type or unequal values fail after the request, can leave repository writes applied, and stop later resources without rollback. Omission keeps the previous response handling.
+- Repository reconciliation uses fresh observations, not a saved comparison. After PATCH, independently verify the original declared intent, including members omitted from PATCH because they initially matched. Base-only declarations require no GraphQL read. Topics retains its direct PUT; apply never requires a saved plan.
+- An exact repository match performs no PATCH. Unavailable preflight is a read failure; mutation/readback errors retain uncertain effects. A repository no-op is unchanged and does not count as earlier writes if a later resource fails.
 - Preserve the configuration file except guarded confirmed-created-ID writeback, and leave omitted scalar fields unmanaged.
 
 ### Rule: Report success and failures
@@ -46,14 +46,15 @@ Focused application tests record declaration loading, target resolution, resourc
 | Validation before target/writer and local no-op; explicit empty Topics still resolve while empty Labels select nothing | [TestApplyValidatesBeforeWrite, TestApplyNoManagedSettings and TestApplyManagedEmptyCollectionsResolveTarget](../../internal/app/apply_test.go) |
 | Target failure before write and write failure without applied status | [TestApplyTargetFailureBeforeWrite and TestApplyWriteFailure](../../internal/app/apply_test.go) |
 | Command dispatch, arguments, typed no-op message and output failures | [TestRunSelectsOperation, TestUnsupportedCommand, TestApplyNoManagedResult and TestApplyOutputFailure](../../internal/cli/run_test.go) |
-| Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, no GET, invalid YAML, no-op, auth/API/redirect/output failures, failure status/stderr/empty stdout, unchanged file | [`TestApplyAcceptance`](../../tests/acceptance/apply_test.go) |
-| Export → edit → validate → plan → apply; changed remote state, omitted values preserved | `TestExportEditValidatePlanApply` |
+| Built product: exact PATCH, subdirectory/origin resolution, unscoped-origin isolation, complete preflight/readback, invalid YAML, no-op, auth/API/redirect/output failures, failure status/stderr/empty stdout, unchanged file | [`TestApplyAcceptance`](../../tests/acceptance/apply_test.go) |
+| Export → edit → validate → plan → apply; fresh match skips PATCH and omitted values remain unmanaged | `TestExportEditValidatePlanApply` |
+| No-op, minimal changed payload, repeated apply, denied preflight/readback and verification of initially matching members | [Repository reconciliation acceptance](../../tests/acceptance/repository_reconcile_test.go) |
 
 ### Rule: Apply declared resources independently
 
 - Given repository fields and topic names are declared.
 - When apply runs.
-- Then repository PATCH precedes topics PUT without a preliminary GET.
+- Then fresh repository reconciliation completes before topics PUT; a changed repository PATCH requires independent readback.
 - And the PUT contains only the sorted names array, including an explicit empty array.
 - And a failure stops later operations without rolling back successful writes.
 - And omitted About topics produce no Topics request.
@@ -68,7 +69,7 @@ Current unreleased source applies nonempty label selections after repository/top
 
 Current source applies repository Actions policy after existing resources. The [Actions policy specification](actions-execution-policy.feature.md#rule-preflight-and-preserve-companions-before-ordered-writes) owns fresh reads, companion preservation, staged enabling, readback and partial failure.
 
-Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct repository/topics/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
+Explicit unarchive runs before other resources. Repository REST updates precede declared PR/Issue/Sponsor GraphQL updates, then Topics, fresh label reconciliation, Rulesets, Environments, Actions execution/workflow/retention/cache/public-fork policies, Secret protection/Push protection, Private vulnerability reporting, release immutability and existing-site Pages; final archive runs last. An omitted resource has no request. Current direct GraphQL access/topics/execution/workflow paths may resend declared matching values; zero plan is not a promise of no apply requests. Collection reconciliation and the newer policy paths skip freshly matching operations. Current-state prerequisites and full companion readback remain resource-specific; successful reads and skips are not completed writes. Later failure stops work and preserves actual earlier progress without rollback, automatic retry or locking.
 
 | Subset | Existing application and transport/process evidence |
 | --- | --- |

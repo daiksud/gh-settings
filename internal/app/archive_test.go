@@ -89,12 +89,12 @@ func TestArchiveApplyTransitionTableAndOrder(t *testing.T) {
 					}
 					return nil
 				},
-				Repository: func(_ repository.Repository, got settings.RepositoryDeclaration) error {
+				Repository: func(_ repository.Repository, got settings.RepositoryDeclaration) (bool, error) {
 					calls = append(calls, "other")
 					if got.Archived != nil || got.Description == nil {
 						t.Fatal(got)
 					}
-					return nil
+					return true, nil
 				},
 			}
 			got, err := Apply(func() (settings.Declaration, error) { return d, nil }, func() (repository.Repository, error) { return repo, nil }, writer)
@@ -149,12 +149,12 @@ func TestArchiveApplyFailuresPreserveProvenProgress(t *testing.T) {
 					}
 					return nil
 				},
-				Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+				Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 					writes++
 					if tt.where == "other" {
-						return fail
+						return false, fail
 					}
-					return nil
+					return true, nil
 				},
 			}
 			got, err := Apply(func() (settings.Declaration, error) { return d, nil }, func() (repository.Repository, error) { return repo, nil }, writer)
@@ -185,7 +185,7 @@ func TestArchiveApplyFailuresPreserveProvenProgress(t *testing.T) {
 			}
 			return settings.ArchiveState{ID: id, FullName: "owner/current", Archived: false}, nil
 		},
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil },
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return true, nil },
 		Archive:    func(repository.Repository, settings.ArchiveState, bool) error { writes++; return nil },
 	})
 	if err == nil || got.Outcome != ApplyPartialFailure || writes != 0 || !strings.Contains(err.Error(), "changed") {
@@ -321,8 +321,8 @@ func TestArchiveUnarchiveProgressSurvivesSubsequentFailures(t *testing.T) {
 				return settings.ArchiveState{ID: 2, FullName: "owner/current", Archived: true}, nil
 			},
 			Archive: func(repository.Repository, settings.ArchiveState, bool) error { return nil },
-			Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
-				return errors.New("repository write denied")
+			Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
+				return false, errors.New("repository write denied")
 			},
 			Topics: func(repository.Repository, settings.TopicsDeclaration) error {
 				return errors.New("topics write denied")

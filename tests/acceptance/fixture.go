@@ -181,7 +181,47 @@ func isMergeMethodsFixtureRead(r *http.Request) bool {
 
 func isCommitMessageFixtureRead(r *http.Request) bool {
 	return isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { squashMergeCommitTitle squashMergeCommitMessage } }`) ||
-		isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { mergeCommitTitle mergeCommitMessage } }`)
+		isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { mergeCommitTitle mergeCommitMessage } }`) ||
+		isFixedRepositoryFixtureRead(r, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { mergeCommitAllowed mergeCommitTitle mergeCommitMessage } }`)
+}
+
+// Permit only a selected, ordered subset of the ten known merge fields, bound
+// to the fixture repository. This never admits GraphQL mutations or aliases.
+func isRepositoryPatchFixtureRead(r *http.Request) bool {
+	if r.Method != http.MethodPost || r.URL.Path != "/graphql" {
+		return false
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return false
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	var request struct {
+		Query     string            `json:"query"`
+		Variables map[string]string `json:"variables"`
+	}
+	if json.Unmarshal(body, &request) != nil || len(request.Variables) != 2 || request.Variables["owner"] != "owner" || request.Variables["name"] != "current" {
+		return false
+	}
+	query := strings.Join(strings.Fields(request.Query), " ")
+	fields, ok := strings.CutPrefix(query, `query($owner: String!, $name: String!) { repository(owner: $owner, name: $name, followRenames: false) { `)
+	if !ok {
+		return false
+	}
+	fields, ok = strings.CutSuffix(fields, " } }")
+	if !ok || fields == "" {
+		return false
+	}
+	order := map[string]int{"mergeCommitAllowed": 1, "squashMergeAllowed": 2, "rebaseMergeAllowed": 3, "deleteBranchOnMerge": 4, "autoMergeAllowed": 5, "allowUpdateBranch": 6, "squashMergeCommitTitle": 7, "squashMergeCommitMessage": 8, "mergeCommitTitle": 9, "mergeCommitMessage": 10}
+	previous := 0
+	for _, field := range strings.Fields(fields) {
+		position := order[field]
+		if position <= previous {
+			return false
+		}
+		previous = position
+	}
+	return true
 }
 
 const prAccessFixtureResponse = `{"data":{"repository":{"hasPullRequestsEnabled":false,"pullRequestCreationPolicy":"ALL"}}}`

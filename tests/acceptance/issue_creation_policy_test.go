@@ -19,7 +19,11 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 	binary := acceptanceBinary(t)
 	var mu sync.Mutex
 	policy := "ALL"
-	issues := false
+	var repositoryState map[string]any
+	if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+		t.Fatal(err)
+	}
+	repositoryState["has_issues"] = false
 	var writes []map[string]any
 	var operations []string
 	fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +45,7 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 		if r.Method == "GET" {
 			switch r.URL.Path {
 			case "/repos/owner/current":
-				fmt.Fprint(w, strings.Replace(planResponse, `"has_issues":true`, `"has_issues":false`, 1))
+				json.NewEncoder(w).Encode(repositoryState)
 			case "/repos/owner/current/topics":
 				fmt.Fprint(w, `{"names":[]}`)
 			case "/repos/owner/current/labels":
@@ -57,6 +61,9 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 			json.NewDecoder(r.Body).Decode(&input)
 			if !reflect.DeepEqual(input, map[string]any{"has_projects": false}) {
 				t.Error("extra REST values", input)
+			}
+			for key, value := range input {
+				repositoryState[key] = value
 			}
 			// This unrelated feature write must not enable Issues.
 			fmt.Fprint(w, `{}`)
@@ -176,8 +183,8 @@ func TestIssuePolicyDisabledExportAndSharedApply(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if issues || policy != "ALL" || len(writes) != 5 {
-		t.Fatal("availability changed or extra mutation", issues, policy, writes)
+	if repositoryState["has_issues"] != false || repositoryState["has_projects"] != false || policy != "ALL" || len(writes) != 5 {
+		t.Fatal("availability changed or extra mutation", repositoryState, policy, writes)
 	}
 	for i, input := range writes {
 		want := map[string]any{"repositoryId": "opaque-id", "issueCreationPolicy": "COLLABORATORS_ONLY"}
@@ -206,13 +213,17 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 		{"ignored mutation", "apply", "features: {issue_permissions: {creation_allowed_by: collaborators_only}}\n", "did not retain requested issueCreationPolicy", 2},
 		{"partial mutation", "apply", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "partial Issue mutation denied", 2},
 		{"redirect", "apply", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "307", 2},
-		{"mixed write denied", "apply", "features: {projects: false, issue_permissions: {creation_allowed_by: all_users}}\n", "earlier repository writes remain applied", 3},
+		{"mixed write denied", "apply", "features: {projects: false, issue_permissions: {creation_allowed_by: all_users}}\n", "earlier repository writes remain applied", 5},
 		{"invalid local", "apply", "features: {issue_permissions: {creation_allowed_by: unknown}}\n", `unsupported general.features.issue_permissions.creation_allowed_by "unknown"`, 0},
 		{"stale origin", "plan", "features: {issue_permissions: {creation_allowed_by: all_users}}\n", "stale checkout origin", 1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var methods []string
+			var repositoryState map[string]any
+			if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+				t.Fatal(err)
+			}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -247,7 +258,7 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 					return
 				}
 				if r.Method == "GET" && r.URL.Path == "/repos/owner/current" {
-					fmt.Fprint(w, planResponse)
+					json.NewEncoder(w).Encode(repositoryState)
 					return
 				}
 				if r.Method == "PATCH" && r.URL.Path == "/repos/owner/current" {
@@ -255,6 +266,9 @@ func TestIssuePolicyFailuresPreserveStateAndStopLaterResources(t *testing.T) {
 					json.NewDecoder(r.Body).Decode(&patch)
 					if !reflect.DeepEqual(patch, map[string]any{"has_projects": false}) {
 						t.Error(patch)
+					}
+					for key, value := range patch {
+						repositoryState[key] = value
 					}
 					fmt.Fprint(w, `{}`)
 					return

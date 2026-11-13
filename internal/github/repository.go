@@ -10,7 +10,7 @@ import (
 	"github.com/daiksud/gh-settings/internal/settings"
 )
 
-// Client reads and updates repository settings, verifying managed message menus.
+// Client reads and reconciles repository settings with independent verification.
 type Client struct {
 	rest                                              *api.RESTClient
 	commitMessages                                    *MergeMethodsClient

@@ -125,7 +125,7 @@ The following paths are relative to `repository.settings.general`:
 | `danger_zone.archive_this_repository` | boolean; automatic export |
 | `releases.immutable_release` | boolean; automatic export |
 
-Omitting a scalar leaves it unmanaged. Explicit false and empty strings remain intent. An explicitly disabled Issues/Pull requests feature cannot accompany its creation-permission choice. Likewise, an explicitly disabled merge method cannot accompany its commit-message menu. Omitting the enabling checkbox never implicitly enables it. Export hides choices behind explicitly disabled controls after validating the acquired raw values.
+Omitting a scalar leaves it unmanaged. Explicit false and empty strings remain intent. REST-backed About/General controls use [fresh reconciliation](commands.md#apply-behavior): skip exact matches and independently verify declared state after changed writes. An explicitly disabled Issues/Pull requests feature cannot accompany its creation-permission choice. Likewise, an explicitly disabled merge method cannot accompany its commit-message menu. Omitting the enabling checkbox never implicitly enables it. Export hides choices behind explicitly disabled controls after validating the acquired raw values.
 
 ## Repository archive lifecycle
 

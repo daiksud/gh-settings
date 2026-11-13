@@ -83,7 +83,7 @@ mise exec -- go test -tags=acceptance -count=1 ./tests/acceptance -args -binary 
 
 The harness requires an explicit binary path and Unix-socket support. It uses go-gh's `http_unix_socket` configuration in an isolated temporary `GH_CONFIG_DIR`, temporary Git repositories, and a local HTTP fixture. Dummy tokens never authenticate with GitHub. Fixtures are cleaned up without adding product hooks or test-only transport options.
 
-Process cases cover export → edit → validate → plan → apply, native false/empty values, read-side null normalization, checkout selection, declared-field comparison, exact requests, file preservation, diagnostics, and failure paths. Plan is read-only. Repository/topics apply has no preliminary GET; nonempty label selections read fresh collection state after those direct writes. Invalid input and empty CLI plan/apply make no API requests. Empty topics remain an authoritative managed set; empty labels select no objects. [Topics acceptance](../../tests/acceptance/topics_test.go) covers the topics resource through the built product.
+Process cases cover export → edit → validate → plan → apply, native false/empty values, read-side null normalization, checkout selection, declared-field comparison, exact requests, file preservation, diagnostics, and failure paths. Plan is read-only. Repository REST apply reads fresh state, skips matches and independently verifies changed intent; Topics still uses direct PUT. Nonempty label selections read fresh collection state after those operations. Invalid input and empty CLI plan/apply make no API requests. Empty topics remain an authoritative managed set; empty labels select no objects. [Topics acceptance](../../tests/acceptance/topics_test.go) covers the topics resource through the built product.
 
 ### Merge response acceptance
 
@@ -184,8 +184,8 @@ The [candidate checks](../../tests/github-actions/candidate-plan.sh) exercise th
 | Plan changed string/false | One GET | Success and four matching outputs | Native false and escaped HTML/multiline diff |
 | Plan local read403 | One GET | Failure and four empty outputs | Categorical read failure |
 | Plan invalid boolean | Zero requests | Failure and four empty outputs | Categorical validation failure |
-| Apply empty string/false | One PATCH, no GET | Success and four matching outputs | None added |
-| Apply local write403 | One attempted PATCH, no GET | Failure and four empty outputs | None added |
+| Apply empty string/false | GET, one PATCH, independent GET | Success and four matching outputs | None added |
+| Apply local write403 | GET, one attempted PATCH | Failure and four empty outputs | None added |
 | Apply invalid boolean | Zero requests | Failure and four empty outputs | None added |
 | Apply empty `settings: {}` | Zero requests | Success and four matching outputs | None added |
 

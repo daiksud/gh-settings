@@ -23,8 +23,8 @@ func TestSelectiveCommitMessageRead(t *testing.T) {
 		menus   []settings.CommitMessageMenu
 	}{
 		{"squash", settings.RepositoryDeclaration{SquashMergeCommitTitle: &title}, []string{"squashMergeCommitTitle", "squashMergeCommitMessage"}, `{"data":{"repository":{"squashMergeCommitTitle":"FUTURE_TITLE","squashMergeCommitMessage":""}}}`, []settings.CommitMessageMenu{settings.SquashCommitMenu}},
-		{"merge", settings.RepositoryDeclaration{MergeCommitMessage: &message}, []string{"mergeCommitTitle", "mergeCommitMessage"}, `{"data":{"repository":{"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`, []settings.CommitMessageMenu{settings.MergeCommitMenu}},
-		{"both", settings.RepositoryDeclaration{SquashMergeCommitTitle: &title, MergeCommitMessage: &message}, []string{"squashMergeCommitTitle", "squashMergeCommitMessage", "mergeCommitTitle", "mergeCommitMessage"}, `{"data":{"repository":{"squashMergeCommitTitle":"FUTURE_TITLE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`, []settings.CommitMessageMenu{settings.SquashCommitMenu, settings.MergeCommitMenu}},
+		{"merge", settings.RepositoryDeclaration{MergeCommitMessage: &message}, []string{"mergeCommitAllowed", "mergeCommitTitle", "mergeCommitMessage"}, `{"data":{"repository":{"mergeCommitAllowed":true,"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`, []settings.CommitMessageMenu{settings.MergeCommitMenu}},
+		{"both", settings.RepositoryDeclaration{SquashMergeCommitTitle: &title, MergeCommitMessage: &message}, []string{"mergeCommitAllowed", "squashMergeCommitTitle", "squashMergeCommitMessage", "mergeCommitTitle", "mergeCommitMessage"}, `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeCommitTitle":"FUTURE_TITLE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`, []settings.CommitMessageMenu{settings.SquashCommitMenu, settings.MergeCommitMenu}},
 		{"scalar", settings.RepositoryDeclaration{Description: &description}, nil, "", nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestSelectiveCommitMessageRead(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := (&MergeMethodsClient{graphql: gql}).readCommitMessages(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
+			_, got, err := (&MergeMethodsClient{graphql: gql}).readRepositoryPatchMerge(repository.Repository{Owner: "owner", Name: "current"}, test.desired, settings.RepositoryDeclaration{})
 			if err != nil || len(got) != len(test.menus) || (len(test.menus) == 0 && calls != 0) || (len(test.menus) > 0 && calls != 1) {
 				t.Fatalf("got=%+v err=%v calls=%d", got, err, calls)
 			}
@@ -81,11 +81,11 @@ func TestSelectiveCommitMessageReadRejectsIncompleteAcquisition(t *testing.T) {
 		status         int
 		transportError bool
 	}{
-		{"missing member", `{"data":{"repository":{"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE"}}}`, 200, false},
-		{"null member", `{"data":{"repository":{"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":null}}}`, 200, false},
-		{"boolean member", `{"data":{"repository":{"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":true,"mergeCommitMessage":"PR_TITLE"}}}`, 200, false},
-		{"numeric member", `{"data":{"repository":{"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":2,"mergeCommitMessage":"PR_TITLE"}}}`, 200, false},
-		{"partial GraphQL", `{"data":{"repository":{"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}},"errors":[{"message":"denied"}]}`, 200, false},
+		{"missing member", `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE"}}}`, 200, false},
+		{"null member", `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":null}}}`, 200, false},
+		{"boolean member", `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":true,"mergeCommitMessage":"PR_TITLE"}}}`, 200, false},
+		{"numeric member", `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":2,"mergeCommitMessage":"PR_TITLE"}}}`, 200, false},
+		{"partial GraphQL", `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeCommitTitle":"FUTURE","squashMergeCommitMessage":"","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}},"errors":[{"message":"denied"}]}`, 200, false},
 		{"missing repository", `{"data":{}}`, 200, false},
 		{"null repository", `{"data":{"repository":null}}`, 200, false},
 		{"bad JSON", `bad`, 200, false},
@@ -102,7 +102,7 @@ func TestSelectiveCommitMessageReadRejectsIncompleteAcquisition(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := (&MergeMethodsClient{graphql: gql}).readCommitMessages(repository.Repository{Owner: "owner", Name: "current"}, desired)
+			_, got, err := (&MergeMethodsClient{graphql: gql}).readRepositoryPatchMerge(repository.Repository{Owner: "owner", Name: "current"}, desired, settings.RepositoryDeclaration{})
 			if err == nil || len(got) != 0 {
 				t.Fatalf("partial observations returned: %+v err=%v", got, err)
 			}

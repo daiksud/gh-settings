@@ -131,7 +131,7 @@ func TestPullRequestExemptionsArchiveAndPriorWrite(t *testing.T) {
 	description := "changed"
 	result, err := Apply(func() (settings.Declaration, error) {
 		return settings.Declaration{PullRequestExemptions: &desired, Repository: settings.RepositoryDeclaration{Description: &description}}, nil
-	}, exemptionTarget, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil }, PullRequestExemptions: func(repository.Repository, settings.PullRequestExemptionsDeclaration) (bool, error) {
+	}, exemptionTarget, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return true, nil }, PullRequestExemptions: func(repository.Repository, settings.PullRequestExemptionsDeclaration) (bool, error) {
 		return false, errors.New("uncertain")
 	}})
 	if err == nil || result.Outcome != ApplyPartialFailure || result.Operations[0].Status != OperationCompleted {

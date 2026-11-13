@@ -71,11 +71,11 @@ func TestCommitMessageApplyVerifiesRawReadback(t *testing.T) {
 						if written {
 							title, message = test.actualTitle, test.actualMessage
 						}
-						body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{titleField: title, messageField: message}}})
+						body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{"mergeCommitAllowed": true, titleField: title, messageField: message}}})
 						return labelsResponse(r, 200, string(body)), nil
 					})
 					client.CommitMessageNormalizationWarning = func(n settings.CommitMessageNormalization) { warnings = append(warnings, n) }
-					err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired)
+					_, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired)
 					if (err != nil) != test.wantError || !reflect.DeepEqual(operations, []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}) || len(warnings) != test.warnings {
 						t.Fatalf("operations=%v warnings=%+v err=%v", operations, warnings, err)
 					}
@@ -105,10 +105,10 @@ func TestCommitMessageApplyVerifiesRawReadback(t *testing.T) {
 func TestCommitMessageApplyAcquisitionFailures(t *testing.T) {
 	for _, afterWrite := range []bool{false, true} {
 		for _, invalid := range []string{
-			`{"data":{"repository":{"mergeCommitTitle":"MERGE_MESSAGE"}}}`,
-			`{"data":{"repository":{"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":null}}}`,
-			`{"data":{"repository":{"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":false}}}`,
-			`{"data":{"repository":{"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}},"errors":[{"message":"denied"}]}`,
+			`{"data":{"repository":{"mergeCommitAllowed":true,"mergeCommitTitle":"MERGE_MESSAGE"}}}`,
+			`{"data":{"repository":{"mergeCommitAllowed":true,"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":null}}}`,
+			`{"data":{"repository":{"mergeCommitAllowed":true,"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":false}}}`,
+			`{"data":{"repository":{"mergeCommitAllowed":true,"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}},"errors":[{"message":"denied"}]}`,
 		} {
 			t.Run(fmt.Sprintf("after=%t/%s", afterWrite, invalid), func(t *testing.T) {
 				patches, warnings := 0, 0
@@ -119,13 +119,13 @@ func TestCommitMessageApplyAcquisitionFailures(t *testing.T) {
 					}
 					body := invalid
 					if afterWrite && patches == 0 {
-						body = `{"data":{"repository":{"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`
+						body = `{"data":{"repository":{"mergeCommitAllowed":true,"mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`
 					}
 					return labelsResponse(r, 200, body), nil
 				})
 				client.CommitMessageNormalizationWarning = func(settings.CommitMessageNormalization) { warnings++ }
 				title, message := "PR_TITLE", "BLANK"
-				err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{MergeCommitTitle: &title, MergeCommitMessage: &message})
+				_, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{MergeCommitTitle: &title, MergeCommitMessage: &message})
 				var preflight interface{ ReadFailedBeforeWrite() }
 				wantPatches := 0
 				if afterWrite {
@@ -147,7 +147,7 @@ func TestCommitMessageApplyRequiresVerificationClient(t *testing.T) {
 	})
 	client.CommitMessageNormalizationWarning = func(settings.CommitMessageNormalization) { warnings++ }
 	title := "PR_TITLE"
-	err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{MergeCommitTitle: &title})
+	_, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{MergeCommitTitle: &title})
 	var preflight interface{ ReadFailedBeforeWrite() }
 	if err == nil || !errors.As(err, &preflight) || requests != 0 || warnings != 0 {
 		t.Fatalf("requests=%d warnings=%d err=%v", requests, warnings, err)

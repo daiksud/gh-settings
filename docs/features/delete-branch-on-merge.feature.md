@@ -34,7 +34,7 @@ An [isolated PR Actions run](https://github.com/daiksud/gh-settings/actions/runs
 
 ### Rule: Keep apply direct
 
-Apply uses the existing [repository update endpoint](https://docs.github.com/en/rest/repos/repos#update-a-repository), `PATCH /repos/{owner}/{repo}`, requiring Administration write for GitHub App/fine-grained tokens. The payload contains only declared repository fields; the new boolean shares that one PATCH and adds no read. Existing redirect rejection, timeout, target selection, partial-failure behavior and caller approval responsibilities are unchanged.
+Apply uses the existing [repository update endpoint](https://docs.github.com/en/rest/repos/repos#update-a-repository), `PATCH /repos/{owner}/{repo}`, requiring Administration write for GitHub App/fine-grained tokens. The boolean follows [repository reconciliation](../commands.md#apply-behavior), using a fresh selected GraphQL observation, skipping matches and independently verifying declared state after a changed PATCH. Existing redirect rejection, timeout, target selection, partial-failure behavior and caller approval responsibilities are unchanged.
 
 This configures GitHub's after-merge behavior. It adds no branch-listing or branch-deletion API operation, and implementation does not alter the currently enabled live value.
 
