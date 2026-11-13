@@ -179,6 +179,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += managed
 		comparison.CopilotInstructions = changes
 	}
+	if desired.OIDCSubject != nil {
+		observed, err := read.OIDCSubject(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.OIDCSubjectPath, Target: repo, Err: err}
+		}
+		managed, changes, err := settings.CompareOIDCSubject(observed, desired.OIDCSubject)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.OIDCSubjectPath, Target: repo, Err: err}
+		}
+		comparison.Managed += managed
+		comparison.OIDCSubject = changes
+	}
 	if desired.CopilotMCP != nil {
 		observed, err := read.CopilotMCP(repo)
 		if err != nil {
@@ -251,12 +263,12 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.Autolinks = changes
 	}
-	if desired.BranchProtectionRules != nil && len(*desired.BranchProtectionRules) > 0 {
+	if desired.BranchProtectionRules != nil && (len(*desired.BranchProtectionRules) > 0 || prune.Has("branch-protection-rules")) {
 		observed, err := read.BranchProtectionRules(repo)
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.ClassicProtectionPath, Target: repo, Err: err}
 		}
-		changes, err := settings.CompareClassicRules(observed, *desired.BranchProtectionRules)
+		changes, err := settings.CompareClassicRulesWithPrune(observed, *desired.BranchProtectionRules, prune.Has("branch-protection-rules"))
 		if err != nil {
 			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.ClassicProtectionPath, Target: repo, Err: err}
 		}

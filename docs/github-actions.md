@@ -17,7 +17,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `export`, `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for export/plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
-| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and `autolinks`; see [pruning](#explicit-collection-pruning). |
+| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`, `branch-protection-rules` and `autolinks`; see [pruning](#explicit-collection-pruning). |
 
 Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action does not mint a token or certify its actual grants; collaborator prune additionally requires positive management-path evidence using that same credential; there is no ambient-token or personal-credential fallback.
 
@@ -122,6 +122,15 @@ lifecycle.
 
 Current-source CLI and Action planning/apply accept separate [Actions repository variables](settings.md#actions-repository-variables) and [Agents repository variables](settings.md#agents-repository-variables); this does not assert support in the pinned published package. Values must be non-sensitive. Detailed plan artifacts, logs and Summary can contain their plaintext values; status-only Summary hides variable names and values but its intermediate report still contains them under the existing protected-report lifecycle. The same name in both families retains separate values and resource labels. Do not store credentials in variables. No Secrets, Environment or organization variable endpoint is used, and no App grant or token-request permission is added by this implementation. Supply only the **Variables** or **Agent variables** permissions needed by the respective selected declaration.
 
+### Actions OIDC subject template
+
+Current source supports the [active OIDC template](settings.md#actions-oidc-subject-template)
+through shared export, plan and apply use cases. Detailed reports show the complete
+active mode and ordered claim keys; status-only output hides them. Apply publishes
+success outputs only after a matching no-op or verified update. Select a package
+that includes this capability; the examples' existing pin is unchanged. Changing
+the subject requires coordination with the caller's cloud trust configuration.
+
 ### Copilot MCP tools
 
 Current-source planning/apply support the independently declared [MCP tools toggle](settings.md#copilot-code-review-mcp-tools). Check support in the selected published package before using the key; this source change does not update the caller's pin. Full reports show native booleans at the fixed UI path; status-only Summary hides the control and values. The toggle stores configuration only, without managing MCP servers, secrets, grants, review entitlement, execution or billing. Repository administration and endpoint authorization remain caller prerequisites; exact fine-grained/App-token grants were not independently established. Apply verifies both the requested toggle and preservation of acquired sibling settings.
@@ -176,6 +185,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
 | Agents repository variables (current source) | Repository Agent variables read for selected names | Repository Agent variables write, including fresh read and exact readback |
 | Actions event policies (current source) | Administration **write**, including list/GET, export and plan ([official API](https://docs.github.com/en/rest/actions/policies)) | Administration write, complete preflight, fresh detail guard and independent acknowledgment/readback |
+| Actions OIDC active template (current source) | Actions read and complete personal-public target identity | Actions write, known immutable companion replay and independent readback |
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
 | Actions cache size eviction limit | Actions read | Administration write plus Actions read for preflight/readback |
@@ -183,7 +193,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Private vulnerability reporting | Metadata read and supported public applicability | Administration write and applicable repository authority |
 | Immutable release policy | Administration read; target GET 404 means disabled under the required-permissions precondition, with owner enforcement unknown | Administration write; fresh owner-enforcement preflight and readback |
 | Pages lifecycle/configuration | Pages read | Pages write plus Administration write and applicable repository authority |
-| Classic branch protection (current source) | Complete GraphQL rule/actor visibility, including raw companions | Authorized GraphQL create/update and independent full readback; exact installation grant sufficiency was not live-tested, and REST grant tables alone do not prove it |
+| Classic branch protection (current source) | Complete GraphQL rule/actor visibility, including raw companions | Authorized GraphQL create/update/delete and independent full readback; exact installation grant sufficiency was not live-tested, and REST grant tables alone do not prove it |
 | Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility; App additions also need Administration read for available integrations; parent pruning also needs Environments read for variable/secret metadata | Administration write plus complete supported observation/readback and prune absence confirmation |
 | PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
 
@@ -368,8 +378,8 @@ The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
 do not add this capability to an existing published Action/CLI. Actions Policies
 use `actions-policies`; parent deletion uses `environments`; personal access deletion
-uses `collaborators`. Standalone `all`
-selects all supported scopes and cannot be mixed with another token.
+uses `collaborators`; Autolink deletion uses `autolinks`; classic rule deletion uses `branch-protection-rules`. Standalone `all` selects every currently supported
+scope and cannot be mixed with another token.
 Environment pruning retains every listed name, including variable-only entries,
 and runs only after retained policy/variable work. Parent deletion removes
 contained configuration/secrets and fails jobs waiting on protection rules; recreation does not
@@ -393,7 +403,12 @@ Classic branch-protection entries use the same
 [partial-ownership contract](settings.md#classic-branch-protection) in CLI and
 Action. Detailed Summary shows requested pattern and checkbox changes; status-only
 hides names and values after validating the same private report. Unowned actor,
-PR/check and deployment snapshots never enter the report. This source addition
+PR/check and deployment snapshots never enter the report. Explicit classic prune
+shows supported before-policy and whole-rule removal consequences, including
+protections outside the five editable controls. Omission remains unmanaged; []
+selects all acquired rules under its scope or standalone `all`. Complete frozen
+candidates, exact drift checks and independent complete absence verification use
+the [same deletion contract](settings.md#classic-branch-protection-pruning). This source addition
 does not change an immutable published Action or CLI, and it adds no live mutation
 to the repository workflows. Classic creation IDs are reported for recovery;
 Actions does not rewrite the configuration file.

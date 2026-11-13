@@ -34,6 +34,7 @@ type RepositoryVariable struct {
 type AgentsSettings struct{ Variables *[]RepositoryVariable }
 
 type ActionsSettings struct {
+	OIDC      *OIDCSettings
 	Policies  *[]ActionsEventPolicy
 	General   *ActionsGeneral
 	Variables *[]RepositoryVariable

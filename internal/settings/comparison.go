@@ -6,6 +6,7 @@ type Comparison struct {
 	Autolinks               []AutolinkChange
 	CollaboratorDeletions   []CollaboratorDeletion
 	BranchProtectionRules   []ClassicChange
+	OIDCSubject             []OIDCSubjectChange
 	Collaborators           []CollaboratorSelection
 	CopilotInstructions     []CopilotInstructionsChange
 	CopilotMCP              []CopilotMCPChange
@@ -39,7 +40,7 @@ func (comparison Comparison) HasChanges() bool {
 			return true
 		}
 	}
-	return len(comparison.Autolinks) > 0 || len(comparison.BranchProtectionRules) > 0 || len(comparison.CollaboratorDeletions) > 0 || len(comparison.PullRequestExemptions) > 0 || len(comparison.EnvironmentVariables) > 0 || len(comparison.CopilotReviewEffort) > 0 || len(comparison.PullRequestLimits) > 0 || len(comparison.CopilotMCP) > 0 || len(comparison.CopilotInstructions) > 0 || len(comparison.Variables) > 0 || len(comparison.AgentsVariables) > 0 || len(comparison.CodeQLConfiguration) > 0 || len(comparison.Changes) > 0 || len(comparison.CommitMessages) > 0 || comparison.Labels.Len() > 0 || len(comparison.Rulesets) > 0 || len(comparison.Environments) > 0 || len(comparison.Actions) > 0 || len(comparison.ActionsPolicies) > 0 || len(comparison.ActionsExecution) > 0 || len(comparison.Security) > 0 || len(comparison.Pages) > 0
+	return len(comparison.Autolinks) > 0 || len(comparison.OIDCSubject) > 0 || len(comparison.BranchProtectionRules) > 0 || len(comparison.CollaboratorDeletions) > 0 || len(comparison.PullRequestExemptions) > 0 || len(comparison.EnvironmentVariables) > 0 || len(comparison.CopilotReviewEffort) > 0 || len(comparison.PullRequestLimits) > 0 || len(comparison.CopilotMCP) > 0 || len(comparison.CopilotInstructions) > 0 || len(comparison.Variables) > 0 || len(comparison.AgentsVariables) > 0 || len(comparison.CodeQLConfiguration) > 0 || len(comparison.Changes) > 0 || len(comparison.CommitMessages) > 0 || comparison.Labels.Len() > 0 || len(comparison.Rulesets) > 0 || len(comparison.Environments) > 0 || len(comparison.Actions) > 0 || len(comparison.ActionsPolicies) > 0 || len(comparison.ActionsExecution) > 0 || len(comparison.Security) > 0 || len(comparison.Pages) > 0
 }
 
 // Change contains a supported field identifier and a matching typed value pair.

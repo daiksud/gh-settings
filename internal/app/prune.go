@@ -21,6 +21,7 @@ func operationPrune(options []settings.PruneScopes) (settings.PruneScopes, error
 type prunePreparation struct {
 	autolinks            settings.AutolinkObservation
 	collaborators        settings.CollaboratorPruneObservation
+	classicProtection    settings.ClassicPruneObservation
 	environments         settings.EnvironmentPruneObservation
 	actionsPolicies      []settings.ActionsEventPolicyChange
 	labels               []settings.LabelChange
@@ -60,6 +61,23 @@ func preparePrune(repo repository.Repository, desired settings.Declaration, prun
 			return result, err
 		}
 		if err = result.collaborators.ValidateApply(desired.Repository.Archived != nil && !*desired.Repository.Archived); err != nil {
+			return result, err
+		}
+	}
+	if prune.Has("branch-protection-rules") && desired.BranchProtectionRules != nil {
+		if write.ReadBranchProtectionRules == nil || write.DeleteBranchProtectionRule == nil {
+			return result, fmt.Errorf("classic prune reader or writer unavailable")
+		}
+		current, err := write.ReadBranchProtectionRules(repo)
+		if err != nil {
+			return result, err
+		}
+		result.classicProtection, err = settings.PrepareClassicPrune(current, *desired.BranchProtectionRules)
+		if err != nil {
+			return result, err
+		}
+		unarchive := desired.Repository.Archived != nil && !*desired.Repository.Archived
+		if err := result.classicProtection.ValidateApply(unarchive); err != nil {
 			return result, err
 		}
 	}

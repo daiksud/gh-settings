@@ -81,13 +81,13 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and `autolinks`.
-Standalone `all` selects all supported scopes; combining it with another
+`agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`,
+`branch-protection-rules` and `autolinks`. Standalone `all` selects all currently supported scopes; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets/Actions Policies, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy entries
+labels/Rulesets/Actions Policies/classic rules/Autolinks, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy/classic rule/Autolink entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -426,6 +426,59 @@ A cache size eviction limit above 10 GB can incur additional charges. It is an e
 
 Each selected control requires a complete current read before its PUT and an independent readback afterward. Matching values skip PUT. GitHub can reject a value because of a tighter parent policy; gh-settings does not clamp it or change that policy. Missing, denied or malformed reads fail rather than supply defaults. A successful HTTP response with different readback fails verification and may have changed remote state. Later failure leaves earlier successful writes applied, without rollback or retry. See [behavior and API boundaries](features/actions-general-controls.feature.md).
 
+## Actions OIDC subject template
+
+Use `repository.settings.actions.oidc.subject_claim` for the **Subject claim**
+page of a personally owned public repository:
+
+```yaml
+repository:
+  settings:
+    actions:
+      oidc:
+        subject_claim:
+          use_default_template: false
+          subject_claim_template: [repo, context, job_workflow_ref]
+```
+
+The group owns the complete active template. Omission or an empty mapping leaves
+it unmanaged. `use_default_template: false` requires an explicit ordered array;
+`true` forbids that array and selects GitHub's default template. An array without
+an explicit false mode is invalid. Keys are unique nonempty ASCII alphanumeric
+or underscore strings; order and case are preserved. There is no closed claim
+name list. Null, unsupported keys and coercions are rejected. An explicit
+`[]` is accepted locally because neither the official API schema nor the inspected
+form establishes a minimum; GitHub acceptance and exact readback are still required.
+
+Selecting default deactivates the custom template. It does not promise to retain
+hidden inactive keys that GitHub ignores in default mode. Changing a subject can
+stop cloud authentication: coordinate the corresponding cloud trust configuration
+before applying it. This tool does not issue tokens, run workflows, or change
+cloud trust, credentials, grants or billing.
+
+Ordinary export acquires this family independently. Known default exports true
+without keys; known custom exports false with its ordered keys. Unavailable or
+incomplete observations emit bounded info and retain the prior whole group, if
+present. Missing optional immutable mode remains unknown rather than false and
+does not prevent export or a matching no-op.
+
+Plan compares one managed group. Apply reacquires complete personal-public target
+identity and the active template, then skips a match. A needed PUT also requires
+a known immutable-subject boolean and replays its exact value, including false,
+without changing that mode. Writable immutable-mode support is not included.
+Missing or malformed required state fails before writing. A successful PUT must
+return HTTP 201 with a bounded empty acknowledgment, followed by independent GET
+confirmation of the original repository/owner identity, active template and
+unchanged immutable mode. A failed write or readback reports uncertain effects;
+earlier verified progress remains and later work stops. No rollback or automatic
+retry occurs, and fresh reads are not a concurrency lock.
+
+The official [repository OIDC API](https://docs.github.com/en/rest/actions/oidc)
+uses Actions read for observation and Actions write for updates. Its read-only
+subject prefix is neither YAML intent nor identity evidence; it and raw API bodies
+are excluded from diagnostics even with `GH_DEBUG=api`. Current-source support
+requires adoption through a package that includes this capability.
+
 ## Copilot code review custom instructions
 
 `repository.settings.copilot.code_review.use_custom_instructions` corresponds to **Copilot → Code review → Use custom instructions**:
@@ -693,9 +746,10 @@ Preview rules, unknown rules/fields and unsupported event/enforcement values are
 lossily converted. A complete unsupported object's ID/name is retained so
 unlisted objects stay unmanaged without prune; selecting it for update, as a
 prune candidate, or including it in a full collection export fails. Incomplete or inconsistent reads always fail.
-Currently unsupported actor types, Preview lockfile controls and OIDC settings
-require target UI/API assessment and implementation; Preview status alone is not
-an exclusion. Workflow and other feature configuration-file authoring remain excluded.
+Currently unsupported actor types, Preview lockfile controls and writable OIDC
+immutable mode require target UI/API assessment and implementation; Preview status
+alone is not an exclusion. The [OIDC active template](#actions-oidc-subject-template)
+has separate support. Workflow and other feature configuration-file authoring remain excluded.
 
 `--prune actions-policies` adds deletion of unlisted repository-owned IDs only
 when `policies` is present; `[]` selects every current policy as a candidate.
@@ -1395,9 +1449,10 @@ that this is priority order. See GitHub's
 
 Each checkbox is optional. Omission preserves its latest observed value; explicit
 `false` requests false. Null, native GraphQL aliases, admin-enforcement flags and
-unlisted controls are rejected. Omitted collections and `[]` manage no objects.
-Unlisted rules are preserved. This slice adds no prune scope, deletion marker or
-reordering operation; existing prune scopes do not delete classic rules.
+unlisted controls are rejected. Without explicit classic prune, omitted collections
+and `[]` manage no objects, and unlisted rules are preserved.
+[Classic rule pruning](#classic-branch-protection-pruning) adds whole-rule deletion
+through a command option; there is no YAML deletion marker or reordering operation.
 
 Plan compares only the requested pattern and checkboxes. Apply first acquires all
 selected identities and rejects collisions. Each existing rule is read again by
@@ -1442,6 +1497,51 @@ this is not complete classic UI coverage. Queries and mutations use existing
 without granting permissions. The REST concrete-branch endpoint is not used for
 wildcard rules, and its permission table does not prove every GraphQL App grant.
 See the [behavior and verification specification](features/classic-protection.feature.md).
+
+## Classic branch-protection pruning
+
+`--prune branch-protection-rules` and standalone `all` add unlisted whole-rule
+removal when `repository.settings.branch_protection_rules` is present. An omitted
+collection stays unmanaged. `[]` selects all initially acquired rules; a nonempty
+list retains declared numeric IDs and newly created rules. All retained rules must
+be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
+renames fail before any remote write, including unrelated settings or unarchive.
+Ordinary create/update retains its five-control partial ownership.
+
+Deletion removes the entire rule, including configured PR, check, deployment,
+admin and actor protections that gh-settings cannot edit. An overlapping rule may
+then take effect; recreation cannot restore creation-age priority. The plan shows
+this consequence and each complete supported before-policy, without raw private
+companions. It does not delete branches. Inspect the complete plan before apply.
+
+Before any remote write, acquire the complete rule/actor inventory and freeze each
+unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
+five flags and all known raw companions. Missing, denied, partial, unsupported or
+inconsistent evidence blocks the whole preflight. A retained rule's unreadable
+state can also block this complete inventory. Before this family's work, recheck
+the initial candidates: disappearance, replacement or state drift stops execution.
+Newly observed unlisted rules remain untouched, including when the initial
+candidate set was empty. They never expand the frozen selection. Only this
+invocation's confirmed unarchive adjusts the acquired archive state; unrelated
+repository merge-method changes do not constitute deletion-policy drift.
+
+All declared classic creates/updates and required creation-ID writeback precede
+fixed deletions. Immediately before each deletion, independently read its selected
+node and complete actor state and require an exact snapshot match. The official
+[GraphQL deletion contract](https://docs.github.com/en/graphql/reference/branches#deletebranchprotectionrule)
+accepts the acquired opaque ID. Its nullable payload has no deleted-ID echo:
+require an error-free `DeleteBranchProtectionRulePayload` acknowledgment, then an
+independent complete repository inventory proving both old node and numeric ID
+absent. A distinct retained same-pattern rule is allowed. A null node alone is not
+absence confirmation.
+
+Mutation errors, partial GraphQL errors, malformed acknowledgments and incomplete
+or mismatching readback stop later work with uncertain effects and the fixed
+recovery IDs. Earlier confirmed writes remain applied. No retry, rollback,
+recreation or deletion-ID writeback occurs. The final read/delete race remains,
+and future unselected GraphQL fields cannot be detected. Private companion
+snapshots stay out of reports and inherited `GH_DEBUG` logs. No live deletion or
+credential-grant sufficiency was established by the local fixture tests.
 
 ## Environments
 

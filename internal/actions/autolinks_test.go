@@ -68,3 +68,39 @@ func TestAutolinkReportSummaryAndPrivacy(t *testing.T) {
 		t.Fatal(string(private))
 	}
 }
+
+func TestAutolinkOIDCAndClassicDeletionReportCounts(t *testing.T) {
+	id, classicID, yes, no := int64(7), int64(8), true, false
+	before := settings.Autolink{ID: &id, ReferencePrefix: "OLD-", TargetURL: "https://example.test/<num>", ReferenceFormat: "numeric"}
+	after := settings.Autolink{ReferencePrefix: "NEW-", TargetURL: "https://example.test/<num>", ReferenceFormat: "numeric"}
+	classic := settings.ClassicRule{ID: &classicID, BranchNamePattern: "old/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no}
+	keys := []string{"repo", "context"}
+	oidc, err := settings.NewOIDCSubjectChange(settings.OIDCSubjectTemplate{UseDefaultTemplate: &yes}, settings.OIDCSubjectTemplate{UseDefaultTemplate: &no, SubjectClaimTemplate: &keys})
+	if err != nil {
+		t.Fatal(err)
+	}
+	comparison := settings.Comparison{Managed: 3, Autolinks: []settings.AutolinkChange{{After: &after}, {Before: &before}}, OIDCSubject: []settings.OIDCSubjectChange{oidc}, BranchProtectionRules: []settings.ClassicChange{{Before: &classic}}}
+	path := filepath.Join(t.TempDir(), "combined.json")
+	var out, errout bytes.Buffer
+	if status := actions.Run([]string{"plan", path}, &out, &errout, "dev", func() (app.PlanResult, error) {
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: comparison}, nil
+	}); status != 0 {
+		t.Fatal(errout.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report actions.PlanReport
+	if err = json.Unmarshal(data, &report); err != nil {
+		t.Fatal(err)
+	}
+	content, err := actions.RenderSummary(report, summaryMetadata())
+	if err != nil || !strings.Contains(content, "NEW-") || !strings.Contains(content, "subject_claim_template") || !strings.Contains(content, "removes the whole rule") {
+		t.Fatal(content, err)
+	}
+	report.Managed = 2
+	if _, err = actions.RenderSummary(report, summaryMetadata()); err == nil {
+		t.Fatal("combined scalar and collection count underreported")
+	}
+}

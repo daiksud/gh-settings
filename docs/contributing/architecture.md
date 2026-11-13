@@ -129,6 +129,19 @@ The shared [repository access adapter](../../internal/github/repository_access.g
 
 The [Actions policy feature](../features/actions-execution-policy.feature.md) is an independent resource, not a repository scalar observation group. `internal/settings` owns partial declarations, complete active observations, transition preflight and six bounded native comparisons. Inactive selected before values are explicitly unavailable. Workspace owns strict YAML; the Actions API adapter owns complete conditional reads, redirect rejection, fresh companion merge, raw matching/stage skips, policy-before-selection writes, delayed enabling and complete original-intent readback. Matching stages are not writes; prerequisite read failures remain distinct from uncertain attempted updates. Shared app operations defer the client until needed; export opts in, plan remains read-only and apply places this resource after existing ones. CLI and Summary share the presentation formatter; Summary reconstructs and validates the native comparisons without network access. No workflow, grant or pin is changed.
 
+## Actions OIDC active template
+
+The [OIDC template](../settings.md#actions-oidc-subject-template) is an independent
+settings observation and one whole active-template comparison. Workspace owns the
+strict UI union; the API adapter retains private immutable and numeric identity
+evidence. Matching active state needs no companion value. Needed writes require
+known immutable replay, bounded empty acknowledgment and complete independent
+readback. App exports the family independently and records real confirmed writes
+separately from no-ops or uncertain effects. CLI and Action presentation share
+ordered UI values; report reconstruction rejects invalid unions without exposing
+private API evidence. There is no generic endpoint registry, immutable-mode
+mutation, hidden-template preservation or credential/cloud trust management.
+
 ## Default workflow permissions
 
 The [workflow-permission feature](../features/workflow-permissions.feature.md) extends the actions declaration with two independent fields. `ExecutionEmpty` isolates the existing six-field execution path; `WorkflowPermissionsEmpty` selects a separate complete observation and callback. Shared app sequencing records workflow updates after execution policy as a distinct operation, distinguishing unchanged intent from confirmed writes and preserving only known partial progress. An API-neutral `PreWriteReadFailure` marker preserves a prerequisite read failure across the adapter/use-case boundary; only PUT/readback failures are recorded as unknown writes. The dedicated API adapter reuses settings comparison to skip matching intent, sends only changed declared optional PUT keys, and verifies the original declaration plus omitted raw companions against complete fresh readback; no execution endpoint is needed for workflow-only declarations. Explicit automatic export preserves existing resource choices. Three composable choices use a small CLI `ExportOptions` value; native comparisons reuse the closed eight-field Actions registry and existing formatter.
@@ -141,7 +154,7 @@ Current-source Environments use name identity and partial built-in ownership. Ex
 
 Pages visibility and unadopted Actions endpoints remain outside current support. Existing-site Pages, Rulesets, and the documented Actions/security subsets are supported; organization-only custom properties are out of scope. Individual label issue/PR assignment management is not part of the labels feature.
 
-[ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. That historical ownership decision is superseded in unreleased source by the [ID-selected Rulesets specification](../features/rulesets.feature.md): name collisions require explicit adoption by ID, selected objects have fixed defaults, and ordinary apply preserves unlisted objects; [explicit prune](../settings.md#collection-pruning) adds bounded deletions. Inherited/push Rulesets and classic branch protection remain outside that managed collection. Classic branch protection has a separate [supported-control partial-ownership contract](../settings.md#classic-branch-protection); remaining controls and pruning are follow-up work; inherited organization policy and private-only Push controls remain outside the target. Use the selected published package to determine available behavior.
+[ADR 0025](../adr/0025-declarative-repository-rulesets.md) accepts label-style membership and retained-attribute semantics for repository-owned branch/tag Rulesets. That historical ownership decision is superseded in unreleased source by the [ID-selected Rulesets specification](../features/rulesets.feature.md): name collisions require explicit adoption by ID, selected objects have fixed defaults, and ordinary apply preserves unlisted objects; [explicit prune](../settings.md#collection-pruning) adds bounded deletions. Inherited/push Rulesets and classic branch protection remain outside that managed collection. Classic branch protection has a separate [supported-control partial-ownership contract](../settings.md#classic-branch-protection); remaining controls are follow-up work; explicit [classic prune](../settings.md#classic-branch-protection-pruning) removes whole unlisted rules; inherited organization policy and private-only Push controls remain outside the target. Use the selected published package to determine available behavior.
 
 [Ruleset coverage thresholds](../settings.md#code-coverage-thresholds) use the existing whole-object model and strict UI number codec. The model defaults selected declaration omissions to zero but requires complete finite acquired values; API projection never defaults a missing threshold. The writer retains a coverage presence/value drift guard beside Code Quality and PR additional approval, then verifies the complete ACK and independent readback. Existing reports and pruning consume the same validated policy.
 
@@ -265,7 +278,11 @@ adapter inventories rules rather than branches, completely paginates actor
 allowances, validates personal/public repository ownership and independently
 verifies partial updates against fresh omitted controls. No generic writable
 parameter passthrough is provided. App preserves declaration creation order,
-actual-write outcomes, failure stopping and guarded ID recording. Export uses the
+actual-write outcomes, failure stopping and guarded ID recording. Classic prune
+adds private deep-copied full snapshots before any remote write, fixed candidate
+rechecks, create/update/writeback-before-delete ordering, exact GraphQL deletion
+acknowledgment and independent complete identity-absence readback. Shared scope
+names drive standalone `all`, CLI help and Action capability output. Export uses the
 existing independent-family retention boundary. The
 [feature specification](../features/classic-protection.feature.md) maps tests and
 records the inspected-schema and nontransactional limits.

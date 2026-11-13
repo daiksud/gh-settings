@@ -13,10 +13,9 @@ repeated flags fail locally. `all` must stand alone and must never silently omit
 an unsupported scope.
 
 The supported scopes are `labels`, `rulesets`, `actions-policies`,
-`actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators` and `autolinks`.
-Standalone `all` selects all supported scopes; future supported prune scopes
-must join its explicit expansion and tests. Classic branch-protection pruning
-remains separate future work; these scopes do not delete classic rules.
+`actions-variables`, `agents-variables`, `environment-variables`, `environments`,
+`collaborators`, `branch-protection-rules` and `autolinks`. Standalone `all` selects all currently recognized
+scopes; future supported prune scopes must join the shared registry and tests.
 
 Omitted collections remain unmanaged even when selected for prune. An explicit
 empty list selects all current objects for deletion; a nonempty list retains its
@@ -150,6 +149,37 @@ Personal access uses the same `collaborators` selector and standalone `all`, wit
 present-list ownership, global fixed-candidate preparation and independent
 readback. The [access specification](repository-access.feature.md#explicit-personal-access-pruning)
 owns its retained-user union, invitation dependency, operator and progress cases.
+
+## Classic branch-protection deletion
+
+The [classic pruning contract](../settings.md#classic-branch-protection-pruning)
+adds whole-rule deletion independently of partial five-control updates. Present
+lists retain numeric IDs and successful creations; omission stays unmanaged.
+Complete private candidate snapshots precede any write. Recheck only the frozen
+initial candidates before family work and before each mutation; late unlisted
+rules are not adopted, even when the initial selection was empty. Own verified
+unarchive is the only archive-state exception. All declared classic writes and
+required creation-ID recording precede deletion. Disappearance, replacement,
+raw nullable/check/App/actor drift or incomplete observations stop work.
+
+The exact GraphQL payload type acknowledges an error-free mutation but carries no
+deleted ID. Independent complete inventory must then exclude both acquired IDs;
+a same-pattern different-ID rule may remain. Unknown mutation effects stop later
+writes with recovery identities. No branch deletion, ordering rewrite, automatic
+retry, recreation or rollback is provided. Detailed plan/Summary discloses removal
+of all configured protections and possible overlapping-rule activation. Status-only
+hides identities/policy; raw snapshots never enter reports or inherited debug logs.
+
+Model, adapter, sequencing and report cases are in
+`internal/settings/classic_prune_test.go`, `internal/github/classic_prune_test.go`,
+`internal/app/classic_prune_test.go` and `internal/actions/classic_protection_test.go`.
+`tests/acceptance/classic_prune_test.go` runs the actual CLI through empty/omitted
+lists, whole deletion, retained duplicate patterns, creation/writeback ordering,
+late arrivals, complete preflight refusal, partial ACK failure, privacy and repeat
+no-op. Its unsupported-scope baseline fails before this feature.
+`tests/github-actions/classic_prune_acceptance_test.go` checks the actual supplied
+product's detailed/status-only plan and standalone `all` apply/repeat behavior;
+the candidate artifact gate includes it. All mutations are isolated fixtures.
 
 ## Autolink pruning
 

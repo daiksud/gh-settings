@@ -93,6 +93,16 @@ need **Administration write for observation as well as mutation**, including
 export and plan. Current-source support does not establish support in the
 selected published package or live active-policy enforcement.
 
+## Actions OIDC subject template commands
+
+The [active OIDC template](settings.md#actions-oidc-subject-template) is one managed
+group. Export independently acquires it and retains prior intent with bounded info
+when unavailable. Plan shows the ordered before/after template. Apply freshly
+skips matches or preserves the known immutable companion in a needed PUT, then
+independently verifies identity and exact state. Unknown immutable mode blocks a
+needed write, but not a matching no-op. Failures distinguish prewrite errors from
+uncertain attempted effects; no local ID writeback or prune operation is involved.
+
 ## Copilot custom instructions commands
 
 Ordinary `export` attempts this supported setting automatically. Complete readable values replace prior intent; unavailable observations emit bounded info and preserve prior declarations while independent reads continue. See [automatic export](#export-behavior) for scope, omission and file-safety rules.
@@ -138,7 +148,7 @@ Plan is read-only and identifies the selected family. Ordinary apply upserts onl
 
 Run `gh settings export` without selection flags. It reads supported About/General,
 Topics, Labels, Rulesets, Actions execution/workflow/cache/retention/contributor
-approval settings, Actions event/actor policies, Environments and their variables,
+approval settings, OIDC active templates, Actions event/actor policies, Environments and their variables,
 Actions/Agents repository variables, Copilot review controls, pull request limits
 and exemptions, Pages, archive state and supported Security controls.
 Product-wide security switches, private-only excluded controls, organization
@@ -261,7 +271,8 @@ The [public Action](github-actions.md#inputs-outputs-and-failures) separately re
 Use `gh settings plan --prune labels,rulesets` and
 `gh settings apply --prune labels,rulesets`. This adds deletions without limiting
 other declared work. `--no-writeback` may be combined with apply. Current scopes are `labels`, `rulesets`, `actions-policies`,
-`actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators` and `autolinks`.
+`actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators`,
+`branch-protection-rules` and `autolinks`.
 Standalone `all` selects every supported scope. Mixed `all`, unknown/duplicate
 names, empty elements and repeated flags fail locally. Export and validate reject
 prune. Omitted collections stay unmanaged; explicit [] selects all acquired
@@ -358,8 +369,14 @@ changed declared inputs and independently verifies requested and omitted known
 state. Existing IDs update in place; ID-less exact-pattern collisions fail.
 Confirmed new numeric IDs use guarded writeback unless `--no-writeback` or
 GitHub Actions suppresses it. Capture recovery identities after uncertain effects
-before retrying. Omitted/empty lists and unrelated prune scopes never delete
-classic rules. CLI and Action share these ownership and failure semantics.
+before retrying. Without classic prune, omitted/empty lists select no rules.
+`--prune branch-protection-rules` or standalone `all` makes a present list own
+retention: [] selects all acquired rules, while omission stays unmanaged. Deletion
+removes the whole rule, including unowned protections, and may expose an overlapping
+rule. Fixed complete snapshots precede every remote write; all classic upserts and
+required ID recording precede deletes with fresh identity/state and absence checks.
+See the [pruning contract](settings.md#classic-branch-protection-pruning). CLI and
+Action share these ownership and failure semantics.
 
 ## Personal collaborator commands
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/daiksud/gh-settings/internal/app"
 	"github.com/daiksud/gh-settings/internal/presentation"
@@ -89,7 +90,7 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		}
 		return nil
 	case "--help", "-h":
-		_, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport all supported readable settings to .github/settings.yml. Independent unavailable settings emit info and retain valid prior declarations; initial export omits them. Variables are plaintext. Secret values are never read. Refuse invalid or concurrently changed files.\nPlan is read-only; apply changes declared settings. --prune adds unlisted deletions for present collections. Supported scopes: labels, rulesets, actions-policies, actions-variables, agents-variables, environment-variables, environments, collaborators, autolinks. Standalone all selects every supported scope.")
+		_, err := fmt.Fprintln(stdout, "Usage: gh settings export\n       gh settings validate\n       gh settings plan [--prune SCOPES]\n       gh settings apply [--no-writeback] [--prune SCOPES]\nExport all supported readable settings to .github/settings.yml. Independent unavailable settings emit info and retain valid prior declarations; initial export omits them. Variables are plaintext. Secret values are never read. Refuse invalid or concurrently changed files.\nPlan is read-only; apply changes declared settings. --prune adds unlisted deletions for present collections. Supported scopes: "+strings.Join(settings.PruneScopeNames(), ", ")+". Standalone all selects every supported scope.")
 		if err != nil {
 			return fmt.Errorf("write help: %w", err)
 		}
@@ -190,6 +191,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = settings.CopilotReviewEffortPath
 		case app.CopilotInstructionsUpdate:
 			path = settings.CopilotInstructionsPath
+		case app.OIDCSubjectUpdate:
+			path = settings.OIDCSubjectPath
 		case app.CopilotMCPUpdate:
 			path = settings.CopilotMCPPath
 		case app.PullRequestExemptionsUpdate:
@@ -216,7 +219,7 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = "repository.settings.rulesets"
 		case app.AutolinksRead, app.AutolinkCreate, app.AutolinkDelete:
 			path = settings.AutolinksPath
-		case app.ClassicProtectionRead, app.ClassicProtectionCreate, app.ClassicProtectionUpdate:
+		case app.ClassicProtectionRead, app.ClassicProtectionCreate, app.ClassicProtectionUpdate, app.ClassicProtectionDelete:
 			path = settings.ClassicProtectionPath
 		case app.EnvironmentsRead, app.EnvironmentUpsert, app.EnvironmentDelete:
 			path = "repository.settings.environments"
