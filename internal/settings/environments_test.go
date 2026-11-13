@@ -15,7 +15,7 @@ func environmentPolicy(t *testing.T, name string) EnvironmentDeclaration {
 	return d.Values()[0]
 }
 
-func TestEnvironmentNamesSelectWholeObjectsWithoutDeletingOthers(t *testing.T) {
+func TestEnvironmentNamesSelectOwnedControlsWithoutDeletingOthers(t *testing.T) {
 	before := environmentPolicy(t, "production")
 	delay, prevent := 30, true
 	before.WaitTimer, before.PreventSelfReview = &delay, &prevent
@@ -32,7 +32,11 @@ func TestEnvironmentNamesSelectWholeObjectsWithoutDeletingOthers(t *testing.T) {
 			t.Fatal("empty selection acquired state", changes, err)
 		}
 	}
-	desired, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: "PRODUCTION"}})
+	nameOnly, _ := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: "PRODUCTION"}})
+	if changes, err := ReconcileEnvironments(observation, &nameOnly); err != nil || len(changes) != 0 {
+		t.Fatal("name-only selection mutated existing policy", changes, err)
+	}
+	desired, err := NewEnvironmentDeclarations([]EnvironmentDeclaration{{Name: "PRODUCTION", WaitTimer: paramInt(5)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +45,7 @@ func TestEnvironmentNamesSelectWholeObjectsWithoutDeletingOthers(t *testing.T) {
 		t.Fatal(changes, err)
 	}
 	after := changes[0].After()
-	if after.WaitTimer != nil || after.PreventSelfReview != nil || after.Reviewers != nil || after.DeploymentBranchPolicy != nil || after.DeploymentBranchPolicyDeclared {
+	if after.WaitTimer == nil || *after.WaitTimer != 5 || after.PreventSelfReview != nil || after.Reviewers != nil || after.DeploymentBranchPolicy != nil || after.DeploymentBranchPolicyDeclared {
 		t.Fatal("omission acquired fabricated API defaults", after)
 	}
 	if *changes[0].Before().WaitTimer != 30 || !*changes[0].Before().PreventSelfReview {

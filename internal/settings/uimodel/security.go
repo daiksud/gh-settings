@@ -28,6 +28,7 @@ type CodeQLAnalysis struct {
 	Languages    *[]string
 	QuerySuite   *string
 	Runner       *CodeQLRunner
+	ThreatModel  *string
 }
 
 type AdvancedSecurity struct {

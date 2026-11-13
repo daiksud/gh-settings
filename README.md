@@ -6,7 +6,7 @@ The v1.0.0 target is UI-aligned settings management for **personally owned publi
 
 The extension uses your existing `gh` authentication. Actions use one GitHub App with explicit, short-lived installation tokens scoped per job/target, without a required PAT or personal-login combination. Validation needs no API authentication; nonmutating plan may still require write grants for complete reads. See the [authentication and trust policy](docs/github-actions.md#authentication-and-app-permissions), including trusted-base PR data-only planning and protected-main apply.
 
-The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets own only listed objects; Environment omissions remain API-controlled.
+The configuration belongs to one Git checkout, and that checkout's GitHub.com `origin` selects the repository. Omitted resources stay unmanaged. Topics manage a complete set; Labels and Rulesets own only listed objects; Existing Environment updates preserve omitted built-in controls; creation omissions remain API-controlled.
 
 ## Install
 
@@ -102,6 +102,8 @@ jobs:
 
 The example pins the immutable v0.27.0 Action, which supports `validate`, `plan`, and `apply` for its published resource set. Validate needs no token; plan/apply take an explicit installation token from the same GitHub App with permissions for each declared resource. The caller owns trusted workflow execution, approval, token issuance/revocation and concurrency. Never run PR code with privileged credentials; use the [data-only PR example](examples/github-actions/README.md).
 
+Current source additionally supports [Action export](docs/github-actions.md#export-a-local-configuration), producing a local settings file and a success-only path output. Use a reviewed package that implements it; the example pin above is unchanged. Export does not commit or upload the generated file.
+
 Before enabling apply, follow the [approval and required-check guidance](docs/github-actions.md#protect-the-apply-path) to protect both `main` and the job that receives the write credential. Use the [Action guide](docs/github-actions.md) for the complete contract and setup, and the [PR/main workflow examples](examples/github-actions/README.md) for adoption instructions.
 
 ## Documentation
@@ -111,5 +113,5 @@ Before enabling apply, follow the [approval and required-check guidance](docs/gi
 | Find a guide or reference | [Documentation index](docs/README.md) |
 | Understand commands, targeting, output, and failures | [Command reference](docs/commands.md) |
 | Write `.github/settings.yml` | [Configuration reference](docs/settings.md) |
-| Automate validation, review, and apply | [GitHub Actions guide](docs/github-actions.md) |
+| Automate export, validation, review, and apply | [GitHub Actions guide](docs/github-actions.md) |
 | Change the code, tests, or documentation | [Contributing](CONTRIBUTING.md) |

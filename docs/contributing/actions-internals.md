@@ -26,6 +26,21 @@ This page describes current Go interfaces, including typed label operations and 
 
 The [composite Action](../../action.yml) installs one verified Go executable, resolves metadata, runs the selected command, renders a plan Summary when needed, then publishes success outputs. The plan report is temporary presentation data. The same executable owns metadata and Summary rendering; shell owns installation bootstrap and Actions wiring. [ADR 0023](../adr/0023-public-composite-action.md) records the public packaging decision, and the [testing guide](testing.md) describes verification boundaries.
 
+## Public export wiring
+
+The composite invokes the verified CLI's ordinary `export` operation directly;
+there is no separate internal `action export` protocol. Existing metadata already
+supports a committed checkout with no settings file. The CLI owns acquisition,
+existing-intent retention and guarded checkout-root file creation/replacement.
+
+Export requires the explicit command-step token, rejects prune and private-plan
+reporting before installation, unsets `GH_DEBUG`, and discards stdout. It creates
+no plan report or Summary. After success the result step publishes the fixed
+relative `config-path=.github/settings.yml` alongside the four identity outputs;
+other commands leave config-path empty. This output never publishes file contents
+or implies that HEAD contains the exported file. The installer, metadata schema
+and immutable package selection remain unchanged.
+
 ## Source Actions metadata
 
 The CLI provides `gh settings action metadata` for same-version CLI/Action wiring. This is separate from the four settings commands. The composite invokes it through the verified executable. It resolves the current consumer checkout, including subdirectories, using the shared Go origin rules and ignoring `GH_REPO`. Neither the executable directory nor an Action source directory selects the target; no `GITHUB_WORKSPACE` override mode is added. No settings file, token or API request is needed.
@@ -116,7 +131,7 @@ Normalized bypass modes use an Action-local `bypass_mode_normalizations` DTO on 
 
 The writer and validated display own their slices and ID pointers. Presentation and typed diagnostics use one owned ordering operation: enforcement, Required approvals, Allowed merge methods, scanning Alerts and Security alerts (each in tool-name order), then actor type and numeric ID. Desired UI mode or actual actor removal stays write-required; detailed Summary escapes values and status-only hides all policy/provenance. Collection count remains one. Report consistency does not prove complete API acquisition and never supplies apply input or raw verification. See the [bypass-mode contract](../settings.md#ruleset-bypass-mode-observation-normalization).
 
-Normalized Environment mode entries carry optional concrete `deployment_mode_normalization` on the existing `environments` collection. Require string path/fallback and both nested boolean `raw_policy` members, preserving explicit false and rejecting null/missing/type/unknown members atomically. A present zero record fails closed. Reconstruction requires an update with exact existing name identity, complete effective declared-null before-policy, genuine equal raw booleans and explicit canonical mode request; acquisition completeness remains state-owned and is not reconstructed from the report. Private `before` is effective policy for all Environment entries; `after` stays the actual partial request with no invented defaults. Detailed output shows only before fields present in that request. Latent patterns remain outside report policy. Shared rendering keeps scoped warning/decision, effective-before label, API-controlled omission note, HTML escaping and status-only privacy. Existing collection count remains one. Reports are never apply or raw-verification input.
+Normalized Environment mode entries carry optional concrete `deployment_mode_normalization` on the existing `environments` collection. Require string path/fallback and both nested boolean `raw_policy` members, preserving explicit false and rejecting null/missing/type/unknown members atomically. A present zero record fails closed. Reconstruction requires an update with exact existing name identity, complete effective declared-null before-policy, genuine equal raw booleans and explicit canonical mode request; acquisition completeness remains state-owned and is not reconstructed from the report. Private `before` is effective policy for all Environment entries; `after` stays the actual partial request with no invented defaults. Detailed output shows only before fields present in that request. Latent patterns remain outside report policy. Shared rendering keeps scoped warning/decision, effective-before label, existing-companion preservation or creation-omission note, HTML escaping and status-only privacy. Existing collection count remains one. Reports are never apply or raw-verification input.
 
 Normalized Environment ref-type updates carry optional `pattern_observations` on the same name-bound entry. When present, it is the complete owned acquired list, including canonical companions and positive unique pattern IDs; at least one entry has a genuine unsupported-string normalization. Each entry contains its effective `pattern` and an optional closed `ref_type_normalization` with required string `path`, `raw_value` and `fallback`. Empty raw strings remain valid; missing/null members, forged or zero records, wrong identities and duplicate raw pairs fail. Desired `after` must explicitly own the pattern list, including an empty list. Omitted lists carry no pattern evidence or warnings.
 
@@ -128,7 +143,7 @@ The closed private `pages.lifecycle` comparison carries `absent`/`present` strin
 
 Apply retains a confirmed `PagesCreate` operation when subsequent optional reconciliation fails, with a separate failed Pages operation. Unverified POST/DELETE/readback failures retain uncertain effects rather than claiming completion. No report is reusable apply input.
 
-Current-source CodeQL default configuration uses the optional `codeql_configuration` report array with three closed fields: `languages`, `query_suite` and `runner` (owned type/label pair). Reconstruction rejects unknown/duplicate fields, invalid native types/choices, no-op changes, normalization metadata and insufficient counts. Values render at the UI configuration paths with escaped Summary output. Threat model is outside the managed protocol: it is acquired only as a raw unowned companion for preservation, never projected into this array, its count or export. Reports never supply apply input.
+Current-source CodeQL default configuration uses the optional `codeql_configuration` report array with four closed fields: `languages`, `query_suite`, `runner` (owned type/label pair) and `threat_model` (`remote_sources` or `remote_and_local_sources`). Reconstruction rejects unknown/duplicate fields, invalid native types/choices, no-op changes, normalization metadata and insufficient counts. Values render at the UI configuration paths with escaped Summary output. Threat model counts only when declared and is projected into automatic export from complete acquired configuration. Raw API spellings and unknown threat-model choices are rejected; omitted configuration companions remain verified during apply. Reports never supply apply input.
 
 Actions event policies use the separate `actions_policies` report array, independent of `actions` execution controls. Each create/update entry carries `operation` and complete `after`, with `before` required only for updates. Objects contain optional positive `id`, required `policy_name`, `enforcement_status`, and complete `restrict_events`/`restrict_actors` objects. Present rules carry their
 allowed lists; absent rules carry `enabled: false`. Empty actors remain a present

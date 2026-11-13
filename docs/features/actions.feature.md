@@ -62,7 +62,7 @@ Focused offline checks and composed consumer coverage run in required CI, alongs
 
 ### Public composite Action contract
 
-Consumers can validate, inspect, or directly apply their checked-out repository settings through a reviewed Action package without copying helper files. The implemented root Action follows [ADR 0023](../adr/0023-public-composite-action.md); the [usage guide](../github-actions.md) identifies reviewed full-SHA calls and supported consumer files. The preceding workflow-example rules remain applicable to those examples.
+Consumers can export, validate, inspect, or directly apply their checked-out repository settings through a reviewed Action package without copying helper files. The implemented root Action follows [ADR 0023](../adr/0023-public-composite-action.md); the [usage guide](../github-actions.md) identifies reviewed full-SHA calls and supported consumer files. The preceding workflow-example rules remain applicable to those examples.
 
 ### Rule: A release selects the same Action and CLI version
 
@@ -71,20 +71,38 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 - A published Action tag selects that same CLI release. Full-SHA pins must resolve exactly one matching stable Git tag; do not infer a new release from current main. Download only its `gh-settings-linux-amd64` and `SHA256SUMS` through fixed HTTPS paths; verify the checksum and exact reported binary version. Never fall back to latest or accept an arbitrary URL.
 - Untagged or ambiguously tagged SHA references fail before download. Local candidate smoke invokes the composite without a public Action ref and explicitly supplies the accepted product version; the committed `action/cli-version` remains only a development-candidate default. A published Action never silently retains an older CLI.
 - Support only a fresh GitHub-hosted Ubuntu 24.04 x64 job. The caller checks out the configuration repository at `GITHUB_WORKSPACE` without persisted credentials.
-- Read only checkout-root `.github/settings.yml`; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target. Current source requires that selected origin to directly identify GitHub.com through HTTPS, `git@github.com:owner/repo.git` or full SSH. Transport mirror rewrites cannot change the direct identity; rewrite-only aliases and username-less SCP fail metadata before settings execution or successful outputs. Local/include/worktree selection and ignoring `GH_REPO` and system/global/command substitute origins remain shared CLI rules.
-- Action-owned installation bootstrap comes from the Action package, independently of caller helper files. The composite directly invokes validate/apply and Go metadata/plan/Summary entries through the verified absolute CLI path in a per-invocation runner-temp location. Shell retains necessary Actions wiring.
+- Use only checkout-root `.github/settings.yml`, creating or refreshing it for export; use the existing CLI's checkout-scoped GitHub `origin` target semantics, not the Action repository or an assumed `github.repository` target. Current source requires that selected origin to directly identify GitHub.com through HTTPS, `git@github.com:owner/repo.git` or full SSH. Transport mirror rewrites cannot change the direct identity; rewrite-only aliases and username-less SCP fail metadata before settings execution or successful outputs. Local/include/worktree selection and ignoring `GH_REPO` and system/global/command substitute origins remain shared CLI rules.
+- Action-owned installation bootstrap comes from the Action package, independently of caller helper files. The composite directly invokes export/validate/apply and Go metadata/plan/Summary entries through the verified absolute CLI path in a per-invocation runner-temp location. Shell retains necessary Actions wiring.
 
-### Rule: Two inputs select one bounded command
+### Rule: Inputs select one bounded command
 
 | Input | Requirement | Meaning |
 | --- | --- | --- |
-| `command` | Required, no default | Exact enum `validate`, `plan`, or `apply`; reject omitted or unknown values at runtime. |
-| `token` | Optional for `validate`; required and nonempty for `plan`/`apply`, no default | Explicit caller token with permissions appropriate to that command. Never fall back to `github.token` or ambient authentication. |
+| `command` | Required, no default | Exact enum `export`, `validate`, `plan`, or `apply`; reject omitted or unknown values at runtime. |
+| `token` | Optional for `validate`; required and nonempty for `export`/`plan`/`apply`, no default | Explicit caller token with permissions appropriate to that command. Never fall back to `github.token` or ambient authentication. |
+| `plan-reporting` | Default `detailed`; `status-only` is plan-only | Export creates no Summary and rejects status-only. |
+| `prune` | Default empty; nonempty is plan/apply-only | Export and validate reject deletion scopes before installation. |
 
 - `validate` performs local CLI validation without authentication or API calls, even if a token input was supplied.
-- `plan` requires a read-only caller token, validates first, and runs read-only CLI plan only after validation succeeds. Differences, no differences, and no managed fields are all successful outcomes.
-- `plan` and `apply` use one caller-created GitHub App, with potentially different short-lived target/permission-scoped installation tokens per job. Apply needs each resource's write/observation permissions, not just a universal Administration grant. Invoke existing direct CLI apply; a previous plan is not required or consumed.
-- No `export`, arbitrary command/arguments, configuration-path, target, version, asset, or download-URL input is supported.
+- `plan` requires an explicit caller token with complete observation grants, validates first, and runs read-only CLI plan only after validation succeeds. Differences, no differences, and no managed fields are all successful outcomes.
+- `export`, `plan` and `apply` use one caller-created GitHub App, with potentially different short-lived target/permission-scoped installation tokens per job. Apply needs each resource's write/observation permissions, not just a universal Administration grant. Invoke existing direct CLI apply; a previous plan is not required or consumed.
+- No arbitrary command/arguments, configuration-path, target, version, asset, or download-URL input is supported.
+
+### Rule: Export creates a local file without publication
+
+- Use shared CLI automatic export with an explicit token and a committed checkout;
+  a missing `.github/settings.yml` or `.github` directory permits first export.
+- Retain shared invalid-YAML, symlink, concurrent-edit and I/O failure boundaries.
+  Independent unavailable observations remain bounded info, not fabricated values.
+- Unset inherited `GH_DEBUG`, discard export stdout and expose no file contents
+  through logs, public outputs, plan reports or Summary. Keep ordinary diagnostics.
+- Return the fixed config-path only after success; config-sha remains checkout HEAD.
+- Do not commit, push, upload or cache the file. It may contain plaintext Variables;
+  other code in the caller's trusted job can read it. Publication is caller-owned.
+- CLI/output failures fail the Action and withhold successful results. A failed
+  first-file write or later output write may leave local changes; no rollback.
+- Verify actual candidate composite first export and re-export, token boundaries,
+  variable-value canaries, exact outputs and representative local failures.
 
 #### Scenario: Validate without a credential
 
@@ -101,11 +119,13 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 - Then validation fails before comparison or API execution
 - And the Action fails without success outputs
 
-### Rule: Only successful completion exposes four non-secret outputs
+### Rule: Only successful completion exposes result outputs
 
 | Output | Meaning |
 | --- | --- |
 | `config-sha` | Full checked-out configuration commit SHA (`HEAD`), not a configuration-file hash, workflow SHA, or Action revision. |
+| `config-path` | Fixed `.github/settings.yml` relative to the supported checkout root after export; empty for other commands. No file publication or transfer is implied. |
+| `plan-outcome` | Successful status-only plan outcome; empty for export and other reporting modes/commands. |
 | `target` | Resolved configuration checkout's GitHub repository in `OWNER/REPO` form, consistent with CLI `origin` semantics. |
 | `cli-version` | Verified installed release version selected by the committed package version. |
 | `cli-sha256` | SHA-256 of the verified installed CLI binary. |
@@ -129,7 +149,7 @@ Consumers can validate, inspect, or directly apply their checked-out repository 
 ### Rule: The caller owns approval and credentials
 
 - The caller owns checkout, event/ref guards, Environment selection/approval, App token minting/revocation, and concurrency. The Action does not perform those operations or introduce custom approval/freshness machinery.
-- Bind `inputs.token` as `GH_TOKEN` only on the plan/apply command execution step. Validate, installer, Summary, and metadata/output steps must not receive that input as `GH_TOKEN`; never write it to `GITHUB_ENV`, files, logs, artifacts, or outputs.
+- Bind `inputs.token` as `GH_TOKEN` only on the export/plan/apply command execution step. Validate, installer, Summary, and metadata/output steps must not receive that input as `GH_TOKEN`; never write it to `GITHUB_ENV`, files, logs, artifacts, or outputs.
 - This is scoped environment exposure, not token process isolation. Composite steps share the caller job; all code in a credential-bearing job must be trusted. The caller must keep privileged credentials away from untrusted PR code.
 - Preserve owner-approved main direct apply and repository-scoped concurrency without cancellation of running apply. PR plan remains nonmutating with trusted executing code, data-only candidate preparation and no alternate-credential fallback. Strongly recommend Environment branch restrictions together with enforced protection of workflow/credential-consuming paths; a permitted ref does not identify a workflow.
 - These are the generic consumer/example requirements. This repository's Environment, App bindings, and scope guard are documented separately in [repository automation](../contributing/repository-automation.md).
@@ -184,7 +204,7 @@ Success is silent on stdout and exits zero. Planning or report-storage failure e
 
 The same-version `gh settings action summary REPORT_PATH SUMMARY_PATH` entry reads the same-version typed plan report and explicit nonsecret `SETTINGS_*` run metadata, then appends review content to the supplied Summary path. It does not read terminal plan sentences, configure authentication, call an API or dump the environment. Required context includes original and initiating/rerun actors, event, run/attempt, workflow path/ref and exact revision, configuration revision, target, distinct Action identity/ref and CLI version/checksum. Workflow and configuration links use their own repository and revision; local Action use has no invented remote pin.
 
-Changed values retain native string/bool/topic-list meaning. No-difference, unmanaged and planning failures are distinct from the typed outcome, and a failed plan remains nonzero after successful Summary writing. Missing/malformed report or required metadata and detectable writing failures return nonzero. Input loading, validation and rendering precede opening the append destination. Untrusted multiline metadata and values remain quoted data, including blank lines, Markdown, HTML and workflow-command-like text. The Summary states that direct apply may overwrite intervening changes and that rendering/writing does not prove GitHub publication. The current composite invokes this entry in a separate credential-free step after authenticated planning, using the same ephemeral report and verified executable. Original nonzero plan status wins over rendering status; otherwise a Summary failure determines failure. The four public outputs follow all required work. Python rendering and terminal-text classification are removed, without publication polling or saved-plan apply.
+Changed values retain native string/bool/topic-list meaning. No-difference, unmanaged and planning failures are distinct from the typed outcome, and a failed plan remains nonzero after successful Summary writing. Missing/malformed report or required metadata and detectable writing failures return nonzero. Input loading, validation and rendering precede opening the append destination. Untrusted multiline metadata and values remain quoted data, including blank lines, Markdown, HTML and workflow-command-like text. The Summary states that direct apply may overwrite intervening changes and that rendering/writing does not prove GitHub publication. The current composite invokes this entry in a separate credential-free step after authenticated planning, using the same ephemeral report and verified executable. Original nonzero plan status wins over rendering status; otherwise a Summary failure determines failure. The public success outputs follow all required work. Python rendering and terminal-text classification are removed, without publication polling or saved-plan apply.
 
 #### Scenario: A changed Summary preserves review identities
 
@@ -226,7 +246,7 @@ The [testing guide](../contributing/testing.md#ci-validation) owns fixture setup
 | Typed plan reports and credential-free Summary | [Report](../../internal/actions/plan_test.go) and [Summary](../../internal/actions/summary_test.go) owner tests; [plan-report](../../tests/acceptance/plan_report_test.go) and [Summary](../../tests/acceptance/summary_test.go) acceptance |
 | Root composite status/output/token wiring | [Composite tests](../../tests/github-actions/composite_test.go) |
 | Example and active caller composition | [Consumer tests](../../tests/github-actions/consumer_test.go) and [operational caller tests](../../tests/github-actions/operational_test.go) |
-| Actual same-source hosted validate, plan, direct apply, and failure paths | [Candidate assertions](../../tests/github-actions/candidate-plan.sh) run during [main CI](../../.github/workflows/ci-push.yml) Inspection and [release](../../.github/workflows/release.yml) Inspection when artifacts are rebuilt |
+| Actual same-source hosted export, validate, plan, direct apply, and failure paths | [Candidate assertions](../../tests/github-actions/candidate-plan.sh) run during [main CI](../../.github/workflows/ci-push.yml) Inspection and [release](../../.github/workflows/release.yml) Inspection when artifacts are rebuilt |
 
 Offline approval/token lifecycle checks use simulations. Candidate integration and Summary-file assertions do not establish released-download identity, Environment enforcement, actual token revocation, GitHub Summary publication, or a live settings update; see the [evidence table](../contributing/testing.md#release-and-publication-evidence). Reviewers check usage documentation against the contract and example files; Markdown CI verifies links and structure, not semantic equivalence.
 

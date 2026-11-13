@@ -281,12 +281,20 @@ func ReconcileEnvironments(observation EnvironmentObservation, desired *Environm
 		if policy.DeploymentBranchPatterns != nil && before.DeploymentBranchPolicy != nil && before.DeploymentBranchPolicy.CustomBranchPolicies && hasEnvironmentRefTypeNormalizations(state.Patterns) {
 			patternEvidence = state.Patterns
 		}
-		if record == (EnvironmentDeploymentNormalization{}) && patternEvidence == nil && !EnvironmentHasAPIOmissions(policy) && EnvironmentMatchesRequest(before, policy) {
+		if record == (EnvironmentDeploymentNormalization{}) && patternEvidence == nil && EnvironmentMatchesRequest(before, policy) {
 			continue
+		}
+		matches, err := EnvironmentBuiltinsMatchRequest(state, policy)
+		if err != nil {
+			return nil, err
+		}
+		if !matches {
+			if _, err := PrepareEnvironmentUpdate(state, policy); err != nil {
+				return nil, err
+			}
 		}
 		prior, after := cloneEnvironment(before), cloneEnvironment(policy)
 		var change EnvironmentChange
-		var err error
 		if record != (EnvironmentDeploymentNormalization{}) {
 			change, err = NewEnvironmentChangeWithDeploymentNormalization("update", &prior, &after, record)
 		} else if patternEvidence != nil {
@@ -328,7 +336,8 @@ func (c EnvironmentChange) After() *EnvironmentDeclaration {
 }
 
 // NewEnvironmentChange requires a complete observed before policy, but after
-// is the actual request, whose omissions intentionally defer to the API.
+// retains original partial intent. Preservation companions are prepared only
+// from the writer's fresh observation and never broaden that ownership.
 func NewEnvironmentChange(operation string, before, after *EnvironmentDeclaration) (EnvironmentChange, error) {
 	return newEnvironmentChange(operation, before, after, EnvironmentDeploymentNormalization{}, nil)
 }
@@ -371,7 +380,7 @@ func newEnvironmentChange(operation string, before, after *EnvironmentDeclaratio
 		if err := validateEnvironment(*before, true); err != nil {
 			return EnvironmentChange{}, err
 		}
-		if before.Name != after.Name || (record == (EnvironmentDeploymentNormalization{}) && patterns == nil && reflect.DeepEqual(cloneEnvironment(*before), cloneEnvironment(*after))) {
+		if before.Name != after.Name || (record == (EnvironmentDeploymentNormalization{}) && patterns == nil && EnvironmentMatchesRequest(*before, *after)) {
 			return EnvironmentChange{}, fmt.Errorf("invalid environment update identity or unchanged policy")
 		}
 	default:
@@ -387,14 +396,14 @@ func newEnvironmentChange(operation string, before, after *EnvironmentDeclaratio
 	return result, nil
 }
 
-// Omitted fields are sent as omissions and their server-selected result is not
-// predicted by plan. Such declarations remain update intents, not verified no-ops.
+// EnvironmentHasAPIOmissions identifies partial built-in intent. Only creation
+// leaves those outcomes to the API; existing updates preserve fresh companions.
 func EnvironmentHasAPIOmissions(p EnvironmentDeclaration) bool {
 	return p.WaitTimer == nil || p.PreventSelfReview == nil || p.CanAdminsBypass == nil || p.Reviewers == nil || (!p.DeploymentBranchPolicyDeclared && p.DeploymentBranchPolicy == nil)
 }
 
-// Verify only requested values. The full readback is still typed and validated;
-// unspecified API outcomes are neither copied from old state nor invented.
+// Verify selected values. An update's prepared complete built-in snapshot also
+// uses this comparison to verify the companions actually sent.
 func EnvironmentMatchesRequest(actual, requested EnvironmentDeclaration) bool {
 	a, r := cloneEnvironment(actual), cloneEnvironment(requested)
 	return EnvironmentIdentity(a.Name) == EnvironmentIdentity(r.Name) &&

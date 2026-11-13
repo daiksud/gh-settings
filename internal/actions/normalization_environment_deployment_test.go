@@ -68,7 +68,7 @@ func TestEnvironmentDeploymentPrivateReportRetainsPairAndActualPartialRequest(t 
 					}
 				}
 				content, err := actions.RenderSummary(report, summaryMetadata())
-				if err != nil || !strings.Contains(html.UnescapeString(content), presentation.EnvironmentLine(change)) || strings.Contains(content, "<MODE_OBJECT>") || !strings.Contains(content, "effective before policy") || partial && !strings.Contains(content, "API-controlled") {
+				if err != nil || !strings.Contains(html.UnescapeString(content), presentation.EnvironmentLine(change)) || strings.Contains(content, "<MODE_OBJECT>") || !strings.Contains(content, "effective before policy") || partial && !strings.Contains(content, "preserved from fresh state") {
 					t.Fatal(content, err)
 				}
 				report.Managed = 0

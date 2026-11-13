@@ -10,7 +10,7 @@ import (
 )
 
 func TestCodeQLExportSingleResponseKnownAndUnknown(t *testing.T) {
-	for _, scenario := range []string{"disabled", "configured", "incomplete-details", "403", "network", "missing-state", "invalid-state", "malformed"} {
+	for _, scenario := range []string{"disabled", "configured", "incomplete-details", "unknown-threat", "403", "network", "missing-state", "invalid-state", "malformed"} {
 		t.Run(scenario, func(t *testing.T) {
 			reads := 0
 			c := &CodeQLDefaultSetupClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
@@ -37,6 +37,8 @@ func TestCodeQLExportSingleResponseKnownAndUnknown(t *testing.T) {
 					return actionsResponse(r, 200, `{"state":`), nil
 				case "incomplete-details":
 					delete(raw, "languages")
+				case "unknown-threat":
+					raw["threat_model"] = "future"
 				}
 				b, _ := json.Marshal(raw)
 				return actionsResponse(r, 200, string(b)), nil
@@ -58,7 +60,7 @@ func TestCodeQLExportSingleResponseKnownAndUnknown(t *testing.T) {
 				if _, err := configuration.Declaration(); err != nil {
 					t.Fatal(err)
 				}
-			case "incomplete-details":
+			case "incomplete-details", "unknown-threat":
 				if err == nil || stateErr != nil || !enabled {
 					t.Fatal(enabled, stateErr, err)
 				}

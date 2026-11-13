@@ -1,6 +1,6 @@
 name: GitHub repository settings
 author: Daiki Sudo
-description: Validate, plan or directly apply checkout-root settings with its verified release CLI on GitHub-hosted Ubuntu 24.04 x64.
+description: Export, validate, plan or directly apply checkout-root settings with its verified release CLI on GitHub-hosted Ubuntu 24.04 x64.
 inputs:
   prune:
     description: Optional comma-separated deletion scopes for plan/apply. Currently labels,rulesets,actions-variables,agents-variables,environment-variables,actions-policies; omitted collections stay unmanaged and explicit [] prunes all.
@@ -11,22 +11,25 @@ inputs:
     required: false
     default: detailed
   command:
-    description: Required command, exactly validate, plan or apply.
+    description: Required command, exactly export, validate, plan or apply.
     required: true
   token:
     description: >-
-      Explicit target-scoped GitHub App installation token for plan/apply;
-      unused for validate. Plan is nonmutating but complete reads may need write
+      Explicit target-scoped GitHub App installation token for export/plan/apply;
+      unused for validate. Export and plan are nonmutating but complete reads may need write
       grants (for example Ruleset bypass visibility). Exposure is scoped to
       the command-step environment; the composite shares the caller job. The caller
       owns approval and token lifecycle.
     required: false
 outputs:
+  config-path:
+    description: Successful export destination, .github/settings.yml relative to the checkout root; empty for other commands. The file is not committed or published.
+    value: ${{ steps.result.outputs.config-path }}
   plan-outcome:
-    description: Successful status-only plan outcome, changed, no-difference or unmanaged; empty for detailed plans and validate/apply.
+    description: Successful status-only plan outcome, changed, no-difference or unmanaged; empty for detailed plans and export/validate/apply.
     value: ${{ steps.result.outputs.plan-outcome }}
   config-sha:
-    description: Full checked-out configuration commit SHA.
+    description: Full checkout HEAD commit SHA; not a hash or commit of the exported file.
     value: ${{ steps.result.outputs.config-sha }}
   target:
     description: Configuration checkout origin in OWNER/REPO form.
@@ -49,10 +52,10 @@ runs:
         PLAN_REPORTING: ${{ inputs.plan-reporting }}
       run: |
         case "$SETTINGS_COMMAND" in
-          validate|plan|apply) ;;
-          *) echo 'command must be validate, plan or apply' >&2; exit 1 ;;
+          export|validate|plan|apply) ;;
+          *) echo 'command must be export, validate, plan or apply' >&2; exit 1 ;;
         esac
-        if [[ "$SETTINGS_COMMAND" == validate && -n "$SETTINGS_PRUNE" ]]; then
+        if [[ "$SETTINGS_COMMAND" != plan && "$SETTINGS_COMMAND" != apply && -n "$SETTINGS_PRUNE" ]]; then
           echo 'prune requires plan or apply' >&2
           exit 1
         fi
@@ -62,7 +65,7 @@ runs:
           *) echo 'invalid plan reporting mode' >&2; exit 1 ;;
         esac
         if [[ "$SETTINGS_COMMAND" != validate && "$HAS_TOKEN" != true ]]; then
-          echo 'plan and apply require an explicit token input' >&2
+          echo 'export, plan and apply require an explicit token input' >&2
           exit 1
         fi
     - name: Install CLI and resolve checkout metadata
@@ -96,7 +99,7 @@ runs:
       run: |
         unset GH_TOKEN GITHUB_TOKEN
         "$SETTINGS_CLI" validate
-    - name: Execute plan or apply with the caller token
+    - name: Execute export, plan or apply with the caller token
       id: execute
       if: inputs.command != 'validate'
       shell: bash
@@ -123,6 +126,9 @@ runs:
           else
             "$SETTINGS_CLI" action plan "${SETTINGS_CLI%/*}/plan.json" || status=$?
           fi
+        elif [[ "$SETTINGS_COMMAND" == export ]]; then
+          unset GH_DEBUG
+          "$SETTINGS_CLI" export >/dev/null || status=$?
         else
           apply_args=(apply)
           [[ -z "$SETTINGS_PRUNE" ]] || apply_args+=(--prune "$SETTINGS_PRUNE")
@@ -186,9 +192,13 @@ runs:
         CLI_VERSION: ${{ steps.setup.outputs.cli-version }}
         CLI_SHA256: ${{ steps.setup.outputs.cli-sha256 }}
         PLAN_OUTCOME: ${{ steps.review.outputs.plan-outcome }}
+        SETTINGS_COMMAND: ${{ inputs.command }}
       run: |
         printf 'config-sha=%s\ntarget=%s\ncli-version=%s\ncli-sha256=%s\n' \
           "$CONFIG_SHA" "$TARGET" "$CLI_VERSION" "$CLI_SHA256" >> "$GITHUB_OUTPUT"
         if [[ -n "$PLAN_OUTCOME" ]]; then
           printf 'plan-outcome=%s\n' "$PLAN_OUTCOME" >> "$GITHUB_OUTPUT"
+        fi
+        if [[ "$SETTINGS_COMMAND" == export ]]; then
+          printf 'config-path=.github/settings.yml\n' >> "$GITHUB_OUTPUT"
         fi

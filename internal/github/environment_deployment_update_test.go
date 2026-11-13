@@ -242,11 +242,12 @@ func TestNormalizedEnvironmentDeploymentUpdateUsesLiteralIntentAndRawConfirmatio
 					desired.DeploymentBranchPatterns = &[]settings.EnvironmentPattern{{Type: "branch", Name: "wanted"}}
 				}
 				changed, err := client.Update(repository.Repository{Owner: "owner", Name: "current"}, desired)
-				if (err != nil) != test.wantErr || changed == test.wantErr {
+				wantChanged := !test.wantErr && test.mode != "omit"
+				if (err != nil) != test.wantErr || changed != wantChanged {
 					t.Fatal("certainty/outcome", changed, err, writes)
 				}
 				expectedWrites := []string{"PUT environment"}
-				if test.post == "pre-denied" || test.post == "pre-latent-denied" || test.post == "identity-race" || test.mode == "omit" && test.patterns {
+				if test.post == "pre-denied" || test.post == "pre-latent-denied" || test.post == "identity-race" || test.mode == "omit" {
 					expectedWrites = nil
 				}
 				if test.patterns && test.mode == "selected" && test.post != "ignored" {

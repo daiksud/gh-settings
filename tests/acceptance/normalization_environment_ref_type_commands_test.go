@@ -193,14 +193,14 @@ repository:
 		t.Fatal("read-only commands wrote", beforeApply)
 	}
 	result, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || withoutExportInfo(result.stderr.String()) != warning+"\n"+warning+"\n" {
+	if err != nil || result.runErr != nil || result.stdout.String() != "Applied repository settings.\n" || withoutExportInfo(result.stderr.String()) != warning+"\n" {
 		t.Fatal("apply outcome or fresh diagnostics", err, result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
 		t.Fatal(err)
 	}
 	mu.Lock()
-	wantHistory := []string{"PUT", "POST branch/main", "GET future/main/7", "DELETE 7"}
+	wantHistory := []string{"POST branch/main", "GET future/main/7", "DELETE 7"}
 	wantPatternsAfter := map[int]map[string]any{8: {"id": 8, "type": "tag", "name": "main"}, 9: {"id": 9, "type": "branch", "name": "main"}}
 	if !reflect.DeepEqual(history, wantHistory) || !reflect.DeepEqual(patterns, wantPatternsAfter) || !finalRead {
 		t.Error("raw replacement or fresh confirmation", history, patterns, finalRead)
@@ -225,7 +225,7 @@ repository:
 	result, err = executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply"}, false)
 	var failed *exec.ExitError
 	finalWarning := `Warning: repository.settings.environments.deployment_branch_or_tag_rules.ref_type: observed "future" is outside UI choices; using "branch" (projection only). Environment "production", pattern 9 name_pattern "main".`
-	if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.HasPrefix(withoutExportInfo(result.stderr.String()), warning+"\n"+warning+"\n"+finalWarning+"\n") || strings.Count(withoutExportInfo(result.stderr.String()), "Warning:") != 3 || !strings.Contains(withoutExportInfo(result.stderr.String()), "verify environment readback (write may have applied)") {
+	if err != nil || !errors.As(result.runErr, &failed) || failed.ExitCode() != 1 || result.stdout.Len() != 0 || !strings.HasPrefix(withoutExportInfo(result.stderr.String()), warning+"\n"+finalWarning+"\n") || strings.Count(withoutExportInfo(result.stderr.String()), "Warning:") != 2 || !strings.Contains(withoutExportInfo(result.stderr.String()), "verify environment declared intent (write may have applied)") {
 		t.Fatal("unsupported final state confirmed success", err, result.runErr, result.stdout.String(), result.stderr.String())
 	}
 	if err := checkSettingsUnchanged(fixture.work, input); err != nil {
