@@ -1276,7 +1276,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and five independent controls. It is separate from Rulesets and does not clone
+and six independent controls. It is separate from Rulesets and does not clone
 all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1293,6 +1293,7 @@ repository:
         require_linear_history: true
         allow_deletions: false
         lock_branch: false
+        do_not_allow_bypassing_the_above_settings: true
 ```
 
 `id` is an optional positive numeric GraphQL `databaseId`. Without it an entry is
@@ -1313,8 +1314,8 @@ that this is priority order. See GitHub's
 [pattern and priority guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
 
 Each checkbox is optional. Omission preserves its latest observed value; explicit
-`false` requests false. Null, native GraphQL aliases, admin-enforcement flags and
-unlisted controls are rejected. Omitted collections and `[]` manage no objects.
+`false` requests false. Null, native GraphQL aliases and unlisted controls are
+rejected. Omitted collections and `[]` manage no objects.
 Unlisted rules are preserved. This slice adds no prune scope, deletion marker or
 reordering operation; existing prune scopes do not delete classic rules.
 
@@ -1333,7 +1334,17 @@ otherwise allowed. This checkbox does not rewrite the separate deletion setting
 or promise that it will take effect while locked. Readback verifies stored
 settings, not an attempted push, deletion or effective enforcement.
 
-Complete known PR, check/App binding, deployment, admin, fork-sync, force-push
+`do_not_allow_bypassing_the_above_settings` matches the UI checkbox: true applies
+this rule's protections to administrators; false removes this flag's enforcement.
+It maps directly to GraphQL `isAdminEnforced`. Omission preserves the acquired
+boolean, and neither direction changes actor allowance lists, other rule controls
+or repository Rulesets. Overlapping policies can still affect effective access.
+The unsaved target form was inspected on 2026-11-14. The
+[maintained provider's direct read/write mapping](https://github.com/integrations/terraform-provider-github/blob/1b9c5c13eb840a72c99d088f3bf3b5e00b950c04/github/resource_github_branch_protection.go)
+corroborates this polarity despite the ambiguous GraphQL description. This is
+mapping evidence, not a live test of administrator bypass or effective enforcement.
+
+Complete known PR, check/App binding, deployment, fork-sync, force-push
 and actor-allowance state is acquired as unowned preservation evidence. Null stays
 distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
@@ -1349,13 +1360,13 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern and these five
+Automatic export projects every readable rule's ID, pattern and these six
 checkboxes. It does not export or adopt the other controls. Unavailable acquisition
 retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
 GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
-admin enforcement, fork-sync and force-push selection remain separate work;
+fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for

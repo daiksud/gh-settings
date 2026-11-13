@@ -34,7 +34,7 @@ func TestCollaboratorPruneReportAndPrivacy(t *testing.T) {
 	// Both families survive integration and retain separate managed counts.
 	combined := report
 	id, yes, no := int64(77), true, false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
 	combined.Managed = 2
 	combined.BranchProtectionRules = []settings.ClassicChange{{Before: &before, After: settings.ClassicRule{ID: &id, BranchNamePattern: "classic/*", RequireSignedCommits: &yes}}}
 	both, err := actions.RenderSummary(combined, summaryMetadata())

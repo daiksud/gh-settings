@@ -48,7 +48,7 @@ func processClassicClone(v map[string]any) map[string]any {
 	return result
 }
 func TestClassicProtectionExecutableLifecycle(t *testing.T) {
-	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock"} {
+	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rules := []map[string]any{processClassicRule(7, "Release/**")}
@@ -155,7 +155,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "repository"} {
 						ack[key] = rule[key]
 					}
 					body[mutation] = map[string]any{"branchProtectionRule": ack}
@@ -194,7 +194,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 			run(false, "export")
 			path := filepath.Join(fixture.work, ".github/settings.yml")
 			data, _ := os.ReadFile(path)
-			for _, want := range []string{"branch_protection_rules:", "id: 7", "branch_name_pattern: Release/**", "require_signed_commits: false", "allow_deletions: false", "lock_branch: false"} {
+			for _, want := range []string{"branch_protection_rules:", "id: 7", "branch_name_pattern: Release/**", "require_signed_commits: false", "allow_deletions: false", "lock_branch: false", "do_not_allow_bypassing_the_above_settings: true"} {
 				if !strings.Contains(string(data), want) {
 					t.Fatal(want, string(data))
 				}
@@ -214,6 +214,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				return
 			}
 			input := "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_signed_commits: true}]}}\n"
+			if mode == "admin" {
+				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', do_not_allow_bypassing_the_above_settings: false}]}}\n"
+			}
 			if mode == "lock" {
 				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', lock_branch: true}]}}\n"
 			}
@@ -270,6 +273,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					t.Fatal(applied.stderr.String(), count)
 				}
 				return
+			}
+			if mode == "admin" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "isAdminEnforced": false}}) {
+				t.Fatal("administrator polarity or omitted control changed", captured)
 			}
 			if mode == "lock" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "lockBranch": true}}) {
 				t.Fatal(captured)

@@ -15,7 +15,7 @@ import (
 
 func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 	id, yes, no := int64(7), true, false
-	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no}
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
 	after := settings.ClassicRule{ID: &id, BranchNamePattern: before.BranchNamePattern, RequireSignedCommits: &yes}
 	plan := func() (app.PlanResult, error) {
 		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before, After: after}}}}, nil
