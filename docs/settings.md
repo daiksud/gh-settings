@@ -81,13 +81,13 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 `apply --prune labels,rulesets` executes them alongside all other declared work.
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
-`agents-variables`, `environment-variables`, `actions-policies`, `environments` and `collaborators`.
-Standalone `all` selects all eight supported scopes; combining it with another
+`agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators` and
+`branch-protection-rules`. Standalone `all` selects all currently supported scopes; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets/Actions Policies, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy entries
+labels/Rulesets/Actions Policies/classic rules, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy/classic rule entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -1368,9 +1368,10 @@ that this is priority order. See GitHub's
 
 Each checkbox is optional. Omission preserves its latest observed value; explicit
 `false` requests false. Null, native GraphQL aliases, admin-enforcement flags and
-unlisted controls are rejected. Omitted collections and `[]` manage no objects.
-Unlisted rules are preserved. This slice adds no prune scope, deletion marker or
-reordering operation; existing prune scopes do not delete classic rules.
+unlisted controls are rejected. Without explicit classic prune, omitted collections
+and `[]` manage no objects, and unlisted rules are preserved.
+[Classic rule pruning](#classic-branch-protection-pruning) adds whole-rule deletion
+through a command option; there is no YAML deletion marker or reordering operation.
 
 Plan compares only the requested pattern and checkboxes. Apply first acquires all
 selected identities and rejects collisions. Each existing rule is read again by
@@ -1415,6 +1416,51 @@ this is not complete classic UI coverage. Queries and mutations use existing
 without granting permissions. The REST concrete-branch endpoint is not used for
 wildcard rules, and its permission table does not prove every GraphQL App grant.
 See the [behavior and verification specification](features/classic-protection.feature.md).
+
+## Classic branch-protection pruning
+
+`--prune branch-protection-rules` and standalone `all` add unlisted whole-rule
+removal when `repository.settings.branch_protection_rules` is present. An omitted
+collection stays unmanaged. `[]` selects all initially acquired rules; a nonempty
+list retains declared numeric IDs and newly created rules. All retained rules must
+be listed. ID-less exact-pattern collisions, missing/foreign IDs and conflicting
+renames fail before any remote write, including unrelated settings or unarchive.
+Ordinary create/update retains its five-control partial ownership.
+
+Deletion removes the entire rule, including configured PR, check, deployment,
+admin and actor protections that gh-settings cannot edit. An overlapping rule may
+then take effect; recreation cannot restore creation-age priority. The plan shows
+this consequence and each complete supported before-policy, without raw private
+companions. It does not delete branches. Inspect the complete plan before apply.
+
+Before any remote write, acquire the complete rule/actor inventory and freeze each
+unlisted candidate's repository ID, numeric ID, opaque node ID, exact pattern,
+five flags and all known raw companions. Missing, denied, partial, unsupported or
+inconsistent evidence blocks the whole preflight. A retained rule's unreadable
+state can also block this complete inventory. Before this family's work, recheck
+the initial candidates: disappearance, replacement or state drift stops execution.
+Newly observed unlisted rules remain untouched, including when the initial
+candidate set was empty. They never expand the frozen selection. Only this
+invocation's confirmed unarchive adjusts the acquired archive state; unrelated
+repository merge-method changes do not constitute deletion-policy drift.
+
+All declared classic creates/updates and required creation-ID writeback precede
+fixed deletions. Immediately before each deletion, independently read its selected
+node and complete actor state and require an exact snapshot match. The official
+[GraphQL deletion contract](https://docs.github.com/en/graphql/reference/branches#deletebranchprotectionrule)
+accepts the acquired opaque ID. Its nullable payload has no deleted-ID echo:
+require an error-free `DeleteBranchProtectionRulePayload` acknowledgment, then an
+independent complete repository inventory proving both old node and numeric ID
+absent. A distinct retained same-pattern rule is allowed. A null node alone is not
+absence confirmation.
+
+Mutation errors, partial GraphQL errors, malformed acknowledgments and incomplete
+or mismatching readback stop later work with uncertain effects and the fixed
+recovery IDs. Earlier confirmed writes remain applied. No retry, rollback,
+recreation or deletion-ID writeback occurs. The final read/delete race remains,
+and future unselected GraphQL fields cannot be detected. Private companion
+snapshots stay out of reports and inherited `GH_DEBUG` logs. No live deletion or
+credential-grant sufficiency was established by the local fixture tests.
 
 ## Environments
 

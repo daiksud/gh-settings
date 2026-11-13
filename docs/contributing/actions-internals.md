@@ -171,11 +171,14 @@ saved apply input.
 
 Classic protection uses a same-version `branch_protection_rules` array with a
 complete supported `before` projection for updates and the original partial
-`after` request. Creates omit `before` and numeric ID. The closed report rejects
+`after` request. Creates omit `before` and numeric ID. Prune deletions require
+complete supported `before` and absent `after`, and show whole-rule removal
+consequences; private raw companions are never serialized. The closed report rejects
 null/unknown/noncanonical members, mismatched IDs, duplicate selection and no-op
 updates; it contains no raw companion or actor snapshots. Declaration order is
-preserved because creation age affects priority. Both renderers show only
-requested values, and status-only Summary suppresses identities and policy.
+preserved because creation age affects priority. Update renderers show only
+requested values; deletions show absence and their whole-object effect. Status-only
+Summary suppresses identities and policy.
 
 ## Collaborator presentation
 

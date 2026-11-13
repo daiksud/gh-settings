@@ -193,7 +193,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Private vulnerability reporting | Metadata read and supported public applicability | Administration write and applicable repository authority |
 | Immutable release policy | Administration read; target GET 404 means disabled under the required-permissions precondition, with owner enforcement unknown | Administration write; fresh owner-enforcement preflight and readback |
 | Pages lifecycle/configuration | Pages read | Pages write plus Administration write and applicable repository authority |
-| Classic branch protection (current source) | Complete GraphQL rule/actor visibility, including raw companions | Authorized GraphQL create/update and independent full readback; exact installation grant sufficiency was not live-tested, and REST grant tables alone do not prove it |
+| Classic branch protection (current source) | Complete GraphQL rule/actor visibility, including raw companions | Authorized GraphQL create/update/delete and independent full readback; exact installation grant sufficiency was not live-tested, and REST grant tables alone do not prove it |
 | Named Environments (unreleased source only) | Actions read, including enabled custom-protection visibility; App additions also need Administration read for available integrations; parent pruning also needs Environments read for variable/secret metadata | Administration write plus complete supported observation/readback and prune absence confirmation |
 | PR sample's candidate file retrieval | Contents read for filtered Git metadata and the exact settings blob | No mutation; not an apply credential |
 
@@ -378,8 +378,8 @@ The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
 do not add this capability to an existing published Action/CLI. Actions Policies
 use `actions-policies`; parent deletion uses `environments`; personal access deletion
-uses `collaborators`. Standalone `all`
-selects all eight supported scopes and cannot be mixed with another token.
+uses `collaborators`; classic rule deletion uses `branch-protection-rules`. Standalone `all` selects every currently supported
+scope and cannot be mixed with another token.
 Environment pruning retains every listed name, including variable-only entries,
 and runs only after retained policy/variable work. Parent deletion removes
 contained configuration/secrets and fails jobs waiting on protection rules; recreation does not
@@ -403,7 +403,12 @@ Classic branch-protection entries use the same
 [partial-ownership contract](settings.md#classic-branch-protection) in CLI and
 Action. Detailed Summary shows requested pattern and checkbox changes; status-only
 hides names and values after validating the same private report. Unowned actor,
-PR/check and deployment snapshots never enter the report. This source addition
+PR/check and deployment snapshots never enter the report. Explicit classic prune
+shows supported before-policy and whole-rule removal consequences, including
+protections outside the five editable controls. Omission remains unmanaged; []
+selects all acquired rules under its scope or standalone `all`. Complete frozen
+candidates, exact drift checks and independent complete absence verification use
+the [same deletion contract](settings.md#classic-branch-protection-pruning). This source addition
 does not change an immutable published Action or CLI, and it adds no live mutation
 to the repository workflows. Classic creation IDs are reported for recovery;
 Actions does not rewrite the configuration file.

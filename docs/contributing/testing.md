@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeOIDCSubject)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -440,6 +440,15 @@ it fails against the unchanged binary because OIDC is not exported. The
 checks actual installer/runtime/report/output behavior and is required by the
 candidate gate. These fixtures issue no real tokens or cloud requests and do not
 prove live permissions or server acceptance of an empty custom key list.
+
+## Classic whole-rule prune verification
+
+Classic whole-rule pruning has model/adapter/application safety checks in the
+`classic_prune_test.go` owner files and actual CLI coverage in
+[`tests/acceptance/classic_prune_test.go`](../../tests/acceptance/classic_prune_test.go).
+The [supplied-product Action case](../../tests/github-actions/classic_prune_acceptance_test.go)
+checks private snapshots, both reporting modes, standalone `all`, repeat no-op
+and unchanged YAML using the candidate artifact. It does not delete live rules.
 
 ## Classic branch-lock verification
 
