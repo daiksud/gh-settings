@@ -103,7 +103,7 @@ func TestEnvironmentRefTypeNormalizationExport(t *testing.T) {
 			got := document["repository"].(map[string]any)["settings"].(map[string]any)["environments"]
 			want := []any{map[string]any{
 				"name":                           "production",
-				"deployment_protection_rules":    map[string]any{"wait_timer": 0, "prevent_self_review": false, "allow_administrators_to_bypass_configured_protection_rules": false, "required_reviewers": []any{}},
+				"deployment_protection_rules":    map[string]any{"custom_rules": []any{}, "wait_timer": 0, "prevent_self_review": false, "allow_administrators_to_bypass_configured_protection_rules": false, "required_reviewers": []any{}},
 				"deployment_branches_and_tags":   "selected_branches_and_tags",
 				"deployment_branch_or_tag_rules": []any{map[string]any{"ref_type": "branch", "name_pattern": "main"}, map[string]any{"ref_type": "tag", "name_pattern": "main"}},
 			}}

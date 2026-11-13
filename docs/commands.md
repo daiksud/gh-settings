@@ -378,3 +378,13 @@ IDs remain in diagnostics after later failure, including stdout failure. A
 reported invitation ID is never the YAML user ID. A saved user ID whose access
 has disappeared fails without reinviting. Resolve ambiguous requests before
 retrying; removing the ID restores initial-add intent and can notify again.
+
+## Environment protection App commands
+
+Current source manages installed Environment protection Apps through
+[`deployment_protection_rules.custom_rules`](settings.md#custom-protection-apps).
+App-only changes skip parent PUT, preserve raw companions and independently verify
+binding operations. Omission preserves the checkbox set; [] disables supported
+bindings without parent pruning. Positive rule IDs in failure diagnostics are
+recovery evidence, never YAML writeback. Required acquisition and uncertain effects
+remain failures; inspect state before retrying.

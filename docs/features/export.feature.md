@@ -290,7 +290,7 @@ Test mapping: [Reader](../../internal/github/ruleset_required_approvals_read_tes
 
 ### Rule: Export normalized Environment modes only after complete acquisition
 
-- A typed equal deployment-policy pair projects No restriction with exact pair provenance; valid null remains exact. Missing/null/wrong-type members, custom protections and failed/incomplete reads never become defaults.
+- A typed equal deployment-policy pair projects No restriction with exact pair provenance; valid null remains exact. Missing/null/wrong-type members, unsupported custom protection shapes and failed/incomplete reads never become defaults.
 - Raw custom true requires all latent pattern pages even under the fallback. Keep latent IDs/values separate from effective policy and exported YAML; acquire known empty lists explicitly.
 - Emit contextual mode warnings in folded-name order after complete collection acquisition. Failed/partial acquisition emits none; a later conversion failure may retain legitimate warnings but preserves the destination.
 - Selected fallback-equal mode intent remains write-required. Omitted mode remains unowned without an unowned warning: existing updates preserve canonical raw companions and reject unreplayable pairs when a policy write is needed; unlisted names stay private.

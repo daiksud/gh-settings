@@ -65,6 +65,7 @@ func verifyEnvironmentUpdateResponse(raw map[string]json.RawMessage, requested s
 
 func environmentBuiltins(policy settings.EnvironmentDeclaration) settings.EnvironmentDeclaration {
 	policy.DeploymentBranchPatterns = nil
+	policy.CustomRules = nil
 	return policy
 }
 
@@ -111,6 +112,19 @@ func verifyPreservedEnvironmentPatterns(before, actual settings.EnvironmentState
 	}
 	if !reflect.DeepEqual(want, got) {
 		return fmt.Errorf("unowned active deployment pattern identities changed")
+	}
+	return nil
+}
+
+// Parent PUTs verify sent built-ins; a skipped PUT preserves exact raw mode
+// evidence instead of turning an unknown mode's UI fallback into desired state.
+func verifyEnvironmentParentCompanions(actual settings.EnvironmentState, before *settings.EnvironmentState, expected settings.EnvironmentDeclaration, wrote bool) error {
+	if wrote || before == nil {
+		return verifyEnvironmentRequestedState(actual, environmentBuiltins(expected))
+	}
+	a, b := environmentBuiltins(actual.Policy), environmentBuiltins(before.Policy)
+	if !reflect.DeepEqual(a, b) || actual.DeploymentModeNormalization != before.DeploymentModeNormalization {
+		return fmt.Errorf("unowned environment built-in companions changed")
 	}
 	return nil
 }

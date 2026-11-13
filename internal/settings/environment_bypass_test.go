@@ -10,7 +10,7 @@ func TestEnvironmentAdminBypassExplicitValuesAndUnownedOmission(t *testing.T) {
 	for _, value := range []bool{false, true} {
 		current := environmentPolicy(t, "production")
 		current.CanAdminsBypass = &value
-		observation, err := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: current}})
+		observation, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: current}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -39,7 +39,7 @@ func TestEnvironmentAdminBypassExplicitValuesAndUnownedOmission(t *testing.T) {
 		if strings.Contains(string(data), "can_admins_bypass") {
 			t.Fatal("omission acquired bypass default", string(data))
 		}
-		if _, err := NewEnvironmentObservation([]EnvironmentState{{ID: 1, Policy: request}}); err == nil {
+		if _, err := NewEnvironmentObservation([]EnvironmentState{{CustomRules: []EnvironmentCustomRule{}, ID: 1, Policy: request}}); err == nil {
 			t.Fatal("missing bypass observation accepted")
 		}
 	}

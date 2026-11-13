@@ -14,7 +14,7 @@ import (
 func exportEnvironmentModeState(t *testing.T, id int64, name string, raw bool) settings.EnvironmentState {
 	t.Helper()
 	zero, off, reviewers := 0, false, []settings.EnvironmentReviewer{}
-	state := settings.EnvironmentState{ID: id, Policy: settings.EnvironmentDeclaration{Name: name, WaitTimer: &zero, PreventSelfReview: &off, CanAdminsBypass: &off, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}, DeploymentModeNormalization: settings.EnvironmentDeploymentNormalization{Path: settings.EnvironmentDeploymentModePath, RawPolicy: settings.EnvironmentBranchPolicy{ProtectedBranches: raw, CustomBranchPolicies: raw}, Fallback: uimodel.NoRestriction}}
+	state := settings.EnvironmentState{CustomRules: []settings.EnvironmentCustomRule{}, ID: id, Policy: settings.EnvironmentDeclaration{Name: name, WaitTimer: &zero, PreventSelfReview: &off, CanAdminsBypass: &off, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}, DeploymentModeNormalization: settings.EnvironmentDeploymentNormalization{Path: settings.EnvironmentDeploymentModePath, RawPolicy: settings.EnvironmentBranchPolicy{ProtectedBranches: raw, CustomBranchPolicies: raw}, Fallback: uimodel.NoRestriction}}
 	if raw {
 		state.Patterns = []settings.EnvironmentPatternState{{ID: 31, Pattern: settings.EnvironmentPattern{Type: "branch", Name: "LATENT_PATTERN"}}}
 	}

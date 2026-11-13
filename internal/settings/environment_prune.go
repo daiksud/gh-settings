@@ -53,7 +53,7 @@ func NewEnvironmentPruneCandidate(repo repository.Repository, target ArchiveStat
 	if err := target.Validate(repo); err != nil {
 		return EnvironmentPruneCandidate{}, err
 	}
-	if !customRulesKnownEmpty || secrets == nil {
+	if !customRulesKnownEmpty || state.CustomRules == nil || len(state.CustomRules) != 0 || secrets == nil {
 		return EnvironmentPruneCandidate{}, fmt.Errorf("Environment deletion requires acquired custom-protection and secret metadata")
 	}
 	observation, err := NewEnvironmentObservation([]EnvironmentState{state})

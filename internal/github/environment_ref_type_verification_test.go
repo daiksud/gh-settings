@@ -33,6 +33,7 @@ func observedEnvironmentRefTypeState(t *testing.T, rawType string, collision boo
 		}
 		state.Policy.DeploymentBranchPatterns = &patterns
 	}
+	state.CustomRules = []settings.EnvironmentCustomRule{}
 	observed, err := settings.NewEnvironmentObservation([]settings.EnvironmentState{state})
 	if err != nil {
 		t.Fatal(err)

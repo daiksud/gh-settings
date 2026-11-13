@@ -14,6 +14,7 @@ func EnvironmentBuiltinsMatchRequest(state EnvironmentState, requested Environme
 	}
 	requested = cloneEnvironment(requested)
 	requested.DeploymentBranchPatterns = nil
+	requested.CustomRules = nil
 	if requested.DeploymentBranchPolicyDeclared && !reflect.DeepEqual(raw, requested.DeploymentBranchPolicy) {
 		return false, nil
 	}

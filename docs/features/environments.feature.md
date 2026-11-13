@@ -4,7 +4,7 @@ title: Named Environment policies and variables
 description: Manage name-selected UI policies, typed patterns and explicit non-sensitive variables with separate ownership.
 ---
 
-Status: implements named policies (#352), custom deployment branch/tag patterns (#353), typed administrator-bypass management, and selected non-sensitive variables. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
+Status: implements named policies (#352), custom deployment branch/tag patterns (#353), typed administrator-bypass management, selected non-sensitive variables, and existing custom protection App selection. Historical [ADR 0029](../adr/0029-environment-ownership-and-protection.md) records an earlier proposal; the current contract is [Environments](../settings.md#environments).
 
 Ordinary `export` now follows the [automatic readable-settings contract](readable-settings-export.feature.md): observe all supported families without selectors, retain unavailable declarations with info, and keep plan/apply strict.
 
@@ -26,7 +26,7 @@ Custom-mode reads require all pages, stable total count, unique positive IDs, ty
 
 Inventory requires explicit total count, complete pages and unambiguous names/IDs. Selected existing names receive individual detail and enabled-custom-protection reads. Unlisted details are not acquired by plan/apply; export explicitly selects every name. Failed/hidden reads never become absent objects. Detail 404 after inventory is a read failure, not create permission.
 
-An explicitly present complete `protection_rules: []` represents no enabled built-in rules. Missing/null containers are errors. Present timer/reviewer rules require their complete typed values, including false/zero/empty. Missing policy is not null. An explicit root `can_admins_bypass` boolean is required for a complete observation; neither an absent nor a null/malformed value implies false or true. Unknown rule kinds/fields, enabled custom deployment rules and other unsupported root settings fail rather than being silently erased. Read-only principal profile metadata is reduced to its typed numeric reference; Environment URLs/timestamps/internal IDs do not enter writable policy.
+An explicitly present complete `protection_rules: []` represents no enabled built-in rules. Missing/null containers are errors. Present timer/reviewer rules require their complete typed values, including false/zero/empty. Missing policy is not null. An explicit root `can_admins_bypass` boolean is required for a complete observation; neither an absent nor a null/malformed value implies false or true. Unknown rule kinds/fields, malformed custom bindings and other unsupported root settings fail rather than being silently erased. Read-only principal profile metadata is reduced to its typed numeric reference; Environment URLs/timestamps/internal IDs do not enter writable policy.
 
 The explicit UI administrator-bypass checkbox translates to native API `can_admins_bypass`, including false. Creation omission sends no field and supplies no true/default value. Existing updates preserve a freshly observed omitted value as a send-time companion. Export and plan carry observed false/true values; apply verifies declared values and sent companions in fresh typed readback. Request spelling is supported by the pinned [go-github implementation](https://github.com/google/go-github/blob/6eccc42c1ea8cd175b190f8e785d1a55656e3c49/github/repos_environments.go), independently of that library's default-inserting marshaler. The client constructs its own typed payload and does not copy arbitrary response fields into a mutation. The REST documentation's incomplete parameter table is not treated as proof of server behavior.
 
@@ -137,3 +137,22 @@ or secret ownership; parent deletion requires the separate `environments` scope.
 A bounded 2026-11-13 API experiment used a new temporary Environment in the dedicated personally owned public test repository, with no workflows, deployments, secrets, variables or custom protections. Disabling Selected mode through either No restriction or Protected branches made pattern listing unavailable; returning to Selected produced a complete empty inventory instead of the two original branch/tag patterns. The temporary Environment was removed only after its identity and empty child inventories were checked, and a complete fresh inventory confirmed the original empty baseline. This establishes observed pattern loss for those transitions, not universal credential behavior or a supported inactive-read contract.
 
 The [mode guard](../../internal/settings/environment_mode_preservation_test.go) rejects omission-based loss before planning an update or preparing its payload. It uses raw acquisition, including normalized modes and colliding ref-type projections; missing acquisition is not empty. [Fresh adapter coverage](../../internal/github/environment_mode_preservation_test.go) proves that a pattern appearing after an earlier empty plan blocks apply. [Built-product coverage](../../tests/acceptance/environment_mode_preservation_test.go) checks CLI/Action plan rejection, no Environment or later write, unchanged YAML, explicit clear-then-switch and repeated no-ops. Existing normalization tests use known-empty collections when exercising mode acknowledgments and readback errors. Reads and writes remain non-atomic; there is no conditional mode-update API or rollback promise.
+
+### Rule: Reconcile installed protection App checkboxes independently
+
+- `deployment_protection_rules.custom_rules` is a sorted set of up to six unique positive App IDs. Omission preserves, [] clears supported bindings, and matching membership skips writes. Binding IDs stay private observation/recovery evidence.
+- Complete enabled acquisition is independent of available Apps. Missing, malformed, duplicate or partial data makes the whole Environment policy family unavailable for export. A provisional built-in decode never fabricates known-empty custom state.
+- For existing parents, acquire all required available-App pages before Environment writes. Parent creation may precede availability; a subsequent failure retains confirmed parent progress.
+- App-only changes make no parent PUT. Parent and pattern mutations preserve exact custom identities. App changes preserve complete raw parent/pattern companions and reject late or recreated bindings.
+- Add before removing; a temporary custom union above six fails before any Environment mutation with explicit staged guidance. Capacity errors never authorize removal, and no built-in counting formula is assumed.
+- POST carries only integration_id; exact201 plus independent individual GET and full-list verification is required. DELETE targets a fixed rule ID; empty204 plus complete absence and retained-binding confirmation is required. Recovery keeps positive acknowledged IDs without YAML writeback, retry or rollback.
+- Parent prune still requires known-empty custom bindings in both adapter and domain constructor, including its final candidate recheck. Existing App support cannot turn unsupported protection into deletion authorization.
+
+Evidence: [model ownership/capacity](../../internal/settings/environment_custom_rules_test.go),
+[complete acquisition, mutation and prune gates](../../internal/github/environment_custom_rules_test.go),
+[application progress](../../internal/app/environment_apps_test.go),
+[codec presence](../../internal/workspace/ui_environment_apps_test.go),
+[built CLI export/lifecycle/privacy](../../tests/acceptance/environment_apps_test.go),
+and [actual supplied-product Action](../../tests/github-actions/environment_apps_acceptance_test.go).
+The available-App object schema and a known-empty read were checked; nonempty
+live behavior, actual grants and combined capacity counting remain unverified.

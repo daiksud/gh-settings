@@ -63,7 +63,7 @@ func TestEnvironmentPruneSnapshotValidationAndOwnership(t *testing.T) {
 	target := ArchiveState{ID: 71, FullName: "owner/current"}
 	timer, flag, reviewers := 0, false, []EnvironmentReviewer{}
 	policy := EnvironmentDeclaration{Name: "old", WaitTimer: &timer, PreventSelfReview: &flag, CanAdminsBypass: &flag, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true}
-	state := EnvironmentState{ID: 9, Policy: policy}
+	state := EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 9, Policy: policy}
 	variables, _ := NewVariableInventory([]RepositoryVariable{{Name: "KEY", Value: ""}})
 	secrets := []EnvironmentSecretMetadata{{Name: "SECRET", CreatedAt: "2026-01-01T00:00:00Z", UpdatedAt: "2026-01-01T00:00:00Z"}}
 	candidate, err := NewEnvironmentPruneCandidate(repo, target, state, variables, secrets, true)
@@ -90,7 +90,7 @@ func TestEnvironmentPruneSnapshotValidationAndOwnership(t *testing.T) {
 		vars    VariableInventory
 		secrets []EnvironmentSecretMetadata
 		custom  bool
-	}{{EnvironmentState{ID: 9, Policy: EnvironmentDeclaration{Name: "old"}}, variables, secrets, true}, {state, VariableInventory{}, secrets, true}, {state, variables, nil, true}, {state, variables, secrets, false}, {state, variables, []EnvironmentSecretMetadata{{Name: "SECRET", CreatedAt: "wrong", UpdatedAt: "wrong"}}, true}} {
+	}{{EnvironmentState{CustomRules: []EnvironmentCustomRule{}, ID: 9, Policy: EnvironmentDeclaration{Name: "old"}}, variables, secrets, true}, {state, VariableInventory{}, secrets, true}, {state, variables, nil, true}, {state, variables, secrets, false}, {state, variables, []EnvironmentSecretMetadata{{Name: "SECRET", CreatedAt: "wrong", UpdatedAt: "wrong"}}, true}} {
 		if _, err := NewEnvironmentPruneCandidate(repo, target, test.state, test.vars, test.secrets, test.custom); err == nil {
 			t.Fatal("incomplete evidence accepted")
 		}

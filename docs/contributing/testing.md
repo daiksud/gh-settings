@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeAIScanRepositories)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -394,6 +394,20 @@ validation before requests, file persistence, export retention and recovery.
 exercise the actual installer and Action plan/apply steps against a local service.
 These are fixture observations, not live invitations, access grants, App
 permission verification or recipient acceptance.
+
+## Environment protection App verification
+
+[Owner fixtures](../../internal/github/environment_custom_rules_test.go) check
+complete enabled and paginated available inventories, strict identities/statuses,
+add-before-remove capacity, omitted companions, independent readback, recovery
+and the retained parent-prune gate. [Built CLI cases](../../tests/acceptance/environment_apps_test.go)
+exercise validation/export, unavailable whole-family retention, debug privacy,
+replacement/no-op lifecycle, omitted bindings and failed-readback recovery.
+[Supplied-product Action checks](../../tests/github-actions/environment_apps_acceptance_test.go)
+run the actual installer and plan/apply steps, including status-only privacy,
+unchanged configuration and success-only outputs. The candidate selector includes
+these cases alongside every earlier product scenario. Fixtures do not establish
+live activation, App grants or combined built-in/custom capacity counting.
 
 ## Repository AI Scan verification
 
