@@ -236,6 +236,16 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
+	if desired.Autolinks != nil && (len(*desired.Autolinks) > 0 || prune.Has("autolinks")) {
+		if unarchived && prune.Has("autolinks") {
+			prepared.autolinks = prepared.autolinks.AfterUnarchive()
+		}
+		wrote, err := applyAutolinks(&result, repo, *desired.Autolinks, write, prune.Has("autolinks"), prepared.autolinks)
+		if err != nil {
+			return result, err
+		}
+		hasWrites = hasWrites || wrote
+	}
 	if desired.BranchProtectionRules != nil && (len(*desired.BranchProtectionRules) > 0 || prune.Has("branch-protection-rules")) {
 		if unarchived {
 			prepared.classicProtection = prepared.classicProtection.AfterUnarchive()
@@ -564,5 +574,5 @@ func labelApplyKind(change settings.LabelChange) ApplyOperationKind {
 func archiveConflictsWithOtherManaged(desired settings.Declaration) bool {
 	other := desired.Repository
 	other.Archived = nil
-	return desired.OIDCSubject != nil || (desired.Collaborators != nil && desired.Collaborators.Len() > 0) || (desired.BranchProtectionRules != nil && len(*desired.BranchProtectionRules) > 0) || desired.PullRequestExemptions != nil || !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) || (desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0) || desired.CopilotReviewEffort != nil || !desired.PullRequestLimits.Empty() || desired.CopilotMCP != nil || desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || (desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
+	return (desired.Autolinks != nil && len(*desired.Autolinks) > 0) || desired.OIDCSubject != nil || (desired.Collaborators != nil && desired.Collaborators.Len() > 0) || (desired.BranchProtectionRules != nil && len(*desired.BranchProtectionRules) > 0) || desired.PullRequestExemptions != nil || !settings.EnvironmentVariablesEmpty(desired.EnvironmentVariables) || (desired.ActionsPolicies != nil && desired.ActionsPolicies.Len() > 0) || desired.CopilotReviewEffort != nil || !desired.PullRequestLimits.Empty() || desired.CopilotMCP != nil || desired.CopilotInstructions != nil || (desired.Variables != nil && desired.Variables.Len() > 0) || (desired.AgentsVariables != nil && desired.AgentsVariables.Len() > 0) || !other.Empty() || desired.Topics.Names != nil || (desired.Labels != nil && desired.Labels.Len() > 0) || (desired.Rulesets != nil && desired.Rulesets.Len() > 0) || (desired.Environments != nil && desired.Environments.Len() > 0) || !desired.Actions.Empty() || !desired.Security.Empty() || !desired.Pages.Empty()
 }

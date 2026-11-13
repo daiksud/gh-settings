@@ -53,3 +53,4 @@ when current behavior changes. Use [testing](../contributing/testing.md) for
 validation boundaries and [ADRs](../adr/README.md) for decision rationale.
 
 - [Classic branch protection](classic-protection.feature.md): exact patterns, independent controls including branch locking, partial preservation and verified identity.
+- [Autolink references](autolinks.feature.md): immutable ID binding, verified creation, explicit pruning and private plans.

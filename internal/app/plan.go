@@ -251,6 +251,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += policies.Managed
 		comparison.ActionsPolicies = policies.ActionsPolicies
 	}
+	if desired.Autolinks != nil && (len(*desired.Autolinks) > 0 || prune.Has("autolinks")) {
+		observed, err := read.Autolinks(repo)
+		var changes []settings.AutolinkChange
+		if err == nil {
+			changes, err = settings.CompareAutolinks(observed, *desired.Autolinks, prune.Has("autolinks"))
+		}
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.AutolinksPath, Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.Autolinks = changes
+	}
 	if desired.BranchProtectionRules != nil && (len(*desired.BranchProtectionRules) > 0 || prune.Has("branch-protection-rules")) {
 		observed, err := read.BranchProtectionRules(repo)
 		if err != nil {

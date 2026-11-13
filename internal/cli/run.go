@@ -103,6 +103,9 @@ func executeCommand(args []string, stdout io.Writer, version string, operations 
 		if err != nil {
 			return err
 		}
+		if err := settings.ValidateAutolinkChanges(result.Comparison.Autolinks); err != nil {
+			return err
+		}
 		if err := settings.ValidateClassicChanges(result.Comparison.BranchProtectionRules); err != nil {
 			return err
 		}
@@ -165,6 +168,8 @@ func createdCollectionPath(collection string) string {
 		return "repository.settings.actions.policies"
 	case "rulesets":
 		return "repository.settings.rulesets"
+	case "autolinks":
+		return settings.AutolinksPath
 	case "branch_protection_rules":
 		return settings.ClassicProtectionPath
 	default:
@@ -212,6 +217,8 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 			path = "repository.settings.actions.policies"
 		case app.RulesetsRead, app.RulesetCreate, app.RulesetUpdate, app.RulesetDelete:
 			path = "repository.settings.rulesets"
+		case app.AutolinksRead, app.AutolinkCreate, app.AutolinkDelete:
+			path = settings.AutolinksPath
 		case app.ClassicProtectionRead, app.ClassicProtectionCreate, app.ClassicProtectionUpdate, app.ClassicProtectionDelete:
 			path = settings.ClassicProtectionPath
 		case app.EnvironmentsRead, app.EnvironmentUpsert, app.EnvironmentDelete:
