@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 )
@@ -199,6 +200,20 @@ func validateRule(r RulesetRule, complete bool) error {
 		}
 		if p.hasPR() || p.hasChecks() || p.CodeScanningTools != nil || p.hasCoverage() {
 			return fmt.Errorf("parameters do not belong to code_quality")
+		}
+	case "code_coverage":
+		if p.hasPR() || p.hasChecks() || p != nil && (p.CodeScanningTools != nil || p.Severity != nil) {
+			return fmt.Errorf("parameters do not belong to code_coverage")
+		}
+		if complete && (p == nil || p.MinimumCoverage == nil || p.MaxCoverageDrop == nil) {
+			return fmt.Errorf("code_coverage requires both acquired thresholds")
+		}
+		if p != nil {
+			for _, threshold := range []*float64{p.MinimumCoverage, p.MaxCoverageDrop} {
+				if threshold != nil && (math.IsNaN(*threshold) || math.IsInf(*threshold, 0) || *threshold < 0 || *threshold > 100) {
+					return fmt.Errorf("code_coverage thresholds must be finite numbers from 0 through 100")
+				}
+			}
 		}
 	default:
 		if p.hasPR() || p.hasChecks() || p.hasAnalysis() {

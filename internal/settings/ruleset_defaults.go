@@ -3,6 +3,14 @@ package settings
 // These are declaration defaults, not inferred server observations. Never call
 // this on an API read: unobserved protection must remain unknown, not false.
 func normalizeRuleObject(rule *RulesetRule) {
+	if rule.Type == "code_coverage" {
+		if rule.Parameters == nil {
+			rule.Parameters = &RuleParameters{}
+		}
+		defaultRuleValue(&rule.Parameters.MinimumCoverage, float64(0))
+		defaultRuleValue(&rule.Parameters.MaxCoverageDrop, float64(0))
+		return
+	}
 	if rule.Type == "update" {
 		if rule.Parameters == nil {
 			rule.Parameters = &RuleParameters{}
