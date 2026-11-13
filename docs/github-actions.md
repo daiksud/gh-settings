@@ -373,3 +373,11 @@ inherited `GH_DEBUG`. Status-only also hides parent names and policy. See the
 [Environment pruning contract](settings.md#environment-pruning) for custom-rule
 blocking, inactive-pattern visibility limits, fresh checks and nontransactional
 failure effects.
+
+## Repository AI Scan
+
+Current source supports the [AI Scan for repositories toggle](settings.md#ai-scan-for-repositories)
+independently of PR scanning in export, plan and apply. Verify the selected
+immutable package supports it. Apply changes configuration and verifies the PR
+companion; it does not request a scan. Detailed reports show the boolean, while
+status-only publication hides it. Actual scan usage and billing remain separate.

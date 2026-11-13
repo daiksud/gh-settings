@@ -14,7 +14,7 @@ func TestSecurityExportFirstExportAndReexportKeepUnknownDistinctFromFalse(t *tes
 		t.Run(map[bool]string{false: "first", true: "existing"}[existing], func(t *testing.T) {
 			old := settings.SecurityDeclaration{}
 			if existing {
-				old = settings.SecurityDeclaration{SecretScanning: appSecurityBool(true), PushProtection: appSecurityBool(true), PrivateVulnerabilityReporting: appSecurityBool(true)}
+				old = settings.SecurityDeclaration{SecretScanning: appSecurityBool(true), PushProtection: appSecurityBool(true), PrivateVulnerabilityReporting: appSecurityBool(true), AIScanRepositories: appSecurityBool(true)}
 			}
 			calls := []string{}
 			infos := []string{}
@@ -48,14 +48,14 @@ func TestSecurityExportFirstExportAndReexportKeepUnknownDistinctFromFalse(t *tes
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(calls, []string{"secret", "dependabot", "codeql", "ai", "private", "immutable"}) || len(infos) != 2 {
+			if !reflect.DeepEqual(calls, []string{"secret", "dependabot", "codeql", "ai", "private", "immutable"}) || len(infos) != 3 {
 				t.Fatal(calls, infos)
 			}
 			if existing {
-				if d.SecretScanning == nil || !*d.SecretScanning || d.PushProtection == nil || !*d.PushProtection || d.PrivateVulnerabilityReporting == nil || !*d.PrivateVulnerabilityReporting {
+				if d.SecretScanning == nil || !*d.SecretScanning || d.PushProtection == nil || !*d.PushProtection || d.PrivateVulnerabilityReporting == nil || !*d.PrivateVulnerabilityReporting || d.AIScanRepositories == nil || !*d.AIScanRepositories {
 					t.Fatal(d)
 				}
-			} else if d.SecretScanning != nil || d.PushProtection != nil || d.PrivateVulnerabilityReporting != nil {
+			} else if d.SecretScanning != nil || d.PushProtection != nil || d.PrivateVulnerabilityReporting != nil || d.AIScanRepositories != nil {
 				t.Fatal(d)
 			}
 			if d.DependabotAlerts == nil || *d.DependabotAlerts || d.DependabotSecurityUpdates == nil || *d.DependabotSecurityUpdates || d.CodeQLDefaultSetup == nil || *d.CodeQLDefaultSetup || d.AIScanPullRequests == nil || *d.AIScanPullRequests || d.ImmutableReleases == nil || !*d.ImmutableReleases {

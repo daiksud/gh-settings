@@ -154,7 +154,7 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if validated.runErr != nil || validated.stdout.Len() != 0 || hasNonInfoDiagnostic(validated.stderr.String()) || fixture.reads.Load() != 33 {
+	if validated.runErr != nil || validated.stdout.Len() != 0 || hasNonInfoDiagnostic(validated.stderr.String()) || fixture.reads.Load() != 34 {
 		t.Fatalf("validate: %v stdout=%q stderr=%q reads=%d", validated.runErr, validated.stdout.String(), validated.stderr.String(), fixture.reads.Load())
 	}
 	planned, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
@@ -162,7 +162,7 @@ func TestExportEditValidatePlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Empty labels need no read; the removed Issue policy is also unmanaged.
-	if planned.runErr != nil || planned.stdout.String() != "repository.settings.general.features.issues: true → false\n" || hasNonInfoDiagnostic(planned.stderr.String()) || fixture.reads.Load() != 38 {
+	if planned.runErr != nil || planned.stdout.String() != "repository.settings.general.features.issues: true → false\n" || hasNonInfoDiagnostic(planned.stderr.String()) || fixture.reads.Load() != 39 {
 		t.Fatalf("plan: %v stdout=%q stderr=%q reads=%d", planned.runErr, planned.stdout.String(), planned.stderr.String(), fixture.reads.Load())
 	}
 	if err := fixture.checkRequests(false); err != nil {
