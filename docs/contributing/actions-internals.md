@@ -168,6 +168,14 @@ escaped and status-only output validates the same report while hiding identities
 and contents. These reports remain presentation data, never authorization or
 saved apply input.
 
+Classic protection uses a same-version `branch_protection_rules` array with a
+complete supported `before` projection for updates and the original partial
+`after` request. Creates omit `before` and numeric ID. The closed report rejects
+null/unknown/noncanonical members, mismatched IDs, duplicate selection and no-op
+updates; it contains no raw companion or actor snapshots. Declaration order is
+preserved because creation age affects priority. Both renderers show only
+requested values, and status-only Summary suppresses identities and policy.
+
 ## Collaborator presentation
 
 The same-version `collaborators` report array contains `username`, user `id`,

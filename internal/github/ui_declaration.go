@@ -31,6 +31,16 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	}
 	result.Labels = labels
 	if repository.Settings != nil {
+		if repository.Settings.BranchProtectionRules != nil {
+			if err := settings.ValidateClassicRules(*repository.Settings.BranchProtectionRules); err != nil {
+				return settings.Declaration{}, err
+			}
+			rules := make([]settings.ClassicRule, 0, len(*repository.Settings.BranchProtectionRules))
+			for _, v := range *repository.Settings.BranchProtectionRules {
+				rules = append(rules, settings.CloneClassicRule(v))
+			}
+			result.BranchProtectionRules = &rules
+		}
 		if repository.Settings.Collaborators != nil {
 			values := make([]settings.CollaboratorDeclaration, 0, len(*repository.Settings.Collaborators))
 			for _, person := range *repository.Settings.Collaborators {

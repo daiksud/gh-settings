@@ -233,7 +233,7 @@ YAML
         grep -Fq 'CANARY-local-export-value' .github/settings.yml
         grep -Fq 'Exported repository' .github/settings.yml
         grep -Fxq 'GET /repos/example-owner/settings-fixture/actions/variables?per_page=30&page=1' "$PLAN_FIXTURE/requests"
-        [[ "$(grep -c '^POST /graphql query$' "$PLAN_FIXTURE/requests")" == 4 ]]
+        [[ "$(grep -c '^POST /graphql query$' "$PLAN_FIXTURE/requests")" == 5 ]]
         # The API server validates every route, query, target and read-only token.
         if grep -Evq '^(GET /repos/example-owner/settings-fixture([/?].*)?|POST /graphql query)$' "$PLAN_FIXTURE/requests"; then exit 1; fi
         if [[ "$2" == repeat ]]; then cmp .github/settings.yml "$PLAN_FIXTURE/export-before"; fi

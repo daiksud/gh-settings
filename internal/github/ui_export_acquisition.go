@@ -1,6 +1,7 @@
 package github
 
 import (
+	"fmt"
 	"github.com/daiksud/gh-settings/internal/settings"
 	"github.com/daiksud/gh-settings/internal/settings/uimodel"
 )
@@ -29,6 +30,18 @@ func CheckExportAcquisition(source settings.Declaration) error {
 	if !source.Pages.Empty() {
 		if _, err := PagesPolicyUI(source.Pages); err != nil {
 			return err
+		}
+	}
+	if source.BranchProtectionRules != nil {
+		for _, r := range *source.BranchProtectionRules {
+			if r.ID == nil {
+				return fmt.Errorf("classic export lacks acquired identity")
+			}
+			for _, v := range settings.ClassicFlags(r) {
+				if v == nil {
+					return fmt.Errorf("classic export lacks acquired control")
+				}
+			}
 		}
 	}
 	if source.Environments != nil {

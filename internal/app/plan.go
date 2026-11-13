@@ -239,6 +239,18 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed += policies.Managed
 		comparison.ActionsPolicies = policies.ActionsPolicies
 	}
+	if desired.BranchProtectionRules != nil && len(*desired.BranchProtectionRules) > 0 {
+		observed, err := read.BranchProtectionRules(repo)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.ClassicProtectionPath, Target: repo, Err: err}
+		}
+		changes, err := settings.CompareClassicRules(observed, *desired.BranchProtectionRules)
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.ClassicProtectionPath, Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.BranchProtectionRules = changes
+	}
 	if desired.Rulesets != nil && (desired.Rulesets.Len() > 0 || prune.Has("rulesets")) {
 		observed, err := read.Rulesets(repo)
 		if err != nil {

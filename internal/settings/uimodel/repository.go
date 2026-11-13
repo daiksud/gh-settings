@@ -13,16 +13,17 @@ type Collaborator struct {
 }
 
 type RepositorySettings struct {
-	Collaborators      *[]Collaborator
-	InteractionLimits  *InteractionLimits
-	Agents             *AgentsSettings
-	Copilot            *CopilotSettings
-	General            *General
-	Rulesets           *[]Ruleset
-	Actions            *ActionsSettings
-	SecurityAndQuality *SecurityAndQuality
-	Pages              *Pages
-	Environments       *[]Environment
+	BranchProtectionRules *[]BranchProtectionRule
+	Collaborators         *[]Collaborator
+	InteractionLimits     *InteractionLimits
+	Agents                *AgentsSettings
+	Copilot               *CopilotSettings
+	General               *General
+	Rulesets              *[]Ruleset
+	Actions               *ActionsSettings
+	SecurityAndQuality    *SecurityAndQuality
+	Pages                 *Pages
+	Environments          *[]Environment
 }
 
 type RepositoryVariable struct {
