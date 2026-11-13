@@ -38,6 +38,9 @@ func run() error {
 	}
 	defer listener.Close()
 	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "token export-fixture-read" && serveExport(w, r, log) {
+			return
+		}
 		authorized := r.Method == http.MethodGet && (r.Header.Get("Authorization") == "token plan-fixture-read" || r.Header.Get("Authorization") == "token apply-fixture-write") ||
 			r.Method == http.MethodPatch && r.Header.Get("Authorization") == "token apply-fixture-write"
 		if !authorized || r.URL.RequestURI() != "/repos/example-owner/settings-fixture" || r.Host != "api.github.com" {

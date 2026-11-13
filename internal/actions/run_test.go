@@ -85,6 +85,18 @@ func TestMetadataOutputFailure(t *testing.T) {
 	}
 }
 
+func TestMetadataAllowsFirstExportWithoutConfiguration(t *testing.T) {
+	metadataCheckout(t)
+	if _, err := os.Stat(".github"); !os.IsNotExist(err) {
+		t.Fatal("fixture must have no configuration directory")
+	}
+	var stdout, stderr bytes.Buffer
+	status := actions.Run([]string{"metadata"}, &stdout, &stderr, "fixture-version", nil)
+	if status != 0 || stderr.Len() != 0 || len(strings.Split(strings.TrimSpace(stdout.String()), "\n")) != 4 || !strings.Contains(stdout.String(), "target=owner/current\n") {
+		t.Fatalf("metadata required configuration contents: status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
+	}
+}
+
 type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("output unavailable") }
