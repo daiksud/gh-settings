@@ -105,7 +105,7 @@ These checks use local API responses and dummy credentials. They verify current-
 
 The Linux-only [`TestMetadataUsesRunningImage`](../../internal/actions/metadata_linux_test.go) launches an owned copy of the test executable and replaces only that child's pathname before requesting metadata. The digest must identify the original running image; the parent test runner is not replaced. Native checks on other platforms cover an unchanged executable path, and cross-compilation alone does not run this Linux regression.
 
-[Plan-report acceptance](../../tests/acceptance/plan_report_test.go) inspects native typed JSON and categorical failures through the real interface. Label operations occupy their own typed report entries and count as one managed collection, independently of the number of operations. [Rulesets acceptance](../../tests/acceptance/rulesets_test.go) verifies the built CLI, report and credential-free Summary expose complete supported ID-selected objects and default-derived changes while leaving unlisted objects untouched. [Rulesets ID acceptance](../../tests/acceptance/ruleset_ids_test.go) covers writeback/repeat apply, opt-out/Actions suppression and partial-creation recovery. [Summary acceptance](../../tests/acceptance/summary_test.go) checks escaped values, separate identity links, append behavior, and zero API requests. Detailed report/state/storage cases, including label reports and the maximum managed count, remain in Actions owner tests. Report/Summary output preserves a failed plan's nonzero status and never becomes apply input.
+[Plan-report acceptance](../../tests/acceptance/plan_report_test.go) inspects native typed JSON and categorical failures through the real interface. Label operations occupy their own typed report entries and count as one managed collection, independently of the number of operations. [Rulesets acceptance](../../tests/acceptance/rulesets_test.go) verifies the built CLI, report and credential-free Summary expose complete supported ID-selected objects and default-derived changes while leaving unlisted objects untouched. [Rulesets ID acceptance](../../tests/acceptance/ruleset_ids_test.go) covers independent create confirmation, writeback/repeat apply, opt-out/Actions suppression and reported-ID recovery without YAML adoption after failed readback. [Basic readback acceptance](../../tests/acceptance/ruleset_readback_test.go) verifies branch/tag updates, empty-rule removal, fresh confirmation before prune, failure stopping and repeat no-op. [Adapter regressions](../../internal/github/ruleset_readback_test.go) cover complete raw policy, identity/ownership, malformed/denied/redirected readback and transport failures; [application cases](../../internal/app/ruleset_ids_test.go) retain uncertain effects and prevent later writes or ID recording. [Summary acceptance](../../tests/acceptance/summary_test.go) checks escaped values, separate identity links, append behavior, and zero API requests. Detailed report/state/storage cases, including label reports and the maximum managed count, remain in Actions owner tests. Report/Summary output preserves a failed plan's nonzero status and never becomes apply input.
 
 ## CI validation
 
@@ -127,6 +127,13 @@ binaries and the public Action through
 [release-acceptance](../../.github/actions/release-acceptance/action.yml).
 Each artifact has a source/version/target/SHA-256 manifest and is retained
 for seven days for use by the manual release workflow.
+
+Main CI concurrency is grouped by source SHA. A later merge therefore keeps
+earlier commits' build and acceptance runs active; only duplicate runs for the
+same SHA share a cancelling group. Implementation can continue while those runs
+execute. Track each merged commit through its own aggregate result, and repair
+failed CI before continuing implementation. Runner availability can still delay
+individual jobs; a queued or cancelled job is not successful verification.
 
 Both main and release build jobs install the pinned `mise.toml` toolchain
 with `mise-action` cache enabled. They use one setup step on Linux and macOS,
