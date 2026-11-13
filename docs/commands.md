@@ -261,7 +261,8 @@ The [public Action](github-actions.md#inputs-outputs-and-failures) separately re
 Use `gh settings plan --prune labels,rulesets` and
 `gh settings apply --prune labels,rulesets`. This adds deletions without limiting
 other declared work. `--no-writeback` may be combined with apply. Current scopes are `labels`, `rulesets`, `actions-policies`,
-`actions-variables`, `agents-variables`, `environment-variables`, `environments` and `collaborators`.
+`actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators` and
+`branch-protection-rules`.
 Standalone `all` selects every supported scope. Mixed `all`, unknown/duplicate
 names, empty elements and repeated flags fail locally. Export and validate reject
 prune. Omitted collections stay unmanaged; explicit [] selects all acquired
@@ -358,8 +359,14 @@ changed declared inputs and independently verifies requested and omitted known
 state. Existing IDs update in place; ID-less exact-pattern collisions fail.
 Confirmed new numeric IDs use guarded writeback unless `--no-writeback` or
 GitHub Actions suppresses it. Capture recovery identities after uncertain effects
-before retrying. Omitted/empty lists and unrelated prune scopes never delete
-classic rules. CLI and Action share these ownership and failure semantics.
+before retrying. Without classic prune, omitted/empty lists select no rules.
+`--prune branch-protection-rules` or standalone `all` makes a present list own
+retention: [] selects all acquired rules, while omission stays unmanaged. Deletion
+removes the whole rule, including unowned protections, and may expose an overlapping
+rule. Fixed complete snapshots precede every remote write; all classic upserts and
+required ID recording precede deletes with fresh identity/state and absence checks.
+See the [pruning contract](settings.md#classic-branch-protection-pruning). CLI and
+Action share these ownership and failure semantics.
 
 ## Personal collaborator commands
 

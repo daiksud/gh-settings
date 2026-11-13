@@ -18,7 +18,7 @@ func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private>/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
 	after := settings.ClassicRule{ID: &id, BranchNamePattern: before.BranchNamePattern, RequireSignedCommits: &yes}
 	plan := func() (app.PlanResult, error) {
-		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before, After: after}}}}, nil
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before, After: &after}}}}, nil
 	}
 	path := filepath.Join(t.TempDir(), "report.json")
 	var out, errout bytes.Buffer
@@ -62,5 +62,37 @@ func TestClassicProtectionReportSummaryAndPrivacy(t *testing.T) {
 	private, _ := os.ReadFile(privatePath)
 	if strings.Contains(string(private), "private") || strings.Contains(string(private), "signed_commits") {
 		t.Fatal(string(private))
+	}
+}
+
+func TestClassicDeletionReportAndClosedSummary(t *testing.T) {
+	id, no := int64(7), false
+	before := settings.ClassicRule{ID: &id, BranchNamePattern: "<private-delete>", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
+	plan := func() (app.PlanResult, error) {
+		return app.PlanResult{Target: repository.Repository{Owner: "owner", Name: "current"}, Comparison: settings.Comparison{Managed: 1, BranchProtectionRules: []settings.ClassicChange{{Before: &before}}}}, nil
+	}
+	path := filepath.Join(t.TempDir(), "report.json")
+	var out, errout bytes.Buffer
+	if status := actions.Run([]string{"plan", path}, &out, &errout, "dev", plan); status != 0 {
+		t.Fatal(status, errout.String())
+	}
+	data, _ := os.ReadFile(path)
+	var report actions.PlanReport
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatal(err)
+	}
+	summary, err := actions.RenderSummary(report, summaryMetadata())
+	if err != nil || strings.Contains(summary, "<private-delete>") || !strings.Contains(summary, "removes the whole rule") || !strings.Contains(summary, "allow_deletions: false") || !strings.Contains(summary, "lock_branch: false") || !strings.Contains(summary, "absent") || strings.Contains(string(data), `"after"`) {
+		t.Fatal(summary, string(data), err)
+	}
+	for _, bad := range []string{strings.Replace(string(data), `"before":`, `"after":null,"before":`, 1), strings.Replace(string(data), `"allow_deletions":false`, `"raw_companion":false`, 1), strings.Replace(string(data), `"allow_deletions":false`, `"allow_deletions":null`, 1)} {
+		var r actions.PlanReport
+		if json.Unmarshal([]byte(bad), &r) == nil {
+			t.Fatal("malformed deletion accepted", bad)
+		}
+	}
+	report.BranchProtectionRules[0].Before.AllowDeletions = nil
+	if _, err := actions.RenderSummary(report, summaryMetadata()); err == nil {
+		t.Fatal("incomplete before accepted")
 	}
 }

@@ -69,7 +69,7 @@ func main() {
 			if record != nil {
 				bind = func(username string, id int64) error { return record("collaborators", username, id) }
 			}
-			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadCollaboratorPrune: readCollaboratorPrune, RefreshCollaboratorPrune: refreshCollaboratorPrune, DeleteCollaborator: deleteCollaborator, ReadAIScanRepositories: readAIScanRepositories, AIScanRepositories: writeAIScanRepositories, ReadBranchProtectionRules: readClassicProtection, BranchProtectionRule: writeClassicProtection, ReadEnvironmentPrune: readEnvironmentPrune, DeleteEnvironment: deleteEnvironment, ReadCollaborators: readCollaborators, ResolveCollaborator: resolveCollaborator, Collaborator: reconcileCollaborator, BindCollaboratorID: bind, ReadVariables: readVariables, ReadAgentVariables: readAgentVariables, ReadEnvironmentVariables: readEnvironmentVariables, DeleteVariable: deleteVariable, DeleteAgentVariable: deleteAgentVariable, DeleteEnvironmentVariable: deleteEnvironmentVariable, ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
+			return app.Apply(func() (settings.Declaration, error) { return desired, nil }, checkout.Repository, app.Writer{ReadCollaboratorPrune: readCollaboratorPrune, RefreshCollaboratorPrune: refreshCollaboratorPrune, DeleteCollaborator: deleteCollaborator, ReadAIScanRepositories: readAIScanRepositories, AIScanRepositories: writeAIScanRepositories, ReadBranchProtectionRules: readClassicProtection, BranchProtectionRule: writeClassicProtection, DeleteBranchProtectionRule: deleteClassicProtection, ReadEnvironmentPrune: readEnvironmentPrune, DeleteEnvironment: deleteEnvironment, ReadCollaborators: readCollaborators, ResolveCollaborator: resolveCollaborator, Collaborator: reconcileCollaborator, BindCollaboratorID: bind, ReadVariables: readVariables, ReadAgentVariables: readAgentVariables, ReadEnvironmentVariables: readEnvironmentVariables, DeleteVariable: deleteVariable, DeleteAgentVariable: deleteAgentVariable, DeleteEnvironmentVariable: deleteEnvironmentVariable, ReadCodeQLConfiguration: readCodeQLConfiguration, CodeQLConfiguration: writeCodeQLConfiguration, ReadDependabot: readDependabot, Dependabot: writeDependabot, ReadEnvironments: readEnvironments, Environment: writeEnvironment, CreatedID: record, ReadPages: func(repo repository.Repository) (settings.PagesObservation, error) {
 				return readPagesForApply(repo, desired.Pages)
 			}, CopilotReviewEffort: updateCopilotReviewEffort, CopilotMCP: updateCopilotMCP, PullRequestLimits: updatePullRequestLimits, PullRequestExemptions: updatePullRequestExemptions, CopilotInstructions: updateCopilotInstructions, Variable: upsertVariable, AgentVariable: upsertAgentVariable, EnvironmentVariable: upsertEnvironmentVariable, Pages: writePages, ReadArchive: readArchiveForApply, Archive: writeArchive, Repository: writeRepository, Topics: writeTopics, ReadLabels: readLabelsForApply, CreateLabel: createLabel, UpdateLabel: updateLabel, DeleteLabel: deleteLabel, ReadRulesets: readRulesets, Ruleset: writeRuleset, ReadActionsPolicies: readActionsPolicies, ActionsEventPolicy: writeActionsEventPolicy, Actions: writeActionsPolicy, WorkflowPermissions: writeWorkflowPermissions, ReadSecretScanning: func(repo repository.Repository) (settings.SecretScanningObservation, error) {
 				return readSecretScanningForApply(repo, desired.Security)
@@ -698,4 +698,12 @@ func writeAIScanRepositories(repo repository.Repository, change settings.Securit
 		return false, err
 	}
 	return client.Update(repo, change)
+}
+
+func deleteClassicProtection(repo repository.Repository, candidate settings.ClassicPruneCandidate) error {
+	client, err := github.NewClassicProtectionClient(repo.Host)
+	if err != nil {
+		return &classicClientPrewriteFailure{err}
+	}
+	return client.Delete(repo, candidate)
 }
