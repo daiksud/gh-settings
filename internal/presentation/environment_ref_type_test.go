@@ -46,7 +46,7 @@ func TestEnvironmentRefTypePresentationShowsRawWarningsAndOneOwnedCollectionDeci
 			warning17 := `Warning: repository.settings.environments.deployment_branch_or_tag_rules.ref_type: observed "" is outside UI choices; using "branch" (projection only). Environment "prod\"<>&", pattern 17 name_pattern "main".`
 			warning32 := `Warning: repository.settings.environments.deployment_branch_or_tag_rules.ref_type: observed "future\n\"" is outside UI choices; using "branch" (projection only). Environment "prod\"<>&", pattern 32 name_pattern "release\"/*".`
 			decision := `repository.settings.environments.deployment_branch_or_tag_rules.ref_type (Environment "prod\"<>&"): normalized pattern observation → request ` + requestJSON + ` (write required; raw identities differ)`
-			if !strings.HasPrefix(got, warning17+"\n"+warning32+"\n"+decision+"\n") || strings.Count(got, "Warning:") != 2 || strings.Count(got, "write required") != 1 || !strings.Contains(got, "effective before policy") || !strings.Contains(got, "omitted fields are API-controlled") || strings.Contains(got, "pattern 33") || strings.Contains(got, "pattern 34") {
+			if !strings.HasPrefix(got, warning17+"\n"+warning32+"\n"+decision+"\n") || strings.Count(got, "Warning:") != 2 || strings.Count(got, "write required") != 1 || !strings.Contains(got, "effective before policy") || !strings.Contains(got, "omitted built-in controls are preserved from fresh state") || strings.Contains(got, "pattern 33") || strings.Contains(got, "pattern 34") {
 				t.Fatal("warning ordering/scope/escaping or collection decision", got)
 			}
 			if strings.Contains(got, "effective deployment pattern list unavailable (normalized ref types collide; acquired raw identities retained)") != collision {

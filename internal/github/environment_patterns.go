@@ -73,50 +73,53 @@ func (c *EnvironmentsClient) readPatterns(repo repository.Repository, name strin
 	}
 }
 
-func (c *EnvironmentsClient) applyPatterns(repo repository.Repository, name string, current []settings.EnvironmentPatternState, desired *[]settings.EnvironmentPattern) error {
+func (c *EnvironmentsClient) applyPatterns(repo repository.Repository, name string, current []settings.EnvironmentPatternState, desired *[]settings.EnvironmentPattern) (bool, error) {
+	attempted := false
 	changes, err := settings.ReconcileEnvironmentPatterns(current, desired)
 	if err != nil {
-		return err
+		return attempted, err
 	}
 	for _, change := range changes {
 		switch change.Operation {
 		case "create":
 			body, err := json.Marshal(change.Pattern)
 			if err != nil {
-				return err
+				return attempted, err
 			}
 			var raw map[string]json.RawMessage
+			attempted = true
 			if err := c.rest.Post(patternPath(repo, name), bytes.NewReader(body), &raw); err != nil {
-				return fmt.Errorf("create %s pattern %q (write may have applied): %w", change.Pattern.Type, change.Pattern.Name, err)
+				return attempted, fmt.Errorf("create %s pattern %q (write may have applied): %w", change.Pattern.Type, change.Pattern.Name, err)
 			}
 			actual, err := decodeEnvironmentPattern(raw)
 			if err != nil {
-				return fmt.Errorf("verify created pattern (write may have applied): %w", err)
+				return attempted, fmt.Errorf("verify created pattern (write may have applied): %w", err)
 			}
 			if actual.Pattern != change.Pattern {
-				return fmt.Errorf("created pattern differs from request (write may have applied)")
+				return attempted, fmt.Errorf("created pattern differs from request (write may have applied)")
 			}
 		case "delete":
 			path := patternPath(repo, name) + "/" + strconv.FormatInt(change.ID, 10)
 			var raw map[string]json.RawMessage
 			if err := c.rest.Get(path, &raw); err != nil {
-				return fmt.Errorf("read pattern before removal: %w", err)
+				return attempted, fmt.Errorf("read pattern before removal: %w", err)
 			}
 			actual, err := decodeObservedEnvironmentPattern(raw)
 			if err != nil {
-				return err
+				return attempted, err
 			}
 			identity, err := actual.RawPattern()
 			if err != nil {
-				return err
+				return attempted, err
 			}
 			if actual.ID != change.ID || identity != change.Pattern {
-				return fmt.Errorf("deployment pattern identity changed before removal")
+				return attempted, fmt.Errorf("deployment pattern identity changed before removal")
 			}
+			attempted = true
 			if err := c.rest.Delete(path, nil); err != nil {
-				return fmt.Errorf("remove pattern %d (write may have applied): %w", change.ID, err)
+				return attempted, fmt.Errorf("remove pattern %d (write may have applied): %w", change.ID, err)
 			}
 		}
 	}
-	return nil
+	return attempted, nil
 }

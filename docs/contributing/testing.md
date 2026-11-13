@@ -275,7 +275,7 @@ Inspect the relevant workflow run for hosted or publication evidence. A successf
 
 ## Prepared Environment UI mapping
 
-[Environment mapping fixtures](../../internal/github/ui_environments_composition_test.go) connect literal UI declarations to complete raw reads, exact name-addressed PUT and separately owned typed pattern CRUD. The [mapping reference](ui-environments-mapping.md) links builtin, principal, finite-choice, acquisition/metadata and API-controlled omission tests. Current UI schema/process tests exercise the mapping while preserving API-controlled omissions and raw private report semantics.
+[Environment mapping fixtures](../../internal/github/ui_environments_composition_test.go) connect literal UI declarations to complete raw reads, exact name-addressed PUT and separately owned typed pattern CRUD. The [mapping reference](ui-environments-mapping.md) links builtin, principal, finite-choice, acquisition/metadata and partial-ownership preservation tests. Current UI schema/process tests exercise the mapping with fresh existing-policy companions, matching no-ops, API-controlled creation omissions and original partial private report semantics.
 
 ## Current UI YAML activation
 

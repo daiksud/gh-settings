@@ -20,6 +20,13 @@ type RepositoryWriteEffectsFailure interface {
 	RepositoryWritesMayHaveApplied()
 }
 
+// EnvironmentWriteEffectsFailure confirms an independently verified policy
+// update before a later pattern or readback failure in the same environment.
+type EnvironmentWriteEffectsFailure interface {
+	error
+	EnvironmentWritesCompleted()
+}
+
 // Reader defers each API client until the operation needs that resource.
 type Reader struct {
 	EnvironmentNames     func(repository.Repository) ([]string, error)

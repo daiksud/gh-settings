@@ -70,7 +70,7 @@ func TestEnvironmentPresentationKeepsOmittedRequestValuesUnknown(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := EnvironmentLine(change)
-	want := `repository.settings.environments: update "production": effective before policy {"deployment_protection_rules":{"wait_timer":0},"name":"production"} → request {"deployment_protection_rules":{"wait_timer":5},"name":"production"} (omitted fields are API-controlled; resulting values are unknown until apply)`
+	want := `repository.settings.environments: update "production": effective before policy {"deployment_protection_rules":{"wait_timer":0},"name":"production"} → request {"deployment_protection_rules":{"wait_timer":5},"name":"production"} (omitted built-in controls are preserved from fresh state)`
 	if got != want {
 		t.Fatalf("got %s; want %s", got, want)
 	}

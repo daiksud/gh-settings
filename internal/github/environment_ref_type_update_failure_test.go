@@ -41,15 +41,9 @@ func TestEnvironmentRefTypeUpdateRequiresCanonicalCreationAcknowledgment(t *test
 					t.Fatal(err)
 				}
 				switch {
-				case req.Method == "PUT" && req.URL.Path == base:
-					want := map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "can_admins_bypass": false, "reviewers": []any{}, "deployment_branch_policy": map[string]any{"protected_branches": false, "custom_branch_policies": true}}
-					if !reflect.DeepEqual(payload, want) || warnings != 1 {
-						t.Fatal("literal PUT or warning", payload, warnings)
-					}
-					history = append(history, "PUT")
-					return actionsResponse(req, 200, `{"id":1,"name":"production","protection_rules":[],"can_admins_bypass":false,"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}`), nil
+
 				case req.Method == "POST" && req.URL.Path == base+"/deployment-branch-policies":
-					if !reflect.DeepEqual(payload, map[string]any{"type": "branch", "name": "main"}) || warnings != 2 {
+					if !reflect.DeepEqual(payload, map[string]any{"type": "branch", "name": "main"}) || warnings != 1 {
 						t.Fatal("literal POST or fresh warning", payload, warnings)
 					}
 					history = append(history, "POST")
@@ -65,7 +59,7 @@ func TestEnvironmentRefTypeUpdateRequiresCanonicalCreationAcknowledgment(t *test
 			desired := settings.EnvironmentDeclaration{Name: "production", WaitTimer: &zero, PreventSelfReview: &off, CanAdminsBypass: &off, Reviewers: &reviewers, DeploymentBranchPolicyDeclared: true, DeploymentBranchPolicy: &settings.EnvironmentBranchPolicy{CustomBranchPolicies: true}, DeploymentBranchPatterns: &patterns}
 			written, err := client.Update(repository.Repository{Owner: "owner", Name: "current"}, desired)
 			var pre interface{ ReadFailedBeforeWrite() }
-			if err == nil || !strings.Contains(err.Error(), "write may have applied") || !strings.Contains(err.Error(), "earlier writes remain applied") || errors.As(err, &pre) || written || !created || !reflect.DeepEqual(history, []string{"PUT", "POST"}) || warnings != 2 {
+			if err == nil || !strings.Contains(err.Error(), "write may have applied") || strings.Contains(err.Error(), "earlier writes remain applied") || errors.As(err, &pre) || written || !created || !reflect.DeepEqual(history, []string{"POST"}) || warnings != 1 {
 				t.Fatal("unconfirmed creation advanced or hid earlier effects", written, created, history, warnings, err)
 			}
 		})

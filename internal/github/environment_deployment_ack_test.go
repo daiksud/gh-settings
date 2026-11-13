@@ -19,8 +19,8 @@ func TestEnvironmentUpdateAcknowledgmentKeepsModeOwnershipSeparateFromPatternAcq
 				if requestedPolicy != nil && requestedPolicy.CustomBranchPolicies || requestedPolicy == nil && !declared {
 					requested.DeploymentBranchPatterns = &patterns
 				}
-				timer := 123
-				requested.WaitTimer = &timer // The acknowledgment still has timer zero: final verification owns value confirmation.
+				timer := 0
+				requested.WaitTimer = &timer // Built-ins are checked here and again by independent acquisition.
 				var raw map[string]json.RawMessage
 				json.Unmarshal([]byte(emptyEnvironmentFixture), &raw)
 				raw["deployment_branch_policy"] = json.RawMessage(rawPolicy)

@@ -308,7 +308,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			}
 			input := intent("omit", false, "")
 			output, diagnostic, status = run("plan")
-			if status != 0 || diagnostic != "" || !strings.Contains(output, "API-controlled") || !strings.Contains(output, "effective before policy") || strings.Contains(output, "Warning:") || strings.Contains(output, "LATENT_PATTERN") || strings.Contains(output, "UNMANAGED") || strings.Contains(output, "protected_branches") || strings.Contains(output, "custom_branch_policies") {
+			if status != 0 || diagnostic != "" || !strings.Contains(output, "No differences") || strings.Contains(output, "Warning:") || strings.Contains(output, "LATENT_PATTERN") || strings.Contains(output, "UNMANAGED") || strings.Contains(output, "protected_branches") || strings.Contains(output, "custom_branch_policies") {
 				t.Fatal("omitted mode plan", status, output, diagnostic)
 			}
 			output, diagnostic, status = run("apply")
@@ -319,10 +319,13 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			input = intent("name_only", false, "")
 			output, diagnostic, status = run("apply")
 			if status != 0 || diagnostic != "" {
-				t.Fatal("API-controlled name-only outcome", status, output, diagnostic)
+				t.Fatal("matching name-only outcome", status, output, diagnostic)
 			}
 			checkSource(input)
 			mu.Lock()
+			if envWrites != 0 {
+				t.Fatal("omitted matching mode or name-only intent wrote", envWrites)
+			}
 			reset()
 			beforeFresh := postDetails
 			mu.Unlock()
@@ -394,7 +397,7 @@ func TestEnvironmentDeploymentNormalizationAcrossExecutableCommands(t *testing.T
 			}
 			input = intent("selected_branches_and_tags", true, "")
 			output, diagnostic, status = run("apply")
-			if status != 1 || strings.Count(diagnostic, warning) != 2 || !strings.Contains(diagnostic, "not in custom mode") {
+			if status != 1 || strings.Count(diagnostic, warning) != 2 || !strings.Contains(diagnostic, "verify environment policy before pattern updates") {
 				t.Fatal("raw custom flag proved active mode", status, output, diagnostic)
 			}
 			checkSource(input)
