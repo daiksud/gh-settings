@@ -1651,6 +1651,11 @@ Environments do not cause drift. Disabling, omission and an empty active set do
 not acquire Environment identities. No-op equality does not establish Environment
 existence or deployment success.
 
+Deployment-reference acquisition failures use bounded request, identity and page
+categories. Upstream GraphQL/HTTP/transport text and response-controlled member
+names are excluded from CLI and Action diagnostics. This leaves pre-write failure
+and post-write uncertainty, earlier progress and stop behavior intact.
+
 Referenced Environments must already exist at the Classic write stage, which
 precedes Environment creation and updates. Create a missing Environment in a
 separate apply. The client does not create, rename or deploy to a reference.
