@@ -10,10 +10,10 @@ const CopilotReviewEffortPath = "repository.settings.copilot.code_review.review_
 
 func ValidateCopilotReviewEffort(value string) error {
 	switch value {
-	case "default", "lite", "balanced":
+	case "default", "lite", "balanced", "max":
 		return nil
 	}
-	return fmt.Errorf("%s must be default, lite or balanced", CopilotReviewEffortPath)
+	return fmt.Errorf("%s must be default, lite, balanced or max", CopilotReviewEffortPath)
 }
 
 // CopilotReviewEffortObservation retains the API's visible configured value,
@@ -27,10 +27,10 @@ type CopilotReviewEffortObservation struct {
 }
 
 func NewCopilotReviewEffortObservation(configured *string, effective string, available []string) (CopilotReviewEffortObservation, error) {
-	if effective != "lite" && effective != "balanced" {
+	if effective != "lite" && effective != "balanced" && effective != "max" {
 		return CopilotReviewEffortObservation{}, fmt.Errorf("unsupported observed effective Copilot review effort %q", effective)
 	}
-	if configured != nil && *configured != "lite" && *configured != "balanced" {
+	if configured != nil && *configured != "lite" && *configured != "balanced" && *configured != "max" {
 		return CopilotReviewEffortObservation{}, fmt.Errorf("unsupported observed configured Copilot review effort %q", *configured)
 	}
 	seen := map[string]bool{}
