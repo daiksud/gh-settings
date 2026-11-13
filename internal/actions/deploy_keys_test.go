@@ -67,3 +67,30 @@ func TestDeployKeyReportValidation(t *testing.T) {
 		t.Fatal("collection uncounted")
 	}
 }
+
+func TestDeployKeyOIDCAndClassicDeletionReportCounts(t *testing.T) {
+	key, err := settings.ParseDeployPublicKey("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB")
+	if err != nil {
+		t.Fatal(err)
+	}
+	display := settings.DeployKeyDisplayFor(settings.DeployKeyDeclaration{Title: "release key", Key: key})
+	id, yes, no := int64(7), true, false
+	classic := settings.ClassicRule{ID: &id, BranchNamePattern: "old/*", RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no, DoNotAllowBypassingTheAboveSettings: &no}
+	claims := []string{"repo", "context"}
+	report := PlanReport{Outcome: "changed", Target: "owner/current", Managed: 3, Changes: []PlanChange{}, DeployKeys: []DeployKeyPlanEntry{{Operation: "create", After: &display}}, OIDCSubject: []PlanChange{{Field: settings.OIDCSubjectPath, Before: settings.OIDCSubjectTemplate{UseDefaultTemplate: &yes}, After: settings.OIDCSubjectTemplate{UseDefaultTemplate: &no, SubjectClaimTemplate: &claims}}}, BranchProtectionRules: []settings.ClassicChange{{Before: &classic}}}
+	data, err := json.Marshal(report)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded PlanReport
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := validatePlanReport(decoded, "owner/current"); err != nil {
+		t.Fatal(err)
+	}
+	decoded.Managed = 2
+	if _, err := validatePlanReport(decoded, "owner/current"); err == nil {
+		t.Fatal("combined scalar and collection count underreported")
+	}
+}

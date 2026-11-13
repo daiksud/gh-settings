@@ -28,7 +28,7 @@ func classicFixturePage(nodes []any, total int, next bool, cursor any) map[strin
 }
 func classicFixtureAck(rule map[string]any) map[string]any {
 	result := map[string]any{}
-	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "repository"} {
+	for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "repository"} {
 		result[key] = rule[key]
 	}
 	return result
@@ -41,13 +41,14 @@ func classicFixtureClone(v map[string]any) map[string]any {
 }
 
 type classicAPIFixture struct {
-	t      *testing.T
-	client *ClassicProtectionClient
-	rules  []map[string]any
-	calls  []string
-	writes []map[string]any
-	hook   func(string, map[string]any, map[string]any)
-	mutate func(map[string]any)
+	t             *testing.T
+	client        *ClassicProtectionClient
+	rules         []map[string]any
+	calls         []string
+	writes        []map[string]any
+	hook          func(string, map[string]any, map[string]any)
+	mutate        func(map[string]any)
+	graphqlErrors []any
 }
 
 func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixture {
@@ -72,6 +73,17 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 			}
 		}
 		switch {
+		case strings.Contains(request.Query, "mutation ClassicProtectionDelete"):
+			phase = "delete"
+			input := request.Variables["input"].(map[string]any)
+			f.writes = append(f.writes, input)
+			for i, rule := range f.rules {
+				if rule["id"] == input["branchProtectionRuleId"] {
+					f.rules = append(f.rules[:i], f.rules[i+1:]...)
+					break
+				}
+			}
+			body["deleteBranchProtectionRule"] = map[string]any{"__typename": "DeleteBranchProtectionRulePayload"}
 		case strings.Contains(request.Query, "mutation ClassicProtectionWrite"):
 			phase = "write"
 			input := request.Variables["input"].(map[string]any)
@@ -145,7 +157,11 @@ func newClassicAPIFixture(t *testing.T, rules ...map[string]any) *classicAPIFixt
 		if f.hook != nil {
 			f.hook(phase, body, request.Variables)
 		}
-		data, _ := json.Marshal(map[string]any{"data": body})
+		envelope := map[string]any{"data": body}
+		if f.graphqlErrors != nil {
+			envelope["errors"] = f.graphqlErrors
+		}
+		data, _ := json.Marshal(envelope)
 		return labelsResponse(req, 200, string(data)), nil
 	})).graphql}
 	return f
@@ -166,9 +182,10 @@ func classicSelect(t *testing.T, f *classicAPIFixture, desired settings.ClassicR
 	return selected[0]
 }
 func TestClassicPartialWritesNoopAndReadback(t *testing.T) {
-	for index, key := range []string{"requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch"} {
+	for index, key := range []string{"requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced"} {
 		t.Run(key, func(t *testing.T) {
 			f := newClassicAPIFixture(t, classicFixtureRule(7, "release/**"))
+			f.rules[0][key] = false
 			id, v := int64(7), true
 			d := settings.ClassicRule{ID: &id, BranchNamePattern: "release/**"}
 			switch index {
@@ -182,6 +199,8 @@ func TestClassicPartialWritesNoopAndReadback(t *testing.T) {
 				d.AllowDeletions = &v
 			case 4:
 				d.LockBranch = &v
+			case 5:
+				d.DoNotAllowBypassingTheAboveSettings = &v
 			}
 			selection := classicSelect(t, f, d)
 			f.calls = nil

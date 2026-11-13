@@ -339,7 +339,7 @@ settings:
 			}
 			mu.Lock()
 			defer mu.Unlock()
-			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
+			if !reflect.DeepEqual(paths, []string{"GET /repos/owner/current", "POST /graphql", "POST /graphql", "POST /graphql", "POST /graphql", "GET /repos/owner/current/topics", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current/labels", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "GET /repos/owner/current", "POST /graphql"}) {
 				t.Fatalf("paths=%v", paths)
 			}
 		})

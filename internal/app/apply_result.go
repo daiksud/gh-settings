@@ -69,6 +69,7 @@ const (
 	VariableUpsert
 	CopilotReviewEffortUpdate
 	CopilotInstructionsUpdate
+	OIDCSubjectUpdate
 	CopilotMCPUpdate
 	PullRequestLimitsUpdate
 	AgentVariableUpsert
@@ -96,6 +97,7 @@ const (
 	DeployKeyDelete
 	ClassicProtectionCreate
 	ClassicProtectionUpdate
+	ClassicProtectionDelete
 )
 
 type ApplyOperationStatus uint8
