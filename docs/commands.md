@@ -347,7 +347,7 @@ Ordinary `export` attempts this supported setting automatically. Complete readab
 ## Classic branch-protection commands
 
 Ordinary `export` attempts the complete classic rule inventory and projects only
-its [four supported controls](settings.md#classic-branch-protection), exact pattern
+its [supported controls](settings.md#classic-branch-protection), exact pattern
 and numeric ID. It does not enumerate existing branches or clone all protection.
 Unavailable acquisition retains valid prior intent with info. `validate` rejects
 unsupported keys and invalid identities before remote work. `plan` shows only

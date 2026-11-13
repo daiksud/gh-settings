@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -425,3 +425,12 @@ maps strict domain/API cases and the built CLI and actual supplied-product Actio
 scenarios. They cover automatic export retention, independent PR status, native
 booleans, narrow PATCH, no-op repeat, target/companion readback failure, unchanged
 checkout and private/success-only publication. No live scan or write is performed.
+
+## Classic branch-lock verification
+
+The supplied CLI lifecycle covers acquired false export, lock changes and repeated
+apply. The supplied-product ClassicLock composite exercises lock/unlock, matching
+no-op, detailed/private plans, exact changed-only GraphQL input, independent
+fork-sync drift failure and success-only outputs. Model and adapter fixtures also
+check omission, complete acquisition and preservation of fork-sync true/false.
+These fixtures do not establish live branch enforcement or API side effects.

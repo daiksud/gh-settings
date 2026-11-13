@@ -1276,7 +1276,7 @@ Unsupported protection is never omitted to produce a usable policy. Acquired Eva
 ## Classic branch protection
 
 `repository.settings.branch_protection_rules` manages exact classic rule patterns
-and four independent controls. It is separate from Rulesets and does not clone
+and five independent controls. It is separate from Rulesets and does not clone
 all branch protection. Current source supports personally owned public repositories;
 GitHub documents public availability, including Free, in its
 [protected branch guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
@@ -1292,6 +1292,7 @@ repository:
         require_signed_commits: true
         require_linear_history: true
         allow_deletions: false
+        lock_branch: false
 ```
 
 `id` is an optional positive numeric GraphQL `databaseId`. Without it an entry is
@@ -1325,7 +1326,14 @@ requires fresh squash or rebase availability, after any earlier repository updat
 it does not implicitly enable a merge method. Creation sends the exact pattern
 and declared checkboxes; other defaults are controlled by GitHub.
 
-Complete known PR, check/App binding, deployment, admin, lock/fork-sync, force-push
+Lock branch makes matching branches read-only. It does not enable fork syncing;
+the acquired fork-sync setting stays unowned and must survive updates unchanged.
+GitHub documents that locked branches cannot be deleted, even when deletion is
+otherwise allowed. This checkbox does not rewrite the separate deletion setting
+or promise that it will take effect while locked. Readback verifies stored
+settings, not an attempted push, deletion or effective enforcement.
+
+Complete known PR, check/App binding, deployment, admin, fork-sync, force-push
 and actor-allowance state is acquired as unowned preservation evidence. Null stays
 distinct from zero or empty; complete disabled-group raw values are not rewritten.
 Missing, malformed, partial, foreign or ambiguous observations fail. All nested
@@ -1341,13 +1349,13 @@ checks, `--no-writeback` and GitHub Actions suppression apply. If confirmation o
 local recording fails, retain the reported numeric or opaque recovery identity
 and inspect the remote rule before retrying; never guess or decode node IDs.
 
-Automatic export projects every readable rule's ID, pattern and these four
+Automatic export projects every readable rule's ID, pattern and these five
 checkboxes. It does not export or adopt the other controls. Unavailable acquisition
 retains compatible prior declarations with bounded info; it never fabricates an
 empty or partial collection. The complete known query follows the inspected
 [GraphQL branch-protection schema](https://docs.github.com/en/graphql/reference/branches).
 GraphQL cannot reveal future unselected schema fields. PR/check/deployment groups,
-admin enforcement, lock/fork-sync and force-push selection remain separate work;
+admin enforcement, fork-sync and force-push selection remain separate work;
 this is not complete classic UI coverage. Queries and mutations use existing
 [GraphQL authentication](https://docs.github.com/en/graphql/guides/forming-calls-with-graphql)
 without granting permissions. The REST concrete-branch endpoint is not used for

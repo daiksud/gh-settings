@@ -10,7 +10,7 @@ func classicModelState(id int64, pattern string) ClassicState {
 	n := 2
 	empty := []string{}
 	checks := []ClassicCheck{}
-	return ClassicState{NodeID: "B" + pattern, RepositoryID: "R", Rule: ClassicRule{ID: &id, BranchNamePattern: pattern, RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no}, Companions: ClassicCompanions{ReviewCount: ClassicNullable[int]{Present: true, Value: &n}, Deployments: ClassicNullable[[]string]{Present: true, Value: &empty}, Contexts: ClassicNullable[[]string]{Present: true, Value: &empty}, Checks: ClassicNullable[[]ClassicCheck]{Present: true, Value: &checks}, PushActors: []ClassicActor{}, ReviewDismissalActors: []ClassicActor{}, ForcePushActors: []ClassicActor{}, PullRequestActors: []ClassicActor{}}}
+	return ClassicState{NodeID: "B" + pattern, RepositoryID: "R", Rule: ClassicRule{ID: &id, BranchNamePattern: pattern, RequireConversationResolutionBeforeMerging: &no, RequireSignedCommits: &no, RequireLinearHistory: &no, AllowDeletions: &no, LockBranch: &no}, Companions: ClassicCompanions{ReviewCount: ClassicNullable[int]{Present: true, Value: &n}, Deployments: ClassicNullable[[]string]{Present: true, Value: &empty}, Contexts: ClassicNullable[[]string]{Present: true, Value: &empty}, Checks: ClassicNullable[[]ClassicCheck]{Present: true, Value: &checks}, PushActors: []ClassicActor{}, ReviewDismissalActors: []ClassicActor{}, ForcePushActors: []ClassicActor{}, PullRequestActors: []ClassicActor{}}}
 }
 func TestClassicSelectionOwnershipCollisionsAndPriority(t *testing.T) {
 	id, missing := int64(7), int64(90)

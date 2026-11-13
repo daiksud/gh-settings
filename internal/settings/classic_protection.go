@@ -28,7 +28,7 @@ type ClassicCheck struct {
 type ClassicActor struct{ Kind, ID string }
 type ClassicCompanions struct {
 	AdminEnforced, AllowsForcePushes, BlocksCreations, DismissesStaleReviews                     bool
-	LockBranch, LockAllowsFetchAndMerge, RequireLastPushApproval                                 bool
+	LockAllowsFetchAndMerge, RequireLastPushApproval                                             bool
 	RequiresApprovingReviews, RequiresCodeOwnerReviews, RequiresDeployments                      bool
 	RequiresStatusChecks, RequiresStrictStatusChecks, RestrictsPushes, RestrictsReviewDismissals bool
 	ReviewCount                                                                                  ClassicNullable[int]
@@ -69,6 +69,7 @@ func CloneClassicRule(r ClassicRule) ClassicRule {
 	r.RequireSignedCommits = cloneClassicValue(r.RequireSignedCommits)
 	r.RequireLinearHistory = cloneClassicValue(r.RequireLinearHistory)
 	r.AllowDeletions = cloneClassicValue(r.AllowDeletions)
+	r.LockBranch = cloneClassicValue(r.LockBranch)
 	return r
 }
 func cloneClassicValue[T any](v *T) *T {
@@ -79,7 +80,7 @@ func cloneClassicValue[T any](v *T) *T {
 	return &c
 }
 func ClassicFlags(r ClassicRule) []*bool {
-	return []*bool{r.RequireConversationResolutionBeforeMerging, r.RequireSignedCommits, r.RequireLinearHistory, r.AllowDeletions}
+	return []*bool{r.RequireConversationResolutionBeforeMerging, r.RequireSignedCommits, r.RequireLinearHistory, r.AllowDeletions, r.LockBranch}
 }
 func ValidateClassicRules(rules []ClassicRule) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
