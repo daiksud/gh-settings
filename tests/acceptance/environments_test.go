@@ -15,7 +15,7 @@ import (
 )
 
 func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.T) {
-	for _, mode := range []string{"create", "update", "actions", "unsupported", "readback", "omitted", "admin-bypass"} {
+	for _, mode := range []string{"create", "update", "actions", "unsupported", "readback", "omitted", "partial", "admin-bypass"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			writes := 0
@@ -68,14 +68,18 @@ func TestEnvironmentBinaryExplicitPolicyAndOmissionsWithoutWriteback(t *testing.
 				if mode == "admin-bypass" {
 					want["can_admins_bypass"] = true
 				}
-				if mode == "omitted" {
-					want = map[string]any{}
+				if mode == "partial" {
+					want["can_admins_bypass"] = true
+					want["wait_timer"] = float64(30)
 				}
 				if !reflect.DeepEqual(payload, want) {
 					t.Error("incomplete/identity-bearing policy", payload)
 				}
-				state["protection_rules"], exists = []any{}, true
-				if mode == "admin-bypass" {
+				if mode != "partial" {
+					state["protection_rules"] = []any{}
+				}
+				exists = true
+				if mode == "admin-bypass" || mode == "partial" {
 					state["can_admins_bypass"] = true
 				}
 				json.NewEncoder(w).Encode(state)
@@ -104,6 +108,9 @@ repository:
 			if mode == "admin-bypass" {
 				input = strings.Replace(input, "allow_administrators_to_bypass_configured_protection_rules: false", "allow_administrators_to_bypass_configured_protection_rules: true", 1)
 			}
+			if mode == "partial" {
+				input = repositoryInput("settings: {environments: [{name: production, deployment_protection_rules: {allow_administrators_to_bypass_configured_protection_rules: true}}]}\n")
+			}
 			if mode == "omitted" {
 				input = repositoryInput("settings: {environments: [{name: production}]}\n")
 			}
@@ -125,9 +132,12 @@ repository:
 			} else {
 				want := "\"wait_timer\":0"
 				if mode == "omitted" {
-					want = "API-controlled"
+					want = "No differences"
 				}
-				if planned.runErr != nil || !strings.Contains(planned.stdout.String(), "settings.environments:") || !strings.Contains(planned.stdout.String(), want) {
+				if mode == "partial" {
+					want = "allow_administrators_to_bypass_configured_protection_rules"
+				}
+				if planned.runErr != nil || (mode != "omitted" && !strings.Contains(planned.stdout.String(), "settings.environments:")) || !strings.Contains(planned.stdout.String(), want) {
 					t.Fatal(planned)
 				}
 			}
@@ -143,7 +153,8 @@ repository:
 					t.Fatal(applied)
 				}
 			} else {
-				if applied.runErr != nil || !strings.Contains(applied.stdout.String(), "Applied repository settings.") || strings.Contains(applied.stdout.String(), "Created") {
+				wantApply := "Applied repository settings."
+				if applied.runErr != nil || !strings.Contains(applied.stdout.String(), wantApply) || strings.Contains(applied.stdout.String(), "Created") {
 					t.Fatal(applied)
 				}
 				again, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"apply"}, false)
@@ -153,7 +164,7 @@ repository:
 				plan, err := executeCLI(acceptanceBinary(t), fixture.work, fixture.root, env, []string{"plan"}, false)
 				want := "No differences"
 				if mode == "omitted" {
-					want = "API-controlled"
+					want = "No differences"
 				}
 				if err != nil || plan.runErr != nil || !strings.Contains(plan.stdout.String(), want) {
 					t.Fatal(plan, err)
@@ -170,7 +181,7 @@ repository:
 				want = 0
 			}
 			if mode == "omitted" {
-				want = 2
+				want = 0
 			}
 			if writes != want {
 				t.Fatal("repeated or unsafe upsert", writes, want)

@@ -35,7 +35,7 @@ func TestEnvironmentDeploymentPresentationMarksEffectiveBeforeAndScopesModeEvide
 				}
 				whole := `repository.settings.environments: update "production": effective before policy ` + environmentPolicy(environmentVisibleBefore(&before, &after)) + ` → request ` + environmentPolicy(&after)
 				if partial {
-					whole += " (omitted fields are API-controlled; resulting values are unknown until apply)"
+					whole += " (omitted built-in controls are preserved from fresh state)"
 				}
 				warning := `Warning: repository.settings.environments.deployment_branches_and_tags: observed {"protected_branches":` + strconv.FormatBool(raw) + `,"custom_branch_policies":` + strconv.FormatBool(raw) + `} is outside UI choices; using "no_restriction" (projection only). Environment "production".`
 				decision := `repository.settings.environments.deployment_branches_and_tags (Environment "production"): "no_restriction" (normalized observation) → "` + string(choice) + `" (write required)`
@@ -43,7 +43,7 @@ func TestEnvironmentDeploymentPresentationMarksEffectiveBeforeAndScopesModeEvide
 				if got := EnvironmentLine(change); got != want || strings.Count(got, "effective before policy") != 1 {
 					t.Fatal(got, want)
 				}
-				if partial || choice != uimodel.NoRestriction {
+				if choice != uimodel.NoRestriction {
 					ordinary, err := settings.NewEnvironmentChange("update", &before, &after)
 					if err != nil || EnvironmentLine(ordinary) != whole {
 						t.Fatal("ordinary effective policy label or request changed", EnvironmentLine(ordinary), err)
@@ -63,7 +63,7 @@ func TestEnvironmentDeploymentPresentationMarksEffectiveBeforeAndScopesModeEvide
 		t.Fatal(err)
 	}
 	got := EnvironmentLine(ordinary)
-	if !strings.Contains(got, "effective before policy") || !strings.Contains(got, "omitted fields are API-controlled") || strings.Contains(got, "Warning:") || strings.Contains(got, "normalized observation") || strings.Contains(got, "protected_branches") || strings.Contains(got, "custom_branch_policies") {
+	if !strings.Contains(got, "effective before policy") || !strings.Contains(got, "omitted built-in controls are preserved from fresh state") || strings.Contains(got, "Warning:") || strings.Contains(got, "normalized observation") || strings.Contains(got, "protected_branches") || strings.Contains(got, "custom_branch_policies") {
 		t.Fatal("omitted mode disclosed or implied raw proof", got)
 	}
 }

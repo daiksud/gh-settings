@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -146,3 +147,55 @@ func TestEnvironmentExportAcquiresAllPolicies(t *testing.T) {
 		}
 	}
 }
+
+type confirmedEnvironmentFailure struct{ error }
+
+func (confirmedEnvironmentFailure) EnvironmentWritesCompleted() {}
+
+func TestEnvironmentFailureReportsOnlyCompletedProgress(t *testing.T) {
+	for _, stage := range []string{"read", "first preflight", "first unknown", "earlier no-op", "earlier success", "verified policy"} {
+		t.Run(stage, func(t *testing.T) {
+			declarations, _ := settings.NewEnvironmentDeclarations([]settings.EnvironmentDeclaration{{Name: "a"}, {Name: "b"}})
+			empty, _ := settings.NewEnvironmentObservation(nil)
+			readFailure := &environmentTestReadFailure{errors.New("cannot read")}
+			result, err := Apply(func() (settings.Declaration, error) { return settings.Declaration{Environments: &declarations}, nil }, func() (repository.Repository, error) { return repository.Repository{}, nil }, Writer{
+				ReadEnvironments: func(repository.Repository, []string) (settings.EnvironmentObservation, error) {
+					if stage == "read" {
+						return settings.EnvironmentObservation{}, readFailure
+					}
+					return empty, nil
+				},
+				Environment: func(_ repository.Repository, p settings.EnvironmentDeclaration) (bool, error) {
+					if p.Name == "a" {
+						switch stage {
+						case "first preflight":
+							return false, readFailure
+						case "first unknown":
+							return false, errors.New("write may have applied")
+						case "verified policy":
+							return false, confirmedEnvironmentFailure{readFailure}
+						case "earlier success":
+							return true, nil
+						default:
+							return false, nil
+						}
+					}
+					return false, readFailure
+				},
+			})
+			partial := stage == "earlier success" || stage == "verified policy"
+			if err == nil || (result.Outcome == ApplyPartialFailure) != partial || strings.Contains(err.Error(), "earlier successful writes remain applied") != partial {
+				t.Fatal(result, err)
+			}
+			for _, operation := range result.Operations {
+				if operation.Status == OperationFailedUnknown && stage != "first unknown" && stage != "verified policy" {
+					t.Fatal("prewrite read failure claimed mutation", result)
+				}
+			}
+		})
+	}
+}
+
+type environmentTestReadFailure struct{ error }
+
+func (*environmentTestReadFailure) ReadFailedBeforeWrite() {}

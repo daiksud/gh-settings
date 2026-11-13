@@ -183,7 +183,7 @@ Test mapping: the [Environment UI codec tests](../../internal/workspace/ui_envir
 - About Topics omission is unmanaged; `topics: []` is an authoritative empty set and `topics: {}` is invalid.
 - Labels and Rulesets select only listed objects; empty root lists select nothing.
 - Ruleset omitted rule groups follow whole-object defaults, not remote retention.
-- Environment omitted built-ins remain API-controlled without invented defaults or numeric-ID writeback.
+- Environment partial intent remains partial without invented defaults or numeric-ID writeback. Existing omission preservation and dependency checks use fresh remote state during plan/apply; creation omissions remain API-controlled.
 - Actions UI policy choices select explicit execution state/policy; omitted policies never enable implicitly.
 - Unknown controls such as organization custom properties and General forking policy fail at their current paths.
 - Current-state prerequisites, entitlement, caps and upper-policy checks belong to observation/apply, not local validation.

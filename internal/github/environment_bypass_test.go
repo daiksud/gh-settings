@@ -53,10 +53,7 @@ func TestEnvironmentAdminBypassPayloadAndReadback(t *testing.T) {
 				writes++
 				var payload map[string]any
 				json.NewDecoder(r.Body).Decode(&payload)
-				want := map[string]any{"can_admins_bypass": wanted}
-				if omitted {
-					want = map[string]any{"wait_timer": float64(0), "prevent_self_review": false, "reviewers": []any{}, "deployment_branch_policy": nil}
-				}
+				want := map[string]any{"can_admins_bypass": wanted, "wait_timer": float64(0), "prevent_self_review": false, "reviewers": []any{}, "deployment_branch_policy": nil}
 				if !reflect.DeepEqual(payload, want) {
 					t.Fatal("bypass default or missing native false", payload, want)
 				}
@@ -79,7 +76,7 @@ func TestEnvironmentAdminBypassPayloadAndReadback(t *testing.T) {
 			if (err != nil) != bad {
 				t.Fatal(writes, err)
 			}
-			beforeWrite := mode == "missing" || mode == "null" || mode == "string"
+			beforeWrite := omitted || mode == "missing" || mode == "null" || mode == "string"
 			if beforeWrite && writes != 0 || !beforeWrite && writes != 1 {
 				t.Fatal("unexpected mutations", writes)
 			}
