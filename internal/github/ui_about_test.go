@@ -83,7 +83,7 @@ func TestUIAboutRejectsInvalidTopics(t *testing.T) {
 
 func TestUIAboutEmptyPayloads(t *testing.T) {
 	calls := 0
-	client := topicsClient(t, func(req *http.Request) (*http.Response, error) {
+	client := writeRepositoryFixtureClient(t, map[string]any{"description": "", "homepage": ""}, func(req *http.Request) (*http.Response, error) {
 		calls++
 		var got map[string]any
 		if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
@@ -110,7 +110,7 @@ func TestUIAboutEmptyPayloads(t *testing.T) {
 		t.Fatal(err)
 	}
 	repo := repository.Repository{Owner: "owner", Name: "current"}
-	if err := client.ApplyRepository(repo, desired.Repository); err != nil {
+	if _, err := client.ApplyRepository(repo, desired.Repository); err != nil {
 		t.Fatal(err)
 	}
 	if err := client.ApplyTopics(repo, desired.Topics); err != nil {

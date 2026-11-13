@@ -72,12 +72,12 @@ func main() {
 	}))
 }
 
-func writeRepository(repo repository.Repository, desired settings.RepositoryDeclaration) error {
+func writeRepository(repo repository.Repository, desired settings.RepositoryDeclaration) (bool, error) {
 	return writeRepositoryWithWriters(repo, desired,
-		func(repo repository.Repository, restDesired settings.RepositoryDeclaration) error {
+		func(repo repository.Repository, restDesired settings.RepositoryDeclaration) (bool, error) {
 			client, err := github.NewWriteClient(repo.Host)
 			if err != nil {
-				return err
+				return false, err
 			}
 			client.CommitMessageNormalizationWarning = warnCommitMessageNormalization
 			return client.ApplyRepository(repo, restDesired)

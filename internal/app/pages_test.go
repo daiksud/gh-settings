@@ -24,7 +24,7 @@ func TestPagesPlanOmissionAndPartialFailures(t *testing.T) {
 			if earlier {
 				d.Repository.Description = &value
 			}
-			r, err := Apply(load, checkoutRepository, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return nil }, ReadPages: func(repository.Repository) (settings.PagesObservation, error) {
+			r, err := Apply(load, checkoutRepository, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return true, nil }, ReadPages: func(repository.Repository) (settings.PagesObservation, error) {
 				if failure == "read" {
 					return settings.PagesObservation{}, errors.New("unavailable")
 				}

@@ -25,8 +25,8 @@ This is optional boolean `repository.settings.general.features.discussions` in t
 
 ### Rule: Verify declared writes without enabling implicitly
 
-- Apply sends only declared repository fields in one PATCH and makes no prerequisite read.
-- For declared `has_discussions`, PATCH must return the requested boolean; an absent, null, wrong-type, or unequal value fails the operation.
+- Apply follows [repository reconciliation](../commands.md#apply-behavior): read fresh state, skip exact matches, PATCH only changed declared controls and independently verify original intent.
+- For `has_discussions` sent in PATCH, the response must return the requested boolean; an absent, null, wrong-type, or unequal value fails the operation.
 - Permission errors remain errors. Verification failure happens after PATCH, can leave earlier repository writes applied, and stops later resources without rollback.
 - Omitting the field retains existing repository PATCH behavior without requiring a Discussions response.
 - The field does not manage discussion categories, individual discussions, access policy, or any prerequisite setting.

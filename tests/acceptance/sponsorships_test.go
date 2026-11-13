@@ -189,13 +189,17 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 		{"ignored mutation", "apply", "features: {sponsorships: true}\n", "did not retain requested hasSponsorshipsEnabled", 2},
 		{"partial mutation", "apply", "features: {sponsorships: true}\n", "sponsorship write denied", 2},
 		{"redirect", "apply", "features: {sponsorships: true}\n", "307", 2},
-		{"earlier REST write", "apply", "features: {issues: false, sponsorships: true}\n", "earlier repository writes remain applied", 3},
+		{"earlier REST write", "apply", "features: {issues: false, sponsorships: true}\n", "earlier repository writes remain applied", 5},
 		{"invalid local", "apply", "features: {sponsorships: 'false'}\n", "must be a boolean", 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string
 			restWritten := false
+			var repositoryState map[string]any
+			if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+				t.Fatal(err)
+			}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -227,13 +231,16 @@ func TestSponsorshipsFailuresPreserveFilesAndStopLaterWrites(t *testing.T) {
 					return
 				}
 				if r.Method == http.MethodGet && r.URL.Path == "/repos/owner/current" {
-					fmt.Fprint(w, planResponse)
+					json.NewEncoder(w).Encode(repositoryState)
 					return
 				}
 				if r.Method == http.MethodPatch && r.URL.Path == "/repos/owner/current" && test.name == "earlier REST write" {
 					var input map[string]any
 					if err := json.NewDecoder(r.Body).Decode(&input); err != nil || !reflect.DeepEqual(input, map[string]any{"has_issues": false}) {
 						t.Error("unexpected REST payload", input, err)
+					}
+					for key, value := range input {
+						repositoryState[key] = value
 					}
 					restWritten = true
 					fmt.Fprint(w, `{}`)

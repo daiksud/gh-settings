@@ -266,17 +266,28 @@ func TestActionsReadFailuresDiscardPlansAndKeepEarlierWrites(t *testing.T) {
 			var mu sync.Mutex
 			writes := 0
 			redirects := 0
+			var repositoryState map[string]any
+			if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+				t.Fatal(err)
+			}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
 				w.Header().Set("Content-Type", "application/json")
 				if r.Method == "PATCH" && r.URL.Path == "/repos/owner/current" {
+					var patch map[string]any
+					if err := json.NewDecoder(r.Body).Decode(&patch); err != nil || !reflect.DeepEqual(patch, map[string]any{"description": "changed"}) {
+						t.Error("unexpected repository payload", patch, err)
+					}
+					for key, value := range patch {
+						repositoryState[key] = value
+					}
 					writes++
 					fmt.Fprint(w, `{}`)
 					return
 				}
 				if r.Method == "GET" && r.URL.Path == "/repos/owner/current" {
-					fmt.Fprint(w, planResponse)
+					json.NewEncoder(w).Encode(repositoryState)
 					return
 				}
 				if r.Method == "GET" && r.URL.Path == "/repos/owner/current/actions/permissions" {
@@ -329,7 +340,7 @@ func TestActionsReadFailuresDiscardPlansAndKeepEarlierWrites(t *testing.T) {
 				t.Fatal(err, r.stderr.String())
 			}
 			mu.Lock()
-			if writes != 1 || redirects != 0 {
+			if writes != 1 || redirects != 0 || repositoryState["description"] != "changed" {
 				t.Fatal(writes, redirects)
 			}
 			mu.Unlock()

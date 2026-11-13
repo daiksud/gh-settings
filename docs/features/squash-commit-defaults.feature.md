@@ -32,7 +32,7 @@ A declared menu converts to both API members together. Omission leaves the menu 
 
 The existing fixed GraphQL query uses only checkout-selected owner/name and complete native observations. Missing/null members, wrong types, transport/HTTP/JSON failures and GraphQL errors including partial data discard the observation. There is no privileged read fallback. After complete typed acquisition, an out-of-UI pair uses the named `default_message` projection and retains both original strings in one provenance record. Export warns for a visible normalized menu and hides a menu behind an observed disabled method without replaying latent values as intent. API-only pairs never become additional UI choices.
 
-Apply selectively reads both members of each declared menu, sends the translated pair in the existing Administration-write repository PATCH, then verifies a fresh raw GraphQL readback. A retained out-of-UI pair fails verification even when its projection equals the declared choice. Preflight failure makes no repository PATCH; later errors report possible retained writes. No companion is borrowed from live state and no enabling checkbox is synthesized. Other undeclared fields are omitted. Existing target, timeout, redirect rejection and nontransactional partial-failure semantics remain.
+Apply selectively reads both members of each declared menu, skips an exact raw match, sends the complete translated pair when either member differs in the existing Administration-write repository PATCH, then verifies a fresh raw GraphQL readback of original intent. A normalized fallback-equal pair still requires a write. A retained out-of-UI pair fails verification even when its projection equals the declared choice. Preflight failure makes no repository PATCH; later errors report possible retained writes. No companion is borrowed from live state and no enabling checkbox is synthesized. Other undeclared fields are omitted. Existing target, timeout, redirect rejection and nontransactional partial-failure semantics remain.
 
 ## Export, ordering and presentation
 
@@ -72,7 +72,7 @@ Visible acquired menu choices export under UI paths after complete merge-group a
 - Then plan emits one warning and one menu decision requiring a write
 - And an omitted menu emits neither warning nor menu decision
 - And export warns for a visible normalized menu and saves only its effective UI choice
-- And apply verifies the declared pair using a fresh raw GET after PATCH
+- And apply verifies the declared pair using a fresh raw GraphQL query after PATCH
 - But a retained unknown pair fails verification even when its fallback equals the desired choice
 
 ## Read-only hosted evidence

@@ -49,7 +49,7 @@ func TestTemplatePATCHDeclaredValuesOnly(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
-			client := writeTestClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+			client := writeRepositoryFixtureClient(t, test.payload, transportFunc(func(r *http.Request) (*http.Response, error) {
 				calls++
 				var payload map[string]any
 				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -60,7 +60,7 @@ func TestTemplatePATCHDeclaredValuesOnly(t *testing.T) {
 				}
 				return labelsResponse(r, test.status, `{}`), nil
 			}))
-			err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
+			_, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
 			if calls != 1 || (err != nil) != (test.status != 200) {
 				t.Fatalf("calls=%d error=%v", calls, err)
 			}

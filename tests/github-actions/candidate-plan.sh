@@ -70,7 +70,7 @@ YAML
     git rev-parse HEAD > "$PLAN_FIXTURE/config-sha"
     sha256sum .github/settings.yml > "$PLAN_FIXTURE/config-checksum"
     : > "$PLAN_FIXTURE/requests"
-    rm -f "$PLAN_FIXTURE/patch.json"
+    rm -f "$PLAN_FIXTURE/patch.json" "$PLAN_FIXTURE/applied.json"
     : > "$PLAN_FIXTURE/summaries-before"
     shopt -s nullglob
     for summary in "${GITHUB_STEP_SUMMARY%/*}"/step_summary_*; do
@@ -110,7 +110,11 @@ YAML
     if [[ "$scenario" == invalid-config || "$scenario" == apply-invalid || "$scenario" == apply-empty ]]; then
       [[ ! -s "$PLAN_FIXTURE/requests" && ! -e "$PLAN_FIXTURE/patch.json" ]]
     elif [[ "$scenario" == apply* ]]; then
-      [[ "$(cat "$PLAN_FIXTURE/requests")" == 'PATCH /repos/example-owner/settings-fixture' ]]
+      expected_requests=$'GET /repos/example-owner/settings-fixture\nPATCH /repos/example-owner/settings-fixture'
+      if [[ "$scenario" == apply ]]; then
+        expected_requests+=$'\nGET /repos/example-owner/settings-fixture'
+      fi
+      [[ "$(cat "$PLAN_FIXTURE/requests")" == "$expected_requests" ]]
       [[ "$(jq -cS . "$PLAN_FIXTURE/patch.json")" == '{"description":"","has_issues":false}' ]]
     else
       [[ "$(cat "$PLAN_FIXTURE/requests")" == 'GET /repos/example-owner/settings-fixture' ]]
@@ -135,7 +139,7 @@ YAML
         printf 'Zero API requests or captured PATCH; unchanged consumer; no new Settings review.\n'
       else
         cat "$PLAN_FIXTURE/requests" "$PLAN_FIXTURE/patch.json"
-        printf '\nExact received PATCH and unchanged consumer verified; no GET or new Settings review.\n'
+        printf '\nExact request sequence, received PATCH and unchanged consumer verified; no new Settings review.\n'
       fi
       if [[ "$2" == apply-write-failure ]]; then
         printf 'A failed PATCH attempt does not establish the remote outcome.\n'

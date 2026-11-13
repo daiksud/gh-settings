@@ -45,7 +45,7 @@ func TestDiscussionsPATCHVerifiesDeclaredValue(t *testing.T) {
 			{body: `{"message":"Resource not accessible"}`, status: 403, failure: "403"},
 		} {
 			calls := 0
-			client := writeTestClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+			client := writeRepositoryFixtureClient(t, map[string]any{"has_discussions": desired}, transportFunc(func(r *http.Request) (*http.Response, error) {
 				calls++
 				var payload map[string]any
 				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -60,7 +60,7 @@ func TestDiscussionsPATCHVerifiesDeclaredValue(t *testing.T) {
 				}
 				return labelsResponse(r, status, test.body), nil
 			}))
-			err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasDiscussions: &desired})
+			_, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, settings.RepositoryDeclaration{HasDiscussions: &desired})
 			matching := test.body == `{"has_discussions":false}` && !desired || test.body == `{"has_discussions":true}` && desired
 			if calls != 1 || matching && err != nil || !matching && err == nil {
 				t.Fatalf("desired=%t response=%s calls=%d err=%v", desired, test.body, calls, err)

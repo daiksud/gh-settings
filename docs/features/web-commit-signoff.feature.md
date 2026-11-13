@@ -14,7 +14,7 @@ supported and implemented in current source. The field is `repository.settings.g
 - The complete repository REST observation requires a non-null boolean, including when another REST field triggered the read. Missing or malformed data fails the read and discards any partial comparison.
 - Export includes the observed boolean after complete base-group acquisition and projection. An unavailable base group follows the [readable-settings contract](readable-settings-export.feature.md); other groups still export. Exported false remains an explicit declaration.
 - Plan is read-only, compares declared values only, and places this field after `has_discussions` and before merge-related fields. This field alone needs no GraphQL request.
-- Apply sends only declared fields through one repository PATCH, with no preliminary GET. An explicit false is sent as native JSON false; omission does not add the key or alter other fields. Existing API errors stop later resources and do not imply rollback.
+- Apply follows [repository reconciliation](../commands.md#apply-behavior): fresh GET, matching-value no-op, changed declared fields in one PATCH and independent readback. An explicit false is sent as native JSON false; omission does not add the key or alter other fields. Existing API errors stop later resources and do not imply rollback.
 - CLI output and rendered Summary use `repository.settings.general.commits.require_contributors_to_sign_off_on_web_based_commits` with native booleans. The serialized private same-version report retains raw internal identifiers and bounds.
 - The setting applies to web-based commit sign-off. It does not require cryptographic signatures, install a DCO check, rewrite commits or change protections.
 

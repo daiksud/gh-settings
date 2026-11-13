@@ -60,7 +60,7 @@ func TestDefaultBranchPATCHScopeAndResponse(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			calls := 0
-			client := writeTestClient(t, transportFunc(func(r *http.Request) (*http.Response, error) {
+			client := writeRepositoryFixtureClient(t, test.payload, transportFunc(func(r *http.Request) (*http.Response, error) {
 				calls++
 				var payload map[string]any
 				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -71,7 +71,7 @@ func TestDefaultBranchPATCHScopeAndResponse(t *testing.T) {
 				}
 				return labelsResponse(r, test.status, test.response), nil
 			}))
-			err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
+			_, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, test.desired)
 			if calls != 1 || test.failure == "" && err != nil || test.failure != "" && (err == nil || !strings.Contains(err.Error(), test.failure)) {
 				t.Fatalf("calls=%d error=%v want %q", calls, err, test.failure)
 			}

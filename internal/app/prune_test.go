@@ -33,9 +33,9 @@ func TestPrunePreflightsAllCandidatesBeforeAnyWrite(t *testing.T) {
 			calls = append(calls, "rulesets")
 			return settings.RulesetObservation{}, errors.New("page 2 denied")
 		},
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 			t.Fatal("write before all candidates validated")
-			return nil
+			return true, nil
 		},
 	}, mustPrune(t, "labels,rulesets"))
 	if err == nil || !strings.Contains(err.Error(), "before any writes") || !reflect.DeepEqual(calls, []string{"labels", "rulesets"}) {

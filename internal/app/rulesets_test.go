@@ -40,9 +40,9 @@ func TestRulesetsAppFreshReadOrderAndFailures(t *testing.T) {
 		target := func() (repository.Repository, error) {
 			return repository.Repository{Owner: "owner", Name: "current"}, nil
 		}
-		result, err := Apply(load, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+		result, err := Apply(load, target, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 			calls = append(calls, "repository")
-			return nil
+			return true, nil
 		}, ReadLabels: func(repository.Repository) (settings.LabelObservation, error) {
 			calls = append(calls, "labels")
 			return settings.NewLabelObservation(nil)
@@ -161,9 +161,9 @@ func TestRulesetExplicitDeletionAppOperationAndPartialFailure(t *testing.T) {
 		result, err := Apply(func() (settings.Declaration, error) { return desired, nil }, func() (repository.Repository, error) {
 			return repository.Repository{Owner: "owner", Name: "current"}, nil
 		}, Writer{
-			Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+			Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 				calls = append(calls, "earlier-write")
-				return nil
+				return true, nil
 			},
 			ReadRulesets: func(repository.Repository) (settings.RulesetObservation, error) {
 				calls = append(calls, "rulesets-read")

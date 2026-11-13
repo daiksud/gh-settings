@@ -32,13 +32,13 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		{name: "missing not false", command: "plan", input: "pull_requests: {allow_merge_commits: false}\n", body: `{"data":{"repository":{"squashMergeAllowed":false,"rebaseMergeAllowed":false,"deleteBranchOnMerge":false,"autoMergeAllowed":false,"allowUpdateBranch":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}}}`, errorText: "missing mergeCommitAllowed", requests: []string{"POST /graphql"}},
 		{name: "partial errors discard earlier REST comparison", command: "plan", input: "features: {issues: false}\npull_requests: {allow_merge_commits: false}\n", body: `{"data":{"repository":{"mergeCommitAllowed":true,"squashMergeAllowed":true,"rebaseMergeAllowed":true,"deleteBranchOnMerge":false,"autoMergeAllowed":false,"allowUpdateBranch":false,"squashMergeCommitTitle":"COMMIT_OR_PR_TITLE","squashMergeCommitMessage":"COMMIT_MESSAGES","mergeCommitTitle":"MERGE_MESSAGE","mergeCommitMessage":"PR_TITLE"}},"errors":[{"message":"fixture permission denied"}]}`, errorText: "fixture permission denied", requests: []string{"GET /repos/owner/current", "POST /graphql"}},
 		{name: "permission failure", command: "plan", input: "pull_requests: {allow_merge_commits: false}\n", body: `{"data":{"repository":null},"errors":[{"message":"Resource not accessible by integration"}]}`, errorText: "Resource not accessible", requests: []string{"POST /graphql"}},
-		{name: "direct false PATCH", command: "apply", input: "pull_requests: {allow_merge_commits: false, allow_squash_merging: true, allow_rebase_merging: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_merge_commit": false, "allow_squash_merge": true, "allow_rebase_merge": false}},
-		{name: "partial PATCH", command: "apply", input: "pull_requests: {allow_rebase_merging: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_rebase_merge": false}},
+		{name: "direct false PATCH", command: "apply", input: "pull_requests: {allow_merge_commits: false, allow_squash_merging: true, allow_rebase_merging: false}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"allow_merge_commit": false, "allow_squash_merge": true, "allow_rebase_merge": false}},
+		{name: "partial PATCH", command: "apply", input: "pull_requests: {allow_rebase_merging: false}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"allow_rebase_merge": false}},
 		{name: "deletion-only plan", command: "plan", input: "pull_requests: {automatically_delete_head_branches: false}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.automatically_delete_head_branches: true → false\n", requests: []string{"POST /graphql"}},
 		{name: "deletion true equality", command: "plan", input: "pull_requests: {automatically_delete_head_branches: true}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "deletion false equality", command: "plan", input: "pull_requests: {automatically_delete_head_branches: false}\n", body: strings.Replace(observedMergeMethods, `"deleteBranchOnMerge":true`, `"deleteBranchOnMerge":false`, 1), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "deletion direct false", command: "apply", input: "pull_requests: {automatically_delete_head_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": false}},
-		{name: "deletion direct true", command: "apply", input: "pull_requests: {automatically_delete_head_branches: true}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"delete_branch_on_merge": true}},
+		{name: "deletion direct false", command: "apply", input: "pull_requests: {automatically_delete_head_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"delete_branch_on_merge": false}},
+		{name: "deletion direct true", command: "apply", input: "pull_requests: {automatically_delete_head_branches: true}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"delete_branch_on_merge": true}},
 		{name: "squash commit details plan", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title_and_commit_details}}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.squash_merge.default_commit_message: \"default_message\" → \"pull_request_title_and_commit_details\"\n", requests: []string{"POST /graphql"}},
 		{name: "squash pair equality", command: "plan", input: "pull_requests: {squash_merge: {default_commit_message: default_message}}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "squash commit details direct", command: "apply", input: "pull_requests: {squash_merge: {default_commit_message: pull_request_title_and_commit_details}}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"squash_merge_commit_title": "PR_TITLE", "squash_merge_commit_message": "COMMIT_MESSAGES"}},
@@ -48,9 +48,9 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		{name: "PR options plan", command: "plan", input: "pull_requests: {always_suggest_updating_pull_request_branches: true, allow_auto_merge: true}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.allow_auto_merge: false → true\nrepository.settings.general.pull_requests.always_suggest_updating_pull_request_branches: false → true\n", requests: []string{"POST /graphql"}},
 		{name: "PR options false equality", command: "plan", input: "pull_requests: {allow_auto_merge: false, always_suggest_updating_pull_request_branches: false}\n", body: observedMergeMethods, want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
 		{name: "PR options true equality", command: "plan", input: "pull_requests: {allow_auto_merge: true, always_suggest_updating_pull_request_branches: true}\n", body: strings.ReplaceAll(strings.ReplaceAll(observedMergeMethods, `"autoMergeAllowed":false`, `"autoMergeAllowed":true`), `"allowUpdateBranch":false`, `"allowUpdateBranch":true`), want: "No differences for managed repository settings.\n", requests: []string{"POST /graphql"}},
-		{name: "PR auto direct false", command: "apply", input: "pull_requests: {allow_auto_merge: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": false}},
-		{name: "PR update direct false", command: "apply", input: "pull_requests: {always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_update_branch": false}},
-		{name: "PR options direct pair", command: "apply", input: "pull_requests: {allow_auto_merge: true, always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"PATCH /repos/owner/current"}, patch: map[string]any{"allow_auto_merge": true, "allow_update_branch": false}},
+		{name: "PR auto direct false", command: "apply", input: "pull_requests: {allow_auto_merge: false}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"allow_auto_merge": false}},
+		{name: "PR update direct false", command: "apply", input: "pull_requests: {always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"allow_update_branch": false}},
+		{name: "PR options direct pair", command: "apply", input: "pull_requests: {allow_auto_merge: true, always_suggest_updating_pull_request_branches: false}\n", want: "Applied repository settings.\n", requests: []string{"POST /graphql", "PATCH /repos/owner/current", "POST /graphql"}, patch: map[string]any{"allow_auto_merge": true, "allow_update_branch": false}},
 		{name: "PR update invalid local", command: "apply", input: "pull_requests: {always_suggest_updating_pull_request_branches: 'false'}\n", errorText: "must be a boolean"},
 		{name: "merge menu plan", command: "plan", input: "pull_requests: {merge_commit: {default_commit_message: pull_request_title}}\n", body: observedMergeMethods, want: "repository.settings.general.pull_requests.merge_commit.default_commit_message: \"default_message\" → \"pull_request_title\"\n", requests: []string{"POST /graphql"}},
 		{name: "disabled merge title rejected by validate", command: "validate", input: "pull_requests: {allow_merge_commits: false, merge_commit: {default_commit_message: pull_request_title}}\n", errorText: "general.pull_requests.merge_commit.default_commit_message requires the merge method to be enabled"},
@@ -65,7 +65,12 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var requests []string
-			messageState := map[string]any{"mergeCommitTitle": "MERGE_MESSAGE", "mergeCommitMessage": "PR_TITLE", "squashMergeCommitTitle": "COMMIT_OR_PR_TITLE", "squashMergeCommitMessage": "COMMIT_MESSAGES"}
+			messageState := map[string]any{"mergeCommitAllowed": true, "squashMergeAllowed": false, "rebaseMergeAllowed": true, "deleteBranchOnMerge": true, "autoMergeAllowed": false, "allowUpdateBranch": false, "mergeCommitTitle": "MERGE_MESSAGE", "mergeCommitMessage": "PR_TITLE", "squashMergeCommitTitle": "COMMIT_OR_PR_TITLE", "squashMergeCommitMessage": "COMMIT_MESSAGES"}
+			for native, graphql := range map[string]string{"allow_merge_commit": "mergeCommitAllowed", "allow_squash_merge": "squashMergeAllowed", "allow_rebase_merge": "rebaseMergeAllowed", "delete_branch_on_merge": "deleteBranchOnMerge", "allow_auto_merge": "autoMergeAllowed", "allow_update_branch": "allowUpdateBranch"} {
+				if desired, ok := test.patch[native].(bool); ok {
+					messageState[graphql] = !desired
+				}
+			}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -77,7 +82,7 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 				case serveSponsorshipsFixtureRead(w, r):
 				case isMergeMethodsFixtureRead(r):
 					fmt.Fprint(w, test.body)
-				case isCommitMessageFixtureRead(r):
+				case isRepositoryPatchFixtureRead(r):
 					_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"repository": messageState}})
 				case r.Method == "GET" && r.URL.Path == "/repos/owner/current":
 					fmt.Fprint(w, planResponse)
@@ -92,6 +97,7 @@ func TestMergeMethodsPlanAndDirectApplyAcceptance(t *testing.T) {
 						return
 					}
 					for _, field := range []struct{ native, graphql string }{
+						{"allow_merge_commit", "mergeCommitAllowed"}, {"allow_squash_merge", "squashMergeAllowed"}, {"allow_rebase_merge", "rebaseMergeAllowed"}, {"delete_branch_on_merge", "deleteBranchOnMerge"}, {"allow_auto_merge", "autoMergeAllowed"}, {"allow_update_branch", "allowUpdateBranch"},
 						{"merge_commit_title", "mergeCommitTitle"}, {"merge_commit_message", "mergeCommitMessage"},
 						{"squash_merge_commit_title", "squashMergeCommitTitle"}, {"squash_merge_commit_message", "squashMergeCommitMessage"},
 					} {

@@ -63,7 +63,7 @@ func applyRepositoryFailure(t *testing.T, earlier, prewrite, completedREST bool)
 			return settings.ArchiveState{ID: 1, FullName: repo.Owner + "/" + repo.Name, Archived: true}, nil
 		},
 		Archive:    func(repository.Repository, settings.ArchiveState, bool) error { return nil },
-		Repository: func(repository.Repository, settings.RepositoryDeclaration) error { return failure },
+		Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) { return false, failure },
 	})
 }
 

@@ -206,13 +206,17 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 		{"mutation ignored", "apply", "features: {pull_requests: false}\n", "did not retain", 2},
 		{"mutation partial errors", "apply", "features: {pull_requests: false}\n", "writes may already have applied", 2},
 		{"mutation redirect", "apply", "features: {pull_requests: false}\n", "307", 2},
-		{"REST then lookup denied", "apply", "features: {issues: false, pull_requests: false}\n", "earlier repository writes remain applied", 2},
-		{"REST then mutation denied", "apply", "features: {issues: false, pull_requests: false}\n", "earlier repository writes remain applied", 3},
+		{"REST then lookup denied", "apply", "features: {issues: false, pull_requests: false}\n", "earlier repository writes remain applied", 4},
+		{"REST then mutation denied", "apply", "features: {issues: false, pull_requests: false}\n", "earlier repository writes remain applied", 5},
 		{"invalid local enum", "apply", "features: {pull_request_permissions: {creation_allowed_by: unknown}}\n", `unsupported general.features.pull_request_permissions.creation_allowed_by "unknown"`, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var mu sync.Mutex
 			var methods []string
+			var repositoryState map[string]any
+			if err := json.Unmarshal([]byte(planResponse), &repositoryState); err != nil {
+				t.Fatal(err)
+			}
 			fixture, err := startHTTPFixture(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -244,7 +248,7 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 					return
 				}
 				if r.Method == "GET" && r.URL.Path == "/repos/owner/current" {
-					fmt.Fprint(w, planResponse)
+					json.NewEncoder(w).Encode(repositoryState)
 					return
 				}
 				if r.Method == "PATCH" && r.URL.Path == "/repos/owner/current" {
@@ -252,6 +256,9 @@ func TestPRAccessFailuresStopWritesAndPreserveFiles(t *testing.T) {
 					json.NewDecoder(r.Body).Decode(&patch)
 					if !reflect.DeepEqual(patch, map[string]any{"has_issues": false}) {
 						t.Error("excess REST fields", patch)
+					}
+					for key, value := range patch {
+						repositoryState[key] = value
 					}
 					fmt.Fprint(w, `{}`)
 					return

@@ -75,9 +75,9 @@ func TestActionsEventPoliciesApplyPreflightAndOrdering(t *testing.T) {
 			yes := true
 			desired.Repository.HasIssues = &yes
 			var calls []string
-			r, e := Apply(func() (settings.Declaration, error) { return desired, nil }, checkoutRepository, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) error {
+			r, e := Apply(func() (settings.Declaration, error) { return desired, nil }, checkoutRepository, Writer{Repository: func(repository.Repository, settings.RepositoryDeclaration) (bool, error) {
 				calls = append(calls, "repository")
-				return nil
+				return true, nil
 			}, ReadActionsPolicies: func(repository.Repository) (settings.ActionsPolicyObservation, error) {
 				calls = append(calls, "read")
 				if fail == "read" {

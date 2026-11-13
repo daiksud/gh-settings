@@ -46,9 +46,9 @@ All reads and serialization finish before opening the destination.
 - The adapter retains the existing gh host/authentication, Unix-socket fixture support and 30-second read timeout through the already-used go-gh dependency. There is no caller-supplied query, target or mutation path.
 - Missing/null repository or fields, wrong scalar types, HTTP/transport/JSON failure, or any GraphQL errors fail the whole read. Partial data with errors is discarded. Neither plan nor export synthesizes false or falls back to a privileged REST read. Plan fails; export handles the complete merge group independently under the [readable-settings contract](readable-settings-export.feature.md).
 
-### Rule: Keep repository apply direct
+### Rule: Reconcile declared repository controls
 
-Apply uses the existing `PATCH /repos/{owner}/{repo}` and [Administration write permission](https://docs.github.com/en/rest/repos/repos#update-a-repository). It sends only declared base/merge-method fields, together in one payload, preserving explicit false. It does not perform GraphQL, read current merge settings, or consume a saved plan.
+Apply uses the existing `PATCH /repos/{owner}/{repo}` and [Administration write permission](https://docs.github.com/en/rest/repos/repos#update-a-repository). It follows [repository reconciliation](../commands.md#apply-behavior): fresh complete base/selected merge observations, no PATCH for exact matches, changed declared controls in one payload and independent readback of original intent. Explicit false remains managed. It never consumes a saved plan.
 
 Existing target resolution, write timeout, redirect rejection, failure propagation and partial-failure behavior remain unchanged. This feature does not change root managed configuration, live merge policy, App grants, PR token permissions, consumer pins, or release selection. GitHub may reject combinations that pass local boolean validation; no additional merge policy is inferred locally.
 
@@ -61,9 +61,9 @@ CLI and detailed Summary use UI paths and boolean values. The same-version priva
 | Presence, base/merge read selection, stable typed comparison | [Settings tests](../../internal/settings/merge_methods_test.go) |
 | Strict booleans, null rejection, omission, aliases/merges, round trips | [Workspace tests](../../internal/workspace/ui_general_test.go) |
 | Fixed GraphQL query/target, complete booleans, errors/partial data, exact PATCH | [GitHub adapter tests](../../internal/github/merge_methods_test.go) |
-| Conditional reads, direct apply, failed comparison and compatible export retention | [Application tests](../../internal/app/merge_methods_test.go) |
+| Conditional reads, reconciled apply, failed comparison and compatible export retention | [Application tests](../../internal/app/merge_methods_test.go) |
 | Native booleans, report validation and Summary rendering | [Actions tests](../../internal/actions/merge_methods_test.go) |
-| Built executable: read order, no extra read for apply, representative local validation, permission/incomplete/partial-error read failures, compatible export retention, report and credential-free Summary | [Process acceptance](../../tests/acceptance/merge_methods_test.go) |
+| Built executable: read order, selected apply preflight/readback, representative local validation, permission/incomplete/partial-error read failures, compatible export retention, report and credential-free Summary | [Process acceptance](../../tests/acceptance/merge_methods_test.go) |
 
 Input validation matrices stay at their owning layers. `TestUIConfigGeneralRejectsUnknownAndWrongTypes` in the workspace tests rejects null and wrong-typed values for all six merge-related booleans, including the former process cases `deletion invalid local` and `PR auto invalid local`. The process cases `invalid local` (plan with null) and `PR update invalid local` (apply with a quoted boolean) retain representative checks for nonzero exit status, diagnostics, zero API requests, and unchanged input bytes. The same process assertions cover the current squash-menu choice and disabled-method failures described in the [squash test mapping](squash-commit-defaults.feature.md#test-mapping).
 

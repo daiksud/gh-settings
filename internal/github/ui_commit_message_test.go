@@ -45,15 +45,7 @@ func TestUICommitMessageMenus(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			client := writeTestClient(t, func(req *http.Request) (*http.Response, error) {
-				if req.Method == "POST" && req.URL.Path == "/graphql" {
-					titleField, messageField := "mergeCommitTitle", "mergeCommitMessage"
-					if test.method == "squash" {
-						titleField, messageField = "squashMergeCommitTitle", "squashMergeCommitMessage"
-					}
-					body, _ := json.Marshal(map[string]any{"data": map[string]any{"repository": map[string]any{titleField: test.title, messageField: test.message}}})
-					return labelsResponse(req, 200, string(body)), nil
-				}
+			client := writeRepositoryFixtureClient(t, want, func(req *http.Request) (*http.Response, error) {
 				var got map[string]any
 				if err := json.NewDecoder(req.Body).Decode(&got); err != nil {
 					t.Fatal(err)
@@ -63,7 +55,7 @@ func TestUICommitMessageMenus(t *testing.T) {
 				}
 				return labelsResponse(req, 200, `{}`), nil
 			})
-			if err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil {
+			if _, err := client.ApplyRepository(repository.Repository{Owner: "owner", Name: "current"}, desired); err != nil {
 				t.Fatal(err)
 			}
 		})

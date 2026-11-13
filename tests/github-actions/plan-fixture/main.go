@@ -38,7 +38,7 @@ func run() error {
 	}
 	defer listener.Close()
 	server := &http.Server{ReadHeaderTimeout: 5 * time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authorized := r.Method == http.MethodGet && r.Header.Get("Authorization") == "token plan-fixture-read" ||
+		authorized := r.Method == http.MethodGet && (r.Header.Get("Authorization") == "token plan-fixture-read" || r.Header.Get("Authorization") == "token apply-fixture-write") ||
 			r.Method == http.MethodPatch && r.Header.Get("Authorization") == "token apply-fixture-write"
 		if !authorized || r.URL.RequestURI() != "/repos/example-owner/settings-fixture" || r.Host != "api.github.com" {
 			fmt.Fprintln(log, "unexpected request")
@@ -69,6 +69,10 @@ func run() error {
 				fmt.Fprintln(w, `{"message":"fixture write denied"}`)
 				return
 			}
+			if err := os.WriteFile(filepath.Join(root, "applied.json"), body, 0600); err != nil {
+				http.Error(w, "cannot save fixture state", http.StatusInternalServerError)
+				return
+			}
 			fmt.Fprintln(w, `{}`)
 			return
 		}
@@ -77,7 +81,21 @@ func run() error {
 			fmt.Fprintln(w, `{"message":"fixture read denied"}`)
 			return
 		}
-		fmt.Fprintln(w, `{"default_branch":"main","description":"before <b>bold</b>\nline","homepage":"","has_issues":true,"has_projects":true,"has_wiki":true,"has_discussions":false,"web_commit_signoff_required":false,"is_template":false}`)
+		state := map[string]any{"default_branch": "main", "description": "before <b>bold</b>\nline", "homepage": "", "has_issues": true, "has_projects": true, "has_wiki": true, "has_discussions": false, "web_commit_signoff_required": false, "is_template": false}
+		if body, err := os.ReadFile(filepath.Join(root, "applied.json")); err == nil {
+			var applied map[string]any
+			if err := json.Unmarshal(body, &applied); err != nil {
+				http.Error(w, "invalid fixture state", http.StatusInternalServerError)
+				return
+			}
+			for key, value := range applied {
+				state[key] = value
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			http.Error(w, "cannot read fixture state", http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(state)
 	})}
 	stopped := make(chan os.Signal, 1)
 	signal.Notify(stopped, os.Interrupt, syscall.SIGTERM)
