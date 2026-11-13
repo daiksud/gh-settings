@@ -44,6 +44,9 @@ func CheckExportAcquisition(source settings.Declaration) error {
 			if !settings.ClassicReviewsManaged(r.RequireAPullRequestBeforeMerging) {
 				return fmt.Errorf("classic export lacks acquired PR policy")
 			}
+			if !settings.ClassicDeploymentsSelected(r.RequireDeploymentsToSucceedBeforeMerging) {
+				return fmt.Errorf("classic export lacks acquired deployment control")
+			}
 			if r.ID == nil {
 				return fmt.Errorf("classic export lacks acquired identity")
 			}

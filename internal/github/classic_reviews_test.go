@@ -191,3 +191,76 @@ func TestClassicReviewDisableRepeatsGuardOnFreshState(t *testing.T) {
 		}
 	}
 }
+
+func TestClassicReviewsAndDeploymentsReconcileIndependently(t *testing.T) {
+	for _, mode := range []string{"both-selected", "both-disabled", "reviews-selected-deployment-drift", "deployments-selected-review-drift"} {
+		t.Run(mode, func(t *testing.T) {
+			f := newClassicAPIFixture(t, classicFixtureRule(7, "main"))
+			id := int64(7)
+			d := settings.ClassicRule{
+				ID: &id, BranchNamePattern: "main",
+				RequireAPullRequestBeforeMerging:         apiReviews(true, 0, false),
+				RequireDeploymentsToSucceedBeforeMerging: deploymentGroup(true, "staging"),
+			}
+			want := map[string]any{
+				"branchProtectionRuleId": "B_7", "requiredApprovingReviewCount": float64(0),
+				"dismissesStaleReviews": false, "requiresCodeOwnerReviews": false, "requireLastPushApproval": false,
+				"requiredDeploymentEnvironments": []any{"staging"},
+			}
+			switch mode {
+			case "both-disabled":
+				d.RequireAPullRequestBeforeMerging = apiReviews(false, 0, false)
+				d.RequireDeploymentsToSucceedBeforeMerging = deploymentGroup(false)
+				want = map[string]any{"branchProtectionRuleId": "B_7", "requiresApprovingReviews": false, "requiresDeployments": false}
+				f.mutate = func(rule map[string]any) {
+					rule["requiredApprovingReviewCount"], rule["requiredDeploymentEnvironments"] = nil, nil
+					rule["dismissesStaleReviews"], rule["requiresCodeOwnerReviews"], rule["requireLastPushApproval"] = false, false, false
+				}
+			case "reviews-selected-deployment-drift":
+				d.RequireDeploymentsToSucceedBeforeMerging = nil
+				delete(want, "requiredDeploymentEnvironments")
+			case "deployments-selected-review-drift":
+				d.RequireAPullRequestBeforeMerging = nil
+				want = map[string]any{"branchProtectionRuleId": "B_7", "requiredDeploymentEnvironments": []any{"staging"}}
+			}
+			selection := classicSelect(t, f, d)
+			f.calls = nil
+			f.hook = func(phase string, body map[string]any, _ map[string]any) {
+				if phase != "node" || len(f.writes) == 0 {
+					return
+				}
+				node := body["node"].(map[string]any)
+				if mode == "reviews-selected-deployment-drift" {
+					node["requiredDeploymentEnvironments"] = []string{"staging"}
+				}
+				if mode == "deployments-selected-review-drift" {
+					node["requiredApprovingReviewCount"] = 3
+				}
+			}
+			result, err := f.client.Apply(classicRepo(), selection)
+			if (err != nil) != strings.Contains(mode, "drift") || !result.Wrote {
+				t.Fatal(result, err)
+			}
+			if len(f.writes) != 1 || !reflect.DeepEqual(f.writes[0], want) {
+				t.Fatal("unexpected combined payload", f.writes, want)
+			}
+			if strings.Contains(mode, "drift") {
+				var pre *classicPreWriteFailure
+				if errors.As(err, &pre) {
+					t.Fatal("post-write preservation failure marked pre-write", err)
+				}
+				return
+			}
+			f.calls = nil
+			result, err = f.client.Apply(classicRepo(), selection)
+			if err != nil || result.Wrote || len(f.writes) != 1 {
+				t.Fatal("matching repeated apply wrote", result, err, f.writes)
+			}
+			for _, call := range f.calls {
+				if call == "environments" {
+					t.Fatal("matching repeated apply fetched Environment references", f.calls)
+				}
+			}
+		})
+	}
+}

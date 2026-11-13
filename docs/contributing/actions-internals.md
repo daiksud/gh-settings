@@ -172,8 +172,8 @@ saved apply input.
 Classic protection uses a same-version `branch_protection_rules` array with a
 complete supported `before` projection for updates and the original partial
 `after` request. Creates omit `before` and numeric ID. Prune deletions require
-complete supported `before` and absent `after`, including active PR-review policy,
-and show whole-rule removal
+complete supported `before` and absent `after`, including active PR-review and
+deployment groups, and show whole-rule removal
 consequences; private raw companions are never serialized. The closed report rejects
 null/unknown/noncanonical members, mismatched IDs, duplicate selection and no-op
 updates; it contains no raw companion or actor snapshots. Declaration order is

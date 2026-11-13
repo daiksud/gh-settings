@@ -48,7 +48,7 @@ func processClassicClone(v map[string]any) map[string]any {
 	return result
 }
 func TestClassicProtectionExecutableLifecycle(t *testing.T) {
-	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard"} {
+	for _, mode := range []string{"update", "create-order", "create-no-writeback", "actions-create", "create-partial-ack-error", "unavailable-export", "companion-drift", "lock", "admin", "deployments", "reviews-zero", "reviews-count", "reviews-disable", "reviews-guard"} {
 		t.Run(mode, func(t *testing.T) {
 			var mu sync.Mutex
 			rules := []map[string]any{processClassicRule(7, "Release/**")}
@@ -76,7 +76,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					w.WriteHeader(400)
 					return
 				}
-				if !strings.Contains(request.Query, "ClassicProtection") {
+				if !strings.Contains(request.Query, "ClassicProtection") && !strings.Contains(request.Query, "ClassicDeploymentEnvironments") {
 					w.WriteHeader(403)
 					fmt.Fprint(w, `{}`)
 					return
@@ -95,6 +95,13 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					}
 				}
 				switch {
+				case strings.Contains(request.Query, "ClassicDeploymentEnvironments"):
+					if mode != "deployments" {
+						t.Error("unexpected reference acquisition")
+					}
+					target := processClassicTarget()
+					target["environments"] = processClassicPage([]any{map[string]any{"id": "E_production", "databaseId": nil, "name": "production"}})
+					body["repository"] = target
 				case strings.Contains(request.Query, "ClassicProtectionInventory"):
 					if denied {
 						w.WriteHeader(403)
@@ -158,7 +165,7 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 						}
 					}
 					ack := map[string]any{}
-					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "repository"} {
+					for _, key := range []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "repository"} {
 						ack[key] = rule[key]
 					}
 					body[mutation] = map[string]any{"branchProtectionRule": ack}
@@ -226,6 +233,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 					group = "{enabled: true, require_approvals: true, required_number_of_approvals_before_merging: 6, dismiss_stale_pull_request_approvals_when_new_commits_are_pushed: true, require_review_from_code_owners: true, require_approval_of_the_most_recent_reviewable_push: true}"
 				}
 				input = fmt.Sprintf("version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_a_pull_request_before_merging: %s}]}}\n", group)
+			}
+			if mode == "deployments" {
+				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', require_deployments_to_succeed_before_merging: {enabled: true, environments: [production]}}]}}\n"
 			}
 			if mode == "admin" {
 				input = "version: daiksud/gh-settings@v0\nrepository: {settings: {branch_protection_rules: [{id: 7, branch_name_pattern: 'Release/**', do_not_allow_bypassing_the_above_settings: false}]}}\n"
@@ -314,6 +324,9 @@ func TestClassicProtectionExecutableLifecycle(t *testing.T) {
 				if !reflect.DeepEqual(captured, []map[string]any{want}) {
 					t.Fatal(captured, want)
 				}
+			}
+			if mode == "deployments" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "requiresDeployments": true, "requiredDeploymentEnvironments": []any{"production"}}}) {
+				t.Fatal(captured)
 			}
 			if mode == "admin" && !reflect.DeepEqual(captured, []map[string]any{{"branchProtectionRuleId": "B_7", "isAdminEnforced": false}}) {
 				t.Fatal("administrator polarity or omitted control changed", captured)

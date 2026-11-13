@@ -282,7 +282,12 @@ actual-write outcomes, failure stopping and guarded ID recording. PR-review poli
 keeps a complete active projection alongside all five exact raw fields. Activation
 sends all five inputs; matching active policy is a no-op. Plan and fresh apply
 reject deactivation with unowned dismissal/bypass dependencies, while preserving
-actors through allowed count-zero transitions. Classic prune
+actors through allowed count-zero transitions. Required deployments keep the
+complete raw snapshot separate from the active projection;
+needed writes with selected active references bind paginated Environment node
+identities before mutation and verify them after rule readback. Matching rules
+skip that prerequisite. Global Environment prune rejects contradictory selected
+references before any write without silently retaining deletion candidates. Classic prune
 adds private deep-copied full snapshots before any remote write, fixed candidate
 rechecks, create/update/writeback-before-delete ordering, exact GraphQL deletion
 acknowledgment and independent complete identity-absence readback. Shared scope

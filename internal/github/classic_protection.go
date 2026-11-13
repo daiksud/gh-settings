@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -15,8 +16,8 @@ import (
 )
 
 const classicTargetFields = `id nameWithOwner isArchived isPrivate owner { __typename } squashMergeAllowed rebaseMergeAllowed`
-const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch isAdminEnforced requiresApprovingReviews requiredApprovingReviewCount dismissesStaleReviews requiresCodeOwnerReviews requireLastPushApproval`
-const classicCompanionFields = `allowsForcePushes blocksCreations lockAllowsFetchAndMerge requiresDeployments requiresStatusChecks requiresStrictStatusChecks restrictsPushes restrictsReviewDismissals requiredDeploymentEnvironments requiredStatusCheckContexts requiredStatusChecks { context app { id } }`
+const classicOwnedFields = `id databaseId pattern requiresConversationResolution requiresCommitSignatures requiresLinearHistory allowsDeletions lockBranch isAdminEnforced requiresApprovingReviews requiredApprovingReviewCount dismissesStaleReviews requiresCodeOwnerReviews requireLastPushApproval requiresDeployments requiredDeploymentEnvironments`
+const classicCompanionFields = `allowsForcePushes blocksCreations lockAllowsFetchAndMerge requiresStatusChecks requiresStrictStatusChecks restrictsPushes restrictsReviewDismissals requiredStatusCheckContexts requiredStatusChecks { context app { id } }`
 const classicRuleFields = classicOwnedFields + ` ` + classicCompanionFields + ` repository { ` + classicTargetFields + ` }`
 const classicInventoryQuery = `query ClassicProtectionInventory($owner: String!, $name: String!, $cursor: String) { repository(owner:$owner,name:$name,followRenames:false) { ` + classicTargetFields + ` branchProtectionRules(first:100,after:$cursor) { totalCount pageInfo { hasNextPage endCursor } nodes { ` + classicRuleFields + ` } } } }`
 const classicNodeQuery = `query ClassicProtectionRule($id:ID!) { node(id:$id) { __typename ... on BranchProtectionRule { ` + classicRuleFields + ` } } }`
@@ -112,8 +113,8 @@ func decodeClassicTarget(raw json.RawMessage, repo repository.Repository) (class
 	return t, err
 }
 
-var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "repository"}
-var classicCompanionKeys = []string{"allowsForcePushes", "blocksCreations", "lockAllowsFetchAndMerge", "requiresDeployments", "requiresStatusChecks", "requiresStrictStatusChecks", "restrictsPushes", "restrictsReviewDismissals", "requiredDeploymentEnvironments", "requiredStatusCheckContexts", "requiredStatusChecks"}
+var classicOwnedKeys = []string{"id", "databaseId", "pattern", "requiresConversationResolution", "requiresCommitSignatures", "requiresLinearHistory", "allowsDeletions", "lockBranch", "isAdminEnforced", "requiresApprovingReviews", "requiredApprovingReviewCount", "dismissesStaleReviews", "requiresCodeOwnerReviews", "requireLastPushApproval", "requiresDeployments", "requiredDeploymentEnvironments", "repository"}
+var classicCompanionKeys = []string{"allowsForcePushes", "blocksCreations", "lockAllowsFetchAndMerge", "requiresStatusChecks", "requiresStrictStatusChecks", "restrictsPushes", "restrictsReviewDismissals", "requiredStatusCheckContexts", "requiredStatusChecks"}
 
 func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete bool) (settings.ClassicState, classicTarget, error) {
 	var s settings.ClassicState
@@ -167,22 +168,30 @@ func decodeClassicRule(raw json.RawMessage, repo repository.Repository, complete
 	if err != nil {
 		return s, target, err
 	}
+	c.RequiresDeployments, err = classicBool(m, "requiresDeployments")
+	if err != nil {
+		return s, target, err
+	}
+	c.Deployments, err = classicStringList(m["requiredDeploymentEnvironments"])
+	if err != nil {
+		return s, target, err
+	}
+	s.Rule.RequireDeploymentsToSucceedBeforeMerging, err = settings.ClassicDeploymentProjection(c.RequiresDeployments, c.Deployments)
+	if err != nil {
+		return s, target, err
+	}
 	if err := settings.ValidateClassicRules([]settings.ClassicRule{s.Rule}); err != nil {
 		return s, target, err
 	}
 	if !complete {
 		return s, target, nil
 	}
-	for k, dest := range map[string]*bool{"allowsForcePushes": &c.AllowsForcePushes, "blocksCreations": &c.BlocksCreations, "lockAllowsFetchAndMerge": &c.LockAllowsFetchAndMerge, "requiresDeployments": &c.RequiresDeployments, "requiresStatusChecks": &c.RequiresStatusChecks, "requiresStrictStatusChecks": &c.RequiresStrictStatusChecks, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
+	for k, dest := range map[string]*bool{"allowsForcePushes": &c.AllowsForcePushes, "blocksCreations": &c.BlocksCreations, "lockAllowsFetchAndMerge": &c.LockAllowsFetchAndMerge, "requiresStatusChecks": &c.RequiresStatusChecks, "requiresStrictStatusChecks": &c.RequiresStrictStatusChecks, "restrictsPushes": &c.RestrictsPushes, "restrictsReviewDismissals": &c.RestrictsReviewDismissals} {
 		v, e := classicBool(m, k)
 		if e != nil {
 			return s, target, e
 		}
 		*dest = v
-	}
-	c.Deployments, err = classicStringList(m["requiredDeploymentEnvironments"])
-	if err != nil {
-		return s, target, err
 	}
 	c.Contexts, err = classicStringList(m["requiredStatusCheckContexts"])
 	if err != nil {
@@ -568,6 +577,15 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 	if desired.RequireLinearHistory != nil && *desired.RequireLinearHistory && (before == nil || !*before.Rule.RequireLinearHistory) && !target.squash && !target.rebase {
 		return pre(fmt.Errorf("linear history requires squash or rebase merging"))
 	}
+	var references map[string]string
+	group := desired.RequireDeploymentsToSucceedBeforeMerging
+	if settings.ClassicDeploymentsSelected(group) && *group.Enabled && len(*group.Environments) > 0 {
+		var err error
+		references, err = c.classicDeploymentReferences(repo, target, *group.Environments)
+		if err != nil {
+			return pre(err)
+		}
+	}
 	input := map[string]any{}
 	mutation, kind := "createBranchProtectionRule", "CreateBranchProtectionRuleInput"
 	if before == nil {
@@ -592,6 +610,14 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 		}
 	}
 	classicReviewInputs(input, before, desired.RequireAPullRequestBeforeMerging)
+	if settings.ClassicDeploymentsSelected(group) {
+		if before == nil || *group.Enabled != before.Companions.RequiresDeployments {
+			input["requiresDeployments"] = *group.Enabled
+		}
+		if *group.Enabled && (before == nil || !classicEnvironmentSetsEqual(*group.Environments, before.Companions.Deployments.Value)) {
+			input["requiredDeploymentEnvironments"] = *group.Environments
+		}
+	}
 	query := `mutation ClassicProtectionWrite($input:` + kind + `!){` + mutation + `(input:$input){branchProtectionRule{` + classicOwnedFields + ` repository{` + classicTargetFields + `}}}}`
 	var response json.RawMessage
 	mutationErr := c.graphql.Do(query, map[string]any{"input": input}, &response)
@@ -640,6 +666,15 @@ func (c *ClassicProtectionClient) Apply(repo repository.Repository, selection se
 	if before != nil {
 		if err := settings.VerifyClassicPreservation(*before, actual, desired); err != nil {
 			return result, err
+		}
+	}
+	if references != nil {
+		fresh, err := c.classicDeploymentReferences(repo, target, *group.Environments)
+		if err != nil {
+			return result, fmt.Errorf("verify classic deployment references (effects may have applied): %w", err)
+		}
+		if !reflect.DeepEqual(references, fresh) {
+			return result, fmt.Errorf("classic deployment references changed after mutation (effects may have applied)")
 		}
 	}
 	return result, nil

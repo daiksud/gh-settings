@@ -11,4 +11,11 @@ type BranchProtectionRule struct {
 	DoNotAllowBypassingTheAboveSettings        *bool                      `json:"do_not_allow_bypassing_the_above_settings,omitempty"`
 	LockBranch                                 *bool                      `json:"lock_branch,omitempty"`
 	AllowDeletions                             *bool                      `json:"allow_deletions,omitempty"`
+	RequireDeploymentsToSucceedBeforeMerging   *ClassicDeployments        `json:"require_deployments_to_succeed_before_merging,omitempty"`
+}
+
+// ClassicDeployments is a complete active configuration, independent of latent names.
+type ClassicDeployments struct {
+	Enabled      *bool     `json:"enabled,omitempty"`
+	Environments *[]string `json:"environments,omitempty"`
 }

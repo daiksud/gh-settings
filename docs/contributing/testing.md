@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicReviews)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeClassicReviews)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -474,6 +474,21 @@ Fixture results do not prove live administrator access or branch enforcement.
 
 The [behavior specification](../features/autolinks.feature.md) maps model, adapter, app, codec and report ownership. The literal codec baseline fails before support. Supplied CLI checks exercise export/validate/plan/create/ID-recording/prune/repeat, immutable failures, retained unavailable export, own unarchive and host Action-environment isolation. `TestBuiltCompositeAutolinks` uses the actual supplied binary and public composite for export, private/detailed plans, matching/no-op, create/prune, empty/all, unchanged YAML and failed-readback output suppression. All use local transports; no live reference or external destination is changed or fetched.
 
+## Classic required-deployment verification
+
+The literal codec regression fails on the unchanged source. Owning model and
+adapter tests distinguish active empty/null/missing states, exact-name sets and
+raw inactive preservation. They verify nullable numeric Environment IDs, complete
+pagination, changed-only inputs, no-op without Environment access, reference drift,
+partial creation recovery and other companion preservation. App cases prove that
+Environment-prune conflicts fail before unrelated writes or unarchive.
+
+The supplied CLI lifecycle checks export, plan, update and repeat no-op.
+`TestBuiltCompositeClassicDeployments` runs the real public Action through enabled,
+disabled, empty and matching configurations, private plans and post-write reference
+replacement. It checks unchanged checkout and success-only outputs. These isolated
+fixtures do not establish live deployment execution or effective branch protection.
+
 ## Classic PR-review verification
 
 The literal YAML regression fails on unchanged source. Model and adapter fixtures
@@ -484,6 +499,9 @@ exact; selecting disabled mode permits hidden-child reset. Plan and fresh checks
 reject dependent bypass/dismissal protection on deactivation, while disabled no-op
 and count-zero preserve those unowned identities. Independent readback, incomplete
 acknowledgment and partial creation recovery retain existing failure boundaries.
+Combined review/deployment cases verify simultaneous edits and deactivation,
+matching repeats without Environment reads, and rejection of collateral drift in
+either omitted group after a write.
 
 The supplied CLI exercises export, validation, plan, count-zero/update/disable and
 matching repeats. `TestBuiltCompositeClassicReviews` uses the actual public Action

@@ -3,10 +3,10 @@
 The [configuration contract](../settings.md#classic-branch-protection) owns public
 fields, pattern semantics, identity, preservation, creation defaults and recovery.
 Ordinary reconciliation manages conversation resolution, signed commits, linear
-history, branch locking, administrator enforcement, PR-review requirements and the
-Allow deletions checkbox, separately from Rulesets. Explicit
+history, branch locking, administrator enforcement, PR-review requirements, required
+deployment environments and the Allow deletions checkbox, separately from Rulesets. Explicit
 [classic prune](prune.feature.md#classic-branch-protection-deletion) additionally
-removes whole unlisted rules. Check/deployment editing, fork-sync and force-push
+removes whole unlisted rules. Check editing, fork-sync and force-push
 actor editing remain separate work.
 
 ## Behavioral boundaries
@@ -41,6 +41,20 @@ actor editing remain separate work.
   omission preserving the acquired value. Both creation and update verify the
   requested value independently; incomplete acknowledgment or collateral changes
   remain failures. No bypass actors or unrelated protections are implicitly edited.
+- Required deployments form a complete active group: omission/{} is unmanaged,
+  disabled forbids a list and enabled requires an explicit exact-name set. Empty
+  selection is permitted locally based on the unsaved UI, without a server or
+  enforcement guarantee. Export sorts active names and hides inactive storage.
+- A matching rule skips Environment reads. A needed write with selected nonempty
+  active references binds a complete identity-only inventory, permits nullable
+  numeric IDs and verifies selected node IDs after independent rule readback.
+  Missing references stop before mutation; post-write replacement is uncertain.
+- Unselected raw deployment flag, nullness, order and inactive names are preserved.
+  Selecting disabled mode owns the flag without promising inactive storage. Other
+  raw companions remain protected; Classic prune retains all raw deployment data.
+- An enabled reference to a fixed Environment deletion candidate fails global
+  preflight before unrelated writes or unarchive. References do not silently retain
+  Environments. Classic still precedes Environment creation; no reference is created.
 
 - PR reviews form a complete active group. Omission/{} remains unmanaged; disabled
   forbids children; enabled requires approval choice and all review checkboxes.
@@ -56,16 +70,19 @@ actor editing remain separate work.
 ## Verification mapping
 
 - Literal YAML booleans, omission, null/type/alias rejection and exact patterns:
-  `internal/workspace/ui_classic_protection_test.go` and `ui_classic_lock_test.go` and `ui_classic_admin_test.go`; `ui_classic_reviews_test.go` covers the complete PR group.
+  `internal/workspace/ui_classic_protection_test.go`, `ui_classic_lock_test.go`, `ui_classic_admin_test.go` and
+  `ui_classic_deployments_test.go`; `ui_classic_reviews_test.go` covers the complete PR group.
 - Identity/collision selection, creation order, partial equality, nullable raw
   companions and supported export: `internal/settings/classic_protection_test.go`
-  and `classic_reviews_test.go`.
+  and `classic_deployments_test.go` and `classic_reviews_test.go`.
 - Literal GraphQL inputs, complete 101-rule/101-actor pagination, unowned companion
   drift, fresh no-ops, create recovery and failure boundaries:
-  `internal/github/classic_protection_test.go` and `classic_lock_test.go` and `classic_admin_test.go`; `classic_reviews_test.go` checks activation, count-zero,
+  `internal/github/classic_protection_test.go`, `classic_lock_test.go`, `classic_admin_test.go` and
+  `classic_deployments_test.go`; `classic_reviews_test.go` checks activation, count-zero,
   guarded deactivation and raw preservation.
 - Family preflight, declaration order, unarchive, actual progress and export
-  retention: `internal/app/classic_protection_test.go`.
+  retention and Environment-prune conflicts: `internal/app/classic_protection_test.go`
+  and `classic_deployments_test.go`.
 - Closed report, escaped Summary and status-only privacy:
   `internal/actions/classic_protection_test.go`.
 - Supplied executable export/plan/apply/repeat, guarded numeric-ID recording,
@@ -73,11 +90,14 @@ actor editing remain separate work.
   `tests/acceptance/classic_protection_test.go`.
 - Actual supplied Action lock/admin enable/disable/no-op, private plan and companion drift:
   `tests/github-actions/classic_lock_acceptance_test.go`.
+- Actual supplied Action deployment enable/disable/empty/no-op, private output and
+  reference replacement failure: `tests/github-actions/classic_deployments_acceptance_test.go`.
+
 - Actual supplied Action PR activation/zero/disable/no-op, guarded rejection, private
   plans and readback drift: `tests/github-actions/classic_reviews_acceptance_test.go`.
 
-The PR-review literal regression fails on unchanged source because its group key
-is unknown. Automated verification uses local fixtures
+The PR-review and required-deployment literal regressions fail on their unchanged
+sources because the respective group key is unknown. Automated verification uses local fixtures
 and dummy credentials. Official schema and read-only empty personal-public
 inventories establish the endpoint, not populated storage behavior, mutation
 permission or effective enforcement. No live branch protection was changed.
