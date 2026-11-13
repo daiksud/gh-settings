@@ -283,8 +283,13 @@ deployments keep the complete raw snapshot separate from the active projection;
 needed writes with selected active references bind paginated Environment node
 identities before mutation and verify them after rule readback. Matching rules
 skip that prerequisite. Global Environment prune rejects contradictory selected
-references before any write without silently retaining deletion candidates. Classic prune
-adds private deep-copied full snapshots before any remote write, fixed candidate
+references before any write without silently retaining deletion candidates.
+Force-push ownership retains a separate raw boolean and typed actor snapshot.
+Complete acquired Before admits known Team while desired input admits User/App;
+active Team export is unavailable. Needed writes resolve selected actor IDs/types,
+including otherwise matching actors, and verify full paginated membership after
+scalar acknowledgment. Everyone preserves latent actors; disabled clears them.
+Classic prune adds private deep-copied full snapshots before any remote write, fixed candidate
 rechecks, create/update/writeback-before-delete ordering, exact GraphQL deletion
 acknowledgment and independent complete identity-absence readback. Shared scope
 names drive standalone `all`, CLI help and Action capability output. Export uses the

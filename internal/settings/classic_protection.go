@@ -68,6 +68,7 @@ type ClassicWriteResult struct {
 
 func CloneClassicRule(r ClassicRule) ClassicRule {
 	r.ID = cloneClassicValue(r.ID)
+	r.AllowForcePushes = CloneClassicForcePush(r.AllowForcePushes)
 	r.RequireConversationResolutionBeforeMerging = cloneClassicValue(r.RequireConversationResolutionBeforeMerging)
 	r.RequireSignedCommits = cloneClassicValue(r.RequireSignedCommits)
 	r.RequireLinearHistory = cloneClassicValue(r.RequireLinearHistory)
@@ -87,9 +88,13 @@ func cloneClassicValue[T any](v *T) *T {
 func ClassicFlags(r ClassicRule) []*bool {
 	return []*bool{r.RequireConversationResolutionBeforeMerging, r.RequireSignedCommits, r.RequireLinearHistory, r.AllowDeletions, r.LockBranch, r.DoNotAllowBypassingTheAboveSettings}
 }
-func ValidateClassicRules(rules []ClassicRule) error {
+func ValidateClassicRules(rules []ClassicRule) error { return validateClassicRules(rules, false) }
+func validateClassicRules(rules []ClassicRule, acquired bool) error {
 	ids, creates := map[int64]bool{}, map[string]bool{}
 	for _, r := range rules {
+		if err := ValidateClassicForcePush(r.AllowForcePushes, acquired); err != nil {
+			return err
+		}
 		if err := ValidateClassicDeployments(r.RequireDeploymentsToSucceedBeforeMerging); err != nil {
 			return err
 		}
@@ -116,7 +121,7 @@ func (o ClassicObservation) Validate() error {
 	}
 	ids, nodes := map[int64]bool{}, map[string]bool{}
 	for _, s := range o.Rules {
-		if err := ValidateClassicRules([]ClassicRule{s.Rule}); err != nil {
+		if err := validateClassicRules([]ClassicRule{s.Rule}, true); err != nil {
 			return err
 		}
 		if s.Rule.ID == nil || ids[*s.Rule.ID] || s.NodeID == "" || nodes[s.NodeID] || s.RepositoryID != o.RepositoryID {
@@ -129,6 +134,13 @@ func (o ClassicObservation) Validate() error {
 			}
 		}
 		c := s.Companions
+		force, err := ClassicForcePushProjection(c.AllowsForcePushes, c.ForcePushActors)
+		if err != nil {
+			return err
+		}
+		if !ClassicForcePushEqual(force, s.Rule.AllowForcePushes) {
+			return fmt.Errorf("incomplete or inconsistent classic force-push projection")
+		}
 		projection, err := ClassicDeploymentProjection(c.RequiresDeployments, c.Deployments)
 		if err != nil {
 			return err
@@ -202,6 +214,9 @@ func PrepareClassicRules(o ClassicObservation, desired []ClassicRule) ([]Classic
 	return result, nil
 }
 func ClassicMatches(observed, desired ClassicRule) bool {
+	if ClassicForcePushSelected(desired.AllowForcePushes) && !ClassicForcePushEqual(observed.AllowForcePushes, desired.AllowForcePushes) {
+		return false
+	}
 	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) && !classicDeploymentsEqual(observed.RequireDeploymentsToSucceedBeforeMerging, desired.RequireDeploymentsToSucceedBeforeMerging) {
 		return false
 	}
@@ -242,7 +257,12 @@ func ExportClassicRules(o ClassicObservation) ([]ClassicRule, error) {
 	}
 	r := make([]ClassicRule, 0, len(o.Rules))
 	for _, s := range o.Rules {
-		r = append(r, CloneClassicRule(s.Rule))
+		if err := ValidateClassicForcePush(s.Rule.AllowForcePushes, false); err != nil {
+			return nil, fmt.Errorf("classic force-push actor policy cannot be exported: %w", err)
+		}
+		exported := CloneClassicRule(s.Rule)
+		exported.AllowForcePushes, _ = ClassicForcePushProjection(s.Companions.AllowsForcePushes, s.Companions.ForcePushActors)
+		r = append(r, exported)
 	}
 	slices.SortFunc(r, func(a, b ClassicRule) int {
 		if *a.ID < *b.ID {
@@ -271,13 +291,16 @@ func ValidateClassicChanges(changes []ClassicChange) error {
 			}
 			continue
 		}
-		if err := ValidateClassicRules([]ClassicRule{*c.Before}); err != nil {
+		if err := validateClassicRules([]ClassicRule{*c.Before}, true); err != nil {
 			return err
 		}
 		if c.Before.ID == nil || seen[*c.Before.ID] {
 			return fmt.Errorf("missing or duplicate classic change identity")
 		}
 		seen[*c.Before.ID] = true
+		if !ClassicForcePushSelected(c.Before.AllowForcePushes) {
+			return fmt.Errorf("incomplete classic before force-push policy")
+		}
 		if !ClassicDeploymentsSelected(c.Before.RequireDeploymentsToSucceedBeforeMerging) {
 			return fmt.Errorf("incomplete classic before deployments")
 		}
@@ -320,6 +343,7 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 		return fmt.Errorf("classic requested controls did not persist")
 	}
 	beforeCompanions, afterCompanions := before.Companions, after.Companions
+	maskSelectedClassicForcePush(&beforeCompanions, afterCompanions, desired.AllowForcePushes)
 	if ClassicDeploymentsSelected(desired.RequireDeploymentsToSucceedBeforeMerging) {
 		beforeCompanions.RequiresDeployments, afterCompanions.RequiresDeployments = false, false
 		beforeCompanions.Deployments, afterCompanions.Deployments = ClassicNullable[[]string]{}, ClassicNullable[[]string]{}
@@ -337,33 +361,40 @@ func VerifyClassicPreservation(before, after ClassicState, desired ClassicRule) 
 }
 
 func (c *ClassicChange) UnmarshalJSON(data []byte) error {
-	var value any
-	if err := json.Unmarshal(data, &value); err != nil {
-		return err
+	if !json.Valid(data) {
+		return fmt.Errorf("invalid classic report JSON")
 	}
-	var valid func(any) bool
-	valid = func(v any) bool {
-		if v == nil {
+	structure := json.NewDecoder(bytes.NewReader(data))
+	var valid func() bool
+	valid = func() bool {
+		value, err := structure.Token()
+		if err != nil || value == nil {
 			return false
 		}
-		if values, ok := v.([]any); ok {
-			for _, value := range values {
-				if !valid(value) {
+		switch value {
+		case json.Delim('['):
+			for structure.More() {
+				if !valid() {
 					return false
 				}
 			}
-		}
-		if m, ok := v.(map[string]any); ok {
-			for k, x := range m {
-				if k != strings.ToLower(k) || !valid(x) {
+			_, err = structure.Token()
+		case json.Delim('{'):
+			seen := map[string]bool{}
+			for structure.More() {
+				key, keyErr := structure.Token()
+				name, ok := key.(string)
+				if keyErr != nil || !ok || seen[name] || name != strings.ToLower(name) || !valid() {
 					return false
 				}
+				seen[name] = true
 			}
+			_, err = structure.Token()
 		}
-		return true
+		return err == nil
 	}
-	if !valid(value) {
-		return fmt.Errorf("null or noncanonical classic report")
+	if !valid() {
+		return fmt.Errorf("null, duplicate or noncanonical classic report")
 	}
 	type plain ClassicChange
 	var result plain

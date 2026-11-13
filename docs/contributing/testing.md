@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicForcePush)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -499,3 +499,14 @@ The supplied CLI lifecycle checks export, plan, update and repeat no-op.
 disabled, empty and matching configurations, private plans and post-write reference
 replacement. It checks unchanged checkout and success-only outputs. These isolated
 fixtures do not establish live deployment execution or effective branch protection.
+
+## Classic force-push verification
+
+The [Classic specification](../features/classic-protection.feature.md#force-push-actor-ownership)
+links literal codec, model, API, app and product tests. Fixtures distinguish native
+false with allowances from disabled, preserve hidden actors under Everyone and
+retain known Team for read-only Before/prune. The actual supplied
+`TestBuiltCompositeClassicForcePush` covers matching, App selection, explicit
+clearing, private plans, required lookup on unrelated changes and uncertain actor
+readback. Static identities and local transport do not prove live App access,
+force-push success or enforcement. Published package pins remain unchanged.
