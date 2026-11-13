@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -112,8 +113,10 @@ func TestBuiltCompositeCollaborators(t *testing.T) {
 		t.Fatal("pending hidden", matching)
 	}
 	private := f.run(t, "plan", "collaborator-fixture-token", map[string]string{"github.action_ref": version, "inputs.plan-reporting": "status-only"})
-	public := private.log + private.summary + fmt.Sprint(private.outputs)
-	if private.status != 0 || strings.Contains(public, "recipient-canary") || strings.Contains(public, "3123") || strings.Contains(public, "7123") || len(private.remainingReports) != 0 {
+	// Artifact hashes may contain identity digits; check the complete output contract separately.
+	wantOutputs := map[string]string{"config-sha": f.sha, "target": "owner/config", "cli-version": version, "cli-sha256": f.digest, "plan-outcome": "no-difference"}
+	public := private.log + private.summary
+	if private.status != 0 || !reflect.DeepEqual(private.outputs, wantOutputs) || strings.Contains(public, "recipient-canary") || strings.Contains(public, "3123") || strings.Contains(public, "7123") || len(private.remainingReports) != 0 {
 		t.Fatal("private plan disclosed actor", private)
 	}
 }

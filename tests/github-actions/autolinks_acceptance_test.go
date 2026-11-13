@@ -52,6 +52,11 @@ func TestBuiltCompositeAutolinks(t *testing.T) {
 			rows := map[int]map[string]any{7: row(7, "OLD_PRIVATE-")}
 			events := []string{}
 			var mu sync.Mutex
+			snapshotEvents := func() []string {
+				mu.Lock()
+				defer mu.Unlock()
+				return append([]string{}, events...)
+			}
 			server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				mu.Lock()
 				defer mu.Unlock()
@@ -123,8 +128,8 @@ func TestBuiltCompositeAutolinks(t *testing.T) {
 				if !strings.Contains(string(data), "reference_prefix: OLD_PRIVATE-") || !strings.Contains(string(data), "reference_format: numeric") {
 					t.Fatal(string(data))
 				}
-				if len(events) != 0 {
-					t.Fatal("export mutated", events)
+				if observedEvents := snapshotEvents(); len(observedEvents) != 0 {
+					t.Fatal("export mutated", observedEvents)
 				}
 				return
 			}
@@ -142,8 +147,8 @@ func TestBuiltCompositeAutolinks(t *testing.T) {
 				}
 			}
 			delete(options, "inputs.plan-reporting")
-			if len(events) != 0 {
-				t.Fatal("plan mutated", events)
+			if observedEvents := snapshotEvents(); len(observedEvents) != 0 {
+				t.Fatal("plan mutated", observedEvents)
 			}
 			result := f.run(t, "apply", "autolink-installation-fixture-token", options)
 			failed := scenario == "readback-failure"
@@ -157,9 +162,7 @@ func TestBuiltCompositeAutolinks(t *testing.T) {
 			if string(data) != input || f.git("rev-parse", "HEAD") != f.sha {
 				t.Fatal("Action changed declaration")
 			}
-			mu.Lock()
-			observedEvents := append([]string{}, events...)
-			mu.Unlock()
+			observedEvents := snapshotEvents()
 			want := []string{}
 			switch scenario {
 			case "create-prune":
@@ -177,10 +180,7 @@ func TestBuiltCompositeAutolinks(t *testing.T) {
 				if again.status != 0 {
 					t.Fatal(again)
 				}
-				mu.Lock()
-				count := len(events)
-				mu.Unlock()
-				if count != len(want) {
+				if len(snapshotEvents()) != len(want) {
 					t.Fatal("repeat wrote")
 				}
 			}

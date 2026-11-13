@@ -40,7 +40,7 @@ func TestBuiltCompositeClassicPrune(t *testing.T) {
 	rule := map[string]any{"id": "B_7", "databaseId": 7, "pattern": "PRIVATE_PATTERN_CANARY", "repository": target,
 		"requiresConversationResolution": false, "requiresCommitSignatures": false, "requiresLinearHistory": false, "allowsDeletions": false,
 		"isAdminEnforced": true, "allowsForcePushes": false, "blocksCreations": false, "dismissesStaleReviews": true, "lockBranch": false, "lockAllowsFetchAndMerge": false, "requireLastPushApproval": true, "requiresApprovingReviews": true, "requiresCodeOwnerReviews": true, "requiresDeployments": false, "requiresStatusChecks": true, "requiresStrictStatusChecks": true, "restrictsPushes": false, "restrictsReviewDismissals": false,
-		"requiredApprovingReviewCount": 2, "requiredDeploymentEnvironments": nil, "requiredStatusCheckContexts": []string{"CHECK_CONTEXT_CANARY"}, "requiredStatusChecks": []any{map[string]any{"context": "CHECK_CONTEXT_CANARY", "app": map[string]any{"id": "PRIVATE_APP_CANARY"}}}}
+		"requiredApprovingReviewCount": 2, "requiredDeploymentEnvironments": nil, "requiredStatusCheckContexts": []string{"CHECK_CONTEXT_CANARY"}, "requiredStatusChecks": []any{map[string]any{"context": "CHECK_CONTEXT_CANARY", "app": map[string]any{"id": "STATUS_APP_SOURCE"}}}}
 	page := func(nodes []any) map[string]any {
 		return map[string]any{"totalCount": len(nodes), "nodes": nodes, "pageInfo": map[string]any{"hasNextPage": false, "endCursor": nil}}
 	}
@@ -129,7 +129,7 @@ func TestBuiltCompositeClassicPrune(t *testing.T) {
 			t.Fatal(result)
 		}
 		combined := result.log + result.summary
-		if strings.Contains(combined, "PRIVATE_APP_CANARY") || strings.Contains(combined, "CHECK_CONTEXT_CANARY") {
+		if mode == "status-only" && (strings.Contains(combined, "STATUS_APP_SOURCE") || strings.Contains(combined, "CHECK_CONTEXT_CANARY")) {
 			t.Fatal("snapshot evidence leaked")
 		}
 		if mode == "status-only" && strings.Contains(combined, "PRIVATE_PATTERN_CANARY") {
