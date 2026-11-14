@@ -14,8 +14,9 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 
 - Given a published stable baseline and a fixed descendant source
 - When all committed messages in the interval are classified
-- Then any breaking header or breaking-change footer selects MINOR during `0.x` and MAJOR from `1.0.0` onward
-- And a breaking signal does not automatically graduate `0.x` to `1.0.0`
+- Then the committed shared metadata Action selects `--graduate-to-v1` and any substantive change from a validated `0.x` baseline selects `1.0.0`
+- And without that option a breaking header or footer selects MINOR during `0.x`
+- And from `1.0.0` onward a breaking header or footer selects MAJOR
 - Otherwise `feat`, `perf`, or `DEPRECATED:` selects MINOR
 - Otherwise fixes, reverts, maintenance, and legacy messages select PATCH
 - And later main commits and mutable branch names do not affect that calculation
@@ -30,6 +31,10 @@ A maintainer explicitly starts publication from `main`. The version is calculate
 - And empty commits do not create an increment, while all nonempty source changes do
 - But a preparation-named commit with another changed path remains substantive
 - And no substantive changes, invalid history, or malformed metadata fail closed
+- And an exact immutable retry retains its existing source, tag and version before graduation
+- And main CI and manual release use the same committed metadata Action
+- And a changed release catalog can change resolution for the same source; artifacts require version and manifest checks
+- And candidate artifacts do not themselves publish a release
 
 #### Scenario: A published Action selects its matching CLI release
 

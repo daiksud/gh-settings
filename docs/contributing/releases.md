@@ -4,17 +4,17 @@ The [manual release workflow](../../.github/workflows/release.yml) first checks 
 
 ## Automatic version calculation
 
-The same standard-library Python [release-version.py](../../.github/scripts/release-version.py) runs in gh-settings and gh-qw. It calculates the next version directly during manually dispatched release resolution, from the last published stable release through the fixed main SHA. There is **no preparation PR, committed release-version update, version input, or automatic publication on merge**. Branch names do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
+The standard-library Python [release-version.py](../../.github/scripts/release-version.py) calculates a candidate version from the last published stable release through the fixed source SHA. Main CI and manual release use the same committed metadata Action and calculator invocation. There is **no preparation PR, committed release-version update, version input, or automatic publication on merge**. Branch names do not select the version; reviewers must preserve accurate Conventional Commit squash titles and breaking-change footers.
 
 | Committed change | Selected increment |
 | --- | --- |
-| Header `!` or compatibility footer `BREAKING CHANGE:` / `BREAKING-CHANGE:` | MINOR while v0.x, MAJOR from v1.0.0 |
+| Header `!` or compatibility footer `BREAKING CHANGE:` / `BREAKING-CHANGE:` | MAJOR from v1.0.0 |
 | `feat`, `perf`, or a `DEPRECATED:` footer | MINOR |
 | Any other substantive commit, including maintenance and reverts | PATCH |
 
-The strongest signal wins once; a breaking change never auto-promotes v0.x to v1.0.0. Empty commits are ignored; every tree change counts, including a release-preparation-named commit. If no substantive change remains, calculation fails. The GitHub release list, stable baseline, complete history, and ancestor relationship must validate; drafts, prereleases, unpublished tags, and code-fenced footer examples do not change the result.
+The committed metadata Action selects `--graduate-to-v1`: a validated v0.x baseline with any substantive source change resolves to v1.0.0. Direct calculator invocation without the option retains the earlier v0.x rules, including demoting breaking changes to MINOR. From v1 onward the strongest signal wins once. Empty commits are ignored; every tree change counts, including a release-preparation-named commit. If no substantive change remains, calculation fails. The GitHub release list, stable baseline, complete history, and ancestor relationship must validate; drafts, prereleases, unpublished tags, and code-fenced footer examples do not change the result.
 
-The resolver is read-only. It also recognizes an exact immutable gh-settings release retry from its signed-off source/tag/embedded identity marker; the publisher independently checks all binary bytes and retains the original notes. A conflicting tag, missing marker, or new source is not an acceptable retry.
+The resolver is read-only. An exact immutable gh-settings release retry takes precedence over graduation and retains its recorded source, tag and version using its embedded identity marker; the publisher independently checks all binary bytes and retains the original notes. A conflicting tag, missing marker, or new source is not an acceptable retry.
 
 ## Start a manual release
 
@@ -26,7 +26,7 @@ gh workflow run release.yml --repo daiksud/gh-settings --ref main
 
 Optionally add `-f source_sha=FULL_40_CHARACTER_SHA` to pin the reviewed main commit. Resolution stops if main moved before it starts, if an explicit pin differs, or if the metadata source differs from the checkout. No workflow dispatch from a non-main ref, issue comment, or PR merge publishes a release.
 
-The workflow requires successful main CI when a matching run exists, calculates the version, and freezes the source SHA and published baseline. It verifies the matching run's artifacts or performs all native builds and acceptance checks again. Before publication it rechecks main and the selected CI result; any failed or incomplete CI blocks release. Source changes after resolution do not enter the release.
+The workflow requires successful main CI when a matching run exists, calculates the version, and freezes the source SHA and published baseline. It verifies the matching run's artifacts or performs all native builds and acceptance checks again. Before publication it rechecks main and the selected CI result; any failed or incomplete CI blocks release. Source changes after resolution do not enter the release. The external release catalog can change between runs on the same SHA, so a different calculated version requires the existing artifact identity checks and validated fallback; artifacts are never relabeled. A main CI candidate labeled v1.0.0 is not a published release.
 
 ## Release assets and validation
 
@@ -47,7 +47,7 @@ Each release contains those two raw executables, `SHA256SUMS`, and notes with so
 | Release | Recheck exact main and `ci-push` status; redownload and reverify both release-run manifests, generate notes, create/validate the tag and draft, upload only missing matching assets, recheck identity, and publish |
 | Verify release | Check out the published tag separately, compare actual public downloads byte-for-byte with accepted manifests, and run the published root Action with real downloads for a separate consumer |
 
-Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The release workflow delegates metadata, artifact reuse, build, acceptance, publish and verification to focused local Actions. Only the version-resolution logic remains shared with gh-qw; gh-settings uses its own release gates and manifests. Those wrappers own the pinned artifact transfer and manifest checks; no matrix job output supplies a product hash to publication. The shared [acceptance-stage](../../.github/actions/integration-test/action.yml) compiles its harness separately, without rebuilding the accepted product. All manual versions share one non-cancelling concurrency group; this does not promise FIFO queue delivery.
+Builds inject `main.version` with Go's [`-X` option](https://pkg.go.dev/cmd/link#hdr-Command_Line). The release workflow delegates metadata, artifact reuse, build, acceptance, publish and verification to focused local Actions. gh-settings owns its version-resolution policy, release gates and manifests. Those wrappers own the pinned artifact transfer and manifest checks; no matrix job output supplies a product hash to publication. The shared [acceptance-stage](../../.github/actions/integration-test/action.yml) compiles its harness separately, without rebuilding the accepted product. All manual versions share one non-cancelling concurrency group; this does not promise FIFO queue delivery.
 
 All three main-CI inspection lanes must succeed before their products can be reused. Otherwise all fallback native and candidate-Action acceptance lanes must succeed before publication. Failure, unexpected skipping or cancellation cannot be overridden. The candidate's bounded download fixture establishes pre-publication integration, not published-download identity. Post-publication verification independently establishes the tag and public-download identity. [Release gate tests](../../tests/github-actions/release_test.go) and [local Action tests](../../tests/github-actions/release_actions_test.go) protect orchestration bytes, source/version/manifests, dependency bindings, and tamper rejection. Fixture and PR validation do not execute a hosted release.
 
@@ -143,7 +143,7 @@ PR CI screens and builds the candidate. Main CI builds release-ready native Linu
 | Immutable identity and complete drafts | [ADR 0013](../adr/0013-immutable-release-identity.md), [ADR 0014](../adr/0014-draft-release-publication.md), [ADR 0018](../adr/0018-preserve-published-assets.md) |
 | Raw executables and reviewed messages | [ADR 0015](../adr/0015-raw-extension-binaries.md), [ADR 0016](../adr/0016-conventional-pr-titles.md), [ADR 0024](../adr/0024-code-review-policy.md) |
 
-The [release specification](../features/release.feature.md) maps behavior to tests. Identical [Python version tests](../../.github/scripts/test_release_version.py) use temporary Git repositories for version precedence, exact ranges, metadata failures and retry identity. [Go notes tests](../../scripts/release-metadata/main_test.go) cover committed category precedence, formal footers, escaping, fixed ranges, and failures. [Release fixtures](../../tests/release.sh) exercise the generated body through new publication and recovery with a local `gh` stand-in, retaining notes and validating artifact identity. These tests neither publish a release nor prove GitHub's live rendering; only an explicitly authorized release run establishes that operational evidence.
+The [release specification](../features/release.feature.md) maps behavior to tests. [Python version tests](../../.github/scripts/test_release_version.py) use temporary Git repositories for version precedence, exact ranges, metadata failures and retry identity. [Go notes tests](../../scripts/release-metadata/main_test.go) cover committed category precedence, formal footers, escaping, fixed ranges, and failures. [Release fixtures](../../tests/release.sh) exercise the generated body through new publication and recovery with a local `gh` stand-in, retaining notes and validating artifact identity. These tests neither publish a release nor prove GitHub's live rendering; only an explicitly authorized release run establishes that operational evidence.
 
 ### Cross-run artifact reuse
 

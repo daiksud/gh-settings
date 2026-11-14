@@ -178,6 +178,11 @@ func TestReleaseArtifactManifestBehavior(t *testing.T) {
 			if output, err := command.CombinedOutput(); err == nil {
 				t.Fatalf("wrong source identity accepted: %s", output)
 			}
+			// A catalog change can resolve a different version for the same source.
+			command = exec.Command("bash", script, "verify", target, "v1.2.4", source, artifact, result)
+			if output, err := command.CombinedOutput(); err == nil {
+				t.Fatalf("wrong version identity accepted for the same source: %s", output)
+			}
 			if err := os.WriteFile(filepath.Join(artifact, "unexpected"), []byte("extra"), 0600); err != nil {
 				t.Fatal(err)
 			}

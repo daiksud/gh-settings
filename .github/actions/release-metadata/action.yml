@@ -33,7 +33,7 @@ runs:
         [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo 'metadata checkout differs from frozen source' >&2; exit 1; }
         metadata="$RUNNER_TEMP/release-metadata"
         [[ ! -e "$metadata" ]]
-        python3 .github/scripts/release-version.py --allow-retry > "$metadata"
+        python3 .github/scripts/release-version.py --allow-retry --graduate-to-v1 > "$metadata"
         [[ "$(wc -l < "$metadata" | tr -d ' ')" == 3 ]] || { echo 'metadata output line count changed' >&2; exit 1; }
         for key in version previous-tag previous-sha; do
           [[ "$(grep -c "^$key=" "$metadata")" == 1 ]] || { echo "metadata output lacks $key" >&2; exit 1; }
