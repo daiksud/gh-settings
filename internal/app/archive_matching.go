@@ -106,6 +106,7 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.Labels = nil
 	remaining.Rulesets = nil
 	remaining.Webhooks = nil
+	remaining.Environments = nil
 	remaining.PullRequestLimits = settings.PullRequestLimitsDeclaration{}
 	remaining.PullRequestExemptions = nil
 	remaining.CopilotReviewEffort = nil
@@ -197,6 +198,9 @@ func verifyArchivedMatching(repo repository.Repository, desired settings.Declara
 		return err
 	}
 	if err := verifyArchivedWebhooks(repo, desired.Webhooks, initial, read.ReadWebhooks); err != nil {
+		return err
+	}
+	if err := verifyArchivedEnvironments(repo, desired.Environments, read.ReadEnvironments); err != nil {
 		return err
 	}
 	if err := verifyArchivedGroups(repo, desired, read); err != nil {
