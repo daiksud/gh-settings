@@ -210,6 +210,12 @@ func TestArchiveExportPlanApplyAndSummary(t *testing.T) {
 	if got := run("plan"); got != "No differences for managed repository settings.\n" {
 		t.Fatal(got)
 	}
+	run("apply")
+	mu.Lock()
+	if len(writes) != 2 {
+		t.Fatal("matching archived apply wrote settings", writes)
+	}
+	mu.Unlock()
 	input = repositoryInput("about: {description: Different}\nsettings: {general: {danger_zone: {archive_this_repository: true}}}\n")
 	if err := writeSettingsFile(fixture.work, input); err != nil {
 		t.Fatal(err)
