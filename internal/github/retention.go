@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -27,9 +31,21 @@ func retentionPath(repo repository.Repository) string {
 	return actionsPolicyPath(repo) + "/artifact-and-log-retention"
 }
 func (c *RetentionClient) Read(repo repository.Repository) (settings.RetentionObservation, error) {
+	response, err := c.rest.Request(http.MethodGet, retentionPath(repo), nil)
+	if err != nil {
+		return settings.RetentionObservation{}, fmt.Errorf("read repository retention unavailable")
+	}
+	defer response.Body.Close()
+	const limit = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	var fields map[string]json.RawMessage
-	if err := c.rest.Get(retentionPath(repo), &fields); err != nil {
-		return settings.RetentionObservation{}, fmt.Errorf("read repository retention: %w", err)
+	if err != nil || len(body) > limit || !utf8.Valid(body) || response.StatusCode != http.StatusOK || webhookJSON(body, &fields) != nil || fields == nil {
+		return settings.RetentionObservation{}, fmt.Errorf("incomplete or invalid repository retention observation")
+	}
+	for key := range fields {
+		if key != "days" && strings.EqualFold(key, "days") || key != "maximum_allowed_days" && strings.EqualFold(key, "maximum_allowed_days") {
+			return settings.RetentionObservation{}, fmt.Errorf("ambiguous repository retention observation")
+		}
 	}
 	values := make([]int, 0, 2)
 	for _, key := range []string{"days", "maximum_allowed_days"} {
