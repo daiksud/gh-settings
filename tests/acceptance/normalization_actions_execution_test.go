@@ -268,7 +268,7 @@ func TestActionsExecutionNormalizationAcrossExecutableCommands(t *testing.T) {
 	mu.Unlock()
 	input = intent("{policy: "+fallback+"}", "about: {description: updated}\n")
 	output, diagnostic, status = run("apply")
-	if status != 1 || output != "" || strings.Count(diagnostic, warning) != 2 || !strings.Contains(diagnostic, "earlier resource writes remain applied") {
+	if status != 1 || output != "" || strings.Count(diagnostic, warning) != 2 || !strings.Contains(diagnostic, "earlier successful writes remain applied") {
 		t.Fatal("earlier REST effects", status, output, diagnostic)
 	}
 	checkSource(input)

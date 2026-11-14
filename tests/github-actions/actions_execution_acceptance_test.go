@@ -108,7 +108,7 @@ func TestBuiltCompositeActionsExecution(t *testing.T) {
 				if !success && !strings.Contains(result.log, "may already have applied") {
 					t.Fatal("uncertainty lost", result.log)
 				}
-				if strings.Contains(result.log, "earlier resource writes remain applied") {
+				if strings.Contains(result.log, "earlier successful writes remain applied") {
 					t.Fatal("fabricated earlier resource progress", result.log)
 				}
 			}

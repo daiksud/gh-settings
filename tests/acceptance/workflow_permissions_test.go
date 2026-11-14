@@ -184,7 +184,7 @@ func TestWorkflowPermissionsExportPlanApplyAndSummary(t *testing.T) {
 	operations = nil
 	mu.Unlock()
 	r, err = executeCLI(binary, fixture.work, fixture.root, env, []string{"apply"}, false)
-	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "earlier resource writes remain applied") {
+	if err != nil || r.runErr == nil || !strings.Contains(withoutExportInfo(r.stderr.String()), "earlier successful writes remain applied") {
 		t.Fatal(err, r.stderr.String())
 	}
 	mu.Lock()

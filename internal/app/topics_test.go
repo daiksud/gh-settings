@@ -162,7 +162,7 @@ func TestTopicsApplyReportsActualWritesAndReadFailures(t *testing.T) {
 				wantCalls = []string{"repository", "topics"}
 			}
 			if test.repositoryNoop {
-				if result.Operations[0].Kind != RepositoryUpdate || result.Operations[0].Status != OperationUnchanged || err != nil && strings.Contains(err.Error(), "earlier repository settings update remains applied") {
+				if result.Operations[0].Kind != RepositoryUpdate || result.Operations[0].Status != OperationUnchanged || err != nil && strings.Contains(err.Error(), "earlier successful writes remain applied") {
 					t.Fatal("matching repository reported prior writes", result, err)
 				}
 			}

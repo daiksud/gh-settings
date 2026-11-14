@@ -211,7 +211,7 @@ func TestWorkflowNormalizationAcrossExecutableCommands(t *testing.T) {
 	mu.Unlock()
 	input = intent("{actions_permissions: {policy: allow_all_actions_and_reusable_workflows}, workflow_permissions: {default_permissions: read_repository_contents_and_packages_permissions}}")
 	output, diagnostic, status = run("apply")
-	if status != 1 || !strings.Contains(diagnostic, "earlier resource writes remain applied") || !strings.Contains(diagnostic, "FUTURE") {
+	if status != 1 || !strings.Contains(diagnostic, "earlier successful writes remain applied") || !strings.Contains(diagnostic, "FUTURE") {
 		t.Fatal("unverified readback lost earlier progress", status, output, diagnostic)
 	}
 	mu.Lock()

@@ -258,7 +258,7 @@ func TestTopicsApplyReconciliationAcceptance(t *testing.T) {
 		{name: "rejected PUT", input: "[]", initial: `{"names":["old"]}`, putStatus: 422, errorText: "writes may already have applied", wantMethods: []string{"GET topics", "PUT topics"}},
 		{name: "denied verification", input: "[]", initial: `{"names":["old"]}`, verifyStatus: 403, errorText: "verify repository topics", wantMethods: []string{"GET topics", "PUT topics", "GET topics"}},
 		{name: "mismatching verification", input: "[]", initial: `{"names":["old"]}`, after: `{"names":["old"]}`, errorText: "does not match declared membership", wantMethods: []string{"GET topics", "PUT topics", "GET topics"}},
-		{name: "earlier repository write", input: "[]", readStatus: 403, repositoryWrite: true, errorText: "earlier repository settings update remains applied", wantMethods: []string{"GET current", "PATCH current", "GET current", "GET topics"}},
+		{name: "earlier repository write", input: "[]", readStatus: 403, repositoryWrite: true, errorText: "earlier successful writes remain applied", wantMethods: []string{"GET current", "PATCH current", "GET current", "GET topics"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var mu sync.Mutex
