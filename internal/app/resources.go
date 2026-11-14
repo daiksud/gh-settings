@@ -116,6 +116,8 @@ type Writer struct {
 	BindCollaboratorID         func(string, int64) error
 	ReadVariables              func(repository.Repository) (settings.VariableInventory, error)
 	ReadAgentVariables         func(repository.Repository) (settings.VariableInventory, error)
+	ReadArchivedVariable       func(repository.Repository, string) (settings.VariableObservation, error)
+	ReadArchivedAgentVariable  func(repository.Repository, string) (settings.VariableObservation, error)
 	ReadEnvironmentVariables   func(repository.Repository, string) (settings.VariableInventory, error)
 	DeleteVariable             func(repository.Repository, settings.VariableChange) error
 	DeleteAgentVariable        func(repository.Repository, settings.VariableChange) error
