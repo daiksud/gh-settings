@@ -191,6 +191,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Actions repository variables (current source) | Repository Variables read for selected names | Repository Variables write, including fresh read and exact readback |
 | Agents repository variables (current source) | Repository Agent variables read for selected names | Repository Agent variables write, including fresh read and exact readback |
 | Actions event policies (current source) | Administration **write**, including list/GET, export and plan ([official API](https://docs.github.com/en/rest/actions/policies)) | Administration write, complete preflight, fresh detail guard and independent acknowledgment/readback |
+| Existing runner custom labels (current source) | Administration read, complete personally owned public target, runner detail and label evidence | Administration write plus independent acknowledgment/readback; no registration/removal or tokens |
 | Actions OIDC subject configuration (current source) | Actions read and complete personal-public target identity | Actions write, complete active-template/immutable evidence, fresh omitted-unit replay and independent readback |
 | Actions execution, workflow permissions, retention, contributor fork approval | Administration read | Administration write |
 | Actions cache retention and private sharing access | Administration read plus repository applicability metadata | Administration write plus independent readback |
@@ -448,3 +449,13 @@ later deletion. These source capabilities do not alter a published package pin.
 Current source supports [Autolink references](settings.md#autolink-references) through the same export/plan/apply contract. App installation tokens require repository Administration read for acquisition and write for creation/deletion. Nothing grants or broadens permissions automatically. `prune: autolinks`, comma combinations and standalone `all` use fixed candidates for a present collection. Ordinary apply preserves unlisted references.
 
 Autolinks are immutable ID-bound objects: changes require explicit pruning and later creation. The Action does not write creation IDs, commit or push. Record confirmed IDs through the [creation-ID procedure](contributing/repository-automation.md#repository-settings-changes) before repeating creation; unbound collisions fail. Detailed plans and Summary may show non-secret prefix/URL/format, while status-only hides them. Export saves local YAML without logging its contents; API debug bodies are suppressed. Package support still depends on the selected immutable release.
+
+### Existing runner custom labels
+
+Current source supports [custom labels on existing runner IDs](settings.md#existing-runner-custom-labels)
+through the shared export/plan/apply path. Detailed Summaries show selected IDs
+and custom labels; status-only output hides them. Private runner/readonly
+observations are excluded from reports and debug logs. Successful verification
+precedes output publication. A failed acknowledgment or readback fails the Action
+without success outputs, even when labels may have changed. The Action never
+modifies input YAML, registers/removes a runner or issues registration credentials.

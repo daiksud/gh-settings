@@ -67,6 +67,13 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 			}
 			result.BranchProtectionRules = &rules
 		}
+		if a := repository.Settings.Actions; a != nil && a.Runners != nil {
+			if err := settings.ValidateRunnerLabels(*a.Runners); err != nil {
+				return settings.Declaration{}, err
+			}
+			values := settings.CloneRunnerLabels(*a.Runners)
+			result.Runners = &values
+		}
 		if a := repository.Settings.Actions; a != nil && a.OIDC != nil && a.OIDC.SubjectClaim != nil {
 			d := a.OIDC.SubjectClaim
 			if d.UseDefaultTemplate != nil || d.SubjectClaimTemplate != nil || d.UseImmutableSubjectClaim != nil {
