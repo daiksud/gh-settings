@@ -41,7 +41,7 @@ func (c *EnvironmentsClient) customRequest(method, path string, body []byte, sta
 
 func customFields(data []byte, allowed ...string) (map[string]json.RawMessage, error) {
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(data, &fields); err != nil || fields == nil {
+	if err := environmentJSON(data, &fields); err != nil || fields == nil {
 		return nil, fmt.Errorf("custom environment protection requires an object response")
 	}
 	if err := environmentKnownFields(fields, allowed...); err != nil {
@@ -82,16 +82,47 @@ func decodeEnvironmentApp(data []byte) (environmentApp, error) {
 	return app, nil
 }
 
+// Only a single exact positive ID can survive invalid companion data for
+// recovery. It is not proof that an App binding was created or retained.
+func recoverEnvironmentRuleID(data []byte) int64 {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	start, err := decoder.Token()
+	if err != nil || start != json.Delim('{') {
+		return 0
+	}
+	var id int64
+	seen := false
+	for decoder.More() {
+		token, err := decoder.Token()
+		name, ok := token.(string)
+		if err != nil || !ok {
+			return 0
+		}
+		var value json.RawMessage
+		if decoder.Decode(&value) != nil {
+			return 0
+		}
+		if strings.EqualFold(name, "id") {
+			if name != "id" || seen || json.Unmarshal(value, &id) != nil || id <= 0 {
+				return 0
+			}
+			seen = true
+		}
+	}
+	end, err := decoder.Token()
+	if err != nil || end != json.Delim('}') {
+		return 0
+	}
+	if _, err := decoder.Token(); err != io.EOF || !seen {
+		return 0
+	}
+	return id
+}
+
 // Positive acknowledgment IDs survive invalid companion data for recovery only.
 func decodeEnvironmentCustomRule(data []byte) (settings.EnvironmentCustomRule, error) {
 	var result settings.EnvironmentCustomRule
-	var recoverID struct {
-		ID int64 `json:"id"`
-	}
-	_ = json.Unmarshal(data, &recoverID)
-	if recoverID.ID > 0 {
-		result.ID = recoverID.ID
-	}
+	result.ID = recoverEnvironmentRuleID(data)
 	fields, err := customFields(data, "id", "node_id", "enabled", "app")
 	if err != nil {
 		return result, err
