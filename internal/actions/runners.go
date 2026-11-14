@@ -100,3 +100,75 @@ func validateRunnersReport(raw []RunnerPlanChange) ([]settings.RunnerLabelsChang
 	}
 	return result, nil
 }
+
+// RunnerDeletionEntry has an explicit null after value and no private evidence.
+type RunnerDeletionEntry struct {
+	Field  string                   `json:"field"`
+	Before settings.RunnerDeletion  `json:"before"`
+	After  *settings.RunnerDeletion `json:"after"`
+}
+type RunnerDeletionEntries []RunnerDeletionEntry
+
+func (rows *RunnerDeletionEntries) UnmarshalJSON(data []byte) error {
+	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {
+		return fmt.Errorf("null runner deletion array")
+	}
+	var values []RunnerDeletionEntry
+	if err := json.Unmarshal(data, &values); err != nil {
+		return err
+	}
+	*rows = values
+	return nil
+}
+func (entry *RunnerDeletionEntry) UnmarshalJSON(data []byte) error {
+	var raw map[string]json.RawMessage
+	if json.Unmarshal(data, &raw) != nil || len(raw) != 3 {
+		return fmt.Errorf("invalid runner deletion report")
+	}
+	if _, ok := raw["field"]; !ok {
+		return fmt.Errorf("missing runner deletion field")
+	}
+	beforeRaw, ok := raw["before"]
+	if !ok {
+		return fmt.Errorf("missing runner deletion before")
+	}
+	after, ok := raw["after"]
+	if !ok || !bytes.Equal(bytes.TrimSpace(after), []byte("null")) {
+		return fmt.Errorf("invalid runner deletion after")
+	}
+	var members map[string]json.RawMessage
+	if json.Unmarshal(beforeRaw, &members) != nil || len(members) != 4 {
+		return fmt.Errorf("invalid runner deletion before")
+	}
+	for _, name := range []string{"id", "name", "os", "custom_labels"} {
+		value, ok := members[name]
+		if !ok || bytes.Equal(bytes.TrimSpace(value), []byte("null")) {
+			return fmt.Errorf("invalid runner deletion before member")
+		}
+	}
+	var field string
+	var before settings.RunnerDeletion
+	if json.Unmarshal(raw["field"], &field) != nil || json.Unmarshal(beforeRaw, &before) != nil || settings.ValidateRunnerDeletions([]settings.RunnerDeletion{before}) != nil {
+		return fmt.Errorf("invalid runner deletion report")
+	}
+	*entry = RunnerDeletionEntry{Field: field, Before: before}
+	return nil
+}
+func validateRunnerDeletionsReport(raw RunnerDeletionEntries, updates []settings.RunnerLabelsChange) ([]settings.RunnerDeletion, error) {
+	result := make([]settings.RunnerDeletion, 0, len(raw))
+	updated := map[int64]bool{}
+	for _, change := range updates {
+		before, _ := change.Values()
+		updated[before.ID] = true
+	}
+	for _, entry := range raw {
+		if entry.Field != settings.RunnersPath || entry.After != nil || updated[entry.Before.ID] {
+			return nil, fmt.Errorf("invalid runner deletion report")
+		}
+		result = append(result, entry.Before)
+	}
+	if err := settings.ValidateRunnerDeletions(result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}

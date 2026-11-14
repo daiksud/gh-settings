@@ -48,7 +48,7 @@ func (c *RunnersClient) get(path string, out any) (string, error) {
 	if e != nil || r.StatusCode != 200 || json.Unmarshal(b, out) != nil {
 		return "", fmt.Errorf("runner observation incomplete or unavailable")
 	}
-	return r.Header.Get("Link"), nil
+	return strings.Join(r.Header.Values("Link"), ","), nil
 }
 func (c *RunnersClient) one(path string, out any) error {
 	link, e := c.get(path, out)
@@ -242,6 +242,10 @@ func (c *RunnersClient) ReadSelected(repo repository.Repository, desired []setti
 
 // Pagination requests are constructed locally; Link never supplies a request target.
 func runnerNextPage(link string, repo repository.Repository, page int, more bool) error {
+	hasNext, err := webhookHasNext(link)
+	if err != nil || hasNext != more {
+		return fmt.Errorf("incomplete runner pagination")
+	}
 	next := false
 	for _, part := range strings.Split(link, ",") {
 		if !strings.Contains(part, `rel="next"`) {

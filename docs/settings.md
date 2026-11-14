@@ -88,12 +88,12 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
 `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`,
-`branch-protection-rules`, `autolinks`, `deploy-keys` and `webhooks`. Standalone `all` selects all currently supported scopes; combining it with another
+`branch-protection-rules`, `autolinks`, `deploy-keys`, `webhooks` and `runners`. Standalone `all` selects all currently supported scopes; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
 scope; a nonempty list prunes objects whose identities are not declared (IDs for
-labels/Rulesets/Actions Policies/classic rules/Autolinks/deploy keys, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy/classic rule/Autolink entries
+labels/Rulesets/Actions Policies/classic rules/Autolinks/deploy keys/webhooks/runners, canonical names for variables, folded names for Environments, resolved immutable user IDs for collaborators). ID-less label/Ruleset/Actions Policy/classic rule/Autolink entries
 remain create-only and never adopt a name collision. Acquire complete inventories
 and validate every prune candidate before any remote write, including unrelated
 settings writes. Unsupported candidates fail the whole preflight. Create/update
@@ -448,10 +448,14 @@ runners:
 Each entry requires a unique positive numeric runner `id` and an explicit
 `custom_labels` list of at most 100 strings. The ID selects an existing runner;
 there is no name-based adoption, creation, rename or ID writeback. Omitting the
-family leaves it unmanaged. `runners: []` selects no runners and makes no family
-requests during plan/apply. An entry with `custom_labels: []` clears that runner's
-custom labels. Unlisted runners remain untouched; there is no runner prune scope,
-and `--prune all` never deletes runners.
+family leaves it unmanaged. Without prune, `runners: []` selects no runners and
+makes no family requests during plan/apply. An entry with `custom_labels: []`
+clears that runner's custom labels. Unlisted runners remain untouched unless
+`--prune runners` or standalone `--prune all` is explicitly selected. With either
+selector, a present list retains the listed IDs and removes unlisted remote
+registrations; an explicit empty list selects all acquired registrations. This
+changes the effect of `all` for existing present runner declarations. Review the
+plan and your list before applying it.
 
 Labels form a case-insensitive set. The client uses Unicode simple folding,
 without trimming or Unicode normalization; order and case-only changes are no-ops.
@@ -470,7 +474,7 @@ read-only, and default labels are never inferred from OS. Label IDs are optional
 observation evidence, not YAML bindings. Present IDs must be positive; conflicting
 known IDs fail. Both reads contribute the strongest available ID evidence.
 
-Plan reads only selected runner IDs and compares their complete custom sets.
+Without runner pruning, plan reads only selected runner IDs and compares their complete custom sets.
 Apply prepares every selected runner before the first label update, then freshly
 reads each runner and repository before writing. A match makes no PUT. A needed
 write on an archived repository fails; an explicitly requested unarchive still
@@ -481,12 +485,42 @@ fresh runner name/OS and exact read-only label names/types, including every
 previously known read-only ID. Custom-label IDs are not owned. Missing prior IDs
 remain unknown, and later missing known read-only IDs fail verification.
 
-Operational status, busy, version and other liveness metadata are not drift
+For ordinary label updates, operational status, busy, version and other liveness metadata are not drift
 conditions. Failed pre-write reads are distinguished from uncertain effects after
 a PUT attempt. Earlier verified writes remain applied; later work stops, without
 retry or rollback. Detailed plans and Action Summaries show selected IDs and
-custom labels; status-only hides them. Private name/OS/read-only evidence and raw
-API errors never enter reports. Input files are not modified.
+custom labels; status-only hides them. For ordinary label updates, name/OS/read-only
+evidence and raw API errors do not enter reports. Input files are not modified.
+
+### Runner registration pruning
+
+Explicit pruning owns only remote deregistration, corresponding to GitHub's
+[Force remove control](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/remove-runners).
+It does not stop services, remove host software or credentials, cancel jobs, or
+restore a registration. Removing a runner can affect routing and queued or running
+work. GitHub provides no atomic busy or version condition for DELETE: a job may
+start between the final check and removal.
+
+Before any write, pruning acquires the complete personal-public target and stable
+paginated inventory, details and labels, fixes the unlisted IDs, prepares selected
+label updates, and requires each candidate to have a valid online/offline state and
+`busy: false`. Unknown or incomplete data fails closed. Both online and offline
+idle runners may be selected. The complete inventory is checked again before the
+family's first write and each fixed-ID DELETE. Additions, disappearance, changed
+candidate state or metadata, and changed retained identity or configuration fail
+rather than expanding or replacing the candidate set. Retained operational status,
+busy and version changes alone do not block an unrelated deletion. Selected label
+updates complete first; only independently verified own changes are incorporated
+into later checks. A confirmed explicit unarchive updates the expected archive state.
+
+Deletion requires an empty HTTP 204 and a fresh complete inventory confirming the
+fixed ID's absence and preservation of retained objects. A 404 or acknowledgment
+alone does not prove removal. A naturally disappearing runner requires replanning.
+An attempted deletion or failed verification can have uncertain effects; earlier
+confirmed changes remain, later work stops, and no retry or rollback is automatic.
+Detailed deletion plans show ID, name, OS and custom labels as the before value;
+status-only hides these values. Operational state, optional raw label IDs and other
+private evidence remain outside reports. Fixtures do not establish live job behavior.
 
 The [official labels guide](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/apply-labels)
 confirms the user-repository UI and case-insensitivity. The
@@ -495,8 +529,8 @@ provides observation and custom-label replacement. Reads require repository
 Administration read and writes require Administration write. Local fixtures do
 not prove a populated UI, exact server Unicode comparison, live writes, runner
 availability, routing, physical OS or job completion. This support does not
-register/remove runners, generate tokens, install software, manage groups or
-modify workflows and hosts.
+register runners, generate tokens, install software, manage groups or modify
+workflows and hosts.
 
 ## Actions OIDC subject template
 

@@ -450,8 +450,13 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Runners != nil && len(*desired.Runners) > 0 {
-		wrote, err := applyRunners(&result, repo, *desired.Runners, write)
+	if desired.Runners != nil && (len(*desired.Runners) > 0 || prune.Has("runners")) {
+		var wrote bool
+		if prune.Has("runners") {
+			wrote, err = applyRunnerPrune(&result, repo, *desired.Runners, *prepared.runners, unarchived, write)
+		} else {
+			wrote, err = applyRunners(&result, repo, *desired.Runners, write)
+		}
 		if err != nil {
 			return result, err
 		}

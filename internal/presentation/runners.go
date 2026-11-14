@@ -13,3 +13,9 @@ func RunnerLabelsLine(c settings.RunnerLabelsChange) string {
 	a, _ := json.Marshal(after)
 	return fmt.Sprintf("%s: %s → %s", c.Field(), b, a)
 }
+
+// RunnerDeletionLine shows only the owned removal-before projection.
+func RunnerDeletionLine(d settings.RunnerDeletion) string {
+	b, _ := json.Marshal(d)
+	return fmt.Sprintf("%s: %s → null", settings.RunnersPath, b)
+}

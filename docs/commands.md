@@ -273,8 +273,8 @@ Use `gh settings plan --prune labels,rulesets` and
 `gh settings apply --prune labels,rulesets`. This adds deletions without limiting
 other declared work. `--no-writeback` may be combined with apply. Current scopes are `labels`, `rulesets`, `actions-policies`,
 `actions-variables`, `agents-variables`, `environment-variables`, `environments`, `collaborators`,
-`branch-protection-rules`, `autolinks`, `deploy-keys` and `webhooks`.
-Standalone `all` selects every supported scope, including whole-webhook deletion for present declarations. An existing empty list selects all acquired hooks and their opaque Secrets; review the plan before applying. Mixed `all`, unknown/duplicate
+`branch-protection-rules`, `autolinks`, `deploy-keys`, `webhooks` and `runners`.
+Standalone `all` selects every supported scope, including whole-webhook deletion and runner deregistration for present declarations. An empty webhook list selects all acquired hooks and their opaque Secrets; an empty runner list selects all registrations. Review the plan before applying. Mixed `all`, unknown/duplicate
 names, empty elements and repeated flags fail locally. Export and validate reject
 prune. Omitted collections stay unmanaged; explicit [] selects all acquired
 objects. Environment pruning retains every listed parent, including variable-only
@@ -437,13 +437,16 @@ Automatic export independently attempts the complete [Autolinks family](settings
 ## Existing runner label commands
 
 Automatic export independently acquires the complete [runner labels family](settings.md#existing-runner-custom-labels).
-`validate` checks required IDs and explicit sets locally. `plan` reads selected
-IDs only; detailed output contains their custom labels. `apply` prepares the
-whole selection, then performs fresh conditional replacements with independent
-readback, preserving readonly labels and distinguishing no-ops, verified writes
-and uncertain effects. Explicit empty custom sets clear labels; empty runner
-selections do nothing. No ID recovery, writeback, runner deletion or pruning is
-part of these commands.
+`validate` checks required IDs and explicit sets locally. Without pruning, `plan`
+reads selected IDs only; detailed output contains their custom labels. `apply`
+prepares the whole selection, then performs fresh conditional replacements with
+independent readback. Explicit empty custom sets clear labels. `--prune runners`
+and standalone `all` additionally select fixed unlisted registrations for remote
+removal when the runner list is present; an empty list selects all. Detailed
+plans show each deletion's ID, name, OS and custom labels. Read the
+[runner pruning contract](settings.md#runner-registration-pruning) before applying:
+removal may affect work and cannot be made atomic with the busy check. There is
+no ID recovery or writeback.
 
 ## Webhook configuration and creation in current source
 
