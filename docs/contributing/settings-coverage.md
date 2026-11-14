@@ -126,6 +126,14 @@ branches and conditional forms were not inspected. The form was never submitted;
 no prebuild or billable workflow was created. The
 [official guide][prebuild-ui] documents personal-repository prebuild configuration.
 
+The [prebuild management guide][prebuild-management] states that creating or
+updating a configuration can trigger a GitHub Actions workflow. Disabling runs
+retains existing prebuilds, while deleting the configuration also deletes its
+prebuilds and does not cancel workflows already queued or started. Editing may
+prompt for access to other repositories when the dev container configuration
+requests it. These lifecycle and authorization effects must be considered in a
+future management contract; they do not establish a settings API.
+
 A finite search of the [fixed official OpenAPI revision][openapi-followup]
 confirmed Cloud configuration GET without a corresponding setter in that path,
 and the PR creation-cap fields without automatic exemption-rule configuration.
@@ -504,5 +512,6 @@ being confused with the missing implementations above.
 [classic-management-ui]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule
 [merge-queue-ui]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue
 [prebuild-ui]: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/configuring-prebuilds
+[prebuild-management]: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/managing-prebuilds
 [webhooks-ui]: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks
 [webhooks-config-announcement]: https://github.blog/changelog/2020-10-26-webhooks-configuration-enhancements/
