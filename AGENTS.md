@@ -17,7 +17,10 @@ and [coverage ledger](docs/contributing/settings-coverage.md). Remaining classic
 branch-protection controls and additional configurable custom rules
 are adopted future work where the target UI and APIs permit them. Organization
 settings, repository rename/visibility/transfer/deletion, feature configuration
-file authoring and secret values remain excluded.
+file authoring and secret values remain excluded. Temporary interaction restrictions
+are an explicit exception: their finite duration automatically restores normal
+access, and gh-settings does not manage them. This is a product exclusion despite
+the known read/set/remove APIs, not an API limitation or a broader plan exclusion.
 
 Keep policy eligibility, technical feasibility and implementation status
 separate. The v1 goal supersedes historical Free-only and blanket Preview/custom-rule

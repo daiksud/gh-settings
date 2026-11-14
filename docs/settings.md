@@ -49,6 +49,12 @@ is configurable in that target's GitHub Web UI. Account plan, Copilot subscripti
 feature execution entitlement and Preview status are separate facts; none is a
 blanket exclusion. A writable API-only field does not create a target UI control.
 
+Temporary interaction restrictions are an explicit product exception. They expire
+and automatically restore normal access, so they are outside the managed settings
+scope despite their known repository read/set/remove APIs. gh-settings provides
+no declaration, export, plan or apply support for these finite restrictions.
+Persistent pull-request limits and their Exemption list have separate ownership.
+
 Eligibility, technical feasibility and implementation are separate dimensions.
 Complete YAML/export/plan/apply support requires the applicable official API
 observation and update paths. A read endpoint alone does not prove update support,
@@ -2086,7 +2092,7 @@ An omitted mode remains unowned and emits no mode warning. A needed existing-pol
 
 ## Unsupported settings
 
-Only the listed UI controls are accepted by current source. Remaining classic branch-protection controls are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring and secret values are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
+Only the listed UI controls are accepted by current source. Remaining classic branch-protection controls are adopted but unimplemented; other Actions/security gaps are tracked separately from API limitations in the [coverage ledger](contributing/settings-coverage.md). Organization settings and team access, organization-only custom properties, inherited organization Rulesets and private-only controls are outside the personal-public target. Repository rename/visibility/transfer/deletion, feature configuration-file authoring, secret values and finite temporary interaction restrictions are explicit exclusions. Pages visibility and Environment rename remain unsupported without asserting that a usable target control/API is absent. See the [architecture](contributing/architecture.md) and [access implementation boundary](features/repository-access.feature.md); future work is not valid configuration today.
 
 ## Pages configuration
 
@@ -2197,7 +2203,7 @@ requires administrator access. Credentials must already authorize the endpoint;
 no grants are expanded. Adoption evidence covers GitHub Free personal public
 repositories with these visible controls, not other plans/owners/visibility.
 The cap limits users without write access and does not grant write access.
-Temporary Interaction restrictions and automatic exemption rules remain unmanaged.
+Temporary interaction restrictions are explicitly excluded by the [adoption policy](#feature-adoption-scope). Automatic exemption rules remain unimplemented.
 The separately selected Exemption list is described below; ordinary cap updates
 make no exemption request. Companion preservation in a cap update means only its
 three known fields. Configuration

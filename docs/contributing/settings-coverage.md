@@ -165,7 +165,7 @@ separately under [explicit boundaries](#explicit-product-and-target-boundaries).
 | Pending collaborator invitations and cancellation | Eligible | [Documented personal invitations][personal-invitations] | Read/cancel: [Invitations REST][invitations-api]; creation uses Collaborators REST and may return a pending invitation | Implemented: complete export, initial invitation and independent readback; pending remains distinct from accepted access. Explicit cancellation with independent readback implemented; email-only roundtrip remains a gap |
 | Email-only collaborator invitation | Eligible | Documented in the personal invitation guide | Partial: the confirmed collaborator setter addresses a username; complete email-only observation/redeclaration is unconfirmed | Not implemented; do not silently discard unresolved identities |
 | Persistent PR creation cap, draft counting and Exemption list | Eligible | [Recorded personal-public controls](../features/pull-request-limits.feature.md), 2026-11-11 | Read/write: [repository interaction-limit creation-cap and bypass-list endpoints][interactions-api] | Implemented: [cap](../settings.md#persistent-pull-request-limits), [Exemption list](../settings.md#pull-request-limit-exemption-list) |
-| Temporary interaction restrictions | Eligible | Three audiences observed; Enable duration menu inspected unsaved 2026-11-14: 24 hours, 3 days, 1 week, 1 month, 6 months | Read/set/remove: [repository interaction restrictions REST][interactions-api]; reads expose absolute expiry, writes accept five relative durations | Not implemented; finite-lease intent and repeat behavior need an explicit contract; no arbitrary absolute-expiry setter established |
+| Temporary interaction restrictions | Excluded by explicit product decision, 2026-11-14 | Three audiences and five finite Enable durations observed; expiry automatically restores normal access | Known read/set/remove: [repository interaction restrictions REST][interactions-api]; this is not an API-unavailability claim | Not implemented and outside the managed scope; no renewal/receipt implementation is pending |
 | PR limit automatic exemption rules | Eligible | Referenced by the [current cap contract](../settings.md#persistent-pull-request-limits); full target UI inventory unconfirmed | Unconfirmed complete rule read/update contract | Not implemented |
 | Code review limits: limit approving/request-changes reviews to users explicitly granted read or higher access | Eligible | Observed checkbox, 2026-11-13; [documented public control][review-limits-ui] | Unconfirmed complete settings read/update contract | Not implemented |
 | Classic branch protection: pattern rules and controls | Eligible | Observed unsaved form, 2026-11-13; [documented public availability][protected-branches] | Read/create/update/delete: [BranchProtectionRule GraphQL][branches-graphql]; [protected-branch REST][branch-protection-api] addresses concrete branches | Partial: [classic protection](../settings.md#classic-branch-protection) implements exact patterns, conversation resolution, signed commits, linear history, branch locking, conditional fork syncing, administrator enforcement, deletions and complete active PR-review, required status-check, deployment and User/App force-push groups; remaining controls are unowned companions; explicit [classic pruning](../settings.md#classic-branch-protection-pruning) removes whole unlisted rules after complete private snapshot/absence checks. Lock branch and administrator enforcement were observed in the unsaved form on 2026-11-14; provider source corroborates administrator polarity and PR-required/count-zero mapping; review checkboxes/counts were observed unsaved on 2026-11-14. Fork syncing has official documented UI evidence under Lock branch but no authenticated fork-form observation. The status-check source menu was observed unsaved on 2026-11-14; explicit any/App-node mapping follows the official input contract, with active alias coherence as a product observation boundary. Required deployments and empty selection were observed unsaved on 2026-11-14, with read-only Environment inventory corroboration. User and ChatGPT Codex Connector App force-push selection were observed unsaved on 2026-11-14; Team remains unconfirmed for the personal target and raw-preserved. No live protection update was tested |
@@ -178,14 +178,13 @@ model; querying protection for existing branch names alone is not a complete
 inventory. Rulesets and classic protection remain separate resources, with no
 implicit migration, replacement or removal.
 
-Temporary interaction restrictions have a documented write API, but its relative
-duration cannot generally recreate an arbitrary exported absolute deadline.
-Reads do not expose the original duration or a stable lease ID. Reapplying an
-unchanged duration after expiry would start another restriction; that behavior
-must be explicit, not hidden behind a matching-policy claim. Exact observed-lease
-adoption/removal would be partial support, and a durable activation/receipt
-contract would need to work through both CLI and Action. No such YAML or hidden
-state is introduced by this inventory. Persistent PR caps remain separate.
+Temporary interaction restrictions are an explicit product exception because their
+finite duration automatically restores normal access. The decision recorded on
+2026-11-14 excludes their management despite the known read/set/remove API. The
+previous renewal-versus-receipt decision is withdrawn, not a pending implementation
+gate or an API-unavailability claim. Persistent PR caps and the Exemption list
+remain separate supported controls; this exception does not exclude other
+configurable target settings.
 
 The [Classic management guide][classic-management-ui] limits review-dismissal
 restrictions to organization repositories; the [protected-branches guide][protected-branches]
@@ -333,6 +332,7 @@ being confused with the missing implementations above.
 | Surface | Policy | UI/API distinction | Source coverage |
 | --- | --- | --- | --- |
 | Repository rename, visibility change, transfer and deletion | Excluded | UI/API feasibility does not override this lifecycle/identity decision | Not implemented; archive/unarchive remains separately supported |
+| Temporary interaction restrictions | Excluded | Finite restrictions automatically expire; known read/set/remove APIs do not override the explicit product exception | No declaration, export, plan, apply, renewal or lease-receipt support |
 | Secret values and private keys | Excluded | Secret names/metadata or write endpoints do not supply exportable secret values | No secret-value management; plaintext non-secret variables remain supported |
 | Feature configuration-file authoring | Excluded | UI editors and Contents APIs can create files, but that is a separate product boundary | No Dependabot/CodeQL/Actions workflow, funding, issue-template or instruction-file authoring; gh-settings' own YAML is not excluded |
 | Organization settings, membership, teams and inherited policies | Non-target | Repository-visible inherited effects do not become owned organization settings | Preserve ownership boundaries; do not adopt organization APIs as personal-repository substitutes |
