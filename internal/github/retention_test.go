@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -15,7 +16,7 @@ func TestRetentionReadsRequireBothIntegers(t *testing.T) {
 	for _, test := range []struct {
 		body  string
 		valid bool
-	}{{`{"days":90,"maximum_allowed_days":90}`, true}, {`{"days":90,"maximum_allowed_days":14}`, true}, {`{"days":400,"maximum_allowed_days":400}`, true}, {`{}`, false}, {`null`, false}, {`{"days":90}`, false}, {`{"days":null,"maximum_allowed_days":90}`, false}, {`{"days":90,"maximum_allowed_days":null}`, false}, {`{"days":90,"maximum_allowed_days":0}`, false}, {`{"days":0,"maximum_allowed_days":90}`, false}, {`{"days":"90","maximum_allowed_days":90}`, false}, {`{"days":1.5,"maximum_allowed_days":90}`, false}, {`{"Days":90,"maximum_allowed_days":90}`, false}} {
+	}{{`{"days":90,"maximum_allowed_days":90}`, true}, {`{"days":90,"maximum_allowed_days":14}`, true}, {`{"days":400,"maximum_allowed_days":400}`, true}, {`{"days":90,"maximum_allowed_days":90,"other":"ok"}`, true}, {`{}`, false}, {`null`, false}, {`{"days":90}`, false}, {`{"days":null,"maximum_allowed_days":90}`, false}, {`{"days":90,"maximum_allowed_days":null}`, false}, {`{"days":90,"maximum_allowed_days":0}`, false}, {`{"days":0,"maximum_allowed_days":90}`, false}, {`{"days":"90","maximum_allowed_days":90}`, false}, {`{"days":1.5,"maximum_allowed_days":90}`, false}, {`{"Days":90,"maximum_allowed_days":90}`, false}, {`{"days":10,"days":90,"maximum_allowed_days":90}`, false}, {`{"days":90,"days":10,"maximum_allowed_days":90}`, false}, {`{"days":90,"maximum_allowed_days":14,"maximum_allowed_days":90}`, false}, {`{"days":90,"Days":10,"maximum_allowed_days":90}`, false}, {`{"days":90,"maximum_allowed_days":90,"Maximum_Allowed_Days":14}`, false}, {`{"days":90,"maximum_allowed_days":90} {}`, false}, {"{\"days\":90,\"maximum_allowed_days\":90,\"other\":\"\xff\"}", false}, {`{"days":90,"maximum_allowed_days":90,"padding":"` + strings.Repeat("x", 1<<20) + `"}`, false}} {
 		client := &RetentionClient{rest: actionsClient(t, func(r *http.Request) (*http.Response, error) {
 			if r.Method != "GET" || r.URL.Path != "/repos/owner/current/actions/permissions/artifact-and-log-retention" {
 				t.Fatal("unrelated request", r.Method, r.URL)
@@ -34,7 +35,7 @@ func TestRetentionReadsRequireBothIntegers(t *testing.T) {
 	}
 }
 func TestRetentionFreshCapNarrowPUTAndReadback(t *testing.T) {
-	for _, failure := range []string{"", "read", "cap", "write", "enforced", "missing maximum", "lower maximum", "changed maximum", "repair over cap"} {
+	for _, failure := range []string{"", "read", "ambiguous read", "ambiguous readback", "cap", "write", "enforced", "missing maximum", "lower maximum", "changed maximum", "repair over cap"} {
 		t.Run(failure, func(t *testing.T) {
 			days, maximum := 90, 90
 			desired := 30
@@ -53,6 +54,9 @@ func TestRetentionFreshCapNarrowPUTAndReadback(t *testing.T) {
 				if r.Method == "GET" {
 					if failure == "read" {
 						return actionsResponse(r, 403, `{}`), nil
+					}
+					if failure == "ambiguous read" || failure == "ambiguous readback" && writes > 0 {
+						return actionsResponse(r, 200, fmt.Sprintf(`{"days":10,"days":%d,"maximum_allowed_days":90}`, days)), nil
 					}
 					if writes > 0 && failure == "missing maximum" {
 						return actionsResponse(r, 200, fmt.Sprintf(`{"days":%d}`, days)), nil
@@ -88,11 +92,11 @@ func TestRetentionFreshCapNarrowPUTAndReadback(t *testing.T) {
 				t.Fatal(failure, wrote, err)
 			}
 			var pre interface{ ReadFailedBeforeWrite() }
-			if errors.As(err, &pre) != (failure == "read" || failure == "cap") {
+			if errors.As(err, &pre) != (failure == "read" || failure == "ambiguous read" || failure == "cap") {
 				t.Fatal("wrong certainty", failure, err)
 			}
 			want := 1
-			if failure == "read" || failure == "cap" {
+			if failure == "read" || failure == "ambiguous read" || failure == "cap" {
 				want = 0
 			}
 			if writes != want {
