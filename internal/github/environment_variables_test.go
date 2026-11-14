@@ -165,3 +165,24 @@ func TestEnvironmentVariableInvalidIntentIsLocal(t *testing.T) {
 		}
 	}
 }
+
+func TestEnvironmentVariableRejectsAmbiguousValue(t *testing.T) {
+	for _, body := range []string{`{"name":"ITEM","value":"other","value":"PRIVATE_CANARY"}`, `{"name":"ITEM","Value":"other","value":"PRIVATE_CANARY"}`} {
+		client := topicsClient(t, transportFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Path == "/repos/owner/current/environments/prod" {
+				return labelsResponse(req, 200, `{"id":1,"name":"prod"}`), nil
+			}
+			if req.URL.Path != "/repos/owner/current/environments/prod/variables/ITEM" {
+				t.Fatalf("unexpected path %s", req.URL.Path)
+			}
+			return labelsResponse(req, 200, body), nil
+		}))
+		observed, err := client.ReadEnvironmentVariable(repository.Repository{Owner: "owner", Name: "current"}, "prod", "ITEM")
+		if err == nil || strings.Contains(err.Error(), "PRIVATE_CANARY") {
+			t.Fatalf("invalid read or leak: %v", err)
+		}
+		if _, err := observed.Value(); err == nil {
+			t.Fatal("ambiguous observation acquired")
+		}
+	}
+}
