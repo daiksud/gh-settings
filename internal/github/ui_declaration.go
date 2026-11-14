@@ -31,6 +31,19 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 	}
 	result.Labels = labels
 	if repository.Settings != nil {
+		if repository.Settings.Webhooks != nil {
+			values := make([]settings.Webhook, 0, len(*repository.Settings.Webhooks))
+			for _, v := range *repository.Settings.Webhooks {
+				if v.ID == nil {
+					return settings.Declaration{}, fmt.Errorf("webhook id is required")
+				}
+				values = append(values, settings.Webhook{ID: *v.ID, PayloadURL: v.PayloadURL, ContentType: v.ContentType}.Clone())
+			}
+			if err := settings.ValidateWebhooks(values); err != nil {
+				return settings.Declaration{}, fmt.Errorf("%s: %w", settings.WebhooksPath, err)
+			}
+			result.Webhooks = &values
+		}
 		if repository.Settings.DeployKeys != nil {
 			values := make([]settings.DeployKeyDeclaration, 0, len(*repository.Settings.DeployKeys))
 			for _, v := range *repository.Settings.DeployKeys {

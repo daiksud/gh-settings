@@ -185,6 +185,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
 | Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation or explicit prune DELETE, fresh identity/management-path guards and independent complete readback |
+| Existing webhook configuration (current source) | Webhooks read plus complete personal-public repository identity | Webhooks write; selected config PATCH and independent preservation verification |
 | Deploy keys (current source) | Administration read, complete personal-public target and key inventory | Administration write; immutable creation or explicit guarded deletion with independent readback |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
@@ -448,3 +449,15 @@ later deletion. These source capabilities do not alter a published package pin.
 Current source supports [Autolink references](settings.md#autolink-references) through the same export/plan/apply contract. App installation tokens require repository Administration read for acquisition and write for creation/deletion. Nothing grants or broadens permissions automatically. `prune: autolinks`, comma combinations and standalone `all` use fixed candidates for a present collection. Ordinary apply preserves unlisted references.
 
 Autolinks are immutable ID-bound objects: changes require explicit pruning and later creation. The Action does not write creation IDs, commit or push. Record confirmed IDs through the [creation-ID procedure](contributing/repository-automation.md#repository-settings-changes) before repeating creation; unbound collisions fail. Detailed plans and Summary may show non-secret prefix/URL/format, while status-only hides them. Export saves local YAML without logging its contents; API debug bodies are suppressed. Package support still depends on the selected immutable release.
+
+## Existing webhook configuration in current source
+
+The Action uses the shared [existing webhook contract](settings.md#existing-webhook-configuration).
+Detailed plans/Summary show selected ID and URL/Content type, so a destination
+change is reviewable. Status-only hides those values; URLs must not carry secrets.
+Private companion state and raw API/debug/error bodies stay out of reports/logs.
+Export saves local YAML without copying it into Summary. Apply preserves input
+files and checkout HEAD, and publishes success outputs only after verification.
+The Action never creates/removes hooks, pings, tests deliveries or fetches URLs.
+Support depends on the selected immutable package; permissions are not granted
+or broadened automatically.

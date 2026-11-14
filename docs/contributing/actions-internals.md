@@ -221,3 +221,13 @@ deletion count the family once. See [Deploy keys](../settings.md#deploy-keys).
 ## Autolink report boundary
 
 The same-version `autolinks` report array contains exactly one `before` or `after` configuration per operation. A deletion has a complete positive-ID `before`; a creation has a complete IDless `after`. Each configuration contains `reference_prefix`, `target_url` and `reference_format`. There is no update operation. Closed decoding rejects null/unknown members; model validation rejects collisions, invalid URLs, missing controls and invalid identities. Mixed create/delete changes count one family. Private acquisition timestamps and target snapshots never enter reports. Detailed rendering quotes these non-secret controls; status-only projects only outcome/count metadata.
+
+## Webhook report boundary
+
+`webhooks` contains closed before/after projections of each changed existing ID.
+Both projections contain exactly the same selected controls and positive exact
+integer identity. Unknown/case-mismatched/duplicate/null members, mismatched IDs,
+empty/no-change projections and duplicate entries are rejected. URL bytes are
+escaped for CLI/HTML display. Omitted URL/content type and all SSL, Active/events,
+creation, delivery and secret evidence remain private. The family counts once,
+additively with other managed collections. Status-only hides IDs and values.

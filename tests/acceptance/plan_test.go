@@ -154,16 +154,16 @@ func TestExportEditValidatePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if validated.runErr != nil || validated.stdout.Len() != 0 || hasNonInfoDiagnostic(validated.stderr.String()) || fixture.reads.Load() != 38 {
+	if validated.runErr != nil || validated.stdout.Len() != 0 || hasNonInfoDiagnostic(validated.stderr.String()) || fixture.reads.Load() != 39 {
 		t.Fatalf("validate: %v stdout=%q stderr=%q reads=%d", validated.runErr, validated.stdout.String(), validated.stderr.String(), fixture.reads.Load())
 	}
 	planned, err := executeCLI(binary, fixture.work, fixture.root, env, []string{"plan"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Export includes the independent OIDC, Autolink and deploy-key identity attempts. Empty labels need no
+	// Export includes independent OIDC, Autolink, deploy-key and webhook attempts. Empty labels need no
 	// plan read; the removed Issue policy is also unmanaged.
-	if planned.runErr != nil || planned.stdout.String() != "repository.settings.general.features.issues: true → false\n" || hasNonInfoDiagnostic(planned.stderr.String()) || fixture.reads.Load() != 43 {
+	if planned.runErr != nil || planned.stdout.String() != "repository.settings.general.features.issues: true → false\n" || hasNonInfoDiagnostic(planned.stderr.String()) || fixture.reads.Load() != 44 {
 		t.Fatalf("plan: %v stdout=%q stderr=%q reads=%d", planned.runErr, planned.stdout.String(), planned.stderr.String(), fixture.reads.Load())
 	}
 	if err := fixture.checkRequests(false); err != nil {

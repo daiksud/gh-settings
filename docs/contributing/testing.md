@@ -247,7 +247,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeWebhooks)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -548,3 +548,19 @@ matching repeats. `TestBuiltCompositeClassicReviews` uses the actual public Acti
 for activation, count-zero, deactivation, no-op, guarded failure and readback drift,
 checking private plans, unchanged checkout and success-only outputs. These isolated
 fixtures do not establish live approval behavior or effective merge enforcement.
+
+## Existing webhook configuration evidence
+
+The literal codec baseline rejects `webhooks` before implementation. Model and
+workspace tests cover partial ownership, exact URL bytes, strict shapes, set
+preservation and closed report projections. REST tests cover fixed-route complete
+pagination, selected-only reads, full identity/parent/config coherence, partial
+PATCH, complete ACK, independent selected/omitted-control verification and bounded
+private diagnostics. App checks cover no-ops, whole-family preparation, actual
+partial progress and export retention/output failures.
+`TestWebhooksExecutableLifecycle` and `TestWebhooksExecutableExportRetention`
+exercise the built CLI, including unarchive ordering and unchanged input files.
+`TestBuiltCompositeWebhooks` uses the supplied product and actual public Action for
+export, detailed/status-only planning, change/repeat and failed confirmation.
+Secret/body/member-name canaries remain private under `GH_DEBUG=api`. These local
+fixtures do not certify live secret equality, receiver behavior or delivery.

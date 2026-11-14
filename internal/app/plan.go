@@ -167,6 +167,24 @@ func Plan(load DeclarationLoader, resolve TargetResolver, read Reader, options .
 		comparison.Managed++
 		comparison.AgentsVariables = changes
 	}
+	if desired.Webhooks != nil && len(*desired.Webhooks) > 0 {
+		var observed settings.WebhookObservation
+		var err error
+		if read.Webhooks == nil {
+			err = fmt.Errorf("webhook reader unavailable")
+		} else {
+			observed, err = read.Webhooks(repo, webhookIDs(*desired.Webhooks))
+		}
+		var changes []settings.WebhookChange
+		if err == nil {
+			_, changes, err = settings.PrepareWebhooks(observed, *desired.Webhooks)
+		}
+		if err != nil {
+			return PlanResult{}, &PlanError{Stage: "read-failure", Path: settings.WebhooksPath, Target: repo, Err: err}
+		}
+		comparison.Managed++
+		comparison.Webhooks = changes
+	}
 	if desired.DeployKeys != nil && (desired.DeployKeys.Len() > 0 || prune.Has("deploy-keys")) {
 		observed, err := read.DeployKeys(repo)
 		if err != nil {

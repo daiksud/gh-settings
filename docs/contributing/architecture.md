@@ -322,3 +322,16 @@ fingerprint, grant and selected ID. See the [public contract](../settings.md#dep
 ## Autolink reconciliation
 
 Autolinks have a concrete immutable collection owner in `internal/settings`, a read/create/delete REST adapter in `internal/github`, and shared export/plan/apply sequencing in `internal/app`. UI projection and workspace ID recording keep omission separate from an empty collection. Prune's private expected inventory begins at global preflight and changes only for verified own creations/deletions and unarchive. The adapter checks complete identity/configuration before writes and independently observes their results. Public comparison objects contain only create/delete configuration, with one managed-family count; no timestamp or target snapshot is serialized. The [public contract](../settings.md#autolink-references) owns input constraints and explicit replacement.
+
+## Existing webhook reconciliation
+
+`internal/settings/webhooks.go` separates partial public intent from complete
+nonsecret observations and immutable selection identity. The REST adapter discards
+secret strings, suppresses debug logging and bounds all error diagnostics. Export
+uses a complete fixed-route inventory; plan/apply acquire selected IDs. The app
+prepares the whole family, then each writer freshly reconciles, PATCHes only
+changed selected config members and independently confirms target, hook identity
+and all preserved nonsecret companions. No parent endpoint or destination URL is
+used for mutation. Closed report projections contain only selected controls.
+The [configuration reference](../settings.md#existing-webhook-configuration) owns
+constraints, partial-update evidence and limits of the preservation guarantee.

@@ -433,3 +433,13 @@ keys after complete preflight and verifies absence; ordinary `[]` deletes nothin
 ## Autolink commands
 
 Automatic export independently attempts the complete [Autolinks family](settings.md#autolink-references). `validate` rejects invalid controls locally. `plan` shows immutable creates/deletions with prefix, URL and format; a matching bound ID is unchanged. `apply` verifies creation with independent object and inventory reads before guarded ID recording. `--prune autolinks` and standalone `all` select fixed unlisted deletion candidates only for a present collection. Replace a reference by explicitly pruning it, then creating its replacement in a later apply. `--no-writeback` leaves creation IDs for the documented follow-up process. Failures retain confirmed earlier progress and unconfirmed effects honestly.
+
+## Existing webhook configuration in current source
+
+[Webhook declarations](settings.md#existing-webhook-configuration) select existing
+IDs and optional Payload URL/Content type. `export` acquires the complete family;
+`plan` and direct `apply` read only selected IDs. Matching complete state skips
+PATCH. Omission and `webhooks: []` make no family requests, and no prune scope
+owns hook deletion. Detailed plans show selected URLs; status-only hides them.
+Failed verification stops later work and does not roll back earlier writes.
+The CLI does not ping/test hooks or fetch destinations, and does not edit YAML.
