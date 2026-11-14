@@ -157,3 +157,22 @@ func TestWorkflowPermissionsErrorsAndOmission(t *testing.T) {
 		t.Fatal("workflow-only declaration reached execution API", err)
 	}
 }
+
+func TestWorkflowPermissionsRejectsAmbiguousOrOversizedReads(t *testing.T) {
+	for _, body := range []string{
+		`{"default_workflow_permissions":"write","default_workflow_permissions":"read","can_approve_pull_request_reviews":false}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":true,"can_approve_pull_request_reviews":false}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false} {}`,
+		`{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false,"padding":"` + strings.Repeat("x", 1<<20) + `"}`,
+	} {
+		client := actionsClient(t, func(req *http.Request) (*http.Response, error) {
+			if req.Method != "GET" {
+				t.Fatal("unexpected write")
+			}
+			return actionsResponse(req, 200, body), nil
+		})
+		if _, err := client.ReadWorkflowPermissions(repository.Repository{Owner: "owner", Name: "current"}); err == nil {
+			t.Fatal("accepted ambiguous or oversized response")
+		}
+	}
+}

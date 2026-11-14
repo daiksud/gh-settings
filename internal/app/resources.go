@@ -127,6 +127,7 @@ type Writer struct {
 	PullRequestExemptions   func(repository.Repository, settings.PullRequestExemptionsDeclaration) (bool, error)
 	EnvironmentVariable     func(repository.Repository, string, settings.RepositoryVariable) (bool, error)
 	ReadActionsPolicies     func(repository.Repository) (settings.ActionsPolicyObservation, error)
+	ReadWorkflowPermissions func(repository.Repository) (settings.WorkflowPermissionsState, error)
 	ActionsEventPolicy      func(repository.Repository, settings.ActionsEventPolicyChange) (int64, error)
 	CopilotReviewEffort     func(repository.Repository, string) (bool, error)
 	CopilotInstructions     func(repository.Repository, bool) (bool, error)

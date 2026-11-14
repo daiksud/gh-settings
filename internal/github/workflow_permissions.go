@@ -3,6 +3,8 @@ package github
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/repository"
@@ -17,9 +19,16 @@ func (failure *workflowPermissionsReadFailure) Unwrap() error  { return failure.
 func (*workflowPermissionsReadFailure) ReadFailedBeforeWrite() {}
 
 func (c *ActionsPolicyClient) ReadWorkflowPermissions(repo repository.Repository) (settings.WorkflowPermissionsState, error) {
+	response, err := c.rest.Request(http.MethodGet, actionsPolicyPath(repo)+"/workflow", nil)
+	if err != nil {
+		return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: unavailable")
+	}
+	defer response.Body.Close()
+	const limit = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	var fields map[string]json.RawMessage
-	if err := c.rest.Get(actionsPolicyPath(repo)+"/workflow", &fields); err != nil {
-		return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: %w", err)
+	if err != nil || len(body) > limit || response.StatusCode != http.StatusOK || webhookJSON(body, &fields) != nil || fields == nil {
+		return settings.WorkflowPermissionsState{}, fmt.Errorf("read default workflow permissions: incomplete or unavailable")
 	}
 	var state settings.WorkflowPermissionsState
 	var permission *string
