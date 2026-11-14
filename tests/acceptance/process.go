@@ -14,9 +14,20 @@ type executionResult struct {
 	runErr         error
 }
 
+// Full export probes every supported family. Keep a finite harness budget with
+// headroom for hosted runners; this does not change any product API timeout.
+const acceptanceProcessTimeout = 60 * time.Second
+
 func executeCLI(binary, work, root string, env, args []string, outputFailure bool) (*executionResult, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), acceptanceProcessTimeout)
 	defer cancel()
+	return executeCLIContext(ctx, binary, work, root, env, args, outputFailure)
+}
+
+// Always return a result, including setup/cancellation failures. Callers can
+// report captured output and runErr without losing the separate harness error.
+func executeCLIContext(ctx context.Context, binary, work, root string, env, args []string, outputFailure bool) (*executionResult, error) {
+	result := &executionResult{}
 	if args == nil {
 		args = []string{"export"}
 	}
@@ -28,24 +39,23 @@ func executeCLI(binary, work, root string, env, args []string, outputFailure boo
 	cmd := exec.CommandContext(ctx, binary, args...)
 	cmd.Dir = work
 	cmd.Env = env
-	var result executionResult
 	cmd.Stdout = &result.stdout
 	cmd.Stderr = &result.stderr
 	if outputFailure {
 		file := filepath.Join(root, "read-only-output")
 		if err := os.WriteFile(file, nil, 0600); err != nil {
-			return nil, err
+			return result, err
 		}
 		destination, err := os.Open(file)
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		defer destination.Close()
 		cmd.Stdout = destination
 	}
 	result.runErr = cmd.Run()
 	if ctx.Err() != nil {
-		return nil, ctx.Err()
+		return result, ctx.Err()
 	}
-	return &result, nil
+	return result, nil
 }
