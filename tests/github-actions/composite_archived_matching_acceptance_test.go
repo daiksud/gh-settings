@@ -17,7 +17,7 @@ import (
 
 func TestBuiltCompositeArchivedMatching(t *testing.T) {
 	product, version := suppliedCompositeProduct(t)
-	for _, scenario := range []string{"matching", "description differs", "topics differ", "topics missing", "topics denied", "identity changed", "label differs", "labels denied", "mixed matching", "mixed unverified default", "mixed security differs", "graphql matching", "graphql merge differs", "graphql merge unknown", "graphql pr differs", "graphql pr unknown", "graphql issue differs", "graphql issue unknown"} {
+	for _, scenario := range []string{"matching", "description differs", "topics differ", "topics missing", "topics denied", "identity changed", "label differs", "labels denied", "mixed matching", "mixed unverified default", "mixed security differs", "mixed empty collections", "mixed empty topics differ", "mixed empty exemptions differ", "graphql matching", "graphql merge differs", "graphql merge unknown", "graphql pr differs", "graphql pr unknown", "graphql issue differs", "graphql issue unknown"} {
 		t.Run(scenario, func(t *testing.T) {
 			f := newCompositeFixture(t)
 			f.base["GITHUB_ACTIONS"] = "true"
@@ -47,6 +47,13 @@ repository:
     pages: {build_and_deployment: {source: deploy_from_a_branch, branch: none}}
     advanced_security: {private_vulnerability_reporting: false}
 `
+			}
+			if strings.HasPrefix(scenario, "mixed empty ") {
+				input = strings.Replace(input, "  settings:\n", "  settings:\n    webhooks: []\n    deploy_keys: []\n    rulesets: []\n    branch_protection_rules: []\n    environments: [{name: production, variables: []}]\n    agents: {variables: []}\n", 1)
+				input = strings.Replace(input, "    actions:\n", "    actions:\n      variables: []\n", 1)
+				if scenario == "mixed empty topics differ" {
+					input = strings.Replace(input, "topics: [alpha, beta]", "topics: []", 1)
+				}
 			}
 			if strings.HasPrefix(scenario, "graphql ") {
 				input = `version: daiksud/gh-settings@v0
@@ -159,7 +166,11 @@ repository:
 				case "/repos/owner/config/interaction-limits/pulls/creation-cap":
 					fmt.Fprint(w, `{"enabled":true,"max_open_pull_requests":5,"include_drafts":false}`)
 				case "/repos/owner/config/interaction-limits/pulls/bypass-list":
-					fmt.Fprint(w, `[]`)
+					if scenario == "mixed empty exemptions differ" {
+						fmt.Fprint(w, `[{"id":7,"login":"person","type":"User"}]`)
+					} else {
+						fmt.Fprint(w, `[]`)
+					}
 				case "/repos/owner/config/copilot/code-review/settings":
 					configured := `"balanced"`
 					if scenario == "mixed unverified default" {
@@ -212,7 +223,7 @@ repository:
 			}
 			f.base["NO_PROXY"], f.base["no_proxy"] = "", ""
 			result := f.run(t, "apply", "archive-fixture", map[string]string{"github.action_ref": version})
-			if (result.status == 0) != (scenario == "matching" || scenario == "mixed matching" || scenario == "graphql matching") || (result.status != 0 && len(result.outputs) != 0) {
+			if (result.status == 0) != (scenario == "matching" || scenario == "mixed matching" || scenario == "mixed empty collections" || scenario == "graphql matching") || (result.status != 0 && len(result.outputs) != 0) {
 				t.Fatalf("unexpected result: %+v", result)
 			}
 
