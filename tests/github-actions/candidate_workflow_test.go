@@ -132,15 +132,16 @@ func TestCandidateCompositeScenarios(t *testing.T) {
 	covered := make(map[string]bool)
 	boundaryChecks := 0
 	for _, s := range steps {
-		if strings.Contains(s.Run, "TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush|CompositeRunnerLabels|CompositeWebhooks|CompositeWebhookCreation|CompositeWebhookPrune|CompositeWebhookPruneMixed|CompositeRunnerPrune)") {
+		if strings.Contains(s.Run, "go test -tags=acceptance ./tests/github-actions") {
 			boundaryChecks++
-			if s.Continue || s.If != "" || !reflect.DeepEqual(s.Env, map[string]string{"BINARY_PATH": "${{ inputs.binary-path }}", "GOTOOLCHAIN": "local"}) || !strings.Contains(s.Run, `-binary "$BINARY_PATH"`) {
+			command := `(cd .action && go test -tags=acceptance ./tests/github-actions -run '^TestBuilt' -count=1 -binary "$BINARY_PATH")`
+			if s.Continue || s.If != "" || !reflect.DeepEqual(s.Env, map[string]string{"BINARY_PATH": "${{ inputs.binary-path }}", "GOTOOLCHAIN": "local"}) || !strings.Contains("\n"+s.Run+"\n", "\n"+command+"\n") {
 				t.Fatal("built composite checks must consume the supplied product and fail the candidate on regression")
 			}
 		}
 	}
 	if boundaryChecks != 1 {
-		t.Fatal("candidate must run the supplied-product export boundary checks")
+		t.Fatal("candidate must run all supplied-product acceptance checks")
 	}
 	for _, test := range []struct {
 		id, command, token, assertion string
