@@ -9,7 +9,7 @@ import (
 )
 
 func webhookAppObservation() settings.WebhookObservation {
-	return settings.WebhookObservation{Target: settings.WebhookTarget{ID: 1, OwnerID: 2, FullName: "owner/current"}, Values: []settings.WebhookState{{ID: 7, CreatedAt: "stamp", Config: settings.WebhookConfig{PayloadURL: "https://private.example/omitted", ContentType: "application/json"}, Events: []string{"push"}}}}
+	return settings.WebhookObservation{Complete: true, Target: settings.WebhookTarget{ID: 1, OwnerID: 2, FullName: "owner/current"}, Values: []settings.WebhookState{{ID: 7, CreatedAt: "stamp", Config: settings.WebhookConfig{PayloadURL: "https://private.example/omitted", ContentType: "application/json"}, Events: []string{"push"}}}}
 }
 func TestWebhooksLocalNoopAndSelection(t *testing.T) {
 	for _, d := range []settings.Declaration{{}, {Webhooks: &[]settings.Webhook{}}} {

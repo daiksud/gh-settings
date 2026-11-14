@@ -39,12 +39,15 @@ func webhookReportObject(data []byte, allowed map[string]bool) (map[string]json.
 	return result, nil
 }
 func (v *Webhook) UnmarshalJSON(data []byte) error {
-	raw, err := webhookReportObject(data, map[string]bool{"id": true, "payload_url": true, "content_type": true})
+	raw, err := webhookReportObject(data, map[string]bool{"id": true, "payload_url": true, "content_type": true, "active": true, "events": true})
 	if err != nil {
 		return err
 	}
-	if raw["id"] == nil {
-		return fmt.Errorf("webhook report requires id")
+	if id, present := raw["id"]; present {
+		var number int64
+		if json.Unmarshal(id, &number) != nil || number <= 0 {
+			return fmt.Errorf("invalid webhook report identity")
+		}
 	}
 	type plain Webhook
 	var value plain
@@ -62,8 +65,8 @@ func (c *WebhookChange) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if len(raw) != 2 {
-		return fmt.Errorf("webhook report requires both projections")
+	if raw["after"] == nil {
+		return fmt.Errorf("webhook report requires desired projection")
 	}
 	type plain WebhookChange
 	var value plain

@@ -34,10 +34,14 @@ func DeclarationFromUI(repository uimodel.Repository) (settings.Declaration, err
 		if repository.Settings.Webhooks != nil {
 			values := make([]settings.Webhook, 0, len(*repository.Settings.Webhooks))
 			for _, v := range *repository.Settings.Webhooks {
-				if v.ID == nil {
-					return settings.Declaration{}, fmt.Errorf("webhook id is required")
+				id := int64(0)
+				if v.ID != nil {
+					if *v.ID <= 0 {
+						return settings.Declaration{}, fmt.Errorf("webhook id must be positive")
+					}
+					id = *v.ID
 				}
-				values = append(values, settings.Webhook{ID: *v.ID, PayloadURL: v.PayloadURL, ContentType: v.ContentType}.Clone())
+				values = append(values, settings.Webhook{ID: id, PayloadURL: v.PayloadURL, ContentType: v.ContentType, Active: v.Active, Events: v.Events}.Clone())
 			}
 			if err := settings.ValidateWebhooks(values); err != nil {
 				return settings.Declaration{}, fmt.Errorf("%s: %w", settings.WebhooksPath, err)

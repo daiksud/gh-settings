@@ -245,10 +245,15 @@ enter this report or become apply input.
 
 ## Webhook report boundary
 
-`webhooks` contains closed before/after projections of each changed existing ID.
-Both projections contain exactly the same selected controls and positive exact
-integer identity. Unknown/case-mismatched/duplicate/null members, mismatched IDs,
-empty/no-change projections and duplicate entries are rejected. URL bytes are
-escaped for CLI/HTML display. Omitted URL/content type and all SSL, Active/events,
-creation, delivery and secret evidence remain private. The family counts once,
-additively with other managed collections. Status-only hides IDs and values.
+`webhooks` contains closed optional `before`/`after` projections. A creation has no
+Before and an IDless After containing URL, Content type, Active and events. An
+update has the same positive ID and selected shape on both sides, with a changed
+URL/Content type and matching selected parent guards. Deletion is rejected.
+Unknown/case-mismatched/duplicate/null members, mismatched identities, unsupported
+parent mutations, incomplete/no-change projections and duplicate/colliding entries
+fail validation. Exact integer IDs avoid floating-point loss; event sets compare
+without ordering or guessed expansion. URL bytes are escaped for CLI/HTML display.
+Omitted controls, SSL, creation timestamps, delivery and secret evidence stay
+private. Detailed creation plans state automatic ping and no supplied Secret.
+The family counts once alongside other collections. Status-only hides identities
+and values; failure reports retain only bounded resource/progress information.

@@ -43,7 +43,7 @@ Read back the created objects, confirm their IDs, and adopt those IDs in a
 follow-up settings PR before another plan or apply of the same resources.
 Review the declaration and read back those objects to confirm their IDs before
 manually dispatching another apply. Rerunning the original ID-less configuration
-after creation can fail with a name collision, including after a partial
+after creation can fail with a resource-specific collision, including after a partial
 failure. Recover confirmed IDs before retrying; follow the
 [apply contract](../commands.md#apply-behavior) for partial progress and
 resource-specific behavior.

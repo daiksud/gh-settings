@@ -288,6 +288,15 @@ func TestWebhookCompleteAcquisitionAndUnknownPrivacy(t *testing.T) {
 			if e != nil && strings.Contains(e.Error(), "PRIVATE") {
 				t.Fatal(e)
 			}
+			if mode == "selected" {
+				if o.Complete {
+					t.Fatal("selected read became full inventory")
+				}
+				if _, err := o.Declaration(); err == nil {
+					t.Fatal("selected read exported as complete")
+				}
+				return
+			}
 			if good {
 				values, e := o.Declaration()
 				if e != nil {

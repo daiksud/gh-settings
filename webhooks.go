@@ -20,3 +20,11 @@ func writeWebhook(repo repository.Repository, selection settings.WebhookSelectio
 	}
 	return client.ApplyWebhook(repo, selection)
 }
+
+func createWebhook(repo repository.Repository, expected settings.WebhookObservation, desired settings.Webhook) (settings.WebhookCreateResult, error) {
+	client, err := github.NewWebhooksClient(repo.Host)
+	if err != nil {
+		return settings.WebhookCreateResult{}, err
+	}
+	return client.CreateWebhook(repo, expected, desired)
+}

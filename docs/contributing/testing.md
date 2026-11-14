@@ -256,7 +256,7 @@ outputs. Run them against an already-built executable with a stable release
 version (the candidate gate uses its verified producer binary):
 
 ```sh
-mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush|CompositeRunnerLabels|CompositeWebhooks)$' -count=1 -binary /absolute/path/to/gh-settings
+mise exec -- go test -tags=acceptance ./tests/github-actions -run '^TestBuilt(CompositeExport|CandidateExportFixture|CompositeEnvironmentPrune|CompositeWorkflowPermissions|CompositeActionsExecution|CompositeCollaborators|CompositeRulesetCoverage|CompositeEnvironmentApps|CompositeAIScanRepositories|CompositeCollaboratorPrune|CompositeClassicLock|CompositeClassicPrune|CompositeOIDCSubject|CompositeClassicAdmin|CompositeAutolinks|CompositeClassicDeployments|CompositeDeployKeys|CompositeClassicStatusChecks|CompositeClassicReviews|CompositeClassicForkSync|CompositeClassicForcePush|CompositeRunnerLabels|CompositeWebhooks|CompositeWebhookCreation)$' -count=1 -binary /absolute/path/to/gh-settings
 ```
 
 The supplied-product Environment prune check also runs the real composite's
@@ -624,3 +624,26 @@ exercise the built CLI, including unarchive ordering and unchanged input files.
 export, detailed/status-only planning, change/repeat and failed confirmation.
 Secret/body/member-name canaries remain private under `GH_DEBUG=api`. These local
 fixtures do not certify live secret equality, receiver behavior or delivery.
+
+## Webhook creation evidence
+
+The new literal declaration and `TestWebhookCreationExecutableLifecycle/record`
+fail with the unchanged existing-config binary at unknown Active/events keys.
+Model tests cover explicit full creation, guards, exact URL collisions, opaque and
+empty event sets, closed create/update report unions and expected inventory
+advancement without aliasing. Adapter tests assert the exact POST, successful-201
+identity recovery independent of acknowledgment validity, fresh detail/config/full
+inventory confirmation, mixed-update drift, strict target/SSL/identity checks and
+bounded diagnostics. App tests distinguish attempted, verified and locally recorded
+progress across mixed and multiple writes; source tests preserve comments and
+reject stale/aliased recording.
+
+`TestWebhookCreationExecutableLifecycle` runs real CLI creation, guarded ID
+writeback, repeat no-op, no-writeback/hosted manual binding, unarchive ordering,
+whole-family guards, collisions and HTTP/ACK/readback/local/late failures.
+`TestBuiltCompositeWebhookCreation` exercises the actual public Action with the
+supplied binary, detailed/status-only privacy, exact outputs, unchanged source,
+recovery-only IDs and no duplicate POST on IDless repeats. Existing complete export
+checks now require Active/events and retain unavailable prior IDless intent.
+`GH_DEBUG=api` and private secret/body/delivery canaries exercise the logging boundary.
+These are local fixtures, not live delivery or secret-preservation certification.

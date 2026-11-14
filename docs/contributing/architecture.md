@@ -346,15 +346,24 @@ excluding acquisition and no-ops from earlier completed-write evidence. Presenta
 uses only selected IDs/custom labels. There is no prune registration, lifecycle
 writer, token generation, recovery ID or hidden journal.
 
-## Existing webhook reconciliation
+## Webhook reconciliation and creation
 
-`internal/settings/webhooks.go` separates partial public intent from complete
-nonsecret observations and immutable selection identity. The REST adapter discards
-secret strings, suppresses debug logging and bounds all error diagnostics. Export
-uses a complete fixed-route inventory; plan/apply acquire selected IDs. The app
-prepares the whole family, then each writer freshly reconciles, PATCHes only
-changed selected config members and independently confirms target, hook identity
-and all preserved nonsecret companions. No parent endpoint or destination URL is
-used for mutation. Closed report projections contain only selected controls.
-The [configuration reference](../settings.md#existing-webhook-configuration) owns
-constraints, partial-update evidence and limits of the preservation guarantee.
+`internal/settings/webhooks.go` separates selected public intent from complete
+nonsecret observations and immutable identity. Bound Active/events are guards;
+IDless entries require all four public controls. `webhook_inventory.go` owns
+complete-inventory evidence, cloning and advancement for verified local effects.
+The REST adapter discards secret strings, suppresses debug logs and bounds errors.
+Export and creation acquire complete fixed-route inventories; bound-only work
+retains selected-ID reads. The app validates all guards/collisions before writes.
+
+The config writer sends only changed URL/Content type members and independently
+confirms preserved companions. The creation writer sends the explicit four-field
+intent plus fixed SSL verification, checks a new 201 identity, and confirms detail,
+config and complete inventory. Mixed writes carry the expected inventory through
+both paths, adopting only their own verified changes. Recovery ID evidence and
+verified observation are separate. The app records IDs only after verification;
+local recording failure preserves honest remote progress. No parent PATCH,
+rollback, destination call or hidden recovery journal exists. Closed pointer-shaped
+reports distinguish creation from selected config updates.
+The [configuration reference](../settings.md#webhook-configuration-and-creation)
+owns public constraints and the boundaries of preservation evidence.

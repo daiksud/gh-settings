@@ -34,7 +34,7 @@ func CheckExportAcquisition(source settings.Declaration) error {
 	}
 	if source.Webhooks != nil {
 		for _, v := range *source.Webhooks {
-			if v.PayloadURL == nil || v.ContentType == nil {
+			if v.ID <= 0 || v.PayloadURL == nil || v.ContentType == nil || v.Active == nil || v.Events == nil {
 				return fmt.Errorf("webhook export lacks complete configuration")
 			}
 		}

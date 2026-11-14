@@ -347,7 +347,7 @@ func webhookHasNext(link string) (bool, error) {
 
 // nil IDs requests a complete export inventory; an explicit empty selection reads nothing.
 func (c *Client) ReadWebhooks(repo repository.Repository, ids []int64) (settings.WebhookObservation, error) {
-	var o settings.WebhookObservation
+	o := settings.WebhookObservation{Complete: ids == nil}
 	inventory := map[int64]settings.WebhookState{}
 	var err error
 	if ids != nil && len(ids) == 0 {
@@ -419,6 +419,19 @@ func (c *Client) ApplyWebhook(repo repository.Repository, selected settings.Webh
 	if selected.Desired.Validate() != nil || selected.Before.Validate() != nil || selected.Before.ID != selected.Desired.ID || selected.Target.Validate() != nil {
 		return pre(fmt.Errorf("invalid webhook selection"))
 	}
+	if selected.Expected != nil {
+		current, err := c.ReadWebhooks(repo, nil)
+		if err != nil {
+			return pre(err)
+		}
+		if err = settings.VerifyWebhookInventory(*selected.Expected, current); err != nil {
+			return pre(err)
+		}
+		initial, ok := selected.Expected.Find(selected.Desired.ID)
+		if !ok || !settings.WebhookStateEqual(initial, selected.Before) || selected.Expected.Target != selected.Target {
+			return pre(fmt.Errorf("invalid webhook expected selection"))
+		}
+	}
 	target, err := c.webhookTarget(repo)
 	if err != nil {
 		return pre(err)
@@ -432,6 +445,12 @@ func (c *Client) ApplyWebhook(repo repository.Repository, selected settings.Webh
 	}
 	if !settings.WebhookIdentityMatches(selected.Before, before) {
 		return pre(fmt.Errorf("webhook identity changed"))
+	}
+	if !before.GuardsMatch(selected.Desired) {
+		return pre(fmt.Errorf("webhook active or events guard differs; parent changes are unsupported"))
+	}
+	if selected.Expected != nil && !settings.WebhookStateEqual(selected.Before, before) {
+		return pre(fmt.Errorf("webhook inventory state changed before update"))
 	}
 	if before.Config.Matches(selected.Desired) {
 		return false, nil
@@ -477,6 +496,19 @@ func (c *Client) ApplyWebhook(repo repository.Repository, selected settings.Webh
 	}
 	if target != selected.Target || !settings.WebhookPreserved(before, after, selected.Desired) {
 		return true, fmt.Errorf("webhook verification differs from requested or preserved state")
+	}
+	if selected.Expected != nil {
+		expected, err := selected.Expected.WithUpdated(selected.Desired)
+		if err != nil {
+			return true, err
+		}
+		actual, err := c.ReadWebhooks(repo, nil)
+		if err != nil {
+			return true, err
+		}
+		if err = settings.VerifyWebhookInventory(expected, actual); err != nil {
+			return true, err
+		}
 	}
 	return true, nil
 }

@@ -1008,92 +1008,142 @@ General's `pull_requests.merge_commit.default_commit_message` accepts `default_m
 
 `repository.about.topics` manages the complete topic set. It is a direct array, not a mapping. Omission leaves it unmanaged; `[]` explicitly clears all topics; `{}` and null are invalid. Names are unique lowercase letters/numbers/hyphens, 1–50 characters each, at most 20 entries. Names are public metadata even on private repositories. Export, comparison and PUT use sorted set order without rewriting existing input YAML. Apply reads complete, validated current membership and skips PUT when the set matches, regardless of order. Changed membership uses one full-set PUT followed by an independent GET; the PUT response alone is not confirmation. A failed prerequisite read makes no Topics write. A rejected update or failed/mismatching readback stops later resources with uncertain effects and no automatic retry or rollback. Metadata read and Administration write must already exist. See [Topics and ordering](commands.md#apply-behavior).
 
-## Existing webhook configuration
+## Webhook configuration and creation
 
-Use `repository.settings.webhooks` to manage **Payload URL** and **Content type**
-on existing repository webhooks in a personally owned public repository:
+Use `repository.settings.webhooks` for repository webhooks in a personally owned
+public repository. An existing positive `id` selects optional **Payload URL** and
+**Content type** updates. Its optional **Active** and **events** fields are
+**equality guards**, not parent-update requests:
 
 ```yaml
 webhooks:
   - id: 12345678
     payload_url: https://example.com/github
     content_type: application/json
+    active: true
+    events: [pull_request, push]
   - id: 87654321
     content_type: application/x-www-form-urlencoded
 ```
 
-Each entry requires a unique positive integer `id` and at least one selected
-control. IDs bind existing hooks; URLs never identify or adopt them. Both controls
-are independently optional. Omitted fields and unlisted hooks remain unmanaged.
-Omitting the family or using `webhooks: []` makes no webhook requests during
-plan/apply. There is no creation, deletion, ID writeback or webhook prune scope;
-`--prune all` does not select webhook deletion.
+Every bound entry needs a unique positive integer ID and at least one selected
+control. Omitted controls and unlisted hooks remain unmanaged. Declaring only
+Active/events is a useful guard: matching values make no change; a mismatch fails
+before this family's first write. A missing selected ID fails, without recreation.
+The CLI does not use the parent PATCH endpoint because its documented omitted-
+Secret behavior does not provide the preservation contract used by config PATCH.
+
+Omit `id` to create a hook, and explicitly supply all four controls. There are no
+creation defaults; false and an empty event set are meaningful values:
+
+```yaml
+webhooks:
+  - payload_url: https://example.com/new-hook
+    content_type: application/json
+    active: false
+    events: []
+```
+
+Creation sends `name: web`, the exact URL, native Content type, Active and events,
+with SSL verification enabled (`insecure_ssl: "0"`) and **no Secret**. GitHub
+[documents an automatic ping when a webhook is created][webhook-ui]; the CLI does
+not promise that inactive creation suppresses it. Detailed plans show these
+consequences. Receiver authentication, secret provisioning and delivery success
+are not established by successful creation. No additional ping, test, redelivery
+or destination request is made.
 
 Content type accepts exactly the two MIME strings above, mapped to GitHub's
-`json` and `form` values. Payload URL must be an absolute HTTP(S) URL with a host,
-without userinfo, fragments, whitespace, control characters or malformed escapes.
-These URL constraints are product guards, not additional GitHub schema claims.
-Valid ports, paths and queries are accepted. The exact accepted bytes are retained;
-there is no trimming, URL normalization, DNS lookup or destination request.
-Nulls, empty selected strings, wrong types, duplicate fields/IDs and unsupported
-fields such as `url`, `secret`, `config`, `insecure_ssl`, `active` or `events` fail
-locally before API work.
+`json` and `form`. Payload URL must be absolute HTTP(S) with a host and without
+userinfo, fragments, whitespace, control characters or malformed escapes. These
+are product guards, not extra GitHub schema claims. Valid ports, paths and queries
+are accepted byte-for-byte, without trimming, normalization or DNS lookup.
+Events are an exact, order-insensitive set of nonempty strings without whitespace
+or control characters; duplicates fail. `[]` is not omission, and no default
+`push`, case folding, fixed event allowlist or `*` expansion is inferred. An
+acquired `*` remains literal. GitHub may still reject a declared event combination.
+Nulls, wrong types, duplicate members/IDs, explicit `id: 0`, incomplete creation,
+and unsupported keys such as `url`, `secret`, `config` or `insecure_ssl` fail locally.
 
-Payload URLs are nonsecret configuration and appear in YAML and detailed plans.
-GitHub [advises against embedding credentials in webhook URLs][webhook-practices].
+URLs are nonsecret configuration visible in YAML and detailed plans. GitHub
+[advises against embedding credentials in webhook URLs][webhook-practices].
 Path/query tokens cannot be reliably detected or redacted while preserving an
-exact, reviewable destination. Status-only output hides URLs and hook IDs; it is
-not credential storage.
+exact, reviewable destination. Status-only plans hide IDs, URLs and events; they
+are not credential storage. Recovery diagnostics identify the declared URL and ID.
 
-Export completes the paginated inventory and obtains each hook's parent and
-configuration records. A complete empty inventory exports `webhooks: []`.
-Inaccessible, incomplete, conflicting or unsupported evidence omits this entire
-family on first export or retains its valid prior declaration on re-export;
-independent families continue. No subset replaces a prior collection.
+Omitting the family or using `webhooks: []` makes no family plan/apply requests.
+There is no deletion or webhook prune scope; `--prune all` does not remove hooks.
+Bound-only plan/apply reads selected IDs. Any IDless entry requires a complete
+paginated inventory, including unlisted and inactive hooks, before any family
+write. Its exact URL must be absent from that original inventory and must not
+collide with another IDless or declared bound URL. A hook moving away from that
+URL does not make it eligible in the same apply. Existing bound hooks may share
+URLs. URL is a collision guard and local writeback selector, never remote identity
+or permission to adopt an existing hook. Recover and declare an existing ID instead.
 
-Plan reads only declared IDs and compares selected controls without writing.
-Apply acquires the entire selected family before its first hook update and then
-freshly reads each hook before deciding whether to write. Complete matching state
-skips PATCH, including on an archived target. A needed write requires a freshly
-unarchived repository; explicit unarchive precedes configuration, and archive
-remains last.
+Export completes pagination and obtains every parent/config record, then writes
+positive IDs and all four public fields with sorted event sets. Complete empty
+inventory exports `webhooks: []`. Inaccessible, incomplete, conflicting or
+unsupported evidence omits this entire family on first export or retains its valid
+prior declaration, including an IDless creation request, on re-export. Independent
+families continue; no subset replaces the collection.
+
+Apply prepares every selected hook and parent guard before the family's first
+write. Fresh matching configuration skips PATCH, including on an archived target.
+Needed writes require a freshly unarchived repository; explicit unarchive precedes
+webhooks, and archive remains last. Mixed creation/configuration work rechecks the
+complete inventory before each mutation and advances its expected state only for
+its own independently verified effects. Outside additions, removals, replacement
+or nonsecret state changes stop later work rather than being adopted as a new base.
 
 Reads require complete personal-public repository/owner identity, archive state,
 repository hook identity and creation timestamp. Parent and dedicated config
-records must agree on URL, content type and SSL state. Active and the entire event
-set must also be known. Unknown config members, missing/null controls, malformed
-values and identity drift fail rather than imply defaults. SSL accepts the two
-native string/numeric states; it is preserved privately and is not a YAML control.
-Future nonempty event names are retained as an exact set.
+records must agree on URL, Content type and SSL state. Active and all events must
+be known. Unknown config members, missing/null controls, malformed values and
+identity drift fail rather than imply defaults. SSL accepts native string/numeric
+zero and one; existing SSL state is private preservation evidence, not a YAML
+control. Future valid nonempty event names remain an exact set.
 
-A needed write PATCHes only changed selected members at the dedicated
-`/repos/{owner}/{repo}/hooks/{id}/config` endpoint. It never sends Secret, SSL,
-parent Active/events, an omitted member or an empty payload. HTTP 200 must provide
-complete matching nonsecret configuration. Independent parent/config and target
-GETs then verify the full original selection, omitted nonsecret configuration,
-creation identity, Active and events against the fresh snapshot. A selected value
-that matched before PATCH must still match afterward.
+A needed config PATCH sends only changed selected URL/Content type members to
+`/repos/{owner}/{repo}/hooks/{id}/config`, without Secret, SSL, parent controls,
+omitted members or an empty payload. Complete HTTP 200 acknowledgment is followed
+by independent parent/config/target GETs verifying selected values, omitted
+nonsecret configuration, creation identity, Active and events. A value already
+matching before PATCH must still match afterward.
+
+Creation uses POST `/repos/{owner}/{repo}/hooks`. HTTP 201 must contain a new
+positive ID and complete matching nonsecret state. Independent fixed-ID parent and
+config GETs and a complete inventory read must confirm that new hook exactly once,
+its identity and SSL verification, retained hooks and the bound target. A valid
+unambiguous new ID in a successful 201 body remains recovery evidence if the rest
+of acknowledgment or readback fails. Error bodies, Location headers, malformed or
+repeated identity members and already-known IDs never establish a new identity.
+Acknowledgment alone does not authorize local ID recording.
+
+After verification, ordinary CLI apply adds only the new ID to the matching
+IDless URL entry using guarded source-file checks, preserving controls/comments.
+Concurrent edits, aliases, merge keys, symlink or identity conflicts block recording
+and report the verified remote progress for manual recovery. `--no-writeback` and
+GitHub Actions leave YAML unchanged and report the ID for a reviewed follow-up.
+Record and verify that ID before retrying: repeating an IDless request after
+creation fails the URL collision guard, without another POST. A bound matching
+repeat performs no mutation. A failed readback never writes an ID to YAML.
 
 Secret strings are discarded during decoding; absent, empty or masked strings
-never establish secret presence or equality. Secret is neither compared nor
-replayed. This relies on the dedicated endpoint's documented partial-update
-contract. It cannot prove cryptographic secret equality or receiver behavior.
-Raw response/error/debug bodies, unknown member names and private snapshots do not
-enter logs or reports. Detailed reports contain only selected public projections.
+cannot prove secret presence or equality. Secret is neither compared nor replayed.
+Existing updates rely on the dedicated endpoint's documented partial-update
+contract. Raw response/error/debug bodies, unknown member names and private
+snapshots do not enter logs or reports. Closed reports contain selected public
+controls only. Prewrite failure differs from unconfirmed effects after a mutation
+attempt; earlier verified writes remain applied. There is no retry, rollback or
+success output after failure, and each hook completes before the next.
 
-Pre-write failure is distinct from unconfirmed effects after a PATCH attempt.
-Earlier verified writes remain applied when later work fails; there is no retry,
-rollback or success output after failed verification. Each hook is verified before
-the next update. Input files stay unchanged.
-
-The [official creation/editing guides][webhook-ui] document these UI controls, and
-[repository webhook REST][webhook-rest] plus the
-[partial configuration announcement][webhook-partial] establish the dedicated
-observation/update path. Reads require Webhooks read; updates require Webhooks
-write. Local fixtures do not prove a live write, delivery, authentication,
-reachability or absence of concurrent changes between requests. Parent
-Active/events writes, personal-public SSL UI confirmation, lifecycle/pruning and
-receiver configuration remain separate work. Secret values are outside policy.
+The [creation/editing guides][webhook-ui], [repository webhook REST][webhook-rest]
+and [partial configuration announcement][webhook-partial] establish these paths.
+Reads require Webhooks read; creation/updates require Webhooks write. Local fixtures
+do not prove live delivery, authentication, reachability, cryptographic secret
+equality or absence of races between requests. Parent Active/events mutation,
+personal-public SSL UI confirmation, deletion/pruning and receiver configuration
+remain separate work. Secret values are outside policy.
 
 [webhook-practices]: https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks
 [webhook-ui]: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks
@@ -1344,7 +1394,7 @@ lock the label against concurrent changes.
 
 ### Apply ID writeback
 
-Normal CLI apply records each confirmed created Label/Ruleset/Actions policy ID in the original current-schema collection after creation verification, before another write. Label verification includes independent readback. Rulesets use `ruleset_name` and Actions policies use `policy_name` as their selectors. Existing IDs and unrelated values remain; comments are retained where supported and formatting may normalize. Regular `.github` and file entries plus the initial byte snapshot and earlier ID additions are required. Aliased/merged collection entries are not rewritten.
+Normal CLI apply records each confirmed created Label/Ruleset/Actions policy/Webhook ID in the original current-schema collection after creation verification, before another write. Label verification includes independent readback. Rulesets use `ruleset_name`, Actions policies use `policy_name`, and Webhooks use the exact `payload_url` as local selectors. Webhook URLs never adopt remote identity. Existing IDs and unrelated values remain; comments are retained where supported and formatting may normalize. Regular `.github` and file entries plus the initial byte snapshot and earlier ID additions are required. Aliased/merged collection entries are not rewritten.
 
 `apply --no-writeback` disables this local update. `GITHUB_ACTIONS=true` always disables it, including public Action use. Created IDs remain in output/recovery diagnostics; no Git commit or push is performed. Plan never writes. A confirmed creation survives writeback/later remote failure; add its ID before retrying. Unverified responses do not supply a confirmed writable ID. There is no automatic create retry, delete or rollback. Guarded file replacement is atomic, not a concurrent-editor lock. Label reads/mutations need the existing Issues or Pull requests grants; Administration alone does not replace them.[^github-labels] See [Labels](features/labels.feature.md).
 
