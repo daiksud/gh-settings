@@ -100,6 +100,7 @@ const (
 	WebhooksRead
 	WebhookUpdate
 	WebhookCreate
+	WebhookDelete
 	DeployKeysRead
 	DeployKeyCreate
 	DeployKeyDelete

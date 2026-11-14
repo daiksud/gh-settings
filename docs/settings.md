@@ -88,7 +88,7 @@ unlisted objects. `plan --prune labels,rulesets` previews additional deletions;
 Use one comma-separated option, not repeated flags. Empty elements, duplicate or
 unknown names fail locally. Current source supports `labels`, `rulesets`, `actions-variables`,
 `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`,
-`branch-protection-rules`, `autolinks` and `deploy-keys`. Standalone `all` selects all currently supported scopes; combining it with another
+`branch-protection-rules`, `autolinks`, `deploy-keys` and `webhooks`. Standalone `all` selects all currently supported scopes; combining it with another
 scope is invalid. Each collection still requires explicit presence in YAML.
 
 Omitted lists remain unmanaged. Explicit `[]` selects all current objects in that
@@ -1070,8 +1070,7 @@ Path/query tokens cannot be reliably detected or redacted while preserving an
 exact, reviewable destination. Status-only plans hide IDs, URLs and events; they
 are not credential storage. Recovery diagnostics identify the declared URL and ID.
 
-Omitting the family or using `webhooks: []` makes no family plan/apply requests.
-There is no deletion or webhook prune scope; `--prune all` does not remove hooks.
+Omitting the family or using `webhooks: []` without pruning makes no family plan/apply requests. Explicit [webhook pruning](#explicit-webhook-pruning) owns whole-object deletion for a present list; `--prune all` includes this scope and may remove unlisted hooks and their opaque Secrets.
 Bound-only plan/apply reads selected IDs. Any IDless entry requires a complete
 paginated inventory, including unlisted and inactive hooks, before any family
 write. Its exact URL must be absent from that original inventory and must not
@@ -1142,13 +1141,72 @@ and [partial configuration announcement][webhook-partial] establish these paths.
 Reads require Webhooks read; creation/updates require Webhooks write. Local fixtures
 do not prove live delivery, authentication, reachability, cryptographic secret
 equality or absence of races between requests. Parent Active/events mutation,
-personal-public SSL UI confirmation, deletion/pruning and receiver configuration
-remain separate work. Secret values are outside policy.
+personal-public SSL UI confirmation and receiver configuration remain separate work. Secret values are outside policy.
 
 [webhook-practices]: https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks
 [webhook-ui]: https://docs.github.com/en/webhooks/using-webhooks/creating-webhooks
 [webhook-rest]: https://docs.github.com/en/rest/repos/webhooks
 [webhook-partial]: https://github.blog/changelog/2020-10-26-webhooks-configuration-enhancements/
+
+## Explicit webhook pruning
+
+`--prune webhooks` (including comma selection or standalone `all`) adds deletion
+for a present `repository.settings.webhooks` list. Omission stays unmanaged.
+Ordinary `webhooks: []` retains every hook; the same empty list with explicit
+prune selects every acquired hook. Bound IDs retain those objects. Verified new
+IDs join retention and never become deletion candidates. There are no tombstones
+or automatic adoption by destination URL.
+
+Explicit pruning owns the **whole unlisted webhook**, including its associated
+opaque Secret. Deletion is irreversible: it removes that hook and its Secret,
+but does not revoke credentials embedded in a destination URL, undo prior
+requests or prove cancellation of an already dispatched delivery. Detailed plans
+show the candidate ID, Payload URL, Content type, Active and exact event set and
+identify this whole-object effect. Status-only hides identities and values.
+
+Before any remote write, including unarchive or unrelated settings, apply obtains
+a complete paginated inventory and individual parent/config evidence for every
+hook. It binds the repository and owner IDs, public/User applicability and
+archive state, hook IDs, fixed API routes, creation identity, nonsecret config,
+Active/events and validated exact `updated_at` values. Missing, malformed or
+unknown configuration and unrecognized parent members stop all writes. Known
+transport/delivery metadata is ignored as configuration; it is never followed,
+retained in the snapshot or displayed. Secret strings are discarded rather than
+compared, retained or replayed.
+
+The candidate IDs are frozen by that acquisition. Before each DELETE, complete
+inventory and candidate/target reads must match the expected state. Added or
+removed objects, changed identity, nonsecret state or timestamps stop deletion.
+Only independently verified changes made by this apply update expected state:
+config writes refresh the written object's evidence, creations join retention,
+confirmed deletions remove their IDs, and confirmed unarchive changes archive
+state. Refreshing an inventory never permits unrelated drift. Selected updates,
+creations and required local ID recording complete before deletion; pending-delete
+hooks still count for creation collision checks. A capacity failure does not
+cause delete-first recovery.
+
+DELETE uses the fixed repository/ID route and requires an empty HTTP 204. A fresh
+complete inventory must then prove absence and unchanged retained evidence.
+An isolated 404, denied read or acknowledgment alone is not success. Prewrite
+failures remain distinct from unconfirmed effects after an attempt; earlier
+verified updates, creations or deletions remain applied. There is no automatic
+retry or rollback. CLI and the public Action use these same checks, and Action
+files remain unchanged.
+
+`updated_at` is only an additional comparison token. Any change blocks
+conservatively; there is no exception for presumed ping/delivery activity.
+GitHub documents no version precondition on DELETE and no guarantee that every
+Secret rotation changes this timestamp. Equal timestamps or missing/masked Secret
+representations do not prove Secret equality, absence or protection from a
+same-timestamp change. There is no atomic lock between the last read and DELETE.
+This contract deliberately permits whole-object deletion with those limits; it
+is not secret-value management or secret-aware concurrency control.
+
+The [repository deletion guide](https://docs.github.com/en/webhooks/using-webhooks/disabling-webhooks)
+and [repository webhook DELETE](https://docs.github.com/en/rest/repos/webhooks#delete-a-repository-webhook)
+establish the UI/API path. Deterministic tests prove local comparison, ordering,
+privacy and failure boundaries, not a server guarantee about Secret changes or
+live delivery cancellation. See the [prune behavior specification](features/webhook-prune.feature.md).
 
 ## Deploy keys
 

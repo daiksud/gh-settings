@@ -1,7 +1,7 @@
 # Webhook configuration and creation
 
 The [configuration contract](../settings.md#webhook-configuration-and-creation)
-owns declarations and evidence limits.
+owns declarations and evidence limits. Explicit [whole-object pruning](webhook-prune.feature.md) is a separate ownership selection.
 
 - Bound positive IDs select optional URL/Content type and optional Active/events
   matching guards. All guards pass before this family's first write. A mismatch

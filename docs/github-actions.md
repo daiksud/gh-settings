@@ -17,7 +17,7 @@ Validate performs no settings API requests, but installing the public CLI still 
 | `command` | Required, no default; exactly `export`, `validate`, `plan` or `apply`. |
 | `token` | Unused for validate; required and nonempty for export/plan/apply. Supply it explicitly; there is no ambient or implicit `github.token` fallback. |
 | `plan-reporting` | `detailed` by default, or `status-only` for plan only. |
-| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`, `branch-protection-rules`, `autolinks` and `deploy-keys`; see [pruning](#explicit-collection-pruning). |
+| `prune` | Optional comma-separated deletion scopes for plan/apply; default empty. Current source also supports `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`, `branch-protection-rules`, `autolinks`, `deploy-keys` and `webhooks`; see [pruning](#explicit-collection-pruning). |
 
 Validate checks local configuration without API authentication. The supported Actions setup uses one GitHub App for export, plan and apply, with one explicit installation-token input per Action call. The caller may mint different short-lived, repository/permission-scoped tokens from that same App for different jobs. Export and plan are nonmutating, but complete observation can require a write grant; see [authentication and App permissions](#authentication-and-app-permissions). The Action does not mint a token or certify its actual grants; collaborator prune additionally requires positive management-path evidence using that same credential; there is no ambient-token or personal-credential fallback.
 
@@ -185,7 +185,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
 | Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation or explicit prune DELETE, fresh identity/management-path guards and independent complete readback |
-| Webhook configuration/creation (current source) | Webhooks read plus complete personal-public repository identity | Webhooks write; selected config PATCH or guarded creation POST, then independent verification |
+| Webhook configuration, creation and pruning (current source) | Webhooks read plus complete personal-public repository identity | Webhooks write; selected config PATCH, guarded creation POST or explicit whole-object DELETE, then independent verification |
 | Deploy keys (current source) | Administration read, complete personal-public target and key inventory | Administration write; immutable creation or explicit guarded deletion with independent readback |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
@@ -379,14 +379,14 @@ Current source accepts optional comma-separated `prune` for `command: plan` or
 adds deletions to other declared work and defaults to no pruning. `export` and `validate`
 reject a nonempty prune input. Omitted collections stay unmanaged; explicit []
 can delete all objects in the selected scope. Label deletion loses Issue/PR
-assignments, including undeclared Dependabot labels. Detailed plan Summary shows
+assignments, including undeclared Dependabot labels. Webhook pruning deletes whole unlisted hooks and associated opaque Secrets. Standalone `all` includes this scope for existing present lists; an empty list selects all. Detailed plan Summary shows
 these consequences; status-only retains its existing value-hiding boundary.
 
 The Action checks installed CLI prune support before remote work and fails with
 an older published package instead of silently ignoring the input. Source changes
 do not add this capability to an existing published Action/CLI. Actions Policies
 use `actions-policies`; parent deletion uses `environments`; personal access deletion
-uses `collaborators`; Autolink deletion uses `autolinks`; classic rule deletion uses `branch-protection-rules`; deploy key deletion uses `deploy-keys`. Standalone `all` selects every currently supported
+uses `collaborators`; Autolink deletion uses `autolinks`; classic rule deletion uses `branch-protection-rules`; deploy key deletion uses `deploy-keys`; whole-webhook deletion uses `webhooks`. Standalone `all` selects every currently supported
 scope and cannot be mixed with another token.
 Environment pruning retains every listed name, including variable-only entries,
 and runs only after retained policy/variable work. Parent deletion removes
@@ -476,5 +476,5 @@ and add the binding through a reviewed follow-up before retrying. A repeated
 IDless request with a live matching URL fails rather than creating again. Success
 outputs appear only after required verification; earlier confirmed creations
 remain when later work fails. The Action makes no extra ping, test, redelivery or
-destination request, and does not delete hooks. Support depends on the selected
+destination request. Explicit `prune: webhooks` or `all` deletes unlisted whole hooks and their opaque Secrets from a present list; `[]` selects all. Detailed plans show deletion consequences; status-only hides values. Equal timestamps do not prove Secret equality, and no atomic lock protects the final read and DELETE. See the [pruning contract](settings.md#explicit-webhook-pruning). Support depends on the selected
 immutable package; permissions are not granted or broadened automatically.

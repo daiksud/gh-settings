@@ -255,5 +255,9 @@ fail validation. Exact integer IDs avoid floating-point loss; event sets compare
 without ordering or guessed expansion. URL bytes are escaped for CLI/HTML display.
 Omitted controls, SSL, creation timestamps, delivery and secret evidence stay
 private. Detailed creation plans state automatic ping and no supplied Secret.
-The family counts once alongside other collections. Status-only hides identities
-and values; failure reports retain only bounded resource/progress information.
+A deletion has a complete positive-ID Before (URL, Content type, Active and events)
+and no After. Unknown/private fields, duplicate IDs and overlap with an updated ID
+fail reconstruction. Detailed deletion plans show irreversible whole-object Secret
+loss; timestamps, SSL and private evidence never enter reports. The family counts
+once across creation, updates and deletion. Status-only hides identities and values;
+failure reports retain only bounded resource/progress information.

@@ -191,7 +191,7 @@ func applyDiagnostic(err error, result app.ApplyResult) error {
 		}
 		path := ""
 		switch op.Kind {
-		case app.WebhooksRead, app.WebhookUpdate, app.WebhookCreate:
+		case app.WebhooksRead, app.WebhookUpdate, app.WebhookCreate, app.WebhookDelete:
 			path = settings.WebhooksPath
 		case app.DeployKeysRead, app.DeployKeyCreate, app.DeployKeyDelete:
 			path = settings.DeployKeysPath

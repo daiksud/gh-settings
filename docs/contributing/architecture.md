@@ -366,4 +366,9 @@ local recording failure preserves honest remote progress. No parent PATCH,
 rollback, destination call or hidden recovery journal exists. Closed pointer-shaped
 reports distinguish creation from selected config updates.
 The [configuration reference](../settings.md#webhook-configuration-and-creation)
-owns public constraints and the boundaries of preservation evidence.
+owns public constraints and the boundaries of preservation evidence. Explicit
+pruning adds a private complete snapshot with validated timestamps and fixed
+candidate IDs before any write. Expected state overlays only verified own writes;
+DELETE verifies complete absence and retained evidence without retaining or
+comparing Secret values. The [pruning contract](../settings.md#explicit-webhook-pruning)
+states irreversible effects and the non-atomic comparison boundary.

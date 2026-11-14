@@ -48,6 +48,7 @@ guide](../github-actions.md) own user-facing behavior.
 | [Issue creation](issue-creation-policy.feature.md) | Manage issue creation policy. |
 | [Sponsorships](sponsorships.feature.md) | Manage Sponsor button visibility. |
 | [Webhook configuration and creation](webhooks.feature.md) | Reconcile selected config, guard parent state and create hooks with verified ID recording. |
+| [Webhook pruning](webhook-prune.feature.md) | Explicitly delete unlisted whole hooks with private evidence and confirmed absence. |
 | [Deploy keys](deploy-keys.feature.md) | Manage public-key creation, immutable ID binding and explicit guarded deletion. |
 | [Repository access](repository-access.feature.md) | Manage personal collaborator identities and pending invitations without resending matching requests. |
 

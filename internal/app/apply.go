@@ -421,8 +421,16 @@ func Apply(load DeclarationLoader, resolve TargetResolver, write Writer, options
 		}
 		hasWrites = hasWrites || wrote
 	}
-	if desired.Webhooks != nil && len(*desired.Webhooks) > 0 {
-		wrote, err := applyWebhooks(&result, repo, *desired.Webhooks, write)
+	if desired.Webhooks != nil && (len(*desired.Webhooks) > 0 || prune.Has("webhooks")) {
+		var frozen *settings.WebhookPruneObservation
+		if prepared.webhooks != nil {
+			value := prepared.webhooks.Clone()
+			if unarchived {
+				value = value.AfterUnarchive()
+			}
+			frozen = &value
+		}
+		wrote, err := applyWebhooks(&result, repo, *desired.Webhooks, write, frozen)
 		if err != nil {
 			return result, err
 		}
