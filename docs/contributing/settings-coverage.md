@@ -89,6 +89,42 @@ Codespaces/Dependabot showed secrets only. Autolinks was not observed in this si
 its row retains official-document evidence only. This pass is broader than the
 older mappings but is not an exhaustive survey of every conditional form.
 
+### Personal-public test repository observations
+
+An authenticated, read-only pass on 2026-11-14 inspected the empty personal-public
+[`daiksud/test-gh-settings-public`](https://github.com/daiksud/test-gh-settings-public)
+repository. No control was changed or submitted. These observations are limited
+to this repository and the displayed conditions; they do not establish a settings
+API contract or the absence of controls in other locations or circumstances.
+
+- [Advanced Security](https://github.com/daiksud/test-gh-settings-public/settings/security_analysis)
+  showed Secret Protection enabled and Push protection checked. No Custom patterns
+  or New pattern entry was visible in the displayed Secret Protection section;
+  other locations and conditions were not established.
+- Automatic dependency submission offered Disabled, Enabled using standard GitHub
+  runners, and Enabled for labeled runners. Disabled was selected; the labeled
+  choice was unavailable because no runner with the `dependency-submission` label
+  was assigned. No selection was changed.
+- Global code-scanning check-run thresholds offered Security: None, Only critical,
+  High or higher (selected), Medium or higher, and Any; and Standard: None,
+  Only errors (selected), Errors and warnings, and Any. These are separate from
+  Ruleset thresholds. No selection was changed.
+- [General](https://github.com/daiksud/test-gh-settings-public/settings) displayed
+  the wiki collaborator restriction, preservation, commit comments, LFS archives,
+  single-push branch/tag limit, linked-PR issue auto-close and global branch
+  protection disable controls. The commit-comments explanation said existing
+  comments remain viewable, editable and deletable. The LFS archives explanation
+  described usage as billed at the client rate. The single-push limit was unchecked;
+  its conditional numeric control was not inspected.
+- [Code review limits](https://github.com/daiksud/test-gh-settings-public/settings/code_review_limits)
+  showed the read-access-or-higher restriction unchecked; its explanation retained
+  comment reviews for eligible users. The persistent PR creation cap on
+  [Interaction limits](https://github.com/daiksud/test-gh-settings-public/settings/interaction_limits)
+  was off, and automatic exemption-rule details were not displayed. Temporary
+  interaction restrictions remain outside the managed scope.
+- The repository home displayed empty-repository Quick setup; the About editor and
+  its home-page display controls were not inspected. No files were created.
+
 ### Bounded follow-ups on 2026-11-14
 
 The personal-public new branch Ruleset form offered Active and Disabled. Its
