@@ -24,8 +24,10 @@ func TestArchivedCopilotMatchingRequiresEverySelectedValue(t *testing.T) {
 				d.CopilotInstructions = nil
 			}
 			if scenario == "unsupported" {
-				days := 30
-				d.Actions.CacheRetentionDays = &days
+				d.Actions.Enabled = &yes
+				if archivedMatchingScope(d, settings.PruneScopes{}) {
+					t.Fatal("unsupported execution policy passed the archived scope guard")
+				}
 			}
 			archives, reads, writes := 0, 0, 0
 			w := Writer{
@@ -76,6 +78,9 @@ func TestArchivedCopilotMatchingRequiresEverySelectedValue(t *testing.T) {
 			success := scenario == "both" || scenario == "false" || scenario == "instructions only" || scenario == "mcp only"
 			if (err == nil) != success || writes != 0 || success && (reads != 2 || archives != 2) {
 				t.Fatalf("outcome=%v err=%v reads=%d archives=%d writes=%d", result.Outcome, err, reads, archives, writes)
+			}
+			if scenario == "unsupported" && reads != 0 {
+				t.Fatal("unsupported intent reached Copilot reads")
 			}
 		})
 	}

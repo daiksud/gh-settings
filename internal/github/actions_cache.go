@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 
 	"github.com/cli/go-gh/v2/pkg/api"
@@ -36,9 +38,25 @@ func NewCacheStorageClient(host string) (*CacheStorageClient, error) {
 func actionsCachePath(repo repository.Repository, limit string) string {
 	return "repos/" + repo.Owner + "/" + repo.Name + "/actions/cache/" + limit + "-limit"
 }
-func readActionsInteger(c *api.RESTClient, path, key string) (int, error) {
+
+func readActionsCacheObject(c *api.RESTClient, path string) (map[string]json.RawMessage, error) {
+	response, err := c.Request(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("Actions cache observation unavailable")
+	}
+	defer response.Body.Close()
+	const limit = 1 << 20
+	body, err := io.ReadAll(io.LimitReader(response.Body, limit+1))
 	var fields map[string]json.RawMessage
-	if err := c.Get(path, &fields); err != nil {
+	if err != nil || len(body) > limit || response.StatusCode != http.StatusOK || webhookJSON(body, &fields) != nil || fields == nil {
+		return nil, fmt.Errorf("Actions cache observation incomplete or unavailable")
+	}
+	return fields, nil
+}
+
+func readActionsInteger(c *api.RESTClient, path, key string) (int, error) {
+	fields, err := readActionsCacheObject(c, path)
+	if err != nil {
 		return 0, fmt.Errorf("read Actions %s: %w", key, err)
 	}
 	var value *int
@@ -48,8 +66,8 @@ func readActionsInteger(c *api.RESTClient, path, key string) (int, error) {
 	return *value, nil
 }
 func readActionsVisibility(c *api.RESTClient, repo repository.Repository) (string, map[string]json.RawMessage, error) {
-	var fields map[string]json.RawMessage
-	if err := c.Get("repos/"+repo.Owner+"/"+repo.Name, &fields); err != nil {
+	fields, err := readActionsCacheObject(c, "repos/"+repo.Owner+"/"+repo.Name)
+	if err != nil {
 		return "", nil, fmt.Errorf("read Actions repository applicability: %w", err)
 	}
 	var fullName *string

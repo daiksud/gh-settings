@@ -116,6 +116,8 @@ func archivedMatchingScope(desired settings.Declaration, prune settings.PruneSco
 	remaining.CopilotInstructions = nil
 	remaining.CopilotMCP = nil
 	remaining.Actions.RetentionDays = nil
+	remaining.Actions.CacheRetentionDays = nil
+	remaining.Actions.CacheSizeGB = nil
 	remaining.Actions.ForkApprovalPolicy = nil
 	remaining.Security = settings.SecurityDeclaration{}
 	remaining.Pages = settings.PagesDeclaration{}
