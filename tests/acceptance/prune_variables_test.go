@@ -20,7 +20,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 	const envBase = "/repos/owner/current/environments/prod%2Fblue/variables"
 	const parent = "/repos/owner/current/environments/prod%2Fblue"
 	var mu sync.Mutex
-	states := map[string]map[string]string{actionBase: {"OLD": "actions-old", "KEEP": "actions-before"}, agentBase: {"OLD": "agents-old"}, envBase: {"OLD": "environment-old", "KEEP": "environment-before"}}
+	states := map[string]map[string]string{actionBase: {"OLD": "actions-old", "KEEP": "actions-before"}, agentBase: {"OLD": "agents-old", "KEEP": "agents-before"}, envBase: {"OLD": "environment-old", "KEEP": "environment-before"}}
 	var writes []string
 	requests := 0
 	environmentReads := 0
@@ -122,28 +122,39 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 	}
 	defer fixture.close()
 	scopes := "actions-variables,agents-variables,environment-variables"
-	env := append(exportFixtureEnv(fixture.cfg), "SETTINGS_PRUNE="+scopes, "SETTINGS_TARGET=owner/current", "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=push", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
+	env := append(exportFixtureEnv(fixture.cfg), "GH_DEBUG=api", "SETTINGS_PRUNE="+scopes, "SETTINGS_TARGET=owner/current", "SETTINGS_ACTOR=user", "SETTINGS_TRIGGERING_ACTOR=user", "SETTINGS_EVENT=push", "SETTINGS_RUN_ID=123", "SETTINGS_RUN_ATTEMPT=1", "SETTINGS_WORKFLOW_REF=owner/current/.github/workflows/settings.yml@refs/heads/main", "SETTINGS_WORKFLOW_SHA="+strings.Repeat("a", 40), "SETTINGS_CONFIG_SHA="+strings.Repeat("b", 40), "SETTINGS_CLI_VERSION=dev", "SETTINGS_CLI_SHA256="+strings.Repeat("c", 64))
 	if err := setupOrdinaryOrigin(fixture.work, env); err != nil {
 		t.Fatal(err)
 	}
 	config := repositoryInput(`settings:
   actions:
-    variables: [{name: KEEP, value: actions-after}, {name: NEW, value: created}]
+    variables: [{name: KEEP, value: actions-after}, {name: NEW, value: fixture-created-value}]
   agents:
-    variables: []
+    variables: [{name: KEEP, value: agents-after}, {name: NEW, value: agents-created}]
   environments:
     - name: prod/blue
-      variables: [{name: KEEP, value: environment-after}]
+      variables: [{name: KEEP, value: environment-after}, {name: NEW, value: environment-created}]
 `)
 	if err := writeSettingsFile(fixture.work, config); err != nil {
 		t.Fatal(err)
 	}
+	canaries := []string{"actions-old", "actions-before", "agents-old", "agents-before", "agents-after", "agents-created", "environment-old", "environment-before", "actions-after", "environment-after", "environment-created", "fixture-created-value"}
 	binary := acceptanceBinary(t)
 	run := func(success bool, args ...string) string {
 		t.Helper()
 		r, err := executeCLI(binary, fixture.work, fixture.root, env, args, false)
 		if err != nil || (r.runErr == nil) != success {
-			t.Fatalf("args=%v err=%v run=%v out=%s stderr=%s", args, err, r.runErr, r.stdout.String(), r.stderr.String())
+			t.Fatalf("args=%v err=%v run=%v", args, err, r.runErr)
+		}
+		// Detailed plans deliberately contain plaintext; apply and status-only
+		// planning must not gain values through inherited HTTP transport logs.
+		private := len(args) > 0 && (args[0] == "apply" || len(args) > 2 && args[0] == "action" && args[1] == "plan" && args[len(args)-1] == "status-only")
+		if private {
+			for _, value := range canaries {
+				if strings.Contains(r.stdout.String(), value) || strings.Contains(r.stderr.String(), value) {
+					t.Fatal("variable value leaked through command output")
+				}
+			}
 		}
 		return r.stdout.String() + withoutExportInfo(r.stderr.String())
 	}
@@ -157,7 +168,7 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 	mu.Unlock()
 	plan := run(true, "plan", "--prune", scopes)
 	if strings.Count(plan, `delete "OLD"`) != 3 || strings.Count(plan, "absent") != 3 {
-		t.Fatal(plan)
+		t.Fatal("plan omitted expected deletions")
 	}
 	for _, mode := range []string{"detailed", "status-only"} {
 		report := filepath.Join(fixture.root, "variable-"+mode+".json")
@@ -175,11 +186,16 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 			t.Fatal(err)
 		}
 		if mode == "status-only" {
-			if strings.Contains(string(data), "OLD") || strings.Contains(string(data), "environment-old") {
-				t.Fatal(string(data))
+			if strings.Contains(string(data), "OLD") {
+				t.Fatal("status-only summary exposed a variable name")
+			}
+			for _, value := range canaries {
+				if strings.Contains(string(data), value) {
+					t.Fatal("status-only summary exposed a variable value")
+				}
 			}
 		} else if strings.Count(string(data), "absent") != 3 {
-			t.Fatal(string(data))
+			t.Fatal("unexpected summary content")
 		}
 	}
 	mu.Lock()
@@ -189,21 +205,21 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 	mu.Unlock()
 	out := run(false, "apply", "--prune", scopes)
 	if !strings.Contains(out, "agents.variables") || !strings.Contains(out, "earlier successful writes remain applied") {
-		t.Fatal(out)
+		t.Fatal("unexpected apply or plan output")
 	}
 	mu.Lock()
-	if states[envBase]["KEEP"] != "environment-after" || len(states[envBase]) != 1 || states[actionBase]["NEW"] != "created" || len(states[actionBase]) != 2 || states[agentBase]["OLD"] != "agents-old" {
-		t.Fatal(states, writes)
+	if states[envBase]["KEEP"] != "environment-after" || len(states[envBase]) != 2 || states[envBase]["NEW"] != "environment-created" || states[actionBase]["NEW"] != "fixture-created-value" || len(states[actionBase]) != 2 || states[agentBase]["OLD"] != "agents-old" {
+		t.Fatal("unexpected state after denied delete")
 	}
 	denyAgent = false
 	mu.Unlock()
 	run(true, "apply", "--prune", scopes)
 	if out := run(true, "plan", "--prune", scopes); !strings.Contains(out, "No differences") {
-		t.Fatal(out)
+		t.Fatal("unexpected apply or plan output")
 	}
 	mu.Lock()
-	if len(states[agentBase]) != 0 {
-		t.Fatal(states)
+	if len(states[agentBase]) != 2 || states[agentBase]["KEEP"] != "agents-after" || states[agentBase]["NEW"] != "agents-created" {
+		t.Fatal("unexpected agent state")
 	}
 	before := environmentReads
 	mu.Unlock()
@@ -212,8 +228,17 @@ func TestVariablePruneExecutableScopesSummaryAndPartialFailure(t *testing.T) {
 	}
 	run(true, "apply", "--prune", scopes)
 	mu.Lock()
+	if len(states[actionBase]) != 0 || len(states[envBase]) != 2 || environmentReads != before {
+		t.Fatal("omitted Environment variables were managed")
+	}
+	mu.Unlock()
+	if err := writeSettingsFile(fixture.work, repositoryInput("settings: {agents: {variables: []}}\n")); err != nil {
+		t.Fatal(err)
+	}
+	run(true, "apply", "--prune", scopes)
+	mu.Lock()
 	defer mu.Unlock()
-	if len(states[actionBase]) != 0 || len(states[envBase]) != 1 || environmentReads != before {
-		t.Fatal("omitted Environment variables were managed", states, environmentReads, before)
+	if len(states[agentBase]) != 0 {
+		t.Fatal("explicit empty Agents variables did not prune inventory")
 	}
 }
