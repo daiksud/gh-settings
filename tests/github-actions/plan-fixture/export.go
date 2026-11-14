@@ -58,7 +58,7 @@ func serveExport(w http.ResponseWriter, r *http.Request, log io.Writer) bool {
 		response = `{"total_count":0,"variables":[]}`
 	case base + "/environments?per_page=100&page=1":
 		response = `{"total_count":0,"environments":[]}`
-	case base + "/autolinks", base + "/actions/permissions", base + "/actions/permissions/workflow",
+	case base + "/hooks?per_page=100&page=1", base + "/autolinks", base + "/actions/permissions", base + "/actions/permissions/workflow",
 		base + "/actions/permissions/artifact-and-log-retention", base + "/actions/permissions/fork-pr-contributor-approval",
 		base + "/actions/cache/retention-limit", base + "/actions/cache/storage-limit",
 		base + "/actions/policies?has_parents=false&per_page=100&page=1", base + "/rulesets?includes_parents=false&per_page=100&page=1",

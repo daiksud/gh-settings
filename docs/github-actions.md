@@ -185,6 +185,7 @@ The following are resource-specific boundaries, not a request to grant all permi
 | Repository REST fields, topics, archive | Metadata read | Administration write; archive includes fresh identity/readback |
 | Merge/default/PR/Issue/Sponsor GraphQL fields | Authenticated access to the selected query/objects; verify exact query with the App | Repository update authorization; verify exact mutation with the App |
 | Personal collaborators (current source) | Complete collaborator inventory (Metadata read and documented caller access) plus Administration read for all pending invitations | Administration write; bodyless initial invitation or explicit prune DELETE, fresh identity/management-path guards and independent complete readback |
+| Existing webhook configuration (current source) | Webhooks read plus complete personal-public repository identity | Webhooks write; selected config PATCH and independent preservation verification |
 | Deploy keys (current source) | Administration read, complete personal-public target and key inventory | Administration write; immutable creation or explicit guarded deletion with independent readback |
 | Labels | Issues **or** Pull requests read | The same permission family at write level; Administration alone is insufficient |
 | Repository Rulesets | Metadata read for GET **plus write access to the Ruleset for complete bypass visibility** | Administration write, with complete observation and account eligibility |
@@ -459,3 +460,15 @@ observations are excluded from reports and debug logs. Successful verification
 precedes output publication. A failed acknowledgment or readback fails the Action
 without success outputs, even when labels may have changed. The Action never
 modifies input YAML, registers/removes a runner or issues registration credentials.
+
+## Existing webhook configuration in current source
+
+The Action uses the shared [existing webhook contract](settings.md#existing-webhook-configuration).
+Detailed plans/Summary show selected ID and URL/Content type, so a destination
+change is reviewable. Status-only hides those values; URLs must not carry secrets.
+Private companion state and raw API/debug/error bodies stay out of reports/logs.
+Export saves local YAML without copying it into Summary. Apply preserves input
+files and checkout HEAD, and publishes success outputs only after verification.
+The Action never creates/removes hooks, pings, tests deliveries or fetches URLs.
+Support depends on the selected immutable package; permissions are not granted
+or broadened automatically.

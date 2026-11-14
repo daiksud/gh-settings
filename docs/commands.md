@@ -444,3 +444,13 @@ readback, preserving readonly labels and distinguishing no-ops, verified writes
 and uncertain effects. Explicit empty custom sets clear labels; empty runner
 selections do nothing. No ID recovery, writeback, runner deletion or pruning is
 part of these commands.
+
+## Existing webhook configuration in current source
+
+[Webhook declarations](settings.md#existing-webhook-configuration) select existing
+IDs and optional Payload URL/Content type. `export` acquires the complete family;
+`plan` and direct `apply` read only selected IDs. Matching complete state skips
+PATCH. Omission and `webhooks: []` make no family requests, and no prune scope
+owns hook deletion. Detailed plans show selected URLs; status-only hides them.
+Failed verification stops later work and does not roll back earlier writes.
+The CLI does not ping/test hooks or fetch destinations, and does not edit YAML.

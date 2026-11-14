@@ -19,6 +19,7 @@ const (
 
 // PlanReport is same-version, ephemeral presentation data, never apply input.
 type PlanReport struct {
+	Webhooks                []settings.WebhookChange          `json:"webhooks,omitempty"`
 	Runners                 RunnerPlanChanges                 `json:"runners,omitempty"`
 	DeployKeys              []DeployKeyPlanEntry              `json:"deploy_keys,omitempty"`
 	Autolinks               []settings.AutolinkChange         `json:"autolinks,omitempty"`
@@ -65,6 +66,12 @@ type PlanChange struct {
 
 func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 	result, planErr := plan()
+	if planErr == nil {
+		if err := settings.ValidateWebhookChanges(result.Comparison.Webhooks); err != nil {
+			planErr = &app.PlanError{Stage: "read-failure", Path: settings.WebhooksPath, Target: result.Target, Err: err}
+			result.Comparison = settings.Comparison{}
+		}
+	}
 	if planErr == nil {
 		if err := settings.ValidateAutolinkChanges(result.Comparison.Autolinks); err != nil {
 			planErr = &app.PlanError{Stage: "read-failure", Path: settings.AutolinksPath, Target: result.Target, Err: err}
@@ -131,6 +138,7 @@ func writePlanReport(path string, plan func() (app.PlanResult, error)) error {
 		)
 		report.Changes = append(report.Changes, entry)
 	}
+	report.Webhooks = result.Comparison.Webhooks
 	report.Autolinks = result.Comparison.Autolinks
 	report.BranchProtectionRules = result.Comparison.BranchProtectionRules
 	report.CommitMessageContexts = result.Comparison.CommitMessageContexts

@@ -11,6 +11,11 @@ func Validate(load DeclarationLoader) (settings.Declaration, error) {
 	if err != nil {
 		return settings.Declaration{}, err
 	}
+	if d.Webhooks != nil {
+		if err := settings.ValidateWebhooks(*d.Webhooks); err != nil {
+			return settings.Declaration{}, err
+		}
+	}
 	if d.Autolinks != nil {
 		if err := settings.ValidateAutolinks(*d.Autolinks); err != nil {
 			return settings.Declaration{}, err

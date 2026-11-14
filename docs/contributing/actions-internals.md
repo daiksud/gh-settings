@@ -242,3 +242,13 @@ managed counts. The family counts once regardless of selected runner count.
 Detailed presentation shares the CLI formatter and escapes labels; status-only
 hides the ID and labels. Name/OS/readonly snapshots and raw API metadata never
 enter this report or become apply input.
+
+## Webhook report boundary
+
+`webhooks` contains closed before/after projections of each changed existing ID.
+Both projections contain exactly the same selected controls and positive exact
+integer identity. Unknown/case-mismatched/duplicate/null members, mismatched IDs,
+empty/no-change projections and duplicate entries are rejected. URL bytes are
+escaped for CLI/HTML display. Omitted URL/content type and all SSL, Active/events,
+creation, delivery and secret evidence remain private. The family counts once,
+additively with other managed collections. Status-only hides IDs and values.
