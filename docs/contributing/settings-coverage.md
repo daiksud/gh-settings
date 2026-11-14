@@ -379,15 +379,30 @@ must not be erased merely because part of the resource cannot be managed.
 
 On 2026-11-14, the user decided that live webhook delivery testing is not a
 v1 completion requirement. This includes creating a real hook that automatically
-pings, test deliveries and redeliveries. This decision does not authorize those
-operations or change verification requirements for other settings.
+pings, test deliveries and redeliveries. The user later authorized one bounded
+exception for the experiment below; that exception does not authorize further
+live operations or change verification requirements for other settings.
 
-Official API contracts and local fixtures remain separate from live evidence:
-no live delivery, TLS verification or Secret equality is established by those
-fixtures. Existing Active/events remain matching guards; a safe Secret-preserving
-parent-update contract remains unconfirmed. Publishing a release and updating
-published CLI/Action references remain separate work requiring explicit
-authorization; current source evidence does not establish the released contract.
+In that experiment, one disposable hook on a personal public test repository sent
+ping deliveries to a temporary HTTPS receiver. The initial ping and the pings
+after a dedicated config PATCH and a parent events-only PATCH that omitted the
+entire config object had matching signatures. After a parent PATCH that included
+config but omitted Secret, the next ping had no signature header. The known
+disposable Secret was reset and a signed baseline confirmed before the parent
+config case and again before the Active pair. After an Active false-then-true
+pair, a later ping had a matching signature. This observation covers the pair,
+not either operation independently. Each ping
+was correlated by hook ID, delivery GUID and time, and receiver-side HMAC was
+checked separately from HTTP 204, which only acknowledged receipt. The hook was
+deleted and the temporary receiver and tunnel were stopped after the experiment.
+
+These observations cover only the tested requests and time; they do not change
+the [parent PATCH warning][webhook-parent-update] or establish a general
+Secret-preserving parent-update contract. Existing Active/events remain matching
+guards. Local fixtures do not establish live delivery, TLS behavior or Secret
+equality. Publishing a release and updating published CLI/Action references remain
+separate work requiring explicit authorization; current source evidence does not
+establish the released contract.
 
 ## Explicit product and target boundaries
 
