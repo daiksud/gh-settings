@@ -110,8 +110,10 @@ control. The access banner did not disable the displayed configuration controls.
 The Codespaces prebuild form exposed branch, Every push / Configuration change /
 Scheduled triggers, region selection, template history, failure notifications and
 Disable prebuild optimization. Scheduled mode expanded days, time and time zone.
-The branch-dependent configuration-file selector was not expanded. The form was
-never submitted; no prebuild or billable workflow was created. The
+A later unsaved follow-up selected `main` and expanded the configuration-file
+selector; it offered only Default Codespaces Configuration for that branch. Other
+branches and conditional forms were not inspected. The form was never submitted;
+no prebuild or billable workflow was created. The
 [official guide][prebuild-ui] documents personal-repository prebuild configuration.
 
 A finite search of the [fixed official OpenAPI revision][openapi-followup]
@@ -123,6 +125,41 @@ settings management. These are investigated-unconfirmed contracts, not proof tha
 no other official API exists. The full description was independently verified as
 Git blob `de7c10cdcc078b9b2d83b5656a7039764a3d0c38`; this is distinct from its
 repository revision.
+
+A second bounded read-only audit on 2026-11-14 used the [official OpenAPI
+revision `2a33d9cc`][openapi-2026-11-14] (downloaded description SHA-256
+`f7a3de68869181d34b232d88840d31f8157ade45cad1746eaab90cd3c801b31c`) and
+targeted live GraphQL schema introspection of repository and branch-protection
+reads, inputs and mutations. The search did not establish complete settings
+read/update paths for the unconfirmed controls below; it does not prove that an
+API is absent. The new webhook form reached a sudo challenge and was not inspected
+or submitted. The [existing webhook parent PATCH][webhook-parent-update] documents
+an omitted-Secret risk for Active/events, while the [separate config
+PATCH][webhook-config-update] does not update those parent fields.
+A masked or missing Secret does not prove absence or equality. No safe alternative
+was established; this is an unresolved preservation contract, not proof that no
+alternative can exist. The explicit temporary-interaction product exclusion is
+unchanged.
+
+### CLI and Action source parity evidence
+
+A source review at main `463a68871fbfdfe481e189d3d9595195dfbe9772` compared
+`internal/settings/comparison.go`, CLI rendering, Action report creation,
+validation and Summary rendering, `main.go`, `action.yml`, prune parsing and the
+public command and Action guides. Both paths share application comparison and
+prune semantics; Action detailed rendering uses shared presentation for resource
+values. Action status-only hides values, identities and raw diagnostics; it is not
+a CLI plan switch. Ordinary CLI apply can record verified created IDs under guarded
+file checks, whereas Action leaves the checkout unchanged for follow-up. Success
+outputs require completion, and output failure does not imply rollback.
+
+The candidate selector matched all 27 `TestBuilt` scenarios at that source. Local
+owner-package race tests and supplied-product CLI and composite fixtures exercise
+representative paths, including mixed runner/webhook prune preflight and status-only
+privacy. They do not establish every cross-product,
+installed published bytes, live permissions or remote behavior. The selected
+[immutable Action and CLI pins](../github-actions.md#published-package-and-consumer-pins)
+remain the authority for released availability.
 
 ## About, Labels and General
 
@@ -325,7 +362,7 @@ must not be erased merely because part of the resource cannot be managed.
 | Autolink references | Eligible | [Documented repository UI](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources); no fresh authenticated form observed | Read/create/delete: [Autolinks REST][autolinks-api]; no documented in-place update | Implemented: [immutable ID binding, verified creation and explicit prune](../settings.md#autolink-references); replacement requires separate deletion and creation; no live write or rendered-link claim |
 | Existing GitHub App repository integration configuration | Eligible only for configurable repository controls | Installed-App inventory observed, 2026-11-13; no additional repository setting established | Partial: installation inventory is not proof of complete configurable repository state or App-credential mutation support | Not implemented; App installation/authorization excluded |
 | Email notifications | Eligible if target UI is configurable | Target control inventory unconfirmed | Unconfirmed repository settings read/update contract | Not implemented |
-| Codespaces prebuild configuration | Eligible | Setup, schedule and advanced fields inspected unsaved 2026-11-14; [documented personal-repository controls][prebuild-ui]; branch-dependent config selector not expanded | Investigated-unconfirmed complete settings contract in the fixed API recheck; workspace execution, prebuild provenance and file editing are distinct | Not implemented; no prebuild was created or workflow executed |
+| Codespaces prebuild configuration | Eligible | Setup, schedule and advanced fields inspected unsaved 2026-11-14; `main` configuration selector offered only Default Codespaces Configuration; other branches uninspected; [documented personal-repository controls][prebuild-ui] | Investigated-unconfirmed complete settings contract in the fixed API recheck; workspace execution, prebuild provenance and file editing are distinct | Not implemented; no prebuild was created or workflow executed |
 | Additional sidebar, conditional and feature-dependent controls | Eligible if target UI is configurable | Unconfirmed until explicitly inventoried | Unconfirmed until matched to applicable official settings APIs | No completeness claim; record each newly observed control separately |
 
 ## Explicit product and target boundaries
@@ -357,7 +394,7 @@ being confused with the missing implementations above.
 | Automatic acquired-state export | [Automatic export](../settings.md#exported-values) and [retained Security intent](../settings.md#automatic-security-export-and-retained-intent) are implemented. About/General groups and other independent unavailable families retain compatible valid prior intent with info; checkout/origin and local file failures remain fatal. Failed info or normalization-warning delivery prevents saving. No successful export certifies remote repository existence when all observations are unavailable. This does not add missing setting families. |
 | Complete meaningful false/zero/empty values | Existing family contracts retain observed values. Variable inventories containing values outside the current nonempty-value schema remain unavailable with info, not fabricated empties. Conditional and normalized observations retain their documented limits. |
 | Unowned companions and repeated matching apply | Shared Repository REST controls skip fresh exact matches, write only changed declared controls and independently verify original intent. Topics also skip matching membership and independently verify changed sets. The four shared GraphQL access controls also skip raw native matches, send changed members only and independently verify every originally declared member against the original repository ID. Existing Environment partial policies skip fresh matches and preserve omitted built-ins/raw active patterns. Creation omissions stay API-controlled; disabling custom mode with omitted nonempty raw patterns is rejected, with explicit clear-then-switch semantics. Existing Ruleset selected objects have whole-policy semantics. These contracts require reconciliation with the destination before claiming uniform preservation/idempotence. |
-| Consistent optional pruning | [Collection pruning](../settings.md#collection-pruning) covers labels, Rulesets, Actions/Agents/Environment variables and Actions Policies. Environment parent pruning is implemented with child-state/custom-protection gates; standalone `all` selects every supported scope, with omitted collections unmanaged. New collection adoption must also resolve its own deletion effects. |
+| Consistent optional pruning | [Collection pruning](../settings.md#collection-pruning) supports `labels`, `rulesets`, `actions-variables`, `agents-variables`, `environment-variables`, `actions-policies`, `environments`, `collaborators`, `branch-protection-rules`, `autolinks`, `deploy-keys`, `webhooks` and `runners`. Standalone `all` dynamically selects the current registry; each scope requires its corresponding declaration, and omitted collections remain unmanaged. Environment parent retention includes variable-only declarations. Each family has its own ownership, preflight and deletion effects. |
 | Complete observation and convergence | Readbacks and partial-failure evidence are described per family. API acknowledgment, normalization equality, pending invitation or asynchronous acceptance alone cannot establish the destination state. Unknown observations must remain unknown. |
 | One released CLI/Action contract | [Package identity and consumer pins](../github-actions.md#published-package-and-consumer-pins) determine actual availability. Current source documentation does not update an older immutable package. |
 | Exhaustive target UI/API evidence | The dated browser pass, earlier mappings and official contracts cover the named groups; unconfirmed rows, the sudo-blocked Access page and unexpanded forms remain evidence gaps. No exhaustive conditional-control survey or live write/readback certification is claimed. |
@@ -401,9 +438,12 @@ being confused with the missing implementations above.
 [deployment-patterns-api]: https://docs.github.com/en/rest/deployments/branch-policies
 [protection-rules-api]: https://docs.github.com/en/rest/deployments/protection-rules
 [webhooks-api]: https://docs.github.com/en/rest/repos/webhooks
+[webhook-parent-update]: https://docs.github.com/en/rest/repos/webhooks#update-a-repository-webhook
+[webhook-config-update]: https://docs.github.com/en/rest/repos/webhooks#update-a-webhook-configuration-for-a-repository
 [deploy-keys-api]: https://docs.github.com/en/rest/deploy-keys/deploy-keys
 [autolinks-api]: https://docs.github.com/en/rest/repos/autolinks
 [openapi-followup]: https://github.com/github/rest-api-description/blob/e3453a017bbfe9a6c78d53873b7a3d1bdd56899f/descriptions/api.github.com/api.github.com.json
+[openapi-2026-11-14]: https://github.com/github/rest-api-description/blob/2a33d9cc5d1dc6ca603b908e0796454af88c1999/descriptions/api.github.com/api.github.com.json
 [classic-management-ui]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule
 [merge-queue-ui]: https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/managing-a-merge-queue
 [prebuild-ui]: https://docs.github.com/en/codespaces/prebuilding-your-codespaces/configuring-prebuilds
