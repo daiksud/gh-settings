@@ -18,7 +18,11 @@ UI paths, values, scope, permissions, export and confirmation semantics.
   Exact matches perform no PATCH. Stale-baseline then matching reads can confirm;
   three stale reads exhaust the client budget. Companion drift, denied or
   malformed reads fail without another write
-  (`internal/github/pull_request_limits_test.go`).
+  (`internal/github/pull_request_limits_test.go`). Duplicate members, case
+  aliases, invalid UTF-8, trailing data and oversized responses cannot supply
+  evidence. An invalid pre-write read prevents PATCH; invalid readback after
+  PATCH reports uncertain effects. Archived matching rejects ambiguous responses
+  without writes (`tests/github-actions/composite_archived_matching_acceptance_test.go`).
 - Plan selects one family read. Apply distinguishes no-op, confirmed write,
   pre-write read failure and uncertain write effects
   (`internal/app/pull_request_limits_test.go`).
