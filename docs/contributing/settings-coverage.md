@@ -351,6 +351,7 @@ from submitting dependency data, executing scans or generating fixes.
 | Private reporting: Require a CWE assignment | Eligible | Observed, 2026-11-13 | Unconfirmed detail read/update contract; enablement endpoint is insufficient | Not implemented |
 | Private reporting: Daily advisory limit | Eligible | Observed, 2026-11-13 | Unconfirmed detail read/update contract | Not implemented |
 | Private reporting: Trusted reporters | Eligible | Observed, 2026-11-13 | Unconfirmed membership read/update contract | Not implemented |
+| Custom secret-scanning patterns | Eligible if configurable in the personal-public target | [Feature guide][custom-pattern-ui] describes organization-owned repositories with Secret Protection; personal-public availability unconfirmed | [Repository REST][custom-pattern-api] documents list, bulk create, update and bulk delete; the 2026-07-13 [API announcement][custom-pattern-announcement] places dry runs and final publication in the UI | Not implemented; complete personal-target lifecycle, observation and preservation contract remains unconfirmed |
 | Other secret-scanning patterns, notifications and bypass controls | Eligible if configurable at repository scope | Complete target control inventory unconfirmed | Unconfirmed complete settings contracts; alert bypass or user-level settings are not substitutes | Not implemented |
 
 GitHub's [custom auto-triage guide][dependabot-triage-guide] describes rules for
@@ -358,6 +359,13 @@ public repositories that can dismiss or snooze alerts or select alerts for pull
 requests. Rules apply to existing and future alerts, so a future management
 contract must account for effects beyond the rule configuration itself. The
 guide establishes UI behavior, not a complete settings read/update API.
+
+The repository custom-pattern bulk delete API defaults to permanently deleting
+associated alerts; its explicit alternative resolves alerts. Separately, the
+[pattern management guide][custom-pattern-management] says saving a change in
+the UI closes alerts created by the previous version. These are distinct
+lifecycle effects: neither the repository endpoint family nor the UI workflow
+alone establishes safe end-to-end management for the personal-public target.
 
 The [2026-11-08 investigation][security-inventory] and its
 [API recheck][security-api-recheck] are dated evidence. Their old Free-only,
@@ -498,6 +506,10 @@ being confused with the missing implementations above.
 [security-api-recheck]: https://github.com/daiksud/gh-settings/issues/323#issuecomment-6728386507
 [dependabot-triage]: https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-auto-triage-rules
 [dependabot-triage-guide]: https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/auto-triage-dependabot-alerts
+[custom-pattern-api]: https://docs.github.com/en/rest/secret-scanning/custom-patterns
+[custom-pattern-announcement]: https://github.blog/changelog/2026-07-13-create-and-manage-secret-scanning-custom-patterns-via-rest-api/
+[custom-pattern-ui]: https://docs.github.com/en/code-security/how-tos/secure-your-secrets/customize-leak-detection/define-custom-patterns
+[custom-pattern-management]: https://docs.github.com/en/code-security/how-tos/secure-your-secrets/customize-leak-detection/manage-custom-patterns
 [pages-api]: https://docs.github.com/en/rest/pages/pages
 [environments-api]: https://docs.github.com/en/rest/deployments/environments
 [deployment-patterns-api]: https://docs.github.com/en/rest/deployments/branch-policies
